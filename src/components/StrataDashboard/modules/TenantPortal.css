@@ -1,0 +1,1008 @@
+/* ═══════════════════════════════════════════════════════════
+   TenantPortal.css — Premium Management Portal Styles
+   50 UX improvements over the baseline inline-styles version
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1. Module root with smooth fade-in entrance ── */
+.tp-module {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: tp-fadeIn 0.35s ease-out;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@keyframes tp-fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── 2. Header with gradient accent line ── */
+.tp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    position: relative;
+}
+
+.tp-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 120px;
+    height: 2px;
+    background: linear-gradient(90deg, #6366f1, #818cf8, transparent);
+    border-radius: 1px;
+}
+
+/* ── 3. Title typography with gradient text ── */
+.tp-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 2px;
+}
+
+/* ── 4. Subtitle with muted styling ── */
+.tp-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 400;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tp-subtitle .tp-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    display: inline-block;
+    animation: tp-pulse 2s ease-in-out infinite;
+}
+
+@keyframes tp-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+    }
+}
+
+/* ── 5. Header actions row ── */
+.tp-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── 6. Search input with glow focus ── */
+.tp-search-wrap {
+    position: relative;
+}
+
+.tp-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #475569;
+    pointer-events: none;
+    transition: color 0.2s;
+}
+
+.tp-search {
+    width: 240px;
+    padding: 7px 12px 7px 34px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    color: #e2e8f0;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.25s ease;
+}
+
+.tp-search:focus {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tp-search:focus+.tp-search-icon,
+.tp-search-wrap:focus-within .tp-search-icon {
+    color: #818cf8;
+}
+
+.tp-search::placeholder {
+    color: #475569;
+}
+
+/* ── 7. Refresh button with spin animation ── */
+.tp-refresh-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tp-refresh-btn:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.tp-refresh-btn:active svg {
+    animation: tp-spin 0.5s ease-in-out;
+}
+
+@keyframes tp-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ── 8–11. KPI cards grid with glassmorphism ── */
+.tp-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.tp-kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    transition: all 0.25s ease;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 9. Subtle hover lift effect on KPI cards */
+.tp-kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* 10. Decorative corner glow on KPI cards */
+.tp-kpi-card::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    opacity: 0.06;
+    transition: opacity 0.3s;
+}
+
+.tp-kpi-card:hover::before {
+    opacity: 0.12;
+}
+
+/* 11. KPI icon container */
+.tp-kpi-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.tp-kpi-card:hover .tp-kpi-icon {
+    transform: scale(1.08);
+}
+
+/* 12. KPI value typography */
+.tp-kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #f1f5f9;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+
+/* 13. KPI label */
+.tp-kpi-label {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+/* ── 14–17. Tab navigation ── */
+.tp-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    overflow-x: auto;
+}
+
+/* 15. Individual tab button */
+.tp-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    font-family: inherit;
+    position: relative;
+}
+
+/* 16. Tab hover effect */
+.tp-tab:hover {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* 17. Active tab with accent glow */
+.tp-tab.active {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    font-weight: 600;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.08);
+}
+
+.tp-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 2px;
+    border-radius: 1px;
+    background: #6366f1;
+}
+
+/* ── 18–21. Content card (glass container for each tab) ── */
+.tp-card {
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(6px);
+    padding: 20px;
+    animation: tp-slideUp 0.3s ease-out;
+}
+
+@keyframes tp-slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 19. Card header */
+.tp-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.tp-card-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 20. Card header icon wrapper */
+.tp-card-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    flex-shrink: 0;
+}
+
+/* 21. Card count badge */
+.tp-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: auto;
+}
+
+/* ── 22–28. Table styles ── */
+.tp-table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.tp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+/* 23. Table header */
+.tp-table thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #475569;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+}
+
+/* 24. Table rows with hover */
+.tp-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    transition: background 0.15s ease;
+}
+
+.tp-table tbody tr:hover {
+    background: rgba(99, 102, 241, 0.04);
+}
+
+.tp-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* 25. Table cells */
+.tp-table td {
+    padding: 12px 14px;
+    vertical-align: middle;
+    color: #94a3b8;
+}
+
+/* 26. Clickable table rows */
+.tp-table tbody tr.tp-row-clickable {
+    cursor: pointer;
+}
+
+.tp-table tbody tr.tp-row-clickable:hover {
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.tp-table tbody tr.tp-row-selected {
+    background: rgba(99, 102, 241, 0.08) !important;
+    border-left: 3px solid #6366f1;
+}
+
+/* 27. Name cell with two lines */
+.tp-cell-name {
+    font-weight: 600;
+    color: #e2e8f0 !important;
+}
+
+.tp-cell-sub {
+    font-size: 11px;
+    color: #475569 !important;
+    margin-top: 1px;
+}
+
+/* 28. Money cells */
+.tp-cell-money {
+    font-weight: 700;
+    color: #34d399 !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── 29–31. Status & priority badges ── */
+.tp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+/* 30. Semantic badge colors */
+.tp-badge-active,
+.tp-badge-open {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+}
+
+.tp-badge-pending,
+.tp-badge-in_progress {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+}
+
+.tp-badge-closed,
+.tp-badge-resolved {
+    background: rgba(71, 85, 105, 0.2);
+    color: #64748b;
+}
+
+.tp-badge-inactive {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+}
+
+/* 31. Priority badges */
+.tp-priority-high {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.tp-priority-medium {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+}
+
+.tp-priority-low {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+}
+
+/* ── 32–34. Urgency badges (Lease Alerts) ── */
+.tp-urgency {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.tp-urgency-high {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.tp-urgency-medium {
+    background: rgba(245, 158, 11, 0.08);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.12);
+}
+
+.tp-urgency-low {
+    background: rgba(34, 197, 94, 0.08);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.12);
+}
+
+/* 33. Days remaining countdown */
+.tp-days-left {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+}
+
+.tp-days-left.critical {
+    color: #ef4444;
+}
+
+.tp-days-left.warning {
+    color: #f59e0b;
+}
+
+.tp-days-left.safe {
+    color: #94a3b8;
+}
+
+/* 34. Progress bar for lease remaining */
+.tp-lease-progress {
+    width: 60px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.tp-lease-progress-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+/* ── 35–38. Pagination ── */
+.tp-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0 2px;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    margin-top: 8px;
+}
+
+/* 36. Pagination info text */
+.tp-pagination-info {
+    font-size: 12px;
+    color: #475569;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 37. Page buttons */
+.tp-page-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tp-page-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.tp-page-btn:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.1);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.tp-page-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* 38. Page indicator */
+.tp-page-indicator {
+    font-size: 11px;
+    color: #64748b;
+    padding: 4px 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── 39–42. Tenant detail card (expanded) ── */
+.tp-detail-card {
+    margin-top: 14px;
+    padding: 18px;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.03);
+    border: 1px solid rgba(99, 102, 241, 0.1);
+    border-left: 3px solid #6366f1;
+    animation: tp-slideUp 0.25s ease-out;
+}
+
+/* 40. Detail header */
+.tp-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+}
+
+.tp-detail-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tp-detail-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+/* 41. Detail info grid */
+.tp-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+/* 42. Detail info item */
+.tp-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: border-color 0.2s;
+}
+
+.tp-detail-item:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tp-detail-item svg {
+    color: #6366f1;
+    flex-shrink: 0;
+}
+
+.tp-detail-item-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #475569;
+    letter-spacing: 0.5px;
+}
+
+.tp-detail-item-value {
+    color: #e2e8f0;
+    font-weight: 600;
+}
+
+/* ── 43–46. Messages ── */
+.tp-msg-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* 44. Message bubble */
+.tp-msg {
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: all 0.2s ease;
+}
+
+.tp-msg:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tp-msg-inbound {
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 3px solid rgba(34, 197, 94, 0.4);
+}
+
+.tp-msg-outbound {
+    background: rgba(99, 102, 241, 0.04);
+    border-left: 3px solid rgba(99, 102, 241, 0.4);
+}
+
+/* 45. Message header */
+.tp-msg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tp-msg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tp-msg-direction {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.tp-msg-direction-in {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+}
+
+.tp-msg-direction-out {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+}
+
+.tp-msg-sender {
+    color: #e2e8f0;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.tp-msg-subject {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.tp-msg-time {
+    font-size: 11px;
+    color: #475569;
+}
+
+/* 46. Message body */
+.tp-msg-body {
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* ── 47. Reply form ── */
+.tp-reply-form {
+    margin-bottom: 14px;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.03);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-left: 3px solid #6366f1;
+    animation: tp-slideUp 0.25s ease-out;
+}
+
+.tp-reply-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tp-reply-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tp-input {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.04);
+    color: #e2e8f0;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.tp-input:focus {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+.tp-input::placeholder {
+    color: #475569;
+}
+
+.tp-textarea {
+    resize: vertical;
+    min-height: 60px;
+    line-height: 1.5;
+}
+
+.tp-reply-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.tp-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.tp-btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #818cf8, #6366f1);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    transform: translateY(-1px);
+}
+
+.tp-btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.tp-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    background: transparent;
+    color: #94a3b8;
+    transition: all 0.2s;
+}
+
+.tp-btn-ghost:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.tp-reply-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 6px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    cursor: pointer;
+    background: rgba(99, 102, 241, 0.08);
+    color: #a5b4fc;
+    transition: all 0.2s;
+}
+
+.tp-reply-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* ── 48. Empty state ── */
+.tp-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #475569;
+}
+
+.tp-empty svg {
+    margin-bottom: 12px;
+    opacity: 0.3;
+}
+
+.tp-empty h4 {
+    margin: 0 0 4px;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.tp-empty p {
+    margin: 0;
+    font-size: 12px;
+    color: #475569;
+}
+
+/* ── 49. Loading skeleton ── */
+.tp-loading {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px 0;
+}
+
+.tp-skeleton {
+    height: 40px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.02) 25%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.02) 75%);
+    background-size: 200% 100%;
+    animation: tp-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes tp-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ── 50. Occupancy ring (KPI visual) ── */
+.tp-occupancy-ring {
+    position: relative;
+    width: 40px;
+    height: 40px;
+}
+
+.tp-occupancy-ring svg {
+    transform: rotate(-90deg);
+}
+
+.tp-occupancy-ring-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: #e2e8f0;
+}

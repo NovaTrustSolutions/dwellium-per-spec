@@ -1,0 +1,486 @@
+/* ============================================
+   NOTEPAD — Enhanced Premium Dark Theme
+   40 improvements: 20 UI + 20 Design
+   ============================================ */
+
+.notepad {
+    display: flex;
+    height: 100%;
+    background: var(--window-bg, #0a0a15);
+    color: var(--text-primary, #e0e0e0);
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* ===== NOTES SIDEBAR ===== */
+.np-sidebar {
+    width: 230px;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%);
+}
+
+.np-sidebar__header {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+}
+
+.np-sidebar__title {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #6b7280;
+}
+
+.np-sidebar__new-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(99, 102, 241, 0.08);
+    color: #818cf8;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.np-sidebar__new-btn:hover {
+    background: rgba(99, 102, 241, 0.18);
+    border-color: rgba(99, 102, 241, 0.35);
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
+}
+
+.np-sidebar__search {
+    margin: 8px 12px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    color: #e0e0e0;
+    font-size: 12px;
+    outline: none;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.np-sidebar__search:focus {
+    border-color: rgba(99, 102, 241, 0.35);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.np-sidebar__search::placeholder {
+    color: #374151;
+    font-style: italic;
+}
+
+.np-sidebar__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.np-sidebar__list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.np-sidebar__list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+.np-note-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    margin: 1px 0;
+}
+
+.np-note-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.np-note-item--active {
+    background: rgba(99, 102, 241, 0.08);
+    border-left-color: #818cf8;
+    box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.04);
+}
+
+.np-note-item__title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #d1d5db;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 4px;
+    letter-spacing: -0.2px;
+}
+
+.np-note-item--active .np-note-item__title {
+    color: #e0e0e0;
+}
+
+.np-note-item__preview {
+    font-size: 11px;
+    color: #6b7280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.np-note-item__date {
+    font-size: 10px;
+    color: #374151;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== EDITOR ===== */
+.np-editor {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.np-editor__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+    flex-wrap: wrap;
+}
+
+.np-editor__toolbar-btn {
+    width: 32px;
+    height: 30px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.np-editor__toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+.np-editor__toolbar-btn:active {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+}
+
+.np-editor__toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    margin: 0 4px;
+}
+
+.np-editor__title-input {
+    width: 100%;
+    padding: 14px 20px 6px;
+    background: transparent;
+    border: none;
+    color: #e0e0e0;
+    font-size: 22px;
+    font-weight: 800;
+    outline: none;
+    letter-spacing: -0.5px;
+    font-family: inherit;
+}
+
+.np-editor__title-input::placeholder {
+    color: #374151;
+}
+
+.np-editor__content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.np-editor__textarea {
+    flex: 1;
+    padding: 8px 20px 20px;
+    background: transparent;
+    border: none;
+    color: #d1d5db;
+    font-size: 14px;
+    line-height: 1.8;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    resize: none;
+    outline: none;
+    overflow-y: auto;
+}
+
+.np-editor__textarea::-webkit-scrollbar {
+    width: 4px;
+}
+
+.np-editor__textarea::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+.np-editor__preview {
+    flex: 1;
+    padding: 8px 20px 20px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.8;
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.np-editor__preview::-webkit-scrollbar {
+    width: 4px;
+}
+
+.np-editor__preview::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+.np-editor__preview h1 {
+    font-size: 1.6em;
+    margin: 0.5em 0;
+    color: #e0e0e0;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.np-editor__preview h2 {
+    font-size: 1.3em;
+    margin: 0.5em 0;
+    color: #d1d5db;
+    font-weight: 700;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.np-editor__preview h3 {
+    font-size: 1.1em;
+    margin: 0.5em 0;
+    color: #d1d5db;
+    font-weight: 700;
+}
+
+.np-editor__preview p {
+    margin: 0.5em 0;
+    color: #d1d5db;
+}
+
+.np-editor__preview strong {
+    color: #e0e0e0;
+    font-weight: 700;
+}
+
+.np-editor__preview code {
+    background: rgba(255, 255, 255, 0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.88em;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.np-editor__preview pre {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 14px;
+    border-radius: 10px;
+    overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.np-editor__preview blockquote {
+    border-left: 3px solid #818cf8;
+    padding-left: 14px;
+    color: #9ca3af;
+    margin: 0.5em 0;
+    font-style: italic;
+    background: rgba(129, 140, 248, 0.04);
+    padding: 8px 14px;
+    border-radius: 0 8px 8px 0;
+}
+
+.np-editor__preview ul,
+.np-editor__preview ol {
+    padding-left: 24px;
+}
+
+.np-editor__preview a {
+    color: #818cf8;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(129, 140, 248, 0.3);
+    transition: all 0.2s;
+}
+
+.np-editor__preview a:hover {
+    border-bottom-color: #818cf8;
+}
+
+/* ===== MENTION DROPDOWN ===== */
+.np-mention {
+    position: absolute;
+    background: rgba(15, 17, 25, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    max-height: 220px;
+    overflow-y: auto;
+    width: 260px;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    padding: 4px;
+    animation: mentionIn 0.2s ease-out;
+}
+
+@keyframes mentionIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.np-mention::-webkit-scrollbar {
+    width: 3px;
+}
+
+.np-mention::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.np-mention__item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+    border-radius: 8px;
+    margin: 1px 0;
+}
+
+.np-mention__item:hover {
+    background: rgba(99, 102, 241, 0.12);
+    transform: translateX(2px);
+}
+
+.np-mention__item-icon {
+    font-size: 15px;
+}
+
+.np-mention__item-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.np-mention__item-type {
+    font-size: 10px;
+    color: #4b5563;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* ===== SAVE INDICATOR ===== */
+.np-save {
+    padding: 6px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #4b5563;
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.np-save__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+    transition: all 0.3s;
+}
+
+.np-save__dot--saving {
+    background: #fbbf24;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+    animation: pulse-save 0.8s infinite;
+}
+
+@keyframes pulse-save {
+
+    0%,
+    100% {
+        opacity: 0.4;
+        box-shadow: 0 0 4px rgba(251, 191, 36, 0.2);
+    }
+
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+    }
+}
+
+/* ===== EMPTY STATE ===== */
+.np-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #4b5563;
+}
+
+.np-empty__icon {
+    font-size: 56px;
+    opacity: 0.4;
+    animation: npEmpty 3s ease-in-out infinite;
+}
+
+@keyframes npEmpty {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+.np-empty__text {
+    font-size: 14px;
+    font-weight: 600;
+}

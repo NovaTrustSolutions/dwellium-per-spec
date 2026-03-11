@@ -1,0 +1,721 @@
+/* ═══════════════════════════════════════════════════
+   Intelligence Dashboard + Observability Panel CSS
+   ═══════════════════════════════════════════════════ */
+
+/* ── Intelligence Grid ─────────────────────────── */
+
+.intel-dashboard {
+    padding: 16px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.intel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 900px) {
+    .intel-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Panels ────────────────────────────────────── */
+
+.intel-panel {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.intel-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e2e8f0;
+}
+
+.intel-panel-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+}
+
+.intel-badge {
+    background: rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ── Buttons ───────────────────────────────────── */
+
+.intel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.15s;
+}
+
+.intel-btn-primary {
+    background: rgba(139, 92, 246, 0.25);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.intel-btn-primary:hover {
+    background: rgba(139, 92, 246, 0.4);
+}
+
+.intel-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.intel-btn-secondary {
+    background: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.intel-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.intel-btn-small {
+    background: transparent;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.intel-btn-small:hover {
+    background: rgba(34, 197, 94, 0.15);
+}
+
+/* ── Spinner ───────────────────────────────────── */
+
+@keyframes intelSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.intel-spin {
+    animation: intelSpin 1s linear infinite;
+}
+
+/* ── Result Banner ─────────────────────────────── */
+
+.intel-result-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.intel-result-ok {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #86efac;
+}
+
+.intel-result-warn {
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    color: #fde68a;
+}
+
+.intel-duration {
+    color: #64748b;
+    margin-left: 8px;
+}
+
+/* ── Runs List ─────────────────────────────────── */
+
+.intel-runs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.intel-run-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    font-size: 11px;
+}
+
+.intel-status {
+    display: flex;
+}
+
+.intel-status-completed {
+    color: #22c55e;
+}
+
+.intel-status-error {
+    color: #ef4444;
+}
+
+.intel-status-running {
+    color: #eab308;
+}
+
+.intel-run-summary {
+    flex: 1;
+    color: #cbd5e1;
+}
+
+.intel-run-meta {
+    color: #475569;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.intel-empty {
+    color: #475569;
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+    margin: 0;
+}
+
+/* ── Filter Bar ────────────────────────────────── */
+
+.intel-filter-bar {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.intel-filter-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    color: #64748b;
+    font-size: 11px;
+    cursor: pointer;
+    text-transform: capitalize;
+    transition: all 0.15s;
+}
+
+.intel-filter-btn:hover {
+    color: #94a3b8;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.intel-filter-btn.active {
+    background: rgba(139, 92, 246, 0.2);
+    color: #c4b5fd;
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* ── Anomaly List ──────────────────────────────── */
+
+.intel-anomaly-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.intel-anomaly-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+
+.intel-anomaly-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.intel-anomaly-item.intel-acked {
+    opacity: 0.5;
+}
+
+.intel-severity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+
+.intel-anomaly-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.intel-anomaly-content strong {
+    color: #e2e8f0;
+    font-size: 12px;
+}
+
+.intel-anomaly-desc {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.intel-anomaly-meta {
+    color: #475569;
+    font-size: 10px;
+}
+
+/* ── ROI Panel ─────────────────────────────────── */
+
+.intel-roi-input {
+    display: flex;
+    gap: 6px;
+}
+
+.intel-roi-input input {
+    flex: 1;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-size: 12px;
+    outline: none;
+}
+
+.intel-roi-input input::placeholder {
+    color: #475569;
+}
+
+.intel-roi-input input:focus {
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.intel-roi-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.intel-roi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.intel-roi-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.intel-metric-label {
+    font-size: 10px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.intel-metric-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.intel-red {
+    color: #ef4444;
+}
+
+.intel-green {
+    color: #22c55e;
+}
+
+.intel-roi-recommendation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border-left: 3px solid;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.intel-rec-label {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.intel-rec-risk {
+    color: #64748b;
+    font-size: 11px;
+}
+
+/* ── Search Bar ────────────────────────────────── */
+
+.intel-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #64748b;
+}
+
+.intel-search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #e2e8f0;
+    font-size: 12px;
+    outline: none;
+}
+
+.intel-search-bar input::placeholder {
+    color: #475569;
+}
+
+/* ── Lessons List ──────────────────────────────── */
+
+.intel-lessons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.intel-lesson-item {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.intel-lesson-item strong {
+    color: #e2e8f0;
+    font-size: 12px;
+}
+
+.intel-lesson-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.intel-lesson-category {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8b5cf6;
+    font-weight: 600;
+}
+
+.intel-lesson-score {
+    font-size: 10px;
+    color: #64748b;
+}
+
+.intel-lesson-body {
+    color: #94a3b8;
+    font-size: 11px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.intel-lesson-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.intel-tag {
+    padding: 2px 6px;
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border-radius: 4px;
+    font-size: 10px;
+}
+
+/* ═══════════════════════════════════════════════════
+   Observability Dashboard
+   ═══════════════════════════════════════════════════ */
+
+.obs-dashboard {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.obs-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #64748b;
+    padding: 40px;
+    font-size: 13px;
+}
+
+/* ── KPI Strip ─────────────────────────────────── */
+
+.obs-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 900px) {
+    .obs-kpi-strip {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.obs-kpi {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.obs-kpi-icon {
+    color: #8b5cf6;
+}
+
+.obs-kpi-label {
+    font-size: 10px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.obs-kpi-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+/* ── Sections ──────────────────────────────────── */
+
+.obs-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.obs-section h3 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── Agent Grid ────────────────────────────────── */
+
+.obs-agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.obs-agent-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.obs-agent-card.obs-agent-error {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.obs-agent-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #c4b5fd;
+    margin-bottom: 6px;
+}
+
+.obs-agent-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.obs-agent-stats span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: #94a3b8;
+}
+
+.obs-error-count {
+    color: #ef4444 !important;
+}
+
+/* ── Run Table ─────────────────────────────────── */
+
+.obs-run-table {
+    overflow-x: auto;
+}
+
+.obs-run-header,
+.obs-run-row {
+    display: grid;
+    grid-template-columns: 180px 90px 70px 60px 1fr 80px;
+    gap: 8px;
+    padding: 6px 8px;
+    align-items: center;
+    font-size: 11px;
+}
+
+.obs-run-header {
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 10px;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 8px;
+}
+
+.obs-run-row {
+    color: #cbd5e1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.obs-run-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.obs-run-agent {
+    font-weight: 500;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.obs-run-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+}
+
+.obs-status-completed {
+    color: #22c55e;
+}
+
+.obs-status-error {
+    color: #ef4444;
+}
+
+.obs-status-running {
+    color: #eab308;
+}
+
+.obs-run-summary {
+    color: #94a3b8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.obs-run-time {
+    color: #475569;
+}
+
+/* ── Latency Chart ─────────────────────────────── */
+
+.obs-latency-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 100px;
+    padding: 10px 0;
+}
+
+.obs-bar-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+
+.obs-bar {
+    width: 100%;
+    min-height: 4px;
+    border-radius: 3px 3px 0 0;
+    transition: height 0.3s ease;
+}
+
+.obs-bar-completed {
+    background: linear-gradient(180deg, #8b5cf6, #6d28d9);
+}
+
+.obs-bar-error {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+}
+
+.obs-bar-running {
+    background: linear-gradient(180deg, #eab308, #ca8a04);
+}
+
+.obs-bar-label {
+    font-size: 9px;
+    color: #475569;
+}
+
+.obs-refresh {
+    align-self: center;
+    margin-top: 4px;
+}

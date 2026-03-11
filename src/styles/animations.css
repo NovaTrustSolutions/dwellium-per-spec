@@ -1,0 +1,984 @@
+/* ============================================
+   QUALIA PRO MAX — Animations & Interactions
+   ============================================
+   GPU-accelerated, accessible, production-ready.
+   All animations use transform/opacity only.
+   ============================================ */
+
+/* ============================================
+   §1  ANIMATION DESIGN TOKENS
+   ============================================ */
+:root {
+    /* Durations */
+    --anim-instant: 100ms;
+    --anim-fast: 150ms;
+    --anim-base: 200ms;
+    --anim-medium: 300ms;
+    --anim-slow: 500ms;
+    --anim-entrance: 600ms;
+
+    /* Easings */
+    --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.27, 1.55);
+
+    /* Stagger */
+    --stagger-delay: 60ms;
+}
+
+
+/* ============================================
+   §2  BUTTON MICRO-INTERACTIONS
+   ============================================ */
+
+/* — Universal button base — */
+button,
+[role="button"],
+.btn {
+    transition:
+        transform var(--anim-fast) var(--ease-default),
+        box-shadow var(--anim-fast) var(--ease-default),
+        background-color var(--anim-fast) var(--ease-default),
+        border-color var(--anim-fast) var(--ease-default),
+        color var(--anim-fast) var(--ease-default),
+        opacity var(--anim-fast) var(--ease-default);
+    will-change: transform;
+}
+
+/* Lift — subtle Y-shift + elevated shadow */
+button:hover,
+[role="button"]:hover,
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+button:active,
+[role="button"]:active,
+.btn:active {
+    transform: translateY(0) scale(0.98);
+    transition-duration: var(--anim-instant);
+}
+
+/* — Specific button sizes — */
+.btn--lg:hover {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.btn--lg:active {
+    transform: translateY(0) scale(0.97);
+}
+
+/* — Glow hover — */
+.btn--glow:hover {
+    box-shadow:
+        0 0 20px rgba(var(--accent-rgb, 59, 130, 246), 0.35),
+        0 0 40px rgba(var(--accent-rgb, 59, 130, 246), 0.15);
+}
+
+/* — Ripple effect — */
+.btn--ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn--ripple::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
+            rgba(255, 255, 255, 0.25) 0%,
+            transparent 60%);
+    opacity: 0;
+    transform: scale(0);
+    transition: opacity 0.4s ease, transform 0.5s ease;
+    pointer-events: none;
+}
+
+.btn--ripple:active::after {
+    opacity: 1;
+    transform: scale(2.5);
+    transition-duration: 0s;
+}
+
+/* — Border beam (Linear/Vercel style) — */
+.btn--beam {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn--beam::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: conic-gradient(from var(--beam-angle, 0deg),
+            transparent 0%,
+            var(--accent, #3B82F6) 10%,
+            transparent 20%);
+    animation: beam-rotate 3s linear infinite;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity var(--anim-base) ease;
+}
+
+.btn--beam:hover::before {
+    opacity: 1;
+}
+
+@keyframes beam-rotate {
+    to {
+        --beam-angle: 360deg;
+    }
+}
+
+@property --beam-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+
+/* ============================================
+   §3  INPUT FOCUS STATES
+   ============================================ */
+
+input,
+textarea,
+select,
+[contenteditable="true"] {
+    transition:
+        border-color var(--anim-fast) var(--ease-default),
+        box-shadow var(--anim-fast) var(--ease-default),
+        background-color var(--anim-fast) var(--ease-default);
+}
+
+/* Focus glow ring */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable="true"]:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent, #3B82F6) 50%, transparent);
+    outline-offset: 1px;
+    border-color: var(--accent, #3B82F6);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #3B82F6) 15%, transparent);
+}
+
+
+/* ============================================
+   §4  CARD HOVER EFFECTS
+   ============================================ */
+
+/* — Lift + Shadow — */
+.card-hover,
+.iz-card,
+.iz-theme-card,
+.iz-font-card,
+.iz-nl,
+.iz-metric {
+    transition:
+        transform var(--anim-base) var(--ease-default),
+        box-shadow var(--anim-base) var(--ease-default),
+        border-color var(--anim-base) var(--ease-default),
+        background-color var(--anim-base) var(--ease-default);
+    will-change: transform;
+}
+
+/* — 3D Tilt effect (opt-in) — */
+.card-tilt {
+    perspective: 800px;
+    transform-style: preserve-3d;
+}
+
+.card-tilt:hover {
+    transform: perspective(800px) rotateX(-2deg) rotateY(2deg) translateY(-4px);
+    box-shadow:
+        var(--shadow-lg),
+        0 0 30px rgba(var(--accent-rgb, 59, 130, 246), 0.08);
+}
+
+/* — Glow border card (opt-in) — */
+.card-glow {
+    position: relative;
+}
+
+.card-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg,
+            transparent 40%,
+            var(--accent, #3B82F6) 50%,
+            transparent 60%);
+    background-size: 300% 300%;
+    opacity: 0;
+    z-index: -1;
+    transition: opacity var(--anim-base) ease;
+    animation: glow-sweep 4s ease infinite paused;
+}
+
+.card-glow:hover::before {
+    opacity: 1;
+    animation-play-state: running;
+}
+
+@keyframes glow-sweep {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+/* — Image zoom inside card — */
+.card-img-zoom img,
+.card-img-zoom .card__img {
+    transition: transform var(--anim-medium) var(--ease-default);
+    will-change: transform;
+}
+
+.card-img-zoom:hover img,
+.card-img-zoom:hover .card__img {
+    transform: scale(1.05);
+}
+
+
+/* ============================================
+   §5  SCROLL REVEAL ANIMATIONS
+   ============================================ */
+
+/* Elements get this class by default, removed when in view */
+.scroll-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+        opacity var(--anim-entrance) var(--ease-out),
+        transform var(--anim-entrance) var(--ease-out);
+}
+
+.scroll-reveal.in-view {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered children */
+.scroll-reveal-stagger>* {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+        opacity var(--anim-entrance) var(--ease-out),
+        transform var(--anim-entrance) var(--ease-out);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(1) {
+    transition-delay: calc(var(--stagger-delay) * 0);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(2) {
+    transition-delay: calc(var(--stagger-delay) * 1);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(3) {
+    transition-delay: calc(var(--stagger-delay) * 2);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(4) {
+    transition-delay: calc(var(--stagger-delay) * 3);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(5) {
+    transition-delay: calc(var(--stagger-delay) * 4);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(6) {
+    transition-delay: calc(var(--stagger-delay) * 5);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(7) {
+    transition-delay: calc(var(--stagger-delay) * 6);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(8) {
+    transition-delay: calc(var(--stagger-delay) * 7);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scroll-reveal-stagger.in-view>*:nth-child(n+9) {
+    transition-delay: calc(var(--stagger-delay) * 8);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Slide-in variants */
+.scroll-reveal--left {
+    transform: translateX(-24px);
+}
+
+.scroll-reveal--right {
+    transform: translateX(24px);
+}
+
+.scroll-reveal--scale {
+    transform: scale(0.95);
+}
+
+.scroll-reveal--left.in-view,
+.scroll-reveal--right.in-view,
+.scroll-reveal--scale.in-view {
+    transform: none;
+}
+
+
+/* ============================================
+   §6  MODAL / DIALOG ANIMATIONS
+   ============================================ */
+
+/* Backdrop */
+.modal-backdrop {
+    opacity: 0;
+    transition: opacity var(--anim-base) var(--ease-default);
+}
+
+.modal-backdrop.open {
+    opacity: 1;
+}
+
+/* Content */
+.modal-content {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+    transition:
+        opacity var(--anim-medium) var(--ease-spring),
+        transform var(--anim-medium) var(--ease-spring);
+    transition-delay: 80ms;
+    /* stagger after backdrop */
+}
+
+.modal-content.open {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+/* Exit — faster */
+.modal-backdrop.closing {
+    opacity: 0;
+    transition-duration: var(--anim-fast);
+    transition-delay: 80ms;
+}
+
+.modal-content.closing {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+    transition-duration: var(--anim-fast);
+    transition-delay: 0ms;
+}
+
+
+/* ============================================
+   §7  SKELETON LOADERS
+   ============================================ */
+
+.skeleton {
+    background: var(--bg-surface-hover, #1c2028);
+    border-radius: var(--radius-md, 8px);
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.04) 40%,
+            rgba(255, 255, 255, 0.08) 50%,
+            rgba(255, 255, 255, 0.04) 60%,
+            transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Skeleton shapes */
+.skeleton--text {
+    height: 12px;
+    width: 80%;
+    border-radius: 4px;
+}
+
+.skeleton--title {
+    height: 18px;
+    width: 60%;
+    border-radius: 4px;
+}
+
+.skeleton--avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.skeleton--card {
+    height: 120px;
+    border-radius: var(--radius-lg, 12px);
+}
+
+
+/* ============================================
+   §8  SPINNERS & PROGRESS
+   ============================================ */
+
+/* Gradient spinner */
+.spinner {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2.5px solid var(--border-default, rgba(255, 255, 255, 0.1));
+    border-top-color: var(--accent, #3B82F6);
+    animation: spin 0.8s linear infinite;
+    will-change: transform;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner--sm {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+.spinner--lg {
+    width: 36px;
+    height: 36px;
+    border-width: 3px;
+}
+
+/* Pulse dot */
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent, #3B82F6);
+    animation: pulse-scale 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-scale {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.6);
+        opacity: 0.4;
+    }
+}
+
+/* Indeterminate progress bar */
+.progress-bar {
+    height: 3px;
+    background: var(--bg-surface-hover, rgba(255, 255, 255, 0.06));
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -40%;
+    height: 100%;
+    width: 40%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent, #3B82F6), transparent);
+    animation: indeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+    0% {
+        left: -40%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+/* Reading progress (fixed top bar) */
+.reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: var(--accent, #3B82F6);
+    z-index: 9999;
+    transition: width 100ms linear;
+    will-change: width;
+}
+
+
+/* ============================================
+   §9  BORDER BEAM (Linear/Vercel style)
+   ============================================ */
+
+.beam-border {
+    position: relative;
+    overflow: hidden;
+}
+
+.beam-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(from var(--beam-angle, 0deg),
+            transparent 60%,
+            var(--accent, #3B82F6) 78%,
+            color-mix(in srgb, var(--accent, #3B82F6) 60%, white) 82%,
+            var(--accent, #3B82F6) 86%,
+            transparent 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    animation: beam-rotate 3s linear infinite;
+    pointer-events: none;
+}
+
+/* Glow aura behind beam */
+.beam-border::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: conic-gradient(from var(--beam-angle, 0deg),
+            transparent 60%,
+            var(--accent, #3B82F6) 80%,
+            transparent 100%);
+    filter: blur(12px);
+    opacity: 0.3;
+    z-index: -1;
+    animation: beam-rotate 3s linear infinite;
+    pointer-events: none;
+}
+
+
+/* ============================================
+   §10  GLASSMORPHISM
+   ============================================ */
+
+.glass {
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass--heavy {
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.glass--light {
+    backdrop-filter: blur(8px) saturate(160%);
+    -webkit-backdrop-filter: blur(8px) saturate(160%);
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+
+/* ============================================
+   §11  MESH GRADIENT BACKGROUNDS
+   ============================================ */
+
+.mesh-gradient {
+    background:
+        radial-gradient(at 20% 20%, color-mix(in srgb, var(--accent, #3B82F6) 15%, transparent) 0%, transparent 50%),
+        radial-gradient(at 80% 30%, color-mix(in srgb, var(--success, #10B981) 10%, transparent) 0%, transparent 50%),
+        radial-gradient(at 50% 80%, color-mix(in srgb, var(--warning, #F59E0B) 8%, transparent) 0%, transparent 50%);
+    animation: mesh-shift 60s ease infinite;
+}
+
+@keyframes mesh-shift {
+
+    0%,
+    100% {
+        background-position: 0% 0%, 100% 0%, 50% 100%;
+    }
+
+    33% {
+        background-position: 30% 50%, 70% 20%, 20% 80%;
+    }
+
+    66% {
+        background-position: 80% 20%, 20% 70%, 60% 30%;
+    }
+}
+
+
+/* ============================================
+   §12  PAGE / ROUTE TRANSITIONS
+   ============================================ */
+
+/* Fade */
+.page-fade-enter {
+    opacity: 0;
+}
+
+.page-fade-enter-active {
+    opacity: 1;
+    transition: opacity var(--anim-base) var(--ease-default);
+}
+
+.page-fade-exit {
+    opacity: 1;
+}
+
+.page-fade-exit-active {
+    opacity: 0;
+    transition: opacity var(--anim-fast) var(--ease-default);
+}
+
+/* Slide from right */
+.page-slide-enter {
+    opacity: 0;
+    transform: translateX(24px);
+}
+
+.page-slide-enter-active {
+    opacity: 1;
+    transform: translateX(0);
+    transition:
+        opacity var(--anim-medium) var(--ease-out),
+        transform var(--anim-medium) var(--ease-out);
+}
+
+.page-slide-exit-active {
+    opacity: 0;
+    transform: translateX(-24px);
+    transition:
+        opacity var(--anim-fast) var(--ease-in),
+        transform var(--anim-fast) var(--ease-in);
+}
+
+
+/* ============================================
+   §13  UTILITY ANIMATION CLASSES
+   ============================================ */
+
+/* Fade in */
+.anim-fade-in {
+    animation: anim-fadeIn var(--anim-medium) var(--ease-out) forwards;
+}
+
+@keyframes anim-fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Fade-up entrance */
+.anim-fade-up {
+    animation: anim-fadeUp var(--anim-entrance) var(--ease-out) forwards;
+}
+
+@keyframes anim-fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Slide-down entrance (dropdowns, menus) */
+.anim-slide-down {
+    animation: anim-slideDown var(--anim-base) var(--ease-spring) forwards;
+}
+
+@keyframes anim-slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scaleY(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scaleY(1);
+    }
+}
+
+/* Scale-in (modals, tooltips) */
+.anim-scale-in {
+    animation: anim-scaleIn var(--anim-medium) var(--ease-spring) forwards;
+}
+
+@keyframes anim-scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Pop (badges, notifications) */
+.anim-pop {
+    animation: anim-pop var(--anim-medium) var(--ease-bounce) forwards;
+}
+
+@keyframes anim-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+
+    70% {
+        transform: scale(1.08);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Shake (error states) */
+.anim-shake {
+    animation: anim-shake 0.4s ease;
+}
+
+@keyframes anim-shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-6px);
+    }
+
+    40% {
+        transform: translateX(6px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+/* Breathe (live indicators) */
+.anim-breathe {
+    animation: anim-breathe 2.5s ease-in-out infinite;
+}
+
+@keyframes anim-breathe {
+
+    0%,
+    100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.08);
+    }
+}
+
+/* Stagger delays (composable with any animation) */
+.stagger-1 {
+    animation-delay: calc(var(--stagger-delay) * 1);
+}
+
+.stagger-2 {
+    animation-delay: calc(var(--stagger-delay) * 2);
+}
+
+.stagger-3 {
+    animation-delay: calc(var(--stagger-delay) * 3);
+}
+
+.stagger-4 {
+    animation-delay: calc(var(--stagger-delay) * 4);
+}
+
+.stagger-5 {
+    animation-delay: calc(var(--stagger-delay) * 5);
+}
+
+.stagger-6 {
+    animation-delay: calc(var(--stagger-delay) * 6);
+}
+
+.stagger-7 {
+    animation-delay: calc(var(--stagger-delay) * 7);
+}
+
+.stagger-8 {
+    animation-delay: calc(var(--stagger-delay) * 8);
+}
+
+
+/* ============================================
+   §14  HOVER-REVEAL CONTENT
+   ============================================ */
+
+.hover-reveal__content {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+        opacity var(--anim-base) var(--ease-default),
+        transform var(--anim-base) var(--ease-default);
+    pointer-events: none;
+}
+
+.hover-reveal:hover .hover-reveal__content {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+
+/* ============================================
+   §15  TOOLTIP ANIMATION
+   ============================================ */
+
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--bg-surface-elevated, #222);
+    color: var(--text-primary, #e0e0e0);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition:
+        opacity var(--anim-fast) var(--ease-default),
+        transform var(--anim-fast) var(--ease-default);
+    z-index: var(--z-tooltip, 1000);
+    box-shadow: var(--shadow-md);
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+
+/* ============================================
+   §16  SCROLLBAR ANIMATION
+   ============================================ */
+
+::-webkit-scrollbar-thumb {
+    transition: background 0.2s ease;
+}
+
+
+/* ============================================
+   §17  ACCESSIBILITY — prefers-reduced-motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .scroll-reveal,
+    .scroll-reveal-stagger>* {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+/* ============================================
+   §18  ANIMATIONS-DISABLED STATE
+   When the user disables animations via settings,
+   the body gets a .animations-off class.
+   ============================================ */
+
+body.animations-off *,
+body.animations-off *::before,
+body.animations-off *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+body.animations-off .skeleton::after,
+body.animations-off .spinner,
+body.animations-off .pulse-dot,
+body.animations-off .progress-bar::after {
+    animation: none !important;
+}

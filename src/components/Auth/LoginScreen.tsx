@@ -44,6 +44,13 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     const [selectedUser, setSelectedUser] = useState<string | null>(null);
     const [hasClicked, setHasClicked] = useState(false);
 
+    // Password gate state
+    const [pendingUser, setPendingUser] = useState<typeof QUICK_USERS[0] | null>(null);
+    const [gatePassword, setGatePassword] = useState('');
+    const [gateError, setGateError] = useState('');
+
+    const GATE_PASSPHRASE = 'Walkthrough documenting production';
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!email || !password) {
@@ -59,18 +66,38 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
         setLoading(false);
     };
 
-    const handleQuickSelect = async (user: typeof QUICK_USERS[0]) => {
+    const handleQuickSelect = (user: typeof QUICK_USERS[0]) => {
+        setPendingUser(user);
+        setGatePassword('');
+        setGateError('');
         setSelectedUser(user.email);
-        setEmail(user.email);
-        setPassword(user.pw);
+    };
+
+    const handleGateSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (gatePassword !== GATE_PASSPHRASE) {
+            setGateError('Incorrect passphrase');
+            return;
+        }
+        if (!pendingUser) return;
         setLoading(true);
-        setError('');
-        const result = await login(user.email, user.pw);
+        setGateError('');
+        const result = await login(pendingUser.email, pendingUser.pw);
         if (!result.success) {
-            setError(result.error || 'Quick login failed');
+            setGateError(result.error || 'Login failed');
+            setLoading(false);
+            return;
         }
         setLoading(false);
+        setPendingUser(null);
         setSelectedUser(null);
+    };
+
+    const handleGateCancel = () => {
+        setPendingUser(null);
+        setSelectedUser(null);
+        setGatePassword('');
+        setGateError('');
     };
 
     return (
@@ -107,6 +134,76 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                     </div>
 
                     <div className="login-card">
+                        {/* ─── Password Gate Modal ─── */}
+                        {pendingUser && (
+                            <div style={{
+                                position: 'fixed', inset: 0, zIndex: 9999,
+                                background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <form onSubmit={handleGateSubmit} style={{
+                                    background: 'linear-gradient(145deg, rgba(15,15,30,0.95), rgba(20,20,40,0.95))',
+                                    border: '1px solid rgba(99,102,241,0.25)', borderRadius: 20,
+                                    padding: '36px 32px', width: 380, maxWidth: '90vw',
+                                    boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+                                }}>
+                                    <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                                        <div style={{
+                                            width: 56, height: 56, borderRadius: '50%', margin: '0 auto 12px',
+                                            background: pendingUser.color, display: 'flex', alignItems: 'center',
+                                            justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff',
+                                        }}>{pendingUser.initials}</div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>
+                                            Welcome, {pendingUser.name}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                                            Enter passphrase to continue
+                                        </div>
+                                    </div>
+
+                                    {gateError && (
+                                        <div style={{
+                                            padding: '8px 12px', marginBottom: 14, borderRadius: 8,
+                                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                                            color: '#f87171', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
+                                        }}>
+                                            <AlertCircle size={14} /> {gateError}
+                                        </div>
+                                    )}
+
+                                    <input
+                                        type="password"
+                                        value={gatePassword}
+                                        onChange={e => setGatePassword(e.target.value)}
+                                        placeholder="Passphrase..."
+                                        autoFocus
+                                        style={{
+                                            width: '100%', padding: '12px 16px', borderRadius: 12,
+                                            border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(0,0,0,0.3)',
+                                            color: '#e2e8f0', fontSize: 14, outline: 'none',
+                                            fontFamily: 'Inter, -apple-system, sans-serif',
+                                            boxSizing: 'border-box',
+                                        }}
+                                    />
+
+                                    <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                                        <button type="button" onClick={handleGateCancel} style={{
+                                            flex: 1, padding: '10px 0', borderRadius: 12, border: '1px solid rgba(100,116,139,0.3)',
+                                            background: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer',
+                                            fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600,
+                                        }}>Cancel</button>
+                                        <button type="submit" disabled={loading} style={{
+                                            flex: 2, padding: '10px 0', borderRadius: 12, border: 'none',
+                                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff',
+                                            fontSize: 13, cursor: 'pointer', fontWeight: 700,
+                                            fontFamily: 'Inter, -apple-system, sans-serif',
+                                            opacity: loading ? 0.6 : 1,
+                                        }}>{loading ? 'Authenticating...' : 'Unlock'}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
                         {/* Quick Select */}
                         <div className="login-quick">
                             <span className="login-quick__label">Quick Access</span>

@@ -14,6 +14,7 @@ import {
     AlertTriangle, RefreshCw, Building2, Layers,
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
+import type { PropertySummary } from '../strataTypes';
 
 interface DesignHistoryItem {
     id: string;
@@ -26,10 +27,7 @@ interface DesignHistoryItem {
     createdAt: string;
 }
 
-interface Property {
-    id: string;
-    name: string;
-}
+type Property = PropertySummary;
 
 type DesignType = 'floor_plan' | 'site_plan' | 'elevation' | 'renovation';
 

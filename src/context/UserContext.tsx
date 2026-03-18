@@ -97,6 +97,33 @@ export function UserProvider({ children }: { children: ReactNode }) {
             localStorage.setItem(TOKEN_KEY, data.token);
             return { success: true };
         } catch {
+            // Static fallback: load user from exported data
+            try {
+                const usersRes = await fetch('/data/users.json');
+                if (usersRes.ok) {
+                    const users = await usersRes.json();
+                    const foundUser = users.find((u: any) => u.email === email);
+                    if (foundUser) {
+                        const staticToken = `static-${Date.now()}-${foundUser.id}`;
+                        const userData = {
+                            id: foundUser.id,
+                            name: foundUser.name || email.split('@')[0],
+                            email: foundUser.email,
+                            role: foundUser.role,
+                            assignedProperties: [],
+                            active: true,
+                            createdAt: foundUser.created_at || new Date().toISOString(),
+                            updatedAt: foundUser.updated_at || new Date().toISOString(),
+                        };
+                        setToken(staticToken);
+                        setUser(userData);
+                        setPermissions({});
+                        localStorage.setItem(TOKEN_KEY, staticToken);
+                        localStorage.setItem('dwellium-user', JSON.stringify(userData));
+                        return { success: true };
+                    }
+                }
+            } catch { /* ignore */ }
             return { success: false, error: 'Cannot reach server' };
         }
     }, []);
@@ -123,6 +150,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return;
         }
+        // Static token — restore from localStorage
+        if (token.startsWith('static-')) {
+            try {
+                const savedUser = localStorage.getItem('dwellium-user');
+                if (savedUser) {
+                    setUser(JSON.parse(savedUser));
+                    setPermissions({});
+                    setIsLoading(false);
+                    return;
+                }
+            } catch { /* ignore */ }
+            localStorage.removeItem(TOKEN_KEY);
+            setToken(null);
+            setIsLoading(false);
+            return;
+        }
         fetch(`${API_BASE}/api/auth/me`, {
             headers: { Authorization: `Bearer ${token}` },
         })
@@ -131,16 +174,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 return res.json();
             })
             .then(data => {
-                // Determine if data has `user` object meaning it returned /auth/me with explicit `{ user, permissions }` body
-                // which might depend on backend changes but assume `req.user` for now, meaning we need to fetch perms or backend sends it
-                // We'll trust backend to send `{ user: DwelliumUser, permissions: {...} }` if we update authRoutes to do it below
                 if (data.user) {
                     setUser(data.user);
                     setPermissions(data.permissions || {});
                 } else {
-                    // Fallback strictly DwelliumUser returned from standard /api/auth/me
                     setUser(data as DwelliumUser);
-                    // Optionally fire another fetch to /my-permissions but rely on User effect for now
                 }
                 setIsLoading(false);
             })

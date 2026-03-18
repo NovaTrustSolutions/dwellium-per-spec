@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import type { Property } from '../strataTypes';
+import { useToast } from '../useToast';
 
 interface IncidentLog {
     id: string; propertyId: string; unitId: string | null;
@@ -46,6 +47,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function IncidentModule() {
+    const { showToast, ToastContainer } = useToast();
     const [incidents, setIncidents] = useState<IncidentLog[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
@@ -157,7 +159,7 @@ ${inc.resolution || 'Pending resolution.'}
 Generated: ${new Date().toLocaleString()}
         `.trim();
         navigator.clipboard.writeText(report);
-        alert('Formal incident report copied to clipboard.');
+        showToast('Formal incident report copied to clipboard', 'success');
     };
 
     const getCategoryIcon = (cat: string) => CATEGORIES.find(c => c.id === cat)?.icon || <AlertTriangle size={12} />;
@@ -491,6 +493,7 @@ Generated: ${new Date().toLocaleString()}
                     </form>
                 </div>
             )}
+            <ToastContainer />
         </div>
     );
 }

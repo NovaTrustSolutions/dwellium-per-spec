@@ -35,6 +35,7 @@ export default function SecurityPortal() {
     const [properties, setProperties] = useState<PropertyOption[]>([]);
     const [submitted, setSubmitted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     // Form state
     const [propertyId, setPropertyId] = useState('');
@@ -85,6 +86,7 @@ export default function SecurityPortal() {
         e.preventDefault();
         if (!propertyId || !title.trim()) return;
         setSubmitting(true);
+        setSubmitError('');
 
         try {
             const token = sessionStorage.getItem('security_token') || '';
@@ -107,7 +109,7 @@ export default function SecurityPortal() {
             });
             setSubmitted(true);
         } catch {
-            alert('Failed to submit. Please try again.');
+            setSubmitError('Failed to submit. Please try again.');
         }
         setSubmitting(false);
     };
@@ -257,6 +259,12 @@ export default function SecurityPortal() {
                         <input value={policeReport} onChange={e => setPoliceReport(e.target.value)}
                             placeholder="e.g., 2026-03-001" className="sp-input" />
                     </div>
+
+                    {submitError && (
+                        <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                            ✗ {submitError}
+                        </div>
+                    )}
 
                     {/* Submit */}
                     <button type="submit" className="sp-btn sp-btn-primary sp-btn-submit" disabled={submitting || !propertyId || !title.trim()}>

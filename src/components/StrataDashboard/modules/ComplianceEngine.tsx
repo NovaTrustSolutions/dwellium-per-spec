@@ -19,10 +19,12 @@ import {
     Shield, Clock, Network, BarChart3, Truck, Building2,
     RefreshCw, Search, Plus, X, AlertTriangle, CheckCircle2,
     ZoomIn, ZoomOut, Eye, Save, Trash2, ChevronDown,
-    FileText, Users, Calendar, Star, Mail, TrendingUp,
+    FileText, Users, Calendar, Star, Mail, TrendingUp, Bell,
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
-import type { Property } from '../strataTypes';
+import type { Property, EntityProfile } from '../strataTypes';
+import { useToast } from '../useToast';
+import { LoadingState, ErrorState } from '../StateView';
 
 interface ComplianceItem {
     id: string; entityType: string; entityId: string;
@@ -33,12 +35,7 @@ interface ComplianceItem {
     lastAuditedAt: string | null; createdAt: string; updatedAt: string;
 }
 
-interface EntityProfile {
-    id: string; entityType: string; name: string;
-    email: string | null; phone: string | null;
-    status: string; metadata: Record<string, any>;
-    propertyIds: string[];
-}
+// EntityProfile imported from strataTypes (canonical)
 
 interface ViewPreset {
     name: string; view: ViewMode; filters: { entityType: string; itemType: string };
@@ -72,11 +69,13 @@ function computeStatus(item: ComplianceItem): 'valid' | 'warning' | 'expired' | 
 type EnrichedComplianceItem = ComplianceItem & { computedStatus: 'valid' | 'warning' | 'expired' | 'missing' };
 
 export default function ComplianceEngine() {
+    const { showToast, ToastContainer } = useToast();
     const [view, setView] = useState<ViewMode>('heatmap');
     const [items, setItems] = useState<ComplianceItem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [vendors, setVendors] = useState<EntityProfile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [predictions, setPredictions] = useState<any[]>([]);
     const [filterType, setFilterType] = useState('all');
@@ -88,6 +87,7 @@ export default function ComplianceEngine() {
     const [timelineZoom, setTimelineZoom] = useState(1);
     const [mindMapHover, setMindMapHover] = useState<{ id: string; x: number; y: number } | null>(null);
     const [centralNode, setCentralNode] = useState<string>('');
+    const [portfolioRollup, setPortfolioRollup] = useState<any>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -100,11 +100,36 @@ export default function ComplianceEngine() {
             setItems(cItems);
             setProperties(propData);
             setVendors(vendorData);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); setError('Failed to load compliance data'); }
         setLoading(false);
     }, []);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    // Portfolio rollup
+    useEffect(() => {
+        (async () => {
+            try {
+                const data = await strataGet<any>('/compliance/portfolio-rollup');
+                setPortfolioRollup(data);
+            } catch { setPortfolioRollup(null); }
+        })();
+    }, [items]);
+
+    const sendReminder = async (item: EnrichedComplianceItem) => {
+        try {
+            await strataPost('/compliance/reminders', {
+                complianceItemId: item.id,
+                entityType: item.entityType,
+                entityId: item.entityId,
+                entityName: resolveEntityName(item.entityType, item.entityId),
+                itemType: ITEM_TYPE_LABELS[item.itemType] || item.itemType,
+            });
+            showToast('Reminder queued for approval (B.L.A.S.T. Rule 1)', 'success');
+        } catch {
+            showToast('Failed to queue reminder', 'error');
+        }
+    };
 
     // ── Computed status for each item ──
     const enrichedItems = useMemo(() => items.map(item => ({
@@ -402,6 +427,40 @@ export default function ComplianceEngine() {
                 ))}
             </div>
 
+            {/* Portfolio Rollup Banner */}
+            {portfolioRollup && (
+                <div style={{
+                    display: 'flex', gap: 12, marginBottom: 14, padding: '10px 16px', borderRadius: 10,
+                    background: 'linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(16,185,129,0.06) 100%)',
+                    border: '1px solid rgba(99,102,241,0.12)', alignItems: 'center', flexWrap: 'wrap',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Shield size={18} style={{ color: portfolioRollup.overallScore >= 80 ? '#10b981' : portfolioRollup.overallScore >= 50 ? '#f59e0b' : '#ef4444' }} />
+                        <span style={{ fontSize: 24, fontWeight: 900, color: portfolioRollup.overallScore >= 80 ? '#10b981' : portfolioRollup.overallScore >= 50 ? '#f59e0b' : '#ef4444' }}>
+                            {portfolioRollup.overallScore}%
+                        </span>
+                        <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Portfolio Score</span>
+                    </div>
+                    <span style={{ fontSize: 10, color: '#64748b', padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.04)' }}>
+                        {portfolioRollup.propertyCount} properties • {portfolioRollup.total} items
+                    </span>
+                    {portfolioRollup.worstPerformers?.length > 0 && (
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginLeft: 'auto' }}>
+                            <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 700 }}>Needs Attention:</span>
+                            {portfolioRollup.worstPerformers.slice(0, 3).map((wp: any) => (
+                                <span key={wp.propertyId} style={{
+                                    fontSize: 9, padding: '1px 6px', borderRadius: 4,
+                                    background: wp.score < 50 ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                                    color: wp.score < 50 ? '#ef4444' : '#f59e0b', fontWeight: 600,
+                                }}>
+                                    {wp.propertyName} ({wp.score}%)
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Controls */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
                 <div style={{
@@ -446,7 +505,7 @@ export default function ComplianceEngine() {
                 )}
             </div>
 
-            {loading ? <div className="s-loading">Loading compliance data…</div> : (
+            {loading ? <LoadingState message="Loading compliance data…" /> : error ? <ErrorState message={error} onRetry={fetchData} /> : (
                 <>
                     {/* ═══ VIEW 1: HEATMAP ═══ */}
                     {view === 'heatmap' && (
@@ -519,7 +578,19 @@ export default function ComplianceEngine() {
                                                 <Plus size={10} /> Add Now
                                             </button>
                                             <button className="s-btn s-btn-ghost" style={{ marginLeft: 4, fontSize: 10, color: '#f59e0b' }}
-                                                onClick={() => alert(`Reminder email queued for ${selectedCell.entityName} regarding missing ${ITEM_TYPE_LABELS[selectedCell.itemType]}. (Human approval required)`)}>
+                                                onClick={async () => {
+                                                    try {
+                                                        const email = (selectedCell as any)?.email || '';
+                                                        await strataPost('/gmail/send', {
+                                                            to: email,
+                                                            subject: `Compliance Reminder: Missing ${ITEM_TYPE_LABELS[selectedCell.itemType]}`,
+                                                            body: `This is a reminder that ${selectedCell.entityName} is missing ${ITEM_TYPE_LABELS[selectedCell.itemType]}. Please submit the required documentation at your earliest convenience.`,
+                                                        });
+                                                        showToast(`Reminder queued for ${selectedCell.entityName} — awaiting human approval (B.L.A.S.T. Rule 1)`, 'success');
+                                                    } catch {
+                                                        showToast('Failed to queue reminder email', 'error');
+                                                    }
+                                                }}>
                                                 <Mail size={10} /> Send Reminder
                                             </button>
                                         </div>
@@ -536,11 +607,17 @@ export default function ComplianceEngine() {
                                                         {getStatusDot(item.computedStatus)}
                                                         <span style={{ fontWeight: 600, fontSize: 12, color: '#e2e8f0' }}>{item.label}</span>
                                                     </div>
-                                                    <div style={{ fontSize: 10, color: '#64748b', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 10, color: '#64748b' }}>
                                                         {item.carrier && <span>Carrier: {item.carrier}</span>}
                                                         {item.policyNumber && <span>Policy: {item.policyNumber}</span>}
                                                         {item.expirationDate && <span>Expires: {new Date(item.expirationDate).toLocaleDateString()}</span>}
                                                         {item.coverageLimits && <span>Coverage: {item.coverageLimits}</span>}
+                                                        {(item.computedStatus === 'expired' || item.computedStatus === 'warning') && (
+                                                            <button onClick={() => sendReminder(item)}
+                                                                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 4, padding: '2px 6px', color: '#f59e0b', fontSize: 9, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, marginLeft: 'auto' }}>
+                                                                <Bell size={9} /> Remind
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))
@@ -645,7 +722,7 @@ export default function ComplianceEngine() {
                                                 {(relatedItem as any).documentId && (
                                                     <a href={`#doc-${(relatedItem as any).documentId}`} onClick={(e) => {
                                                         e.preventDefault();
-                                                        window.open(`/api/files/${(relatedItem as any).documentId}/download`, '_blank');
+                                                        window.open(`/api/files/${(relatedItem as any).documentId}`, '_blank');
                                                     }} style={{
                                                         marginTop: 4, color: '#818cf8', fontSize: 10, fontWeight: 600,
                                                         textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
@@ -1038,6 +1115,7 @@ export default function ComplianceEngine() {
                     )}
                 </div>
             )}
+            <ToastContainer />
         </div>
     );
 }

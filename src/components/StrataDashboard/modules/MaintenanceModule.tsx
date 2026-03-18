@@ -8,15 +8,18 @@ import {
     Wrench, RefreshCw, ClipboardCheck, RotateCw, Home, FolderKanban,
     ShoppingCart, Package, Landmark, AlertTriangle, CheckCircle, Clock,
     Building2, BarChart3, CalendarDays, Layers, ChevronDown, ChevronUp,
-    ExternalLink, MapPin, User, Tag
+    ExternalLink, MapPin, User, Tag, Send, Camera, FileText, Shield,
+    Plus, X, History, PenTool, Upload
 } from 'lucide-react';
-import { strataGet } from '../strataApi';
+import { strataGet, strataPost, strataPut } from '../strataApi';
 import type { Workitem } from '../strataTypes';
+import { LoadingState, EmptyState, ErrorState } from '../StateView';
 import TrelloCardModal from './TrelloCardModal';
 import { useUser } from '../../../context/UserContext';
+import ProfileSpaces from './ProfileSpaces';
 
 /* ── Sub-tab types ── */
-type MaintTab = 'work-orders' | 'recurring' | 'inspections' | 'unit-turns' | 'projects' | 'purchase-orders' | 'inventory' | 'fixed-assets';
+type MaintTab = 'work-orders' | 'recurring' | 'inspections' | 'unit-turns' | 'projects' | 'purchase-orders' | 'inventory' | 'fixed-assets' | 'history';
 type ViewMode = 'property' | 'status' | 'priority' | 'timeline';
 
 const TABS: { id: MaintTab; label: string; icon: typeof Wrench }[] = [
@@ -28,7 +31,24 @@ const TABS: { id: MaintTab; label: string; icon: typeof Wrench }[] = [
     { id: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
     { id: 'inventory', label: 'Inventory', icon: Package },
     { id: 'fixed-assets', label: 'Fixed Assets', icon: Landmark },
+    { id: 'history', label: 'History', icon: History },
 ];
+
+interface SLAMetrics { overdueCount: number; atRiskCount: number; onTrackCount: number; avgResolutionHours: number; slaCompliance: number; totalActive: number; }
+interface HistoryEntry { id: string; title: string; status: string; priority: string; propertyId?: string; assignedTo?: string; createdAt: string; resolvedAt?: string; resolutionHours?: number; technicianName?: string; signedOffBy?: string; completionNotes?: string; }
+
+function showToast(msg: string, type: 'success' | 'error' = 'success') {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, {
+        position: 'fixed', bottom: '20px', right: '20px', padding: '10px 18px',
+        background: type === 'success' ? '#10b981' : '#ef4444', color: '#fff',
+        borderRadius: '8px', zIndex: '9999', fontSize: '13px', fontWeight: '600',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+    });
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
 
 const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Building2 }[] = [
     { id: 'property', label: 'By Property', icon: Building2 },
@@ -172,8 +192,15 @@ export default function MaintenanceModule() {
     const [items, setItems] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<{ id: string; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [selected, setSelected] = useState<Workitem | null>(null);
     const [expandedWorkitem, setExpandedWorkitem] = useState<Workitem | null>(null);
+    const [slaMetrics, setSlaMetrics] = useState<SLAMetrics | null>(null);
+    const [showDispatchModal, setShowDispatchModal] = useState(false);
+    const [showRecurringForm, setShowRecurringForm] = useState(false);
+    const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([]);
+    const [historyFilter, setHistoryFilter] = useState<{ propertyId?: string }>({});
+    const [attachments, setAttachments] = useState<any[]>([]);
 
     const TAB_PERMS: Record<MaintTab, string> = {
         'work-orders': 'strata:maintenance:work-orders',
@@ -184,11 +211,13 @@ export default function MaintenanceModule() {
         'purchase-orders': 'strata:maintenance:purchase-orders',
         inventory: 'strata:maintenance:inventory',
         'fixed-assets': 'strata:maintenance:fixed-assets',
+        history: 'strata:maintenance:work-orders',
     };
     const visibleTabs = TABS.filter(t => hasPermission(TAB_PERMS[t.id]));
 
     const fetchItems = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
             const [workitems, props] = await Promise.all([
                 strataGet<Workitem[]>('/workitems', { type: 'work_order' }),
@@ -201,11 +230,74 @@ export default function MaintenanceModule() {
             tasks.forEach(t => { if (!all.find(w => w.id === t.id)) all.push(t); });
             setItems(all);
             setProperties(props.map(p => ({ id: p.id, name: p.name })));
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); setError('Failed to load maintenance data'); }
         setLoading(false);
     }, []);
 
     useEffect(() => { fetchItems(); }, [fetchItems]);
+
+    // Fetch SLA metrics
+    useEffect(() => {
+        strataGet<{ metrics: SLAMetrics }>('/maintenance/sla-report').then(r => setSlaMetrics(r.metrics)).catch(() => {});
+    }, [items]);
+
+    // Fetch attachments for selected item
+    useEffect(() => {
+        if (selected) {
+            strataGet<{ attachments: any[] }>(`/maintenance/attachments/${selected.id}`).then(r => setAttachments(r.attachments || [])).catch(() => setAttachments([]));
+        } else { setAttachments([]); }
+    }, [selected]);
+
+    // Fetch history when on history tab
+    useEffect(() => {
+        if (tab === 'history') {
+            const params: any = { limit: 100 };
+            if (historyFilter.propertyId) params.propertyId = historyFilter.propertyId;
+            strataGet<{ history: HistoryEntry[] }>('/maintenance/history', params).then(r => setHistoryItems(r.history || [])).catch(() => setHistoryItems([]));
+        }
+    }, [tab, historyFilter]);
+
+    // Dispatch handler
+    const handleDispatch = async (data: { technicianName: string; technicianPhone?: string; scheduledDate?: string; scheduledTime?: string; notes?: string }) => {
+        if (!selected) return;
+        try {
+            await strataPost(`/maintenance/dispatch/${selected.id}`, data);
+            showToast(`Dispatched to ${data.technicianName}`, 'success');
+            setShowDispatchModal(false);
+            fetchItems();
+        } catch (err: any) { showToast(err?.message || 'Dispatch failed', 'error'); }
+    };
+
+    // Sign-off handler
+    const handleSignOff = async (notes?: string) => {
+        if (!selected) return;
+        try {
+            await strataPost(`/maintenance/sign-off/${selected.id}`, { completionNotes: notes });
+            showToast('Work order signed off', 'success');
+            fetchItems();
+        } catch (err: any) { showToast(err?.message || 'Sign-off failed', 'error'); }
+    };
+
+    // Add attachment handler
+    const handleAddAttachment = async (type: string, description: string) => {
+        if (!selected) return;
+        try {
+            await strataPost(`/maintenance/attachments/${selected.id}`, { type, description });
+            showToast('Attachment added', 'success');
+            const r = await strataGet<{ attachments: any[] }>(`/maintenance/attachments/${selected.id}`);
+            setAttachments(r.attachments || []);
+        } catch (err: any) { showToast(err?.message || 'Failed to add attachment', 'error'); }
+    };
+
+    // Recurring template handler
+    const handleCreateRecurring = async (data: { title: string; description?: string; propertyId?: string; priority?: string; frequencyLabel?: string }) => {
+        try {
+            await strataPost('/maintenance/recurring-templates', data);
+            showToast('Recurring template created', 'success');
+            setShowRecurringForm(false);
+            fetchItems();
+        } catch (err: any) { showToast(err?.message || 'Failed to create template', 'error'); }
+    };
 
     /* ── Filter by sub-tab ── */
     const filteredItems = useMemo(() => items.filter(item => {
@@ -355,12 +447,17 @@ export default function MaintenanceModule() {
                 </div>
 
                 {/* KPI Strip */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${slaMetrics ? 7 : 4}, 1fr)`, gap: 10, marginBottom: 16 }}>
                     {[
                         { label: 'Open', value: summary.open, color: '#f59e0b', icon: <AlertTriangle size={16} /> },
                         { label: 'In Progress', value: summary.inProgress, color: '#6366f1', icon: <Clock size={16} /> },
                         { label: 'Completed', value: summary.completed, color: '#10b981', icon: <CheckCircle size={16} /> },
                         { label: 'Total', value: summary.total, color: '#94a3b8', icon: <Wrench size={16} /> },
+                        ...(slaMetrics ? [
+                            { label: 'Overdue', value: slaMetrics.overdueCount, color: '#ef4444', icon: <AlertTriangle size={16} /> },
+                            { label: 'SLA %', value: `${slaMetrics.slaCompliance}%`, color: slaMetrics.slaCompliance >= 80 ? '#10b981' : '#ef4444', icon: <Shield size={16} /> },
+                            { label: 'Avg Resolve', value: `${slaMetrics.avgResolutionHours}h`, color: '#818cf8', icon: <Clock size={16} /> },
+                        ] : []),
                     ].map(k => (
                         <div key={k.label} style={{
                             background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 14px',
@@ -376,7 +473,9 @@ export default function MaintenanceModule() {
                 </div>
 
                 {loading ? (
-                    <div className="s-loading">Loading maintenance data…</div>
+                    <LoadingState message="Loading maintenance data…" />
+                ) : error ? (
+                    <ErrorState message={error} onRetry={fetchItems} />
                 ) : (
                     <div className="s-split-view">
                         {/* ── List Panel with Groups ── */}
@@ -407,7 +506,7 @@ export default function MaintenanceModule() {
 
                         {/* ── Detail Panel ── */}
                         <div className="s-detail-panel" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
-                            {selected ? <DetailPanel item={selected} properties={properties} onExpand={() => setExpandedWorkitem(selected)} /> : (
+                            {selected ? <DetailPanel item={selected} properties={properties} onExpand={() => setExpandedWorkitem(selected)} attachments={attachments} onDispatch={() => setShowDispatchModal(true)} onSignOff={handleSignOff} onAddAttachment={handleAddAttachment} /> : (
                                 <div className="s-empty-detail">
                                     <Wrench size={40} strokeWidth={1} />
                                     <p>Select an item to view details</p>
@@ -416,14 +515,62 @@ export default function MaintenanceModule() {
                         </div>
                     </div>
                 )}
+
+                {/* Recurring Tab — show create button + templates */}
+                {tab === 'recurring' && (
+                    <div style={{ marginBottom: 12 }}>
+                        <button onClick={() => setShowRecurringForm(!showRecurringForm)} className="s-btn s-btn-primary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Plus size={14} /> Create Template
+                        </button>
+                        {showRecurringForm && <RecurringForm properties={properties} onSubmit={handleCreateRecurring} onCancel={() => setShowRecurringForm(false)} />}
+                    </div>
+                )}
+
+                {/* History Tab */}
+                {tab === 'history' ? (
+                    <div className="s-glass-card" style={{ padding: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <History size={16} color="#818cf8" />
+                            <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>Maintenance History</span>
+                            <select value={historyFilter.propertyId || ''} onChange={e => setHistoryFilter({ propertyId: e.target.value || undefined })}
+                                style={{ marginLeft: 'auto', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 11 }}>
+                                <option value="">All Properties</option>
+                                {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        {historyItems.length === 0 ? (
+                            <div style={{ textAlign: 'center', color: '#64748b', padding: 24 }}>No history found</div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {historyItems.map(h => (
+                                    <div key={h.id} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(h.status)}15`, color: statusColor(h.status), fontWeight: 700 }}>{statusLabel(h.status)}</span>
+                                        <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{h.title}</span>
+                                        {h.technicianName && <span style={{ fontSize: 10, color: '#94a3b8' }}><User size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{h.technicianName}</span>}
+                                        {h.resolutionHours !== null && h.resolutionHours !== undefined && <span style={{ fontSize: 10, color: '#818cf8' }}>{h.resolutionHours}h</span>}
+                                        <span style={{ fontSize: 10, color: '#475569' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : null}
             </div>
 
+            {/* Module-level Spaces (Trello-style containers) */}
+            <div style={{ marginTop: 16 }}>
+                <ProfileSpaces entityType="module" entityId="maintenance" />
+            </div>
+
+            {/* Dispatch Modal */}
+            {showDispatchModal && selected && (
+                <DispatchModal onSubmit={handleDispatch} onClose={() => setShowDispatchModal(false)} />
+            )}
+
             {/* Trello Card Modal */}
-            {
-                expandedWorkitem && (
-                    <TrelloCardModal workitem={expandedWorkitem} onClose={() => setExpandedWorkitem(null)} />
-                )
-            }
+            {expandedWorkitem && (
+                <TrelloCardModal workitem={expandedWorkitem} onClose={() => setExpandedWorkitem(null)} />
+            )}
         </>
     );
 }
@@ -432,7 +579,11 @@ export default function MaintenanceModule() {
    DETAIL PANEL
    ════════════════════════════════════════════ */
 
-function DetailPanel({ item, properties, onExpand }: { item: Workitem; properties: { id: string; name: string }[]; onExpand: () => void }) {
+function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSignOff, onAddAttachment }: {
+    item: Workitem; properties: { id: string; name: string }[]; onExpand: () => void;
+    attachments: any[]; onDispatch: () => void; onSignOff: (notes?: string) => void;
+    onAddAttachment: (type: string, description: string) => void;
+}) {
     const meta = item.metadata || {};
     const propName = properties.find(p => p.id === item.propertyId)?.name || meta.trelloBoardName || '—';
 
@@ -503,6 +654,62 @@ function DetailPanel({ item, properties, onExpand }: { item: Workitem; propertie
                 <Field label="Last Updated" value={item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
                 <Field label="Resolved" value={item.resolvedAt ? new Date(item.resolvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
             </Section>
+
+            {/* ── Dual Status (Manager + Tenant) ── */}
+            {meta.tenantStatus && (
+                <Section title="Status Tracking" icon={<Shield size={13} />}>
+                    <Field label="Manager Status" value={statusLabel(item.status)} />
+                    <Field label="Tenant-Visible Status" value={meta.tenantStatus} />
+                    {meta.techStatus && <Field label="Technician Status" value={meta.techStatus} />}
+                    {meta.scheduledDate && <Field label="Scheduled" value={`${meta.scheduledDate}${meta.scheduledTime ? ' at ' + meta.scheduledTime : ''}`} />}
+                    {meta.dispatchedAt && <Field label="Dispatched" value={new Date(meta.dispatchedAt).toLocaleString()} />}
+                    {meta.signedOffAt && <Field label="Signed Off" value={`${new Date(meta.signedOffAt).toLocaleString()} by ${meta.signedOffBy}`} />}
+                </Section>
+            )}
+
+            {/* ── Attachments ── */}
+            <Section title={`Attachments (${attachments.length})`} icon={<Camera size={13} />} defaultOpen={attachments.length > 0}>
+                {attachments.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: 12, padding: '4px 0' }}>No attachments</div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {attachments.map((a: any) => (
+                            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600 }}>{a.type?.replace(/_/g, ' ')}</span>
+                                <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{a.description || a.metadata?.fileName || 'Unnamed'}</span>
+                                <span style={{ fontSize: 10, color: '#475569' }}>{a.metadata?.uploadedAt ? new Date(a.metadata.uploadedAt).toLocaleDateString() : ''}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <div style={{ display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
+                    {['before_photo', 'after_photo', 'vendor_quote', 'receipt'].map(type => (
+                        <button key={type} onClick={() => onAddAttachment(type, '')} style={{
+                            padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4,
+                            background: 'rgba(255,255,255,0.04)', color: '#818cf8', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                        }}>
+                            <Upload size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{type.replace(/_/g, ' ')}
+                        </button>
+                    ))}
+                </div>
+            </Section>
+
+            {/* ── Action Buttons ── */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                {(item.status === 'open' || item.status === 'pending') && (
+                    <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Send size={12} /> Dispatch
+                    </button>
+                )}
+                {(item.status === 'in_progress' || item.status === 'pending') && (
+                    <button onClick={() => {
+                        const notes = window.prompt('Completion notes (optional):');
+                        onSignOff(notes || undefined);
+                    }} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(16,185,129,0.2)', color: '#10b981', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <PenTool size={12} /> Sign Off
+                    </button>
+                )}
+            </div>
 
             {/* ── Tags ── */}
             {item.tags && item.tags.length > 0 && (
@@ -587,5 +794,94 @@ function DetailPanel({ item, properties, onExpand }: { item: Workitem; propertie
                 </Section>
             )}
         </>
+    );
+}
+
+/* ════════════════════════════════════════════
+   DISPATCH MODAL
+   ════════════════════════════════════════════ */
+
+function DispatchModal({ onSubmit, onClose }: {
+    onSubmit: (data: { technicianName: string; technicianPhone?: string; scheduledDate?: string; scheduledTime?: string; notes?: string }) => void;
+    onClose: () => void;
+}) {
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [date, setDate] = useState('');
+    const [time, setTime] = useState('');
+    const [notes, setNotes] = useState('');
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#1e2130', borderRadius: 12, padding: 24, width: 400, maxWidth: '90%', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: 16, fontWeight: 700 }}>Dispatch Work Order</h3>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <input value={name} onChange={e => setName(e.target.value)} placeholder="Technician Name *" style={inputStyle} />
+                    <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone" style={inputStyle} />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+                        <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+                    </div>
+                    <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Dispatch notes (optional)" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+                    <button onClick={() => { if (name) onSubmit({ technicianName: name, technicianPhone: phone, scheduledDate: date || undefined, scheduledTime: time || undefined, notes }); }}
+                        disabled={!name}
+                        style={{ padding: '8px 16px', border: 'none', borderRadius: 6, background: name ? '#6366f1' : '#334155', color: '#fff', cursor: name ? 'pointer' : 'default', fontWeight: 600 }}>
+                        <Send size={13} style={{ verticalAlign: -2, marginRight: 4 }} /> Dispatch
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const inputStyle: React.CSSProperties = {
+    padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13,
+};
+
+/* ════════════════════════════════════════════
+   RECURRING TEMPLATE FORM
+   ════════════════════════════════════════════ */
+
+function RecurringForm({ properties, onSubmit, onCancel }: {
+    properties: { id: string; name: string }[];
+    onSubmit: (data: { title: string; description?: string; propertyId?: string; priority?: string; frequencyLabel?: string }) => void;
+    onCancel: () => void;
+}) {
+    const [title, setTitle] = useState('');
+    const [desc, setDesc] = useState('');
+    const [prop, setProp] = useState('');
+    const [freq, setFreq] = useState('Monthly');
+    const [pri, setPri] = useState('medium');
+
+    return (
+        <div style={{ marginTop: 10, padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Template title *" style={{ ...inputStyle, flex: 1 }} />
+                <select value={freq} onChange={e => setFreq(e.target.value)} style={{ ...inputStyle, width: 120 }}>
+                    <option>Weekly</option><option>Monthly</option><option>Quarterly</option><option>Semi-Annual</option><option>Annual</option>
+                </select>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <select value={prop} onChange={e => setProp(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+                    <option value="">All Properties</option>
+                    {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <select value={pri} onChange={e => setPri(e.target.value)} style={{ ...inputStyle, width: 100 }}>
+                    <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                </select>
+            </div>
+            <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" rows={2} style={{ ...inputStyle, width: '100%', marginBottom: 8, resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => { if (title) onSubmit({ title, description: desc, propertyId: prop || undefined, priority: pri, frequencyLabel: freq }); }}
+                    disabled={!title} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: title ? '#6366f1' : '#334155', color: '#fff', cursor: title ? 'pointer' : 'default', fontWeight: 600, fontSize: 12 }}>
+                    <Plus size={12} style={{ verticalAlign: -2, marginRight: 3 }} /> Create
+                </button>
+                <button onClick={onCancel} style={{ padding: '6px 14px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, background: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}>Cancel</button>
+            </div>
+        </div>
     );
 }

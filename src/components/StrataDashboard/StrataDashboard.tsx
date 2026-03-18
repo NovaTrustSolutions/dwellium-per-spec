@@ -74,7 +74,8 @@ import StrataAdminSettings from './StrataAdminSettings';
 import GlobalSearch from '../GlobalSearch/GlobalSearch';
 import type { StrataModule } from './strataTypes';
 import { useUser } from '../../context/UserContext';
-import { Settings, Scale, FolderKanban, Shield, Activity, Pencil, HardHat } from 'lucide-react';
+import { Settings, Scale, FolderKanban, Shield, Activity, Pencil, HardHat, Plus, X } from 'lucide-react';
+import { strataPost } from './strataApi';
 import './StrataDashboard.css';
 
 
@@ -571,7 +572,63 @@ function OverviewContent() {
    External Integrations Module
    ════════════════════════════════════════════════ */
 
-const INTEGRATION_CARDS = [
+interface IntegrationCard {
+    id: string;
+    name: string;
+    icon: ReactNode;
+    color: string;
+    description: string;
+    features: string[];
+    endpoint: string;
+    envVars: string[];
+}
+
+interface IntegrationStatusState {
+    connected: boolean;
+    lastSync?: string;
+    loading: boolean;
+    error?: string;
+}
+
+interface NotebookLMSettingsState {
+    enabled: boolean;
+    projectNumber: string;
+    location: string;
+    endpointLocation: string;
+    defaultNotebookId: string;
+    recentNotebookLimit: number;
+}
+
+interface NotebookLMNotebookState {
+    id: string;
+    name: string;
+    title: string;
+    description: string;
+    state: string;
+    sourceCount: number;
+    updateTime: string | null;
+    createTime: string | null;
+}
+
+interface NotebookLMStatusState extends NotebookLMSettingsState {
+    connected: boolean;
+    configured: boolean;
+    authStrategy: string;
+    checkedAt: string;
+    lastError?: string;
+    recentNotebookCount?: number;
+    defaultNotebook?: NotebookLMNotebookState | null;
+}
+
+interface NotebookLMMcpConfigState {
+    serverName: string;
+    command: string;
+    args: string[];
+    cwd: string;
+    claudeDesktopConfig: Record<string, unknown>;
+}
+
+const INTEGRATION_CARDS: IntegrationCard[] = [
     {
         id: 'quickbooks',
         name: 'QuickBooks',
@@ -612,13 +669,207 @@ const INTEGRATION_CARDS = [
         endpoint: '/api/integrations/messaging',
         envVars: ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'],
     },
+    {
+        id: 'notebooklm',
+        name: 'NotebookLM',
+        icon: <BookOpen size={24} />,
+        color: '#f59e0b',
+        description: 'Google NotebookLM Enterprise integration with source publishing and Claude/Desktop MCP access.',
+        features: ['Recent Notebooks', 'Create Notebooks', 'Push Sources', 'Claude MCP'],
+        endpoint: '/api/integrations/notebooklm',
+        envVars: ['NOTEBOOKLM_PROJECT_NUMBER', 'NOTEBOOKLM_LOCATION'],
+    },
 ];
 
 function IntegrationsModule() {
     const API = API_BASE;
     const { authFetch } = useUser();
-    const [statuses, setStatuses] = useState<Record<string, { connected: boolean; lastSync?: string; loading: boolean }>>({})
+    const [statuses, setStatuses] = useState<Record<string, IntegrationStatusState>>({});
     const [trelloSync, setTrelloSync] = useState<{ syncing: boolean; result: any | null }>({ syncing: false, result: null });
+    const [notebookStatus, setNotebookStatus] = useState<NotebookLMStatusState | null>(null);
+    const [notebookSettings, setNotebookSettings] = useState<NotebookLMSettingsState>({
+        enabled: false,
+        projectNumber: '',
+        location: 'global',
+        endpointLocation: 'global',
+        defaultNotebookId: '',
+        recentNotebookLimit: 20,
+    });
+    const [recentNotebooks, setRecentNotebooks] = useState<NotebookLMNotebookState[]>([]);
+    const [selectedNotebookId, setSelectedNotebookId] = useState('');
+    const [selectedNotebook, setSelectedNotebook] = useState<NotebookLMNotebookState | null>(null);
+    const [notebookMessage, setNotebookMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [notebookPanelLoading, setNotebookPanelLoading] = useState(true);
+    const [notebookDetailLoading, setNotebookDetailLoading] = useState(false);
+    const [notebookSaving, setNotebookSaving] = useState(false);
+    const [notebookCreating, setNotebookCreating] = useState(false);
+    const [textSubmitting, setTextSubmitting] = useState(false);
+    const [webSubmitting, setWebSubmitting] = useState(false);
+    const [fileSubmitting, setFileSubmitting] = useState(false);
+    const [shareSubmitting, setShareSubmitting] = useState(false);
+    const [mcpConfig, setMcpConfig] = useState<NotebookLMMcpConfigState | null>(null);
+    const [newNotebook, setNewNotebook] = useState({ title: '', description: '' });
+    const [textSource, setTextSource] = useState({ sourceName: '', content: '' });
+    const [webSource, setWebSource] = useState({ sourceName: '', url: '' });
+    const [shareForm, setShareForm] = useState({ email: '', role: 'EDITOR' });
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+    const cardButtonStyle = {
+        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'rgba(255,255,255,0.04)',
+        color: '#cbd5e1',
+        borderRadius: '8px',
+        padding: '9px 12px',
+        fontSize: '12px',
+        fontWeight: 600,
+        cursor: 'pointer',
+    } as const;
+
+    const fieldStyle = {
+        width: '100%',
+        background: 'rgba(15,23,42,0.7)',
+        border: '1px solid rgba(148,163,184,0.16)',
+        borderRadius: '8px',
+        color: '#e2e8f0',
+        padding: '10px 12px',
+        fontSize: '12px',
+    } as const;
+
+    const sectionCardStyle = {
+        background: 'rgba(30,33,48,0.9)',
+        border: '1px solid rgba(99,102,241,0.12)',
+        borderRadius: '12px',
+        padding: '18px 20px',
+    } as const;
+
+    const parseJson = async (response: Response) => {
+        const data = await response.json();
+        if (!response.ok || data?.success === false) {
+            throw new Error(data?.error || `Request failed (${response.status})`);
+        }
+        return data;
+    };
+
+    const parseStatusJson = async (response: Response) => {
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data?.error || `Request failed (${response.status})`);
+        }
+        return data;
+    };
+
+    const setNotebookNotice = (type: 'success' | 'error', text: string) => {
+        setNotebookMessage({ type, text });
+    };
+
+    const loadNotebookDetail = useCallback(async (notebookId: string) => {
+        if (!notebookId) {
+            setSelectedNotebook(null);
+            return;
+        }
+        setNotebookDetailLoading(true);
+        try {
+            const res = await authFetch(`${API}/api/integrations/notebooklm/notebooks/${encodeURIComponent(notebookId)}`);
+            const data = await parseJson(res);
+            setSelectedNotebook(data.data);
+        } catch (error) {
+            setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to load notebook');
+            setSelectedNotebook(null);
+        } finally {
+            setNotebookDetailLoading(false);
+        }
+    }, [API, authFetch]);
+
+    const refreshNotebookStatus = useCallback(async () => {
+        const res = await authFetch(`${API}/api/integrations/notebooklm/status`);
+        const data = await parseStatusJson(res);
+        setNotebookStatus(data.data);
+        setStatuses((current) => ({
+            ...current,
+            notebooklm: {
+                connected: Boolean(data.data?.connected),
+                lastSync: data.data?.checkedAt,
+                loading: false,
+                error: data.data?.lastError,
+            },
+        }));
+        return data.data as NotebookLMStatusState;
+    }, [API, authFetch]);
+
+    const refreshRecentNotebooks = useCallback(async () => {
+        if (!notebookSettings.enabled || !notebookSettings.projectNumber) {
+            setRecentNotebooks([]);
+            return [];
+        }
+        const res = await authFetch(`${API}/api/integrations/notebooklm/notebooks/recent?limit=${notebookSettings.recentNotebookLimit || 20}`);
+        const data = await parseJson(res);
+        setRecentNotebooks(data.data?.notebooks || []);
+        return (data.data?.notebooks || []) as NotebookLMNotebookState[];
+    }, [API, authFetch, notebookSettings.enabled, notebookSettings.projectNumber, notebookSettings.recentNotebookLimit]);
+
+    const loadNotebookPanel = useCallback(async () => {
+        setNotebookPanelLoading(true);
+        try {
+            const [settingsRes, mcpRes] = await Promise.all([
+                authFetch(`${API}/api/integrations/notebooklm/settings`),
+                authFetch(`${API}/api/integrations/notebooklm/mcp-config`),
+            ]);
+            const settingsJson = await parseJson(settingsRes);
+            const mcpJson = await parseJson(mcpRes);
+
+            setNotebookSettings(settingsJson.data);
+            setMcpConfig({
+                serverName: mcpJson.data.serverName,
+                command: mcpJson.data.command,
+                args: mcpJson.data.args,
+                cwd: mcpJson.data.cwd,
+                claudeDesktopConfig: mcpJson.data.claudeDesktopConfig,
+            });
+
+            if (!settingsJson.data.enabled || !settingsJson.data.projectNumber) {
+                setNotebookStatus(null);
+                setRecentNotebooks([]);
+                setSelectedNotebookId('');
+                setSelectedNotebook(null);
+                return;
+            }
+
+            let connectedStatus: NotebookLMStatusState | null = null;
+            try {
+                connectedStatus = await refreshNotebookStatus();
+            } catch (error) {
+                setNotebookNotice('error', error instanceof Error ? error.message : 'NotebookLM status check failed');
+            }
+
+            let notebookList: NotebookLMNotebookState[] = [];
+            if (connectedStatus?.connected) {
+                try {
+                    const recentJson = await authFetch(`${API}/api/integrations/notebooklm/notebooks/recent?limit=${settingsJson.data.recentNotebookLimit || 20}`).then(parseJson);
+                    notebookList = recentJson.data?.notebooks || [];
+                    setRecentNotebooks(notebookList);
+                } catch (error) {
+                    setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to load recent notebooks');
+                }
+            } else {
+                setRecentNotebooks([]);
+            }
+
+            const initialNotebookId =
+                connectedStatus?.defaultNotebookId ||
+                settingsJson.data.defaultNotebookId ||
+                notebookList[0]?.id ||
+                '';
+
+            setSelectedNotebookId(initialNotebookId);
+            if (initialNotebookId) {
+                await loadNotebookDetail(initialNotebookId);
+            }
+        } catch (error) {
+            setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to load NotebookLM integration');
+        } finally {
+            setNotebookPanelLoading(false);
+        }
+    }, [API, authFetch, loadNotebookDetail, refreshNotebookStatus]);
 
     const runTrelloSync = async () => {
         setTrelloSync({ syncing: true, result: null });
@@ -629,21 +880,222 @@ function IntegrationsModule() {
         } catch (err) {
             setTrelloSync({ syncing: false, result: { error: 'Sync failed — check backend logs' } });
         }
-    };;
+    };
 
     const checkStatus = async (id: string, endpoint: string) => {
-        setStatuses(s => ({ ...s, [id]: { ...s[id], loading: true, connected: false } }));
+        setStatuses((s) => ({ ...s, [id]: { ...s[id], loading: true, connected: false, error: undefined } }));
         try {
-            const res = await fetch(`${API}${endpoint}/status`);
-            const data = await res.json();
-            setStatuses(s => ({
+            const res = await authFetch(`${API}${endpoint}/status`);
+            const data = await parseStatusJson(res);
+            setStatuses((s) => ({
                 ...s,
-                [id]: { connected: data.success && data.data?.connected, lastSync: data.data?.lastSync, loading: false },
+                [id]: {
+                    connected: Boolean(data.data?.connected),
+                    lastSync: data.data?.lastSync || data.data?.checkedAt,
+                    loading: false,
+                    error: data.data?.lastError,
+                },
             }));
-        } catch {
-            setStatuses(s => ({ ...s, [id]: { connected: false, loading: false } }));
+        } catch (error) {
+            setStatuses((s) => ({
+                ...s,
+                [id]: {
+                    connected: false,
+                    loading: false,
+                    error: error instanceof Error ? error.message : 'Connection test failed',
+                },
+            }));
         }
     };
+
+    const saveNotebookSettings = async () => {
+        setNotebookSaving(true);
+        try {
+            const res = await authFetch(`${API}/api/integrations/notebooklm/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(notebookSettings),
+            });
+            const data = await parseJson(res);
+            setNotebookSettings(data.data);
+            setNotebookNotice('success', 'NotebookLM settings saved');
+            const status = await refreshNotebookStatus().catch(() => null);
+            if (status?.connected) {
+                await refreshRecentNotebooks().catch(() => undefined);
+            } else {
+                setRecentNotebooks([]);
+            }
+        } catch (error) {
+            setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to save NotebookLM settings');
+        } finally {
+            setNotebookSaving(false);
+        }
+    };
+
+    const createNotebookFromUi = async () => {
+        if (!newNotebook.title.trim()) {
+            setNotebookNotice('error', 'Notebook title is required');
+            return;
+        }
+
+        setNotebookCreating(true);
+        try {
+            const res = await authFetch(`${API}/api/integrations/notebooklm/notebooks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: newNotebook.title.trim(),
+                    description: newNotebook.description.trim(),
+                }),
+            });
+            const data = await parseJson(res);
+            const created = data.data as NotebookLMNotebookState;
+            setSelectedNotebookId(created.id);
+            setSelectedNotebook(created);
+            setNewNotebook({ title: '', description: '' });
+            await refreshRecentNotebooks();
+            setNotebookNotice('success', `Created notebook "${created.title}"`);
+        } catch (error) {
+            setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to create notebook');
+        } finally {
+            setNotebookCreating(false);
+        }
+    };
+
+    const submitTextSource = async () => {
+        if (!selectedNotebookId) {
+            setNotebookNotice('error', 'Choose a notebook first');
+            return;
+        }
+        if (!textSource.sourceName.trim() || !textSource.content.trim()) {
+            setNotebookNotice('error', 'Text source name and content are required');
+            return;
+        }
+
+        setTextSubmitting(true);
+        try {
+            const res = await authFetch(`${API}/api/integrations/notebooklm/notebooks/${encodeURIComponent(selectedNotebookId)}/sources/text`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sourceName: textSource.sourceName.trim(),
+                    content: textSource.content.trim(),
+                }),
+            });
+            await parseJson(res);
+            setTextSource({ sourceName: '', content: '' });
+            await loadNotebookDetail(selectedNotebookId);
+            setNotebookNotice('success', 'Text source added to NotebookLM');
+        } catch (error) {
+            setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to add text source');
+        } finally {
+            setTextSubmitting(false);
+        }
+    };
+
+    const submitWebSource = async () => {
+        if (!selectedNotebookId) {
+            setNotebookNotice('error', 'Choose a notebook first');
+            return;
+        }
+        if (!webSource.sourceName.trim() || !webSource.url.trim()) {
+            setNotebookNotice('error', 'Web source name and URL are required');
+            return;
+        }
+
+        setWebSubmitting(true);
+        try {
+            const res = await authFetch(`${API}/api/integrations/notebooklm/notebooks/${encodeURIComponent(selectedNotebookId)}/sources/web`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sourceName: webSource.sourceName.trim(),
+                    url: webSource.url.trim(),
+                }),
+            });
+            await parseJson(res);
+            setWebSource({ sourceName: '', url: '' });
+            await loadNotebookDetail(selectedNotebookId);
+            setNotebookNotice('success', 'Web source added to NotebookLM');
+        } catch (error) {
+            setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to add web source');
+        } finally {
+            setWebSubmitting(false);
+        }
+    };
+
+    const submitFileSource = async () => {
+        if (!selectedNotebookId) {
+            setNotebookNotice('error', 'Choose a notebook first');
+            return;
+        }
+        if (!selectedFile) {
+            setNotebookNotice('error', 'Choose a file to upload');
+            return;
+        }
+
+        setFileSubmitting(true);
+        try {
+            const form = new FormData();
+            form.append('file', selectedFile);
+            const res = await authFetch(`${API}/api/integrations/notebooklm/notebooks/${encodeURIComponent(selectedNotebookId)}/sources/file`, {
+                method: 'POST',
+                body: form,
+            });
+            await parseJson(res);
+            setSelectedFile(null);
+            await loadNotebookDetail(selectedNotebookId);
+            setNotebookNotice('success', `Uploaded ${selectedFile.name} to NotebookLM`);
+        } catch (error) {
+            setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to upload file source');
+        } finally {
+            setFileSubmitting(false);
+        }
+    };
+
+    const submitShare = async () => {
+        if (!selectedNotebookId) {
+            setNotebookNotice('error', 'Choose a notebook first');
+            return;
+        }
+        if (!shareForm.email.trim()) {
+            setNotebookNotice('error', 'Share email is required');
+            return;
+        }
+
+        setShareSubmitting(true);
+        try {
+            const res = await authFetch(`${API}/api/integrations/notebooklm/notebooks/${encodeURIComponent(selectedNotebookId)}/share`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: shareForm.email.trim(),
+                    role: shareForm.role,
+                }),
+            });
+            await parseJson(res);
+            setShareForm({ email: '', role: 'EDITOR' });
+            setNotebookNotice('success', 'Notebook access updated');
+        } catch (error) {
+            setNotebookNotice('error', error instanceof Error ? error.message : 'Failed to share notebook');
+        } finally {
+            setShareSubmitting(false);
+        }
+    };
+
+    const copyMcpConfig = async () => {
+        if (!mcpConfig) return;
+        try {
+            await navigator.clipboard.writeText(JSON.stringify(mcpConfig.claudeDesktopConfig, null, 2));
+            setNotebookNotice('success', 'Claude/Desktop MCP config copied');
+        } catch {
+            setNotebookNotice('error', 'Clipboard copy failed on this browser');
+        }
+    };
+
+    useEffect(() => {
+        void loadNotebookPanel();
+    }, [loadNotebookPanel]);
 
     return (
         <div className="s-dashboard">
@@ -730,14 +1182,21 @@ function IntegrationsModule() {
                                     <RefreshCw size={13} className={status?.loading ? 'spinning' : ''} />
                                     {status?.loading ? 'Checking…' : 'Test Connection'}
                                 </button>
-                                <button style={{
-                                    padding: '8px 12px', borderRadius: '8px',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    background: 'rgba(255,255,255,0.04)',
-                                    color: '#94a3b8', cursor: 'pointer',
-                                    fontSize: '12px', fontWeight: 600,
-                                    display: 'flex', alignItems: 'center', gap: '6px',
-                                }}>
+                                <button
+                                    onClick={() => {
+                                        if (card.id === 'notebooklm') {
+                                            document.getElementById('notebooklm-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                    }}
+                                    style={{
+                                        padding: '8px 12px', borderRadius: '8px',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        background: 'rgba(255,255,255,0.04)',
+                                        color: '#94a3b8', cursor: 'pointer',
+                                        fontSize: '12px', fontWeight: 600,
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                    }}
+                                >
                                     <ExternalLink size={13} />
                                     Configure
                                 </button>
@@ -749,9 +1208,328 @@ function IntegrationsModule() {
                                     Last sync: {new Date(status.lastSync).toLocaleString()}
                                 </div>
                             )}
+                            {status?.error && (
+                                <div style={{ color: '#ef4444', fontSize: '11px' }}>{status.error}</div>
+                            )}
                         </div>
                     );
                 })}
+            </div>
+
+            <div id="notebooklm-panel" style={{ ...sectionCardStyle, marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    <div>
+                        <h3 style={{ color: '#e2e8f0', margin: 0, fontSize: '15px', fontWeight: 700 }}>NotebookLM + Claude MCP</h3>
+                        <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: '12px' }}>
+                            Configure Google NotebookLM Enterprise, publish notebook sources, and expose the same tools through a Claude/Desktop MCP server.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button onClick={() => void refreshNotebookStatus()} style={cardButtonStyle}>
+                            <RefreshCw size={13} style={{ marginRight: 6 }} />
+                            Test NotebookLM
+                        </button>
+                        <button onClick={() => void refreshRecentNotebooks()} style={cardButtonStyle}>
+                            <BookOpen size={13} style={{ marginRight: 6 }} />
+                            Refresh Recent
+                        </button>
+                        <button onClick={() => void copyMcpConfig()} style={cardButtonStyle}>
+                            <ClipboardCheck size={13} style={{ marginRight: 6 }} />
+                            Copy Claude MCP
+                        </button>
+                    </div>
+                </div>
+
+                {notebookMessage && (
+                    <div style={{
+                        marginBottom: '14px',
+                        background: notebookMessage.type === 'success' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                        border: `1px solid ${notebookMessage.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                        borderRadius: '10px',
+                        padding: '12px 14px',
+                        color: notebookMessage.type === 'success' ? '#86efac' : '#fca5a5',
+                        fontSize: '12px',
+                    }}>
+                        {notebookMessage.text}
+                    </div>
+                )}
+
+                {notebookPanelLoading ? (
+                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>Loading NotebookLM configuration…</div>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
+                        <div style={{ display: 'grid', gap: '16px' }}>
+                            <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        Enabled
+                                        <select
+                                            value={notebookSettings.enabled ? 'true' : 'false'}
+                                            onChange={(e) => setNotebookSettings((current) => ({ ...current, enabled: e.target.value === 'true' }))}
+                                            style={fieldStyle}
+                                        >
+                                            <option value="true">Enabled</option>
+                                            <option value="false">Disabled</option>
+                                        </select>
+                                    </label>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        Project Number
+                                        <input
+                                            value={notebookSettings.projectNumber}
+                                            onChange={(e) => setNotebookSettings((current) => ({ ...current, projectNumber: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="Google Cloud project number"
+                                        />
+                                    </label>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        API Location
+                                        <input
+                                            value={notebookSettings.location}
+                                            onChange={(e) => setNotebookSettings((current) => ({ ...current, location: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="global"
+                                        />
+                                    </label>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        Endpoint Region
+                                        <input
+                                            value={notebookSettings.endpointLocation}
+                                            onChange={(e) => setNotebookSettings((current) => ({ ...current, endpointLocation: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="global"
+                                        />
+                                    </label>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        Default Notebook ID
+                                        <input
+                                            value={notebookSettings.defaultNotebookId}
+                                            onChange={(e) => setNotebookSettings((current) => ({ ...current, defaultNotebookId: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="Notebook ID"
+                                        />
+                                    </label>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        Recent Notebook Limit
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={100}
+                                            value={notebookSettings.recentNotebookLimit}
+                                            onChange={(e) => setNotebookSettings((current) => ({ ...current, recentNotebookLimit: Number(e.target.value) || 20 }))}
+                                            style={fieldStyle}
+                                        />
+                                    </label>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', gap: '10px', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: notebookStatus?.connected ? '#10b981' : '#f59e0b', fontSize: '12px', fontWeight: 600 }}>
+                                        {notebookStatus?.connected ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                                        {notebookStatus?.connected ? 'NotebookLM connected' : (notebookStatus?.lastError || 'NotebookLM not connected')}
+                                    </div>
+                                    <button onClick={() => void saveNotebookSettings()} disabled={notebookSaving} style={cardButtonStyle}>
+                                        <ClipboardCheck size={13} style={{ marginRight: 6 }} />
+                                        {notebookSaving ? 'Saving…' : 'Save Settings'}
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px', fontSize: '11px', color: '#94a3b8' }}>
+                                    <span>Auth: {notebookStatus?.authStrategy || 'unknown'}</span>
+                                    <span>Checked: {notebookStatus?.checkedAt ? new Date(notebookStatus.checkedAt).toLocaleString() : 'not yet'}</span>
+                                    <span>Recent notebooks: {notebookStatus?.recentNotebookCount ?? recentNotebooks.length}</span>
+                                </div>
+                            </div>
+
+                            <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'end', marginBottom: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        Recent Notebooks
+                                        <select
+                                            value={selectedNotebookId}
+                                            onChange={(e) => {
+                                                setSelectedNotebookId(e.target.value);
+                                                void loadNotebookDetail(e.target.value);
+                                            }}
+                                            style={fieldStyle}
+                                        >
+                                            <option value="">Select a recent notebook</option>
+                                            {recentNotebooks.map((notebook) => (
+                                                <option key={notebook.id} value={notebook.id}>
+                                                    {notebook.title || notebook.id}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <button onClick={() => selectedNotebookId && void loadNotebookDetail(selectedNotebookId)} style={cardButtonStyle}>
+                                        Refresh Detail
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        New Notebook Title
+                                        <input
+                                            value={newNotebook.title}
+                                            onChange={(e) => setNewNotebook((current) => ({ ...current, title: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="Riverwood utility review"
+                                        />
+                                    </label>
+                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                        Description
+                                        <input
+                                            value={newNotebook.description}
+                                            onChange={(e) => setNewNotebook((current) => ({ ...current, description: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="Optional description"
+                                        />
+                                    </label>
+                                </div>
+
+                                <button onClick={() => void createNotebookFromUi()} disabled={notebookCreating} style={{ ...cardButtonStyle, marginTop: '12px' }}>
+                                    <Plus size={13} style={{ marginRight: 6 }} />
+                                    {notebookCreating ? 'Creating…' : 'Create Notebook'}
+                                </button>
+
+                                <div style={{ marginTop: '14px', fontSize: '11px', color: '#94a3b8' }}>
+                                    NotebookLM only exposes recently viewed notebooks via the API. If a notebook is missing here, open it once in NotebookLM and refresh.
+                                </div>
+                            </div>
+
+                            <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
+                                <h4 style={{ color: '#e2e8f0', margin: '0 0 12px', fontSize: '13px' }}>Publish Sources</h4>
+                                <div style={{ display: 'grid', gap: '12px' }}>
+                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                        <input
+                                            value={textSource.sourceName}
+                                            onChange={(e) => setTextSource((current) => ({ ...current, sourceName: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="Text source label"
+                                        />
+                                        <textarea
+                                            value={textSource.content}
+                                            onChange={(e) => setTextSource((current) => ({ ...current, content: e.target.value }))}
+                                            style={{ ...fieldStyle, minHeight: '120px', resize: 'vertical' as const }}
+                                            placeholder="Paste meeting notes, summaries, or property context here"
+                                        />
+                                        <button onClick={() => void submitTextSource()} disabled={textSubmitting} style={cardButtonStyle}>
+                                            <ClipboardCheck size={13} style={{ marginRight: 6 }} />
+                                            {textSubmitting ? 'Pushing text…' : 'Add Text Source'}
+                                        </button>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                        <input
+                                            value={webSource.sourceName}
+                                            onChange={(e) => setWebSource((current) => ({ ...current, sourceName: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="Web source label"
+                                        />
+                                        <input
+                                            value={webSource.url}
+                                            onChange={(e) => setWebSource((current) => ({ ...current, url: e.target.value }))}
+                                            style={fieldStyle}
+                                            placeholder="https://..."
+                                        />
+                                        <button onClick={() => void submitWebSource()} disabled={webSubmitting} style={cardButtonStyle}>
+                                            <Globe size={13} style={{ marginRight: 6 }} />
+                                            {webSubmitting ? 'Pushing URL…' : 'Add Web Source'}
+                                        </button>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                        <input
+                                            type="file"
+                                            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                            style={fieldStyle}
+                                        />
+                                        <button onClick={() => void submitFileSource()} disabled={fileSubmitting} style={cardButtonStyle}>
+                                            <FolderKanban size={13} style={{ marginRight: 6 }} />
+                                            {fileSubmitting ? 'Uploading…' : 'Upload File Source'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '16px' }}>
+                            <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                    <h4 style={{ color: '#e2e8f0', margin: 0, fontSize: '13px' }}>Selected Notebook</h4>
+                                    {notebookDetailLoading && <span style={{ color: '#94a3b8', fontSize: '11px' }}>Loading…</span>}
+                                </div>
+                                {selectedNotebook ? (
+                                    <div style={{ display: 'grid', gap: '10px', fontSize: '12px', color: '#cbd5e1' }}>
+                                        <div>
+                                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#f8fafc' }}>{selectedNotebook.title || selectedNotebook.id}</div>
+                                            <div style={{ color: '#64748b', marginTop: '4px' }}>{selectedNotebook.description || 'No description yet'}</div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', color: '#94a3b8', fontSize: '11px' }}>
+                                            <span>State: {selectedNotebook.state}</span>
+                                            <span>Sources: {selectedNotebook.sourceCount}</span>
+                                            <span>Updated: {selectedNotebook.updateTime ? new Date(selectedNotebook.updateTime).toLocaleString() : 'n/a'}</span>
+                                        </div>
+                                        <div style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '11px', wordBreak: 'break-all' }}>
+                                            {selectedNotebook.name}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>Select a notebook to inspect it here.</div>
+                                )}
+                            </div>
+
+                            <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
+                                <h4 style={{ color: '#e2e8f0', margin: '0 0 12px', fontSize: '13px' }}>Share Access</h4>
+                                <div style={{ display: 'grid', gap: '8px' }}>
+                                    <input
+                                        value={shareForm.email}
+                                        onChange={(e) => setShareForm((current) => ({ ...current, email: e.target.value }))}
+                                        style={fieldStyle}
+                                        placeholder="user@example.com"
+                                    />
+                                    <select
+                                        value={shareForm.role}
+                                        onChange={(e) => setShareForm((current) => ({ ...current, role: e.target.value }))}
+                                        style={fieldStyle}
+                                    >
+                                        <option value="EDITOR">Editor</option>
+                                        <option value="VIEWER">Viewer</option>
+                                    </select>
+                                    <button onClick={() => void submitShare()} disabled={shareSubmitting} style={cardButtonStyle}>
+                                        <Users size={13} style={{ marginRight: 6 }} />
+                                        {shareSubmitting ? 'Sharing…' : 'Share Notebook'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
+                                <h4 style={{ color: '#e2e8f0', margin: '0 0 12px', fontSize: '13px' }}>Claude/Desktop MCP</h4>
+                                {mcpConfig ? (
+                                    <>
+                                        <div style={{ display: 'grid', gap: '8px', fontSize: '12px', color: '#cbd5e1' }}>
+                                            <div><strong>Server</strong>: {mcpConfig.serverName}</div>
+                                            <div><strong>Command</strong>: <span style={{ fontFamily: 'monospace' }}>{mcpConfig.command} {mcpConfig.args.join(' ')}</span></div>
+                                            <div><strong>CWD</strong>: <span style={{ fontFamily: 'monospace' }}>{mcpConfig.cwd}</span></div>
+                                        </div>
+                                        <pre style={{
+                                            marginTop: '12px',
+                                            padding: '12px',
+                                            borderRadius: '10px',
+                                            background: 'rgba(2,6,23,0.8)',
+                                            border: '1px solid rgba(148,163,184,0.16)',
+                                            color: '#cbd5e1',
+                                            fontSize: '11px',
+                                            overflowX: 'auto',
+                                        }}>
+                                            {JSON.stringify(mcpConfig.claudeDesktopConfig, null, 2)}
+                                        </pre>
+                                    </>
+                                ) : (
+                                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>MCP config unavailable.</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ── Trello → Strata Sync ── */}
@@ -857,6 +1635,14 @@ function IntegrationsModule() {
                         { method: 'GET', path: '/api/integrations/dayflow/summary', label: 'Daily Summary' },
                         { method: 'POST', path: '/api/integrations/messaging/telegram/send', label: 'Send Telegram' },
                         { method: 'POST', path: '/api/integrations/messaging/imessage/send', label: 'Send iMessage' },
+                        { method: 'GET', path: '/api/integrations/notebooklm/status', label: 'NotebookLM Status' },
+                        { method: 'PUT', path: '/api/integrations/notebooklm/settings', label: 'Save NotebookLM Settings' },
+                        { method: 'GET', path: '/api/integrations/notebooklm/notebooks/recent', label: 'Recent NotebookLM Notebooks' },
+                        { method: 'POST', path: '/api/integrations/notebooklm/notebooks', label: 'Create NotebookLM Notebook' },
+                        { method: 'POST', path: '/api/integrations/notebooklm/notebooks/:id/sources/text', label: 'Add NotebookLM Text Source' },
+                        { method: 'POST', path: '/api/integrations/notebooklm/notebooks/:id/sources/web', label: 'Add NotebookLM Web Source' },
+                        { method: 'POST', path: '/api/integrations/notebooklm/notebooks/:id/sources/file', label: 'Upload NotebookLM File' },
+                        { method: 'GET', path: '/api/integrations/notebooklm/mcp-config', label: 'Claude MCP Config' },
                         { method: 'GET', path: '/api/features/time-clock/entries', label: 'Time Clock Entries' },
                         { method: 'GET', path: '/api/features/lessons', label: 'Lessons Learned' },
                         { method: 'POST', path: '/api/dwellium/trello-sync', label: 'Trello → Strata Sync' },
@@ -882,18 +1668,19 @@ function IntegrationsModule() {
 export default function StrataDashboard() {
     const { logout, hasPermission, user } = useUser();
     const [activeModule, setActiveModule] = useState<StrataModule | 'settings'>('overview');
+    const [searchNavTarget, setSearchNavTarget] = useState<{ type: string; id: string } | null>(null);
 
     const renderModule = () => {
         switch (activeModule) {
             case 'overview': return hasPermission('strata:module:overview') ? <OverviewContent /> : null;
             case 'manager-home': return hasPermission('strata:module:manager-home') ? <ManagerHome /> : null;
             case 'calendar': return hasPermission('strata:module:calendar') ? <CalendarModule /> : null;
-            case 'properties': return hasPermission('strata:module:properties') ? <PropertiesModule /> : null;
+            case 'properties': return hasPermission('strata:module:properties') ? <PropertiesModule searchNavTarget={searchNavTarget} onNavComplete={() => setSearchNavTarget(null)} /> : null;
             case 'work-orders': return hasPermission('strata:module:maintenance') ? <WorkOrdersModule /> : null;
             case 'leasing': return hasPermission('strata:module:leasing') ? <LeasingModule /> : null;
-            case 'residents': return hasPermission('strata:module:residents') ? <ResidentsModule /> : null;
-            case 'vendors': return hasPermission('strata:module:vendors') ? <VendorsModule /> : null;
-            case 'owners': return hasPermission('strata:module:owners') ? <OwnersModule /> : null;
+            case 'residents': return hasPermission('strata:module:residents') ? <ResidentsModule searchNavTarget={searchNavTarget} onNavComplete={() => setSearchNavTarget(null)} /> : null;
+            case 'vendors': return hasPermission('strata:module:vendors') ? <VendorsModule searchNavTarget={searchNavTarget} onNavComplete={() => setSearchNavTarget(null)} /> : null;
+            case 'owners': return hasPermission('strata:module:owners') ? <OwnersModule searchNavTarget={searchNavTarget} onNavComplete={() => setSearchNavTarget(null)} /> : null;
             case 'accounting': return hasPermission('strata:module:accounting') ? <AccountingModule /> : null;
             case 'maintenance': return hasPermission('strata:module:maintenance') ? <MaintenanceModule /> : null;
             case 'reporting': return hasPermission('strata:module:reporting') ? <ReportingModule /> : null;
@@ -936,10 +1723,14 @@ export default function StrataDashboard() {
                             workitem: 'work-orders',
                             vendor: 'vendors',
                             owner: 'owners',
+                            insurance: 'properties',
                             email: 'communication',
                         };
                         const mod = typeToModule[r.type] as StrataModule;
-                        if (mod) setActiveModule(mod);
+                        if (mod) {
+                            setSearchNavTarget({ type: r.type, id: r.id });
+                            setActiveModule(mod);
+                        }
                     }} />
                 </div>
 
@@ -984,4 +1775,3 @@ export default function StrataDashboard() {
         </div>
     );
 }
-

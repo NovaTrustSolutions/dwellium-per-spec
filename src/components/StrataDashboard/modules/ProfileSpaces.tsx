@@ -1,10 +1,10 @@
 /**
  * ProfileSpaces — Dynamic Spaces (custom tabs) + Entity Links for any entity profile.
  *
- * Renders:
- *  1. A horizontal tab bar of user-created spaces with a "+" button to add new ones.
- *  2. Within each space, the workitems/tasks associated with that space.
- *  3. A "Linked Entities" section showing cross-referenced entities.
+ * Phase 7 Enhancement: Each space now contains real content panels:
+ *   1. Workitems — linked work items with status badges
+ *   2. Notes — inline notes with add/delete
+ *   3. Attachments — linked file references
  *
  * Props:
  *   entityType: 'property' | 'unit' | 'tenant' | 'vendor' | 'owner'
@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Link2, FolderOpen, ChevronRight, Tag, AlertCircle } from 'lucide-react';
+import { Plus, X, Link2, FolderOpen, ChevronRight, Tag, Send, FileText, ClipboardList, Paperclip, Trash2, StickyNote } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 
 interface ProfileSpace {
@@ -25,6 +25,18 @@ interface ProfileSpace {
     createdBy: string | null;
     createdAt: string;
     updatedAt: string;
+}
+
+interface SpaceItem {
+    id: string;
+    spaceId: string;
+    itemType: string;
+    itemId: string | null;
+    title: string;
+    content: string;
+    fileUrl: string;
+    sortOrder: number;
+    createdAt: string;
 }
 
 interface EntityLink {
@@ -44,16 +56,29 @@ interface Props {
     entityId: string;
 }
 
+const STATUS_COLORS: Record<string, string> = {
+    open: '#3b82f6', in_progress: '#f59e0b', completed: '#22c55e', closed: '#64748b', pending: '#8b5cf6',
+};
+
 export default function ProfileSpaces({ entityType, entityId }: Props) {
     const [spaces, setSpaces] = useState<ProfileSpace[]>([]);
     const [activeSpace, setActiveSpace] = useState<string | null>(null);
     const [links, setLinks] = useState<EntityLink[]>([]);
+    const [spaceItems, setSpaceItems] = useState<SpaceItem[]>([]);
     const [showAddSpace, setShowAddSpace] = useState(false);
     const [showAddLink, setShowAddLink] = useState(false);
     const [newSpaceName, setNewSpaceName] = useState('');
     const [linkForm, setLinkForm] = useState({ targetType: 'property', targetId: '', linkType: 'related', note: '' });
     const [mergeMode, setMergeMode] = useState(false);
     const [mergeTarget, setMergeTarget] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+    // Space item forms
+    const [newNoteText, setNewNoteText] = useState('');
+    const [newItemId, setNewItemId] = useState('');
+    const [newAttachTitle, setNewAttachTitle] = useState('');
+    const [newAttachUrl, setNewAttachUrl] = useState('');
+    const [newTagText, setNewTagText] = useState('');
 
     const fetchSpaces = useCallback(async () => {
         try {
@@ -70,7 +95,28 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
         } catch (e) { console.error(e); }
     }, [entityType, entityId]);
 
+    const fetchSpaceItems = useCallback(async () => {
+        if (!activeSpace) { setSpaceItems([]); return; }
+        try {
+            const data = await strataGet<SpaceItem[]>('/space-items', { space_id: activeSpace });
+            setSpaceItems(data);
+        } catch (e) { console.error(e); setSpaceItems([]); }
+    }, [activeSpace]);
+
     useEffect(() => { fetchSpaces(); fetchLinks(); }, [fetchSpaces, fetchLinks]);
+    useEffect(() => { fetchSpaceItems(); }, [fetchSpaceItems]);
+
+    // Listen for external refresh signals (from global Add Space button)
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (!detail || detail.entityType === entityType && detail.entityId === entityId) {
+                fetchSpaces();
+            }
+        };
+        window.addEventListener('spaces-refresh', handler);
+        return () => window.removeEventListener('spaces-refresh', handler);
+    }, [entityType, entityId, fetchSpaces]);
 
     const handleAddSpace = async () => {
         if (!newSpaceName.trim()) return;
@@ -83,12 +129,19 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
     };
 
     const handleDeleteSpace = async (id: string) => {
-        if (!confirm('Delete this space? Tasks within will be unlinked.')) return;
+        if (confirmDeleteId !== id) {
+            setConfirmDeleteId(id);
+            return;
+        }
         try {
             await strataDelete(`/spaces/${id}`);
             if (activeSpace === id) setActiveSpace(null);
+            setConfirmDeleteId(null);
             fetchSpaces();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error('Delete space failed:', e);
+            alert('Failed to delete space. Check console for details.');
+        }
     };
 
     const handleAddLink = async () => {
@@ -106,28 +159,69 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
     };
 
     const handleDeleteLink = async (id: string) => {
-        try {
-            await strataDelete(`/links/${id}`);
-            fetchLinks();
-        } catch (e) { console.error(e); }
+        try { await strataDelete(`/links/${id}`); fetchLinks(); } catch (e) { console.error(e); }
     };
 
     const handleMergeSpaces = async (keepId: string, mergeId: string) => {
         if (!confirm(`Merge into "${spaces.find(s => s.id === keepId)?.name}"? The other space will be deleted.`)) return;
         try {
-            // Move all links from mergeId space to keepId space (reassign sourceId)
             const mergeLinks = links.filter(l => l.sourceId === mergeId);
-            await Promise.all(mergeLinks.map(l =>
-                strataPut(`/links/${l.id}`, { sourceId: keepId })
-            ));
+            await Promise.all(mergeLinks.map(l => strataPut(`/links/${l.id}`, { sourceId: keepId })));
             await strataDelete(`/spaces/${mergeId}`);
             setMergeMode(false);
             setMergeTarget(null);
             if (activeSpace === mergeId) setActiveSpace(keepId);
-            fetchSpaces();
-            fetchLinks();
+            fetchSpaces(); fetchLinks();
         } catch (e) { console.error(e); }
     };
+
+    // Space item handlers
+    const handleAddNote = async () => {
+        if (!newNoteText.trim() || !activeSpace) return;
+        await strataPost('/space-items', { spaceId: activeSpace, itemType: 'note', title: 'Note', content: newNoteText.trim() });
+        setNewNoteText('');
+        fetchSpaceItems();
+    };
+
+    const handleLinkWorkitem = async () => {
+        if (!newItemId.trim() || !activeSpace) return;
+        await strataPost('/space-items', { spaceId: activeSpace, itemType: 'workitem', itemId: newItemId.trim(), title: 'Linked Workitem' });
+        setNewItemId('');
+        fetchSpaceItems();
+    };
+
+    const handleAddAttachment = async () => {
+        if (!newAttachTitle.trim() || !activeSpace) return;
+        await strataPost('/space-items', { spaceId: activeSpace, itemType: 'attachment', title: newAttachTitle.trim(), fileUrl: newAttachUrl.trim() });
+        setNewAttachTitle('');
+        setNewAttachUrl('');
+        fetchSpaceItems();
+    };
+
+    const handleDeleteItem = async (id: string) => {
+        await strataDelete(`/space-items/${id}`);
+        fetchSpaceItems();
+    };
+
+    const handleAddTag = async () => {
+        if (!newTagText.trim() || !activeSpace) return;
+        await strataPost('/space-items', { spaceId: activeSpace, itemType: 'tag', title: newTagText.trim(), content: newTagText.trim() });
+        setNewTagText('');
+        fetchSpaceItems();
+    };
+
+    const TAG_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+        property: { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.2)', text: '#93c5fd' },
+        tenant: { bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.2)', text: '#86efac' },
+        vendor: { bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.2)', text: '#c084fc' },
+        owner: { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)', text: '#fcd34d' },
+        default: { bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.2)', text: '#94a3b8' },
+    };
+
+    const notes = spaceItems.filter(i => i.itemType === 'note');
+    const workitems = spaceItems.filter(i => i.itemType === 'workitem');
+    const attachments = spaceItems.filter(i => i.itemType === 'attachment');
+    const tags = spaceItems.filter(i => i.itemType === 'tag');
 
     return (
         <div style={{ marginTop: 16 }}>
@@ -154,10 +248,16 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                             {s.name}
                             <button
                                 onClick={(e) => { e.stopPropagation(); handleDeleteSpace(s.id); }}
-                                style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 0, lineHeight: 1 }}
-                                title="Delete space"
+                                style={{
+                                    background: confirmDeleteId === s.id ? 'rgba(239,68,68,0.2)' : 'none',
+                                    border: confirmDeleteId === s.id ? '1px solid rgba(239,68,68,0.4)' : 'none',
+                                    color: confirmDeleteId === s.id ? '#f87171' : '#475569',
+                                    cursor: 'pointer', padding: confirmDeleteId === s.id ? '0 4px' : 0,
+                                    lineHeight: 1, borderRadius: 4, fontSize: 9, fontWeight: 600,
+                                }}
+                                title={confirmDeleteId === s.id ? 'Click again to confirm delete' : 'Delete space'}
                             >
-                                <X size={10} />
+                                {confirmDeleteId === s.id ? '✕ Delete?' : <X size={10} />}
                             </button>
                         </div>
                     ))}
@@ -242,20 +342,145 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                     )}
                 </div>
 
-                {/* Space content area */}
+                {/* ── Space Content Area (Phase 7 Enhanced) ── */}
                 <div style={{ padding: 16, minHeight: 80 }}>
                     {activeSpace ? (
-                        <div style={{ color: '#94a3b8', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <FolderOpen size={16} strokeWidth={1} />
-                            <span>Space "<strong style={{ color: '#e2e8f0' }}>{spaces.find(s => s.id === activeSpace)?.name}</strong>" —
-                                Drop workitems or projects here to organize them.</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {/* ─── Workitems Panel ─── */}
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                    <ClipboardList size={12} color="#818cf8" />
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Linked Workitems</span>
+                                    <span style={{ fontSize: 10, color: '#475569' }}>({workitems.length})</span>
+                                </div>
+                                {workitems.map(wi => (
+                                    <div key={wi.id} style={{
+                                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                        borderRadius: 6, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', marginBottom: 4,
+                                    }}>
+                                        <ClipboardList size={11} style={{ color: '#6366f1', flexShrink: 0 }} />
+                                        <span style={{ fontSize: 11, color: '#cbd5e1', flex: 1, fontFamily: 'monospace' }}>{wi.itemId?.slice(0, 16)}…</span>
+                                        <button onClick={() => handleDeleteItem(wi.id)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 2 }}><Trash2 size={10} /></button>
+                                    </div>
+                                ))}
+                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                    <input value={newItemId} onChange={e => setNewItemId(e.target.value)}
+                                        placeholder="Workitem ID to link…"
+                                        onKeyDown={e => { if (e.key === 'Enter') handleLinkWorkitem(); }}
+                                        style={{ flex: 1, padding: '4px 8px', borderRadius: 4, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0', outline: 'none' }}
+                                    />
+                                    <button onClick={handleLinkWorkitem} disabled={!newItemId.trim()}
+                                        style={{ padding: '4px 10px', borderRadius: 4, background: newItemId.trim() ? '#6366f1' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newItemId.trim() ? 'pointer' : 'not-allowed' }}>Link</button>
+                                </div>
+                            </div>
+
+                            {/* ─── Notes Panel ─── */}
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                    <StickyNote size={12} color="#f59e0b" />
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</span>
+                                    <span style={{ fontSize: 10, color: '#475569' }}>({notes.length})</span>
+                                </div>
+                                {notes.map(n => (
+                                    <div key={n.id} style={{
+                                        padding: '8px 10px', borderRadius: 6, marginBottom: 4,
+                                        background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)',
+                                        display: 'flex', alignItems: 'flex-start', gap: 8,
+                                    }}>
+                                        <StickyNote size={11} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+                                        <span style={{ fontSize: 11, color: '#e2e8f0', flex: 1, lineHeight: 1.4 }}>{n.content}</span>
+                                        <span style={{ fontSize: 9, color: '#475569', whiteSpace: 'nowrap' }}>{new Date(n.createdAt).toLocaleDateString()}</span>
+                                        <button onClick={() => handleDeleteItem(n.id)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 2, flexShrink: 0 }}><Trash2 size={10} /></button>
+                                    </div>
+                                ))}
+                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                    <input value={newNoteText} onChange={e => setNewNoteText(e.target.value)}
+                                        placeholder="Add a note…"
+                                        onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }}
+                                        style={{ flex: 1, padding: '4px 8px', borderRadius: 4, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0', outline: 'none' }}
+                                    />
+                                    <button onClick={handleAddNote} disabled={!newNoteText.trim()}
+                                        style={{ padding: '4px 10px', borderRadius: 4, background: newNoteText.trim() ? '#f59e0b' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newNoteText.trim() ? 'pointer' : 'not-allowed' }}>
+                                        <Send size={10} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ─── Tags Panel ─── */}
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                    <Tag size={12} color="#a78bfa" />
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Entity Tags</span>
+                                    <span style={{ fontSize: 10, color: '#475569' }}>({tags.length})</span>
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                                    {tags.map(t => {
+                                        const c = TAG_COLORS.default;
+                                        return (
+                                            <span key={t.id} style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                fontSize: 11, padding: '3px 10px', borderRadius: 12,
+                                                background: c.bg, color: c.text, fontWeight: 600,
+                                                border: `1px solid ${c.border}`,
+                                            }}>
+                                                <Tag size={10} /> {t.content || t.title}
+                                                <button onClick={() => handleDeleteItem(t.id)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                                                    <X size={10} />
+                                                </button>
+                                            </span>
+                                        );
+                                    })}
+                                    {tags.length === 0 && (
+                                        <span style={{ fontSize: 11, color: '#475569' }}>No tags — link to properties, owners, tenants, vendors</span>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                    <input value={newTagText} onChange={e => setNewTagText(e.target.value)}
+                                        placeholder="Tag name (property, owner, vendor, tenant)…"
+                                        onKeyDown={e => { if (e.key === 'Enter') handleAddTag(); }}
+                                        style={{ flex: 1, padding: '4px 8px', borderRadius: 4, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0', outline: 'none' }}
+                                    />
+                                    <button onClick={handleAddTag} disabled={!newTagText.trim()}
+                                        style={{ padding: '4px 10px', borderRadius: 4, background: newTagText.trim() ? '#a78bfa' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newTagText.trim() ? 'pointer' : 'not-allowed' }}>Tag</button>
+                                </div>
+                            </div>
+
+                            {/* ─── Attachments Panel ─── */}
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                    <Paperclip size={12} color="#06b6d4" />
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 }}>Attachments</span>
+                                    <span style={{ fontSize: 10, color: '#475569' }}>({attachments.length})</span>
+                                </div>
+                                {attachments.map(att => (
+                                    <div key={att.id} style={{
+                                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                        borderRadius: 6, background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.1)', marginBottom: 4,
+                                    }}>
+                                        <FileText size={11} style={{ color: '#06b6d4', flexShrink: 0 }} />
+                                        <span style={{ fontSize: 11, color: '#e2e8f0', flex: 1 }}>{att.title}</span>
+                                        {att.fileUrl && <a href={att.fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: '#06b6d4' }}>Open</a>}
+                                        <button onClick={() => handleDeleteItem(att.id)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 2 }}><Trash2 size={10} /></button>
+                                    </div>
+                                ))}
+                                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                                    <input value={newAttachTitle} onChange={e => setNewAttachTitle(e.target.value)} placeholder="File name…"
+                                        style={{ flex: 1, padding: '4px 8px', borderRadius: 4, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0', outline: 'none' }}
+                                    />
+                                    <input value={newAttachUrl} onChange={e => setNewAttachUrl(e.target.value)} placeholder="URL (optional)…"
+                                        style={{ flex: 1, padding: '4px 8px', borderRadius: 4, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0', outline: 'none' }}
+                                    />
+                                    <button onClick={handleAddAttachment} disabled={!newAttachTitle.trim()}
+                                        style={{ padding: '4px 10px', borderRadius: 4, background: newAttachTitle.trim() ? '#06b6d4' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newAttachTitle.trim() ? 'pointer' : 'not-allowed' }}>Attach</button>
+                                </div>
+                            </div>
                         </div>
                     ) : spaces.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '20px 0', color: '#475569', fontSize: 12 }}>
                             <FolderOpen size={24} strokeWidth={1} style={{ marginBottom: 8, opacity: 0.5 }} />
                             <p style={{ margin: 0 }}>No spaces created yet. Click "<strong>+ New Space</strong>" to add one.</p>
                             <p style={{ margin: '4px 0 0', fontSize: 11, color: '#3f4f5f' }}>
-                                Spaces are custom tabs like "Legal Issues", "Renovation", "Admin"
+                                Spaces are custom tabs for organizing workitems, notes, and attachments
                             </p>
                         </div>
                     ) : null}

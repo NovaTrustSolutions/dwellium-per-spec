@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
 import type { Workitem, Property } from '../strataTypes';
+import { LoadingState, ErrorState } from '../StateView';
 
 type ViewMode = 'by-entity' | 'all' | 'kanban';
 type StatusGroup = 'active' | 'inactive';
@@ -34,6 +35,7 @@ export default function ProjectsModule() {
     const [items, setItems] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>('by-entity');
 
@@ -46,7 +48,7 @@ export default function ProjectsModule() {
             ]);
             setItems(wiData);
             setProperties(propData);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); setError('Failed to load projects'); }
         setLoading(false);
     }, []);
 
@@ -340,7 +342,9 @@ export default function ProjectsModule() {
             </div>
 
             {loading ? (
-                <div className="s-loading">Loading projects…</div>
+                <LoadingState message="Loading projects…" />
+            ) : error ? (
+                <ErrorState message={error} onRetry={fetchProjects} />
             ) : items.length === 0 ? (
                 <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
                     <FolderKanban size={40} strokeWidth={1} style={{ marginBottom: 12, opacity: 0.4 }} />

@@ -5,23 +5,81 @@ import {
     DollarSign, Shield, Globe, Calendar, FileText, AlertTriangle,
     Clock, Dog, Car, ChevronUp, Landmark, CreditCard, StickyNote,
     History, Paperclip, TrendingUp, Settings2, Megaphone, PieChart,
-    Scale, BookOpen, Camera, Upload, Image as ImageIcon, Send, Trash2,
+    Scale, BookOpen, Camera, Upload, Image as ImageIcon, Send, Trash2, ListChecks,
+    Link2, ClipboardCheck, Search, Archive, ArchiveRestore, Power
 } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import type { Property, Unit, EntityProfile, Workitem } from '../strataTypes';
+import { LoadingState, ErrorState } from '../StateView';
 import TrelloCardModal from './TrelloCardModal';
 import ProfileSpaces from './ProfileSpaces';
+import PropertyOverview from './PropertyOverview';
+import UtilitiesModule from './UtilitiesModule';
+import VehiclesPanel from './VehiclesPanel';
+import InsuranceModule from './InsuranceModule';
+
+interface LinkedData {
+    workitems: Workitem[];
+    legal: Workitem[];
+    compliance: Workitem[];
+    incidents: any[];
+    entityLinks: any[];
+    summary: { workitems: number; legal: number; compliance: number; incidents: number; entityLinks: number; total: number };
+}
 
 type View = 'list' | 'detail';
 type CardView = 'grid' | 'rows' | 'table';
 type StatusFilter = 'all' | 'active' | 'inactive' | 'archived';
+type WorkspaceTab = 'overview' | 'info' | 'units' | 'work' | 'documents' | string;
+
+const CORE_TABS: WorkspaceTab[] = ['overview', 'info', 'units', 'work', 'documents'];
+
+interface ModuleRegistryEntry {
+    key: string;
+    label: string;
+    icon: string;
+    defaultEnabled: boolean;
+    component: React.ComponentType<{ propertyId: string }>;
+}
+
+/* Lightweight placeholder modules for optional tabs that don't have dedicated components yet */
+function ResidentsPlaceholder({ propertyId }: { propertyId: string }) {
+    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Residents</div>
+        <div style={{ fontSize: 12 }}>View and manage residents for this property in the Residents module.</div>
+    </div>;
+}
+function LegalPlaceholder({ propertyId }: { propertyId: string }) {
+    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>⚖️</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Legal Issues</div>
+        <div style={{ fontSize: 12 }}>Legal workitems for this property appear in the Work tab under the Legal domain filter.</div>
+    </div>;
+}
+function IncidentsPlaceholder({ propertyId }: { propertyId: string }) {
+    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>🚨</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Incidents</div>
+        <div style={{ fontSize: 12 }}>Incident logs linked to this property.</div>
+    </div>;
+}
+
+const MODULE_REGISTRY: ModuleRegistryEntry[] = [
+    { key: 'vehicles', label: 'Vehicles', icon: '🚗', defaultEnabled: false, component: VehiclesPanel as any },
+    { key: 'utilities', label: 'Utilities', icon: '⚡', defaultEnabled: false, component: UtilitiesModule },
+    { key: 'insurance', label: 'Insurance', icon: '🛡️', defaultEnabled: false, component: InsuranceModule },
+    { key: 'residents', label: 'Residents', icon: '👥', defaultEnabled: false, component: ResidentsPlaceholder },
+    { key: 'legal', label: 'Legal', icon: '⚖️', defaultEnabled: false, component: LegalPlaceholder },
+    { key: 'incidents', label: 'Incidents', icon: '🚨', defaultEnabled: false, component: IncidentsPlaceholder },
+];
 
 const fmtType = (t: string) => t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 /* ── Collapsible Detail Section (reused from ResidentsModule pattern) ── */
-function DetailSection({ title, icon, children, defaultOpen = true }: {
-    title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean;
+function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
+    title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; onEdit?: () => void;
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
@@ -39,7 +97,16 @@ function DetailSection({ title, icon, children, defaultOpen = true }: {
                 }}
             >
                 {icon} {title}
-                <span style={{ marginLeft: 'auto' }}>
+                <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {onEdit && (
+                        <span
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'rgba(99,102,241,0.1)', color: '#818cf8', cursor: 'pointer', transition: 'all 0.15s' }}
+                            title={`Edit ${title}`}
+                        >
+                            <Settings2 size={11} />
+                        </span>
+                    )}
                     {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </span>
             </button>
@@ -62,30 +129,110 @@ function Field({ label, value, full }: { label: string; value?: string; full?: b
     );
 }
 
-export default function PropertiesModule() {
+interface PropertiesModuleProps {
+    searchNavTarget?: { type: string; id: string } | null;
+    onNavComplete?: () => void;
+}
+
+export default function PropertiesModule({ searchNavTarget, onNavComplete }: PropertiesModuleProps) {
     const { hasPermission } = useUser();
     const [properties, setProperties] = useState<Property[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [selected, setSelected] = useState<Property | null>(null);
     const [view, setView] = useState<View>('list');
     const [showForm, setShowForm] = useState(false);
+    const [showEditForm, setShowEditForm] = useState(false);
+    const [editFormData, setEditFormData] = useState<any>({});
+    
+    // Inspections & Budgets Modals
+    const [showInspectionForm, setShowInspectionForm] = useState(false);
+    const [inspectionFormData, setInspectionFormData] = useState<any>({ type: 'Annual', date: new Date().toISOString().split('T')[0], status: 'Pass', score: '', notes: '' });
+    const [showBudgetForm, setShowBudgetForm] = useState(false);
+    const [budgetFormData, setBudgetFormData] = useState<any>({});
+    
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [expandedDesc, setExpandedDesc] = useState<string | null>(null);
     const [expandedAssets, setExpandedAssets] = useState<string | null>(null);
     const [cardView, setCardView] = useState<CardView>('grid');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
     const [typeFilter, setTypeFilter] = useState<string>('all');
     const [confirmDeleteProp, setConfirmDeleteProp] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
+
+    // Phase 8: Auto-select property from search navigation + jump to subsection
+    const TAB_MAP: Record<string, WorkspaceTab> = {
+        property: 'overview', insurance: 'insurance', work: 'work', legal: 'work',
+        units: 'units', documents: 'documents', incidents: 'incidents',
+        vehicles: 'vehicles', utilities: 'utilities', residents: 'residents',
+    };
+    useEffect(() => {
+        if (searchNavTarget && properties.length > 0) {
+            const navType = searchNavTarget.type;
+            // Find the property — the id always refers to a property
+            if (['property', 'insurance', 'work', 'legal', 'units', 'documents', 'incidents', 'vehicles', 'utilities', 'residents'].includes(navType)) {
+                const target = properties.find(p => p.id === searchNavTarget.id);
+                if (target) {
+                    setSelected(target);
+                    const tab = TAB_MAP[navType] || 'overview';
+                    setActiveTab(tab);
+                    onNavComplete?.();
+                }
+            }
+        }
+    }, [searchNavTarget, properties, onNavComplete]);
+
+    // Phase 5: Module config
+    const [moduleConfig, setModuleConfig] = useState<Record<string, boolean>>({});
+    const [showModuleManager, setShowModuleManager] = useState(false);
 
     // ── Feature 1: Tenant detail for units ──
     const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
     const [tenants, setTenants] = useState<EntityProfile[]>([]);
     const [matchedTenant, setMatchedTenant] = useState<EntityProfile | null>(null);
 
-    // ── Feature 3: Trello notes for properties ──
-    const [propertyWorkitems, setPropertyWorkitems] = useState<Workitem[]>([]);
-    const [showTrelloNotes, setShowTrelloNotes] = useState(false);
+    // ── Feature 3: Property Linked Items ──
+    const [linkedData, setLinkedData] = useState<LinkedData | null>(null);
+    const [expandedLinkedSection, setExpandedLinkedSection] = useState<string | null>('workitems');
     const [expandedWorkitem, setExpandedWorkitem] = useState<Workitem | null>(null);
+
+    // Phase 5: Fetch module config when property selected
+    const fetchModuleConfig = useCallback(async (propId: string) => {
+        try {
+            const configs = await strataGet<any[]>('/property-modules', { property_id: propId });
+            const map: Record<string, boolean> = {};
+            MODULE_REGISTRY.forEach(m => { map[m.key] = m.defaultEnabled; });
+            configs.forEach((c: any) => { map[c.moduleKey] = c.enabled; });
+            setModuleConfig(map);
+        } catch (e) {
+            const map: Record<string, boolean> = {};
+            MODULE_REGISTRY.forEach(m => { map[m.key] = m.defaultEnabled; });
+            setModuleConfig(map);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (selected) fetchModuleConfig(selected.id);
+    }, [selected, fetchModuleConfig]);
+
+    const handleToggleModule = async (moduleKey: string) => {
+        if (!selected) return;
+        const newEnabled = !moduleConfig[moduleKey];
+        setModuleConfig(prev => ({ ...prev, [moduleKey]: newEnabled }));
+        try {
+            await strataPut('/property-modules', { propertyId: selected.id, moduleKey, enabled: newEnabled });
+        } catch (e) { console.error(e); }
+    };
+
+    const enabledModules = MODULE_REGISTRY.filter(m => moduleConfig[m.key]);
+    const allTabs = [...CORE_TABS, ...enabledModules.map(m => m.key)];
+
+    // ── Phase 2: Work tab filters & tracking ──
+    const [workTrackingFilter, setWorkTrackingFilter] = useState<'active' | 'inactive'>('active');
+    const [workStatusFilter, setWorkStatusFilter] = useState<string>('all');
+    const [workPriorityFilter, setWorkPriorityFilter] = useState<string>('all');
+    const [workDomainFilter, setWorkDomainFilter] = useState<string>('all');
+    const [workSearchQuery, setWorkSearchQuery] = useState('');
 
     // ── Feature 4: Add notes + Photo uploads ──
     const [newNoteText, setNewNoteText] = useState('');
@@ -175,10 +322,11 @@ export default function PropertiesModule() {
 
     const fetchProperties = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
             const data = await strataGet<Property[]>('/properties');
             setProperties(data);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); setError('Failed to load properties'); }
         setLoading(false);
     }, []);
 
@@ -201,10 +349,10 @@ export default function PropertiesModule() {
         } catch (e) { console.error(e); }
     }, [selected]);
 
-    const fetchPropertyWorkitems = useCallback(async (propertyId: string) => {
+    const fetchLinkedData = useCallback(async (propertyId: string) => {
         try {
-            const data = await strataGet<Workitem[]>(`/property-workitems/${propertyId}`);
-            setPropertyWorkitems(data);
+            const data = await strataGet<LinkedData>(`/property-linked/${propertyId}`);
+            setLinkedData(data);
         } catch (e) { console.error(e); }
     }, []);
 
@@ -217,7 +365,7 @@ export default function PropertiesModule() {
         setMatchedTenant(null);
         fetchUnits(p.id);
         fetchTenants(p.id);
-        fetchPropertyWorkitems(p.id);
+        fetchLinkedData(p.id);
     };
 
     // ── Feature 2: Safe back button ──
@@ -228,8 +376,8 @@ export default function PropertiesModule() {
         setSelectedUnit(null);
         setMatchedTenant(null);
         setTenants([]);
-        setPropertyWorkitems([]);
-        setShowTrelloNotes(false);
+        setLinkedData(null);
+        setExpandedLinkedSection('workitems');
         setExpandedAssets(null);
     };
 
@@ -257,6 +405,53 @@ export default function PropertiesModule() {
             setShowForm(false);
             fetchProperties();
         } catch (err) { console.error(err); }
+    };
+
+    const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!selected) return;
+        
+        const updatedMetadata = { ...(selected.metadata || {}), ...editFormData };
+        
+        try {
+            const updated = await strataPut(`/properties/${selected.id}`, {
+                metadata: JSON.stringify(updatedMetadata),
+            });
+            setShowEditForm(false);
+            setSelected({ ...selected, metadata: updatedMetadata });
+            fetchProperties();
+        } catch (err) { console.error('Failed to update property', err); }
+    };
+
+    const handleAddInspection = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!selected) return;
+        
+        const pm = selected.metadata || {};
+        const inspections = Array.isArray(pm.inspections) ? [...pm.inspections] : [];
+        inspections.push({ id: crypto.randomUUID(), ...inspectionFormData });
+        
+        const updatedMetadata = { ...pm, inspections };
+        try {
+            await strataPut(`/properties/${selected.id}`, { metadata: JSON.stringify(updatedMetadata) });
+            setShowInspectionForm(false);
+            setInspectionFormData({ type: 'Annual', date: new Date().toISOString().split('T')[0], status: 'Pass', score: '', notes: '' });
+            setSelected({ ...selected, metadata: updatedMetadata });
+        } catch (err) { console.error('Failed to add inspection', err); }
+    };
+
+    const handleUpdateBudget = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!selected) return;
+        
+        const pm = selected.metadata || {};
+        const updatedMetadata = { ...pm, budgets: budgetFormData };
+        
+        try {
+            await strataPut(`/properties/${selected.id}`, { metadata: JSON.stringify(updatedMetadata) });
+            setShowBudgetForm(false);
+            setSelected({ ...selected, metadata: updatedMetadata });
+        } catch (err) { console.error('Failed to update budget', err); }
     };
 
     const handleDeleteProp = async (id: string) => {
@@ -375,7 +570,9 @@ export default function PropertiesModule() {
                 </div>
 
                 {loading ? (
-                    <div className="s-loading">Loading properties…</div>
+                    <LoadingState message="Loading properties…" />
+                ) : error ? (
+                    <ErrorState message={error} onRetry={fetchProperties} />
                 ) : cardView === 'grid' ? (
                     <div className="s-card-grid">
                         {filteredProperties.map(p => (
@@ -537,6 +734,137 @@ export default function PropertiesModule() {
                         </div>
                     </div>
                 )}
+
+                {/* Edit Property Modal */}
+                {showEditForm && selected && (
+                    <div className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
+                        <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                            <div className="s-modal-header">
+                                <h3>Edit Property Details</h3>
+                                <button className="s-btn-icon" onClick={() => setShowEditForm(false)}><X size={18} /></button>
+                            </div>
+                            <form onSubmit={handleUpdate} style={{ flex: 1, overflowY: 'auto' }}>
+                                <div className="s-form-group" style={{ marginBottom: 20 }}>
+                                    <div style={{ padding: '12px 16px', background: 'rgba(99,102,241,0.08)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)' }}>
+                                        <h4 style={{ margin: '0 0 4px 0', fontSize: 13, color: '#e2e8f0' }}>Editing: {selected.name}</h4>
+                                        <div style={{ fontSize: 11, color: '#94a3b8' }}>Update the extended property details tracked in Dwellium for AppFolio sync.</div>
+                                    </div>
+                                </div>
+                                
+                                <h4 style={{ fontSize: 12, color: '#818cf8', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
+                                <div className="s-form-row">
+                                    <div className="s-form-group">
+                                        <label>Rent Ready (Yes/No)</label>
+                                        <select 
+                                            className="s-input" 
+                                            value={editFormData.rentReady || ''} 
+                                            onChange={e => setEditFormData({...editFormData, rentReady: e.target.value})}
+                                        >
+                                            <option value="">Select...</option>
+                                            <option value="Yes">Yes</option>
+                                            <option value="No">No</option>
+                                        </select>
+                                    </div>
+                                    <div className="s-form-group">
+                                        <label>Ready For Showing On</label>
+                                        <input 
+                                            type="date" 
+                                            className="s-input" 
+                                            value={editFormData.readyForShowingOn || ''} 
+                                            onChange={e => setEditFormData({...editFormData, readyForShowingOn: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="s-form-group" style={{ marginBottom: 20 }}>
+                                    <label>Lockbox Info</label>
+                                    <input 
+                                        className="s-input" 
+                                        placeholder="e.g. Front Door - Code: 1234" 
+                                        value={editFormData.lockbox || ''} 
+                                        onChange={e => setEditFormData({...editFormData, lockbox: e.target.value})}
+                                    />
+                                </div>
+
+                                <h4 style={{ fontSize: 12, color: '#8cf8a2', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Property Descriptors</h4>
+                                <div className="s-form-row">
+                                    <div className="s-form-group">
+                                        <label>County</label>
+                                        <input 
+                                            className="s-input" 
+                                            placeholder="e.g. King County" 
+                                            value={editFormData.county || ''} 
+                                            onChange={e => setEditFormData({...editFormData, county: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="s-form-group">
+                                        <label>Parcel ID</label>
+                                        <input 
+                                            className="s-input" 
+                                            value={editFormData.parcel || ''} 
+                                            onChange={e => setEditFormData({...editFormData, parcel: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="s-form-row">
+                                    <div className="s-form-group">
+                                        <label>Year Built</label>
+                                        <input 
+                                            className="s-input" 
+                                            placeholder="e.g. 1995" 
+                                            value={editFormData.yearBuilt || ''} 
+                                            onChange={e => setEditFormData({...editFormData, yearBuilt: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="s-form-group">
+                                        <label>Owner</label>
+                                        <input 
+                                            className="s-input" 
+                                            value={editFormData.owner || ''} 
+                                            onChange={e => setEditFormData({...editFormData, owner: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="s-form-group" style={{ marginBottom: 20 }}>
+                                    <label>Description Note</label>
+                                    <textarea 
+                                        className="s-input" 
+                                        style={{ minHeight: 60, resize: 'vertical' }}
+                                        placeholder="Add general description notes here..." 
+                                        value={editFormData.description || ''} 
+                                        onChange={e => setEditFormData({...editFormData, description: e.target.value})}
+                                    />
+                                </div>
+
+                                <h4 style={{ fontSize: 12, color: '#f8c28c', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Financial Baseline</h4>
+                                <div className="s-form-row">
+                                    <div className="s-form-group">
+                                        <label>Purchase Price</label>
+                                        <input 
+                                            className="s-input" 
+                                            placeholder="$0.00" 
+                                            value={editFormData.purchasePrice || ''} 
+                                            onChange={e => setEditFormData({...editFormData, purchasePrice: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="s-form-group">
+                                        <label>Purchase Date</label>
+                                        <input 
+                                            type="date" 
+                                            className="s-input" 
+                                            value={editFormData.purchaseDate || ''} 
+                                            onChange={e => setEditFormData({...editFormData, purchaseDate: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="s-modal-footer" style={{ marginTop: 24 }}>
+                                    <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowEditForm(false)}>Cancel</button>
+                                    <button type="submit" className="s-btn s-btn-primary">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -594,13 +922,74 @@ export default function PropertiesModule() {
                             </>
                         )}
                     </div>
+
+                    {/* ── Workspace Tab Bar ── */}
+                    <div className="s-workspace-tabs" style={{ position: 'relative' }}>
+                        {allTabs.map(tab => {
+                            const modEntry = MODULE_REGISTRY.find(m => m.key === tab);
+                            return (
+                                <button
+                                    key={tab}
+                                    className={`s-workspace-tab${activeTab === tab ? ' active' : ''}`}
+                                    onClick={() => setActiveTab(tab)}
+                                >
+                                    {modEntry ? `${modEntry.icon} ${modEntry.label}` : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                </button>
+                            );
+                        })}
+                        <button
+                            className="s-workspace-tab"
+                            onClick={() => setShowModuleManager(!showModuleManager)}
+                            title="Manage Modules"
+                            style={{ marginLeft: 'auto', opacity: 0.6, fontSize: 11 }}
+                        >
+                            <Settings2 size={14} />
+                        </button>
+                        {showModuleManager && (
+                            <div style={{
+                                position: 'absolute', top: '100%', right: 0, zIndex: 50,
+                                background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(99,102,241,0.2)',
+                                borderRadius: 10, padding: 12, minWidth: 220,
+                                backdropFilter: 'blur(12px)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                            }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                                    Optional Modules
+                                </div>
+                                {MODULE_REGISTRY.map(mod => (
+                                    <div key={mod.key} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '6px 8px', borderRadius: 6, marginBottom: 4,
+                                        background: moduleConfig[mod.key] ? 'rgba(99,102,241,0.08)' : 'transparent',
+                                    }}>
+                                        <span style={{ fontSize: 12, color: '#e2e8f0' }}>{mod.icon} {mod.label}</span>
+                                        <button
+                                            onClick={() => handleToggleModule(mod.key)}
+                                            style={{
+                                                width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
+                                                background: moduleConfig[mod.key] ? '#6366f1' : 'rgba(100,116,139,0.3)',
+                                                position: 'relative', transition: 'background 0.2s',
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                                                position: 'absolute', top: 3,
+                                                left: moduleConfig[mod.key] ? 19 : 3,
+                                                transition: 'left 0.2s',
+                                            }} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <div style={{ fontSize: 10, color: '#475569', marginTop: 8 }}>Changes saved per property</div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {selected && (
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                         {/* ── Left column: Property info ── */}
                         <div style={{ flex: 1, minWidth: 400 }}>
-                            {/* ───── PROPERTY HEADER ───── */}
+                            {/* ───── PROPERTY HEADER (always visible) ───── */}
                             {hasPermission('strata:properties:kpi') && (
                                 <div className="s-glass-card s-detail-card">
                                     <div className="s-detail-header">
@@ -626,19 +1015,42 @@ export default function PropertiesModule() {
                                                     background: 'rgba(99,102,241,0.12)', color: '#818cf8', fontWeight: 600,
                                                 }}>{pm.propertyType}</span>
                                             )}
-                                            <button onClick={() => setConfirmDeleteProp(selected.id)} style={{
-                                                display: 'flex', alignItems: 'center', gap: 4, marginTop: 4,
-                                                padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
-                                                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                                                color: '#fca5a5', cursor: 'pointer', fontFamily: 'inherit',
-                                            }}>
-                                                <Trash2 size={10} /> Delete
-                                            </button>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button 
+                                                    onClick={() => {
+                                                        setEditFormData(pm);
+                                                        setShowEditForm(true);
+                                                    }} 
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 4, marginTop: 4,
+                                                        padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+                                                        background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
+                                                        color: '#818cf8', cursor: 'pointer', fontFamily: 'inherit',
+                                                    }}
+                                                >
+                                                    <Settings2 size={10} /> Edit
+                                                </button>
+                                                <button onClick={() => setConfirmDeleteProp(selected.id)} style={{
+                                                    display: 'flex', alignItems: 'center', gap: 4, marginTop: 4,
+                                                    padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+                                                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                                                    color: '#fca5a5', cursor: 'pointer', fontFamily: 'inherit',
+                                                }}>
+                                                    <Trash2 size={10} /> Delete
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
+                            {/* ═══════ TAB: OVERVIEW ═══════ */}
+                            {activeTab === 'overview' && (
+                                <PropertyOverview property={selected} units={units} linkedData={linkedData} />
+                            )}
+
+                            {/* ═══════ TAB: INFO ═══════ */}
+                            {activeTab === 'info' && (<>
                             {/* ───── PROPERTY INFORMATION ───── */}
                             <DetailSection title="Property Information" icon={<Building2 size={12} />}>
                                 <Field label="Status" value={pm.status || selected.status} />
@@ -814,13 +1226,60 @@ export default function PropertiesModule() {
                                 </DetailSection>
                             )}
 
-                            {/* ───── BUDGETS ───── */}
-                            {pm.budgets && (
-                                <DetailSection title="Budgets" icon={<PieChart size={12} />} defaultOpen={false}>
-                                    <Field label="Variance Threshold Amount ($)" value={pm.budgets.varianceThresholdAmount} />
-                                    <Field label="Variance Threshold Percentage (%)" value={pm.budgets.varianceThresholdPercentage} />
-                                </DetailSection>
-                            )}
+                            {/* ───── INSPECTIONS ───── */}
+                            <DetailSection title={`Inspections (${(Array.isArray(pm.inspections) ? pm.inspections : []).length})`} icon={<ListChecks size={12} />} defaultOpen={false}>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                                        <button 
+                                            onClick={() => setShowInspectionForm(true)}
+                                            style={{
+                                                background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
+                                                color: '#818cf8', padding: '4px 10px', borderRadius: 6, fontSize: 10,
+                                                fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                                            }}
+                                        ><Plus size={10} /> Add Inspection</button>
+                                    </div>
+                                    {Array.isArray(pm.inspections) && pm.inspections.length > 0 ? (
+                                        <div className="s-table-wrap">
+                                            <table className="s-table" style={{ fontSize: 11 }}>
+                                                <thead><tr><th>Date</th><th>Type</th><th>Score/Pass</th><th>Notes</th></tr></thead>
+                                                <tbody>
+                                                    {[...pm.inspections].sort((a,b) => b.date.localeCompare(a.date)).map((insp: any) => (
+                                                        <tr key={insp.id}>
+                                                            <td style={{ whiteSpace: 'nowrap', color: '#cbd5e1' }}>{insp.date}</td>
+                                                            <td><span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>{insp.type}</span></td>
+                                                            <td><span className={`s-badge ${insp.status === 'Pass' ? 'active' : insp.status === 'Fail' ? 'turn' : 'maintenance'}`}>{insp.status} {insp.score ? `(${insp.score})` : ''}</span></td>
+                                                            <td style={{ color: '#94a3b8' }}>{insp.notes || '—'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div style={{ textAlign: 'center', color: '#64748b', fontSize: 11, padding: 12 }}>No inspections recorded.</div>
+                                    )}
+                                </div>
+                            </DetailSection>
+
+                            {/* ───── BUDGETS & FINANCIALS ───── */}
+                            <DetailSection title="Budgets & Financials" icon={<PieChart size={12} />} defaultOpen={false}>
+                                <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                                    <button 
+                                        onClick={() => { setBudgetFormData(pm.budgets || {}); setShowBudgetForm(true); }}
+                                        style={{
+                                            background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
+                                            color: '#818cf8', padding: '4px 10px', borderRadius: 6, fontSize: 10,
+                                            fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                                        }}
+                                    ><Settings2 size={10} /> Update Budgets</button>
+                                </div>
+                                <Field label="Annual Operating Budget" value={pm.budgets?.annualOperatingBudget ? `$${Number(pm.budgets.annualOperatingBudget).toLocaleString()}` : '—'} />
+                                <Field label="Target Operating Reserve" value={pm.budgets?.targetOperatingReserve ? `$${Number(pm.budgets.targetOperatingReserve).toLocaleString()}` : '—'} />
+                                <Field label="Current Escrow Balance" value={pm.budgets?.escrowBalance ? `$${Number(pm.budgets.escrowBalance).toLocaleString()}` : '—'} />
+                                <Field label="Capital Expenditure Budget" value={pm.budgets?.capexBudget ? `$${Number(pm.budgets.capexBudget).toLocaleString()}` : '—'} />
+                                <Field label="Variance Threshold Amount ($)" value={pm.budgets?.varianceThresholdAmount ? `$${Number(pm.budgets.varianceThresholdAmount).toLocaleString()}` : '—'} />
+                                <Field label="Variance Threshold (%)" value={pm.budgets?.varianceThresholdPercentage ? `${pm.budgets.varianceThresholdPercentage}%` : '—'} />
+                            </DetailSection>
 
                             {/* ───── MAINTENANCE INFORMATION ───── */}
                             {(pm.maintenanceLimit || pm.hasHomeWarranty || pm.maintenanceNotes) && (
@@ -936,7 +1395,10 @@ export default function PropertiesModule() {
                                     </div>
                                 </DetailSection>
                             )}
+                            </>)}
 
+                            {/* ═══════ TAB: UNITS ═══════ */}
+                            {activeTab === 'units' && (<>
                             {/* Turn Board */}
                             {hasPermission('strata:properties:turn-board') && units.length > 0 && (
                                 <div className="s-glass-card">
@@ -1019,7 +1481,10 @@ export default function PropertiesModule() {
                                     </div>
                                 </div>
                             )}
+                            </>)}
 
+                            {/* ═══════ TAB: DOCUMENTS ═══════ */}
+                            {activeTab === 'documents' && (<>
                             {/* ───── PHOTOS ───── */}
                             <DetailSection title={`Photos (${(Array.isArray(pm.photos) ? pm.photos : []).length})`} icon={<Camera size={12} />} defaultOpen={false}>
                                 <div style={{ gridColumn: '1 / -1' }}>
@@ -1143,9 +1608,289 @@ export default function PropertiesModule() {
                                     )}
                                 </div>
                             </DetailSection>
+                            </>)}
 
-                            {/* ───── DYNAMIC SPACES & ENTITY LINKS ───── */}
-                            <ProfileSpaces entityType="property" entityId={selected.id} />
+                            {/* ═══════ OPTIONAL MODULE TABS ═══════ */}
+                            {enabledModules.map(mod => {
+                                if (activeTab !== mod.key) return null;
+                                const ModComponent = mod.component;
+                                return <ModComponent key={mod.key} propertyId={selected.id} />;
+                            })}
+
+                            {/* ═══════ TAB: WORK ═══════ */}
+                            {activeTab === 'work' && (<>
+                            {/* ═══════ PHASE 2: Card-based Workitems ═══════ */}
+                            {(() => {
+                                // Collate all workitems from linked data
+                                const allItems: Workitem[] = linkedData
+                                    ? [...linkedData.workitems, ...linkedData.legal, ...linkedData.compliance]
+                                    : [];
+
+                                // Split by tracking state
+                                const activeItems = allItems.filter(w => (w.trackingState || 'active') === 'active');
+                                const inactiveItems = allItems.filter(w => (w.trackingState || 'active') === 'inactive');
+                                const viewItems = workTrackingFilter === 'active' ? activeItems : inactiveItems;
+
+                                // Apply status + priority + domain filters
+                                let filtered = viewItems;
+                                if (workStatusFilter !== 'all') filtered = filtered.filter(w => w.status === workStatusFilter);
+                                if (workPriorityFilter !== 'all') filtered = filtered.filter(w => w.priority === workPriorityFilter);
+                                if (workDomainFilter !== 'all') filtered = filtered.filter(w => (w.domain || 'general') === workDomainFilter);
+                                if (workSearchQuery.trim()) {
+                                    const q = workSearchQuery.toLowerCase();
+                                    filtered = filtered.filter(w => w.title.toLowerCase().includes(q) || (w.description || '').toLowerCase().includes(q));
+                                }
+
+                                // Unique statuses, priorities, and domains for filter pills
+                                const statuses = [...new Set(viewItems.map(w => w.status))];
+                                const priorities = [...new Set(viewItems.map(w => w.priority))];
+                                const domains = [...new Set(viewItems.map(w => w.domain || 'general'))];
+
+                                const handleDeactivate = async (id: string) => {
+                                    await strataPost(`/workitems/${id}/deactivate`, {});
+                                    if (selected) fetchLinkedData(selected.id);
+                                };
+                                const handleReactivate = async (id: string) => {
+                                    await strataPost(`/workitems/${id}/reactivate`, {});
+                                    if (selected) fetchLinkedData(selected.id);
+                                };
+
+                                const statusColor = (s: string) => {
+                                    switch (s) {
+                                        case 'open': return '#3b82f6';
+                                        case 'in_progress': return '#f59e0b';
+                                        case 'review': return '#a855f7';
+                                        case 'completed': return '#22c55e';
+                                        case 'cancelled': return '#64748b';
+                                        case 'on_hold': return '#ef4444';
+                                        default: return '#94a3b8';
+                                    }
+                                };
+                                const priorityColor = (p: string) => {
+                                    switch (p) {
+                                        case 'critical': return '#ef4444';
+                                        case 'high': return '#f97316';
+                                        case 'medium': return '#eab308';
+                                        case 'low': return '#22c55e';
+                                        default: return '#94a3b8';
+                                    }
+                                };
+
+                                return (
+                                    <div className="s-glass-card" style={{ overflow: 'hidden' }}>
+                                        {/* ── Header ── */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                            <ListChecks size={18} color="#818cf8" />
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#e2e8f0' }}>Work Items</h3>
+                                            <span style={{
+                                                fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                                                background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', fontWeight: 600,
+                                            }}>{activeItems.length} active / {inactiveItems.length} inactive</span>
+                                        </div>
+
+                                        {/* ── Active / Inactive Toggle ── */}
+                                        <div className="s-tracking-toggle" style={{ display: 'flex', gap: 0, marginBottom: 12, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 3, width: 'fit-content' }}>
+                                            <button
+                                                onClick={() => { setWorkTrackingFilter('active'); setWorkSearchQuery(''); }}
+                                                style={{
+                                                    padding: '6px 16px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                                                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
+                                                    background: workTrackingFilter === 'active' ? 'rgba(99,102,241,0.25)' : 'transparent',
+                                                    color: workTrackingFilter === 'active' ? '#a5b4fc' : '#64748b',
+                                                }}
+                                            >
+                                                <Power size={12} style={{ marginRight: 4, verticalAlign: -2 }} />
+                                                Active ({activeItems.length})
+                                            </button>
+                                            <button
+                                                onClick={() => setWorkTrackingFilter('inactive')}
+                                                style={{
+                                                    padding: '6px 16px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                                                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
+                                                    background: workTrackingFilter === 'inactive' ? 'rgba(239,68,68,0.15)' : 'transparent',
+                                                    color: workTrackingFilter === 'inactive' ? '#fca5a5' : '#64748b',
+                                                }}
+                                            >
+                                                <Archive size={12} style={{ marginRight: 4, verticalAlign: -2 }} />
+                                                Inactive ({inactiveItems.length})
+                                            </button>
+                                        </div>
+
+                                        {/* ── Filter Pills ── */}
+                                        <div className="s-filter-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                                            {/* Status */}
+                                            <button
+                                                onClick={() => setWorkStatusFilter('all')}
+                                                style={{
+                                                    padding: '3px 10px', borderRadius: 12, border: '1px solid',
+                                                    borderColor: workStatusFilter === 'all' ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)',
+                                                    background: workStatusFilter === 'all' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                                                    color: workStatusFilter === 'all' ? '#a5b4fc' : '#64748b',
+                                                    fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                                }}
+                                            >All Status</button>
+                                            {statuses.map(s => (
+                                                <button key={s}
+                                                    onClick={() => setWorkStatusFilter(s)}
+                                                    style={{
+                                                        padding: '3px 10px', borderRadius: 12, border: '1px solid',
+                                                        borderColor: workStatusFilter === s ? `${statusColor(s)}66` : 'rgba(255,255,255,0.08)',
+                                                        background: workStatusFilter === s ? `${statusColor(s)}20` : 'transparent',
+                                                        color: workStatusFilter === s ? statusColor(s) : '#64748b',
+                                                        fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize',
+                                                    }}
+                                                >{s.replace('_', ' ')}</button>
+                                            ))}
+                                            <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.06)', margin: '0 4px' }} />
+                                            {/* Priority */}
+                                            <button
+                                                onClick={() => setWorkPriorityFilter('all')}
+                                                style={{
+                                                    padding: '3px 10px', borderRadius: 12, border: '1px solid',
+                                                    borderColor: workPriorityFilter === 'all' ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)',
+                                                    background: workPriorityFilter === 'all' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                                                    color: workPriorityFilter === 'all' ? '#a5b4fc' : '#64748b',
+                                                    fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                                }}
+                                            >All Priority</button>
+                                            {priorities.map(p => (
+                                                <button key={p}
+                                                    onClick={() => setWorkPriorityFilter(p)}
+                                                    style={{
+                                                        padding: '3px 10px', borderRadius: 12, border: '1px solid',
+                                                        borderColor: workPriorityFilter === p ? `${priorityColor(p)}66` : 'rgba(255,255,255,0.08)',
+                                                        background: workPriorityFilter === p ? `${priorityColor(p)}20` : 'transparent',
+                                                        color: workPriorityFilter === p ? priorityColor(p) : '#64748b',
+                                                        fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize',
+                                                    }}
+                                                >{p}</button>
+                                            ))}
+                                            {domains.length > 1 && <>
+                                            <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.06)', margin: '0 4px' }} />
+                                            {/* Domain / Module filter */}
+                                            <button
+                                                onClick={() => setWorkDomainFilter('all')}
+                                                style={{
+                                                    padding: '3px 10px', borderRadius: 12, border: '1px solid',
+                                                    borderColor: workDomainFilter === 'all' ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)',
+                                                    background: workDomainFilter === 'all' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                                                    color: workDomainFilter === 'all' ? '#a5b4fc' : '#64748b',
+                                                    fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                                }}
+                                            >All Modules</button>
+                                            {domains.map(d => (
+                                                <button key={d}
+                                                    onClick={() => setWorkDomainFilter(d)}
+                                                    style={{
+                                                        padding: '3px 10px', borderRadius: 12, border: '1px solid',
+                                                        borderColor: workDomainFilter === d ? 'rgba(6,182,212,0.4)' : 'rgba(255,255,255,0.08)',
+                                                        background: workDomainFilter === d ? 'rgba(6,182,212,0.15)' : 'transparent',
+                                                        color: workDomainFilter === d ? '#67e8f9' : '#64748b',
+                                                        fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize',
+                                                    }}
+                                                >{d}</button>
+                                            ))}
+                                            </>}
+                                        </div>
+
+                                        {/* ── Search (shown on inactive view) ── */}
+                                        {workTrackingFilter === 'inactive' && (
+                                            <div style={{ position: 'relative', marginBottom: 12 }}>
+                                                <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: '#475569' }} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search inactive items..."
+                                                    value={workSearchQuery}
+                                                    onChange={e => setWorkSearchQuery(e.target.value)}
+                                                    style={{
+                                                        width: '100%', padding: '8px 10px 8px 32px', borderRadius: 8,
+                                                        border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
+                                                        color: '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none',
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* ── Card Grid ── */}
+                                        {filtered.length === 0 ? (
+                                            <div style={{ textAlign: 'center', color: '#475569', fontSize: 13, padding: '24px 0' }}>
+                                                {workTrackingFilter === 'active' ? 'No active work items' : 'No inactive items found'}
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                                                {filtered.map(item => (
+                                                    <div
+                                                        key={item.id}
+                                                        className="s-workitem-card"
+                                                        onClick={() => setExpandedWorkitem(item)}
+                                                        style={{
+                                                            padding: '14px 16px', borderRadius: 10,
+                                                            background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)',
+                                                            cursor: 'pointer', transition: 'all 0.2s',
+                                                        }}
+                                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; }}
+                                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                                    >
+                                                        {/* Card header — title + badges */}
+                                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                                                            <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: '#e2e8f0', lineHeight: 1.3 }}>{item.title}</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+                                                            <span style={{
+                                                                fontSize: 9, padding: '2px 7px', borderRadius: 6, fontWeight: 700, textTransform: 'uppercase',
+                                                                background: `${statusColor(item.status)}18`, color: statusColor(item.status),
+                                                            }}>{item.status.replace('_', ' ')}</span>
+                                                            <span style={{
+                                                                fontSize: 9, padding: '2px 7px', borderRadius: 6, fontWeight: 700, textTransform: 'uppercase',
+                                                                background: `${priorityColor(item.priority)}18`, color: priorityColor(item.priority),
+                                                            }}>{item.priority}</span>
+                                                            <span style={{
+                                                                fontSize: 9, padding: '2px 7px', borderRadius: 6, fontWeight: 600,
+                                                                background: 'rgba(99,102,241,0.1)', color: '#818cf8',
+                                                            }}>{item.domain}</span>
+                                                        </div>
+                                                        {/* Description snippet */}
+                                                        {item.description && (
+                                                            <p style={{ margin: '0 0 8px', fontSize: 11, color: '#94a3b8', lineHeight: 1.4, maxHeight: 36, overflow: 'hidden' }}>
+                                                                {item.description.slice(0, 120)}{item.description.length > 120 ? '…' : ''}
+                                                            </p>
+                                                        )}
+                                                        {/* Footer — meta + action */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: '#475569' }}>
+                                                            <span>{item.type}{item.dueDate ? ` • Due ${item.dueDate.slice(0, 10)}` : ''}</span>
+                                                            {workTrackingFilter === 'active' ? (
+                                                                <button
+                                                                    onClick={e => { e.stopPropagation(); handleDeactivate(item.id); }}
+                                                                    title="Deactivate"
+                                                                    style={{
+                                                                        display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px',
+                                                                        borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.08)',
+                                                                        color: '#fca5a5', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                                                    }}
+                                                                >
+                                                                    <Archive size={10} /> Deactivate
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={e => { e.stopPropagation(); handleReactivate(item.id); }}
+                                                                    title="Reactivate"
+                                                                    style={{
+                                                                        display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px',
+                                                                        borderRadius: 6, border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.08)',
+                                                                        color: '#86efac', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                                                    }}
+                                                                >
+                                                                    <ArchiveRestore size={10} /> Reactivate
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                             {/* ───── AUDIT LOG ───── */}
                             {pm.auditLog?.length > 0 && (
@@ -1197,79 +1942,156 @@ export default function PropertiesModule() {
                                 </DetailSection>
                             )}
 
-                            {/* ── Feature 3: Trello Notes ── */}
-                            {propertyWorkitems.length > 0 && (
-                                <div className="s-glass-card">
-                                    <div
-                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: showTrelloNotes ? '1rem' : 0 }}
-                                        onClick={() => setShowTrelloNotes(!showTrelloNotes)}
-                                    >
-                                        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                                            <FileText size={16} />
-                                            Trello Notes
-                                            <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 400 }}>({propertyWorkitems.length})</span>
-                                        </h3>
-                                        {showTrelloNotes ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                            {/* ── Feature 3: Property Linked Items ── */}
+                            {linkedData && (
+                                <div className="s-glass-card" style={{ overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1rem' }}>
+                                        <Link2 size={18} color="#818cf8" />
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Linked Items</h3>
+                                        <span style={{
+                                            fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                                            background: linkedData.summary.total > 0 ? 'rgba(99,102,241,0.15)' : 'rgba(100,116,139,0.1)',
+                                            color: linkedData.summary.total > 0 ? '#a5b4fc' : '#64748b', fontWeight: 600,
+                                        }}>{linkedData.summary.total} total</span>
                                     </div>
-                                    {showTrelloNotes && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                            {propertyWorkitems.map(wi => (
-                                                <div
-                                                    key={wi.id}
-                                                    onClick={() => setExpandedWorkitem(wi)}
+
+                                    {/* ── WorkItems Section ── */}
+                                    {(() => {
+                                        const sections: { key: string; label: string; icon: React.ReactNode; items: any[]; color: string; emptyMsg: string }[] = [
+                                            { key: 'workitems', label: 'Workitems', icon: <Wrench size={14} />, items: linkedData.workitems, color: '#818cf8', emptyMsg: 'No workitems linked' },
+                                            { key: 'legal', label: 'Legal Issues', icon: <Scale size={14} />, items: linkedData.legal, color: '#f59e0b', emptyMsg: 'No legal issues' },
+                                            { key: 'compliance', label: 'Compliance', icon: <ClipboardCheck size={14} />, items: linkedData.compliance, color: '#22c55e', emptyMsg: 'No compliance items' },
+                                            { key: 'incidents', label: 'Incidents', icon: <AlertTriangle size={14} />, items: linkedData.incidents, color: '#ef4444', emptyMsg: 'No incidents reported' },
+                                            { key: 'entityLinks', label: 'Cross-Links', icon: <Link2 size={14} />, items: linkedData.entityLinks, color: '#06b6d4', emptyMsg: 'No entity links' },
+                                        ];
+
+                                        return sections.map(sec => (
+                                            <div key={sec.key} style={{
+                                                borderTop: '1px solid rgba(255,255,255,0.04)',
+                                            }}>
+                                                <button
+                                                    onClick={() => setExpandedLinkedSection(expandedLinkedSection === sec.key ? null : sec.key)}
                                                     style={{
-                                                        padding: '10px 14px',
-                                                        background: 'rgba(255,255,255,0.02)',
-                                                        borderRadius: 8,
-                                                        border: '1px solid rgba(255,255,255,0.05)',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.15s',
+                                                        width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                                                        padding: '10px 14px', border: 'none', background: 'none',
+                                                        color: '#e2e8f0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                                                     }}
-                                                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(99,102,241,0.3)'; }}
-                                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.05)'; }}
                                                 >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                                        <span style={{ fontWeight: 600, fontSize: 13, color: '#e2e8f0' }}>{wi.title}</span>
-                                                        <span className={`s-badge ${wi.status}`} style={{ fontSize: '0.6rem' }}>{wi.status}</span>
-                                                        {wi.priority && (
-                                                            <span style={{
-                                                                fontSize: '0.6rem', padding: '1px 6px', borderRadius: 6,
-                                                                background: wi.priority === 'high' ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.06)',
-                                                                color: wi.priority === 'high' ? '#ef4444' : '#94a3b8',
-                                                                fontWeight: 600, textTransform: 'uppercase',
-                                                            }}>{wi.priority}</span>
+                                                    <span style={{ color: sec.color, display: 'flex' }}>{sec.icon}</span>
+                                                    {sec.label}
+                                                    <span style={{
+                                                        fontSize: 10, padding: '1px 6px', borderRadius: 8, marginLeft: 4,
+                                                        background: sec.items.length > 0 ? `${sec.color}15` : 'rgba(100,116,139,0.1)',
+                                                        color: sec.items.length > 0 ? sec.color : '#475569', fontWeight: 700,
+                                                    }}>{sec.items.length}</span>
+                                                    <span style={{ marginLeft: 'auto', color: '#475569' }}>
+                                                        {expandedLinkedSection === sec.key ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                    </span>
+                                                </button>
+
+                                                {expandedLinkedSection === sec.key && (
+                                                    <div style={{ padding: '0 14px 12px' }}>
+                                                        {sec.items.length === 0 ? (
+                                                            <div style={{ textAlign: 'center', color: '#475569', fontSize: 12, padding: '8px 0' }}>
+                                                                {sec.emptyMsg}
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                                {sec.items.map((item: any) => {
+                                                                    // Entity links have a different shape
+                                                                    if (sec.key === 'entityLinks') {
+                                                                        return (
+                                                                            <div key={item.id} style={{
+                                                                                padding: '8px 12px', borderRadius: 8,
+                                                                                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                                                                                fontSize: 12, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 8,
+                                                                            }}>
+                                                                                <Link2 size={12} color="#06b6d4" />
+                                                                                <span style={{ fontWeight: 600 }}>{item.targetType}</span>
+                                                                                <span style={{ color: '#64748b' }}>→</span>
+                                                                                <span>{item.note || item.linkType || 'related'}</span>
+                                                                            </div>
+                                                                        );
+                                                                    }
+
+                                                                    // Incidents have their own shape
+                                                                    if (sec.key === 'incidents') {
+                                                                        const sevColor = item.severity === 'high' ? '#ef4444' : item.severity === 'medium' ? '#f59e0b' : '#22c55e';
+                                                                        return (
+                                                                            <div key={item.id} style={{
+                                                                                padding: '8px 12px', borderRadius: 8,
+                                                                                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                                                                                cursor: 'pointer', transition: 'all 0.15s',
+                                                                            }}
+                                                                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                                                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                                                                            >
+                                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 13, color: '#e2e8f0' }}>{item.title}</span>
+                                                                                    <span style={{
+                                                                                        fontSize: 9, padding: '1px 6px', borderRadius: 6,
+                                                                                        background: `${sevColor}15`, color: sevColor, fontWeight: 700, textTransform: 'uppercase',
+                                                                                    }}>{item.severity}</span>
+                                                                                    <span className={`s-badge ${item.status}`} style={{ fontSize: '0.55rem' }}>{item.status}</span>
+                                                                                </div>
+                                                                                <div style={{ fontSize: 11, color: '#64748b' }}>{item.category} • {item.reportedAt || item.createdAt}</div>
+                                                                            </div>
+                                                                        );
+                                                                    }
+
+                                                                    // Workitems / Legal / Compliance
+                                                                    return (
+                                                                        <div
+                                                                            key={item.id}
+                                                                            onClick={() => setExpandedWorkitem(item)}
+                                                                            style={{
+                                                                                padding: '8px 12px', borderRadius: 8,
+                                                                                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                                                                                cursor: 'pointer', transition: 'all 0.15s',
+                                                                            }}
+                                                                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = `${sec.color}40`; }}
+                                                                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
+                                                                        >
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                                                                <span style={{ fontWeight: 600, fontSize: 13, color: '#e2e8f0' }}>{item.title}</span>
+                                                                                <span className={`s-badge ${item.status}`} style={{ fontSize: '0.55rem' }}>{item.status}</span>
+                                                                                {item.priority && (
+                                                                                    <span style={{
+                                                                                        fontSize: 9, padding: '1px 6px', borderRadius: 6,
+                                                                                        background: item.priority === 'high' ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.06)',
+                                                                                        color: item.priority === 'high' ? '#ef4444' : '#94a3b8', fontWeight: 600, textTransform: 'uppercase',
+                                                                                    }}>{item.priority}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            {item.description && (
+                                                                                <p style={{ margin: 0, fontSize: 11, color: '#94a3b8', lineHeight: 1.4, maxHeight: 40, overflow: 'hidden' }}>
+                                                                                    {item.description.slice(0, 150)}{item.description.length > 150 ? '…' : ''}
+                                                                                </p>
+                                                                            )}
+                                                                            <div style={{ marginTop: 4, fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                                <span>{item.domain} • {item.type}{(item.metadata as any)?.trelloCardId && ' • via Trello'}</span>
+                                                                                <span style={{ color: '#6366f1', fontWeight: 500 }}>Click to expand →</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    {wi.description && (
-                                                        <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', lineHeight: 1.5, maxHeight: 60, overflow: 'hidden' }}>
-                                                            {wi.description.slice(0, 200)}{wi.description.length > 200 ? '…' : ''}
-                                                        </p>
-                                                    )}
-                                                    {(wi.tags || []).length > 0 && (
-                                                        <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-                                                            {wi.tags.map((tag, i) => (
-                                                                <span key={i} style={{
-                                                                    fontSize: 10, padding: '1px 6px', borderRadius: 4,
-                                                                    background: 'rgba(99,102,241,0.12)', color: '#a5b4fc',
-                                                                }}>{tag}</span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    <div style={{ marginTop: 4, fontSize: 10, color: '#475569' }}>
-                                                        {wi.domain} • {wi.type}
-                                                        {(wi.metadata as any)?.trelloCardId && ' • via Trello'}
-                                                        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#6366f1', fontWeight: 500 }}>Click to expand →</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                )}
+                                            </div>
+                                        ));
+                                    })()}
                                 </div>
                             )}
+                            </>)}
+
+                            {/* ───── DYNAMIC SPACES & ENTITY LINKS (always visible) ───── */}
+                            <ProfileSpaces entityType="property" entityId={selected.id} />
                         </div>
 
-                        {/* ── Right column: Tenant detail panel ── */}
-                        {selectedUnit && (
+                        {/* ── Right column: Tenant detail panel (Units tab only) ── */}
+                        {activeTab === 'units' && selectedUnit && (
                             <div style={{
                                 width: 380, minWidth: 340, flexShrink: 0,
                                 background: 'rgba(255,255,255,0.03)',
@@ -1431,6 +2253,109 @@ export default function PropertiesModule() {
                 )}
             </div>
 
+            {/* Add Inspection Modal */}
+            {showInspectionForm && selected && (
+                <div className="s-modal-overlay" onClick={() => setShowInspectionForm(false)}>
+                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                        <div className="s-modal-header">
+                            <h3>Add Property Inspection</h3>
+                            <button className="s-btn-icon" onClick={() => setShowInspectionForm(false)}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleAddInspection}>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Date</label>
+                                    <input type="date" required className="s-input" value={inspectionFormData.date} onChange={e => setInspectionFormData({...inspectionFormData, date: e.target.value})} />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Type</label>
+                                    <select className="s-input" value={inspectionFormData.type} onChange={e => setInspectionFormData({...inspectionFormData, type: e.target.value})}>
+                                        <option value="Annual">Annual</option>
+                                        <option value="Move-In">Move-In</option>
+                                        <option value="Move-Out">Move-Out</option>
+                                        <option value="Drive-By">Drive-By</option>
+                                        <option value="Maintenance">Maintenance</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Status/Result</label>
+                                    <select className="s-input" value={inspectionFormData.status} onChange={e => setInspectionFormData({...inspectionFormData, status: e.target.value})}>
+                                        <option value="Pass">Pass</option>
+                                        <option value="Fair">Fair</option>
+                                        <option value="Fail">Fail</option>
+                                        <option value="Pending">Pending</option>
+                                    </select>
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Score (Optional)</label>
+                                    <input className="s-input" placeholder="e.g. 95/100" value={inspectionFormData.score} onChange={e => setInspectionFormData({...inspectionFormData, score: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="s-form-group" style={{ marginBottom: 20 }}>
+                                <label>Notes</label>
+                                <textarea className="s-input" style={{ minHeight: 60, resize: 'vertical' }} value={inspectionFormData.notes} onChange={e => setInspectionFormData({...inspectionFormData, notes: e.target.value})} />
+                            </div>
+                            <div className="s-modal-footer">
+                                <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowInspectionForm(false)}>Cancel</button>
+                                <button type="submit" className="s-btn s-btn-primary">Save Inspection</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Budget Modal */}
+            {showBudgetForm && selected && (
+                <div className="s-modal-overlay" onClick={() => setShowBudgetForm(false)}>
+                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 500 }}>
+                        <div className="s-modal-header">
+                            <h3>Update Budgets & Financials</h3>
+                            <button className="s-btn-icon" onClick={() => setShowBudgetForm(false)}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleUpdateBudget}>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Annual Operating Budget ($)</label>
+                                    <input type="number" className="s-input" value={budgetFormData.annualOperatingBudget || ''} onChange={e => setBudgetFormData({...budgetFormData, annualOperatingBudget: e.target.value})} />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Target Operating Reserve ($)</label>
+                                    <input type="number" className="s-input" value={budgetFormData.targetOperatingReserve || ''} onChange={e => setBudgetFormData({...budgetFormData, targetOperatingReserve: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Current Escrow Balance ($)</label>
+                                    <input type="number" className="s-input" value={budgetFormData.escrowBalance || ''} onChange={e => setBudgetFormData({...budgetFormData, escrowBalance: e.target.value})} />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>CapEx Budget ($)</label>
+                                    <input type="number" className="s-input" value={budgetFormData.capexBudget || ''} onChange={e => setBudgetFormData({...budgetFormData, capexBudget: e.target.value})} />
+                                </div>
+                            </div>
+                            <h4 style={{ fontSize: 13, color: '#e2e8f0', margin: '16px 0 8px', paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Operating Variance Thresholds</h4>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Amount Threshold ($)</label>
+                                    <input type="number" className="s-input" value={budgetFormData.varianceThresholdAmount || ''} onChange={e => setBudgetFormData({...budgetFormData, varianceThresholdAmount: e.target.value})} />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Percentage Threshold (%)</label>
+                                    <input type="number" className="s-input" value={budgetFormData.varianceThresholdPercentage || ''} onChange={e => setBudgetFormData({...budgetFormData, varianceThresholdPercentage: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="s-modal-footer" style={{ marginTop: 24 }}>
+                                <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowBudgetForm(false)}>Cancel</button>
+                                <button type="submit" className="s-btn s-btn-primary">Save Budgets</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Trello Card Modal */}
             {
                 expandedWorkitem && (
@@ -1450,6 +2375,83 @@ export default function PropertiesModule() {
                             <button className="s-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #f87171)', color: '#fff', border: 'none' }}
                                 onClick={() => handleDeleteProp(confirmDeleteProp)}>Delete</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Property Modal (detail view) */}
+            {showEditForm && selected && (
+                <div className="s-modal-overlay" onClick={() => setShowEditForm(false)}>
+                    <div className="s-modal" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                        <div className="s-modal-header">
+                            <h3>Edit Property Details</h3>
+                            <button className="s-btn-icon" onClick={() => setShowEditForm(false)}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleUpdate} style={{ flex: 1, overflowY: 'auto' }}>
+                            <div className="s-form-group" style={{ marginBottom: 20 }}>
+                                <div style={{ padding: '12px 16px', background: 'rgba(99,102,241,0.08)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)' }}>
+                                    <h4 style={{ margin: '0 0 4px 0', fontSize: 13, color: '#e2e8f0' }}>Editing: {selected.name}</h4>
+                                    <div style={{ fontSize: 11, color: '#94a3b8' }}>Update the extended property details tracked in Dwellium.</div>
+                                </div>
+                            </div>
+                            <h4 style={{ fontSize: 12, color: '#818cf8', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Rent Ready (Yes/No)</label>
+                                    <select className="s-input" value={editFormData.rentReady || ''} onChange={e => setEditFormData({...editFormData, rentReady: e.target.value})}>
+                                        <option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option>
+                                    </select>
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Ready For Showing On</label>
+                                    <input type="date" className="s-input" value={editFormData.readyForShowingOn || ''} onChange={e => setEditFormData({...editFormData, readyForShowingOn: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="s-form-group" style={{ marginBottom: 20 }}>
+                                <label>Lockbox Info</label>
+                                <input className="s-input" placeholder="e.g. Front Door - Code: 1234" value={editFormData.lockbox || ''} onChange={e => setEditFormData({...editFormData, lockbox: e.target.value})} />
+                            </div>
+                            <h4 style={{ fontSize: 12, color: '#8cf8a2', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Property Descriptors</h4>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>County</label>
+                                    <input className="s-input" placeholder="e.g. King County" value={editFormData.county || ''} onChange={e => setEditFormData({...editFormData, county: e.target.value})} />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Parcel ID</label>
+                                    <input className="s-input" value={editFormData.parcel || ''} onChange={e => setEditFormData({...editFormData, parcel: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Year Built</label>
+                                    <input className="s-input" placeholder="e.g. 1995" value={editFormData.yearBuilt || ''} onChange={e => setEditFormData({...editFormData, yearBuilt: e.target.value})} />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Owner</label>
+                                    <input className="s-input" value={editFormData.owner || ''} onChange={e => setEditFormData({...editFormData, owner: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="s-form-group" style={{ marginBottom: 20 }}>
+                                <label>Description Note</label>
+                                <textarea className="s-input" style={{ minHeight: 60, resize: 'vertical' }} placeholder="Add general description notes here..." value={editFormData.description || ''} onChange={e => setEditFormData({...editFormData, description: e.target.value})} />
+                            </div>
+                            <h4 style={{ fontSize: 12, color: '#f8c28c', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Financial Baseline</h4>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Purchase Price</label>
+                                    <input className="s-input" placeholder="$0.00" value={editFormData.purchasePrice || ''} onChange={e => setEditFormData({...editFormData, purchasePrice: e.target.value})} />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Purchase Date</label>
+                                    <input type="date" className="s-input" value={editFormData.purchaseDate || ''} onChange={e => setEditFormData({...editFormData, purchaseDate: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="s-modal-footer" style={{ marginTop: 24 }}>
+                                <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowEditForm(false)}>Cancel</button>
+                                <button type="submit" className="s-btn s-btn-primary">Save Changes</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

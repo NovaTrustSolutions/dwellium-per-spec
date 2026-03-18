@@ -17,7 +17,8 @@ import {
     ZoomIn, ZoomOut, Maximize2, ChevronDown,
 } from 'lucide-react';
 import { strataGet } from '../strataApi';
-import type { Workitem, Property } from '../strataTypes';
+import type { Workitem, Property, EntityProfile } from '../strataTypes';
+import { LoadingState, ErrorState } from '../StateView';
 
 type VizMode = 'timeline' | 'mindmap' | 'flowchart';
 
@@ -25,12 +26,6 @@ interface EntityLink {
     id: string; sourceType: string; sourceId: string;
     targetType: string; targetId: string; linkType: string;
     note: string; createdAt: string;
-}
-
-interface EntityProfile {
-    id: string; entityType: string; name: string;
-    email: string | null; phone: string | null;
-    status: string; propertyIds: string[];
 }
 
 const ENTITY_COLORS: Record<string, string> = {
@@ -58,6 +53,7 @@ export default function VisualizationModule() {
     const [entities, setEntities] = useState<EntityProfile[]>([]);
     const [links, setLinks] = useState<EntityLink[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [timelineZoom, setTimelineZoom] = useState(1);
     const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
@@ -84,7 +80,7 @@ export default function VisualizationModule() {
                 }
                 setLinks(allLinks);
             } catch { setLinks([]); }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); setError('Failed to load visualization data'); }
         setLoading(false);
     }, []);
 
@@ -262,7 +258,9 @@ export default function VisualizationModule() {
             </div>
 
             {loading ? (
-                <div className="s-loading">Loading visualization data…</div>
+                <LoadingState message="Loading visualization data…" />
+            ) : error ? (
+                <ErrorState message={error} onRetry={fetchData} />
             ) : mode === 'timeline' ? (
                 /* ═══ TIMELINE ═══ */
                 <div style={{ position: 'relative', paddingLeft: 28 }}>

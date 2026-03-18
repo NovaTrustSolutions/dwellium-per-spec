@@ -177,7 +177,7 @@ export default function FileManager() {
             setTimeout(() => dispatch(0), 300);
         } else {
             // Trigger download for binary files
-            const downloadUrl = `${API_FILES}/${file.id}/download`;
+            const downloadUrl = `${API_FILES}/${file.id}`;
             const a = document.createElement('a');
             a.href = downloadUrl;
             a.download = file.name;
@@ -285,7 +285,7 @@ export default function FileManager() {
                                         title="Share via AirDrop / System Share"
                                         onClick={async () => {
                                             try {
-                                                const res = await fetch(`${API_FILES}/${file.id}/download`);
+                                                const res = await fetch(`${API_FILES}/${file.id}`);
                                                 const blob = await res.blob();
                                                 const shareFile = new File([blob], file.name, { type: blob.type });
                                                 if (navigator.share && navigator.canShare?.({ files: [shareFile] })) {
@@ -311,7 +311,7 @@ export default function FileManager() {
                                             const subject = encodeURIComponent(`File: ${file.name}`);
                                             const body = encodeURIComponent(
                                                 `Here is the file "${file.name}" (${formatSize(file.size)}).\n\n` +
-                                                `Download: ${window.location.origin}/api/files/${file.id}/download`
+                                                `Download: ${window.location.origin}/api/files/${file.id}`
                                             );
                                             window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
                                         }}
@@ -323,7 +323,7 @@ export default function FileManager() {
                                         title="Send via Text Message"
                                         onClick={() => {
                                             const body = encodeURIComponent(
-                                                `File: ${file.name} — ${window.location.origin}/api/files/${file.id}/download`
+                                                `File: ${file.name} — ${window.location.origin}/api/files/${file.id}`
                                             );
                                             window.open(`sms:?&body=${body}`, '_blank');
                                         }}

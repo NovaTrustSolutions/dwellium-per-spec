@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
+import { useHierarchy } from '../../context/HierarchyContext';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 
@@ -19,12 +20,62 @@ interface ARAMode {
     entityGuardianRequired: boolean;
 }
 
+interface ContextSource {
+    name: string;
+    type: 'inbox' | 'trello' | 'ruVector' | 'georgiaCode' | 'property' | 'workitem' | 'entity' | 'health' | 'workspace';
+    itemCount: number;
+    snippet?: string;
+}
+
+interface WorkspaceContext {
+    id: string;
+    name: string;
+    type: string;
+    breadcrumb?: string[];
+}
+
+interface MessageObservability {
+    latencyMs: number;
+    contextBuildMs: number;
+    providerUsed: string;
+    tokensUsed?: number;
+    retryCount: number;
+}
+
 interface ChatMessage {
+    id: string;
     role: 'user' | 'assistant';
     content: string;
     mode?: string;
     entityGuardianActive?: boolean;
     timestamp: number;
+    contextSources?: ContextSource[];
+    observability?: MessageObservability;
+}
+
+interface VoiceStatus {
+    tts: {
+        provider: string;
+        available: boolean;
+        fallbacks?: string[];
+    };
+    stt: {
+        provider: string;
+        available: boolean;
+    };
+}
+
+interface LastRequestState {
+    text: string;
+    mode: string;
+    jurisdiction?: 'georgia' | 'florida';
+    workspaceContext?: WorkspaceContext;
+}
+
+interface PersistedConversationState {
+    sessionId: string;
+    messages: ChatMessage[];
+    lastRequest: LastRequestState | null;
 }
 
 /* ── Per-personality color themes ── */
@@ -86,8 +137,73 @@ const DEFAULT_THEME = {
     bgTint: 'rgba(56, 152, 236, 0.04)',
 };
 
+function createChatMessage(
+    partial: Omit<ChatMessage, 'id' | 'timestamp'> & Partial<Pick<ChatMessage, 'timestamp'>>
+): ChatMessage {
+    return {
+        id: `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        timestamp: partial.timestamp ?? Date.now(),
+        ...partial,
+    };
+}
+
+function summarizeText(value: string, fallback: string, maxLength = 72): string {
+    const cleaned = value.replace(/\s+/g, ' ').replace(/[*_`#>-]/g, '').trim();
+    if (!cleaned) return fallback;
+    return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength - 1).trim()}…` : cleaned;
+}
+
+function formatProviderLabel(provider?: string): string {
+    switch (provider) {
+        case 'openai-tts': return 'OpenAI TTS';
+        case 'chatterbox': return 'Chatterbox TTS';
+        case 'google-cloud': return 'Google Cloud';
+        case 'macos-say': return 'macOS Say';
+        case 'browser': return 'Browser Fallback';
+        case 'gpt-4o-mini': return 'GPT-4o mini';
+        default: return provider || 'Unknown';
+    }
+}
+
+function buildSessionStorageKey(mode: string): string {
+    return `dwellium-ara-session-${mode}`;
+}
+
+function exportConversation(messages: ChatMessage[]) {
+    return messages
+        .filter(message =>
+            (message.role === 'user' || message.role === 'assistant') &&
+            !message.content.startsWith('[Error]')
+        )
+        .map(message => ({
+            role: message.role,
+            content: message.content,
+        }));
+}
+
+function hasThinContext(message?: ChatMessage | null): boolean {
+    if (!message || message.role !== 'assistant') return false;
+    const sourceCount = message.contextSources?.length || 0;
+    const totalItems = message.contextSources?.reduce((sum, source) => sum + source.itemCount, 0) || 0;
+    return sourceCount < 2 || totalItems < 3;
+}
+
+function getSafetyNotice(text: string, mode: string): string | null {
+    const legalPattern = /legal|lawsuit|litigation|statute|code section|compliance|attorney|counsel/i;
+    const tenantPattern = /tenant|resident|lease|evict|rent|deposit|fair housing/i;
+
+    if (tenantPattern.test(text)) {
+        return 'Tenant-sensitive topic. Human approval is still required before acting or communicating.';
+    }
+    if (mode === 'lead-counsel' || legalPattern.test(text)) {
+        return 'Legal-sensitive topic. Treat this as decision support, not a substitute for legal review.';
+    }
+    return null;
+}
+
 export default function ARAConsole() {
     const { authFetch, isAuthenticated } = useUser();
+    const { selectedId, getSelectedItem, getBreadcrumb } = useHierarchy();
     const [modes, setModes] = useState<ARAMode[]>([]);
     const [activeMode, setActiveMode] = useState<string>('chief-of-staff');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -99,6 +215,7 @@ export default function ARAConsole() {
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const sessionId = useRef(`session-${Date.now()}`);
+    const skipSessionPersistRef = useRef(true);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +239,7 @@ export default function ARAConsole() {
     const [voiceUploadName, setVoiceUploadName] = useState('');
     const [voiceUploading, setVoiceUploading] = useState(false);
     const [voiceUploadDrag, setVoiceUploadDrag] = useState(false);
-    const [voiceStatus, setVoiceStatus] = useState<{ tts: { provider: string } } | null>(null);
+    const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
     const voiceFileRef = useRef<HTMLInputElement>(null);
 
     // Avatar state (Anam AI)
@@ -134,10 +251,65 @@ export default function ARAConsole() {
     const [avatarPasswordModal, setAvatarPasswordModal] = useState(false);
     const [avatarPasswordInput, setAvatarPasswordInput] = useState('');
     const [avatarPasswordError, setAvatarPasswordError] = useState(false);
-    const [avatarStatus, setAvatarStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+    const [avatarStatus, setAvatarStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error'>('idle');
     const [avatarError, setAvatarError] = useState<string>('');
     const anamClientRef = useRef<any>(null);
     const avatarVideoRef = useRef<HTMLVideoElement>(null);
+    const avatarReconnectTimerRef = useRef<number | null>(null);
+    const avatarRetryCountRef = useRef(0);
+    const [avatarRetryCount, setAvatarRetryCount] = useState(0);
+    const [avatarReconnectTick, setAvatarReconnectTick] = useState(0);
+
+    const [requestError, setRequestError] = useState<string | null>(null);
+    const [lastRequest, setLastRequest] = useState<LastRequestState | null>(null);
+    const [expandedMeta, setExpandedMeta] = useState<Record<string, boolean>>({});
+    const [showObservability, setShowObservability] = useState(false);
+    const [observabilitySnapshot, setObservabilitySnapshot] = useState<any>(null);
+    const [actionMode, setActionMode] = useState<'none' | 'note' | 'workitem'>('none');
+    const [noteSubject, setNoteSubject] = useState('');
+    const [workitemTitle, setWorkitemTitle] = useState('');
+    const [workitemPriority, setWorkitemPriority] = useState<'low' | 'medium' | 'high'>('medium');
+    const [workitemType, setWorkitemType] = useState('task');
+    const [workitemDomain, setWorkitemDomain] = useState('operations');
+    const [actionStatus, setActionStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+    const [actionLoading, setActionLoading] = useState<'note' | 'workitem' | null>(null);
+
+    const clearAvatarReconnectTimer = useCallback(() => {
+        if (avatarReconnectTimerRef.current !== null) {
+            window.clearTimeout(avatarReconnectTimerRef.current);
+            avatarReconnectTimerRef.current = null;
+        }
+    }, []);
+
+    const resetAvatarReconnectState = useCallback(() => {
+        avatarRetryCountRef.current = 0;
+        setAvatarRetryCount(0);
+        clearAvatarReconnectTimer();
+    }, [clearAvatarReconnectTimer]);
+
+    const scheduleAvatarReconnect = useCallback((reason: string) => {
+        clearAvatarReconnectTimer();
+        const nextAttempt = avatarRetryCountRef.current + 1;
+        if (nextAttempt > 3) {
+            setAvatarStatus('error');
+            setAvatarError(reason);
+            return;
+        }
+        avatarRetryCountRef.current = nextAttempt;
+        setAvatarRetryCount(nextAttempt);
+        setAvatarStatus('reconnecting');
+        setAvatarError(`${reason} Retrying (${nextAttempt}/3)…`);
+        avatarReconnectTimerRef.current = window.setTimeout(() => {
+            setAvatarReconnectTick(value => value + 1);
+        }, Math.min(4500, 1200 * nextAttempt));
+    }, [clearAvatarReconnectTimer]);
+
+    const manualAvatarReconnect = useCallback(() => {
+        resetAvatarReconnectState();
+        setAvatarError('');
+        setAvatarStatus('connecting');
+        setAvatarReconnectTick(value => value + 1);
+    }, [resetAvatarReconnectState]);
 
     const handleAvatarToggle = useCallback(() => {
         if (avatarEnabled) {
@@ -146,8 +318,10 @@ export default function ARAConsole() {
                 try { anamClientRef.current.stopStreaming?.(); } catch { /* ignore */ }
                 anamClientRef.current = null;
             }
+            clearAvatarReconnectTimer();
             setAvatarEnabled(false);
             setAvatarStatus('idle');
+            setAvatarError('');
             localStorage.setItem('dwellium-ara-avatar', 'false');
         } else {
             // Turning on — require password
@@ -155,11 +329,14 @@ export default function ARAConsole() {
             setAvatarPasswordInput('');
             setAvatarPasswordError(false);
         }
-    }, [avatarEnabled]);
+    }, [avatarEnabled, clearAvatarReconnectTimer]);
 
     const submitAvatarPassword = useCallback(() => {
         if (avatarPasswordInput === AVATAR_PASSWORD) {
+            resetAvatarReconnectState();
             setAvatarEnabled(true);
+            setAvatarStatus('connecting');
+            setAvatarError('');
             localStorage.setItem('dwellium-ara-avatar', 'true');
             setAvatarPasswordModal(false);
             setAvatarPasswordInput('');
@@ -167,7 +344,7 @@ export default function ARAConsole() {
         } else {
             setAvatarPasswordError(true);
         }
-    }, [avatarPasswordInput]);
+    }, [avatarPasswordInput, resetAvatarReconnectState]);
 
     // Anam SDK initialization — API key flow via auth-protected backend
     useEffect(() => {
@@ -176,11 +353,12 @@ export default function ARAConsole() {
         let cancelled = false;
 
         async function initAnamSdk() {
-            setAvatarStatus('connecting');
+            setAvatarStatus(avatarRetryCountRef.current > 0 ? 'reconnecting' : 'connecting');
             setAvatarError('');
 
             try {
-                // Dynamically import the SDK (requires: npm install @anam-ai/js-sdk)
+                // Dynamically import the SDK only when avatar mode is enabled so
+                // avatar support stays out of the main app path until it is used.
                 const anamModule = await import('@anam-ai/js-sdk').catch(() => null);
 
                 if (!anamModule || cancelled) {
@@ -224,12 +402,19 @@ export default function ARAConsole() {
 
                 // Listen for connection events
                 client.addListener?.(AnamEvent?.CONNECTION_ESTABLISHED || 'CONNECTION_ESTABLISHED', () => {
-                    if (!cancelled) setAvatarStatus('connected');
+                    if (!cancelled) {
+                        resetAvatarReconnectState();
+                        setAvatarStatus('connected');
+                        setAvatarError('');
+                    }
                     console.log('[ARA Avatar] Connection established');
                 });
 
                 client.addListener?.(AnamEvent?.CONNECTION_CLOSED || 'CONNECTION_CLOSED', () => {
-                    if (!cancelled) setAvatarStatus('error');
+                    if (!cancelled) {
+                        setAvatarStatus('disconnected');
+                        scheduleAvatarReconnect('Avatar session closed unexpectedly.');
+                    }
                     console.log('[ARA Avatar] Connection closed');
                 });
 
@@ -238,12 +423,25 @@ export default function ARAConsole() {
                     await client.streamToVideoElement('ara-avatar-video');
                 }
 
-                if (!cancelled) setAvatarStatus('connected');
+                if (!cancelled) {
+                    resetAvatarReconnectState();
+                    setAvatarStatus('connected');
+                }
             } catch (err: any) {
                 if (!cancelled) {
                     console.error('[ARA Avatar] SDK init failed:', err);
-                    setAvatarStatus('error');
-                    setAvatarError(err.message || 'Failed to connect to Anam AI');
+                    const message = err.message || 'Failed to connect to Anam AI';
+                    if (
+                        avatarEnabled &&
+                        !message.includes('not installed') &&
+                        !message.includes('Failed to get session token from backend') &&
+                        !message.includes('ANAM_API_KEY')
+                    ) {
+                        scheduleAvatarReconnect(message);
+                    } else {
+                        setAvatarStatus('error');
+                        setAvatarError(message);
+                    }
                 }
             }
         }
@@ -252,12 +450,13 @@ export default function ARAConsole() {
 
         return () => {
             cancelled = true;
+            clearAvatarReconnectTimer();
             if (anamClientRef.current) {
                 try { anamClientRef.current.stopStreaming?.(); } catch { /* ignore */ }
                 anamClientRef.current = null;
             }
         };
-    }, [avatarEnabled, authFetch]);
+    }, [avatarEnabled, authFetch, avatarReconnectTick, clearAvatarReconnectTimer, resetAvatarReconnectState, scheduleAvatarReconnect]);
 
 
     // TTS state
@@ -409,6 +608,24 @@ export default function ARAConsole() {
 
     useEffect(() => { fetchVoices(); }, [fetchVoices]);
 
+    const fetchObservability = useCallback(async () => {
+        try {
+            const res = await authFetch(`${API_ARA}/observability`);
+            if (!res.ok) throw new Error(`Observability fetch failed: ${res.status}`);
+            const data = await res.json();
+            if (data.success) {
+                setObservabilitySnapshot(data.data);
+            }
+        } catch (err) {
+            console.warn('[ARA] Failed to fetch observability:', err);
+        }
+    }, [authFetch]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        fetchObservability();
+    }, [fetchObservability, isAuthenticated]);
+
     const selectVoice = useCallback((voiceId: string) => {
         setActiveVoice(voiceId);
         localStorage.setItem('dwellium-ara-voice', voiceId);
@@ -495,76 +712,270 @@ export default function ARAConsole() {
     }, [modePickerOpen]);
 
     const currentMode = modes.find(m => m.id === activeMode);
+    const selectedWorkspaceItem = useMemo(() => {
+        if (!selectedId) return null;
+        return getSelectedItem();
+    }, [getSelectedItem, selectedId]);
+    const workspaceContext = useMemo<WorkspaceContext | undefined>(() => {
+        if (!selectedWorkspaceItem) return undefined;
+        const breadcrumb = getBreadcrumb()
+            .map(item => item.name)
+            .filter(Boolean);
+        return {
+            id: selectedWorkspaceItem.id,
+            name: selectedWorkspaceItem.name,
+            type: selectedWorkspaceItem.type,
+            breadcrumb,
+        };
+    }, [getBreadcrumb, selectedWorkspaceItem]);
+    const latestAssistantMessage = useMemo(
+        () => [...messages].reverse().find(message => message.role === 'assistant'),
+        [messages]
+    );
+    const latestUserMessage = useMemo(
+        () => [...messages].reverse().find(message => message.role === 'user'),
+        [messages]
+    );
+    const defaultNoteSubject = useMemo(
+        () => `ARA Note — ${summarizeText(latestUserMessage?.content || latestAssistantMessage?.content || '', 'Conversation summary')}`,
+        [latestAssistantMessage?.content, latestUserMessage?.content]
+    );
+    const defaultWorkitemTitle = useMemo(
+        () => summarizeText(latestUserMessage?.content || latestAssistantMessage?.content || '', 'ARA follow-up'),
+        [latestAssistantMessage?.content, latestUserMessage?.content]
+    );
+    const thinContextWarning = useMemo(
+        () => hasThinContext(latestAssistantMessage)
+            ? 'Thin context: ARA answered with limited supporting context. Verify before acting.'
+            : null,
+        [latestAssistantMessage]
+    );
+    const safetyNotice = useMemo(
+        () => getSafetyNotice(input || latestUserMessage?.content || latestAssistantMessage?.content || '', activeMode),
+        [activeMode, input, latestAssistantMessage?.content, latestUserMessage?.content]
+    );
 
-    const sendMessage = useCallback(async () => {
-        const text = input.trim();
+    useEffect(() => {
+        const storageKey = buildSessionStorageKey(activeMode);
+        let restored: PersistedConversationState | null = null;
+        skipSessionPersistRef.current = true;
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw) {
+                restored = JSON.parse(raw) as PersistedConversationState;
+            }
+        } catch {
+            restored = null;
+        }
+
+        setMessages(restored?.messages || []);
+        setLastRequest(restored?.lastRequest || null);
+        sessionId.current = restored?.sessionId || `session-${Date.now()}`;
+        setRequestError(null);
+        setActionStatus(null);
+        setActionMode('none');
+    }, [activeMode]);
+
+    useEffect(() => {
+        if (skipSessionPersistRef.current) {
+            skipSessionPersistRef.current = false;
+            return;
+        }
+        const storageKey = buildSessionStorageKey(activeMode);
+        const payload: PersistedConversationState = {
+            sessionId: sessionId.current,
+            messages,
+            lastRequest,
+        };
+        localStorage.setItem(storageKey, JSON.stringify(payload));
+    }, [activeMode, lastRequest, messages]);
+
+    const sendPrompt = useCallback(async (
+        rawText: string,
+        options?: { retry?: boolean; mode?: string; jurisdiction?: 'georgia' | 'florida'; workspaceContext?: WorkspaceContext }
+    ) => {
+        const text = rawText.trim();
         if (!text || isLoading) return;
 
-        const userMsg: ChatMessage = {
-            role: 'user',
-            content: text,
-            timestamp: Date.now()
-        };
-        setMessages(prev => [...prev, userMsg]);
-        setInput('');
+        const modeToUse = options?.mode || activeMode;
+        const jurisdictionToUse = options?.jurisdiction || (modeToUse === 'lead-counsel' ? jurisdiction : undefined);
+        const workspaceContextToUse = options?.workspaceContext ?? workspaceContext;
+
+        if (!options?.retry) {
+            setMessages(prev => [...prev, createChatMessage({
+                role: 'user',
+                content: text,
+            })]);
+            setInput('');
+        }
+
+        setRequestError(null);
+        setActionStatus(null);
         setIsLoading(true);
+        setLastRequest({ text, mode: modeToUse, jurisdiction: jurisdictionToUse, workspaceContext: workspaceContextToUse });
 
         try {
             const res = await authFetch(`${API_ARA}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    mode: activeMode,
+                    mode: modeToUse,
                     message: text,
                     sessionId: sessionId.current,
-                    ...(activeMode === 'lead-counsel' ? { jurisdiction } : {})
+                    ...(jurisdictionToUse ? { jurisdiction: jurisdictionToUse } : {}),
+                    ...(workspaceContextToUse ? { workspaceContext: workspaceContextToUse } : {}),
                 })
             });
-            const data = await res.json();
-            if (data.success) {
-                const araMsg: ChatMessage = {
-                    role: 'assistant',
-                    content: data.data.content,
-                    mode: data.data.mode,
-                    entityGuardianActive: data.data.entityGuardianActive,
-                    timestamp: Date.now()
-                };
-                setMessages(prev => [...prev, araMsg]);
+            const data = await res.json().catch(() => ({}));
 
-                // ── Pipe ARA's response to live avatar if connected ──
-                if (avatarEnabled && avatarStatus === 'connected' && anamClientRef.current) {
-                    try {
-                        const cleaned = stripMarkdown(data.data.content);
-                        if (cleaned) {
-                            console.log('[ARA Avatar] Sending ARA response to avatar via talk()');
-                            await anamClientRef.current.talk(cleaned);
-                        }
-                    } catch (avatarErr) {
-                        console.warn('[ARA Avatar] talk() failed, falling back to TTS:', avatarErr);
-                        // Fallback to regular TTS if avatar talk fails
-                        if (ttsEnabled) speakText(data.data.content);
-                    }
-                } else if (ttsEnabled) {
-                    // No avatar — use regular TTS (Chatterbox or browser)
-                    speakText(data.data.content);
-                }
-            } else {
-                setMessages(prev => [...prev, {
-                    role: 'assistant',
-                    content: `[Error] ${data.error}`,
-                    timestamp: Date.now()
-                }]);
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || `Chat failed (${res.status})`);
             }
-        } catch {
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: `[Connection Error] Backend unreachable. Is the server running on port 3000?`,
-                timestamp: Date.now()
-            }]);
-        }
 
-        setIsLoading(false);
-    }, [input, activeMode, isLoading, authFetch, jurisdiction, ttsEnabled, speakText, avatarEnabled, avatarStatus, stripMarkdown]);
+            const araMsg = createChatMessage({
+                role: 'assistant',
+                content: data.data.content,
+                mode: data.data.mode,
+                entityGuardianActive: data.data.entityGuardianActive,
+                contextSources: data.data.contextSources,
+                observability: data.data.observability,
+            });
+            setMessages(prev => [...prev, araMsg]);
+            fetchObservability();
+
+            // ── Pipe ARA's response to live avatar if connected ──
+            if (avatarEnabled && avatarStatus === 'connected' && anamClientRef.current) {
+                try {
+                    const cleaned = stripMarkdown(data.data.content);
+                    if (cleaned) {
+                        console.log('[ARA Avatar] Sending ARA response to avatar via talk()');
+                        await anamClientRef.current.talk(cleaned);
+                    }
+                } catch (avatarErr) {
+                    console.warn('[ARA Avatar] talk() failed, falling back to TTS:', avatarErr);
+                    if (ttsEnabled) speakText(data.data.content);
+                }
+            } else if (ttsEnabled) {
+                speakText(data.data.content);
+            }
+        } catch (err) {
+            const message = err instanceof Error
+                ? err.message
+                : 'Backend unreachable. Is the server running on port 3000?';
+            setRequestError(message);
+            setMessages(prev => [...prev, createChatMessage({
+                role: 'assistant',
+                content: `[Error] ${message}`,
+                mode: modeToUse,
+            })]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [
+        isLoading,
+        activeMode,
+        jurisdiction,
+        workspaceContext,
+        authFetch,
+        avatarEnabled,
+        avatarStatus,
+        fetchObservability,
+        speakText,
+        stripMarkdown,
+        ttsEnabled,
+    ]);
+
+    const sendMessage = useCallback(async () => {
+        await sendPrompt(input);
+    }, [input, sendPrompt]);
+
+    const retryLastRequest = useCallback(async () => {
+        if (!lastRequest || isLoading) return;
+        await sendPrompt(lastRequest.text, {
+            retry: true,
+            mode: lastRequest.mode,
+            jurisdiction: lastRequest.jurisdiction,
+            workspaceContext: lastRequest.workspaceContext,
+        });
+    }, [isLoading, lastRequest, sendPrompt]);
+
+    const toggleMeta = useCallback((messageId: string) => {
+        setExpandedMeta(prev => ({ ...prev, [messageId]: !prev[messageId] }));
+    }, []);
+
+    const openActionComposer = useCallback((nextAction: 'note' | 'workitem') => {
+        setActionStatus(null);
+        setActionMode(nextAction);
+        if (nextAction === 'note') {
+            setNoteSubject(defaultNoteSubject);
+        } else {
+            setWorkitemTitle(defaultWorkitemTitle);
+            setWorkitemPriority('medium');
+            setWorkitemType('task');
+            setWorkitemDomain('operations');
+        }
+    }, [defaultNoteSubject, defaultWorkitemTitle]);
+
+    const submitConversationNote = useCallback(async () => {
+        setActionLoading('note');
+        setActionStatus(null);
+        try {
+            const res = await authFetch(`${API_ARA}/chat/to-note`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: sessionId.current,
+                    subject: noteSubject.trim() || defaultNoteSubject,
+                    history: exportConversation(messages),
+                }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || `Note save failed (${res.status})`);
+            }
+            setActionStatus({ kind: 'success', message: `Saved note ${data.data?.id || ''}`.trim() });
+            setActionMode('none');
+        } catch (err) {
+            setActionStatus({
+                kind: 'error',
+                message: err instanceof Error ? err.message : 'Failed to save note',
+            });
+        } finally {
+            setActionLoading(null);
+        }
+    }, [authFetch, noteSubject, defaultNoteSubject, messages]);
+
+    const submitConversationWorkitem = useCallback(async () => {
+        setActionLoading('workitem');
+        setActionStatus(null);
+        try {
+            const res = await authFetch(`${API_ARA}/chat/to-workitem`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: sessionId.current,
+                    title: workitemTitle.trim() || defaultWorkitemTitle,
+                    priority: workitemPriority,
+                    type: workitemType,
+                    domain: workitemDomain,
+                    history: exportConversation(messages),
+                }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || `Workitem creation failed (${res.status})`);
+            }
+            setActionStatus({ kind: 'success', message: `Created workitem ${data.data?.id || ''}`.trim() });
+            setActionMode('none');
+        } catch (err) {
+            setActionStatus({
+                kind: 'error',
+                message: err instanceof Error ? err.message : 'Failed to create workitem',
+            });
+        } finally {
+            setActionLoading(null);
+        }
+    }, [authFetch, workitemTitle, defaultWorkitemTitle, workitemPriority, workitemType, workitemDomain, messages]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -578,25 +989,20 @@ export default function ARAConsole() {
         setModePickerOpen(false);
         setExpandedTooltipId(null);
         const mode = modes.find(m => m.id === modeId);
-        if (mode) {
+        if (mode && avatarEnabled && avatarStatus === 'connected' && anamClientRef.current) {
             const switchText = `Mode switched: ${mode.name}. ${mode.lens}`;
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: `**Mode switched: ${mode.icon} ${mode.name}**\n\n_${mode.lens}_`,
-                mode: modeId,
-                entityGuardianActive: mode.entityGuardianRequired,
-                timestamp: Date.now()
-            }]);
-            // Announce mode switch via avatar if connected
-            if (avatarEnabled && avatarStatus === 'connected' && anamClientRef.current) {
-                anamClientRef.current.talk(switchText).catch(() => { /* ignore */ });
-            }
+            anamClientRef.current.talk(switchText).catch(() => { /* ignore */ });
         }
     };
 
     const clearChat = () => {
         setMessages([]);
+        setRequestError(null);
+        setActionStatus(null);
+        setActionMode('none');
+        setLastRequest(null);
         authFetch(`${API_ARA}/session/${sessionId.current}`, { method: 'DELETE' }).catch(() => { });
+        localStorage.removeItem(buildSessionStorageKey(activeMode));
         sessionId.current = `session-${Date.now()}`;
     };
 
@@ -815,13 +1221,12 @@ export default function ARAConsole() {
                                 onClick={() => {
                                     if (jurisdiction !== 'georgia') {
                                         setJurisdiction('georgia');
-                                        setMessages(prev => [...prev, {
+                                        setMessages(prev => [...prev, createChatMessage({
                                             role: 'assistant',
                                             content: '**Jurisdiction switched: 🍑 Georgia**\n\n_Georgia legal framework now auto-applied. All analysis will reference O.C.G.A. and Georgia case law._',
                                             mode: 'lead-counsel',
                                             entityGuardianActive: true,
-                                            timestamp: Date.now()
-                                        }]);
+                                        })]);
                                     }
                                 }}
                             >
@@ -832,13 +1237,12 @@ export default function ARAConsole() {
                                 onClick={() => {
                                     if (jurisdiction !== 'florida') {
                                         setJurisdiction('florida');
-                                        setMessages(prev => [...prev, {
+                                        setMessages(prev => [...prev, createChatMessage({
                                             role: 'assistant',
                                             content: '**Jurisdiction switched: 🌴 Florida**\n\n_Florida legal framework now auto-applied. All analysis will reference Fla. Stat. and Florida case law._',
                                             mode: 'lead-counsel',
                                             entityGuardianActive: true,
-                                            timestamp: Date.now()
-                                        }]);
+                                        })]);
                                     }
                                 }}
                             >
@@ -873,8 +1277,8 @@ export default function ARAConsole() {
 
             {/* Chat Area */}
             <div className="ara-chat-area">
-                {messages.map((msg, i) => (
-                    <div key={i} className={`ara-message ara-message--${msg.role}`}>
+                {messages.map((msg) => (
+                    <div key={msg.id} className={`ara-message ara-message--${msg.role}`}>
                         {msg.role === 'assistant' && (
                             <div className="ara-message-header">
                                 <span className="ara-avatar">◆</span>
@@ -910,6 +1314,63 @@ export default function ARAConsole() {
                         <div className="ara-message-body">
                             {renderContent(msg.content)}
                         </div>
+                        {msg.role === 'assistant' && (msg.contextSources?.length || msg.observability) && (
+                            <div className="ara-message-meta">
+                                <div className="ara-message-meta-summary">
+                                    {msg.contextSources?.map(source => (
+                                        <span key={`${msg.id}-${source.name}`} className="ara-meta-pill">
+                                            {source.name} · {source.itemCount}
+                                        </span>
+                                    ))}
+                                    {msg.observability && (
+                                        <>
+                                            <span className="ara-meta-pill">Latency {msg.observability.latencyMs}ms</span>
+                                            <span className="ara-meta-pill">Context {msg.observability.contextBuildMs}ms</span>
+                                            <span className="ara-meta-pill">{formatProviderLabel(msg.observability.providerUsed)}</span>
+                                        </>
+                                    )}
+                                    <button
+                                        className="ara-meta-toggle"
+                                        onClick={() => toggleMeta(msg.id)}
+                                        title="Toggle response details"
+                                    >
+                                        {expandedMeta[msg.id] ? 'Hide details' : 'Details'}
+                                    </button>
+                                </div>
+                                {expandedMeta[msg.id] && (
+                                    <div className="ara-message-meta-detail">
+                                        {msg.contextSources?.length ? (
+                                            <div className="ara-meta-block">
+                                                <strong>Context sources</strong>
+                                                <ul className="ara-meta-list">
+                                                    {msg.contextSources.map(source => (
+                                                        <li key={`${msg.id}-${source.type}-${source.name}`}>
+                                                            <span>{source.name}</span>
+                                                            <span>
+                                                                {source.itemCount} items{source.snippet ? ` · ${source.snippet}` : ''}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ) : null}
+                                        {msg.observability && (
+                                            <div className="ara-meta-block">
+                                                <strong>Request diagnostics</strong>
+                                                <ul className="ara-meta-list">
+                                                    <li><span>Provider</span><span>{formatProviderLabel(msg.observability.providerUsed)}</span></li>
+                                                    <li><span>Latency</span><span>{msg.observability.latencyMs}ms</span></li>
+                                                    <li><span>Context build</span><span>{msg.observability.contextBuildMs}ms</span></li>
+                                                    {typeof msg.observability.tokensUsed === 'number' && (
+                                                        <li><span>Tokens</span><span>{msg.observability.tokensUsed}</span></li>
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 ))}
 
@@ -927,6 +1388,206 @@ export default function ARAConsole() {
 
                 <div ref={chatEndRef} />
             </div>
+
+            {(latestAssistantMessage || requestError || observabilitySnapshot) && (
+                <div className="ara-actions-panel">
+                    <div className="ara-actions-header">
+                        <span>Conversation Actions</span>
+                        <button
+                            className="ara-actions-toggle"
+                            onClick={() => setShowObservability(value => !value)}
+                        >
+                            {showObservability ? 'Hide observability' : 'Show observability'}
+                        </button>
+                    </div>
+                    <div className="ara-actions-row">
+                        <button
+                            className="ara-action-btn"
+                            onClick={() => openActionComposer('note')}
+                            disabled={!latestAssistantMessage || isLoading}
+                        >
+                            Save As Note
+                        </button>
+                        <button
+                            className="ara-action-btn"
+                            onClick={() => openActionComposer('workitem')}
+                            disabled={!latestAssistantMessage || isLoading}
+                        >
+                            Create Workitem
+                        </button>
+                        <button
+                            className="ara-action-btn"
+                            onClick={retryLastRequest}
+                            disabled={!lastRequest || isLoading}
+                        >
+                            Retry Last Prompt
+                        </button>
+                    </div>
+
+                    {workspaceContext && (
+                        <div className="ara-action-feedback ara-action-feedback--context">
+                            Pinned context: {workspaceContext.breadcrumb?.join(' > ') || workspaceContext.name}
+                        </div>
+                    )}
+
+                    {thinContextWarning && (
+                        <div className="ara-action-feedback ara-action-feedback--warning">
+                            {thinContextWarning}
+                        </div>
+                    )}
+
+                    {safetyNotice && (
+                        <div className="ara-action-feedback ara-action-feedback--warning">
+                            {safetyNotice}
+                        </div>
+                    )}
+
+                    {requestError && (
+                        <div className="ara-action-feedback ara-action-feedback--error">
+                            Last request failed: {requestError}
+                        </div>
+                    )}
+
+                    {actionStatus && (
+                        <div className={`ara-action-feedback ${actionStatus.kind === 'success' ? 'ara-action-feedback--success' : 'ara-action-feedback--error'}`}>
+                            {actionStatus.message}
+                        </div>
+                    )}
+
+                    {actionMode === 'note' && (
+                        <div className="ara-action-form">
+                            <label className="ara-action-field">
+                                <span>Note subject</span>
+                                <input
+                                    aria-label="Note subject"
+                                    value={noteSubject}
+                                    onChange={e => setNoteSubject(e.target.value)}
+                                    placeholder="Conversation summary"
+                                />
+                            </label>
+                            <div className="ara-action-form-actions">
+                                <button className="ara-action-btn ara-action-btn--secondary" onClick={() => setActionMode('none')}>
+                                    Cancel
+                                </button>
+                                <button
+                                    className="ara-action-btn"
+                                    onClick={submitConversationNote}
+                                    disabled={actionLoading === 'note'}
+                                >
+                                    {actionLoading === 'note' ? 'Saving…' : 'Save Note'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {actionMode === 'workitem' && (
+                        <div className="ara-action-form">
+                            <label className="ara-action-field">
+                                <span>Workitem title</span>
+                                <input
+                                    aria-label="Workitem title"
+                                    value={workitemTitle}
+                                    onChange={e => setWorkitemTitle(e.target.value)}
+                                    placeholder="ARA follow-up"
+                                />
+                            </label>
+                            <div className="ara-action-grid">
+                                <label className="ara-action-field">
+                                    <span>Priority</span>
+                                    <select
+                                        aria-label="Workitem priority"
+                                        value={workitemPriority}
+                                        onChange={e => setWorkitemPriority(e.target.value as 'low' | 'medium' | 'high')}
+                                    >
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                    </select>
+                                </label>
+                                <label className="ara-action-field">
+                                    <span>Type</span>
+                                    <select
+                                        aria-label="Workitem type"
+                                        value={workitemType}
+                                        onChange={e => setWorkitemType(e.target.value)}
+                                    >
+                                        <option value="task">Task</option>
+                                        <option value="work_order">Work Order</option>
+                                        <option value="inspection">Inspection</option>
+                                        <option value="notice">Notice</option>
+                                    </select>
+                                </label>
+                                <label className="ara-action-field">
+                                    <span>Domain</span>
+                                    <select
+                                        aria-label="Workitem domain"
+                                        value={workitemDomain}
+                                        onChange={e => setWorkitemDomain(e.target.value)}
+                                    >
+                                        <option value="operations">Operations</option>
+                                        <option value="maintenance">Maintenance</option>
+                                        <option value="leasing">Leasing</option>
+                                        <option value="compliance">Compliance</option>
+                                        <option value="hr">HR</option>
+                                        <option value="legal">Legal</option>
+                                        <option value="accounting">Accounting</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div className="ara-action-form-actions">
+                                <button className="ara-action-btn ara-action-btn--secondary" onClick={() => setActionMode('none')}>
+                                    Cancel
+                                </button>
+                                <button
+                                    className="ara-action-btn"
+                                    onClick={submitConversationWorkitem}
+                                    disabled={actionLoading === 'workitem'}
+                                >
+                                    {actionLoading === 'workitem' ? 'Creating…' : 'Create Workitem'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {showObservability && observabilitySnapshot && (
+                        <div className="ara-observability">
+                            <div className="ara-observability-grid">
+                                <div className="ara-observability-card">
+                                    <span>Total chats</span>
+                                    <strong>{observabilitySnapshot.totalChats}</strong>
+                                </div>
+                                <div className="ara-observability-card">
+                                    <span>Avg latency</span>
+                                    <strong>{observabilitySnapshot.avgLatencyMs}ms</strong>
+                                </div>
+                                <div className="ara-observability-card">
+                                    <span>Provider failures</span>
+                                    <strong>{observabilitySnapshot.providerFailures}</strong>
+                                </div>
+                                <div className="ara-observability-card">
+                                    <span>Last provider</span>
+                                    <strong>{formatProviderLabel(observabilitySnapshot.lastChat?.providerUsed)}</strong>
+                                </div>
+                            </div>
+                            {observabilitySnapshot.lastChat && (
+                                <div className="ara-observability-last">
+                                    <span>Last chat:</span>
+                                    <span>{observabilitySnapshot.lastChat.mode}</span>
+                                    <span>{observabilitySnapshot.lastChat.latencyMs}ms</span>
+                                    <span>{observabilitySnapshot.lastChat.contextSourceCount} sources</span>
+                                </div>
+                            )}
+                            {observabilitySnapshot.recentFailures?.length ? (
+                                <div className="ara-observability-failure">
+                                    <strong>Last failure</strong>
+                                    <span>{observabilitySnapshot.recentFailures[observabilitySnapshot.recentFailures.length - 1].mode}</span>
+                                    <span>{observabilitySnapshot.recentFailures[observabilitySnapshot.recentFailures.length - 1].error}</span>
+                                </div>
+                            ) : null}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Input Bar */}
             <div className="ara-input-bar">
@@ -1011,14 +1672,20 @@ export default function ARAConsole() {
 
                     {/* Provider Status */}
                     <div className="ara-voice-provider">
-                        <span className="ara-voice-provider-dot" style={{ background: voiceStatus?.tts?.provider === 'chatterbox' ? '#22c55e' : voiceStatus?.tts?.provider === 'google-cloud' ? '#3b82f6' : '#f59e0b' }} />
+                        <span className="ara-voice-provider-dot" style={{ background: voiceStatus?.tts?.provider === 'openai-tts' ? '#8b5cf6' : voiceStatus?.tts?.provider === 'chatterbox' ? '#22c55e' : voiceStatus?.tts?.provider === 'google-cloud' ? '#3b82f6' : '#f59e0b' }} />
                         <span className="ara-voice-provider-label">
-                            {voiceStatus?.tts?.provider === 'chatterbox' ? 'Chatterbox TTS (SoTA)'
+                            {voiceStatus?.tts?.provider === 'openai-tts' ? 'OpenAI TTS (Primary)'
+                                : voiceStatus?.tts?.provider === 'chatterbox' ? 'Chatterbox TTS (Fallback)'
                                 : voiceStatus?.tts?.provider === 'google-cloud' ? 'Google Cloud TTS'
                                     : voiceStatus?.tts?.provider === 'macos-say' ? 'macOS Say (Basic)'
                                         : 'Browser Fallback'}
                         </span>
                     </div>
+                    {voiceStatus?.tts?.fallbacks?.length ? (
+                        <div className="ara-voice-fallbacks">
+                            Fallback chain: {voiceStatus.tts.fallbacks.map(formatProviderLabel).join(' → ')}
+                        </div>
+                    ) : null}
 
                     {/* Active Voice */}
                     <div className="ara-voice-section">
@@ -1107,20 +1774,27 @@ export default function ARAConsole() {
                         <span className="ara-avatar-badge">CARA II</span>
                         <span className={`ara-avatar-status ara-avatar-status--${avatarStatus}`}>
                             {avatarStatus === 'connecting' && '⟳ Connecting…'}
+                            {avatarStatus === 'reconnecting' && `⟳ Reconnecting (${avatarRetryCount}/3)…`}
                             {avatarStatus === 'connected' && '● Live'}
+                            {avatarStatus === 'disconnected' && '○ Disconnected'}
                             {avatarStatus === 'error' && '⚠ Error'}
                             {avatarStatus === 'idle' && '○ Idle'}
                         </span>
                         <button className="ara-avatar-panel-close" onClick={handleAvatarToggle}>✕</button>
                     </div>
                     <div className="ara-avatar-video-wrap">
-                        {avatarStatus === 'error' && avatarError ? (
+                        {(avatarStatus === 'error' || avatarStatus === 'disconnected') && avatarError ? (
                             <div className="ara-avatar-error">
                                 <span className="ara-avatar-error-icon">⚠️</span>
                                 <p>{avatarError}</p>
-                                <p className="ara-avatar-error-hint">
-                                    To set up: add <code>ANAM_API_KEY</code> and <code>ANAM_PERSONA_ID</code> to the server <code>.env</code> and run <code>npm install @anam-ai/js-sdk</code>
-                                </p>
+                                {(avatarError.includes('ANAM_API_KEY') || avatarError.includes('not installed') || avatarError.includes('session token')) && (
+                                    <p className="ara-avatar-error-hint">
+                                        To set up: add <code>ANAM_API_KEY</code> and <code>ANAM_PERSONA_ID</code> to the server <code>.env</code> and run <code>npm install @anam-ai/js-sdk</code>
+                                    </p>
+                                )}
+                                <button className="ara-avatar-reconnect-btn" onClick={manualAvatarReconnect}>
+                                    Retry Avatar
+                                </button>
                             </div>
                         ) : (
                             <video
@@ -1132,10 +1806,10 @@ export default function ARAConsole() {
                                 muted={false}
                             />
                         )}
-                        {avatarStatus === 'connecting' && (
+                        {(avatarStatus === 'connecting' || avatarStatus === 'reconnecting') && (
                             <div className="ara-avatar-connecting">
                                 <div className="ara-avatar-connecting-spinner" />
-                                <span>Initializing CARA II…</span>
+                                <span>{avatarStatus === 'reconnecting' ? 'Reconnecting CARA II…' : 'Initializing CARA II…'}</span>
                             </div>
                         )}
                     </div>

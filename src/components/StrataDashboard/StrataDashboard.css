@@ -6,51 +6,52 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 .strata-dashboard {
-    /* -- Base Colors -- */
-    --s-bg-primary: #0a0e1a;
-    --s-bg-secondary: #0f1424;
-    --s-bg-tertiary: #151b2e;
-    --s-bg-elevated: #1a2138;
-    --s-bg-surface: #1e2642;
-    --s-bg-hover: #242d4a;
+    /* -- Base Colors (default = dark) -- */
+    --s-bg-primary: var(--bg-desktop, #0a0e1a);
+    --s-bg-secondary: var(--bg-surface, #0f1424);
+    --s-bg-tertiary: var(--bg-surface-elevated, #151b2e);
+    --s-bg-elevated: var(--bg-surface-hover, #1a2138);
+    --s-bg-surface: var(--bg-surface-active, #1e2642);
+    --s-bg-hover: var(--bg-surface-hover, #242d4a);
 
     /* -- Glass -- */
-    --s-glass-bg: rgba(22, 30, 56, 0.65);
-    --s-glass-bg-strong: rgba(22, 30, 56, 0.85);
-    --s-glass-border: rgba(99, 130, 255, 0.12);
-    --s-glass-border-hover: rgba(99, 130, 255, 0.25);
+    --s-glass-bg: var(--bg-glass, rgba(22, 30, 56, 0.65));
+    --s-glass-bg-strong: var(--bg-glass-hover, rgba(22, 30, 56, 0.85));
+    --s-glass-border: var(--border-default, rgba(99, 130, 255, 0.12));
+    --s-glass-border-hover: var(--border-strong, rgba(99, 130, 255, 0.25));
     --s-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
     --s-glass-blur: blur(16px);
 
-    /* -- Accent Colors -- */
-    --s-accent-primary: #6366f1;
-    --s-accent-primary-hover: #818cf8;
+    /* -- Accent Colors — inherit from global accent -- */
+    --s-accent-primary: var(--accent, #6366f1);
+    --s-accent-primary-hover: var(--accent-hover, #818cf8);
     --s-accent-primary-glow: rgba(99, 102, 241, 0.3);
-    --s-accent-gradient: linear-gradient(135deg, #6366f1, #3b82f6, #06b6d4);
+    --s-accent-gradient: linear-gradient(135deg, var(--accent, #6366f1), #3b82f6, #06b6d4);
 
     /* -- Semantic Colors -- */
-    --s-success: #10b981;
+    --s-success: var(--success, #10b981);
     --s-success-bg: rgba(16, 185, 129, 0.12);
     --s-success-border: rgba(16, 185, 129, 0.25);
-    --s-warning: #f59e0b;
+    --s-warning: var(--warning, #f59e0b);
     --s-warning-bg: rgba(245, 158, 11, 0.12);
     --s-warning-border: rgba(245, 158, 11, 0.25);
-    --s-danger: #ef4444;
+    --s-danger: var(--danger, #ef4444);
     --s-danger-bg: rgba(239, 68, 68, 0.12);
     --s-danger-border: rgba(239, 68, 68, 0.25);
     --s-info: #06b6d4;
     --s-info-bg: rgba(6, 182, 212, 0.12);
     --s-info-border: rgba(6, 182, 212, 0.25);
 
-    /* -- Text -- */
-    --s-text-primary: #f1f5f9;
-    --s-text-secondary: #94a3b8;
-    --s-text-tertiary: #64748b;
-    --s-text-accent: #a5b4fc;
+    /* -- Text — inherit from global theme -- */
+    --s-text-primary: var(--text-primary, #f1f5f9);
+    --s-text-secondary: var(--text-secondary, #94a3b8);
+    --s-text-tertiary: var(--text-tertiary, #64748b);
+    --s-text-accent: var(--accent-text, #a5b4fc);
 
-    /* -- Typography -- */
-    --s-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --s-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    /* -- Typography — use global font stack -- */
+    --s-font-sans: var(--font-primary, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    --s-font-mono: var(--font-mono, 'JetBrains Mono', 'Fira Code', monospace);
+    --s-font-primary: var(--font-primary, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
 
     /* -- Spacing -- */
     --s-space-1: 0.25rem;
@@ -71,6 +72,11 @@
     /* -- Shadows -- */
     --s-shadow-glow: 0 0 24px var(--s-accent-primary-glow);
 
+    /* -- Hardcoded RGBA helpers (theme-aware, dark default) -- */
+    --s-separator: rgba(255, 255, 255, 0.04);
+    --s-row-hover: rgba(99, 130, 255, 0.04);
+    --s-row-border: rgba(99, 130, 255, 0.06);
+
     /* -- Transitions -- */
     --s-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --s-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -83,6 +89,24 @@
     padding: var(--s-space-6);
     background: var(--s-bg-primary);
     -webkit-font-smoothing: antialiased;
+    transition: background 0.35s ease, color 0.35s ease;
+}
+
+/* ═══════════════════════════════════════════
+   LIGHT THEME OVERRIDES
+   Applies to: light, trust, vibrant, luxury,
+               healthcare, creative
+   ═══════════════════════════════════════════ */
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .strata-dashboard {
+    --s-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    --s-accent-primary-glow: rgba(99, 102, 241, 0.15);
+    --s-success-bg: rgba(16, 185, 129, 0.08);
+    --s-warning-bg: rgba(245, 158, 11, 0.08);
+    --s-danger-bg: rgba(239, 68, 68, 0.08);
+    --s-info-bg: rgba(6, 182, 212, 0.08);
+    --s-separator: rgba(0, 0, 0, 0.06);
+    --s-row-hover: rgba(0, 0, 0, 0.03);
+    --s-row-border: rgba(0, 0, 0, 0.06);
 }
 
 /* ---------- Dashboard Layout ---------- */
@@ -351,7 +375,7 @@
     align-items: flex-start;
     gap: var(--s-space-3);
     padding: var(--s-space-3) 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--s-separator);
 }
 
 .strata-dashboard .s-activity-item:last-child {
@@ -937,36 +961,36 @@
 .strata-dashboard .s-badge.occupied,
 .strata-dashboard .s-badge.paid,
 .strata-dashboard .s-badge.completed {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
+    background: var(--s-success-bg);
+    color: var(--s-success);
 }
 
 .strata-dashboard .s-badge.vacant,
 .strata-dashboard .s-badge.applied {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
+    background: var(--s-info-bg);
+    color: var(--s-info);
 }
 
 .strata-dashboard .s-badge.maintenance,
 .strata-dashboard .s-badge.in_progress,
 .strata-dashboard .s-badge.expiring,
 .strata-dashboard .s-badge.screening {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
+    background: var(--s-warning-bg);
+    color: var(--s-warning);
 }
 
 .strata-dashboard .s-badge.turn,
 .strata-dashboard .s-badge.open,
 .strata-dashboard .s-badge.expired,
 .strata-dashboard .s-badge.critical {
-    background: rgba(239, 68, 68, 0.15);
-    color: #f87171;
+    background: var(--s-danger-bg);
+    color: var(--s-danger);
 }
 
 .strata-dashboard .s-badge.review,
 .strata-dashboard .s-badge.approved {
     background: rgba(99, 102, 241, 0.15);
-    color: #818cf8;
+    color: var(--s-accent-primary-hover);
 }
 
 .strata-dashboard .s-badge.capex {
@@ -987,8 +1011,8 @@
 
 .strata-dashboard .s-badge.lease_signed,
 .strata-dashboard .s-badge.move_in {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
+    background: var(--s-success-bg);
+    color: var(--s-success);
 }
 
 .strata-dashboard .s-badge-sm {
@@ -1021,11 +1045,11 @@
 
 .strata-dashboard .s-table td {
     padding: 10px 12px;
-    border-bottom: 1px solid rgba(99, 130, 255, 0.06);
+    border-bottom: 1px solid var(--s-row-border);
 }
 
 .strata-dashboard .s-table tr:hover td {
-    background: rgba(99, 130, 255, 0.04);
+    background: var(--s-row-hover);
 }
 
 .strata-dashboard .s-td-bold {
@@ -1034,7 +1058,7 @@
 }
 
 .strata-dashboard .s-text-success {
-    color: #34d399;
+    color: var(--s-success);
 }
 
 .strata-dashboard .s-text-muted {
@@ -1061,7 +1085,7 @@
 
 .strata-dashboard .s-list-item {
     padding: 12px 14px;
-    border-bottom: 1px solid rgba(99, 130, 255, 0.06);
+    border-bottom: 1px solid var(--s-row-border);
     cursor: pointer;
     transition: background 0.15s ease;
     display: flex;
@@ -1156,7 +1180,7 @@
     border: 1px solid;
 }
 
-/* ── Loading/Empty States ── */
+/* ── Loading/Empty States (legacy, kept for compat) ── */
 .strata-dashboard .s-loading,
 .strata-dashboard .s-empty {
     display: flex;
@@ -1165,6 +1189,105 @@
     height: 200px;
     color: var(--s-text-tertiary);
     font-size: 0.85rem;
+}
+
+/* ══════════════════════════════════════════════
+   StateView — shared loading / empty / error
+   ══════════════════════════════════════════════ */
+
+@keyframes s-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes s-state-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.strata-dashboard .s-state-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    gap: 10px;
+    padding: 32px 24px;
+    animation: s-state-fade-in 0.3s ease-out;
+}
+
+/* ── Spinner ── */
+.strata-dashboard .s-state-spinner {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid rgba(99, 102, 241, 0.12);
+    border-top-color: var(--s-accent-primary);
+    animation: s-spin 0.8s linear infinite;
+}
+
+/* ── Icon (empty / error) ── */
+.strata-dashboard .s-state-icon {
+    color: var(--s-text-tertiary);
+    opacity: 0.35;
+}
+
+/* ── Text ── */
+.strata-dashboard .s-state-message {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--s-text-secondary);
+    text-align: center;
+}
+
+.strata-dashboard .s-state-sub {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--s-text-tertiary);
+    text-align: center;
+    max-width: 280px;
+}
+
+/* ── Action slot ── */
+.strata-dashboard .s-state-action {
+    margin-top: 6px;
+}
+
+/* ── Retry button ── */
+.strata-dashboard .s-state-retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 7px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--s-accent-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.strata-dashboard .s-state-retry:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: var(--s-accent-primary);
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.15);
+}
+
+/* ── Error variant ── */
+.strata-dashboard .s-state-error .s-state-icon {
+    color: var(--s-danger);
+    opacity: 0.6;
+}
+
+.strata-dashboard .s-state-error .s-state-message {
+    color: var(--s-danger);
+}
+
+.strata-dashboard .s-state-error .s-state-sub {
+    color: var(--s-text-tertiary);
 }
 
 /* ── Search Box ── */
@@ -1210,13 +1333,13 @@
 }
 
 .strata-dashboard .s-avatar.vendor {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
+    background: var(--s-warning-bg);
+    color: var(--s-warning);
 }
 
 .strata-dashboard .s-avatar.owner {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
+    background: var(--s-success-bg);
+    color: var(--s-success);
 }
 
 .strata-dashboard .s-avatar-lg {
@@ -1234,13 +1357,13 @@
 }
 
 .strata-dashboard .s-avatar-lg.vendor {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
+    background: var(--s-warning-bg);
+    color: var(--s-warning);
 }
 
 .strata-dashboard .s-avatar-lg.owner {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
+    background: var(--s-success-bg);
+    color: var(--s-success);
 }
 
 /* ── Modal ── */
@@ -1666,7 +1789,7 @@
     display: flex;
     justify-content: space-between;
     padding: 6px 0;
-    border-bottom: 1px solid rgba(99, 130, 255, 0.06);
+    border-bottom: 1px solid var(--s-row-border);
 }
 
 .strata-dashboard .s-vetting-row label {
@@ -1719,7 +1842,7 @@
     display: grid;
     grid-template-columns: 1fr 2fr 1fr 1fr;
     padding: 8px 0;
-    border-bottom: 1px solid rgba(99, 130, 255, 0.06);
+    border-bottom: 1px solid var(--s-row-border);
 }
 
 .strata-dashboard .s-ledger-header {
@@ -1735,7 +1858,7 @@
     display: flex;
     gap: 10px;
     padding: 10px 0;
-    border-bottom: 1px solid rgba(99, 130, 255, 0.06);
+    border-bottom: 1px solid var(--s-row-border);
 }
 
 .strata-dashboard .s-comm-icon {
@@ -1787,7 +1910,7 @@
 }
 
 .strata-dashboard .s-rating-stars {
-    color: #fbbf24;
+    color: var(--s-warning);
     letter-spacing: 2px;
 }
 
@@ -1927,5 +2050,334 @@
 
 /* [P5] Table zebra stripe with glass effect */
 .strata-table-row:nth-child(even) {
-    background: rgba(255, 255, 255, 0.015);
+    background: var(--s-row-hover);
+}
+
+/* ========================================
+   PROPERTY WORKSPACE — Tab Navigation
+   ======================================== */
+
+.strata-dashboard .s-workspace-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 8px 0 4px;
+    border-bottom: 1px solid var(--s-separator);
+    margin-bottom: 12px;
+}
+
+.strata-dashboard .s-workspace-tab {
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--s-text-tertiary, #64748b);
+    font-family: var(--s-font-primary, 'Inter', sans-serif);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.strata-dashboard .s-workspace-tab:hover {
+    background: var(--s-row-hover);
+    color: var(--s-text-secondary, #94a3b8);
+    border-color: var(--s-separator);
+}
+
+.strata-dashboard .s-workspace-tab.active {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--s-accent-primary, #6366f1);
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.1);
+}
+
+/* ========================================
+   PHASE 2 — Work Item Cards & Filters
+   ======================================== */
+
+.strata-dashboard .s-workitem-card {
+    position: relative;
+    transition: all 0.2s ease;
+}
+.strata-dashboard .s-workitem-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Filter pill animations */
+.strata-dashboard .s-filter-pills button {
+    transition: all 0.15s ease;
+}
+.strata-dashboard .s-filter-pills button:hover {
+    transform: scale(1.04);
+}
+
+/* Tracking toggle */
+.strata-dashboard .s-tracking-toggle button {
+    transition: all 0.2s ease;
+}
+.strata-dashboard .s-tracking-toggle button:hover {
+    filter: brightness(1.15);
+}
+
+/* Search input focus glow */
+.strata-dashboard .s-glass-card input[type="text"]:focus {
+    border-color: rgba(99, 102, 241, 0.4) !important;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LIGHT THEME — Inline-style overrides for Strata sub-modules
+   These override hardcoded dark hex values in TSX inline styles
+   ═══════════════════════════════════════════════════════════ */
+
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .strata-dashboard {
+
+    /* ── Modals & Overlays ── */
+    & [style*="background: #1e293b"],
+    & [style*="background: '#1e293b'"],
+    & [style*="background: #111827"],
+    & [style*="background: '#111827'"],
+    & [style*="background: #1e2130"],
+    & [style*="background: '#1e2130'"],
+    & [style*="background: #0f172a"],
+    & [style*="background: '#0f172a'"],
+    & [style*="background: #1a1a2e"],
+    & [style*="background: '#1a1a2e'"],
+    & [style*="background: #1e2537"],
+    & [style*="background: '#1e2537'"],
+    & [style*="background: #0f1624"],
+    & [style*="background: '#0f1624'"],
+    & [style*="background: #0f1219"],
+    & [style*="background: '#0f1219'"] {
+        background: var(--bg-surface) !important;
+    }
+
+    /* ── Primary text color overrides ── */
+    & [style*="color: #e2e8f0"],
+    & [style*="color: '#e2e8f0'"],
+    & [style*="color: #f1f5f9"],
+    & [style*="color: '#f1f5f9'"],
+    & [style*="color: #cbd5e1"],
+    & [style*="color: '#cbd5e1'"] {
+        color: var(--text-primary) !important;
+    }
+
+    /* ── Secondary text color overrides ── */
+    & [style*="color: #94a3b8"],
+    & [style*="color: '#94a3b8'"] {
+        color: var(--text-secondary) !important;
+    }
+
+    /* ── Tertiary text color overrides ── */
+    & [style*="color: #64748b"],
+    & [style*="color: '#64748b'"],
+    & [style*="color: #475569"],
+    & [style*="color: '#475569'"] {
+        color: var(--text-tertiary) !important;
+    }
+
+    /* ── Select dropdown options ── */
+    & select option {
+        background: var(--bg-surface) !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* ── Inputs ── */
+    & input,
+    & textarea,
+    & select {
+        background: var(--bg-surface-elevated) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-default) !important;
+    }
+
+    & input::placeholder,
+    & textarea::placeholder {
+        color: var(--text-tertiary) !important;
+    }
+
+    /* ── White-alpha → Black-alpha border overrides ── */
+    & [style*="border: 1px solid rgba(255,255,255,"],
+    & [style*="border: 1px solid rgba(255, 255, 255,"] {
+        border-color: var(--border-default) !important;
+    }
+
+    /* ── Separator borders ── */
+    & [style*="borderBottom: '1px solid rgba(255,255,255,"],
+    & [style*="border-bottom: 1px solid rgba(255,255,255,"] {
+        border-bottom-color: var(--border-subtle) !important;
+    }
+
+    /* ── Recharts Tooltip overrides ── */
+    & .recharts-tooltip-wrapper {
+        background: var(--bg-surface) !important;
+        border-color: var(--border-default) !important;
+    }
+
+    /* ── Premium polish overrides ── */
+    & .strata-table-row:hover {
+        background: rgba(0, 0, 0, 0.04) !important;
+        box-shadow: inset 3px 0 0 var(--accent);
+    }
+
+    & .strata-card:hover,
+    & .strata-panel:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(0, 0, 0, 0.02);
+    }
+
+    & .strata-filter-tag,
+    & .strata-active-filter {
+        box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LIGHT THEME — TenantPortal CSS overrides
+   ═══════════════════════════════════════════════════════════ */
+
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .tp-module {
+    /* Header */
+    & .tp-header {
+        border-bottom-color: var(--border-subtle);
+    }
+    & .tp-header::after {
+        background: linear-gradient(90deg, var(--accent), var(--accent-hover), transparent);
+    }
+    & .tp-title {
+        background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+    & .tp-subtitle { color: var(--text-tertiary); }
+    & .tp-search-icon { color: var(--text-tertiary); }
+
+    /* Search & inputs */
+    & .tp-search {
+        border-color: var(--border-default);
+        background: var(--bg-surface-elevated);
+        color: var(--text-primary);
+    }
+    & .tp-search:focus { background: var(--bg-surface); }
+    & .tp-search::placeholder { color: var(--text-tertiary); }
+
+    /* Refresh button */
+    & .tp-refresh-btn {
+        border-color: var(--border-default);
+        background: var(--bg-surface-elevated);
+        color: var(--text-tertiary);
+    }
+
+    /* KPI Cards */
+    & .tp-kpi-card {
+        background: var(--bg-surface);
+        border-color: var(--border-subtle);
+    }
+    & .tp-kpi-card:hover { border-color: var(--border-default); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    & .tp-kpi-value { color: var(--text-primary); }
+    & .tp-kpi-label { color: var(--text-tertiary); }
+
+    /* Tabs */
+    & .tp-tabs {
+        background: var(--bg-surface-elevated);
+        border-color: var(--border-subtle);
+    }
+    & .tp-tab { color: var(--text-tertiary); }
+    & .tp-tab:hover { color: var(--text-secondary); background: var(--bg-surface-hover); }
+    & .tp-tab.active { color: var(--accent-text); }
+    & .tp-tab.active::after { background: var(--accent); }
+
+    /* Cards */
+    & .tp-card {
+        background: var(--bg-surface);
+        border-color: var(--border-subtle);
+    }
+    & .tp-card-header {
+        border-bottom-color: var(--border-subtle);
+    }
+    & .tp-card-header h3 { color: var(--text-primary); }
+    & .tp-count { color: var(--text-tertiary); background: var(--bg-surface-elevated); }
+
+    /* Tables */
+    & .tp-table-wrap { border-color: var(--border-subtle); }
+    & .tp-table thead th {
+        color: var(--text-tertiary);
+        background: var(--bg-surface-elevated);
+        border-bottom-color: var(--border-default);
+    }
+    & .tp-table tbody tr { border-bottom-color: var(--border-subtle); }
+    & .tp-table tbody tr:hover { background: rgba(0,0,0,0.03); }
+    & .tp-table td { color: var(--text-secondary); }
+    & .tp-cell-name { color: var(--text-primary) !important; }
+    & .tp-cell-sub { color: var(--text-tertiary) !important; }
+    & .tp-cell-money { color: var(--success) !important; }
+    & .tp-table tbody tr.tp-row-selected { border-left-color: var(--accent); }
+
+    /* Detail card */
+    & .tp-detail-card { border-left-color: var(--accent); border-color: var(--border-default); background: var(--accent-subtle); }
+    & .tp-detail-header { border-bottom-color: var(--border-subtle); }
+    & .tp-detail-name { color: var(--text-primary); }
+    & .tp-detail-item {
+        color: var(--text-secondary);
+        background: var(--bg-surface-elevated);
+        border-color: var(--border-subtle);
+    }
+    & .tp-detail-item:hover { border-color: var(--border-default); }
+    & .tp-detail-item svg { color: var(--accent); }
+    & .tp-detail-item-label { color: var(--text-tertiary); }
+    & .tp-detail-item-value { color: var(--text-primary); }
+
+    /* Pagination */
+    & .tp-pagination { border-top-color: var(--border-subtle); }
+    & .tp-pagination-info { color: var(--text-tertiary); }
+    & .tp-page-btn {
+        border-color: var(--border-default);
+        background: var(--bg-surface-elevated);
+        color: var(--text-secondary);
+    }
+    & .tp-page-indicator { color: var(--text-tertiary); }
+
+    /* Messages */
+    & .tp-msg { border-color: var(--border-subtle); }
+    & .tp-msg:hover { border-color: var(--border-default); }
+    & .tp-msg-inbound { background: rgba(34, 197, 94, 0.05); }
+    & .tp-msg-outbound { background: var(--accent-subtle); }
+    & .tp-msg-sender { color: var(--text-primary); }
+    & .tp-msg-subject { color: var(--text-tertiary); }
+    & .tp-msg-time { color: var(--text-tertiary); }
+    & .tp-msg-body { color: var(--text-secondary); }
+
+    /* Reply form */
+    & .tp-reply-title { color: var(--text-primary); }
+    & .tp-input {
+        border-color: var(--border-default);
+        background: var(--bg-surface-elevated);
+        color: var(--text-primary);
+    }
+    & .tp-input::placeholder { color: var(--text-tertiary); }
+    & .tp-btn-ghost {
+        border-color: var(--border-default);
+        color: var(--text-secondary);
+    }
+    & .tp-btn-ghost:hover {
+        border-color: var(--border-strong);
+        color: var(--text-primary);
+        background: var(--bg-surface-hover);
+    }
+    & .tp-reply-btn { color: var(--accent-text); }
+
+    /* Empty & loading states */
+    & .tp-empty { color: var(--text-tertiary); }
+    & .tp-empty h4 { color: var(--text-secondary); }
+    & .tp-empty p { color: var(--text-tertiary); }
+    & .tp-skeleton {
+        background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 75%);
+        background-size: 200% 100%;
+    }
+
+    /* Occupancy ring */
+    & .tp-occupancy-ring-text { color: var(--text-primary); }
+    & .tp-days-left.safe { color: var(--text-secondary); }
+    & .tp-lease-progress { background: var(--border-subtle); }
 }

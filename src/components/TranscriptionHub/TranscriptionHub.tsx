@@ -85,6 +85,8 @@ interface SavedTranscription {
     duration: number;
     wordCount: number;
     createdAt: number;
+    summaryStatus?: 'draft' | 'pending_review' | 'approved' | 'rejected';
+    approvedBy?: string;
 }
 
 type RecordingState = 'idle' | 'recording' | 'paused' | 'processing';
@@ -94,6 +96,7 @@ type TabView = 'recorder' | 'log' | 'upload' | 'meeting_manager';
 const API_TRANSCRIBE = `${API_BASE}/api/transcribe`;
 const API_GEORGIA_CODE = `${API_BASE}/api/georgia-code`;
 const STORAGE_KEY = 'dwellium-transcription-log';
+const MEETING_SCRIPT_KEY = 'dwellium-meeting-script';
 
 const SPEAKER_COLORS: Record<string, { bg: string; text: string; ring: string }> = {
     'User': { bg: 'rgba(99, 102, 241, 0.15)', text: '#818cf8', ring: '#6366f1' },
@@ -112,6 +115,13 @@ const VERDICT_CONFIG: Record<string, { icon: string; label: string; color: strin
     disputed: { icon: '❌', label: 'Disputed', color: '#ef4444' },
     unverifiable: { icon: '⚠️', label: 'Unverifiable', color: '#fbbf24' },
     partially_true: { icon: '🔶', label: 'Partially True', color: '#fb923c' },
+};
+
+const SUMMARY_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+    draft: { label: 'Draft', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.16)' },
+    pending_review: { label: 'Pending Review', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.16)' },
+    approved: { label: 'Approved', color: '#34d399', bg: 'rgba(52, 211, 153, 0.16)' },
+    rejected: { label: 'Rejected', color: '#f87171', bg: 'rgba(248, 113, 113, 0.16)' },
 };
 
 // ============================================
@@ -307,6 +317,32 @@ export default function TranscriptionHub() {
     const [coachingFeedback, setCoachingFeedback] = useState<string>('Meeting manager standing by. Start recording.');
     const [coachingFlags, setCoachingFlags] = useState<string[]>([]);
     const [sendingChunk, setSendingChunk] = useState(false);
+
+    // --- Dynamic Meeting Intelligence state ---
+    const [meetingScript, setMeetingScript] = useState<string>(() => {
+        try { return localStorage.getItem(MEETING_SCRIPT_KEY) || ''; } catch { return ''; }
+    });
+    const [talkingPoints, setTalkingPoints] = useState<Array<{ point: string; reason: string; priority: string }>>([]);
+    const [talkingPointsLoading, setTalkingPointsLoading] = useState(false);
+    const [rebuttals, setRebuttals] = useState<Array<{ theirArgument: string; suggestedRebuttal: string; strength: string }>>([]);
+    const [rebuttalsLoading, setRebuttalsLoading] = useState(false);
+    const [onDemandSummary, setOnDemandSummary] = useState<{ summary: string; keyPoints: string[]; unansweredQuestions: string[]; suggestedNextTopics: string[] } | null>(null);
+    const [onDemandSummaryLoading, setOnDemandSummaryLoading] = useState(false);
+
+    // --- Post-Meeting Actions state ---
+    const [postMeetingLogId, setPostMeetingLogId] = useState<string | null>(null);
+    const [aiSummary, setAiSummary] = useState<string | null>(null);
+    const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+    const [aiActionItems, setAiActionItems] = useState<Array<{ description: string; assignee: string | null; priority: string }>>([]);
+    const [aiActionItemsLoading, setAiActionItemsLoading] = useState(false);
+    const [aiDecisions, setAiDecisions] = useState<Array<{ decision: string; madeBy: string | null; context: string }>>([]);
+    const [aiDecisionsLoading, setAiDecisionsLoading] = useState(false);
+    const [aiRecapEmail, setAiRecapEmail] = useState<{ subject: string; body: string } | null>(null);
+    const [aiRecapEmailLoading, setAiRecapEmailLoading] = useState(false);
+    const [aiRewrite, setAiRewrite] = useState<string | null>(null);
+    const [aiRewriteLoading, setAiRewriteLoading] = useState(false);
+    const [aiDraft, setAiDraft] = useState<{ content: string; title: string } | null>(null);
+    const [aiDraftLoading, setAiDraftLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [audioLevel, setAudioLevel] = useState(0);
     const [speakerNames, setSpeakerNames] = useState<Record<string, string>>({});
@@ -380,6 +416,8 @@ export default function TranscriptionHub() {
                             duration: log.duration || 0,
                             wordCount: log.wordCount || 0,
                             createdAt: new Date(log.createdAt).getTime(),
+                            summaryStatus: log.summaryStatus || 'draft',
+                            approvedBy: log.approvedBy || undefined,
                         }));
                         // Merge: backend is source of truth, but preserve any localStorage-only entries
                         setSavedTranscriptions(prev => {
@@ -612,20 +650,8 @@ export default function TranscriptionHub() {
             isProcessingMeeting.current = true;
             lastMeetingCheckRef.current = now;
 
-            const MEETING_SCRIPT = `
-NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
-
-1. "Thank you. We know the main concerns are traffic, drainage, and trees."
-2. "We began with 7 lots. The stream buffer changed, forcing a reduction to 6."
-3. "We redesigned and submitted this 6-lot plan to the City."
-4. "This is already the reduced plan, not the maximum concept."
-5. (If pushed for 5): "This plan has already been reduced once. Six is the result."
-6. (If pressed on impact): "That is a fair concern. We will address it directly."
-7. (If asked to change it now): "We are here to explain the 6-lot plan we moved forward with."
-8. REPEAT: "This plan has already been reduced once."
-9. REPEAT: "We understand the practical concerns."
-10. NEVER SAY: "Rights," "Taking," "CID's plan," or "Engineer said 5."
-`;
+            // Use dynamic meeting script from state (or a generic fallback if empty)
+            const scriptToUse = meetingScript.trim() || 'No specific script loaded. Provide general coaching: keep the speaker on topic, professional, and concise. Flag any unprofessional language or tangents.';
 
             try {
                 const authToken = localStorage.getItem('dwellium-token') || '';
@@ -637,7 +663,7 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
                     },
                     body: JSON.stringify({
                         transcript: recentSegments,
-                        scriptContent: MEETING_SCRIPT
+                        scriptContent: scriptToUse
                     })
                 });
 
@@ -1239,6 +1265,7 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
             duration: elapsed,
             wordCount,
             createdAt: Date.now(),
+            summaryStatus: 'draft',
         };
         // Save to local state immediately
         setSavedTranscriptions(prev => [entry, ...prev]);
@@ -1282,6 +1309,82 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
             })
             .catch(err => console.warn('[TranscriptionHub] Backend delete error:', err));
     };
+
+    const showToastMessage = useCallback((message: string) => {
+        window.dispatchEvent(new CustomEvent('qualia-toast', { detail: message }));
+    }, []);
+
+    const updateSavedLog = useCallback((logId: string, patch: Partial<SavedTranscription>) => {
+        setSavedTranscriptions(prev => prev.map(log => log.id === logId ? { ...log, ...patch } : log));
+    }, []);
+
+    const exportLogToNote = useCallback(async (logId: string) => {
+        const entry = savedTranscriptions.find(log => log.id === logId);
+        if (!entry) return;
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/to-note`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: `Transcript: ${entry.title}` }),
+            });
+            const json = await res.json();
+            if (!res.ok || !json?.success) {
+                throw new Error(json?.error || `Note export failed (${res.status})`);
+            }
+            showToastMessage('📝 Transcript saved as note');
+        } catch (err) {
+            showToastMessage(`❌ ${err instanceof Error ? err.message : 'Failed to save transcript as note'}`);
+        }
+    }, [savedTranscriptions, showToastMessage]);
+
+    const exportLogToWorkitem = useCallback(async (logId: string) => {
+        const entry = savedTranscriptions.find(log => log.id === logId);
+        if (!entry) return;
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/to-workitem`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: `Follow-up: ${entry.title}`,
+                    type: 'task',
+                    priority: 'medium',
+                    domain: 'operations',
+                }),
+            });
+            const json = await res.json();
+            if (!res.ok || !json?.success) {
+                throw new Error(json?.error || `Workitem export failed (${res.status})`);
+            }
+            showToastMessage('✅ Transcript exported to workitem');
+        } catch (err) {
+            showToastMessage(`❌ ${err instanceof Error ? err.message : 'Failed to export transcript to workitem'}`);
+        }
+    }, [savedTranscriptions, showToastMessage]);
+
+    const setTranscriptReviewStatus = useCallback(async (
+        logId: string,
+        status: 'approved' | 'rejected' | 'pending_review'
+    ) => {
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            const json = await res.json();
+            if (!res.ok || !json?.success) {
+                throw new Error(json?.error || `Approval update failed (${res.status})`);
+            }
+            updateSavedLog(logId, {
+                summaryStatus: json.data?.summaryStatus || status,
+                approvedBy: json.data?.approvedBy,
+            });
+            const label = status === 'pending_review' ? 'marked pending review' : `marked ${status}`;
+            showToastMessage(`📋 Transcript ${label}`);
+        } catch (err) {
+            showToastMessage(`❌ ${err instanceof Error ? err.message : 'Failed to update transcript review state'}`);
+        }
+    }, [showToastMessage, updateSavedLog]);
 
     // ---- UPLOAD & FACT CHECK ----
     const AUDIO_EXTENSIONS = ['mp3', 'wav', 'm4a', 'flac', 'webm', 'mp4', 'ogg', 'aac', 'wma'];
@@ -1580,6 +1683,200 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
             window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `❌ Upload error` }));
         }
     };
+
+    const saveUploadDocumentToFiles = useCallback(async () => {
+        const content = uploadText.trim()
+            || uploadTranscript.map(s => `[${formatTimestamp(s.start)}] ${getSpeakerDisplayName(s.speaker)}: ${s.text}`).join('\n');
+        if (!content.trim()) return;
+
+        const baseName = uploadFileName
+            ? uploadFileName.replace(/\.[^.]+$/, '')
+            : `transcription-upload-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}`;
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const formData = new FormData();
+        formData.append('file', blob, `${baseName}.txt`);
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/files/upload`, { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (!resp.ok || !data?.success) {
+                throw new Error(data?.error || `Upload failed (${resp.status})`);
+            }
+            setActionStatus({ type: 'success', message: 'Transcript saved into Files' });
+            showToastMessage('📁 Upload transcript saved to Files');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to save upload document';
+            setActionStatus({ type: 'error', message: 'Save failed', detail: message });
+        }
+    }, [uploadText, uploadTranscript, uploadFileName, showToastMessage]);
+
+    // ============================================
+    // MEETING INTELLIGENCE FUNCTIONS
+    // ============================================
+
+    // Persist meeting script to localStorage
+    useEffect(() => {
+        try { localStorage.setItem(MEETING_SCRIPT_KEY, meetingScript); } catch { /* ok */ }
+    }, [meetingScript]);
+
+    // Build transcript string for intelligence queries
+    const getRecentTranscriptStr = useCallback((minutes: number = 5) => {
+        const cutoff = elapsed - (minutes * 60);
+        return segments
+            .filter(s => s.end >= cutoff)
+            .map(s => `[${getSpeakerDisplayName(s.speaker)}]: ${s.text}`)
+            .join('\n');
+    }, [segments, elapsed]);
+
+    const fetchTalkingPoints = useCallback(async () => {
+        if (!meetingScript.trim()) return;
+        setTalkingPointsLoading(true);
+        try {
+            const transcript = getRecentTranscriptStr();
+            const res = await fetch(`${API_TRANSCRIBE}/meeting/talking-points`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transcript, scriptContent: meetingScript })
+            });
+            const json = await res.json();
+            if (json.success) setTalkingPoints(json.data);
+        } catch (err) { console.error('[TalkingPoints]', err); }
+        setTalkingPointsLoading(false);
+    }, [meetingScript, getRecentTranscriptStr]);
+
+    const fetchRebuttals = useCallback(async () => {
+        if (!meetingScript.trim()) return;
+        setRebuttalsLoading(true);
+        try {
+            const transcript = getRecentTranscriptStr();
+            const res = await fetch(`${API_TRANSCRIBE}/meeting/rebuttals`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transcript, scriptContent: meetingScript })
+            });
+            const json = await res.json();
+            if (json.success) setRebuttals(json.data);
+        } catch (err) { console.error('[Rebuttals]', err); }
+        setRebuttalsLoading(false);
+    }, [meetingScript, getRecentTranscriptStr]);
+
+    const fetchOnDemandSummary = useCallback(async () => {
+        setOnDemandSummaryLoading(true);
+        try {
+            const transcript = getRecentTranscriptStr();
+            const res = await fetch(`${API_TRANSCRIBE}/meeting/summarize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transcript })
+            });
+            const json = await res.json();
+            if (json.success) setOnDemandSummary(json.data);
+        } catch (err) { console.error('[OnDemandSummary]', err); }
+        setOnDemandSummaryLoading(false);
+    }, [getRecentTranscriptStr]);
+
+    // ============================================
+    // POST-MEETING ACTION FUNCTIONS
+    // ============================================
+
+    const fetchAiSummary = useCallback(async (logId: string) => {
+        setAiSummaryLoading(true);
+        setAiSummary(null);
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/summarize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'detailed' })
+            });
+            const json = await res.json();
+            if (json.success) setAiSummary(json.data.summary);
+        } catch (err) { console.error('[AiSummary]', err); }
+        setAiSummaryLoading(false);
+    }, []);
+
+    const fetchAiActionItems = useCallback(async (logId: string) => {
+        setAiActionItemsLoading(true);
+        setAiActionItems([]);
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/action-items`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const json = await res.json();
+            if (json.success) setAiActionItems(json.data);
+        } catch (err) { console.error('[AiActionItems]', err); }
+        setAiActionItemsLoading(false);
+    }, []);
+
+    const fetchAiDecisions = useCallback(async (logId: string) => {
+        setAiDecisionsLoading(true);
+        setAiDecisions([]);
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/decisions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const json = await res.json();
+            if (json.success) setAiDecisions(json.data);
+        } catch (err) { console.error('[AiDecisions]', err); }
+        setAiDecisionsLoading(false);
+    }, []);
+
+    const fetchAiRecapEmail = useCallback(async (logId: string) => {
+        setAiRecapEmailLoading(true);
+        setAiRecapEmail(null);
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/recap-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ meetingTitle: savedTranscriptions.find(t => t.id === logId)?.title || 'Meeting' })
+            });
+            const json = await res.json();
+            if (json.success) setAiRecapEmail(json.data);
+        } catch (err) { console.error('[RecapEmail]', err); }
+        setAiRecapEmailLoading(false);
+    }, [savedTranscriptions]);
+
+    const fetchAiRewrite = useCallback(async (logId: string, tone: string) => {
+        setAiRewriteLoading(true);
+        setAiRewrite(null);
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/rewrite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tone })
+            });
+            const json = await res.json();
+            if (json.success) setAiRewrite(json.data.content);
+        } catch (err) { console.error('[AiRewrite]', err); }
+        setAiRewriteLoading(false);
+    }, []);
+
+    const fetchAiDraft = useCallback(async (logId: string, documentType: string) => {
+        setAiDraftLoading(true);
+        setAiDraft(null);
+        try {
+            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/draft`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ documentType })
+            });
+            const json = await res.json();
+            if (json.success) setAiDraft({ content: json.data.content, title: json.data.title });
+        } catch (err) { console.error('[AiDraft]', err); }
+        setAiDraftLoading(false);
+    }, []);
+
+    const openPostMeetingPanel = useCallback((logId: string) => {
+        setPostMeetingLogId(logId);
+        setAiSummary(null);
+        setAiActionItems([]);
+        setAiDecisions([]);
+        setAiRecapEmail(null);
+        setAiRewrite(null);
+        setAiDraft(null);
+    }, []);
 
     // ---- CLEANUP ----
     useEffect(() => {
@@ -2047,7 +2344,18 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
                             {savedTranscriptions.map(entry => (
                                 <div key={entry.id} className="th-log__entry">
                                     <div className="th-log__entry-main" onClick={() => loadTranscription(entry)}>
-                                        <div className="th-log__entry-title">{entry.title}</div>
+                                        <div className="th-log__entry-title-row">
+                                            <div className="th-log__entry-title">{entry.title}</div>
+                                            <span
+                                                className="th-log__status-pill"
+                                                style={{
+                                                    color: SUMMARY_STATUS_CONFIG[entry.summaryStatus || 'draft']?.color,
+                                                    background: SUMMARY_STATUS_CONFIG[entry.summaryStatus || 'draft']?.bg,
+                                                }}
+                                            >
+                                                {SUMMARY_STATUS_CONFIG[entry.summaryStatus || 'draft']?.label || 'Draft'}
+                                            </span>
+                                        </div>
                                         <div className="th-log__entry-meta">
                                             <span>⏱ {formatTime(entry.duration)}</span>
                                             <span>•</span>
@@ -2064,6 +2372,9 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
                                         <div className="th-log__entry-date">
                                             {new Date(entry.createdAt).toLocaleString()}
                                         </div>
+                                        {entry.approvedBy && (
+                                            <div className="th-log__entry-reviewer">Reviewed by {entry.approvedBy}</div>
+                                        )}
                                     </div>
                                     <div className="th-log__entry-actions">
                                         <button
@@ -2072,6 +2383,34 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
                                             title="Load transcription"
                                         >
                                             ▶ Load
+                                        </button>
+                                        <button
+                                            className="th-log__action-btn"
+                                            onClick={() => void exportLogToNote(entry.id)}
+                                            title="Save transcript as a note"
+                                        >
+                                            📝 Note
+                                        </button>
+                                        <button
+                                            className="th-log__action-btn"
+                                            onClick={() => void exportLogToWorkitem(entry.id)}
+                                            title="Create a workitem from this transcript"
+                                        >
+                                            ✅ Workitem
+                                        </button>
+                                        <button
+                                            className="th-log__action-btn"
+                                            onClick={() => void setTranscriptReviewStatus(entry.id, 'approved')}
+                                            title="Approve transcript summary"
+                                        >
+                                            ✔ Approve
+                                        </button>
+                                        <button
+                                            className="th-log__action-btn th-log__action-btn--ai"
+                                            onClick={() => openPostMeetingPanel(entry.id)}
+                                            title="AI Post-Meeting Actions"
+                                        >
+                                            🧠 AI Actions
                                         </button>
                                         <button
                                             className="th-log__action-btn th-log__action-btn--delete"
@@ -2083,6 +2422,120 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    )}
+
+                    {/* ========== POST-MEETING ACTIONS PANEL ========== */}
+                    {postMeetingLogId && (
+                        <div className="th-post-meeting">
+                            <div className="th-post-meeting__header">
+                                <h3>🧠 AI Post-Meeting Actions</h3>
+                                <span className="th-post-meeting__subtitle">
+                                    {savedTranscriptions.find(t => t.id === postMeetingLogId)?.title || 'Selected Log'}
+                                </span>
+                                <button className="th-post-meeting__close" onClick={() => setPostMeetingLogId(null)}>✕</button>
+                            </div>
+
+                            <div className="th-post-meeting__actions">
+                                <button className="th-pm-btn" onClick={() => fetchAiSummary(postMeetingLogId)} disabled={aiSummaryLoading}>
+                                    {aiSummaryLoading ? '⏳' : '📝'} Summary
+                                </button>
+                                <button className="th-pm-btn" onClick={() => fetchAiActionItems(postMeetingLogId)} disabled={aiActionItemsLoading}>
+                                    {aiActionItemsLoading ? '⏳' : '✅'} Action Items
+                                </button>
+                                <button className="th-pm-btn" onClick={() => fetchAiDecisions(postMeetingLogId)} disabled={aiDecisionsLoading}>
+                                    {aiDecisionsLoading ? '⏳' : '⚖️'} Decisions
+                                </button>
+                                <button className="th-pm-btn" onClick={() => fetchAiRecapEmail(postMeetingLogId)} disabled={aiRecapEmailLoading}>
+                                    {aiRecapEmailLoading ? '⏳' : '📧'} Recap Email
+                                </button>
+                                <button className="th-pm-btn" onClick={() => fetchAiRewrite(postMeetingLogId, 'executive')} disabled={aiRewriteLoading}>
+                                    {aiRewriteLoading ? '⏳' : '✏️'} Executive Rewrite
+                                </button>
+                                <button className="th-pm-btn" onClick={() => fetchAiDraft(postMeetingLogId, 'memo')} disabled={aiDraftLoading}>
+                                    {aiDraftLoading ? '⏳' : '📄'} Draft Memo
+                                </button>
+                                <button className="th-pm-btn" onClick={() => void exportLogToNote(postMeetingLogId)}>
+                                    📝 Save Note
+                                </button>
+                                <button className="th-pm-btn" onClick={() => void exportLogToWorkitem(postMeetingLogId)}>
+                                    ✅ Workitem
+                                </button>
+                                <button className="th-pm-btn" onClick={() => void setTranscriptReviewStatus(postMeetingLogId, 'pending_review')}>
+                                    👀 Pending Review
+                                </button>
+                                <button className="th-pm-btn" onClick={() => void setTranscriptReviewStatus(postMeetingLogId, 'approved')}>
+                                    ✔ Approve
+                                </button>
+                            </div>
+
+                            {/* Results Panels */}
+                            <div className="th-post-meeting__results">
+                                {aiSummary && (
+                                    <div className="th-pm-result">
+                                        <div className="th-pm-result__header">📝 AI Summary</div>
+                                        <div className="th-pm-result__body th-pm-result__body--pre">{aiSummary}</div>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiSummary); }}>📋 Copy</button>
+                                    </div>
+                                )}
+
+                                {aiActionItems.length > 0 && (
+                                    <div className="th-pm-result">
+                                        <div className="th-pm-result__header">✅ Action Items ({aiActionItems.length})</div>
+                                        <div className="th-pm-result__body">
+                                            {aiActionItems.map((item, i) => (
+                                                <div key={i} className="th-pm-action-item">
+                                                    <span className={`th-pm-priority th-pm-priority--${item.priority}`}>{item.priority}</span>
+                                                    <span className="th-pm-action-desc">{item.description}</span>
+                                                    {item.assignee && <span className="th-pm-assignee">→ {item.assignee}</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiActionItems.map(i => `[${i.priority}] ${i.description}${i.assignee ? ` → ${i.assignee}` : ''}`).join('\n')); }}>📋 Copy</button>
+                                    </div>
+                                )}
+
+                                {aiDecisions.length > 0 && (
+                                    <div className="th-pm-result">
+                                        <div className="th-pm-result__header">⚖️ Decisions ({aiDecisions.length})</div>
+                                        <div className="th-pm-result__body">
+                                            {aiDecisions.map((d, i) => (
+                                                <div key={i} className="th-pm-decision">
+                                                    <strong>{d.decision}</strong>
+                                                    {d.madeBy && <span className="th-pm-assignee">— {d.madeBy}</span>}
+                                                    {d.context && <p className="th-pm-context">{d.context}</p>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDecisions.map(d => `${d.decision}${d.madeBy ? ` (${d.madeBy})` : ''}: ${d.context}`).join('\n')); }}>📋 Copy</button>
+                                    </div>
+                                )}
+
+                                {aiRecapEmail && (
+                                    <div className="th-pm-result">
+                                        <div className="th-pm-result__header">📧 Recap Email</div>
+                                        <div className="th-pm-result__subheader">Subject: {aiRecapEmail.subject}</div>
+                                        <div className="th-pm-result__body th-pm-result__body--pre">{aiRecapEmail.body}</div>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(`Subject: ${aiRecapEmail.subject}\n\n${aiRecapEmail.body}`); }}>📋 Copy Email</button>
+                                    </div>
+                                )}
+
+                                {aiRewrite && (
+                                    <div className="th-pm-result">
+                                        <div className="th-pm-result__header">✏️ Executive Rewrite</div>
+                                        <div className="th-pm-result__body th-pm-result__body--pre">{aiRewrite}</div>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiRewrite); }}>📋 Copy</button>
+                                    </div>
+                                )}
+
+                                {aiDraft && (
+                                    <div className="th-pm-result">
+                                        <div className="th-pm-result__header">📄 {aiDraft.title}</div>
+                                        <div className="th-pm-result__body th-pm-result__body--pre">{aiDraft.content}</div>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDraft.content); }}>📋 Copy</button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -2277,20 +2730,9 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
                         <div className="th-upload__save-section">
                             <button
                                 className="th-upload__save-btn"
-                                onClick={() => {
-                                    const content = uploadText.trim() || uploadTranscript.map(s => `[${formatTimestamp(s.start)}] ${getSpeakerDisplayName(s.speaker)}: ${s.text}`).join('\n');
-                                    const blob = new Blob([content], { type: 'text/plain' });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = uploadFileName ? uploadFileName.replace(/\.[^.]+$/, '.txt') : 'transcription.txt';
-                                    a.click();
-                                    URL.revokeObjectURL(url);
-                                    setActionStatus({ type: 'success', message: 'Document saved successfully' });
-                                    setTimeout(() => setActionStatus(prev => prev?.type === 'success' ? null : prev), 4000);
-                                }}
+                                onClick={() => void saveUploadDocumentToFiles()}
                             >
-                                💾 Save Document
+                                📁 Save to Files
                             </button>
                         </div>
                     )}
@@ -2304,24 +2746,42 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
             {activeTab === 'meeting_manager' && (
                 <div className="th-meeting-manager">
                     <div className="mm-header">
-                        <h3>NPU-B Hearing: 6 Lot Subdivision</h3>
+                        <h3>🎯 Meeting Intelligence Hub</h3>
                         <div className={`mm-status-badge ${coachingStatus || 'idle'}`}>
                             {coachingStatus === 'on_track' && '✅ On Track'}
                             {coachingStatus === 'needs_pivot' && '⚠️ Pivot Needed'}
-                            {coachingStatus === 'danger' && '🚨 Danger: Forbidden Phrase'}
+                            {coachingStatus === 'danger' && '🚨 Danger Zone'}
                             {!coachingStatus && state === 'recording' && '⏳ Analyzing...'}
                             {!coachingStatus && state !== 'recording' && '🎙️ Start Recording to Begin'}
                         </div>
                     </div>
 
-                    <div className="mm-coaching-box">
-                        <h4>ARA's Live Feedback</h4>
+                    {/* Dynamic Script Editor */}
+                    <div className="mm-script-editor">
+                        <div className="mm-script-editor__header">
+                            <h4>📜 Meeting Script / Talking Points</h4>
+                            <span className="mm-script-editor__hint">
+                                {meetingScript.trim() ? `${meetingScript.trim().split('\n').length} lines` : 'Paste your script below'}
+                            </span>
+                        </div>
+                        <textarea
+                            className="mm-script-editor__textarea"
+                            value={meetingScript}
+                            onChange={e => setMeetingScript(e.target.value)}
+                            placeholder={`Paste your meeting script, talking points, or rules here…\n\nExample:\n1. "Open with gratitude for attendance"\n2. "Present the revised 6-lot plan"\n3. "Address traffic and drainage concerns"\n\nNEVER SAY: "Rights," "Taking," or make promises\n\nThis script is saved automatically and used by the AI coach during recordings.`}
+                            rows={8}
+                        />
+                    </div>
+
+                    {/* Live Coaching Panel */}
+                    <div className={`mm-coaching-box mm-coaching-box--${coachingStatus || 'idle'}`}>
+                        <h4>🤖 ARA's Live Coaching</h4>
                         <p className="mm-feedback-text">{coachingFeedback}</p>
                     </div>
 
                     {coachingFlags && coachingFlags.length > 0 && (
                         <div className="mm-flags-box">
-                            <h4>Forbidden Phrases Detected</h4>
+                            <h4>🚩 Flags</h4>
                             <ul>
                                 {coachingFlags.map((flag, idx) => (
                                     <li key={`flag-${idx}`}>❌ {flag}</li>
@@ -2330,21 +2790,76 @@ NPU-B Hearing: 6 Lot Subdivision (10-Line Screen)
                         </div>
                     )}
 
-                    <div className="mm-script-preview">
-                        <h4>Talking Points Reminder (10-Line)</h4>
-                        <ul className="points-list">
-                            <li>1. "Thank you. We know the main concerns are traffic, drainage, and trees."</li>
-                            <li>2. "We began with 7 lots. The stream buffer changed, forcing a reduction to 6."</li>
-                            <li>3. "We redesigned and submitted this 6-lot plan to the City."</li>
-                            <li>4. "This is already the reduced plan, not the maximum concept."</li>
-                            <li>5. (If pushed for 5): "This plan has already been reduced once. Six is the result."</li>
-                            <li>6. (If pressed on impact): "That is a fair concern. We will address it directly."</li>
-                            <li>7. (If asked to change it now): "We are here to explain the 6-lot plan we moved forward with."</li>
-                            <li>8. <strong>REPEAT:</strong> "This plan has already been reduced once."</li>
-                            <li>9. <strong>REPEAT:</strong> "We understand the practical concerns."</li>
-                            <li><strong style={{ color: 'var(--red)' }}>NEVER SAY:</strong> "Rights," "Taking," "CID's plan," or "Engineer said 5."</li>
-                        </ul>
+                    {/* Intelligence Action Buttons */}
+                    <div className="mm-intel-actions">
+                        <button className="mm-intel-btn" onClick={fetchTalkingPoints} disabled={talkingPointsLoading || !meetingScript.trim()}>
+                            {talkingPointsLoading ? '⏳' : '💡'} Suggest Talking Points
+                        </button>
+                        <button className="mm-intel-btn" onClick={fetchRebuttals} disabled={rebuttalsLoading || !meetingScript.trim()}>
+                            {rebuttalsLoading ? '⏳' : '⚔️'} Generate Rebuttals
+                        </button>
+                        <button className="mm-intel-btn" onClick={fetchOnDemandSummary} disabled={onDemandSummaryLoading || segments.length === 0}>
+                            {onDemandSummaryLoading ? '⏳' : '📊'} Summarize Now
+                        </button>
                     </div>
+
+                    {/* Talking Points Results */}
+                    {talkingPoints.length > 0 && (
+                        <div className="mm-intel-result">
+                            <h4>💡 Suggested Talking Points</h4>
+                            <div className="mm-intel-result__list">
+                                {talkingPoints.map((tp, i) => (
+                                    <div key={i} className={`mm-tp-card mm-tp-card--${tp.priority}`}>
+                                        <div className="mm-tp-card__point">{tp.point}</div>
+                                        <div className="mm-tp-card__reason">{tp.reason}</div>
+                                        <span className={`mm-tp-badge mm-tp-badge--${tp.priority}`}>{tp.priority}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Rebuttals Results */}
+                    {rebuttals.length > 0 && (
+                        <div className="mm-intel-result">
+                            <h4>⚔️ Rebuttal Suggestions</h4>
+                            <div className="mm-intel-result__list">
+                                {rebuttals.map((rb, i) => (
+                                    <div key={i} className={`mm-rebuttal-card mm-rebuttal-card--${rb.strength}`}>
+                                        <div className="mm-rebuttal-card__their"><strong>They said:</strong> {rb.theirArgument}</div>
+                                        <div className="mm-rebuttal-card__yours"><strong>You say:</strong> {rb.suggestedRebuttal}</div>
+                                        <span className={`mm-rb-badge mm-rb-badge--${rb.strength}`}>{rb.strength}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* On-Demand Summary */}
+                    {onDemandSummary && (
+                        <div className="mm-intel-result">
+                            <h4>📊 Live Summary</h4>
+                            <p className="mm-summary-text">{onDemandSummary.summary}</p>
+                            {onDemandSummary.keyPoints.length > 0 && (
+                                <div className="mm-summary-section">
+                                    <strong>Key Points:</strong>
+                                    <ul>{onDemandSummary.keyPoints.map((kp, i) => <li key={i}>{kp}</li>)}</ul>
+                                </div>
+                            )}
+                            {onDemandSummary.unansweredQuestions.length > 0 && (
+                                <div className="mm-summary-section">
+                                    <strong>❓ Unanswered:</strong>
+                                    <ul>{onDemandSummary.unansweredQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+                                </div>
+                            )}
+                            {onDemandSummary.suggestedNextTopics.length > 0 && (
+                                <div className="mm-summary-section">
+                                    <strong>➡️ Discuss Next:</strong>
+                                    <ul>{onDemandSummary.suggestedNextTopics.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 

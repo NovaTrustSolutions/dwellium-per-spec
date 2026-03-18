@@ -6,10 +6,11 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     DollarSign, RefreshCw, ArrowUpRight, ArrowDownRight, TrendingUp,
     Building2, CreditCard, FileText, BookOpen, ArrowLeftRight,
-    AlertTriangle, Search, CheckCircle, Clock, Landmark
+    AlertTriangle, Search, CheckCircle, Clock, Landmark, Plus, X
 } from 'lucide-react';
-import { strataGet } from '../strataApi';
+import { strataGet, strataPost } from '../strataApi';
 import { useUser } from '../../../context/UserContext';
+import ProfileSpaces from './ProfileSpaces';
 
 type AcctTab = 'overview' | 'receivables' | 'payables' | 'bank-accounts' | 'journal-entries' | 'bank-transfers' | 'gl-accounts' | 'tenant-ledger' | 'diagnostics';
 
@@ -107,6 +108,7 @@ export default function AccountingModule() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [showAddEntry, setShowAddEntry] = useState(false);
 
     const TAB_PERMS: Record<AcctTab, string> = {
         overview: 'strata:accounting:overview',
@@ -151,6 +153,7 @@ export default function AccountingModule() {
                 </div>
                 <div className="s-module-actions">
                     <button className="s-btn s-btn-ghost" onClick={fetchData}><RefreshCw size={14} /></button>
+                    <button className="s-btn s-btn-primary" onClick={() => setShowAddEntry(true)}><Plus size={14} /> New Entry</button>
                 </div>
             </div>
 
@@ -458,6 +461,68 @@ export default function AccountingModule() {
                                 )}
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Module-level Spaces (Trello-style containers) */}
+            <div style={{ marginTop: 16 }}>
+                <ProfileSpaces entityType="module" entityId="accounting" />
+            </div>
+
+            {/* Add Entry Modal */}
+            {showAddEntry && (
+                <div className="s-modal-overlay" onClick={() => setShowAddEntry(false)}>
+                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                        <div className="s-modal-header">
+                            <h3>New Journal Entry</h3>
+                            <button className="s-btn-icon" onClick={() => setShowAddEntry(false)}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            const fd = new FormData(e.currentTarget);
+                            try {
+                                await strataPost('/invoices', {
+                                    type: 'journal',
+                                    description: fd.get('description'),
+                                    amount: Number(fd.get('debit')) || 0,
+                                    status: 'pending',
+                                    dueDate: fd.get('date') || new Date().toISOString().slice(0, 10),
+                                    vendorOrTenant: fd.get('reference') || '',
+                                });
+                                setShowAddEntry(false);
+                                fetchData();
+                            } catch (err) { console.error(err); }
+                        }}>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Date</label>
+                                    <input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="s-input" />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Reference</label>
+                                    <input name="reference" placeholder="JE-2026-XXXX" className="s-input" />
+                                </div>
+                            </div>
+                            <div className="s-form-group">
+                                <label>Description</label>
+                                <input name="description" required placeholder="e.g. Monthly rent roll" className="s-input" />
+                            </div>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Debit Amount</label>
+                                    <input name="debit" type="number" min="0" step="0.01" placeholder="0.00" className="s-input" />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Credit Amount</label>
+                                    <input name="credit" type="number" min="0" step="0.01" placeholder="0.00" className="s-input" />
+                                </div>
+                            </div>
+                            <div className="s-modal-footer">
+                                <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowAddEntry(false)}>Cancel</button>
+                                <button type="submit" className="s-btn s-btn-primary">Create Entry</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

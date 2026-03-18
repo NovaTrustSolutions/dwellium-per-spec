@@ -9,22 +9,7 @@ import {
     Clock, AlertTriangle, CheckCircle2, Loader2,
     Mic, MicOff, RefreshCw, History
 } from 'lucide-react';
-
-
-interface Workitem {
-    id: string;
-    type: string;
-    title: string;
-    description: string;
-    status: string;
-    priority: string;
-    propertyId: string | null;
-    tags: string[];
-    domain: string;
-    metadata: Record<string, any>;
-    threadChannel: string;
-    createdAt: string;
-}
+import type { Workitem } from '../StrataDashboard/strataTypes';
 
 interface ChatMessage {
     role: 'user' | 'assistant';

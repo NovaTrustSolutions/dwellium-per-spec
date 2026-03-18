@@ -3,31 +3,34 @@ import { useHierarchy } from '../../context/HierarchyContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { useTheme } from '../../context/ThemeContext';
 import { API_BASE } from '../../config';
-import React, { useState, useRef, useEffect, Suspense, lazy } from 'react';
+import { reportError } from '../../services/errorReporter';
+import React, { useState, useRef, useEffect, Suspense, useCallback } from 'react';
+import { lazyWithReload } from '../../utils/lazyWithReload';
 import Window from '../Window/Window';
 import ControlPanel from '../ControlPanel/ControlPanel';
 
 // Lazy-loaded widgets — each gets its own chunk for faster initial load
-const InboxWidget = lazy(() => import('../InboxWidget/InboxWidget'));
-const TaskMenu = lazy(() => import('../TaskMenu/TaskMenu'));
-const ARAConsole = lazy(() => import('../ARAConsole/ARAConsole'));
-const TranscriptionHub = lazy(() => import('../TranscriptionHub/TranscriptionHub'));
-const FileManagerWidget = lazy(() => import('../FileManager/FileManager'));
-const Notepad = lazy(() => import('../Notepad/Notepad'));
-const DocViewer = lazy(() => import('../DocViewer/DocViewer'));
-const TrelloBoard = lazy(() => import('../TrelloBoard/TrelloBoard'));
-const FactCheckLog = lazy(() => import('../FactCheckLog/FactCheckLog'));
-const InboxZero = lazy(() => import('../InboxZero/InboxZero'));
-const ThoughtWeaver = lazy(() => import('../ThoughtWeaver/ThoughtWeaver'));
-const StrataDashboard = lazy(() => import('../StrataDashboard/StrataDashboard'));
-const AstraDashboard = lazy(() => import('../AstraDashboard/AstraDashboard'));
-const HomeUpkeepAI = lazy(() => import('../HomeUpkeepAI/HomeUpkeepAI'));
-const AutomationHub = lazy(() => import('../AutomationHub/AutomationHub'));
-const TwoBrains = lazy(() => import('../TwoBrains/TwoBrains'));
-const HydraAI = lazy(() => import('../HydraAI/HydraAI'));
-const TenantPortalMgmt = lazy(() => import('../TenantPortalMgmt/TenantPortalMgmt'));
-const GeorgiaCode = lazy(() => import('../GeorgiaCode/GeorgiaCode'));
-const StellaAgent = lazy(() => import('../StellaAgent/StellaAgent'));
+const InboxWidget = lazyWithReload(() => import('../InboxWidget/InboxWidget'));
+const TaskMenu = lazyWithReload(() => import('../TaskMenu/TaskMenu'));
+const ARAConsole = lazyWithReload(() => import('../ARAConsole/ARAConsole'));
+const TranscriptionHub = lazyWithReload(() => import('../TranscriptionHub/TranscriptionHub'));
+const FileManagerWidget = lazyWithReload(() => import('../FileManager/FileManager'));
+const Notepad = lazyWithReload(() => import('../Notepad/Notepad'));
+const DocViewer = lazyWithReload(() => import('../DocViewer/DocViewer'));
+const TerminalWidget = lazyWithReload(() => import('../Terminal/Terminal'));
+const TrelloBoard = lazyWithReload(() => import('../TrelloBoard/TrelloBoard'));
+const FactCheckLog = lazyWithReload(() => import('../FactCheckLog/FactCheckLog'));
+const InboxZero = lazyWithReload(() => import('../InboxZero/InboxZero'));
+const ThoughtWeaver = lazyWithReload(() => import('../ThoughtWeaver/ThoughtWeaver'));
+const StrataDashboard = lazyWithReload(() => import('../StrataDashboard/StrataDashboard'));
+const AstraDashboard = lazyWithReload(() => import('../AstraDashboard/AstraDashboard'));
+const HomeUpkeepAI = lazyWithReload(() => import('../HomeUpkeepAI/HomeUpkeepAI'));
+const AutomationHub = lazyWithReload(() => import('../AutomationHub/AutomationHub'));
+const TwoBrains = lazyWithReload(() => import('../TwoBrains/TwoBrains'));
+const HydraAI = lazyWithReload(() => import('../HydraAI/HydraAI'));
+const TenantPortalMgmt = lazyWithReload(() => import('../TenantPortalMgmt/TenantPortalMgmt'));
+const GeorgiaCode = lazyWithReload(() => import('../GeorgiaCode/GeorgiaCode'));
+const StellaAgent = lazyWithReload(() => import('../StellaAgent/StellaAgent'));
 import './Desktop.css';
 
 /** Suspense fallback for lazy-loaded widgets */
@@ -62,6 +65,7 @@ class WidgetErrorBoundary extends React.Component<
 
     componentDidCatch(error: Error, info: React.ErrorInfo) {
         console.error(`[WidgetErrorBoundary] ${this.props.widgetName || 'Widget'} crashed:`, error, info.componentStack);
+        reportError(error, `Widget:${this.props.widgetName || 'unknown'}`, { componentStack: info.componentStack });
     }
 
     render() {
@@ -126,11 +130,41 @@ function formatExplorerFileSize(bytes: number): string {
 }
 
 function HierarchyBrowser() {
+    const { openWindow } = useWindows();
     const { selectedId, getSelectedItem, getBreadcrumb } = useHierarchy();
     const selected = getSelectedItem();
     const breadcrumb = getBreadcrumb();
     const [projectFiles, setProjectFiles] = useState<ExplorerFile[]>([]);
     const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+
+    const openFileInDocs = useCallback((file: ExplorerFile) => {
+        openWindow('doc-viewer', file.name, '📑');
+        const detail = { fileId: file.id, name: file.name };
+        const dispatch = (attempt: number) => {
+            if (attempt > 5) return;
+            window.dispatchEvent(new CustomEvent('qualia-docviewer-open-file', { detail }));
+            setTimeout(() => dispatch(attempt + 1), 300 * Math.pow(2, attempt));
+        };
+        setTimeout(() => dispatch(0), 250);
+    }, [openWindow]);
+
+    const materializeFile = useCallback(async (file: ExplorerFile) => {
+        try {
+            const response = await fetch(`${API_BASE}/api/files/${file.id}/materialize`, { method: 'POST' });
+            const json = await response.json().catch(() => null);
+            if (!response.ok || !json?.success) {
+                throw new Error(json?.error || `Materialize failed (${response.status})`);
+            }
+            const localPath = json?.data?.localPath;
+            if (localPath) {
+                await navigator.clipboard.writeText(localPath).catch(() => {});
+                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Local copy ready: ${localPath}` }));
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to materialize file';
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: message }));
+        }
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -215,9 +249,15 @@ function HierarchyBrowser() {
                                     <span className="detail-child-row__meta">{formatExplorerFileSize(file.size)}</span>
                                     <button
                                         className="detail-child-row__action"
-                                        onClick={() => window.open(`${API_BASE}/api/files/${file.id}/download`, '_blank', 'noopener')}
+                                        onClick={() => openFileInDocs(file)}
                                     >
-                                        Download
+                                        Open
+                                    </button>
+                                    <button
+                                        className="detail-child-row__action"
+                                        onClick={() => void materializeFile(file)}
+                                    >
+                                        Cache Local
                                     </button>
                                 </div>
                             ))}
@@ -230,25 +270,6 @@ function HierarchyBrowser() {
                     <p>Select an item in the sidebar to view details</p>
                 </div>
             )}
-        </div>
-    );
-}
-
-function Terminal() {
-    return (
-        <div className="window-app window-app--terminal">
-            <div className="terminal-output">
-                <div className="terminal-line terminal-line--system">
-                    <span className="terminal-prompt">DWELLIUM v1.0.0-alpha</span>
-                </div>
-                <div className="terminal-line terminal-line--system">
-                    <span className="terminal-prompt">AI-Dashboard369 Shell initialized</span>
-                </div>
-                <div className="terminal-line">
-                    <span className="terminal-prompt">$</span>
-                    <span className="terminal-cursor">_</span>
-                </div>
-            </div>
         </div>
     );
 }
@@ -302,7 +323,7 @@ const WINDOW_COMPONENTS: Record<string, React.FC> = {
     'control-panel': ControlPanel,
     'hierarchy-browser': HierarchyBrowser,
     'file-manager': FileManagerWidget,
-    'terminal': Terminal,
+    'terminal': TerminalWidget,
     'inbox': InboxWidget,
     'tasks': TaskMenu,
     'ara-console': ARAConsole,
@@ -463,6 +484,8 @@ export default function Desktop() {
         // Wait, saveLayout IS returned in useWindows! Let's destructure it and call it.
     };
 
+    const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
+
     return (
         <div
             className="desktop"
@@ -475,29 +498,47 @@ export default function Desktop() {
             {/* Background grid pattern */}
             <div className="desktop__bg" />
 
-            {/* ── Preset Layout Toolbar ── */}
-            <div className="desktop__preset-toolbar" style={{
-                position: 'absolute', top: '8px', right: '8px', zIndex: 9990,
-                display: 'flex', gap: '4px', padding: '4px 6px',
-                borderRadius: '8px', background: 'rgba(15,15,25,0.7)',
-                backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)',
+            {/* ── Collapsible Preset Layout Toolbar ── */}
+            <div className={`desktop__layout-menu ${isLayoutMenuOpen ? 'open' : ''}`} style={{
+                position: 'absolute', right: '0', top: '50%', transform: 'translateY(-50%)', zIndex: 9990,
+                display: 'flex', alignItems: 'center', transition: 'transform 0.3s ease',
             }}>
-                {([
-                    { layout: 'none', label: '✕', tip: 'No Regions' },
-                    { layout: 'halves-h', label: '⬜⬜', tip: 'Split (2 cols)' },
-                    { layout: 'thirds-h', label: '⬜⬜⬜', tip: 'Thirds' },
-                    { layout: 'quadrants', label: '⊞', tip: 'Fourths (2×2)' },
-                ] as { layout: string; label: string; tip: string }[]).map(p => (
-                    <button key={p.layout} title={p.tip} onClick={() => {
-                        updateSettings({ regionLayout: p.layout as any, regionsEnabled: p.layout !== 'none' });
-                    }} style={{
-                        padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer',
-                        fontSize: '11px', fontWeight: 500, letterSpacing: '0.5px',
-                        color: settings.regionLayout === p.layout ? '#fff' : 'rgba(255,255,255,0.5)',
-                        background: settings.regionLayout === p.layout ? 'rgba(59,130,246,0.4)' : 'transparent',
-                        transition: 'all 0.15s',
-                    }}>{p.label}</button>
-                ))}
+                <button
+                    className="desktop__layout-toggle"
+                    onClick={() => setIsLayoutMenuOpen(!isLayoutMenuOpen)}
+                    title="Toggle Layout Guides"
+                    style={{
+                        height: '40px', width: '20px', padding: '0', border: '1px solid rgba(255,255,255,0.08)',
+                        borderRight: 'none', borderRadius: '4px 0 0 4px', cursor: 'pointer',
+                        background: 'rgba(15,15,25,0.7)', backdropFilter: 'blur(12px)',
+                        color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '-2px 0 8px rgba(0,0,0,0.2)',
+                    }}>
+                    <span style={{ fontSize: '10px' }}>{isLayoutMenuOpen ? '▶' : '◀'}</span>
+                </button>
+                <div className="desktop__preset-toolbar" style={{
+                    display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 6px',
+                    background: 'rgba(15,15,25,0.7)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)',
+                    borderRight: 'none', borderRadius: '0 0 0 8px',
+                    width: isLayoutMenuOpen ? 'auto' : '0px', overflow: 'hidden', opacity: isLayoutMenuOpen ? 1 : 0, transition: 'all 0.3s ease',
+                }}>
+                    {([
+                        { layout: 'none', label: '✕', tip: 'No Regions' },
+                        { layout: 'halves-h', label: '⬜⬜', tip: 'Split (2 cols)' },
+                        { layout: 'thirds-h', label: '⬜⬜⬜', tip: 'Thirds' },
+                        { layout: 'quadrants', label: '⊞', tip: 'Fourths (2×2)' },
+                    ] as { layout: string; label: string; tip: string }[]).map(p => (
+                        <button key={p.layout} title={p.tip} onClick={() => {
+                            updateSettings({ regionLayout: p.layout as any, regionsEnabled: p.layout !== 'none' });
+                        }} style={{
+                            padding: '6px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer',
+                            fontSize: '11px', fontWeight: 500, letterSpacing: '0.5px', whiteSpace: 'nowrap',
+                            color: settings.regionLayout === p.layout ? '#fff' : 'rgba(255,255,255,0.5)',
+                            background: settings.regionLayout === p.layout ? 'rgba(59,130,246,0.4)' : 'transparent',
+                            transition: 'all 0.15s',
+                        }}>{p.label}</button>
+                    ))}
+                </div>
             </div>
 
             {/* Region overlays */}

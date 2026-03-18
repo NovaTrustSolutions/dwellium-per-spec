@@ -16,6 +16,17 @@ interface InboxItem {
     routingReasoning?: string;
     hasAttachments: boolean;
     createdAt: string;
+    auditLog?: any[];
+    links?: any[];
+}
+
+interface InboxMetrics {
+    throughputToday: number;
+    throughputWeek: number;
+    avgResponseMinutes: number;
+    backlogByAge: { fresh: number; aging: number; stale: number };
+    approvalQueueDepth: number;
+    totalProcessed: number;
 }
 
 // Project ID → display name mapping
@@ -48,9 +59,15 @@ export default function InboxWidget() {
     const [items, setItems] = useState<InboxItem[]>([]);
     const [filter, setFilter] = useState<string>('all');
     const [stats, setStats] = useState<any>(null);
+    const [metrics, setMetrics] = useState<InboxMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<string | null>(null);
     const [routePickerFor, setRoutePickerFor] = useState<string | null>(null);
+    const [error, setError] = useState<{ message: string; itemId: string; retryable: boolean } | null>(null);
+    const [approvalDialog, setApprovalDialog] = useState<{ id: string; projectId?: string } | null>(null);
+    const [approvalReason, setApprovalReason] = useState('');
+    const [showSettings, setShowSettings] = useState(false);
+    const [settings, setSettings] = useState<Record<string, string>>({});
 
     const fetchInbox = useCallback(async () => {
         try {
@@ -67,9 +84,14 @@ export default function InboxWidget() {
 
     const fetchStats = useCallback(async () => {
         try {
-            const res = await fetch('/api/inbox/stats');
-            const data = await res.json();
-            if (data.success) setStats(data.data);
+            const [statsRes, metricsRes] = await Promise.all([
+                fetch('/api/inbox/stats'),
+                fetch('/api/inbox/metrics'),
+            ]);
+            const statsData = await statsRes.json();
+            const metricsData = await metricsRes.json();
+            if (statsData.success) setStats(statsData.data);
+            if (metricsData.success) setMetrics(metricsData.data);
         } catch (err) {
             console.error('Failed to fetch stats:', err);
         }
@@ -80,45 +102,99 @@ export default function InboxWidget() {
         fetchStats();
     }, [fetchInbox, fetchStats]);
 
-    const handleApprove = async (id: string, projectId?: string) => {
+    const handleApprove = async (id: string, projectId?: string, reason?: string) => {
+        setError(null);
         try {
             const res = await fetch(`/api/inbox/${id}/approve`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ projectId })
+                body: JSON.stringify({ projectId, reason: reason || approvalReason })
             });
-            if (res.ok) {
+            const data = await res.json();
+            if (res.ok && data.success) {
                 setRoutePickerFor(null);
+                setApprovalDialog(null);
+                setApprovalReason('');
                 fetchInbox();
                 fetchStats();
+            } else {
+                setError({ message: data.error || 'Approve failed', itemId: id, retryable: data.retryable || false });
             }
-        } catch (err) {
-            console.error('Approve failed:', err);
+        } catch (err: any) {
+            setError({ message: `Network error: ${err.message}`, itemId: id, retryable: true });
         }
     };
 
     const handleArchive = async (id: string) => {
+        setError(null);
         try {
             const res = await fetch(`/api/inbox/${id}/archive`, { method: 'POST' });
-            if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+                if (data.gmailError) {
+                    setError({ message: data.message, itemId: id, retryable: true });
+                }
                 fetchInbox();
                 fetchStats();
+            } else {
+                setError({ message: data.error || 'Archive failed', itemId: id, retryable: data.retryable || false });
             }
-        } catch (err) {
-            console.error('Archive failed:', err);
+        } catch (err: any) {
+            setError({ message: `Network error: ${err.message}`, itemId: id, retryable: true });
         }
     };
 
     const handleDelete = async (id: string) => {
+        setError(null);
         try {
             const res = await fetch(`/api/inbox/${id}`, { method: 'DELETE' });
-            if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+                if (data.gmailError) {
+                    setError({ message: data.message, itemId: id, retryable: true });
+                }
                 fetchInbox();
                 fetchStats();
+            } else {
+                setError({ message: data.error || 'Delete failed', itemId: id, retryable: data.retryable || false });
             }
-        } catch (err) {
-            console.error('Delete failed:', err);
+        } catch (err: any) {
+            setError({ message: `Network error: ${err.message}`, itemId: id, retryable: true });
         }
+    };
+
+    const handleRetry = async (itemId: string) => {
+        setError(null);
+        try {
+            const res = await fetch(`/api/inbox/${itemId}/retry`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                fetchInbox();
+                fetchStats();
+            } else {
+                setError({ message: data.error || 'Retry failed', itemId, retryable: data.retryable || false });
+            }
+        } catch (err: any) {
+            setError({ message: `Retry network error: ${err.message}`, itemId, retryable: true });
+        }
+    };
+
+    const loadSettings = async () => {
+        try {
+            const res = await fetch('/api/inbox/settings');
+            const data = await res.json();
+            if (data.success) setSettings(data.data);
+        } catch {}
+    };
+
+    const saveSettings = async () => {
+        try {
+            await fetch('/api/inbox/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings),
+            });
+        } catch {}
     };
 
     const formatTime = (dateStr: string) => {
@@ -134,6 +210,28 @@ export default function InboxWidget() {
 
     return (
         <div className="inbox-widget">
+            {/* Error/Retry Banner */}
+            {error && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', marginBottom: 8, fontSize: 12 }}>
+                    <span style={{ color: '#ef4444', flex: 1 }}>⚠️ {error.message}</span>
+                    {error.retryable && (
+                        <button onClick={() => handleRetry(error.itemId)} style={{ padding: '3px 10px', borderRadius: 4, border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>🔄 Retry</button>
+                    )}
+                    <button onClick={() => setError(null)} style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 14 }}>×</button>
+                </div>
+            )}
+
+            {/* Metrics Strip */}
+            {metrics && (
+                <div style={{ display: 'flex', gap: 12, padding: '6px 0', marginBottom: 6, fontSize: 10, color: '#94a3b8', overflowX: 'auto', flexWrap: 'wrap' }}>
+                    <span>📊 Today: <b style={{ color: '#22c55e' }}>{metrics.throughputToday}</b></span>
+                    <span>📈 Week: <b style={{ color: '#3b82f6' }}>{metrics.throughputWeek}</b></span>
+                    <span>⏱ Avg: <b style={{ color: '#f59e0b' }}>{metrics.avgResponseMinutes}m</b></span>
+                    <span>📥 Queue: <b style={{ color: metrics.approvalQueueDepth > 10 ? '#ef4444' : '#22c55e' }}>{metrics.approvalQueueDepth}</b></span>
+                    <span style={{ color: '#475569' }}>Fresh: {metrics.backlogByAge.fresh} | Aging: {metrics.backlogByAge.aging} | Stale: <span style={{ color: metrics.backlogByAge.stale > 0 ? '#ef4444' : '#475569' }}>{metrics.backlogByAge.stale}</span></span>
+                </div>
+            )}
+
             {/* Stats bar */}
             {stats && (
                 <div className="inbox-stats">
@@ -149,6 +247,23 @@ export default function InboxWidget() {
                     <span className="stat">
                         <span className="stat-num">{stats.approved || 0}</span> approved
                     </span>
+                    <button onClick={() => { setShowSettings(!showSettings); if (!showSettings) loadSettings(); }}
+                        style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 14 }}>⚙️</button>
+                </div>
+            )}
+
+            {/* Settings Panel */}
+            {showSettings && (
+                <div style={{ padding: 10, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 8, fontSize: 11 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 6, color: '#94a3b8' }}>⚙️ Inbox Settings</div>
+                    {Object.entries(settings).map(([key, value]) => (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            <span style={{ color: '#64748b', flex: 1, fontSize: 10 }}>{key}:</span>
+                            <input value={value} onChange={e => setSettings({ ...settings, [key]: e.target.value })}
+                                style={{ width: 80, padding: '2px 6px', borderRadius: 3, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', fontSize: 10 }} />
+                        </div>
+                    ))}
+                    <button onClick={saveSettings} style={{ marginTop: 4, padding: '3px 10px', borderRadius: 4, border: '1px solid #3b82f6', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>Save Settings</button>
                 </div>
             )}
 
@@ -167,6 +282,27 @@ export default function InboxWidget() {
 
             {/* Loading state */}
             {loading && <div className="inbox-loading">Loading inbox...</div>}
+
+            {/* Approval Confirmation Dialog */}
+            {approvalDialog && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={() => setApprovalDialog(null)}>
+                    <div style={{ background: '#1e1e2e', border: '1px solid #334155', borderRadius: 8, padding: 20, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+                        <h4 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14 }}>✅ Approve & Route</h4>
+                        <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Provide a reason for this approval (required per B.L.A.S.T. Rule 1):</p>
+                        <textarea
+                            value={approvalReason}
+                            onChange={e => setApprovalReason(e.target.value)}
+                            placeholder="Approval reasoning..."
+                            style={{ width: '100%', height: 60, padding: 8, borderRadius: 4, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', fontSize: 11, resize: 'none', boxSizing: 'border-box' }}
+                        />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
+                            <button onClick={() => { setApprovalDialog(null); setApprovalReason(''); }} style={{ padding: '5px 12px', borderRadius: 4, border: '1px solid #475569', background: 'transparent', color: '#94a3b8', cursor: 'pointer', fontSize: 11 }}>Cancel</button>
+                            <button onClick={() => handleApprove(approvalDialog.id, approvalDialog.projectId, approvalReason)} disabled={!approvalReason.trim()}
+                                style={{ padding: '5px 12px', borderRadius: 4, border: 'none', background: approvalReason.trim() ? '#22c55e' : '#334155', color: '#fff', cursor: approvalReason.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 600 }}>Confirm Approval</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Items list */}
             <div className="inbox-items">
@@ -208,6 +344,17 @@ export default function InboxWidget() {
                             </div>
                         )}
 
+                        {/* Thread Links */}
+                        {item.links && item.links.length > 0 && (
+                            <div style={{ display: 'flex', gap: 4, padding: '4px 0', flexWrap: 'wrap' }}>
+                                {item.links.map((link: any) => (
+                                    <span key={link.id} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)' }}>
+                                        🔗 {link.target_type}: {link.target_name || link.target_id.slice(0, 8)}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Expanded detail + actions */}
                         {selectedItem === item.id && (
                             <div className="card-actions" onClick={e => e.stopPropagation()}>
@@ -215,12 +362,22 @@ export default function InboxWidget() {
                                     <p className="routing-reason">🤖 {item.routingReasoning}</p>
                                 )}
 
+                                {/* Audit Trail (if loaded) */}
+                                {item.auditLog && item.auditLog.length > 0 && (
+                                    <div style={{ marginBottom: 8, fontSize: 10, color: '#64748b' }}>
+                                        <span style={{ fontWeight: 600 }}>Audit:</span>
+                                        {item.auditLog.slice(0, 3).map((log: any, i: number) => (
+                                            <span key={i} style={{ marginLeft: 4 }}>{log.action} by {log.actor || 'system'} · </span>
+                                        ))}
+                                    </div>
+                                )}
+
                                 <div className="action-buttons">
                                     <button
                                         className="action-btn approve"
                                         onClick={() => {
                                             if (item.routedToProject) {
-                                                handleApprove(item.id, item.routedToProject);
+                                                setApprovalDialog({ id: item.id, projectId: item.routedToProject });
                                             } else {
                                                 setRoutePickerFor(item.id);
                                             }
@@ -245,7 +402,7 @@ export default function InboxWidget() {
                                                 <button
                                                     key={id}
                                                     className="picker-option"
-                                                    onClick={() => handleApprove(item.id, id)}
+                                                    onClick={() => setApprovalDialog({ id: item.id, projectId: id })}
                                                 >
                                                     {name}
                                                 </button>

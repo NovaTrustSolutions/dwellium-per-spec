@@ -8,19 +8,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, ExternalLink, Paperclip, Calendar, Tag, CheckSquare, Square, Loader, Clock, MessageSquare, Image as ImageIcon } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
+import type { Workitem } from '../strataTypes';
 
-interface Workitem {
-    id: string;
-    title: string;
-    description?: string;
-    status: string;
-    priority?: string;
-    type: string;
-    domain: string;
-    tags: string[];
-    metadata?: Record<string, any>;
-}
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 interface TrelloAttachment {
     id: string;

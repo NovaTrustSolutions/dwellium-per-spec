@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Scale, Plus, X, ChevronDown, ChevronUp, RefreshCw, AlertTriangle,
     Building2, Users, Tag, FileText, Clock, Search, Lock, Shield,
+    MessageSquare, Paperclip, History, Link2, Send, ArrowUpCircle, XCircle, Download,
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
 import type { Workitem, Property, EntityProfile } from '../strataTypes';
+import { LoadingState, ErrorState } from '../StateView';
 
 interface DwelliumUser {
     id: string;
@@ -82,10 +84,16 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
 export default function LegalModule() {
     const [items, setItems] = useState<Workitem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [activeTab, setActiveTab] = useState<string>('details');
+    const [comments, setComments] = useState<any[]>([]);
+    const [matterLinks, setMatterLinks] = useState<any>(null);
+    const [commentText, setCommentText] = useState('');
+    const [isPrivileged, setIsPrivileged] = useState(false);
 
     // Tag autocomplete data
     const [properties, setProperties] = useState<Property[]>([]);
@@ -116,7 +124,7 @@ export default function LegalModule() {
             setItems(wi);
             setProperties(props);
             setTenants(ents);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); setError('Failed to load legal issues'); }
         setLoading(false);
     }, []);
 
@@ -160,6 +168,45 @@ export default function LegalModule() {
             setShowForm(false);
             setFormTags([]);
             setFormAccessList([]);
+            fetchAll();
+        } catch (err) { console.error(err); }
+    };
+
+    const loadMatterData = async (id: string) => {
+        try {
+            const [c, l] = await Promise.all([
+                strataGet<any[]>(`/legal/${id}/comments`),
+                strataGet<any>(`/legal/${id}/links`),
+            ]);
+            setComments(c); setMatterLinks(l);
+        } catch { setComments([]); setMatterLinks(null); }
+    };
+
+    const handleAddComment = async (matterId: string) => {
+        if (!commentText.trim()) return;
+        try {
+            await strataPost(`/legal/${matterId}/comments`, { body: commentText, isPrivileged });
+            setCommentText(''); setIsPrivileged(false);
+            const c = await strataGet<any[]>(`/legal/${matterId}/comments`);
+            setComments(c);
+        } catch (err) { console.error(err); }
+    };
+
+    const handleEscalate = async (matterId: string) => {
+        const reason = prompt('Escalation reason:');
+        if (!reason) return;
+        try {
+            await strataPost(`/legal/${matterId}/comments`, { body: `[ESCALATION] ${reason}`, isPrivileged: true });
+            fetchAll();
+        } catch (err) { console.error(err); }
+    };
+
+    const handleClose = async (matterId: string) => {
+        const resolution = prompt('Resolution summary:');
+        if (!resolution) return;
+        try {
+            await strataPut(`/workitems/${matterId}`, { status: 'completed' });
+            await strataPost(`/legal/${matterId}/comments`, { body: `[CLOSED] ${resolution}` });
             fetchAll();
         } catch (err) { console.error(err); }
     };
@@ -244,7 +291,9 @@ export default function LegalModule() {
 
             {/* Legal Issues List */}
             {loading ? (
-                <div className="s-loading">Loading legal issues…</div>
+                <LoadingState message="Loading legal issues…" />
+            ) : error ? (
+                <ErrorState message={error} onRetry={fetchAll} />
             ) : filtered.length === 0 ? (
                 <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
                     <Scale size={40} strokeWidth={1} style={{ marginBottom: 12, opacity: 0.4 }} />
@@ -277,7 +326,7 @@ export default function LegalModule() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <span style={{ fontWeight: 600, fontSize: 14, color: '#e2e8f0' }}>{wi.title}</span>
                                             {(wi.metadata as any)?.accessList?.length > 0 && (
-                                                <Lock size={12} style={{ color: '#f59e0b', flexShrink: 0 }} title="Restricted access" />
+                                                <span title="Restricted access"><Lock size={12} style={{ color: '#f59e0b', flexShrink: 0 }} /></span>
                                             )}
                                         </div>
                                         {wi.tags.length > 0 && (
@@ -309,60 +358,132 @@ export default function LegalModule() {
                                 </div>
 
                                 {expanded && (
-                                    <div style={{
-                                        padding: '12px 16px',
-                                        borderTop: '1px solid rgba(255,255,255,0.05)',
-                                        background: 'rgba(255,255,255,0.01)',
-                                    }}>
-                                        {wi.description && (
-                                            <p style={{ margin: '0 0 12px', fontSize: 13, color: '#94a3b8', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                                                {wi.description}
-                                            </p>
-                                        )}
-                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, fontSize: 11, color: '#64748b' }}>
-                                            <span><Clock size={11} style={{ verticalAlign: -2 }} /> Created: {new Date(wi.createdAt).toLocaleString()}</span>
-                                            {wi.dueDate && <span>Due: {wi.dueDate}</span>}
-                                            {(wi.metadata as any)?.legalType && <span>Type: {(wi.metadata as any).legalType}</span>}
-                                        </div>
-                                        {/* Access Control Display */}
-                                        {(wi.metadata as any)?.accessList?.length > 0 && (
-                                            <div style={{
-                                                display: 'flex', alignItems: 'center', gap: 6,
-                                                padding: '8px 12px', marginBottom: 12,
-                                                background: 'rgba(245, 158, 11, 0.06)',
-                                                border: '1px solid rgba(245, 158, 11, 0.15)',
-                                                borderRadius: 8, flexWrap: 'wrap',
-                                            }}>
-                                                <Shield size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                                                <span style={{ fontSize: 11, fontWeight: 600, color: '#fbbf24' }}>Restricted Access:</span>
-                                                {((wi.metadata as any).accessList as string[]).map((uid: string) => {
-                                                    const label = userIdToLabel.get(uid) || uid.slice(0, 8) + '…';
-                                                    return (
-                                                        <span key={uid} style={{
-                                                            fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 600,
-                                                            background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24',
-                                                        }}>{label}</span>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                            <span style={{ fontSize: 10, color: '#64748b', marginRight: 4, lineHeight: '24px' }}>Change status:</span>
-                                            {['open', 'in_progress', 'review', 'completed'].map(s => (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => handleStatusChange(wi.id, s)}
-                                                    disabled={wi.status === s}
-                                                    style={{
-                                                        padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
-                                                        border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-                                                        color: wi.status === s ? '#6366f1' : '#94a3b8',
-                                                        cursor: wi.status === s ? 'default' : 'pointer', textTransform: 'capitalize',
-                                                        opacity: wi.status === s ? 0.6 : 1,
-                                                    }}
-                                                >{s.replace('_', ' ')}</button>
+                                    <div style={{ padding: '0 16px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)' }}>
+                                        {/* Tab bar */}
+                                        <div style={{ display: 'flex', gap: 2, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 10 }}>
+                                            {[
+                                                { key: 'details', icon: <FileText size={11} />, label: 'Details' },
+                                                { key: 'comments', icon: <MessageSquare size={11} />, label: 'Comments' },
+                                                { key: 'evidence', icon: <Paperclip size={11} />, label: 'Evidence' },
+                                                { key: 'history', icon: <History size={11} />, label: 'History' },
+                                                { key: 'links', icon: <Link2 size={11} />, label: 'Links' },
+                                            ].map(t => (
+                                                <button key={t.key} onClick={() => { setActiveTab(t.key); if (t.key !== 'details') loadMatterData(wi.id); }}
+                                                    style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: 'none', background: activeTab === t.key ? 'rgba(99,102,241,0.15)' : 'transparent', color: activeTab === t.key ? '#a5b4fc' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    {t.icon} {t.label}
+                                                </button>
                                             ))}
                                         </div>
+
+                                        {/* Details Tab */}
+                                        {activeTab === 'details' && (<>
+                                            {wi.description && <p style={{ margin: '0 0 12px', fontSize: 13, color: '#94a3b8', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{wi.description}</p>}
+                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, fontSize: 11, color: '#64748b' }}>
+                                                <span><Clock size={11} style={{ verticalAlign: -2 }} /> Created: {new Date(wi.createdAt).toLocaleString()}</span>
+                                                {wi.dueDate && <span>Due: {wi.dueDate}</span>}
+                                                {(wi.metadata as any)?.legalType && <span>Type: {(wi.metadata as any).legalType}</span>}
+                                            </div>
+                                            {(wi.metadata as any)?.accessList?.length > 0 && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', marginBottom: 12, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 8, flexWrap: 'wrap' }}>
+                                                    <Shield size={13} style={{ color: '#f59e0b' }} />
+                                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#fbbf24' }}>Restricted:</span>
+                                                    {((wi.metadata as any).accessList as string[]).map((uid: string) => (
+                                                        <span key={uid} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 600, background: 'rgba(245,158,11,0.12)', color: '#fbbf24' }}>{userIdToLabel.get(uid) || uid.slice(0, 8) + '…'}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                                                <span style={{ fontSize: 10, color: '#64748b', lineHeight: '24px' }}>Status:</span>
+                                                {['open', 'in_progress', 'review', 'completed'].map(s => (
+                                                    <button key={s} onClick={() => handleStatusChange(wi.id, s)} disabled={wi.status === s}
+                                                        style={{ padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: wi.status === s ? '#6366f1' : '#94a3b8', cursor: wi.status === s ? 'default' : 'pointer', textTransform: 'capitalize', opacity: wi.status === s ? 0.6 : 1 }}
+                                                    >{s.replace('_', ' ')}</button>
+                                                ))}
+                                            </div>
+                                            {/* Action buttons */}
+                                            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                                                <button onClick={() => handleEscalate(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><ArrowUpCircle size={11} /> Escalate</button>
+                                                <button onClick={() => handleClose(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><XCircle size={11} /> Close</button>
+                                            </div>
+                                        </>)}
+
+                                        {/* Comments Tab */}
+                                        {activeTab === 'comments' && (
+                                            <div>
+                                                {comments.length === 0 ? <p style={{ fontSize: 12, color: '#475569' }}>No comments yet</p> : comments.map(c => (
+                                                    <div key={c.id} style={{ padding: '8px 10px', borderRadius: 6, marginBottom: 4, background: c.isPrivileged ? 'rgba(245,158,11,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${c.isPrivileged ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)'}` }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 4 }}>
+                                                            <span style={{ fontWeight: 600 }}>{c.author}</span>
+                                                            <span>{new Date(c.createdAt).toLocaleString()}</span>
+                                                        </div>
+                                                        {c.isPrivileged && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(245,158,11,0.15)', color: '#fbbf24', fontWeight: 700, marginBottom: 4, display: 'inline-block' }}>PRIVILEGED</span>}
+                                                        <p style={{ margin: 0, fontSize: 12, color: '#cbd5e1', whiteSpace: 'pre-wrap' }}>{c.body}</p>
+                                                    </div>
+                                                ))}
+                                                <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                                                    <input value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Add comment…" style={{ flex: 1, padding: '6px 10px', borderRadius: 6, fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', outline: 'none' }} />
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#f59e0b', cursor: 'pointer' }}>
+                                                        <input type="checkbox" checked={isPrivileged} onChange={e => setIsPrivileged(e.target.checked)} style={{ width: 12, height: 12 }} /> Privileged
+                                                    </label>
+                                                    <button onClick={() => handleAddComment(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}><Send size={10} /> Send</button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Evidence Tab */}
+                                        {activeTab === 'evidence' && (
+                                            <div>
+                                                {(matterLinks?.evidence || []).length === 0 ? <p style={{ fontSize: 12, color: '#475569' }}>No evidence attached</p> : (matterLinks.evidence as any[]).map((ev: any) => (
+                                                    <div key={ev.id} style={{ padding: '6px 10px', borderRadius: 6, marginBottom: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                                                        <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'rgba(99,102,241,0.12)', color: '#818cf8', textTransform: 'uppercase' }}>{ev.type}</span>
+                                                        <span style={{ flex: 1, color: '#cbd5e1' }}>{ev.description}</span>
+                                                        <span style={{ color: '#475569', fontSize: 10 }}>{new Date(ev.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* History Tab */}
+                                        {activeTab === 'history' && (
+                                            <div>
+                                                {(matterLinks?.decisions || []).length > 0 && (<>
+                                                    <h5 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '0 0 6px' }}>Decisions</h5>
+                                                    {(matterLinks.decisions as any[]).map((d: any) => (
+                                                        <div key={d.id} style={{ padding: '6px 10px', borderRadius: 6, marginBottom: 3, background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.1)', fontSize: 11 }}>
+                                                            <span style={{ fontWeight: 600, color: '#34d399' }}>{d.decision_type}</span> — <span style={{ color: '#cbd5e1' }}>{d.rationale}</span>
+                                                            <span style={{ float: 'right', fontSize: 10, color: '#475569' }}>{d.decided_by} · {new Date(d.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    ))}
+                                                </>)}
+                                                <h5 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '8px 0 6px' }}>Audit Trail</h5>
+                                                {(matterLinks?.auditTrail || []).length === 0 ? <p style={{ fontSize: 12, color: '#475569' }}>No audit entries</p> : (matterLinks.auditTrail as any[]).map((a: any, i: number) => (
+                                                    <div key={i} style={{ padding: '4px 10px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.02)', fontSize: 10, color: '#94a3b8', display: 'flex', gap: 8 }}>
+                                                        <span style={{ fontWeight: 600, color: '#818cf8' }}>{a.action}</span>
+                                                        <span style={{ flex: 1 }}>{a.userId}</span>
+                                                        <span style={{ color: '#475569' }}>{new Date(a.createdAt).toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Links Tab */}
+                                        {activeTab === 'links' && (
+                                            <div>
+                                                {[
+                                                    { key: 'incidents', label: 'Incidents', items: matterLinks?.incidents, render: (i: any) => `${i.title} (${i.severity} · ${i.status})` },
+                                                    { key: 'policies', label: 'Insurance Policies', items: matterLinks?.policies, render: (p: any) => `${p.policyType} — ${p.carrier || 'N/A'} (exp: ${p.expirationDate || 'N/A'})` },
+                                                    { key: 'complianceItems', label: 'Compliance', items: matterLinks?.complianceItems, render: (c: any) => `${c.label} (${c.status})` },
+                                                    { key: 'relatedMatters', label: 'Related Matters', items: matterLinks?.relatedMatters, render: (m: any) => `${m.title} (${m.status})` },
+                                                ].map(section => (
+                                                    <div key={section.key} style={{ marginBottom: 10 }}>
+                                                        <h5 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '0 0 4px' }}>{section.label} ({(section.items || []).length})</h5>
+                                                        {(section.items || []).length === 0 ? <p style={{ fontSize: 10, color: '#475569', margin: 0 }}>None linked</p> : (section.items as any[]).map((item: any) => (
+                                                            <div key={item.id} style={{ padding: '4px 10px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.02)', fontSize: 10, color: '#cbd5e1' }}>{section.render(item)}</div>
+                                                        ))}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

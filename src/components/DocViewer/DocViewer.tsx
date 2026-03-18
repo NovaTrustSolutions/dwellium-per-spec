@@ -17,6 +17,7 @@ interface DocFile {
 type ToolMode = 'select' | 'text' | 'editText' | 'highlight' | 'draw' | 'shape' | 'signature' | 'stamp';
 type ShapeType = 'rectangle' | 'circle' | 'line' | 'arrow';
 type StampType = 'APPROVED' | 'DRAFT' | 'CONFIDENTIAL' | 'REVIEWED' | 'URGENT' | 'FINAL';
+type PreviewMode = 'pdf' | 'text' | 'image' | 'unavailable';
 
 interface Point { x: number; y: number; }
 
@@ -67,6 +68,8 @@ interface TextEdit {
 }
 
 const API_FILES = `${API_BASE}/api/files`;
+const TEXT_FILE_TYPES = new Set(['txt', 'md', 'csv', 'json', 'html']);
+const IMAGE_FILE_TYPES = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']);
 
 const STAMP_COLORS: Record<StampType, string> = {
     APPROVED: '#22c55e',
@@ -88,6 +91,13 @@ export default function DocViewer() {
     const [totalPages, setTotalPages] = useState(0);
     const [zoom, setZoom] = useState(1.0);
     const [isLoading, setIsLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [previewMode, setPreviewMode] = useState<PreviewMode>('unavailable');
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewMessage, setPreviewMessage] = useState<string | null>(null);
+    const [textContent, setTextContent] = useState('');
+    const [textDraft, setTextDraft] = useState('');
+    const [savedLocalPath, setSavedLocalPath] = useState<string | null>(null);
 
     // PDF state
     const [pdfDoc, setPdfDoc] = useState<any>(null);
@@ -141,7 +151,7 @@ export default function DocViewer() {
             const json = await res.json();
             if (json.success) {
                 const docs = json.data.filter((f: any) =>
-                    ['pdf', 'doc', 'docx', 'txt', 'md'].includes(f.type)
+                    ['pdf', 'doc', 'docx', 'txt', 'md', 'csv', 'json', 'html', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(f.type)
                 );
                 setFiles(docs);
                 return docs;
@@ -193,20 +203,61 @@ export default function DocViewer() {
         return () => window.removeEventListener('keydown', handleKey);
     }, [undo, redo]);
 
-    // ---- PDF LOADING ----
-    const loadPdf = useCallback(async (file: DocFile) => {
-        setIsLoading(true);
+    const resetDocumentState = useCallback((file: DocFile) => {
         setSelectedFile(file);
         setCurrentPage(1);
         setAnnotations(new Map());
         setUndoStack([]);
         setRedoStack([]);
+        setTextItems([]);
+        setEditingTextItem(null);
+        setEditedText('');
+        setTextEdits([]);
+        setPdfDoc(null);
+        setPdfBytes(null);
+        setPreviewMode('unavailable');
+        setPreviewUrl(null);
+        setPreviewMessage(null);
+        setTextContent('');
+        setTextDraft('');
+        setSavedLocalPath(null);
+    }, []);
+
+    // ---- DOCUMENT LOADING ----
+    const loadDocument = useCallback(async (file: DocFile) => {
+        setIsLoading(true);
+        resetDocumentState(file);
 
         try {
+            const url = file.url || `${API_FILES}/${file.id}`;
+
+            if (TEXT_FILE_TYPES.has(file.type)) {
+                setPreviewMode('text');
+                setTotalPages(1);
+                const res = await fetch(`${API_FILES}/${file.id}/preview`);
+                const json = await res.json();
+                if (!res.ok || !json?.success || json?.data?.previewType !== 'text') {
+                    throw new Error(json?.error || `Text preview failed (${res.status})`);
+                }
+                const content = json.data.content || '';
+                setTextContent(content);
+                setTextDraft(content);
+                setPreviewMessage(json.data.truncated ? 'Preview truncated to first 5,000 characters.' : null);
+                setIsLoading(false);
+                return;
+            }
+
+            if (IMAGE_FILE_TYPES.has(file.type)) {
+                setPreviewMode('image');
+                setPreviewUrl(url);
+                setTotalPages(1);
+                setIsLoading(false);
+                return;
+            }
+
+            setPreviewMode('pdf');
             const pdfjsLib = await import('pdfjs-dist');
             pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-            const url = file.url || `${API_FILES}/${file.id}/download`;
 
             try {
                 const pdf = await pdfjsLib.getDocument(url).promise;
@@ -222,19 +273,20 @@ export default function DocViewer() {
             } catch {
                 setPdfDoc(null);
                 setPdfBytes(null);
-                setTotalPages(5);
-                renderDemoPage(1);
+                setPreviewMode('unavailable');
+                setPreviewUrl(url);
+                setPreviewMessage(`Preview not available for .${file.type} files yet. You can still open the original or cache a local copy.`);
             }
         } catch (err) {
             console.error('PDF.js load error:', err);
             setPdfDoc(null);
             setPdfBytes(null);
-            setTotalPages(5);
-            renderDemoPage(1);
+            setPreviewMode('unavailable');
+            setPreviewMessage(err instanceof Error ? err.message : 'Preview unavailable');
         }
 
         setIsLoading(false);
-    }, [zoom]);
+    }, [resetDocumentState, zoom]);
 
     // Command Palette deep-link
     const openFileFromPalette = useCallback(async (detail: { fileId?: string; name?: string }) => {
@@ -244,8 +296,8 @@ export default function DocViewer() {
             const refreshed = await fetchDocFiles();
             candidate = refreshed.find(file => (fileId && file.id === fileId) || (name && file.name === name));
         }
-        if (candidate) void loadPdf(candidate);
-    }, [files, fetchDocFiles, loadPdf]);
+        if (candidate) void loadDocument(candidate);
+    }, [files, fetchDocFiles, loadDocument]);
 
     useEffect(() => {
         const onOpenFile = (event: Event) => {
@@ -374,9 +426,10 @@ export default function DocViewer() {
 
     // Re-render on page/zoom change
     useEffect(() => {
+        if (previewMode !== 'pdf') return;
         if (pdfDoc) renderPage(pdfDoc, currentPage, zoom);
         else if (selectedFile) renderDemoPage(currentPage);
-    }, [currentPage, zoom, pdfDoc, selectedFile]);
+    }, [currentPage, zoom, pdfDoc, selectedFile, previewMode]);
 
     // ---- RENDER OVERLAY (ANNOTATIONS) ----
     const renderOverlay = useCallback(() => {
@@ -914,151 +967,235 @@ export default function DocViewer() {
     };
 
     // ---- DOWNLOAD / EXPORT ----
-    const downloadPdf = async () => {
-        try {
-            let doc: PDFDocument;
-            if (pdfBytes) {
-                doc = await PDFDocument.load(pdfBytes);
-            } else {
-                doc = await PDFDocument.create();
-                for (let i = 0; i < totalPages; i++) {
-                    doc.addPage([612, 792]);
-                }
+    const buildPdfBytes = useCallback(async (): Promise<Uint8Array> => {
+        let doc: PDFDocument;
+        if (pdfBytes) {
+            doc = await PDFDocument.load(pdfBytes);
+        } else {
+            doc = await PDFDocument.create();
+            for (let i = 0; i < totalPages; i++) {
+                doc.addPage([612, 792]);
             }
+        }
 
-            const font = await doc.embedFont(StandardFonts.Helvetica);
-            const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
 
-            // Bake annotations into pages
-            annotations.forEach((pageAnns, pageIdx) => {
-                if (pageIdx < 1 || pageIdx > doc.getPageCount()) return;
-                const page = doc.getPage(pageIdx - 1);
-                const { height } = page.getSize();
+        annotations.forEach((pageAnns, pageIdx) => {
+            if (pageIdx < 1 || pageIdx > doc.getPageCount()) return;
+            const page = doc.getPage(pageIdx - 1);
+            const { height } = page.getSize();
 
-                for (const ann of pageAnns) {
-                    switch (ann.type) {
-                        case 'text':
-                            if (ann.position && ann.text) {
-                                const hexColor = ann.color;
-                                const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
-                                const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
-                                const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
-                                page.drawText(ann.text, {
-                                    x: ann.position.x,
-                                    y: height - ann.position.y,
-                                    size: ann.fontSize || 16,
-                                    font,
-                                    color: rgb(r1, g1, b1),
-                                });
-                            }
-                            break;
+            for (const ann of pageAnns) {
+                switch (ann.type) {
+                    case 'text':
+                        if (ann.position && ann.text) {
+                            const hexColor = ann.color;
+                            const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
+                            const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
+                            const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
+                            page.drawText(ann.text, {
+                                x: ann.position.x,
+                                y: height - ann.position.y,
+                                size: ann.fontSize || 16,
+                                font,
+                                color: rgb(r1, g1, b1),
+                            });
+                        }
+                        break;
 
-                        case 'highlight':
-                            if (ann.rect) {
-                                const hexColor = ann.color;
-                                const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
-                                const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
-                                const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
+                    case 'highlight':
+                        if (ann.rect) {
+                            const hexColor = ann.color;
+                            const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
+                            const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
+                            const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
+                            page.drawRectangle({
+                                x: ann.rect.x,
+                                y: height - ann.rect.y - ann.rect.h,
+                                width: ann.rect.w,
+                                height: ann.rect.h,
+                                color: rgb(r1, g1, b1),
+                                opacity: ann.opacity,
+                            });
+                        }
+                        break;
+
+                    case 'shape':
+                        if (ann.rect) {
+                            const hexColor = ann.color;
+                            const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
+                            const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
+                            const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
+                            const borderColor = rgb(r1, g1, b1);
+                            if (ann.shapeType === 'rectangle') {
                                 page.drawRectangle({
                                     x: ann.rect.x,
                                     y: height - ann.rect.y - ann.rect.h,
                                     width: ann.rect.w,
                                     height: ann.rect.h,
-                                    color: rgb(r1, g1, b1),
-                                    opacity: ann.opacity,
+                                    borderColor,
+                                    borderWidth: ann.lineWidth || 2,
+                                });
+                            } else if (ann.shapeType === 'circle') {
+                                page.drawEllipse({
+                                    x: ann.rect.x + ann.rect.w / 2,
+                                    y: height - ann.rect.y - ann.rect.h / 2,
+                                    xScale: ann.rect.w / 2,
+                                    yScale: ann.rect.h / 2,
+                                    borderColor,
+                                    borderWidth: ann.lineWidth || 2,
+                                });
+                            } else if (ann.shapeType === 'line' || ann.shapeType === 'arrow') {
+                                page.drawLine({
+                                    start: { x: ann.rect.x, y: height - ann.rect.y },
+                                    end: { x: ann.rect.x + ann.rect.w, y: height - ann.rect.y - ann.rect.h },
+                                    color: borderColor,
+                                    thickness: ann.lineWidth || 2,
                                 });
                             }
-                            break;
+                        }
+                        break;
 
-                        case 'shape':
-                            if (ann.rect) {
-                                const hexColor = ann.color;
-                                const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
-                                const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
-                                const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
-                                const borderColor = rgb(r1, g1, b1);
-                                if (ann.shapeType === 'rectangle') {
-                                    page.drawRectangle({
-                                        x: ann.rect.x,
-                                        y: height - ann.rect.y - ann.rect.h,
-                                        width: ann.rect.w,
-                                        height: ann.rect.h,
-                                        borderColor,
-                                        borderWidth: ann.lineWidth || 2,
-                                    });
-                                } else if (ann.shapeType === 'circle') {
-                                    page.drawEllipse({
-                                        x: ann.rect.x + ann.rect.w / 2,
-                                        y: height - ann.rect.y - ann.rect.h / 2,
-                                        xScale: ann.rect.w / 2,
-                                        yScale: ann.rect.h / 2,
-                                        borderColor,
-                                        borderWidth: ann.lineWidth || 2,
-                                    });
-                                } else if (ann.shapeType === 'line' || ann.shapeType === 'arrow') {
-                                    page.drawLine({
-                                        start: { x: ann.rect.x, y: height - ann.rect.y },
-                                        end: { x: ann.rect.x + ann.rect.w, y: height - ann.rect.y - ann.rect.h },
-                                        color: borderColor,
-                                        thickness: ann.lineWidth || 2,
-                                    });
-                                }
-                            }
-                            break;
+                    case 'stamp':
+                        if (ann.position && ann.stampType) {
+                            const stampColor = STAMP_COLORS[ann.stampType];
+                            const r1 = parseInt(stampColor.slice(1, 3), 16) / 255;
+                            const g1 = parseInt(stampColor.slice(3, 5), 16) / 255;
+                            const b1 = parseInt(stampColor.slice(5, 7), 16) / 255;
+                            page.drawText(ann.stampType, {
+                                x: ann.position.x,
+                                y: height - ann.position.y,
+                                size: 28,
+                                font: boldFont,
+                                color: rgb(r1, g1, b1),
+                                opacity: 0.85,
+                            });
+                        }
+                        break;
 
-                        case 'stamp':
-                            if (ann.position && ann.stampType) {
-                                const stampColor = STAMP_COLORS[ann.stampType];
-                                const r1 = parseInt(stampColor.slice(1, 3), 16) / 255;
-                                const g1 = parseInt(stampColor.slice(3, 5), 16) / 255;
-                                const b1 = parseInt(stampColor.slice(5, 7), 16) / 255;
-                                page.drawText(ann.stampType, {
-                                    x: ann.position.x,
-                                    y: height - ann.position.y,
-                                    size: 28,
-                                    font: boldFont,
+                    case 'draw':
+                        if (ann.points && ann.points.length > 1) {
+                            const hexColor = ann.color;
+                            const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
+                            const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
+                            const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
+                            for (let i = 0; i < ann.points.length - 1; i++) {
+                                page.drawLine({
+                                    start: { x: ann.points[i].x, y: height - ann.points[i].y },
+                                    end: { x: ann.points[i + 1].x, y: height - ann.points[i + 1].y },
                                     color: rgb(r1, g1, b1),
-                                    opacity: 0.85,
+                                    thickness: ann.lineWidth || 3,
                                 });
                             }
-                            break;
-
-                        case 'draw':
-                            if (ann.points && ann.points.length > 1) {
-                                const hexColor = ann.color;
-                                const r1 = parseInt(hexColor.slice(1, 3), 16) / 255;
-                                const g1 = parseInt(hexColor.slice(3, 5), 16) / 255;
-                                const b1 = parseInt(hexColor.slice(5, 7), 16) / 255;
-                                for (let i = 0; i < ann.points.length - 1; i++) {
-                                    page.drawLine({
-                                        start: { x: ann.points[i].x, y: height - ann.points[i].y },
-                                        end: { x: ann.points[i + 1].x, y: height - ann.points[i + 1].y },
-                                        color: rgb(r1, g1, b1),
-                                        thickness: ann.lineWidth || 3,
-                                    });
-                                }
-                            }
-                            break;
-                    }
+                        }
+                        break;
                 }
-            });
+            }
+        });
 
-            const finalBytes = await doc.save();
-            const blob = new Blob([new Uint8Array(finalBytes)], { type: 'application/pdf' });
+        return new Uint8Array(await doc.save());
+    }, [annotations, pdfBytes, totalPages]);
+
+    const materializeLocalCopy = useCallback(async () => {
+        if (!selectedFile) return;
+        try {
+            const res = await fetch(`${API_FILES}/${selectedFile.id}/materialize`, { method: 'POST' });
+            const json = await res.json();
+            if (!res.ok || !json?.success) {
+                throw new Error(json?.error || `Materialize failed (${res.status})`);
+            }
+            const localPath = json?.data?.localPath || null;
+            setSavedLocalPath(localPath);
+            if (localPath) {
+                await navigator.clipboard.writeText(localPath).catch(() => {});
+                showToast(`Local copy ready: ${localPath}`);
+            }
+        } catch (err) {
+            showToast(err instanceof Error ? err.message : 'Failed to cache a local copy');
+        }
+    }, [selectedFile]);
+
+    const openOriginalFile = useCallback(() => {
+        if (!selectedFile) return;
+        window.open(`${API_FILES}/${selectedFile.id}`, '_blank', 'noopener');
+    }, [selectedFile]);
+
+    const downloadCurrentDocument = async () => {
+        if (!selectedFile) return;
+        try {
+            let blob: Blob;
+            if (previewMode === 'pdf') {
+                const bytes = await buildPdfBytes();
+                blob = new Blob([bytes], { type: 'application/pdf' });
+            } else if (previewMode === 'text') {
+                blob = new Blob([textDraft], { type: 'text/plain;charset=utf-8' });
+            } else {
+                openOriginalFile();
+                return;
+            }
+
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = selectedFile?.name || 'edited-document.pdf';
+            a.download = selectedFile.name || 'document';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showToast('PDF downloaded with annotations');
+            showToast(previewMode === 'pdf' ? 'Document exported' : 'Text document downloaded');
         } catch (err) {
             console.error('Download error:', err);
-            showToast('Error exporting PDF');
+            showToast('Error exporting document');
         }
     };
+
+    const saveDocumentToQualia = useCallback(async () => {
+        if (!selectedFile) return;
+        if (previewMode !== 'pdf' && previewMode !== 'text') {
+            showToast('Save-back is currently available for PDF and text documents.');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const blob = previewMode === 'pdf'
+                ? new Blob([await buildPdfBytes()], { type: 'application/pdf' })
+                : new Blob([textDraft], { type: 'text/plain;charset=utf-8' });
+
+            const formData = new FormData();
+            formData.append('file', blob, selectedFile.name);
+            formData.append('changeNote', `Saved from Doc Viewer (${previewMode})`);
+
+            const res = await fetch(`${API_FILES}/${selectedFile.id}/content`, {
+                method: 'PUT',
+                body: formData,
+            });
+            const json = await res.json();
+            if (!res.ok || !json?.success) {
+                throw new Error(json?.error || `Save failed (${res.status})`);
+            }
+
+            const updatedFile = json?.data?.file as DocFile | undefined;
+            const nextSavedPath = json?.data?.savedPath || null;
+            if (updatedFile) {
+                setSelectedFile(updatedFile);
+                setFiles(prev => prev.map(file => file.id === updatedFile.id ? { ...file, ...updatedFile } : file));
+            }
+            if (previewMode === 'text') {
+                setTextContent(textDraft);
+            }
+            if (nextSavedPath) {
+                setSavedLocalPath(nextSavedPath);
+            }
+            showToast('Changes saved back into Qualia');
+        } catch (err) {
+            console.error('Save document error:', err);
+            showToast(err instanceof Error ? err.message : 'Failed to save document');
+        } finally {
+            setIsSaving(false);
+        }
+    }, [buildPdfBytes, previewMode, selectedFile, textDraft]);
 
     // ---- SIGNATURE MODAL ----
     const sigDrawingRef = useRef(false);
@@ -1140,12 +1277,15 @@ export default function DocViewer() {
 
     // ---- TOOL CONFIG ----
     const COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#1a1a2e', '#ffffff'];
+    const canEditPdf = previewMode === 'pdf';
+    const canSaveBack = previewMode === 'pdf' || previewMode === 'text';
+    const isTextDirty = previewMode === 'text' && textDraft !== textContent;
 
     // ---- RENDER ----
     return (
         <div className="doc-viewer">
             {/* Page Thumbnails */}
-            {selectedFile && totalPages > 0 && (
+            {selectedFile && previewMode === 'pdf' && totalPages > 0 && (
                 <div className="dv-nav">
                     {Array.from({ length: totalPages }, (_, i) => (
                         <div key={i + 1}
@@ -1168,7 +1308,7 @@ export default function DocViewer() {
                         value={selectedFile?.id || ''}
                         onChange={(e) => {
                             const file = files.find(f => f.id === e.target.value);
-                            if (file) loadPdf(file);
+                            if (file) void loadDocument(file);
                         }}>
                         <option value="">Select a document...</option>
                         {files.map(f => (
@@ -1178,30 +1318,51 @@ export default function DocViewer() {
 
                     {selectedFile && (
                         <>
-                            <div className="dv-toolbar__page">
-                                <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>◀</button>
-                                <input className="dv-toolbar__page-input" type="number" value={currentPage}
-                                    onChange={e => goToPage(parseInt(e.target.value) || 1)}
-                                    min={1} max={totalPages} />
-                                <span>/ {totalPages}</span>
-                                <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages}>▶</button>
-                            </div>
+                            {previewMode === 'pdf' && (
+                                <>
+                                    <div className="dv-toolbar__page">
+                                        <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>◀</button>
+                                        <input className="dv-toolbar__page-input" type="number" value={currentPage}
+                                            onChange={e => goToPage(parseInt(e.target.value) || 1)}
+                                            min={1} max={totalPages} />
+                                        <span>/ {totalPages}</span>
+                                        <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages}>▶</button>
+                                    </div>
 
-                            <div className="dv-zoom">
-                                <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}>−</button>
-                                <span className="dv-zoom__level">{Math.round(zoom * 100)}%</span>
-                                <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.min(3, z + 0.25))}>+</button>
-                            </div>
+                                    <div className="dv-zoom">
+                                        <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}>−</button>
+                                        <span className="dv-zoom__level">{Math.round(zoom * 100)}%</span>
+                                        <button className="dv-zoom__btn" onClick={() => setZoom(z => Math.min(3, z + 0.25))}>+</button>
+                                    </div>
+                                </>
+                            )}
 
-                            <button className="dv-toolbar__btn dv-toolbar__btn--download" onClick={downloadPdf} title="Download PDF">
+                            <button className="dv-toolbar__btn dv-toolbar__btn--download" onClick={downloadCurrentDocument} title="Export current document">
                                 ⬇ Export
+                            </button>
+                            {canSaveBack && (
+                                <button className="dv-toolbar__btn" onClick={() => void saveDocumentToQualia()} disabled={isSaving || (previewMode === 'text' && !isTextDirty)}>
+                                    {isSaving ? 'Saving…' : '💾 Save Back'}
+                                </button>
+                            )}
+                            <button className="dv-toolbar__btn" onClick={() => void materializeLocalCopy()} title="Materialize local copy and copy path">
+                                📥 Cache Local
+                            </button>
+                            <button className="dv-toolbar__btn" onClick={openOriginalFile} title="Open original file route">
+                                ↗ Open Original
                             </button>
                         </>
                     )}
                 </div>
+                {selectedFile && (previewMessage || savedLocalPath) && (
+                    <div className="dv-toolbar dv-toolbar--info">
+                        {previewMessage && <span className="dv-toolbar__hint">{previewMessage}</span>}
+                        {savedLocalPath && <span className="dv-toolbar__hint">Local path: {savedLocalPath}</span>}
+                    </div>
+                )}
 
                 {/* Editing Toolbar */}
-                {selectedFile && (
+                {selectedFile && canEditPdf && (
                     <div className="dv-edit-toolbar">
                         <div className="dv-edit-toolbar__group">
                             <button className={`dv-edit-btn ${activeTool === 'select' ? 'dv-edit-btn--active' : ''}`}
@@ -1367,7 +1528,7 @@ export default function DocViewer() {
                         <div className="dv-loading__spinner" />
                         Loading document...
                     </div>
-                ) : selectedFile ? (
+                ) : selectedFile && previewMode === 'pdf' ? (
                     <div className="dv-canvas-container" ref={containerRef}>
                         <div className="dv-canvas-wrapper"
                             style={{ cursor: activeTool === 'select' ? 'default' : activeTool === 'text' || activeTool === 'editText' ? 'text' : 'crosshair' }}>
@@ -1433,11 +1594,47 @@ export default function DocViewer() {
                             )}
                         </div>
                     </div>
+                ) : selectedFile && previewMode === 'text' ? (
+                    <div className="dv-text-preview">
+                        <div className="dv-text-preview__meta">
+                            <span>{selectedFile.name}</span>
+                            <span>{textDraft.length.toLocaleString()} chars</span>
+                            {isTextDirty && <span className="dv-text-preview__dirty">Unsaved changes</span>}
+                        </div>
+                        <textarea
+                            className="dv-text-preview__editor"
+                            value={textDraft}
+                            onChange={(e) => setTextDraft(e.target.value)}
+                            spellCheck={false}
+                        />
+                    </div>
+                ) : selectedFile && previewMode === 'image' ? (
+                    <div className="dv-image-preview">
+                        {previewUrl ? (
+                            <img
+                                className="dv-image-preview__img"
+                                src={previewUrl}
+                                alt={selectedFile.name}
+                                style={{ transform: `scale(${zoom})` }}
+                            />
+                        ) : (
+                            <div className="dv-empty">
+                                <span className="dv-empty__icon">🖼️</span>
+                                <span className="dv-empty__text">Image preview unavailable</span>
+                            </div>
+                        )}
+                    </div>
+                ) : selectedFile ? (
+                    <div className="dv-empty">
+                        <span className="dv-empty__icon">📎</span>
+                        <span className="dv-empty__text">This file opens in the Docs workspace, but inline preview is not ready yet.</span>
+                        <span className="dv-empty__hint">Use Cache Local to get a local copy path or Open Original to use the raw file.</span>
+                    </div>
                 ) : (
                     <div className="dv-empty">
                         <span className="dv-empty__icon">📄</span>
                         <span className="dv-empty__text">Select a document to view</span>
-                        <span className="dv-empty__hint">Supports PDF, DOC, and text files</span>
+                        <span className="dv-empty__hint">Supports PDF, text, JSON, HTML, and image previews</span>
                     </div>
                 )}
             </div>

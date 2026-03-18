@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { strataGet } from '../strataApi';
 import type { Workitem } from '../strataTypes';
+import { LoadingState, ErrorState } from '../StateView';
 import { useUser } from '../../../context/UserContext';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -58,6 +59,7 @@ export default function CalendarModule() {
     const [events, setEvents] = useState<Workitem[]>([]);
     const [googleEvents, setGoogleEvents] = useState<ExternalEvent[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [tab, setTab] = useState<Tab>('calendar');
@@ -71,10 +73,11 @@ export default function CalendarModule() {
 
     const fetchEvents = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
             const data = await strataGet<Workitem[]>('/workitems');
             setEvents(data);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); setError('Failed to load calendar events'); }
         setLoading(false);
     }, []);
 
@@ -337,153 +340,154 @@ export default function CalendarModule() {
                     </div>
                 </div>
 
+            ) : loading ? (
+                /* ═══════ CALENDAR TAB — LOADING ═══════ */
+                <LoadingState message="Loading calendar…" />
+            ) : error ? (
+                <ErrorState message={error} onRetry={fetchEvents} />
             ) : (
                 /* ═══════ CALENDAR TAB ═══════ */
-                loading ? (
-                    <div className="s-loading">Loading calendar…</div>
-                ) : (
-                    <div style={{ display: 'flex', gap: 16 }}>
-                        {/* Calendar Grid */}
-                        {hasPermission('strata:calendar:events-list') && (
-                            <div style={{ flex: 2 }}>
-                                <div className="s-glass-card" style={{ padding: '16px 20px' }}>
-                                    {/* Month Navigation */}
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                                        <button className="s-btn s-btn-ghost s-btn-sm" onClick={prevMonth}><ChevronLeft size={16} /></button>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: 18, fontWeight: 600 }}>
-                                                {MONTHS[month]} {year}
-                                            </h3>
-                                            <button className="s-btn s-btn-ghost s-btn-sm" onClick={today} style={{ fontSize: 11 }}>Today</button>
-                                        </div>
-                                        <button className="s-btn s-btn-ghost s-btn-sm" onClick={nextMonth}><ChevronRight size={16} /></button>
+                <div style={{ display: 'flex', gap: 16 }}>
+                    {/* Calendar Grid */}
+                    {hasPermission('strata:calendar:events-list') && (
+                        <div style={{ flex: 2 }}>
+                            <div className="s-glass-card" style={{ padding: '16px 20px' }}>
+                                {/* Month Navigation */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                                    <button className="s-btn s-btn-ghost s-btn-sm" onClick={prevMonth}><ChevronLeft size={16} /></button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: 18, fontWeight: 600 }}>
+                                            {MONTHS[month]} {year}
+                                        </h3>
+                                        <button className="s-btn s-btn-ghost s-btn-sm" onClick={today} style={{ fontSize: 11 }}>Today</button>
                                     </div>
+                                    <button className="s-btn s-btn-ghost s-btn-sm" onClick={nextMonth}><ChevronRight size={16} /></button>
+                                </div>
 
-                                    {/* Day Headers */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
-                                        {DAYS.map(d => (
-                                            <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#64748b', fontWeight: 600, padding: '4px 0', textTransform: 'uppercase' }}>{d}</div>
-                                        ))}
-                                    </div>
+                                {/* Day Headers */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+                                    {DAYS.map(d => (
+                                        <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#64748b', fontWeight: 600, padding: '4px 0', textTransform: 'uppercase' }}>{d}</div>
+                                    ))}
+                                </div>
 
-                                    {/* Calendar Cells */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-                                        {calendarDays.map((day, i) => {
-                                            if (day === null) return <div key={`e-${i}`} style={{ height: 72 }} />;
-                                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                            const dayEvents = getEventsForDay(day);
-                                            const isToday = dateStr === todayStr;
-                                            const isSelected = dateStr === selectedDate;
+                                {/* Calendar Cells */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                                    {calendarDays.map((day, i) => {
+                                        if (day === null) return <div key={`e-${i}`} style={{ height: 72 }} />;
+                                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                        const dayEvents = getEventsForDay(day);
+                                        const isToday = dateStr === todayStr;
+                                        const isSelected = dateStr === selectedDate;
 
-                                            return (
-                                                <div
-                                                    key={day}
-                                                    onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                                                    style={{
-                                                        height: 72,
-                                                        padding: '4px 6px',
-                                                        borderRadius: 6,
-                                                        cursor: 'pointer',
-                                                        background: isSelected ? 'rgba(99,102,241,0.15)' : isToday ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.02)',
-                                                        border: `1px solid ${isSelected ? 'rgba(99,102,241,0.4)' : isToday ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.04)'}`,
-                                                        transition: 'all 0.15s',
-                                                    }}
-                                                >
-                                                    <div style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isToday ? '#10b981' : '#94a3b8', marginBottom: 2 }}>{day}</div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}>
-                                                        {dayEvents.slice(0, 3).map((ev, idx) => (
-                                                            <div key={idx} style={{
-                                                                fontSize: 9, padding: '1px 4px', borderRadius: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                                                background: `${typeColor[ev.type] || '#6366f1'}20`, color: typeColor[ev.type] || '#a5b4fc',
-                                                            }}>
-                                                                {ev.title}
-                                                            </div>
-                                                        ))}
-                                                        {dayEvents.length > 3 && (
-                                                            <div style={{ fontSize: 9, color: '#64748b' }}>+{dayEvents.length - 3} more</div>
-                                                        )}
-                                                    </div>
+                                        return (
+                                            <div
+                                                key={day}
+                                                onClick={() => setSelectedDate(isSelected ? null : dateStr)}
+                                                style={{
+                                                    height: 72,
+                                                    padding: '4px 6px',
+                                                    borderRadius: 6,
+                                                    cursor: 'pointer',
+                                                    background: isSelected ? 'rgba(99,102,241,0.15)' : isToday ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.02)',
+                                                    border: `1px solid ${isSelected ? 'rgba(99,102,241,0.4)' : isToday ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.04)'}`,
+                                                    transition: 'all 0.15s',
+                                                }}
+                                            >
+                                                <div style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isToday ? '#10b981' : '#94a3b8', marginBottom: 2 }}>{day}</div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}>
+                                                    {dayEvents.slice(0, 3).map((ev, idx) => (
+                                                        <div key={idx} style={{
+                                                            fontSize: 9, padding: '1px 4px', borderRadius: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                            background: `${typeColor[ev.type] || '#6366f1'}20`, color: typeColor[ev.type] || '#a5b4fc',
+                                                        }}>
+                                                            {ev.title}
+                                                        </div>
+                                                    ))}
+                                                    {dayEvents.length > 3 && (
+                                                        <div style={{ fontSize: 9, color: '#64748b' }}>+{dayEvents.length - 3} more</div>
+                                                    )}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* Event Detail Panel */}
-                        {hasPermission('strata:calendar:day-detail') && (
-                            <div style={{ flex: 1, minWidth: 260 }}>
-                                <div className="s-glass-card" style={{ padding: 16 }}>
-                                    <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <CalendarDays size={16} />
-                                        {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Select a Date'}
-                                    </h3>
-                                    {selectedDate ? (
-                                        selectedEvents.length > 0 ? (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                {selectedEvents.map(ev => (
-                                                    <div key={ev.id} style={{
-                                                        padding: '10px 12px', borderRadius: 8,
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        border: '1px solid rgba(255,255,255,0.06)',
-                                                    }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                                            <span style={{ color: typeColor[ev.type] || '#a5b4fc' }}>{typeIcon(ev.type)}</span>
-                                                            <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{ev.title}</span>
-                                                        </div>
-                                                        <div style={{ fontSize: 11, color: '#64748b' }}>{ev.description || 'No description'}</div>
-                                                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                                                            <span style={{
-                                                                fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600, textTransform: 'uppercase',
-                                                                background: `${typeColor[ev.type] || '#6366f1'}15`, color: typeColor[ev.type] || '#a5b4fc',
-                                                            }}>{ev.type}</span>
-                                                            <span className={`s-badge s-badge-sm ${ev.status}`}>{ev.status}</span>
-                                                        </div>
+                    {/* Event Detail Panel */}
+                    {hasPermission('strata:calendar:day-detail') && (
+                        <div style={{ flex: 1, minWidth: 260 }}>
+                            <div className="s-glass-card" style={{ padding: 16 }}>
+                                <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <CalendarDays size={16} />
+                                    {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Select a Date'}
+                                </h3>
+                                {selectedDate ? (
+                                    selectedEvents.length > 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {selectedEvents.map(ev => (
+                                                <div key={ev.id} style={{
+                                                    padding: '10px 12px', borderRadius: 8,
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    border: '1px solid rgba(255,255,255,0.06)',
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                        <span style={{ color: typeColor[ev.type] || '#a5b4fc' }}>{typeIcon(ev.type)}</span>
+                                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{ev.title}</span>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>No events on this date</p>
-                                        )
+                                                    <div style={{ fontSize: 11, color: '#64748b' }}>{ev.description || 'No description'}</div>
+                                                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                                        <span style={{
+                                                            fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600, textTransform: 'uppercase',
+                                                            background: `${typeColor[ev.type] || '#6366f1'}15`, color: typeColor[ev.type] || '#a5b4fc',
+                                                        }}>{ev.type}</span>
+                                                        <span className={`s-badge s-badge-sm ${ev.status}`}>{ev.status}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     ) : (
-                                        <p style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>Click a date to view events</p>
+                                        <p style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>No events on this date</p>
+                                    )
+                                ) : (
+                                    <p style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>Click a date to view events</p>
+                                )}
+                            </div>
+
+                            {/* Upcoming Events */}
+                            <div className="s-glass-card" style={{ padding: 16, marginTop: 12 }}>
+                                <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600 }}>Upcoming</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {events
+                                        .filter(e => e.dueDate && e.dueDate >= todayStr)
+                                        .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''))
+                                        .slice(0, 8)
+                                        .map(ev => (
+                                            <div key={ev.id} style={{
+                                                display: 'flex', alignItems: 'center', gap: 8,
+                                                padding: '6px 8px', borderRadius: 6,
+                                                background: 'rgba(255,255,255,0.02)',
+                                            }}>
+                                                <span style={{ color: typeColor[ev.type] || '#a5b4fc' }}>{typeIcon(ev.type)}</span>
+                                                <div style={{ flex: 1, overflow: 'hidden' }}>
+                                                    <div style={{ fontSize: 12, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
+                                                </div>
+                                                <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap' }}>
+                                                    {ev.dueDate ? new Date(ev.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+                                                </span>
+                                            </div>
+                                        ))
+                                    }
+                                    {events.filter(e => e.dueDate && e.dueDate >= todayStr).length === 0 && (
+                                        <p style={{ color: '#475569', fontSize: 12, textAlign: 'center' }}>No upcoming events</p>
                                     )}
                                 </div>
-
-                                {/* Upcoming Events */}
-                                <div className="s-glass-card" style={{ padding: 16, marginTop: 12 }}>
-                                    <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600 }}>Upcoming</h3>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        {events
-                                            .filter(e => e.dueDate && e.dueDate >= todayStr)
-                                            .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''))
-                                            .slice(0, 8)
-                                            .map(ev => (
-                                                <div key={ev.id} style={{
-                                                    display: 'flex', alignItems: 'center', gap: 8,
-                                                    padding: '6px 8px', borderRadius: 6,
-                                                    background: 'rgba(255,255,255,0.02)',
-                                                }}>
-                                                    <span style={{ color: typeColor[ev.type] || '#a5b4fc' }}>{typeIcon(ev.type)}</span>
-                                                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                                                        <div style={{ fontSize: 12, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
-                                                    </div>
-                                                    <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap' }}>
-                                                        {ev.dueDate ? new Date(ev.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
-                                                    </span>
-                                                </div>
-                                            ))
-                                        }
-                                        {events.filter(e => e.dueDate && e.dueDate >= todayStr).length === 0 && (
-                                            <p style={{ color: '#475569', fontSize: 12, textAlign: 'center' }}>No upcoming events</p>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
-                        )}
-                    </div>
-                )
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );

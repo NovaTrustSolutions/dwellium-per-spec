@@ -12,41 +12,13 @@ import {
 } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { API_BASE } from '../../../config';
+import type { Property, Unit, EntityProfile } from '../strataTypes';
+import { LoadingState, ErrorState } from '../StateView';
 
 const API = API_BASE;
 
-interface Entity {
-    id: string;
-    entityType: string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    address: string | null;
-    metadata: Record<string, any>;
-    propertyIds: string[];
-    status: string;
-    createdAt: string;
-}
-
-interface Property {
-    id: string;
-    name: string;
-    address: string | null;
-    type: string;
-    unitCount: number;
-    status: string;
-}
-
-interface Unit {
-    id: string;
-    propertyId: string;
-    unitNumber: string;
-    bedrooms: number;
-    bathrooms: number;
-    sqFt: number;
-    rentAmount: number;
-    status: string;
-}
+// Entity is an alias for EntityProfile (canonical type from strataTypes)
+type Entity = EntityProfile;
 
 type ProfileTab = 'properties' | 'units' | 'tenants' | 'contractors' | 'employees' | 'owners' | 'corporate';
 
@@ -87,6 +59,7 @@ export default function ProfilesModule() {
     const [properties, setProperties] = useState<Property[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null);
 
     const TAB_PERMS: Record<ProfileTab, string> = {
@@ -114,7 +87,7 @@ export default function ProfilesModule() {
                 const res = await authFetch(`${API}/api/dwellium/entities?type=${tabDef?.entityType || tab}`);
                 if (res.ok) setEntities(await res.json());
             }
-        } catch { /* silent */ }
+        } catch { setError('Failed to load profiles data'); }
         setLoading(false);
     }, [tab]);
 

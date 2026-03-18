@@ -18,8 +18,10 @@ import {
     DollarSign, Send, Camera, Pen, UserCheck, ArrowRight, Link, Phone, Mail,
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
+import { useToast } from '../useToast';
 import type { Workitem, Property } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
+import { LoadingState, ErrorState } from '../StateView';
 
 const STATUS_FLOW = ['open', 'dispatched', 'in_progress', 'review', 'tenant_signoff', 'completed'] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -36,9 +38,11 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 export default function WorkOrdersModule() {
     const { hasPermission } = useUser();
+    const { showToast, ToastContainer } = useToast();
     const [workOrders, setWorkOrders] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [selectedWO, setSelectedWO] = useState<Workitem | null>(null);
     const [filterStatus, setFilterStatus] = useState('');
@@ -60,7 +64,7 @@ export default function WorkOrdersModule() {
             if (filterPriority) params.priority = filterPriority;
             const data = await strataGet<Workitem[]>('/workitems', params);
             setWorkOrders(data);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); setError('Failed to load work orders'); }
         setLoading(false);
     }, [filterStatus, filterPriority]);
 
@@ -211,7 +215,7 @@ export default function WorkOrdersModule() {
         if (!selectedWO) return;
         const link = `${window.location.origin}/api/workorders/${selectedWO.id}/signoff?token=auto_generated`;
         navigator.clipboard.writeText(link);
-        alert('Sign-off link copied to clipboard. Send to tenant via email/SMS.');
+        showToast('Sign-off link copied to clipboard', 'success');
     };
 
     // ── Status icons ──
@@ -259,7 +263,9 @@ export default function WorkOrdersModule() {
                 {/* Work Order List */}
                 <div className="s-list-panel">
                     {loading ? (
-                        <div className="s-loading">Loading…</div>
+                        <LoadingState message="Loading work orders…" />
+                    ) : error ? (
+                        <ErrorState message={error} onRetry={fetchWorkOrders} />
                     ) : workOrders.length === 0 ? (
                         <div className="s-empty">No work orders found</div>
                     ) : (
@@ -485,7 +491,13 @@ export default function WorkOrdersModule() {
                                             <Link size={10} /> Copy Remote Sign-off Link
                                         </button>
                                         <button className="s-btn s-btn-ghost" style={{ fontSize: 10, color: '#3b82f6', borderColor: 'rgba(59,130,246,0.3)' }}
-                                            onClick={() => alert('Email/SMS with sign-off link sent to tenant.')}>
+                                            onClick={async () => {
+                                                try {
+                                                    const link = `${window.location.origin}/api/workorders/${selectedWO!.id}/signoff?token=auto_generated`;
+                                                    await strataPost('/gmail/send', { to: selectedWO!.metadata?.tenantEmail || '', subject: `Maintenance Sign-off Required — ${selectedWO!.title}`, body: `Please review and sign off on the completed work order:\n\n${link}` });
+                                                    showToast('Sign-off email sent to tenant', 'success');
+                                                } catch { showToast('Failed to send email — check tenant email on file', 'error'); }
+                                            }}>
                                             <Mail size={10} /> Email Tenant
                                         </button>
                                     </div>
@@ -574,6 +586,7 @@ export default function WorkOrdersModule() {
                     </div>
                 </div>
             )}
+            <ToastContainer />
         </div>
     );
 }

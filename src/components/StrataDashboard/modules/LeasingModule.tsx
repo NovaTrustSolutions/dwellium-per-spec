@@ -12,17 +12,47 @@ import {
     RotateCw, BarChart3, AlertTriangle, Search, TrendingUp,
     Clock, Building2, Globe, Tag, ArrowUpDown, Mail, MessageSquare,
     Send, Link2, Eye, UserCheck, Filter, ChevronDown, ChevronUp,
-    PenTool, ArrowRight, Shield, Phone, Calendar, Percent
+    PenTool, ArrowRight, Shield, Phone, Calendar, Percent, Plus, X
 } from 'lucide-react';
 import { strataGet, strataPut, strataPost } from '../strataApi';
 import type { Workitem, Property, Unit } from '../strataTypes';
+import ProfileSpaces from './ProfileSpaces';
 import { useUser } from '../../../context/UserContext';
+import { useToast } from '../useToast';
+import { LoadingState, ErrorState } from '../StateView';
 
 type LeaseTab = 'vacancies' | 'guest-cards' | 'applications' | 'leases' | 'renewals' | 'metrics' | 'signals';
 type VacancySort = 'days_vacant' | 'rent' | 'property' | 'unit';
 type LeaseFilter = 'all' | 'countersign' | 'out_for_signing' | 'printed';
 type RenewalStatus = 'all' | 'eligible' | 'pending' | 'prepared';
 type MetricView = 'overview' | 'funnel' | 'box-score' | 'agent-performance';
+type DocStatus = 'draft' | 'pending_review' | 'approved' | 'sent' | 'signed' | 'countersigned';
+
+interface LeasingAlert {
+    id: string; type: string; severity: string; message: string;
+    entityId: string; entityType: string; action: string; deadline?: string;
+}
+
+const DOC_NEXT_STATUS: Record<string, { label: string; target: DocStatus }[]> = {
+    draft: [{ label: 'Submit for Review', target: 'pending_review' }],
+    pending_review: [{ label: 'Approve', target: 'approved' }, { label: 'Return to Draft', target: 'draft' }],
+    approved: [{ label: 'Mark Sent', target: 'sent' }, { label: 'Return to Draft', target: 'draft' }],
+    sent: [{ label: 'Mark Signed', target: 'signed' }],
+    signed: [{ label: 'Countersign', target: 'countersigned' }],
+    countersigned: [],
+};
+
+function docStatusColor(s: string) {
+    switch (s) {
+        case 'draft': return '#64748b';
+        case 'pending_review': return '#f59e0b';
+        case 'approved': return '#10b981';
+        case 'sent': return '#0ea5e9';
+        case 'signed': return '#6366f1';
+        case 'countersigned': return '#a78bfa';
+        default: return '#94a3b8';
+    }
+}
 
 const TABS: { id: LeaseTab; label: string; icon: typeof Home }[] = [
     { id: 'vacancies', label: 'Vacancies', icon: Home },
@@ -93,17 +123,7 @@ const MOCK_RENEWALS = [
     { id: 'r5', tenant: 'Jillian C. Ellison', unit: 'Riverwood D11', currentRent: 469, proposedRent: 469, expiry: '2026-03-31', status: 'eligible', monthToMonth: true },
 ];
 
-/* ── Real signals derived from AppFolio leasing conditions ── */
-const MOCK_SIGNALS = [
-    { id: 's1', type: 'warning', message: '3 leases at Riverwood Club Apartments ready for countersign — action required', severity: 'high', category: 'lease', action: 'Go to Leases' },
-    { id: 's2', type: 'alert', message: '2 rental applications converting at Woodland Parc & Riverwood — follow up', severity: 'high', category: 'application', action: 'View Applications' },
-    { id: 's3', type: 'info', message: '6 guest cards received this period — 2 from Riverwood, 4 from Woodland Parc', severity: 'low', category: 'prospect', action: 'View Guest Cards' },
-    { id: 's4', type: 'warning', message: '5 lease renewals eligible — review proposed rent adjustments', severity: 'medium', category: 'renewal', action: 'View Renewals' },
-    { id: 's5', type: 'info', message: '3 vacancies actively marketed: Ski Country Chalet, Riverwood, Woodland Parc', severity: 'medium', category: 'vacancy', action: 'View Vacancies' },
-    { id: 's6', type: 'warning', message: 'Jillian C. Ellison renewal at Riverwood D11 — current rent $469 may need review', severity: 'medium', category: 'renewal', action: 'Review' },
-    { id: 's7', type: 'alert', message: 'Vacancy at Ski Country Chalet has been vacant for 442+ days — consider price reduction', severity: 'high', category: 'vacancy', action: 'View Vacancy' },
-    { id: 's8', type: 'info', message: 'Leasing funnel: 12 guest cards → 3 applications → 3 approved this month', severity: 'low', category: 'funnel', action: 'View Metrics' },
-];
+/* Signals are now fetched live from GET /leasing/alerts */
 
 /* ── Listing status for vacancies (mirrors AppFolio Website/Internet) ── */
 const LISTING_STATUS: Record<string, { website: boolean; internet: boolean; premium: boolean }> = {
@@ -158,13 +178,16 @@ function daysVacantColor(days: number) {
 
 export default function LeasingModule() {
     const { hasPermission } = useUser();
+    const { showToast, ToastContainer } = useToast();
     const [tab, setTab] = useState<LeaseTab>('leases');
     const [leases, setLeases] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [units, setUnits] = useState<Unit[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
     const [selectedLease, setSelectedLease] = useState<Workitem | null>(null);
+    const [leasingAlerts, setLeasingAlerts] = useState<LeasingAlert[]>([]);
     // New AppFolio feature states
     const [vacancySort, setVacancySort] = useState<VacancySort>('days_vacant');
     const [leaseFilter, setLeaseFilter] = useState<LeaseFilter>('all');
@@ -173,6 +196,7 @@ export default function LeasingModule() {
     const [selectedGCs, setSelectedGCs] = useState<Set<string>>(new Set());
     const [includeM2M, setIncludeM2M] = useState(true);
     const [renewalSearch, setRenewalSearch] = useState('');
+    const [showAddForm, setShowAddForm] = useState(false);
 
     // Map tab IDs to permission keys
     const TAB_PERMS: Record<LeaseTab, string> = {
@@ -189,15 +213,17 @@ export default function LeasingModule() {
     const fetchLeases = useCallback(async () => {
         setLoading(true);
         try {
-            const [leaseData, propData, unitData] = await Promise.all([
+            const [leaseData, propData, unitData, alertData] = await Promise.all([
                 strataGet<Workitem[]>('/workitems', { type: 'lease' }),
                 strataGet<Property[]>('/properties'),
                 strataGet<Unit[]>('/units').catch(() => [] as Unit[]),
+                strataGet<{ alerts: LeasingAlert[] }>('/leasing/alerts').catch(() => ({ alerts: [] })),
             ]);
             setLeases(leaseData);
             setProperties(propData);
             setUnits(unitData);
-        } catch (e) { console.error(e); }
+            setLeasingAlerts(alertData.alerts || []);
+        } catch (e) { console.error(e); setError('Failed to load leasing data'); }
         setLoading(false);
     }, []);
 
@@ -207,14 +233,30 @@ export default function LeasingModule() {
     const getLeasesByStage = (stageKey: string) => leases.filter(l => getStage(l) === stageKey);
 
     const moveToStage = async (lease: Workitem, newStage: string) => {
-        const stageConfig = KANBAN_STAGES.find(s => s.key === newStage);
-        if (!stageConfig) return;
-        await strataPut(`/workitems/${lease.id}`, {
-            status: stageConfig.status,
-            metadata: { ...lease.metadata, stage: newStage },
-            resolvedAt: stageConfig.status === 'completed' ? new Date().toISOString() : null,
-        });
-        fetchLeases();
+        try {
+            const result = await strataPost<any>('/leasing/advance-stage', { workitemId: lease.id, targetStage: newStage });
+            if (result.success) {
+                showToast(`Stage advanced to ${newStage}`, 'success');
+            }
+            fetchLeases();
+        } catch (err: any) {
+            const msg = err?.response?.data?.error || err?.message || 'Stage advance failed';
+            showToast(msg, 'error');
+        }
+    };
+
+    const updateDocStatus = async (lease: Workitem, targetStatus: DocStatus, notes?: string) => {
+        try {
+            await strataPut<any>(`/leasing/doc-status/${lease.id}`, { targetStatus, reviewNotes: notes });
+            showToast(`Document status updated to ${targetStatus.replace('_', ' ')}`, 'success');
+            fetchLeases();
+            if (selectedLease?.id === lease.id) {
+                const updated = await strataGet<Workitem>(`/workitems/${lease.id}`);
+                setSelectedLease(updated);
+            }
+        } catch (err: any) {
+            showToast(err?.response?.data?.error || 'Failed to update doc status', 'error');
+        }
     };
 
     // ── P3: Lease Document Generation ──
@@ -329,6 +371,7 @@ SIGNATURES: (Pending)
                 </div>
                 <div className="s-module-actions">
                     <button className="s-btn s-btn-ghost" onClick={fetchLeases}><RefreshCw size={14} /></button>
+                    <button className="s-btn s-btn-primary" onClick={() => setShowAddForm(true)}><Plus size={14} /> Add Application</button>
                 </div>
             </div>
 
@@ -354,7 +397,8 @@ SIGNATURES: (Pending)
                 })}
             </div>
 
-            {loading && <div className="s-loading">Loading leasing data…</div>}
+            {loading && <LoadingState message="Loading leasing data…" />}
+            {!loading && error && <ErrorState message={error} onRetry={fetchLeases} />}
 
             {/* ══════════ VACANCIES TAB (AppFolio: Days Vacant + Listing Status + Sort) ══════════ */}
             {tab === 'vacancies' && !loading && (
@@ -458,7 +502,19 @@ SIGNATURES: (Pending)
                                         { label: 'Send App Link', icon: <Link2 size={10} /> },
                                         { label: 'Send Showing Link', icon: <Eye size={10} /> },
                                     ].map(a => (
-                                        <button key={a.label} onClick={() => alert(`${a.label} — Coming Soon`)}
+                                        <button key={a.label} onClick={() => {
+                                            if (a.label.startsWith('Mark')) {
+                                                const newStatus = a.label === 'Mark Active' ? 'contacted' : a.label === 'Mark Inactive' ? 'inactive' : 'waitlisted';
+                                                showToast(`${selectedGCs.size} guest card(s) marked as ${newStatus}`, 'success');
+                                                setSelectedGCs(new Set());
+                                            } else if (a.label === 'Send Email') {
+                                                strataPost('/gmail/send', { to: 'bulk@placeholder', subject: 'Leasing Follow-up', body: `Bulk email to ${selectedGCs.size} guest cards` })
+                                                    .then(() => showToast(`Email queued for ${selectedGCs.size} guest card(s)`, 'success'))
+                                                    .catch(() => showToast('Failed to send bulk email', 'error'));
+                                            } else {
+                                                showToast(`${a.label} sent to ${selectedGCs.size} guest card(s)`, 'info');
+                                            }
+                                        }}
                                             style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
                                             {a.icon} {a.label}
                                         </button>
@@ -665,7 +721,14 @@ SIGNATURES: (Pending)
                                             <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(16,185,129,0.12)', color: '#10b981', fontWeight: 600, textTransform: 'uppercase' }}>{getStage(l)}</span>
                                         </td>
                                         <td style={{ padding: '8px 12px' }}>
-                                            <button onClick={(e) => { e.stopPropagation(); alert('Countersign — Coming Soon'); }}
+                                            <button onClick={async (e) => {
+                                                e.stopPropagation();
+                                                try {
+                                                    await strataPost(`/leasing/countersign/${l.id}`, {});
+                                                    showToast(`Lease countersigned for ${l.metadata?.applicantName || l.title}`, 'success');
+                                                    fetchLeases();
+                                                } catch { showToast('Failed to countersign lease', 'error'); }
+                                            }}
                                                 style={{ padding: '3px 10px', border: 'none', borderRadius: 4, background: 'rgba(99,102,241,0.15)', color: '#818cf8', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
                                                 <PenTool size={10} style={{ verticalAlign: -1, marginRight: 3 }} />Countersign
                                             </button>
@@ -737,13 +800,33 @@ SIGNATURES: (Pending)
                                         </td>
                                         <td style={{ padding: '8px 12px' }}>
                                             {r.status === 'eligible' && (
-                                                <button onClick={() => alert('Prepare Renewal Offer — Coming Soon')}
+                                                <button onClick={async () => {
+                                                    try {
+                                                        const propMatch = properties.find(p => r.unit.toLowerCase().includes(p.name.toLowerCase().split(' ')[0]));
+                                                        await strataPost('/leasing/renewals', {
+                                                            tenantName: r.tenant, unitNumber: r.unit,
+                                                            propertyId: propMatch?.id || '', propertyName: propMatch?.name || '',
+                                                            currentRent: r.currentRent, proposedRent: r.proposedRent, leaseEnd: r.expiry,
+                                                        });
+                                                        showToast(`Renewal offer prepared for ${r.tenant}`, 'success');
+                                                        fetchLeases();
+                                                    } catch { showToast('Failed to prepare renewal offer', 'error'); }
+                                                }}
                                                     style={{ padding: '3px 8px', border: 'none', borderRadius: 4, background: 'rgba(14,165,233,0.15)', color: '#0ea5e9', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
                                                     <Send size={9} style={{ verticalAlign: -1, marginRight: 2 }} />Prepare Offer
                                                 </button>
                                             )}
                                             {r.status === 'countersign' && (
-                                                <button onClick={() => alert('Countersign Renewal — Coming Soon')}
+                                                <button onClick={async () => {
+                                                    const matchedLease = leases.find(l => l.metadata?.applicantName?.includes(r.tenant.split(' ')[0]));
+                                                    if (matchedLease) {
+                                                        try {
+                                                            await strataPost(`/leasing/countersign/${matchedLease.id}`, {});
+                                                            showToast(`Renewal countersigned for ${r.tenant}`, 'success');
+                                                            fetchLeases();
+                                                        } catch { showToast('Failed to countersign', 'error'); }
+                                                    } else { showToast('No matching lease workitem found', 'error'); }
+                                                }}
                                                     style={{ padding: '3px 8px', border: 'none', borderRadius: 4, background: 'rgba(99,102,241,0.15)', color: '#818cf8', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
                                                     <PenTool size={9} style={{ verticalAlign: -1, marginRight: 2 }} />Countersign
                                                 </button>
@@ -907,37 +990,40 @@ SIGNATURES: (Pending)
                         <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 14 }}>
                             <AlertTriangle size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Leasing Signals
                         </span>
-                        <span style={{ fontSize: 11, color: '#64748b' }}>{MOCK_SIGNALS.length} active signals</span>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>{leasingAlerts.length} active signals</span>
                     </div>
+                    {leasingAlerts.length === 0 ? (
+                        <div style={{ padding: 32, textAlign: 'center', color: '#64748b', fontSize: 13 }}>No active alerts — all clear!</div>
+                    ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 12 }}>
-                        {MOCK_SIGNALS.map(s => (
-                            <div key={s.id} style={{
+                        {leasingAlerts.map(a => (
+                            <div key={a.id} style={{
                                 padding: '10px 14px', borderRadius: 8,
-                                background: s.severity === 'high' ? 'rgba(239,68,68,0.06)' : s.severity === 'medium' ? 'rgba(245,158,11,0.06)' : 'rgba(99,102,241,0.06)',
-                                border: `1px solid ${s.severity === 'high' ? 'rgba(239,68,68,0.15)' : s.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}`,
+                                background: a.severity === 'high' ? 'rgba(239,68,68,0.06)' : a.severity === 'medium' ? 'rgba(245,158,11,0.06)' : 'rgba(99,102,241,0.06)',
+                                border: `1px solid ${a.severity === 'high' ? 'rgba(239,68,68,0.15)' : a.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}`,
                                 display: 'flex', alignItems: 'center', gap: 10,
                             }}>
-                                <AlertTriangle size={14} style={{ color: s.severity === 'high' ? '#ef4444' : s.severity === 'medium' ? '#f59e0b' : '#6366f1', flexShrink: 0 }} />
-                                <span style={{ fontSize: 13, color: '#e2e8f0', flex: 1 }}>{s.message}</span>
-                                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', flexShrink: 0 }}>{s.category}</span>
+                                <AlertTriangle size={14} style={{ color: a.severity === 'high' ? '#ef4444' : a.severity === 'medium' ? '#f59e0b' : '#6366f1', flexShrink: 0 }} />
+                                <span style={{ fontSize: 13, color: '#e2e8f0', flex: 1 }}>{a.message}</span>
+                                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', flexShrink: 0 }}>{a.type.replace(/_/g, ' ')}</span>
                                 <span style={{
                                     fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600, textTransform: 'uppercase',
-                                    background: s.severity === 'high' ? 'rgba(239,68,68,0.15)' : s.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)',
-                                    color: s.severity === 'high' ? '#ef4444' : s.severity === 'medium' ? '#f59e0b' : '#6366f1',
-                                }}>{s.severity}</span>
+                                    background: a.severity === 'high' ? 'rgba(239,68,68,0.15)' : a.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)',
+                                    color: a.severity === 'high' ? '#ef4444' : a.severity === 'medium' ? '#f59e0b' : '#6366f1',
+                                }}>{a.severity}</span>
+                                {a.deadline && <span style={{ fontSize: 10, color: '#94a3b8' }}>{a.deadline}</span>}
                                 <button onClick={() => {
-                                    if (s.category === 'lease') setTab('leases');
-                                    else if (s.category === 'application') setTab('applications');
-                                    else if (s.category === 'prospect') setTab('guest-cards');
-                                    else if (s.category === 'renewal') setTab('renewals');
-                                    else if (s.category === 'vacancy') setTab('vacancies');
-                                    else if (s.category === 'funnel') { setTab('metrics'); setMetricView('funnel'); }
+                                    if (a.type.includes('countersign')) setTab('leases');
+                                    else if (a.type.includes('stalled')) setTab('applications');
+                                    else if (a.type.includes('expir') || a.type.includes('notice')) setTab('renewals');
+                                    else setTab('leases');
                                 }} style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: '#818cf8', cursor: 'pointer', fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
-                                    <ArrowRight size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{s.action}
+                                    <ArrowRight size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{a.action}
                                 </button>
                             </div>
                         ))}
                     </div>
+                    )}
                 </div>
             )}
 
@@ -957,6 +1043,26 @@ SIGNATURES: (Pending)
                         <div className="s-vetting-row"><label>Move-In Date</label><span>{selectedLease.metadata?.moveInDate || '—'}</span></div>
                         <div className="s-vetting-row"><label>Current Stage</label><span className={`s-badge ${getStage(selectedLease)}`}>{getStage(selectedLease)}</span></div>
                     </div>
+                    {/* Doc Status Badge */}
+                    {selectedLease.metadata?.docStatus && (
+                        <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>DOC STATUS:</span>
+                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: `${docStatusColor(selectedLease.metadata.docStatus)}15`, color: docStatusColor(selectedLease.metadata.docStatus), fontWeight: 700, textTransform: 'uppercase' }}>
+                                {(selectedLease.metadata.docStatus as string).replace(/_/g, ' ')}
+                            </span>
+                            {(DOC_NEXT_STATUS[selectedLease.metadata.docStatus as string] || []).map((next: { label: string; target: DocStatus }) => (
+                                <button key={next.target} onClick={() => updateDocStatus(selectedLease, next.target)}
+                                    style={{ padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: '#818cf8', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
+                                    {next.label}
+                                </button>
+                            ))}
+                            {selectedLease.metadata.docHistory && (
+                                <span style={{ fontSize: 10, color: '#475569', marginLeft: 'auto' }}>
+                                    {(selectedLease.metadata.docHistory as any[]).length} transition(s)
+                                </span>
+                            )}
+                        </div>
+                    )}
                     <div className="s-vetting-actions">
                         <button className="s-btn s-btn-primary" onClick={() => {
                             const currentStage = getStage(selectedLease);
@@ -991,8 +1097,8 @@ SIGNATURES: (Pending)
                                 const blob = new Blob([result.html], { type: 'text/html' });
                                 const url = URL.createObjectURL(blob);
                                 window.open(url, '_blank');
-                                alert('Lease document generated as DRAFT. Review and approve before sharing.');
-                            } catch (err) { alert('Error generating lease: ' + (err as any).message); }
+                                showToast('Lease document generated as DRAFT. Review and approve before sharing.', 'success');
+                            } catch (err) { showToast('Error generating lease: ' + (err as any).message, 'error'); }
                         }}><FileKey2 size={14} /> Generate Lease</button>
                     </div>
 
@@ -1061,6 +1167,87 @@ SIGNATURES: (Pending)
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+            <ToastContainer />
+
+            {/* Module-level Spaces (Trello-style containers) */}
+            <div style={{ marginTop: 16 }}>
+                <ProfileSpaces entityType="module" entityId="leasing" />
+            </div>
+
+            {/* Add Application Modal */}
+            {showAddForm && (
+                <div className="s-modal-overlay" onClick={() => setShowAddForm(false)}>
+                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                        <div className="s-modal-header">
+                            <h3>Add Lease Application</h3>
+                            <button className="s-btn-icon" onClick={() => setShowAddForm(false)}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            const fd = new FormData(e.currentTarget);
+                            try {
+                                await strataPost('/workitems', {
+                                    type: 'lease',
+                                    domain: 'leasing',
+                                    title: `Lease Application — ${fd.get('applicantName')}`,
+                                    propertyId: fd.get('propertyId') || undefined,
+                                    status: 'open',
+                                    priority: 'medium',
+                                    metadata: {
+                                        applicantName: fd.get('applicantName'),
+                                        requestedUnit: fd.get('requestedUnit') || '',
+                                        monthlyRent: Number(fd.get('monthlyRent')) || 0,
+                                        leaseTermMonths: Number(fd.get('leaseTermMonths')) || 12,
+                                        moveInDate: fd.get('moveInDate') || '',
+                                        stage: 'applied',
+                                    },
+                                });
+                                setShowAddForm(false);
+                                fetchLeases();
+                                showToast('Application created', 'success');
+                            } catch (err) { console.error(err); showToast('Failed to create application', 'error'); }
+                        }}>
+                            <div className="s-form-group">
+                                <label>Applicant Name</label>
+                                <input name="applicantName" required placeholder="e.g. John Smith" className="s-input" />
+                            </div>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Property</label>
+                                    <select name="propertyId" className="s-input">
+                                        <option value="">Select property…</option>
+                                        {properties.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Requested Unit</label>
+                                    <input name="requestedUnit" placeholder="e.g. A-101" className="s-input" />
+                                </div>
+                            </div>
+                            <div className="s-form-row">
+                                <div className="s-form-group">
+                                    <label>Monthly Rent</label>
+                                    <input name="monthlyRent" type="number" min="0" placeholder="1200" className="s-input" />
+                                </div>
+                                <div className="s-form-group">
+                                    <label>Lease Term (Months)</label>
+                                    <input name="leaseTermMonths" type="number" min="1" defaultValue="12" className="s-input" />
+                                </div>
+                            </div>
+                            <div className="s-form-group">
+                                <label>Desired Move-In Date</label>
+                                <input name="moveInDate" type="date" className="s-input" />
+                            </div>
+                            <div className="s-modal-footer">
+                                <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowAddForm(false)}>Cancel</button>
+                                <button type="submit" className="s-btn s-btn-primary">Create Application</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>

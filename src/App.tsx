@@ -12,6 +12,7 @@ import LoginScreen from './components/Auth/LoginScreen';
 import TenantLoginScreen from './components/Auth/TenantLoginScreen';
 import TenantPortal from './components/TenantPortal/TenantPortal';
 import SecurityPortal from './components/SecurityPortal/SecurityPortal';
+import OpenJarvisWidget from './components/OpenJarvis/OpenJarvis';
 import './styles/global.css';
 import './App.css';
 
@@ -87,6 +88,7 @@ function ShellLayout() {
             <Sidebar />
             <Desktop />
             <CommandPalette />
+            <OpenJarvisWidget />
         </div>
     );
 }
@@ -124,7 +126,12 @@ function AuthGate() {
 
     // Tenant users get their own portal
     if (role === 'tenant') {
-        return <TenantPortal />;
+        return (
+            <>
+                <TenantPortal />
+                <OpenJarvisWidget />
+            </>
+        );
     }
 
     return (

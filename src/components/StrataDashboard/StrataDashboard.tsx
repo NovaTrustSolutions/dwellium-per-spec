@@ -75,7 +75,7 @@ import GlobalSearch from '../GlobalSearch/GlobalSearch';
 import type { StrataModule } from './strataTypes';
 import { useUser } from '../../context/UserContext';
 import { Settings, Scale, FolderKanban, Shield, Activity, Pencil, HardHat, Plus, X } from 'lucide-react';
-import { strataPost } from './strataApi';
+import { strataPost, strataGet } from './strataApi';
 import './StrataDashboard.css';
 
 
@@ -126,9 +126,9 @@ function OccupancyTooltip({ active, payload }: OccupancyTooltipProps) {
             backdropFilter: 'blur(12px)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
-            <p style={{ color: '#f1f5f9', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>{data.payload.name}</p>
+            <p style={{ color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>{data.payload.name}</p>
             <p style={{ color: '#6366f1', fontSize: '0.8125rem', fontWeight: 600 }}>{data.value}% occupied</p>
-            <p style={{ color: '#64748b', fontSize: '0.75rem' }}>{data.payload.units} total units</p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>{data.payload.units} total units</p>
         </div>
     );
 }
@@ -146,7 +146,7 @@ function OccupancyChart({ data }: { data: OccupancyRow[] }) {
         return (
             <div className="s-glass-card s-chart-card s-animate-fade-in s-delay-4">
                 <div className="s-chart-card-header"><h3>Occupancy by Property</h3></div>
-                <div style={{ padding: 24, color: '#64748b', textAlign: 'center' }}>No properties found.</div>
+                <div style={{ padding: 24, color: 'var(--text-tertiary)', textAlign: 'center' }}>No properties found.</div>
             </div>
         );
     }
@@ -160,9 +160,9 @@ function OccupancyChart({ data }: { data: OccupancyRow[] }) {
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                         <XAxis type="number" domain={[minOccupancy, 100]} axisLine={false} tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v: number) => `${v}%`} />
+                            tick={{ fill: 'var(--text-tertiary)', fontSize: 11 }} tickFormatter={(v: number) => `${v}%`} />
                         <YAxis type="category" dataKey="name" axisLine={false} tickLine={false}
-                            tick={{ fill: '#94a3b8', fontSize: 12 }} width={140} />
+                            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} width={140} />
                         <Tooltip content={<OccupancyTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                         <Bar dataKey="occupancy" radius={[0, 6, 6, 0]} barSize={18}>
                             {data.map((_entry, index) => (
@@ -206,7 +206,7 @@ function ActivityFeed({ comms }: { comms: CommEntry[] }) {
             </div>
             <div className="s-activity-feed">
                 {comms.length === 0 && (
-                    <p style={{ color: '#64748b', padding: '16px', textAlign: 'center', fontSize: 13 }}>No recent activity.</p>
+                    <p style={{ color: 'var(--text-tertiary)', padding: '16px', textAlign: 'center', fontSize: 13 }}>No recent activity.</p>
                 )}
                 {comms.map((c) => {
                     const config = channelIconMap[c.channel] || channelIconMap.internal;
@@ -264,7 +264,7 @@ function UpcomingEvents({ events }: { events: CalEvent[] }) {
             </div>
             <div className="s-upcoming-list">
                 {events.length === 0 && (
-                    <p style={{ color: '#64748b', padding: '16px', textAlign: 'center', fontSize: 13 }}>No upcoming events.</p>
+                    <p style={{ color: 'var(--text-tertiary)', padding: '16px', textAlign: 'center', fontSize: 13 }}>No upcoming events.</p>
                 )}
                 {events.map((event) => {
                     const d = new Date(event.start);
@@ -347,16 +347,16 @@ const NAV_ITEMS: { id: StrataModule; label: string; icon: ReactNode; permKey: st
     { id: 'corporate-review', label: 'Corporate Review', icon: <ClipboardCheck size={18} />, permKey: 'strata:module:corporate-review' },
     { id: 'integrations', label: 'Integrations', icon: <Plug size={18} />, permKey: 'strata:module:integrations' },
     { id: 'tenant-portal', label: 'Tenant Portal', icon: <Home size={18} />, permKey: 'strata:module:tenant-portal' },
-    { id: 'forecast', label: 'Forecast', icon: <TrendingUp size={18} />, permKey: 'strata:module:reporting' },
-    { id: 'sentiment', label: 'Sentiment', icon: <BarChart3 size={18} />, permKey: 'strata:module:reporting' },
-    { id: 'legal', label: 'Legal', icon: <Scale size={18} />, permKey: 'strata:module:overview' },
-    { id: 'projects', label: 'Projects', icon: <FolderKanban size={18} />, permKey: 'strata:module:overview' },
-    { id: 'audit', label: 'Audit Log', icon: <Shield size={18} />, permKey: 'strata:module:overview' },
-    { id: 'status-check', label: 'Status Check', icon: <Activity size={18} />, permKey: 'strata:module:overview' },
-    { id: 'compliance', label: 'Compliance', icon: <Shield size={18} />, permKey: 'strata:module:overview' },
-    { id: 'design-studio', label: 'Design Studio', icon: <Pencil size={18} />, permKey: 'strata:module:overview' },
-    { id: 'civil-engineering', label: 'Civil Engineering', icon: <HardHat size={18} />, permKey: 'strata:module:overview' },
-    { id: 'incidents', label: 'Incidents', icon: <AlertTriangle size={18} />, permKey: 'strata:module:overview' },
+    { id: 'forecast', label: 'Forecast', icon: <TrendingUp size={18} />, permKey: 'strata:module:forecast' },
+    { id: 'sentiment', label: 'Sentiment', icon: <BarChart3 size={18} />, permKey: 'strata:module:sentiment' },
+    { id: 'legal', label: 'Legal', icon: <Scale size={18} />, permKey: 'strata:module:legal' },
+    { id: 'projects', label: 'Projects', icon: <FolderKanban size={18} />, permKey: 'strata:module:projects' },
+    { id: 'audit', label: 'Audit Log', icon: <Shield size={18} />, permKey: 'strata:module:audit' },
+    { id: 'status-check', label: 'Status Check', icon: <Activity size={18} />, permKey: 'strata:module:status-check' },
+    { id: 'compliance', label: 'Compliance', icon: <Shield size={18} />, permKey: 'strata:module:compliance' },
+    { id: 'design-studio', label: 'Design Studio', icon: <Pencil size={18} />, permKey: 'strata:module:design-studio' },
+    { id: 'civil-engineering', label: 'Civil Engineering', icon: <HardHat size={18} />, permKey: 'strata:module:civil-engineering' },
+    { id: 'incidents', label: 'Incidents', icon: <AlertTriangle size={18} />, permKey: 'strata:module:incidents' },
 ];
 
 function OverviewContent() {
@@ -373,49 +373,49 @@ function OverviewContent() {
     const fetchOverviewData = useCallback(async () => {
         setLoading(true);
         try {
-            // Fetch stats, properties, comms, and calendar in parallel
+            // Route dwellium reads through strataApi so static/backend modes both work.
+            // Calendar stays as a raw fetch — it's a separate service, not dwellium.
             const [statsRes, propsRes, commsRes, calRes] = await Promise.allSettled([
-                authFetch(`${API}/api/dwellium/stats`),
-                authFetch(`${API}/api/dwellium/properties`),
-                authFetch(`${API}/api/dwellium/comms?limit=10`),
+                strataGet<{ totalProperties: number; totalUnits: number; occupiedUnits: number; occupancyRate: string; openWorkOrders: number }>('/stats'),
+                strataGet<Array<{ id: string; name: string; unitCount: number; status: string }> | { data: Array<{ id: string; name: string; unitCount: number; status: string }> }>('/properties'),
+                strataGet<Array<any> | { data: Array<any> }>('/comms', { limit: '10' }),
                 authFetch(`${API}/api/calendar/events?maxResults=6`),
             ]);
 
             // Stats
-            if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-                setStats(await statsRes.value.json());
+            if (statsRes.status === 'fulfilled' && statsRes.value) {
+                setStats(statsRes.value);
             }
 
-            // Properties → per-property occupancy
-            if (propsRes.status === 'fulfilled' && propsRes.value.ok) {
-                const properties: Array<{ id: string; name: string; unitCount: number; status: string }> = await propsRes.value.json();
+            // Properties → per-property occupancy (parallel fan-out)
+            if (propsRes.status === 'fulfilled' && propsRes.value) {
+                const raw: any = propsRes.value;
+                const properties: Array<{ id: string; name: string; unitCount: number; status: string }> =
+                    Array.isArray(raw) ? raw : (raw?.data ?? []);
                 const activeProps = properties.filter(p => p.status === 'active');
 
-                // Fetch units per property for occupancy calc
-                const occupancy: OccupancyRow[] = [];
-                for (const prop of activeProps) {
+                const rows = await Promise.all(activeProps.map(async (prop) => {
                     try {
-                        const uRes = await authFetch(`${API}/api/dwellium/units?property_id=${prop.id}`);
-                        if (uRes.ok) {
-                            const units: Array<{ status: string }> = await uRes.json();
-                            const total = units.length;
-                            const occupied = units.filter(u => u.status === 'occupied').length;
-                            const rate = total > 0 ? Math.round((occupied / total) * 100) : 0;
-                            occupancy.push({ name: prop.name, occupancy: rate, units: total });
-                        }
-                    } catch { /* skip property */ }
-                }
-                occupancy.sort((a, b) => b.occupancy - a.occupancy);
+                        const u = await strataGet<Array<{ status: string }> | { data: Array<{ status: string }> }>('/units', { property_id: prop.id });
+                        const units: Array<{ status: string }> = Array.isArray(u) ? u : ((u as any)?.data ?? []);
+                        const total = units.length;
+                        const occupied = units.filter(x => x.status === 'occupied').length;
+                        const rate = total > 0 ? Math.round((occupied / total) * 100) : 0;
+                        return { name: prop.name, occupancy: rate, units: total } as OccupancyRow;
+                    } catch { return null; }
+                }));
+                const occupancy = rows.filter((r): r is OccupancyRow => r !== null).sort((a, b) => b.occupancy - a.occupancy);
                 setOccupancyData(occupancy);
             }
 
             // Comms
-            if (commsRes.status === 'fulfilled' && commsRes.value.ok) {
-                const commsData = await commsRes.value.json();
-                setComms(Array.isArray(commsData) ? commsData.slice(0, 10) : []);
+            if (commsRes.status === 'fulfilled' && commsRes.value) {
+                const raw: any = commsRes.value;
+                const commsData = Array.isArray(raw) ? raw : (raw?.data ?? []);
+                setComms(commsData.slice(0, 10));
             }
 
-            // Calendar
+            // Calendar (non-dwellium service)
             if (calRes.status === 'fulfilled' && calRes.value.ok) {
                 const calData = await calRes.value.json();
                 setEvents(Array.isArray(calData) ? calData.slice(0, 6) : []);
@@ -482,10 +482,10 @@ function OverviewContent() {
                     <div key={m.label} className="s-glass-card" style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                             <span style={{ color: m.color }}>{m.icon}</span>
-                            <span style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>{m.label}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>{m.label}</span>
                         </div>
-                        <div style={{ fontSize: 22, fontWeight: 700, color: '#e2e8f0' }}>{m.value}</div>
-                        <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>{m.sub}</div>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{m.value}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{m.sub}</div>
                     </div>
                 ))}
             </div>
@@ -493,12 +493,12 @@ function OverviewContent() {
             {/* ══════════ Move-In / Move-Out Tables ══════════ */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, margin: '8px 0' }}>
                 <div className="s-glass-card">
-                    <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: '#10b981', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, color: '#10b981', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <ArrowUpRight size={14} />Upcoming Move-Ins
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead><tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                            {['Tenant', 'Unit', 'Date'].map(h => <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>)}
+                        <thead><tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            {['Tenant', 'Unit', 'Date'].map(h => <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>)}
                         </tr></thead>
                         <tbody>
                             {[
@@ -506,32 +506,32 @@ function OverviewContent() {
                                 { tenant: 'Sarah Chen', unit: 'Riverwood D11', date: '2026-03-20' },
                                 { tenant: 'James Williams', unit: 'Ski Country B3', date: '2026-04-01' },
                             ].map((r, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '6px 10px', color: '#e2e8f0', fontWeight: 600 }}>{r.tenant}</td>
-                                    <td style={{ padding: '6px 10px', color: '#94a3b8' }}>{r.unit}</td>
-                                    <td style={{ padding: '6px 10px', color: '#94a3b8' }}>{r.date}</td>
+                                <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.tenant}</td>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{r.unit}</td>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{r.date}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
                 <div className="s-glass-card">
-                    <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <ArrowDownRight size={14} />Upcoming Move-Outs
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead><tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                            {['Tenant', 'Unit', 'Date'].map(h => <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>)}
+                        <thead><tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            {['Tenant', 'Unit', 'Date'].map(h => <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>)}
                         </tr></thead>
                         <tbody>
                             {[
                                 { tenant: 'Fletcher A. Glass', unit: 'Riverwood D09', date: '2026-03-31' },
                                 { tenant: 'Eumeko K. Fuller-Barrow', unit: 'Woodland 2782-6', date: '2026-04-15' },
                             ].map((r, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '6px 10px', color: '#e2e8f0', fontWeight: 600 }}>{r.tenant}</td>
-                                    <td style={{ padding: '6px 10px', color: '#94a3b8' }}>{r.unit}</td>
-                                    <td style={{ padding: '6px 10px', color: '#94a3b8' }}>{r.date}</td>
+                                <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.tenant}</td>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{r.unit}</td>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{r.date}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -543,13 +543,13 @@ function OverviewContent() {
             <div className="s-glass-card" style={{ padding: '12px 16px', margin: '8px 0', borderLeft: '3px solid #f59e0b' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <AlertTriangle size={16} style={{ color: '#f59e0b' }} />
-                    <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>Financial Health Alert</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>Financial Health Alert</span>
                 </div>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>🔴 <strong style={{ color: '#ef4444' }}>12 delinquent</strong> accounts ($19,050)</span>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>🟡 <strong style={{ color: '#f59e0b' }}>7 leases</strong> expiring in 90 days</span>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>🟢 <strong style={{ color: '#10b981' }}>87%</strong> rent collected this month</span>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>🔵 <strong style={{ color: '#0ea5e9' }}>3 new move-ins</strong> scheduled</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🔴 <strong style={{ color: '#ef4444' }}>12 delinquent</strong> accounts ($19,050)</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🟡 <strong style={{ color: '#f59e0b' }}>7 leases</strong> expiring in 90 days</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🟢 <strong style={{ color: '#10b981' }}>87%</strong> rent collected this month</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🔵 <strong style={{ color: '#0ea5e9' }}>3 new move-ins</strong> scheduled</span>
                 </div>
             </div>
 
@@ -715,9 +715,9 @@ function IntegrationsModule() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const cardButtonStyle = {
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: 'rgba(255,255,255,0.04)',
-        color: '#cbd5e1',
+        border: '1px solid var(--border-default)',
+        background: 'var(--bg-surface-elevated)',
+        color: 'var(--text-secondary)',
         borderRadius: '8px',
         padding: '9px 12px',
         fontSize: '12px',
@@ -727,10 +727,10 @@ function IntegrationsModule() {
 
     const fieldStyle = {
         width: '100%',
-        background: 'rgba(15,23,42,0.7)',
-        border: '1px solid rgba(148,163,184,0.16)',
+        background: 'var(--bg-surface-elevated)',
+        border: '1px solid var(--border-default)',
         borderRadius: '8px',
-        color: '#e2e8f0',
+        color: 'var(--text-primary)',
         padding: '10px 12px',
         fontSize: '12px',
     } as const;
@@ -874,8 +874,8 @@ function IntegrationsModule() {
     const runTrelloSync = async () => {
         setTrelloSync({ syncing: true, result: null });
         try {
-            const res = await authFetch(`${API}/api/dwellium/trello-sync`, { method: 'POST' });
-            const data = await res.json();
+            // Route through strataApi (static mode returns a stubbed success shape).
+            const data = await strataPost<any>('/trello-sync', {});
             setTrelloSync({ syncing: false, result: data });
         } catch (err) {
             setTrelloSync({ syncing: false, result: { error: 'Sync failed — check backend logs' } });
@@ -1129,8 +1129,8 @@ function IntegrationsModule() {
                                     {card.icon}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <h3 style={{ color: '#e2e8f0', margin: 0, fontSize: '15px', fontWeight: 600 }}>{card.name}</h3>
-                                    <p style={{ color: '#64748b', margin: 0, fontSize: '12px' }}>{card.description}</p>
+                                    <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '15px', fontWeight: 600 }}>{card.name}</h3>
+                                    <p style={{ color: 'var(--text-tertiary)', margin: 0, fontSize: '12px' }}>{card.description}</p>
                                 </div>
                                 {status && !status.loading && (
                                     <div style={{
@@ -1192,7 +1192,7 @@ function IntegrationsModule() {
                                         padding: '8px 12px', borderRadius: '8px',
                                         border: '1px solid rgba(255,255,255,0.08)',
                                         background: 'rgba(255,255,255,0.04)',
-                                        color: '#94a3b8', cursor: 'pointer',
+                                        color: 'var(--text-secondary)', cursor: 'pointer',
                                         fontSize: '12px', fontWeight: 600,
                                         display: 'flex', alignItems: 'center', gap: '6px',
                                     }}
@@ -1219,8 +1219,8 @@ function IntegrationsModule() {
             <div id="notebooklm-panel" style={{ ...sectionCardStyle, marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap' }}>
                     <div>
-                        <h3 style={{ color: '#e2e8f0', margin: 0, fontSize: '15px', fontWeight: 700 }}>NotebookLM + Claude MCP</h3>
-                        <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: '12px' }}>
+                        <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '15px', fontWeight: 700 }}>NotebookLM + Claude MCP</h3>
+                        <p style={{ color: 'var(--text-tertiary)', margin: '4px 0 0', fontSize: '12px' }}>
                             Configure Google NotebookLM Enterprise, publish notebook sources, and expose the same tools through a Claude/Desktop MCP server.
                         </p>
                     </div>
@@ -1255,13 +1255,13 @@ function IntegrationsModule() {
                 )}
 
                 {notebookPanelLoading ? (
-                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>Loading NotebookLM configuration…</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Loading NotebookLM configuration…</div>
                 ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
                         <div style={{ display: 'grid', gap: '16px' }}>
                             <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         Enabled
                                         <select
                                             value={notebookSettings.enabled ? 'true' : 'false'}
@@ -1272,7 +1272,7 @@ function IntegrationsModule() {
                                             <option value="false">Disabled</option>
                                         </select>
                                     </label>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         Project Number
                                         <input
                                             value={notebookSettings.projectNumber}
@@ -1281,7 +1281,7 @@ function IntegrationsModule() {
                                             placeholder="Google Cloud project number"
                                         />
                                     </label>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         API Location
                                         <input
                                             value={notebookSettings.location}
@@ -1290,7 +1290,7 @@ function IntegrationsModule() {
                                             placeholder="global"
                                         />
                                     </label>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         Endpoint Region
                                         <input
                                             value={notebookSettings.endpointLocation}
@@ -1299,7 +1299,7 @@ function IntegrationsModule() {
                                             placeholder="global"
                                         />
                                     </label>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         Default Notebook ID
                                         <input
                                             value={notebookSettings.defaultNotebookId}
@@ -1308,7 +1308,7 @@ function IntegrationsModule() {
                                             placeholder="Notebook ID"
                                         />
                                     </label>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         Recent Notebook Limit
                                         <input
                                             type="number"
@@ -1332,7 +1332,7 @@ function IntegrationsModule() {
                                     </button>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px', fontSize: '11px', color: '#94a3b8' }}>
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                                     <span>Auth: {notebookStatus?.authStrategy || 'unknown'}</span>
                                     <span>Checked: {notebookStatus?.checkedAt ? new Date(notebookStatus.checkedAt).toLocaleString() : 'not yet'}</span>
                                     <span>Recent notebooks: {notebookStatus?.recentNotebookCount ?? recentNotebooks.length}</span>
@@ -1341,7 +1341,7 @@ function IntegrationsModule() {
 
                             <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'end', marginBottom: '12px' }}>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         Recent Notebooks
                                         <select
                                             value={selectedNotebookId}
@@ -1365,7 +1365,7 @@ function IntegrationsModule() {
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         New Notebook Title
                                         <input
                                             value={newNotebook.title}
@@ -1374,7 +1374,7 @@ function IntegrationsModule() {
                                             placeholder="Riverwood utility review"
                                         />
                                     </label>
-                                    <label style={{ display: 'grid', gap: '6px', color: '#cbd5e1', fontSize: '12px' }}>
+                                    <label style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                         Description
                                         <input
                                             value={newNotebook.description}
@@ -1390,13 +1390,13 @@ function IntegrationsModule() {
                                     {notebookCreating ? 'Creating…' : 'Create Notebook'}
                                 </button>
 
-                                <div style={{ marginTop: '14px', fontSize: '11px', color: '#94a3b8' }}>
+                                <div style={{ marginTop: '14px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                                     NotebookLM only exposes recently viewed notebooks via the API. If a notebook is missing here, open it once in NotebookLM and refresh.
                                 </div>
                             </div>
 
                             <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
-                                <h4 style={{ color: '#e2e8f0', margin: '0 0 12px', fontSize: '13px' }}>Publish Sources</h4>
+                                <h4 style={{ color: 'var(--text-primary)', margin: '0 0 12px', fontSize: '13px' }}>Publish Sources</h4>
                                 <div style={{ display: 'grid', gap: '12px' }}>
                                     <div style={{ display: 'grid', gap: '8px' }}>
                                         <input
@@ -1454,31 +1454,31 @@ function IntegrationsModule() {
                         <div style={{ display: 'grid', gap: '16px' }}>
                             <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                    <h4 style={{ color: '#e2e8f0', margin: 0, fontSize: '13px' }}>Selected Notebook</h4>
-                                    {notebookDetailLoading && <span style={{ color: '#94a3b8', fontSize: '11px' }}>Loading…</span>}
+                                    <h4 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '13px' }}>Selected Notebook</h4>
+                                    {notebookDetailLoading && <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>Loading…</span>}
                                 </div>
                                 {selectedNotebook ? (
-                                    <div style={{ display: 'grid', gap: '10px', fontSize: '12px', color: '#cbd5e1' }}>
+                                    <div style={{ display: 'grid', gap: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                         <div>
                                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#f8fafc' }}>{selectedNotebook.title || selectedNotebook.id}</div>
-                                            <div style={{ color: '#64748b', marginTop: '4px' }}>{selectedNotebook.description || 'No description yet'}</div>
+                                            <div style={{ color: 'var(--text-tertiary)', marginTop: '4px' }}>{selectedNotebook.description || 'No description yet'}</div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', color: '#94a3b8', fontSize: '11px' }}>
+                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', color: 'var(--text-secondary)', fontSize: '11px' }}>
                                             <span>State: {selectedNotebook.state}</span>
                                             <span>Sources: {selectedNotebook.sourceCount}</span>
                                             <span>Updated: {selectedNotebook.updateTime ? new Date(selectedNotebook.updateTime).toLocaleString() : 'n/a'}</span>
                                         </div>
-                                        <div style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '11px', wordBreak: 'break-all' }}>
+                                        <div style={{ color: 'var(--text-tertiary)', fontFamily: 'monospace', fontSize: '11px', wordBreak: 'break-all' }}>
                                             {selectedNotebook.name}
                                         </div>
                                     </div>
                                 ) : (
-                                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>Select a notebook to inspect it here.</div>
+                                    <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Select a notebook to inspect it here.</div>
                                 )}
                             </div>
 
                             <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
-                                <h4 style={{ color: '#e2e8f0', margin: '0 0 12px', fontSize: '13px' }}>Share Access</h4>
+                                <h4 style={{ color: 'var(--text-primary)', margin: '0 0 12px', fontSize: '13px' }}>Share Access</h4>
                                 <div style={{ display: 'grid', gap: '8px' }}>
                                     <input
                                         value={shareForm.email}
@@ -1502,10 +1502,10 @@ function IntegrationsModule() {
                             </div>
 
                             <div style={{ ...sectionCardStyle, padding: '16px', background: 'rgba(15,23,42,0.45)' }}>
-                                <h4 style={{ color: '#e2e8f0', margin: '0 0 12px', fontSize: '13px' }}>Claude/Desktop MCP</h4>
+                                <h4 style={{ color: 'var(--text-primary)', margin: '0 0 12px', fontSize: '13px' }}>Claude/Desktop MCP</h4>
                                 {mcpConfig ? (
                                     <>
-                                        <div style={{ display: 'grid', gap: '8px', fontSize: '12px', color: '#cbd5e1' }}>
+                                        <div style={{ display: 'grid', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                             <div><strong>Server</strong>: {mcpConfig.serverName}</div>
                                             <div><strong>Command</strong>: <span style={{ fontFamily: 'monospace' }}>{mcpConfig.command} {mcpConfig.args.join(' ')}</span></div>
                                             <div><strong>CWD</strong>: <span style={{ fontFamily: 'monospace' }}>{mcpConfig.cwd}</span></div>
@@ -1516,7 +1516,7 @@ function IntegrationsModule() {
                                             borderRadius: '10px',
                                             background: 'rgba(2,6,23,0.8)',
                                             border: '1px solid rgba(148,163,184,0.16)',
-                                            color: '#cbd5e1',
+                                            color: 'var(--text-secondary)',
                                             fontSize: '11px',
                                             overflowX: 'auto',
                                         }}>
@@ -1524,7 +1524,7 @@ function IntegrationsModule() {
                                         </pre>
                                     </>
                                 ) : (
-                                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>MCP config unavailable.</div>
+                                    <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>MCP config unavailable.</div>
                                 )}
                             </div>
                         </div>
@@ -1550,8 +1550,8 @@ function IntegrationsModule() {
                             <RefreshCw size={20} />
                         </div>
                         <div>
-                            <h3 style={{ color: '#e2e8f0', margin: 0, fontSize: '15px', fontWeight: 700 }}>Trello → Strata Sync</h3>
-                            <p style={{ color: '#64748b', margin: 0, fontSize: '12px' }}>Sync Trello boards into Strata workitems & vendor profiles</p>
+                            <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '15px', fontWeight: 700 }}>Trello → Strata Sync</h3>
+                            <p style={{ color: 'var(--text-tertiary)', margin: 0, fontSize: '12px' }}>Sync Trello boards into Strata workitems & vendor profiles</p>
                         </div>
                     </div>
                     <button
@@ -1589,17 +1589,17 @@ function IntegrationsModule() {
                                     { label: 'Workitems Updated', value: trelloSync.result.workitemsUpdated, color: '#3b82f6' },
                                     { label: 'Vendors Created', value: trelloSync.result.vendorsCreated, color: '#f59e0b' },
                                     { label: 'Vendors Updated', value: trelloSync.result.vendorsUpdated, color: '#f59e0b' },
-                                    { label: 'Duration', value: `${(trelloSync.result.duration / 1000).toFixed(1)}s`, color: '#94a3b8' },
+                                    { label: 'Duration', value: `${(trelloSync.result.duration / 1000).toFixed(1)}s`, color: 'var(--text-secondary)' },
                                 ].map(stat => (
                                     <div key={stat.label}>
                                         <div style={{ fontSize: 22, fontWeight: 700, color: stat.color }}>{stat.value}</div>
-                                        <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>{stat.label}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>{stat.label}</div>
                                     </div>
                                 ))}
                                 {trelloSync.result.errors?.length > 0 && (
                                     <div style={{ gridColumn: '1 / -1', marginTop: 6 }}>
                                         <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>{trelloSync.result.errors.length} errors</div>
-                                        <div style={{ fontSize: 11, color: '#94a3b8', maxHeight: 80, overflow: 'auto' }}>
+                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', maxHeight: 80, overflow: 'auto' }}>
                                             {trelloSync.result.errors.slice(0, 5).map((e: string, i: number) => <div key={i}>• {e}</div>)}
                                         </div>
                                     </div>
@@ -1621,7 +1621,7 @@ function IntegrationsModule() {
                 borderRadius: '12px',
                 padding: '16px 20px',
             }}>
-                <h3 style={{ color: '#e2e8f0', margin: '0 0 8px', fontSize: '14px', fontWeight: 600 }}>
+                <h3 style={{ color: 'var(--text-primary)', margin: '0 0 8px', fontSize: '14px', fontWeight: 600 }}>
                     <BookOpen size={16} style={{ marginRight: 8, verticalAlign: 'text-bottom' }} />
                     API Endpoints
                 </h3>
@@ -1655,7 +1655,7 @@ function IntegrationsModule() {
                                 padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace',
                                 fontWeight: 700, fontSize: '10px', minWidth: '36px', textAlign: 'center' as const,
                             }}>{ep.method}</span>
-                            <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: '11px' }}>{ep.path}</span>
+                            <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '11px' }}>{ep.path}</span>
                             <span style={{ color: '#475569', marginLeft: 'auto', fontSize: '11px' }}>{ep.label}</span>
                         </div>
                     ))}
@@ -1689,17 +1689,17 @@ export default function StrataDashboard() {
             case 'corporate-review': return hasPermission('strata:module:corporate-review') ? <CorporateReview /> : null;
             case 'integrations': return hasPermission('strata:module:integrations') ? <IntegrationsModule /> : null;
             case 'tenant-portal': return hasPermission('strata:module:tenant-portal') ? <TenantPortalModule /> : null;
-            case 'forecast': return hasPermission('strata:module:reporting') ? <ForecastModule /> : null;
-            case 'sentiment': return hasPermission('strata:module:reporting') ? <SentimentModule /> : null;
-            case 'legal': return hasPermission('strata:module:overview') ? <LegalModule /> : null;
-            case 'projects': return hasPermission('strata:module:overview') ? <ProjectsModule /> : null;
-            case 'audit': return hasPermission('strata:module:overview') ? <AuditModule /> : null;
-            case 'status-check': return hasPermission('strata:module:overview') ? <StatusCheckModule /> : null;
-            case 'visualization': return hasPermission('strata:module:overview') ? <VisualizationModule /> : null;
-            case 'incidents': return hasPermission('strata:module:overview') ? <IncidentModule /> : null;
-            case 'compliance': return hasPermission('strata:module:overview') ? <ComplianceEngine /> : null;
-            case 'design-studio': return hasPermission('strata:module:overview') ? <DesignStudio /> : null;
-            case 'civil-engineering': return hasPermission('strata:module:overview') ? <CivilEngineeringStudio /> : null;
+            case 'forecast': return hasPermission('strata:module:forecast') ? <ForecastModule /> : null;
+            case 'sentiment': return hasPermission('strata:module:sentiment') ? <SentimentModule /> : null;
+            case 'legal': return hasPermission('strata:module:legal') ? <LegalModule /> : null;
+            case 'projects': return hasPermission('strata:module:projects') ? <ProjectsModule /> : null;
+            case 'audit': return hasPermission('strata:module:audit') ? <AuditModule /> : null;
+            case 'status-check': return hasPermission('strata:module:status-check') ? <StatusCheckModule /> : null;
+            case 'visualization': return hasPermission('strata:module:visualization') ? <VisualizationModule /> : null;
+            case 'incidents': return hasPermission('strata:module:incidents') ? <IncidentModule /> : null;
+            case 'compliance': return hasPermission('strata:module:compliance') ? <ComplianceEngine /> : null;
+            case 'design-studio': return hasPermission('strata:module:design-studio') ? <DesignStudio /> : null;
+            case 'civil-engineering': return hasPermission('strata:module:civil-engineering') ? <CivilEngineeringStudio /> : null;
             case 'settings': return <StrataAdminSettings />;
         }
     };
@@ -1751,7 +1751,7 @@ export default function StrataDashboard() {
 
                     <div style={{ height: '1px', background: 'var(--s-glass-border)', margin: '8px 0' }} />
 
-                    {user?.name === 'Andy' && (
+                    {hasPermission('section:strata-settings') && (
                         <button
                             className={`s-nav-item ${activeModule === 'settings' ? 'active' : ''}`}
                             onClick={() => setActiveModule('settings')}

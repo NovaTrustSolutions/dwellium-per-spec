@@ -57,6 +57,32 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
         return all;
     }
     if (path === '/entities/bulk-status') return { counts: {} };
+    if (path === '/stats') {
+        // Shell Overview aggregates: totalProperties/totalUnits/occupiedUnits/occupancyRate/openWorkOrders.
+        // Computed live from fixtures so numbers match the rest of the page.
+        const [props, units, wis] = await Promise.all([
+            loadTable('properties'), loadTable('units'), loadTable('workitems'),
+        ]);
+        const activeProps = (props as any[]).filter(p => p.status === 'active');
+        const totalUnits = (units as any[]).length;
+        const occupiedUnits = (units as any[]).filter(u => u.status === 'occupied').length;
+        const openWorkOrders = (wis as any[]).filter(w =>
+            (w.status === 'open' || w.status === 'in_progress') && w.type === 'work_order',
+        ).length;
+        const occRateNum = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+        return {
+            totalProperties: activeProps.length,
+            totalUnits,
+            occupiedUnits,
+            occupancyRate: String(occRateNum),
+            openWorkOrders,
+        };
+    }
+    if (path === '/comms') {
+        const all = await loadTable('communications') as any[];
+        const limit = parseInt(params?.limit ?? String(all.length), 10) || all.length;
+        return all.slice(0, limit);
+    }
     if (path === '/properties') return loadTable('properties');
     if (path === '/property-modules') {
         const all = await loadTable('property_modules');
@@ -84,8 +110,24 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
         return f;
     }
     if (path === '/audit') {
-        const all = await loadTable('audit_log');
-        return params?.property_id ? (all as any[]).filter((a: any) => a.propertyId === params.property_id) : all;
+        // Backend returns { entries, total } for /audit — mirror that shape here
+        // so AuditModule works identically in static mode.
+        let rows = await loadTable('audit_log') as any[];
+        if (params?.property_id) rows = rows.filter((a: any) => a.propertyId === params.property_id);
+        if (params?.user_id) rows = rows.filter((a: any) => a.userId === params.user_id);
+        if (params?.q) {
+            const q = params.q.toLowerCase();
+            rows = rows.filter((a: any) =>
+                (a.action || '').toLowerCase().includes(q) ||
+                (a.userName || '').toLowerCase().includes(q) ||
+                (a.entityType || '').toLowerCase().includes(q),
+            );
+        }
+        const total = rows.length;
+        const limit = parseInt(params?.limit ?? '50', 10) || 50;
+        const offset = parseInt(params?.offset ?? '0', 10) || 0;
+        const entries = rows.slice(offset, offset + limit);
+        return { entries, total };
     }
     if (path === '/notes') return filterBy(await loadTable('notes') as any[], params);
     if (path === '/communications') return filterBy(await loadTable('communications') as any[], params);
@@ -336,12 +378,17 @@ const crudRoutes: CrudTable[] = [
     { route: /^\/insurance-policies(?:\/([^/]+))?$/, table: 'insurance_policies' },
     { route: /^\/compliance(?:\/([^/]+))?$/, table: 'compliance' },
     { route: /^\/vendor-associations(?:\/([^/]+))?$/, table: 'vendor_associations' },
+    { route: /^\/audit(?:\/([^/]+))?$/, table: 'audit_log' },
 ];
 
 function matchWriteRoute(method: string, path: string, body: any): any {
     if (method === 'PUT' && path === '/property-modules') return body;
     if (path.includes('/deactivate') || path.includes('/reactivate')) return { success: true };
     if (path.startsWith('/leasing/') || path.startsWith('/civil/') || path.startsWith('/design/') || path.startsWith('/gmail/')) return { success: true };
+    if (method === 'POST' && path === '/trello-sync') {
+        // Static mode stub — pretend the sync ran with nothing to do.
+        return { success: true, synced: 0, message: 'Static mode — Trello sync disabled.' };
+    }
 
     for (const { route, table } of crudRoutes) {
         const m = path.match(route);
@@ -368,4 +415,40 @@ export function strataPut<T>(path: string, body: unknown): Promise<T> {
 }
 export async function strataDelete(path: string): Promise<void> {
     matchWriteRoute('DELETE', path, null);
+}
+
+// ─── Cursor Pagination ───────────────────────────────────────
+// Static mode has all rows in memory, so we simulate cursor pagination
+// by returning everything in one slice. Shape MUST match
+// strataApi.backend.ts so the router in strataApi.ts can swap impls.
+export interface PaginatedResponse<T> {
+    data: T[];
+    pagination: {
+        hasMore: boolean;
+        nextCursor: string | null;
+        limit: number;
+    };
+}
+
+export async function strataGetPaginated<T>(
+    path: string,
+    params?: Record<string, string>
+): Promise<PaginatedResponse<T>> {
+    const all = (await matchRoute(path, params)) as T[] | { data?: T[] } | null;
+    const rows: T[] = Array.isArray(all)
+        ? all
+        : Array.isArray((all as any)?.data)
+            ? ((all as any).data as T[])
+            : [];
+
+    const limit = parseInt(params?.limit ?? String(rows.length || 50), 10) || 50;
+
+    return {
+        data: rows.slice(0, limit),
+        pagination: {
+            hasMore: rows.length > limit,
+            nextCursor: null,
+            limit,
+        },
+    };
 }

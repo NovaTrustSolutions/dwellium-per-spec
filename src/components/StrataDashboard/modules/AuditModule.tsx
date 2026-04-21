@@ -141,20 +141,16 @@ export default function AuditModule() {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
         try {
-            const token = localStorage.getItem('dwellium_token');
-            await fetch('http://localhost:3000/api/dwellium/audit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    action: 'historical_entry',
-                    entityType: fd.get('entityType'),
-                    details: {
-                        date: fd.get('date'),
-                        eventType: fd.get('eventType'),
-                        description: fd.get('description'),
-                        entity: fd.get('entity'),
-                    },
-                }),
+            // Route through strataApi so static/backend modes both work.
+            await strataPost('/audit', {
+                action: 'historical_entry',
+                entityType: fd.get('entityType'),
+                details: {
+                    date: fd.get('date'),
+                    eventType: fd.get('eventType'),
+                    description: fd.get('description'),
+                    entity: fd.get('entity'),
+                },
             });
             setShowHistForm(false);
             fetchAudit();

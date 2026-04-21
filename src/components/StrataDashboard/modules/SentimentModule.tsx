@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AlertTriangle, TrendingDown, TrendingUp, Minus, Plus, CheckCircle } from 'lucide-react';
+import { strataGet } from '../strataApi';
 
 const API = 'http://localhost:3000';
 
@@ -55,9 +56,13 @@ export default function SentimentModule() {
             })
             .finally(() => setLoading(false));
 
-        fetch(`${API}/api/dwellium/entities?type=tenant&limit=300`, { headers })
-            .then(r => r.json())
-            .then(d => setTenants((d.data || []).map((t: any) => ({ id: t.id, name: t.name }))));
+        // Route tenant list through strataApi so static/backend modes both work.
+        strataGet<any>('/entities', { type: 'tenant', limit: '300' })
+            .then((d: any) => {
+                const rows = Array.isArray(d) ? d : (d?.data ?? []);
+                setTenants(rows.map((t: any) => ({ id: t.id, name: t.name })));
+            })
+            .catch(() => setTenants([]));
     }, []);
 
     const submitSurvey = async () => {

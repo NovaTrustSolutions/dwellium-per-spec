@@ -11,11 +11,9 @@ import {
     RefreshCw, Search, ChevronRight, MapPin, Phone, Mail,
 } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
-import { API_BASE } from '../../../config';
 import type { Property, Unit, EntityProfile } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
-
-const API = API_BASE;
+import { strataGet } from '../strataApi';
 
 // Entity is an alias for EntityProfile (canonical type from strataTypes)
 type Entity = EntityProfile;
@@ -52,7 +50,7 @@ const tdStyle: React.CSSProperties = {
 };
 
 export default function ProfilesModule() {
-    const { hasPermission, authFetch } = useUser();
+    const { hasPermission } = useUser();
     const [tab, setTab] = useState<ProfileTab>('properties');
     const [search, setSearch] = useState('');
     const [entities, setEntities] = useState<Entity[]>([]);
@@ -76,16 +74,20 @@ export default function ProfilesModule() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            // Route all reads through strataApi so the static/backend switch
+            // (VITE_USE_STATIC_API) works for profile browsing.
             if (tab === 'properties') {
-                const res = await authFetch(`${API}/api/dwellium/properties`);
-                if (res.ok) setProperties(await res.json());
+                const data = await strataGet<Property[] | { data: Property[] }>('/properties');
+                setProperties(Array.isArray(data) ? data : (data?.data ?? []));
             } else if (tab === 'units') {
-                const res = await authFetch(`${API}/api/dwellium/units`);
-                if (res.ok) setUnits(await res.json());
+                const data = await strataGet<Unit[] | { data: Unit[] }>('/units');
+                setUnits(Array.isArray(data) ? data : (data?.data ?? []));
             } else {
                 const tabDef = TABS.find(t => t.id === tab);
-                const res = await authFetch(`${API}/api/dwellium/entities?type=${tabDef?.entityType || tab}`);
-                if (res.ok) setEntities(await res.json());
+                const data = await strataGet<Entity[] | { data: Entity[] }>('/entities', {
+                    type: tabDef?.entityType || tab,
+                });
+                setEntities(Array.isArray(data) ? data : (data?.data ?? []));
             }
         } catch { setError('Failed to load profiles data'); }
         setLoading(false);

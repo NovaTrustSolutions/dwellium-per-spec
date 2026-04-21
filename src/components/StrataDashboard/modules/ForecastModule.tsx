@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp, DollarSign, Building, AlertCircle, RefreshCw } from 'lucide-react';
+import { strataGet } from '../strataApi';
 
+// Forecast engine lives outside the dwellium CRUD API, so it stays as a raw fetch.
 const API = 'http://localhost:3000';
 
 interface MonthlyForecast {
@@ -51,9 +53,12 @@ export default function ForecastModule() {
     const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
     useEffect(() => {
-        fetch(`${API}/api/dwellium/properties?limit=50`, { headers })
-            .then(r => r.json())
-            .then(d => setProperties(d.data || []))
+        // Route the property picker through strataApi (static/backend both work).
+        strataGet<any>('/properties', { limit: '50' })
+            .then((d: any) => {
+                const rows = Array.isArray(d) ? d : (d?.data ?? []);
+                setProperties(rows.map((p: any) => ({ id: p.id, name: p.name })));
+            })
             .catch(() => { });
         runForecast();
         // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>⏱️ Antigravity ETA Timer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d0f1a;
+    color: #e2e8f0;
+    font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  .container {
+    text-align: center;
+    padding: 40px;
+  }
+  .label {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: #64748b;
+    margin-bottom: 8px;
+  }
+  .eta-label {
+    font-size: 13px;
+    color: #818cf8;
+    margin-bottom: 24px;
+    font-weight: 600;
+  }
+  .timer {
+    font-size: 96px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    transition: color 0.3s, text-shadow 0.3s;
+    color: #22d3ee;
+    text-shadow: 0 0 40px rgba(34, 211, 238, 0.3);
+  }
+  .timer.warning {
+    color: #f59e0b;
+    text-shadow: 0 0 40px rgba(245, 158, 11, 0.4);
+  }
+  .timer.overdue {
+    color: #ef4444;
+    text-shadow: 0 0 60px rgba(239, 68, 68, 0.5);
+    animation: pulse-red 1s ease-in-out infinite;
+  }
+  @keyframes pulse-red {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.02); }
+  }
+  .status {
+    margin-top: 20px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    transition: color 0.3s;
+  }
+  .status.ok { color: #22d3ee; }
+  .status.warning { color: #f59e0b; }
+  .status.overdue { color: #ef4444; }
+  .progress-bar {
+    width: 300px;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    margin: 24px auto 0;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s, background 0.3s;
+    background: linear-gradient(90deg, #22d3ee, #818cf8);
+  }
+  .progress-fill.warning {
+    background: linear-gradient(90deg, #f59e0b, #fb923c);
+  }
+  .progress-fill.overdue {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+    width: 100% !important;
+  }
+  .controls {
+    margin-top: 32px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  button {
+    padding: 8px 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #94a3b8;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  button:hover {
+    background: rgba(129, 140, 248, 0.15);
+    border-color: rgba(129, 140, 248, 0.3);
+    color: #c7d2fe;
+  }
+  .overdue-flash {
+    position: fixed;
+    inset: 0;
+    background: rgba(239, 68, 68, 0.08);
+    animation: border-flash 2s ease-in-out infinite;
+    pointer-events: none;
+    border: 3px solid transparent;
+  }
+  @keyframes border-flash {
+    0%, 100% { border-color: transparent; }
+    50% { border-color: rgba(239, 68, 68, 0.4); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="label">Antigravity ETA Countdown</div>
+  <div class="eta-label" id="etaLabel">ETA: 2:00</div>
+  <div class="timer" id="timer">2:00</div>
+  <div class="status ok" id="status">⚡ ON TRACK</div>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+  <div class="controls">
+    <button onclick="setETA(1)">1 min</button>
+    <button onclick="setETA(2)">2 min</button>
+    <button onclick="setETA(3)">3 min</button>
+    <button onclick="setETA(5)">5 min</button>
+    <button onclick="setETA(10)">10 min</button>
+    <button onclick="resetTimer()">⟳ Reset</button>
+  </div>
+</div>
+<div class="overdue-flash" id="overdueFlash" style="display:none"></div>
+
+<script>
+  // Audio context for alarm
+  let audioCtx;
+  function playAlarm() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Three ascending beeps
+    [0, 200, 400].forEach((delay, i) => {
+      setTimeout(() => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 660 + i * 220;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.3);
+      }, delay);
+    });
+  }
+
+  let etaSeconds = 120; // default 2 min
+  let totalSeconds = 120;
+  let elapsed = 0;
+  let intervalId = null;
+  let alarmPlayed = false;
+
+  function setETA(minutes) {
+    etaSeconds = minutes * 60;
+    totalSeconds = minutes * 60;
+    elapsed = 0;
+    alarmPlayed = false;
+    document.getElementById('etaLabel').textContent = `ETA: ${minutes}:00`;
+    if (intervalId) clearInterval(intervalId);
+    start();
+  }
+
+  function resetTimer() {
+    elapsed = 0;
+    alarmPlayed = false;
+    if (intervalId) clearInterval(intervalId);
+    start();
+  }
+
+  function formatTime(secs) {
+    const abs = Math.abs(secs);
+    const m = Math.floor(abs / 60);
+    const s = abs % 60;
+    const prefix = secs < 0 ? '+' : '';
+    return `${prefix}${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function tick() {
+    elapsed++;
+    const remaining = totalSeconds - elapsed;
+    const timerEl = document.getElementById('timer');
+    const statusEl = document.getElementById('status');
+    const progressEl = document.getElementById('progress');
+    const flashEl = document.getElementById('overdueFlash');
+
+    timerEl.textContent = formatTime(remaining);
+    const pct = Math.min((elapsed / totalSeconds) * 100, 100);
+    progressEl.style.width = pct + '%';
+
+    if (remaining <= 0) {
+      // OVERDUE
+      timerEl.className = 'timer overdue';
+      statusEl.className = 'status overdue';
+      statusEl.textContent = '🔴 OVERDUE — ' + formatTime(remaining);
+      progressEl.className = 'progress-fill overdue';
+      flashEl.style.display = 'block';
+      document.title = `🔴 OVERDUE ${formatTime(remaining)} — ETA Timer`;
+      if (!alarmPlayed) {
+        alarmPlayed = true;
+        playAlarm();
+        // Repeat alarm every 30s
+        setInterval(() => { if (totalSeconds - elapsed <= 0) playAlarm(); }, 30000);
+      }
+    } else if (remaining <= totalSeconds * 0.2) {
+      // WARNING (last 20%)
+      timerEl.className = 'timer warning';
+      statusEl.className = 'status warning';
+      statusEl.textContent = '⚠️ HURRY UP — ' + formatTime(remaining) + ' left';
+      progressEl.className = 'progress-fill warning';
+      flashEl.style.display = 'none';
+      document.title = `⚠️ ${formatTime(remaining)} — ETA Timer`;
+    } else {
+      timerEl.className = 'timer';
+      statusEl.className = 'status ok';
+      statusEl.textContent = '⚡ ON TRACK';
+      progressEl.className = 'progress-fill';
+      flashEl.style.display = 'none';
+      document.title = `⏱️ ${formatTime(remaining)} — ETA Timer`;
+    }
+  }
+
+  function start() {
+    tick(); // immediate first render
+    intervalId = setInterval(tick, 1000);
+  }
+
+  // Start on load with 2 min default
+  start();
+
+  // Allow setting via URL param: ?eta=3
+  const urlEta = new URLSearchParams(window.location.search).get('eta');
+  if (urlEta) setETA(parseInt(urlEta) || 2);
+</script>
+</body>
+</html>

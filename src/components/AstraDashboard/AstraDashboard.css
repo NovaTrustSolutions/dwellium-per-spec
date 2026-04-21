@@ -3,22 +3,22 @@
    Dark glassmorphism matching Qualia/Strata aesthetic
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Variables ────────────────────────────────────────────────────── */
+/* ── Variables — inherit from global theme ────────────────────────── */
 .astra-dashboard {
-    --a-bg: #0a0e1a;
-    --a-surface: rgba(20, 27, 45, 0.85);
-    --a-surface-2: rgba(30, 40, 65, 0.7);
-    --a-border: rgba(100, 120, 180, 0.15);
-    --a-text: #e2e8f0;
-    --a-text-dim: #8892a8;
-    --a-accent: #818cf8;
+    --a-bg: var(--bg-desktop, #0a0e1a);
+    --a-surface: var(--bg-glass, rgba(20, 27, 45, 0.85));
+    --a-surface-2: var(--bg-glass-hover, rgba(30, 40, 65, 0.7));
+    --a-border: var(--border-default, rgba(100, 120, 180, 0.15));
+    --a-text: var(--text-primary, #e2e8f0);
+    --a-text-dim: var(--text-secondary, #8892a8);
+    --a-accent: var(--accent, #818cf8);
     --a-accent-glow: rgba(129, 140, 248, 0.3);
     --a-heat-good: rgba(34, 197, 94, 0.25);
     --a-heat-ok: rgba(234, 179, 8, 0.25);
     --a-heat-bad: rgba(239, 68, 68, 0.25);
     --a-cal-inspect: #f97316;
-    --a-cal-comply: #22c55e;
-    --a-cal-deadline: #ef4444;
+    --a-cal-comply: var(--success, #22c55e);
+    --a-cal-deadline: var(--danger, #ef4444);
     --a-cal-corporate: #6366f1;
     --a-radius: 10px;
     --a-glass: blur(20px);
@@ -29,9 +29,231 @@
     color: var(--a-text);
     display: flex;
     flex-direction: column;
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: var(--font-primary, 'Inter', -apple-system, sans-serif);
     font-size: 13px;
     overflow: hidden;
+    transition: background 0.35s ease, color 0.35s ease;
+}
+
+/* ═══════════════════════════════════════════
+   LIGHT THEME OVERRIDES for Astra
+   Ensures containers, panels, and sections have
+   clear contrast and visual separation.
+   ═══════════════════════════════════════════ */
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .astra-dashboard {
+    --a-accent-glow: rgba(99, 102, 241, 0.15);
+    --a-heat-good: rgba(34, 197, 94, 0.15);
+    --a-heat-ok: rgba(234, 179, 8, 0.15);
+    --a-heat-bad: rgba(239, 68, 68, 0.15);
+
+    /* ── Main content area → subtle tinted bg for layering ── */
+    & .a-content {
+        background: var(--bg-surface-elevated, #f0f2f5);
+    }
+
+    /* ── Top Bar ── */
+    & .a-topbar {
+        background: var(--bg-surface, #ffffff);
+        border-bottom: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+
+    /* ── Panels → white cards on tinted bg with visible borders ── */
+    & .a-panel {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+    & .a-panel:hover {
+        border-color: var(--border-strong, rgba(0, 0, 0, 0.18));
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    /* ── Watchdog / Agent items → visible card bg ── */
+    & .a-watchdog-item,
+    & .a-agent-entry {
+        background: var(--bg-surface-elevated, #f6f7f9);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.08));
+    }
+    & .a-watchdog-item:hover,
+    & .a-agent-entry:hover {
+        border-color: var(--border-strong, rgba(0, 0, 0, 0.15));
+        background: var(--bg-surface-hover, #eef0f3);
+    }
+
+    /* ── Finance cards → elevated white on tinted bg ── */
+    & .a-finance-card {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+    & .a-finance-card:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        border-color: var(--border-strong, rgba(0, 0, 0, 0.15));
+    }
+    & .a-finance-value {
+        background: linear-gradient(135deg, var(--text-primary, #1a1d24) 60%, var(--accent));
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+
+    /* ── Active tabs ── */
+    & .a-tab-active {
+        background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
+        border-color: var(--accent, rgba(99, 102, 241, 0.3));
+    }
+
+    /* ── Calendar → visible grid cells ── */
+    & .a-cal-cell:hover:not(.a-cal-empty) {
+        background: var(--bg-surface-hover, #eef0f3);
+    }
+    & .a-cal-today {
+        background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
+    }
+    & .a-cal-legend {
+        border-top: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+
+    /* ── Heatmap header ── */
+    & .a-heatmap-header {
+        border-bottom: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+
+    /* ── Watchdog property tag ── */
+    & .a-watchdog-property {
+        background: var(--bg-surface-elevated, #f6f7f9);
+        border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.05));
+    }
+
+    /* ═══════ WORKSPACE TAB ═══════ */
+
+    /* ── Queue panel ── */
+    & .aw-queue {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    & .aw-queue-header {
+        border-bottom: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+    & .aw-queue-item:hover {
+        background: var(--bg-surface-hover, #eef0f3);
+    }
+    & .aw-queue-active {
+        background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
+        border-color: var(--accent, rgba(99, 102, 241, 0.3));
+    }
+
+    /* ── Chat pane ── */
+    & .aw-chat-pane {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    & .aw-context-bar {
+        background: var(--bg-surface-elevated, #f6f7f9);
+        border-bottom: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+    & .aw-msg-user .aw-msg-body {
+        background: var(--accent-subtle, rgba(99, 102, 241, 0.08));
+        border: 1px solid var(--accent, rgba(99, 102, 241, 0.2));
+    }
+    & .aw-msg-assistant .aw-msg-body {
+        background: var(--bg-surface-elevated, #f6f7f9);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.08));
+    }
+    & .aw-msg-body code {
+        background: rgba(0, 0, 0, 0.06);
+    }
+
+    /* ── Inputs ── */
+    & .aw-input,
+    & .aw-modal-input,
+    & .aw-modal-textarea,
+    & .tc-modal-input,
+    & .tc-modal-textarea,
+    & .tc-modal-select {
+        background: var(--bg-surface-elevated, #f6f7f9);
+        border-color: var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+
+    /* ── Bottom bar ── */
+    & .aw-bottom-bar {
+        background: var(--bg-surface-elevated, #f6f7f9);
+        border-top: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+
+    /* ── Action buttons ── */
+    & .aw-action {
+        border-color: var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+
+    /* ── Modals ── */
+    & .aw-modal,
+    & .tc-modal {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+    }
+    & .aw-modal-cancel,
+    & .tc-modal-cancel {
+        border-color: var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+
+    /* ── Toast ── */
+    & .aw-toast {
+        background: var(--bg-surface, #ffffff);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    /* ═══════ THREAD CHANNELS TAB ═══════ */
+
+    /* ── Channel tabs ── */
+    & .tc-tab {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.05));
+    }
+    & .tc-tab:hover {
+        border-color: var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+    & .tc-tab-active {
+        background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
+        border-color: var(--accent, rgba(99, 102, 241, 0.3));
+    }
+    & .tc-tab-count {
+        background: var(--bg-surface-elevated, #f6f7f9);
+    }
+
+    /* ── Thread list ── */
+    & .tc-list {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    & .tc-thread:hover {
+        background: var(--bg-surface-hover, #eef0f3);
+    }
+    & .tc-thread-active {
+        background: var(--accent-subtle, rgba(99, 102, 241, 0.08));
+        border-color: var(--accent, rgba(99, 102, 241, 0.25));
+    }
+
+    /* ── Thread detail ── */
+    & .tc-detail {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    & .tc-detail-header {
+        border-bottom: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
+    }
+    & .tc-detail-channel {
+        background: var(--bg-surface-elevated, #f6f7f9);
+    }
+
+    /* ── Item type tag ── */
+    & .aw-item-type {
+        background: var(--bg-surface-elevated, #f6f7f9);
+        border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.05));
+    }
 }
 
 /* ── Top Bar ──────────────────────────────────────────────────────── */

@@ -832,3 +832,1155 @@
     color: #a5b4fc;
     word-break: break-all;
 }
+
+/* ─── Shared Utility Classes ────────────────────────── */
+.stella__panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #e2e8f0);
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.12);
+}
+
+.stella__btn-sm {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.08);
+    color: #a5b4fc;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.stella__btn-sm:hover {
+    background: rgba(99, 102, 241, 0.16);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+.stella__btn-sm--danger {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.2);
+    background: rgba(248, 113, 113, 0.06);
+}
+.stella__btn-sm--danger:hover {
+    background: rgba(248, 113, 113, 0.15);
+    border-color: rgba(248, 113, 113, 0.3);
+}
+.stella__btn-sm--install {
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.2);
+    background: rgba(52, 211, 153, 0.06);
+}
+.stella__btn-sm--install:hover {
+    background: rgba(52, 211, 153, 0.15);
+    border-color: rgba(52, 211, 153, 0.3);
+}
+
+.stella__btn-primary {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+}
+.stella__btn-primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.stella__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+.stella__empty-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+.stella__empty-hint {
+    font-size: 12px;
+    color: var(--text-tertiary, #64748b);
+    margin-top: 4px;
+}
+
+/* ─── Automation (Cron) Tab ─────────────────────────── */
+.stella__cron-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(99, 102, 241, 0.04);
+    border: 1px solid rgba(99, 102, 241, 0.1);
+    border-radius: 10px;
+}
+
+.stella__cron-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.stella__cron-stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary, #e2e8f0);
+}
+.stella__cron-stat-value.stella__cron-stat--active { color: #34d399; }
+.stella__cron-stat-value.stella__cron-stat--paused { color: #fbbf24; }
+.stella__cron-stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary, #64748b);
+}
+
+.stella__cron-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stella__cron-card {
+    padding: 12px;
+    background: rgba(99, 102, 241, 0.04);
+    border: 1px solid rgba(99, 102, 241, 0.1);
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+.stella__cron-card:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+    background: rgba(99, 102, 241, 0.06);
+}
+.stella__cron-card--paused {
+    opacity: 0.6;
+}
+.stella__cron-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.stella__cron-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+.stella__cron-badge--active {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.1);
+}
+.stella__cron-badge--paused {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+}
+.stella__cron-schedule {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--text-secondary, #94a3b8);
+    margin-bottom: 8px;
+}
+.stella__cron-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* ─── MCP Servers Tab ───────────────────────────────── */
+.stella__mcp-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stella__mcp-card {
+    padding: 12px;
+    background: rgba(99, 102, 241, 0.04);
+    border: 1px solid rgba(99, 102, 241, 0.1);
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+.stella__mcp-card:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+}
+.stella__mcp-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.stella__mcp-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+.stella__mcp-badge--on {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.1);
+}
+.stella__mcp-badge--off {
+    color: var(--text-tertiary, #64748b);
+    background: rgba(100, 116, 139, 0.1);
+}
+.stella__mcp-transport {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--text-secondary, #94a3b8);
+    margin-bottom: 4px;
+}
+.stella__mcp-desc {
+    font-size: 11px;
+    color: var(--text-tertiary, #64748b);
+    margin-bottom: 8px;
+}
+.stella__mcp-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* ─── Skill Search & Hub ────────────────────────────── */
+.stella__skill-search {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.stella__skill-search-input {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
+    background: rgba(15, 18, 25, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    border-radius: 8px;
+    color: var(--text-primary, #e2e8f0);
+    outline: none;
+    transition: border-color 0.2s;
+}
+.stella__skill-search-input:focus {
+    border-color: #6366f1;
+}
+.stella__skill-hub-results {
+    margin-bottom: 16px;
+    padding: 10px;
+    background: rgba(52, 211, 153, 0.03);
+    border: 1px solid rgba(52, 211, 153, 0.1);
+    border-radius: 10px;
+}
+.stella__skill-hub-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary, #e2e8f0);
+    margin: 0 0 8px;
+}
+.stella__skill-card--hub {
+    border-color: rgba(52, 211, 153, 0.15);
+    background: rgba(52, 211, 153, 0.04);
+}
+.stella__skill-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ─── Memory Editor ─────────────────────────────────── */
+.stella__memory-header {
+    cursor: pointer;
+    padding: 4px 0;
+}
+.stella__memory-content-wrap {
+    padding: 8px 0;
+}
+.stella__memory-editor {
+    width: 100%;
+    padding: 10px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    line-height: 1.6;
+    background: rgba(15, 18, 25, 0.8);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 8px;
+    color: var(--text-primary, #e2e8f0);
+    resize: vertical;
+    outline: none;
+    box-sizing: border-box;
+}
+.stella__memory-editor:focus {
+    border-color: #6366f1;
+}
+.stella__memory-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* ─── Phase 3: RBAC Badge ─────────────────────────── */
+.stella__rbac-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    margin-left: 8px;
+    border-radius: 10px;
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    vertical-align: middle;
+    letter-spacing: 0.3px;
+}
+
+/* ─── Phase 3: Bootstrap Result ───────────────────── */
+.stella__bootstrap-result {
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.stella__bootstrap-result--ok {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+.stella__bootstrap-result--err {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+/* ─── Phase 3: Settings Hint ─────────────────────── */
+.stella__settings-hint {
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+    margin: 0 0 12px 0;
+    line-height: 1.5;
+}
+
+/* ─── Phase 4.2: Circuit Breaker Indicators ──────── */
+.stella__circuit-ok {
+    color: #10b981;
+}
+.stella__circuit-warn {
+    color: #f59e0b;
+    animation: stella-pulse 1.5s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════
+   HONCHO TAB
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Honcho Learn Toggle ─── */
+.stella__honcho-learn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(99, 102, 241, 0.1);
+    background: rgba(30, 35, 50, 0.5);
+    transition: all 0.3s ease;
+}
+
+.stella__honcho-learn--active {
+    border-color: rgba(52, 211, 153, 0.3);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(52, 211, 153, 0.03));
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.05);
+}
+
+.stella__honcho-learn-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.stella__honcho-learn-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.stella__honcho-learn-info strong {
+    font-size: 13px;
+    color: var(--text-primary, #e2e8f0);
+    display: block;
+    margin-bottom: 2px;
+}
+
+.stella__honcho-learn-desc {
+    font-size: 11px;
+    color: var(--text-tertiary, #64748b);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.stella__honcho-learn-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(99, 102, 241, 0.1);
+    color: #a5b4fc;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+}
+
+.stella__honcho-learn-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    transform: scale(1.05);
+}
+
+.stella__honcho-learn-btn--on {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.15));
+    border-color: rgba(52, 211, 153, 0.3);
+    color: #34d399;
+    animation: honcho-learn-pulse 2s ease-in-out infinite;
+}
+
+.stella__honcho-learn-btn--on:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    animation: none;
+}
+
+@keyframes honcho-learn-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.3); }
+    50% { box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.08); }
+}
+
+/* ── Honcho Stats ─── */
+.stella__honcho-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.stella__honcho-stat {
+    padding: 10px 8px;
+    background: rgba(30, 35, 50, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.06);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stella__honcho-stat-val {
+    display: block;
+    font-size: 18px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stella__honcho-stat-key {
+    display: block;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-tertiary, #64748b);
+    margin-top: 2px;
+    font-weight: 700;
+}
+
+/* ── Honcho Toolbar ─── */
+.stella__honcho-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.stella__honcho-search {
+    flex: 1;
+    padding: 7px 12px;
+    background: rgba(15, 18, 25, 0.8);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-radius: 8px;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.stella__honcho-search:focus {
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.stella__honcho-type-filter {
+    padding: 7px 10px;
+    background: rgba(15, 18, 25, 0.8);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-radius: 8px;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 11px;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+}
+
+.stella__honcho-type-filter option {
+    background: #1a1f2e;
+    color: #e2e8f0;
+}
+
+/* ── Honcho Add Form ─── */
+.stella__honcho-add-form {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: rgba(99, 102, 241, 0.04);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-radius: 10px;
+}
+
+.stella__honcho-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(15, 18, 25, 0.8);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-radius: 8px;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    resize: vertical;
+    margin-bottom: 8px;
+}
+
+.stella__honcho-add-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.stella__honcho-add-row select {
+    padding: 5px 8px;
+    background: rgba(15, 18, 25, 0.8);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-radius: 6px;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.stella__honcho-add-row label {
+    font-size: 11px;
+    color: var(--text-secondary, #94a3b8);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stella__honcho-add-row input[type="range"] {
+    width: 80px;
+}
+
+/* ── Honcho Memory Cards ─── */
+.stella__honcho-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stella__honcho-memory {
+    padding: 10px 12px;
+    background: rgba(30, 35, 50, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.06);
+    border-left: 3px solid #6366f1;
+    border-radius: 8px;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.stella__honcho-memory:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+    background: rgba(30, 35, 50, 0.8);
+}
+
+.stella__honcho-memory-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.stella__honcho-memory-type {
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.stella__honcho-importance {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stella__honcho-importance.imp-low {
+    background: rgba(148, 163, 184, 0.1);
+    color: #94a3b8;
+}
+
+.stella__honcho-importance.imp-medium {
+    background: rgba(251, 191, 36, 0.1);
+    color: #fbbf24;
+}
+
+.stella__honcho-importance.imp-high {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+}
+
+.stella__honcho-importance.imp-critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    animation: honcho-learn-pulse 2s ease-in-out infinite;
+}
+
+.stella__honcho-source {
+    font-size: 9px;
+    color: var(--text-tertiary, #64748b);
+    margin-left: auto;
+}
+
+.stella__honcho-content {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-primary, #e2e8f0);
+    margin: 0;
+}
+
+.stella__honcho-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--text-tertiary, #64748b);
+}
+
+/* ═══════════════════════════════════════════════════════
+   HONCHO PLATFORM LAYOUT
+   ═══════════════════════════════════════════════════════ */
+
+.stella__honcho-platform {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Sub-Navigation Sidebar */
+.stella__honcho-nav {
+    width: 160px;
+    min-width: 160px;
+    border-right: 1px solid rgba(99, 102, 241, 0.08);
+    background: rgba(15, 18, 30, 0.4);
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.stella__honcho-nav-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 12px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+    margin-bottom: 6px;
+}
+.stella__honcho-nav-logo { font-size: 20px; }
+.stella__honcho-nav-header strong { font-size: 13px; color: var(--text-primary, #e2e8f0); display: block; }
+.stella__honcho-nav-header p { font-size: 10px; color: var(--text-tertiary, #64748b); margin: 0; }
+
+.stella__honcho-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 11.5px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    border-left: 2px solid transparent;
+    white-space: nowrap;
+}
+.stella__honcho-nav-item:hover {
+    color: var(--text-primary, #e2e8f0);
+    background: rgba(99, 102, 241, 0.04);
+}
+.stella__honcho-nav-item--active {
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.08);
+    border-left-color: #818cf8;
+    font-weight: 600;
+}
+.stella__honcho-nav-icon { font-size: 13px; flex-shrink: 0; }
+
+/* Content Area */
+.stella__honcho-content {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+/* Memory Network Visualization */
+.stella__honcho-network-viz {
+    position: relative;
+    min-height: 260px;
+    border-radius: 10px;
+    background: rgba(15, 18, 30, 0.5);
+    border: 1px solid rgba(99, 102, 241, 0.06);
+    overflow: hidden;
+}
+.stella__honcho-network-node {
+    position: absolute;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(30, 35, 50, 0.8);
+    border: 1px solid rgba(129, 140, 248, 0.15);
+    font-size: 10px;
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    max-width: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+.stella__honcho-network-node:hover {
+    transform: scale(1.1);
+    border-color: #818cf8;
+    box-shadow: 0 0 15px rgba(129, 140, 248, 0.2);
+    z-index: 2;
+}
+.stella__honcho-network-text {
+    font-size: 9px;
+    color: var(--text-tertiary, #64748b);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+}
+
+/* Memory Map — Canvas Graph */
+.stella__memory-map-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.stella__memory-map-counts {
+    font-size: 11px;
+    color: var(--text-tertiary, #64748b);
+    font-weight: 500;
+}
+.stella__memory-map-canvas-wrap {
+    flex: 1;
+    min-height: 350px;
+    border-radius: 12px;
+    background: rgba(15, 18, 30, 0.7);
+    border: 1px solid rgba(99, 102, 241, 0.06);
+    position: relative;
+    overflow: hidden;
+}
+.stella__memory-map-canvas-wrap canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Chat Messages within Honcho */
+.stella__honcho-chat-messages {
+    flex: 1;
+    min-height: 200px;
+    max-height: 350px;
+}
+
+/* Settings Panel */
+.stella__settings {
+    padding: 4px 0;
+}
+.stella__settings-status {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+}
+.stella__settings-status strong {
+    color: var(--text-primary, #e2e8f0);
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.stella__settings-divider {
+    border: none;
+    border-top: 1px solid rgba(99, 102, 241, 0.08);
+    margin: 12px 0;
+}
+.stella__settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.stella__settings-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    background: rgba(30, 35, 50, 0.5);
+    color: var(--text-primary, #e2e8f0);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.stella__settings-btn:hover {
+    border-color: rgba(129, 140, 248, 0.3);
+    background: rgba(99, 102, 241, 0.08);
+}
+.stella__settings-btn--danger {
+    border-color: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+.stella__settings-btn--danger:hover {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.06);
+}
+
+/* ═══════════════════════════════════════════════════════
+   HERMES TAB
+   ═══════════════════════════════════════════════════════ */
+
+.stella__hermes-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(99, 102, 241, 0.08);
+}
+
+.stella__hermes-status--online {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(52, 211, 153, 0.03));
+    border-color: rgba(52, 211, 153, 0.2);
+}
+
+.stella__hermes-status--offline {
+    background: rgba(239, 68, 68, 0.04);
+    border-color: rgba(239, 68, 68, 0.15);
+}
+
+.stella__hermes-status-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.stella__hermes-status strong {
+    font-size: 13px;
+    color: var(--text-primary, #e2e8f0);
+    display: block;
+    margin-bottom: 2px;
+}
+
+.stella__hermes-status p {
+    font-size: 11px;
+    color: var(--text-secondary, #94a3b8);
+    margin: 0;
+}
+
+.stella__hermes-section {
+    margin-bottom: 14px;
+}
+
+/* ── Tool Cards ─── */
+.stella__hermes-tools {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 6px;
+}
+
+.stella__hermes-tool {
+    padding: 8px 12px;
+    background: rgba(30, 35, 50, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.06);
+    border-radius: 8px;
+    transition: border-color 0.2s;
+}
+
+.stella__hermes-tool:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.stella__hermes-tool-name {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #a5b4fc;
+    margin-bottom: 2px;
+}
+
+.stella__hermes-tool-desc {
+    display: block;
+    font-size: 10px;
+    color: var(--text-tertiary, #64748b);
+    line-height: 1.4;
+}
+
+/* ── Delegate Row ─── */
+.stella__hermes-delegate-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.stella__hermes-input {
+    flex: 1;
+    padding: 9px 14px;
+    background: rgba(15, 18, 25, 0.8);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    border-radius: 10px;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.stella__hermes-input:focus {
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+/* ── ReAct Steps ─── */
+.stella__hermes-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.stella__hermes-step {
+    display: flex;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(30, 35, 50, 0.5);
+    border-left: 3px solid transparent;
+    animation: stella-msg-in 0.25s ease-out;
+}
+
+.stella__hermes-step--thought {
+    border-left-color: #818cf8;
+}
+
+.stella__hermes-step--action {
+    border-left-color: #fbbf24;
+}
+
+.stella__hermes-step--observation {
+    border-left-color: #8b5cf6;
+}
+
+.stella__hermes-step--final_answer {
+    border-left-color: #34d399;
+    background: rgba(16, 185, 129, 0.04);
+}
+
+.stella__hermes-step-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.stella__hermes-step-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.stella__hermes-step-label {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary, #94a3b8);
+    margin-bottom: 2px;
+}
+
+.stella__hermes-step-body p {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-primary, #e2e8f0);
+    margin: 0;
+    word-break: break-word;
+}
+
+/* ── Hermes Result ─── */
+.stella__hermes-result {
+    padding: 12px;
+    background: rgba(16, 185, 129, 0.04);
+    border: 1px solid rgba(52, 211, 153, 0.15);
+    border-radius: 10px;
+}
+
+.stella__hermes-result h5 {
+    font-size: 12px;
+    font-weight: 700;
+    color: #34d399;
+    margin: 0 0 8px;
+}
+
+.stella__hermes-result pre {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-primary, #e2e8f0);
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+/* ──────────────────────────────────────────
+   Telegram Integration (Settings Tab)
+   ────────────────────────────────────────── */
+
+.stella__settings-input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: var(--text-primary, #e6edf3);
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.stella__settings-input:focus {
+    border-color: rgba(99,102,241,0.5);
+    background: rgba(99,102,241,0.04);
+}
+.stella__settings-input::placeholder { color: #6e7681; }
+
+.stella__tg-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+}
+.stella__tg-badge--connected {
+    background: rgba(63,185,80,0.12);
+    border: 1px solid rgba(63,185,80,0.3);
+    color: #3fb950;
+}
+.stella__tg-badge--offline {
+    background: rgba(248,81,73,0.1);
+    border: 1px solid rgba(248,81,73,0.25);
+    color: #f85149;
+}
+
+.stella__tg-toast {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 8px;
+    animation: tg-toast-in 0.2s ease;
+}
+.stella__tg-toast--ok  { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); color: #3fb950; }
+.stella__tg-toast--err { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); color: #f85149; }
+@keyframes tg-toast-in { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:none } }
+
+.stella__tg-log {
+    margin-top: 8px;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 220px;
+    overflow-y: auto;
+}
+.stella__tg-log-empty { padding: 16px; text-align: center; color: #8b949e; font-size: 12px; }
+.stella__tg-log-row {
+    display: grid;
+    grid-template-columns: 20px 90px 1fr 60px;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 11px;
+}
+.stella__tg-log-row:last-child { border-bottom: none; }
+.stella__tg-log-row--in  { background: rgba(79,172,254,0.04); }
+.stella__tg-log-row--out { background: rgba(63,185,80,0.04); }
+.stella__tg-log-dir  { font-size: 13px; }
+.stella__tg-log-user { font-weight: 600; color: #8b949e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stella__tg-log-text { color: #e6edf3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stella__tg-log-time { color: #6e7681; text-align: right; white-space: nowrap; }
+
+.stella__tg-guide {
+    margin-top: 12px;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.stella__tg-guide summary {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #8b949e;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.stella__tg-guide summary:hover { color: #e6edf3; background: rgba(255,255,255,0.02); }
+.stella__tg-guide[open] summary { color: #e6edf3; border-bottom: 1px solid rgba(255,255,255,0.07); }
+
+.stella__tg-guide-list {
+    margin: 0;
+    padding: 14px 20px 14px 32px;
+    color: #8b949e;
+    font-size: 12px;
+    line-height: 1.9;
+}
+.stella__tg-guide-list strong { color: #e6edf3; }
+.stella__tg-guide-list code {
+    font-family: 'SF Mono','Fira Code',monospace;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #4facfe;
+}

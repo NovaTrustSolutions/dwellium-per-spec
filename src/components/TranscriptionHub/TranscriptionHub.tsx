@@ -904,18 +904,24 @@ export default function TranscriptionHub() {
             recognition.maxAlternatives = 1;
 
             recognition.onresult = (event: SpeechRecognitionEvent) => {
-                let interim = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
+                // Rebuild the full interim from ALL results in this recognition session.
+                // Using only event.resultIndex causes earlier in-progress words to be
+                // overwritten on each event fire, producing truncated / incorrect dictation.
+                let fullInterim = '';
+                for (let i = 0; i < event.results.length; i++) {
                     const result = event.results[i];
                     const transcript = result[0].transcript;
                     if (result.isFinal) {
-                        setLiveFinalParts(prev => [...prev, transcript.trim()]);
-                        liveRestartDelayRef.current = 0; // reset backoff on successful speech
+                        // Only append finals we haven't seen yet (from resultIndex onward)
+                        if (i >= event.resultIndex) {
+                            setLiveFinalParts(prev => [...prev, transcript.trim()]);
+                            liveRestartDelayRef.current = 0;
+                        }
                     } else {
-                        interim += transcript;
+                        fullInterim += transcript;
                     }
                 }
-                setLiveTranscript(interim);
+                setLiveTranscript(fullInterim);
             };
 
             recognition.onerror = (event) => {

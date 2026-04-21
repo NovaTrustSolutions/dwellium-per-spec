@@ -5,9 +5,24 @@ import { useUser } from '../../context/UserContext';
 import { usePermissions } from '../../context/PermissionsContext';
 import { HierarchyItem } from '../../data/types';
 import { rankWidgetSearchResults, WidgetSearchMatch } from './widgetSearch';
+import { getIcon, isLucideKey } from './iconMap';
 import './Sidebar.css';
+import React from 'react';
 
-const MIN_WIDTH = 180;
+/**
+ * Renders a Lucide SVG icon if the key is recognized, otherwise falls back to text/emoji.
+ * Used everywhere an icon string needs to be displayed.
+ */
+function SidebarIcon({ iconKey, size = 16, className }: { iconKey: string; size?: number; className?: string }) {
+    const LucideIcon = getIcon(iconKey);
+    if (LucideIcon) {
+        return <LucideIcon size={size} strokeWidth={1.75} className={className} />;
+    }
+    // Fallback for legacy emoji icons from saved layouts in localStorage
+    return <span className={className}>{iconKey}</span>;
+}
+
+const MIN_WIDTH = 200;
 const MAX_WIDTH = 420;
 const STORAGE_KEY = 'dwellium-sidebar-width';
 const SPLIT_STORAGE_KEY = 'dwellium-sidebar-split';
@@ -172,8 +187,20 @@ export default function Sidebar() {
     const [showSavePopover, setShowSavePopover] = useState(false);
     const [saveName, setSaveName] = useState('');
     const [showLoadDropdown, setShowLoadDropdown] = useState(false);
-    const [domainsCollapsed, setDomainsCollapsed] = useState(false);
+    // Domains panel — collapsed by default for clean initial view
+    const [domainsCollapsed, setDomainsCollapsed] = useState(() => {
+        try {
+            const saved = localStorage.getItem('qualia_domains_collapsed');
+            if (saved !== null) return saved === 'true';
+        } catch { /* ignore */ }
+        return true; // collapsed by default
+    });
     const [showOptions, setShowOptions] = useState(false);
+
+    // Persist domains collapsed preference
+    useEffect(() => {
+        localStorage.setItem('qualia_domains_collapsed', String(domainsCollapsed));
+    }, [domainsCollapsed]);
 
     // Icon-only collapsed mode
     const [iconOnly, setIconOnly] = useState(() => {
@@ -195,13 +222,13 @@ export default function Sidebar() {
     const [domainName, setDomainName] = useState('');
     const domainInputRef = useRef<HTMLInputElement>(null);
 
-    // Widget Hierarchy State
+    // Widget Hierarchy State — collapsed by default for clean initial view
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
         try {
             const saved = localStorage.getItem('qualia_sidebar_groups');
             if (saved) return new Set(JSON.parse(saved));
         } catch (e) { }
-        return new Set(['Property Management', 'AI Tools', 'Filing Cabinet']);
+        return new Set<string>(); // all collapsed by default
     });
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -354,20 +381,21 @@ export default function Sidebar() {
     }, []);
 
     // Determine collapsed mode (small width or icon-only)
-    const collapsed = iconOnly || width < 200;
+    const collapsed = iconOnly; // Text only hides in icon-only mode (« button), never from width resize
+
 
     /* ── Personalized greeting + weather ──────────────── */
     const GREETING_MESSAGES: Record<string, string> = {
-        'Andy': "Let's build the future 🚀",
-        'Lisa': "Command the empire 👑",
-        'Wendy': "Leading the way forward 🌟",
-        'Candace': "Excellence in motion ✨",
-        'Grieve': "Wise counsel, sharp moves 🎯",
-        'Baldwin': "Strategy meets precision 🧠",
-        'Leo': "Vision without limits 🔭",
-        'Lee': "Keeping it all running 🔧",
-        'Jose': "Hands that build greatness 🛠️",
-        'Marcus Johnson': "Welcome home 🏠",
+        'Andy': "Let's build the future",
+        'Lisa': "Command the empire",
+        'Wendy': "Leading the way forward",
+        'Candace': "Excellence in motion",
+        'Grieve': "Wise counsel, sharp moves",
+        'Baldwin': "Strategy meets precision",
+        'Leo': "Vision without limits",
+        'Lee': "Keeping it all running",
+        'Jose': "Hands that build greatness",
+        'Marcus Johnson': "Welcome home",
     };
 
     const getTimeGreeting = () => {
@@ -380,31 +408,63 @@ export default function Sidebar() {
     const [temperature, setTemperature] = useState<string | null>(null);
 
     useEffect(() => {
-        // Open-Meteo free API — no key needed. Using Denver, CO coords as default.
-        const fetchWeather = async () => {
+        // Use browser geolocation for accurate weather, fallback to Atlanta, GA (ZP Group HQ area)
+        const fetchWeather = async (lat: number, lon: number) => {
             try {
                 const res = await fetch(
-                    'https://api.open-meteo.com/v1/forecast?latitude=39.74&longitude=-104.98&current=temperature_2m&temperature_unit=fahrenheit&timezone=America/Denver'
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`
                 );
                 const data = await res.json();
                 if (data?.current?.temperature_2m != null) {
-                    setTemperature(`${Math.round(data.current.temperature_2m)}°F`);
+                    const temp = Math.round(data.current.temperature_2m);
+                    const code = data.current.weather_code ?? 0;
+                    // Weather icon from WMO code
+                    const icon = code === 0 ? '☀️'
+                        : code <= 3 ? '⛅'
+                        : code <= 48 ? '🌫️'
+                        : code <= 67 ? '🌧️'
+                        : code <= 77 ? '❄️'
+                        : code <= 82 ? '🌦️'
+                        : code <= 86 ? '🌨️'
+                        : '⛈️';
+                    setTemperature(`${icon} ${temp}°F`);
                 }
             } catch {
                 setTemperature(null);
             }
         };
-        fetchWeather();
-        const interval = setInterval(fetchWeather, 600_000); // refresh every 10min
+
+        // Try browser geolocation first
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+                () => fetchWeather(33.749, -84.388), // Fallback: Atlanta, GA
+                { timeout: 5000 }
+            );
+        } else {
+            fetchWeather(33.749, -84.388); // Fallback: Atlanta, GA
+        }
+
+        const interval = setInterval(() => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+                    () => fetchWeather(33.749, -84.388),
+                    { timeout: 5000 }
+                );
+            } else {
+                fetchWeather(33.749, -84.388);
+            }
+        }, 600_000); // refresh every 10min
         return () => clearInterval(interval);
     }, []);
 
     const userName = user?.name || 'there';
-    const personalMessage = GREETING_MESSAGES[userName] || "Let's get things done 💪";
+    const personalMessage = GREETING_MESSAGES[userName] || "Let's get things done";
     const timeGreeting = getTimeGreeting();
 
     return (
-        <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''} ${iconOnly ? 'sidebar--icon-only' : ''}`} ref={sidebarRef} style={{ width: iconOnly ? 48 : width }}>
+        <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''} ${iconOnly ? 'sidebar--icon-only' : ''}`} ref={sidebarRef} style={{ width: iconOnly ? 48 : width }} role="navigation" aria-label="Main navigation">
             {/* Header with Logo + Sign Out */}
             <div className="sidebar__header">
                 <div className="sidebar__logo">
@@ -417,7 +477,7 @@ export default function Sidebar() {
                         onClick={logout}
                         title="Sign out"
                     >
-                        {collapsed ? '⏻' : '⏻ Sign Out'}
+                        {collapsed ? '⏻' : 'Sign Out'}
                     </button>
                 )}
                 <button
@@ -436,7 +496,7 @@ export default function Sidebar() {
                         <span className="sidebar__greeting-hello">{timeGreeting}, <strong>{userName}</strong></span>
                         {temperature && (
                             <span className="sidebar__greeting-temp">
-                                🌡️ {temperature}
+                                {temperature}
                             </span>
                         )}
                     </div>
@@ -468,7 +528,7 @@ export default function Sidebar() {
                                 onClick={() => handleWidgetClick(item.component, item.label, item.icon)}
                                 title={item.label}
                             >
-                                <span className="sidebar__icon-rail-icon">{item.icon}</span>
+                                <span className="sidebar__icon-rail-icon"><SidebarIcon iconKey={item.icon} size={18} /></span>
                                 {isOpen && <span className="sidebar__icon-rail-dot" />}
                             </button>
                         );
@@ -488,7 +548,7 @@ export default function Sidebar() {
                                         title={domainsCollapsed ? 'Expand Domains' : 'Collapse Domains'}
                                         style={{ marginRight: '4px' }}
                                     >{domainsCollapsed ? '+' : '−'}</button>
-                                    <span className="sidebar__panel-title">📂 Domains</span>
+                                    <span className="sidebar__panel-title">Domains</span>
                                     {!domainsCollapsed && hierarchy.length > 0 && (
                                         <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
                                             <button
@@ -569,7 +629,7 @@ export default function Sidebar() {
                     <div className="sidebar__split-bottom">
                         <div className="sidebar__split-bottom-header">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <span className="sidebar__panel-title">⊞ Widgets</span>
+                                <span className="sidebar__panel-title">Widgets</span>
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                     <button onClick={() => setExpandedGroups(new Set(['Property Management', 'AI Tools', 'Filing Cabinet']))} title="Expand All" style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: '10px' }}>▼</button>
                                     <button onClick={() => setExpandedGroups(new Set())} title="Collapse All" style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: '10px' }}>▶</button>
@@ -604,9 +664,9 @@ export default function Sidebar() {
                                 const availableItems = searchActive ? searchMatches.map(m => m.item) : permittedItems;
 
                                 const WIDGET_GROUPS = [
-                                    { name: 'Property Management', icon: '🏢' },
-                                    { name: 'AI Tools', icon: '🤖' },
-                                    { name: 'Filing Cabinet', icon: '🗄️' }
+                                    { name: 'Property Management', icon: 'building' },
+                                    { name: 'AI Tools', icon: 'brain-circuit' },
+                                    { name: 'Filing Cabinet', icon: 'archive' }
                                 ];
 
                                 // Group the items
@@ -662,7 +722,7 @@ export default function Sidebar() {
                                             onDragEnd={searchActive ? undefined : onWidgetDragEnd}
                                         >
                                             {!searchActive && <span className="sidebar-widget__drag-handle">≡</span>}
-                                            <span className="sidebar-widget__icon">{item.icon}</span>
+                                            <span className="sidebar-widget__icon"><SidebarIcon iconKey={item.icon} size={16} /></span>
                                             {!collapsed && (
                                                 <div className="sidebar-widget__content">
                                                     <span className="sidebar-widget__label">{item.label}</span>
@@ -719,7 +779,7 @@ export default function Sidebar() {
                                                         title={group.name}
                                                     >
                                                         <span className="sidebar__widget-group-toggle">{isExpanded ? '−' : '+'}</span>
-                                                        {!collapsed && <span className="sidebar__widget-group-icon">{group.icon}</span>}
+                                                        {!collapsed && <span className="sidebar__widget-group-icon"><SidebarIcon iconKey={group.icon} size={14} /></span>}
                                                         {!collapsed && <span className="sidebar__widget-group-label">{group.name}</span>}
                                                     </button>
                                                     {(!collapsed && isExpanded) && items.length > 0 && (
@@ -767,7 +827,7 @@ export default function Sidebar() {
                         onClick={() => { setShowOptions(!showOptions); setShowSavePopover(false); setShowLoadDropdown(false); }}
                         title="Options"
                     >
-                        {collapsed ? '⚙' : '⚙ Options'}
+                        {collapsed ? '⚙' : 'Options'}
                     </button>
                 )}
 
@@ -791,7 +851,7 @@ export default function Sidebar() {
                                         setTimeout(() => setSaveFlash(false), 1200);
                                     }}
                                 >
-                                    💾 Quick Save
+                                    Quick Save
                                 </button>
                                 <button
                                     className="sidebar__options-item"

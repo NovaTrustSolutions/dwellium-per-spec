@@ -5,6 +5,7 @@ import { PermissionsProvider } from './context/PermissionsContext';
 import { HierarchyProvider } from './context/HierarchyContext';
 import { WindowProvider, useWindows } from './context/WindowContext';
 import { LayoutProvider } from './context/LayoutContext';
+import QueryProvider from './providers/QueryProvider';
 import Sidebar from './components/Sidebar/Sidebar';
 import Desktop from './components/Shell/Desktop';
 import CommandPalette from './components/CommandPalette/CommandPalette';
@@ -12,12 +13,14 @@ import LoginScreen from './components/Auth/LoginScreen';
 import TenantLoginScreen from './components/Auth/TenantLoginScreen';
 import TenantPortal from './components/TenantPortal/TenantPortal';
 import SecurityPortal from './components/SecurityPortal/SecurityPortal';
-import OpenJarvisWidget from './components/OpenJarvis/OpenJarvis';
+import OpenJarvisWidget from './components/OpenJarvis/OpenJarvis'; // Unified Antigravity widget
+import { PopupShell, type DockBackMessage } from './components/PopupShell/PopupShell';
 import './styles/global.css';
+import './styles/skins.css';
 import './App.css';
 
 function ShellLayout() {
-    const { windows, closeWindow } = useWindows();
+    const { windows, closeWindow, openWindow } = useWindows();
 
     // ── Prevent browser back button from crashing the SPA ──
     // The app uses React state for navigation, not URL routing.
@@ -26,13 +29,28 @@ function ShellLayout() {
         // Push an initial history state so there's something to "go back" to
         window.history.pushState({ dwellium: true }, '', window.location.href);
 
-        const handlePopState = (e: PopStateEvent) => {
+        const handlePopState = () => {
             // Re-push state to keep the user on the page
             window.history.pushState({ dwellium: true }, '', window.location.href);
         };
 
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    // ── Restore saved skin on mount ──
+    useEffect(() => {
+        const savedSkin = localStorage.getItem('dwellium-skin') || 'default';
+        document.documentElement.setAttribute('data-skin', savedSkin);
+
+        // Listen for skin changes dispatched from ControlPanel
+        const onSkinChange = (e: CustomEvent) => {
+            const skin = e.detail as string;
+            document.documentElement.setAttribute('data-skin', skin);
+            localStorage.setItem('dwellium-skin', skin);
+        };
+        window.addEventListener('qualia-skin-change', onSkinChange as EventListener);
+        return () => window.removeEventListener('qualia-skin-change', onSkinChange as EventListener);
     }, []);
 
     // ── Block all file drag-and-drop outside designated drop zones ──
@@ -66,6 +84,27 @@ function ShellLayout() {
         };
     }, []);
 
+    // ── Dock-back listener: popup sends postMessage → shell docks widget into quadrant ──
+    useEffect(() => {
+        const handleMessage = (e: MessageEvent) => {
+            try {
+                const msg = e.data as DockBackMessage;
+                if (msg?.type !== 'qualia-dock-back') return;
+                const { component, title, icon } = msg;
+                if (!component) return;
+                // Focus this window so user sees it
+                window.focus();
+                // Open the widget in the best available quadrant
+                openWindow(component, title || component, icon || '🪟');
+                window.dispatchEvent(new CustomEvent('qualia-toast', {
+                    detail: `"${title}" docked back ↩`,
+                }));
+            } catch { /* ignore malformed messages */ }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [openWindow]);
+
     // Global keyboard shortcuts
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -77,6 +116,11 @@ function ShellLayout() {
                     const topWindow = visible.reduce((a, b) => a.zIndex > b.zIndex ? a : b);
                     closeWindow(topWindow.id);
                 }
+            }
+            // Cmd+Shift+2 — open Two Brains split-screen
+            if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '2') {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('qualia-open-widget', { detail: 'two-brains' }));
             }
         };
         window.addEventListener('keydown', handler);
@@ -153,10 +197,28 @@ export default function App() {
         return <SecurityPortal />;
     }
 
+    // Popup mode: /?popup=ComponentName — render just that widget, no sidebar/desktop
+    const popupParam = new URLSearchParams(window.location.search).get('popup');
+    if (popupParam) {
+        return (
+            <ThemeProvider>
+                <UserProvider>
+                    <QueryProvider>
+                        <PermissionsProvider>
+                            <PopupShell component={popupParam} />
+                        </PermissionsProvider>
+                    </QueryProvider>
+                </UserProvider>
+            </ThemeProvider>
+        );
+    }
+
     return (
         <ThemeProvider>
             <UserProvider>
-                <AuthGate />
+                <QueryProvider>
+                    <AuthGate />
+                </QueryProvider>
             </UserProvider>
         </ThemeProvider>
     );

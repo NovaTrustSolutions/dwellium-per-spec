@@ -3,6 +3,9 @@ import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
+import { FileUploadButton } from '../shared/FileUploadButton';
+import '../shared/FileUploadButton.css';
+import { sanitizeHtml } from '../../utils/safeMarkdown';
 
 const API_ARA = `${API_BASE}/api/ara`;
 const TRANSCRIBE_API = `${API_BASE}/api/transcribe`;
@@ -22,7 +25,7 @@ interface ARAMode {
 
 interface ContextSource {
     name: string;
-    type: 'inbox' | 'trello' | 'ruVector' | 'georgiaCode' | 'property' | 'workitem' | 'entity' | 'health' | 'workspace';
+    type: 'inbox' | 'trello' | 'ruVector' | 'georgiaCode' | 'property' | 'workitem' | 'entity' | 'health' | 'workspace' | 'decisions' | 'auditLog' | 'commLog' | 'calendar' | 'scheduler';
     itemCount: number;
     snippet?: string;
 }
@@ -1104,13 +1107,13 @@ export default function ARAConsole() {
                 processed = `<span class="ara-num">${num}.</span>${processed.replace(/^\d+\.\s/, '')}`;
             }
             if (processed.startsWith('### ')) {
-                return <h5 key={i} className="ara-h3" dangerouslySetInnerHTML={{ __html: processed.slice(4) }} />;
+                return <h5 key={i} className="ara-h3" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(4)) }} />;
             }
             if (processed.startsWith('## ')) {
-                return <h4 key={i} className="ara-h2" dangerouslySetInnerHTML={{ __html: processed.slice(3) }} />;
+                return <h4 key={i} className="ara-h2" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(3)) }} />;
             }
             if (processed === '') return <br key={i} />;
-            return <p key={i} className="ara-line" dangerouslySetInnerHTML={{ __html: processed }} />;
+            return <p key={i} className="ara-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed) }} />;
         });
     };
 
@@ -1643,6 +1646,19 @@ export default function ARAConsole() {
                     <span className={`ara-gender-option ${voiceGender === 'female' ? 'ara-gender-option--active' : ''}`}>♀</span>
                     <span className={`ara-gender-option ${voiceGender === 'male' ? 'ara-gender-option--active' : ''}`}>♂</span>
                 </button>
+                <FileUploadButton
+                    size="sm"
+                    iconOnly
+                    defaultPrompt="Analyze this document or image in the context of property management."
+                    onResult={(result) => {
+                        const analysisMsg = createChatMessage({
+                            role: 'assistant',
+                            content: `📎 **${result.originalName}** — AI Analysis\n\n${result.analysis}${result.savedDocumentId ? `\n\n✅ *Saved as document*` : ''}`,
+                            mode: activeMode,
+                        });
+                        setMessages(prev => [...prev, analysisMsg]);
+                    }}
+                />
                 <textarea
                     ref={inputRef}
                     className="ara-input"

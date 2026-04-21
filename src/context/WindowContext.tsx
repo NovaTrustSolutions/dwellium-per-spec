@@ -6,14 +6,14 @@ import { defaultDockItems } from '../data/hierarchy';
 const LAYOUT_STORAGE_KEY = 'dwellium-layout';
 const LEGACY_LAYOUT_STORAGE_KEY = 'qualia-layout';
 const DOCK_VERSION_KEY = 'dwellium-dock-version';
-const DOCK_VERSION = 3; // Bumped: removed CoPaw/TARS, added Stella
-const MIN_WIDTH = 320;
-const MIN_HEIGHT = 200;
+const DOCK_VERSION = 5; // Bumped: emoji icons → Lucide React SVG icon keys
+const MIN_WIDTH = 500;
+const MIN_HEIGHT = 380;
 
 interface WindowContextValue {
     windows: WindowState[];
     dockItems: DockItem[];
-    openWindow: (component: string, title: string, icon: string) => void;
+    openWindow: (component: string, title: string, icon: string) => string | null;
     closeWindow: (id: string) => void;
     focusWindow: (id: string) => void;
     minimizeWindow: (id: string) => void;
@@ -29,6 +29,7 @@ interface WindowContextValue {
     saveNamedLayout: (name: string) => void;
     loadNamedLayout: (id: string) => void;
     deleteNamedLayout: (id: string) => void;
+    popOutWindow: (id: string) => void;
 }
 
 const WindowContext = createContext<WindowContextValue | null>(null);
@@ -51,13 +52,16 @@ export function WindowProvider({ children }: { children: ReactNode }) {
                 if (saved) {
                     const layout: LayoutState = JSON.parse(saved);
                     const savedItems = layout.dockItems || [];
+                    // Prune: remove stale items that no longer exist in defaults
+                    const validComponents = new Set(defaultDockItems.map(d => d.component));
+                    const prunedItems = savedItems.filter((i: DockItem) => validComponents.has(i.component));
                     // Merge: keep saved order but add any new defaults not yet in the layout
-                    const savedIds = new Set(savedItems.map(i => i.id));
+                    const savedIds = new Set(prunedItems.map((i: DockItem) => i.id));
                     const newItems = defaultDockItems.filter(d => !savedIds.has(d.id));
                     if (newItems.length > 0) {
-                        return [...savedItems, ...newItems];
+                        return [...prunedItems, ...newItems];
                     }
-                    return savedItems;
+                    return prunedItems;
                 }
             } else {
                 // Version mismatch — reset to defaults and update version
@@ -108,34 +112,77 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         return () => clearTimeout(timer);
     }, [windows, dockItems]);
 
-    const openWindow = useCallback((component: string, title: string, icon: string) => {
+    const openWindow = useCallback((component: string, title: string, icon: string): string | null => {
         // Check if window of this component type is already open
         const existing = windowsRef.current.find(w => w.component === component);
         if (existing) {
-            // Restore if minimized and focus
             setWindows(prev => prev.map(w =>
                 w.id === existing.id
                     ? { ...w, minimized: false, zIndex: ++nextZIndex }
                     : w
             ));
-            return;
+            return existing.id; // return existing ID so caller can re-focus region
         }
 
-        const offset = (windowsRef.current.length % 8) * 30;
+        // ── Smart Quadrant Spawn ─────────────────────────────────────────────
+        // Use the actual desktop canvas element to get real available space
+        // (excludes sidebar width, which is dynamic/resizable)
+        const desktopEl = document.querySelector<HTMLElement>('.desktop-canvas');
+        const desktopRect = desktopEl?.getBoundingClientRect();
+        const desktopW  = desktopRect?.width  ?? (window.innerWidth  - 240);
+        const desktopH  = desktopRect?.height ?? (window.innerHeight - 48);
+
+        const quadrants = [
+            { id: 'tl', x: 0.01, y: 0.01, w: 0.49, h: 0.49 }, // top-left
+            { id: 'tr', x: 0.50, y: 0.01, w: 0.49, h: 0.49 }, // top-right
+            { id: 'bl', x: 0.01, y: 0.50, w: 0.49, h: 0.49 }, // bottom-left
+            { id: 'br', x: 0.50, y: 0.50, w: 0.49, h: 0.49 }, // bottom-right
+        ];
+
+        // Count non-minimized windows in each quadrant
+        const active = windowsRef.current.filter(w => !w.minimized && !w.maximized);
+        const occupancy = quadrants.map(q => {
+            const qX = q.x * desktopW;
+            const qY = q.y * desktopH;
+            const qW = q.w * desktopW;
+            const qH = q.h * desktopH;
+            const count = active.filter(w =>
+                w.x + w.width / 2 >= qX && w.x + w.width / 2 <= qX + qW &&
+                w.y + w.height / 2 >= qY && w.y + w.height / 2 <= qY + qH
+            ).length;
+            return { ...q, count };
+        });
+
+        // Pick least-occupied quadrant (tie-break: TL → TR → BL → BR)
+        const best = occupancy.reduce((a, b) => a.count <= b.count ? a : b);
+
+        const qAbsX = best.x * desktopW;
+        const qAbsY = best.y * desktopH;
+        const qAbsW = best.w * desktopW;
+        const qAbsH = best.h * desktopH;
+
+        // Size at 88% of quadrant, centered
+        const winW = Math.round(Math.max(MIN_WIDTH, qAbsW * 0.88));
+        const winH = Math.round(Math.max(MIN_HEIGHT, qAbsH * 0.88));
+        const winX = Math.round(qAbsX + (qAbsW - winW) / 2);
+        const winY = Math.round(qAbsY + (qAbsH - winH) / 2);
+
+        const newId = generateId();
         const newWindow: WindowState = {
-            id: generateId(),
+            id: newId,
             title,
             icon,
-            x: 80 + offset,
-            y: 40 + offset,
-            width: 700,
-            height: 480,
+            x: winX,
+            y: winY,
+            width: winW,
+            height: winH,
             zIndex: ++nextZIndex,
             minimized: false,
             maximized: false,
             component,
         };
         setWindows(prev => [...prev, newWindow]);
+        return newId;
     }, []);
 
     const closeWindow = useCallback((id: string) => {
@@ -243,6 +290,41 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Layout Reset to Default' }));
     }, []);
 
+    // ── Pop-out window into native browser window ─────────────────────────
+    const popOutWindow = useCallback((id: string) => {
+        const win = windowsRef.current.find(w => w.id === id);
+        if (!win) return;
+
+        // Store window state for the popup to read
+        const popupKey = `dwellium-popup-${win.component}`;
+        localStorage.setItem(popupKey, JSON.stringify({
+            component: win.component,
+            title: win.title,
+            icon: win.icon,
+        }));
+
+        // Open native popup window
+        const popupW = Math.min(win.width, screen.availWidth * 0.5);
+        const popupH = Math.min(win.height, screen.availHeight * 0.7);
+        const left = Math.round((screen.availWidth - popupW) / 2);
+        const top = Math.round((screen.availHeight - popupH) / 4);
+        const popup = window.open(
+            `/?popup=${win.component}`,
+            `qualia-popup-${win.component}`,
+            `width=${popupW},height=${popupH},left=${left},top=${top},resizable=yes,scrollbars=no`
+        );
+
+        if (popup) {
+            // Minimize the original window
+            setWindows(prev => prev.map(w =>
+                w.id === id ? { ...w, minimized: true } : w
+            ));
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `"${win.title}" popped out` }));
+        } else {
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Pop-out blocked — allow popups for this site' }));
+        }
+    }, []);
+
     const saveNamedLayout = useCallback((name: string) => {
         setSavedLayouts(prev => {
             if (prev.length >= 10) {
@@ -284,7 +366,8 @@ export function WindowProvider({ children }: { children: ReactNode }) {
             minimizeWindow, maximizeWindow, restoreWindow,
             updateWindowPosition, updateWindowSize,
             reorderDock, moveDockItem, saveLayout, resetLayout,
-            savedLayouts, saveNamedLayout, loadNamedLayout, deleteNamedLayout
+            savedLayouts, saveNamedLayout, loadNamedLayout, deleteNamedLayout,
+            popOutWindow,
         }}>
             {children}
         </WindowContext.Provider>

@@ -4,33 +4,14 @@ import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { useTheme } from '../../context/ThemeContext';
 import { API_BASE } from '../../config';
 import { reportError } from '../../services/errorReporter';
-import React, { useState, useRef, useEffect, Suspense, useCallback } from 'react';
-import { lazyWithReload } from '../../utils/lazyWithReload';
+import { getIcon } from '../Sidebar/iconMap';
+import React, { useState, useRef, useEffect, Suspense, useCallback, useMemo } from 'react';
 import Window from '../Window/Window';
-import ControlPanel from '../ControlPanel/ControlPanel';
 
-// Lazy-loaded widgets — each gets its own chunk for faster initial load
-const InboxWidget = lazyWithReload(() => import('../InboxWidget/InboxWidget'));
-const TaskMenu = lazyWithReload(() => import('../TaskMenu/TaskMenu'));
-const ARAConsole = lazyWithReload(() => import('../ARAConsole/ARAConsole'));
-const TranscriptionHub = lazyWithReload(() => import('../TranscriptionHub/TranscriptionHub'));
-const FileManagerWidget = lazyWithReload(() => import('../FileManager/FileManager'));
-const Notepad = lazyWithReload(() => import('../Notepad/Notepad'));
-const DocViewer = lazyWithReload(() => import('../DocViewer/DocViewer'));
-const TerminalWidget = lazyWithReload(() => import('../Terminal/Terminal'));
-const TrelloBoard = lazyWithReload(() => import('../TrelloBoard/TrelloBoard'));
-const FactCheckLog = lazyWithReload(() => import('../FactCheckLog/FactCheckLog'));
-const InboxZero = lazyWithReload(() => import('../InboxZero/InboxZero'));
-const ThoughtWeaver = lazyWithReload(() => import('../ThoughtWeaver/ThoughtWeaver'));
-const StrataDashboard = lazyWithReload(() => import('../StrataDashboard/StrataDashboard'));
-const AstraDashboard = lazyWithReload(() => import('../AstraDashboard/AstraDashboard'));
-const HomeUpkeepAI = lazyWithReload(() => import('../HomeUpkeepAI/HomeUpkeepAI'));
-const AutomationHub = lazyWithReload(() => import('../AutomationHub/AutomationHub'));
-const TwoBrains = lazyWithReload(() => import('../TwoBrains/TwoBrains'));
-const HydraAI = lazyWithReload(() => import('../HydraAI/HydraAI'));
-const TenantPortalMgmt = lazyWithReload(() => import('../TenantPortalMgmt/TenantPortalMgmt'));
-const GeorgiaCode = lazyWithReload(() => import('../GeorgiaCode/GeorgiaCode'));
-const StellaAgent = lazyWithReload(() => import('../StellaAgent/StellaAgent'));
+// Widget Registry — single source of truth for all widget components
+import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS } from '../../registry/widgetRegistry';
+
+import QuickLook from '../QuickLook/QuickLook';
 import './Desktop.css';
 
 /** Suspense fallback for lazy-loaded widgets */
@@ -106,17 +87,25 @@ interface ExplorerFile {
     name: string;
     type: string;
     size: number;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
+type InlinePreviewData =
+    | { kind: 'idle' }
+    | { kind: 'loading' }
+    | { kind: 'text'; content: string; truncated: boolean }
+    | { kind: 'pdf'; url: string }
+    | { kind: 'image'; url: string }
+    | { kind: 'unsupported'; message: string };
+
 const EXPLORER_FILE_ICONS: Record<string, string> = {
-    pdf: '📄',
-    md: '📃',
-    txt: '📃',
-    html: '🌐',
-    doc: '📝',
-    docx: '📝',
-    mmd: '📎',
-    unknown: '📎',
+    pdf: '📄', md: '📃', txt: '📃', html: '🌐', css: '🎨', js: '⚡',
+    ts: '⚡', tsx: '⚡', jsx: '⚡', json: '{ }', csv: '📊', xml: '📋',
+    doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📽️', pptx: '📽️',
+    rtf: '📝', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', webp: '🖼️',
+    svg: '🖼️', mp3: '🎵', mp4: '🎬', wav: '🎵', mov: '🎬', avi: '🎬',
+    zip: '📦', tar: '📦', gz: '📦', rar: '📦', mmd: '📎', unknown: '📎',
 };
 
 function getExplorerFileIcon(type: string): string {
@@ -129,17 +118,37 @@ function formatExplorerFileSize(bytes: number): string {
     return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
+const FILE_TYPE_LABELS: Record<string, string> = {
+    pdf: 'PDF Document', png: 'PNG Image', jpg: 'JPEG Image', jpeg: 'JPEG Image',
+    gif: 'GIF Image', webp: 'WebP Image', svg: 'SVG Image',
+    txt: 'Text File', md: 'Markdown', csv: 'CSV Spreadsheet',
+    json: 'JSON Data', html: 'HTML Document', xml: 'XML Document',
+    doc: 'Word Document', docx: 'Word Document', xls: 'Excel Spreadsheet',
+    xlsx: 'Excel Spreadsheet', ppt: 'PowerPoint', pptx: 'PowerPoint',
+    rtf: 'Rich Text', mp3: 'Audio (MP3)', mp4: 'Video (MP4)',
+    wav: 'Audio (WAV)', mov: 'QuickTime Video', zip: 'ZIP Archive',
+    js: 'JavaScript', ts: 'TypeScript', tsx: 'React TSX', css: 'Stylesheet',
+};
+
 function HierarchyBrowser() {
     const { openWindow } = useWindows();
     const { selectedId, getSelectedItem, getBreadcrumb } = useHierarchy();
     const selected = getSelectedItem();
     const breadcrumb = getBreadcrumb();
+    const [allFiles, setAllFiles] = useState<ExplorerFile[]>([]);
     const [projectFiles, setProjectFiles] = useState<ExplorerFile[]>([]);
     const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+    const [focusedFileIdx, setFocusedFileIdx] = useState<number>(-1);
+    const [quickLookFile, setQuickLookFile] = useState<ExplorerFile | null>(null);
+    const [showPreviewPane, setShowPreviewPane] = useState(true);
+    const [inlinePreview, setInlinePreview] = useState<InlinePreviewData>({ kind: 'idle' });
+    const [fileFilter, setFileFilter] = useState('');
+    const fileListRef = useRef<HTMLDivElement>(null);
 
-    const openFileInDocs = useCallback((file: ExplorerFile) => {
-        openWindow('doc-viewer', file.name, '📑');
+    const openFileInWindow = useCallback((file: ExplorerFile) => {
         const detail = { fileId: file.id, name: file.name };
+        (window as any).__qualiaDocViewerPendingFile = detail;
+        openWindow('doc-viewer', file.name, '📑');
         const dispatch = (attempt: number) => {
             if (attempt > 5) return;
             window.dispatchEvent(new CustomEvent('qualia-docviewer-open-file', { detail }));
@@ -166,18 +175,110 @@ function HierarchyBrowser() {
         }
     }, []);
 
+    // Determine the active file list (project-scoped or all files)
+    const displayFiles = useMemo(() => {
+        const source = (selected?.type === 'project' && projectFiles.length > 0) ? projectFiles : allFiles;
+        if (!fileFilter.trim()) return source;
+        const lf = fileFilter.toLowerCase();
+        return source.filter(f => f.name.toLowerCase().includes(lf) || f.type.toLowerCase().includes(lf));
+    }, [selected, projectFiles, allFiles, fileFilter]);
+
+    // Fetch inline preview when focused file changes
     useEffect(() => {
+        if (!showPreviewPane || focusedFileIdx < 0 || focusedFileIdx >= displayFiles.length) {
+            setInlinePreview({ kind: 'idle' });
+            return;
+        }
+
+        const file = displayFiles[focusedFileIdx];
+        setInlinePreview({ kind: 'loading' });
         let cancelled = false;
 
+        async function fetchPreview() {
+            try {
+                const res = await fetch(`${API_BASE}/api/files/${file.id}/preview`);
+                const json = await res.json();
+                if (cancelled) return;
+
+                if (!json?.success || !json?.data?.previewable) {
+                    setInlinePreview({ kind: 'unsupported', message: json?.data?.message || `No preview for .${file.type} files` });
+                    return;
+                }
+                const data = json.data;
+                if (data.previewType === 'text') {
+                    setInlinePreview({ kind: 'text', content: data.content, truncated: data.truncated });
+                } else if (data.previewType === 'pdf') {
+                    setInlinePreview({ kind: 'pdf', url: `${API_BASE}${data.downloadUrl}` });
+                } else if (data.previewType === 'image') {
+                    setInlinePreview({ kind: 'image', url: `${API_BASE}${data.downloadUrl}` });
+                } else {
+                    setInlinePreview({ kind: 'unsupported', message: 'Unknown preview type' });
+                }
+            } catch {
+                if (!cancelled) setInlinePreview({ kind: 'unsupported', message: 'Failed to load preview' });
+            }
+        }
+        void fetchPreview();
+        return () => { cancelled = true; };
+    }, [focusedFileIdx, displayFiles, showPreviewPane]);
+
+    // Keyboard handler — arrow nav, Space for QuickLook, Enter to open
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (quickLookFile) return;
+            const el = fileListRef.current;
+            if (!el || !el.contains(document.activeElement)) return;
+
+            if (e.key === ' ' && focusedFileIdx >= 0 && focusedFileIdx < displayFiles.length) {
+                e.preventDefault();
+                e.stopPropagation();
+                setQuickLookFile(displayFiles[focusedFileIdx]);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setFocusedFileIdx(prev => Math.min(prev + 1, displayFiles.length - 1));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setFocusedFileIdx(prev => Math.max(prev - 1, 0));
+            } else if (e.key === 'Enter' && focusedFileIdx >= 0 && focusedFileIdx < displayFiles.length) {
+                e.preventDefault();
+                openFileInWindow(displayFiles[focusedFileIdx]);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [focusedFileIdx, displayFiles, quickLookFile, openFileInWindow]);
+
+    // Reset focus when files change
+    useEffect(() => {
+        setFocusedFileIdx(displayFiles.length > 0 ? 0 : -1);
+    }, [displayFiles]);
+
+    // Load ALL files on mount
+    useEffect(() => {
+        let cancelled = false;
+        async function loadAllFiles() {
+            try {
+                const res = await fetch(`${API_BASE}/api/files?limit=200`);
+                const json = await res.json();
+                if (!cancelled && json?.success && Array.isArray(json.data)) {
+                    setAllFiles(json.data as ExplorerFile[]);
+                }
+            } catch { /* silent */ }
+        }
+        void loadAllFiles();
+        return () => { cancelled = true; };
+    }, []);
+
+    // Load project-scoped files when a project is selected
+    useEffect(() => {
+        let cancelled = false;
         async function loadProjectFiles() {
             if (!selectedId || selected?.type !== 'project') {
                 setProjectFiles([]);
                 setIsLoadingFiles(false);
                 return;
             }
-
             setIsLoadingFiles(true);
-
             try {
                 const params = new URLSearchParams({ projectId: selectedId });
                 const response = await fetch(`${API_BASE}/api/files?${params.toString()}`);
@@ -193,13 +294,12 @@ function HierarchyBrowser() {
                 if (!cancelled) setIsLoadingFiles(false);
             }
         }
-
         void loadProjectFiles();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [selectedId, selected?.type]);
+
+    const focusedFile = focusedFileIdx >= 0 && focusedFileIdx < displayFiles.length ? displayFiles[focusedFileIdx] : null;
+    const focusedTypeLabel = focusedFile ? (FILE_TYPE_LABELS[focusedFile.type?.toLowerCase()] || focusedFile.type?.toUpperCase() || 'File') : '';
 
     return (
         <div className="window-app">
@@ -207,7 +307,7 @@ function HierarchyBrowser() {
                 <h2>Hierarchy Explorer</h2>
                 <p className="window-app__desc">Browse the Domain &gt; Node &gt; Project &gt; Asset structure</p>
             </div>
-            {selected ? (
+            {selected && (
                 <div className="window-app__detail">
                     <div className="detail-card">
                         <span className="detail-card__icon">{selected.icon}</span>
@@ -233,42 +333,160 @@ function HierarchyBrowser() {
                             ))}
                         </div>
                     )}
-                    {selected.type === 'project' && (
-                        <div className="detail-children">
-                            <div className="detail-section-header">
-                                <h4>Files ({projectFiles.length})</h4>
-                                {isLoadingFiles && <span className="detail-loading">Loading…</span>}
+                </div>
+            )}
+
+            {/* ── Files Section — always visible ── */}
+            <div className="detail-children explorer-files-section">
+                <div className="detail-section-header">
+                    <h4>
+                        {selected?.type === 'project' ? `Project Files (${displayFiles.length})` : `All Files (${displayFiles.length})`}
+                    </h4>
+                    {isLoadingFiles && <span className="detail-loading">Loading…</span>}
+                    <div className="explorer-toolbar">
+                        <input
+                            className="explorer-filter-input"
+                            type="text"
+                            placeholder="Filter files…"
+                            value={fileFilter}
+                            onChange={e => setFileFilter(e.target.value)}
+                        />
+                        <button
+                            className={`explorer-toggle-preview${showPreviewPane ? ' explorer-toggle-preview--active' : ''}`}
+                            onClick={() => setShowPreviewPane(p => !p)}
+                            title={showPreviewPane ? 'Hide preview pane' : 'Show preview pane'}
+                        >
+                            {showPreviewPane ? '◧' : '▭'}
+                        </button>
+                    </div>
+                </div>
+                {displayFiles.length > 0 && (
+                    <div className="explorer-hints">
+                        ▸ Click to preview · Double-click to open · Space for Quick Look · Enter to open
+                    </div>
+                )}
+
+                <div className={`explorer-split-view${showPreviewPane ? ' explorer-split-view--with-preview' : ''}`}>
+                    {/* Left: File List */}
+                    <div ref={fileListRef} tabIndex={0} className="explorer-file-list" role="listbox">
+                        {displayFiles.length === 0 && !isLoadingFiles && (
+                            <div className="window-app__hint" style={{ padding: '16px 12px' }}>No files found.</div>
+                        )}
+                        {displayFiles.map((file, idx) => (
+                            <div
+                                key={file.id}
+                                className={`detail-child-row detail-child-row--file${focusedFileIdx === idx ? ' detail-child-row--focused' : ''}`}
+                                role="option"
+                                aria-selected={focusedFileIdx === idx}
+                                onClick={() => setFocusedFileIdx(idx)}
+                                onDoubleClick={() => openFileInWindow(file)}
+                            >
+                                <span className="detail-child-row__icon">{getExplorerFileIcon(file.type)}</span>
+                                <span className="detail-child-row__label">{file.name}</span>
+                                <span className="detail-child-row__meta">{formatExplorerFileSize(file.size)}</span>
+                                <button
+                                    className="detail-child-row__action detail-child-row__action--preview"
+                                    onClick={(e) => { e.stopPropagation(); setFocusedFileIdx(idx); setQuickLookFile(file); }}
+                                    title="Quick Look (Space)"
+                                >
+                                    👁
+                                </button>
+                                <button
+                                    className="detail-child-row__action detail-child-row__action--open"
+                                    onClick={(e) => { e.stopPropagation(); openFileInWindow(file); }}
+                                    title="Open in Doc Viewer"
+                                >
+                                    ↗ Open
+                                </button>
+                                <button
+                                    className="detail-child-row__action"
+                                    onClick={(e) => { e.stopPropagation(); void materializeFile(file); }}
+                                    title="Download locally"
+                                >
+                                    📥
+                                </button>
                             </div>
-                            {!isLoadingFiles && projectFiles.length === 0 && (
-                                <div className="window-app__hint">No files found for this project yet.</div>
-                            )}
-                            {projectFiles.map(file => (
-                                <div key={file.id} className="detail-child-row detail-child-row--file">
-                                    <span>{getExplorerFileIcon(file.type)}</span>
-                                    <span className="detail-child-row__label">{file.name}</span>
-                                    <span className="detail-child-row__meta">{formatExplorerFileSize(file.size)}</span>
-                                    <button
-                                        className="detail-child-row__action"
-                                        onClick={() => openFileInDocs(file)}
-                                    >
-                                        Open
-                                    </button>
-                                    <button
-                                        className="detail-child-row__action"
-                                        onClick={() => void materializeFile(file)}
-                                    >
-                                        Cache Local
-                                    </button>
+                        ))}
+                    </div>
+
+                    {/* Right: Inline Preview Pane */}
+                    {showPreviewPane && (
+                        <div className="explorer-preview-pane">
+                            {inlinePreview.kind === 'idle' && (
+                                <div className="explorer-preview-empty">
+                                    <span className="explorer-preview-empty__icon">👁</span>
+                                    <p>Select a file to preview</p>
                                 </div>
-                            ))}
+                            )}
+                            {inlinePreview.kind === 'loading' && (
+                                <div className="explorer-preview-loading">
+                                    <div className="explorer-preview-spinner" />
+                                    <span>Loading preview…</span>
+                                </div>
+                            )}
+                            {inlinePreview.kind === 'text' && focusedFile && (
+                                <div className="explorer-preview-text">
+                                    <div className="explorer-preview-header">
+                                        <span className="explorer-preview-header__icon">{getExplorerFileIcon(focusedFile.type)}</span>
+                                        <div>
+                                            <div className="explorer-preview-header__name">{focusedFile.name}</div>
+                                            <div className="explorer-preview-header__meta">{focusedTypeLabel} · {formatExplorerFileSize(focusedFile.size)}</div>
+                                        </div>
+                                        <button className="ql-btn ql-btn--open" onClick={() => openFileInWindow(focusedFile)} title="Open in Doc Viewer">↗ Open</button>
+                                    </div>
+                                    <pre className="explorer-preview-pre">{inlinePreview.content}</pre>
+                                    {inlinePreview.truncated && (
+                                        <div className="explorer-preview-truncated">Content truncated — open to see full file</div>
+                                    )}
+                                </div>
+                            )}
+                            {inlinePreview.kind === 'pdf' && focusedFile && (
+                                <div className="explorer-preview-media">
+                                    <div className="explorer-preview-header">
+                                        <span className="explorer-preview-header__icon">{getExplorerFileIcon(focusedFile.type)}</span>
+                                        <div>
+                                            <div className="explorer-preview-header__name">{focusedFile.name}</div>
+                                            <div className="explorer-preview-header__meta">{focusedTypeLabel} · {formatExplorerFileSize(focusedFile.size)}</div>
+                                        </div>
+                                        <button className="ql-btn ql-btn--open" onClick={() => openFileInWindow(focusedFile)} title="Open in Doc Viewer">↗ Open</button>
+                                    </div>
+                                    <iframe className="explorer-preview-iframe" src={inlinePreview.url} title={`Preview: ${focusedFile.name}`} />
+                                </div>
+                            )}
+                            {inlinePreview.kind === 'image' && focusedFile && (
+                                <div className="explorer-preview-media">
+                                    <div className="explorer-preview-header">
+                                        <span className="explorer-preview-header__icon">{getExplorerFileIcon(focusedFile.type)}</span>
+                                        <div>
+                                            <div className="explorer-preview-header__name">{focusedFile.name}</div>
+                                            <div className="explorer-preview-header__meta">{focusedTypeLabel} · {formatExplorerFileSize(focusedFile.size)}</div>
+                                        </div>
+                                        <button className="ql-btn ql-btn--open" onClick={() => openFileInWindow(focusedFile)} title="Open in Doc Viewer">↗ Open</button>
+                                    </div>
+                                    <img className="explorer-preview-img" src={inlinePreview.url} alt={focusedFile.name} />
+                                </div>
+                            )}
+                            {inlinePreview.kind === 'unsupported' && focusedFile && (
+                                <div className="explorer-preview-empty">
+                                    <span className="explorer-preview-empty__icon">{getExplorerFileIcon(focusedFile.type)}</span>
+                                    <div className="explorer-preview-header__name">{focusedFile.name}</div>
+                                    <div className="explorer-preview-header__meta">{focusedTypeLabel} · {formatExplorerFileSize(focusedFile.size)}</div>
+                                    <p style={{ marginTop: 8, opacity: 0.5 }}>{inlinePreview.message}</p>
+                                    <button className="ql-btn ql-btn--open" style={{ marginTop: 12 }} onClick={() => openFileInWindow(focusedFile)}>↗ Open in Doc Viewer</button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
-            ) : (
-                <div className="window-app__empty">
-                    <span className="window-app__empty-icon">🗂️</span>
-                    <p>Select an item in the sidebar to view details</p>
-                </div>
+            </div>
+
+            {/* Quick Look Overlay */}
+            {quickLookFile && (
+                <QuickLook
+                    file={quickLookFile}
+                    onClose={() => setQuickLookFile(null)}
+                    onOpenInWindow={(f) => openFileInWindow(f as ExplorerFile)}
+                />
             )}
         </div>
     );
@@ -318,36 +536,20 @@ function SnapOverlay() {
     );
 }
 
-/** Map component keys to actual React components */
-const WINDOW_COMPONENTS: Record<string, React.FC> = {
-    'control-panel': ControlPanel,
+/**
+ * Map component keys to actual React components.
+ * Derived from widgetRegistry + HierarchyBrowser (defined locally in Desktop.tsx).
+ */
+export const WINDOW_COMPONENTS: Record<string, React.FC> = {
+    // HierarchyBrowser is defined locally in Desktop.tsx — not in the registry
     'hierarchy-browser': HierarchyBrowser,
-    'file-manager': FileManagerWidget,
-    'terminal': TerminalWidget,
-    'inbox': InboxWidget,
-    'tasks': TaskMenu,
-    'ara-console': ARAConsole,
-    'transcription': TranscriptionHub,
-    'notepad': Notepad,
-    'doc-viewer': DocViewer,
-    'trello-board': TrelloBoard,
-    'fact-check-log': FactCheckLog,
-    'inbox-zero': InboxZero,
-    'thought-weaver': ThoughtWeaver,
-    'strata-dashboard': StrataDashboard,
-    'astra-dashboard': AstraDashboard,
-    'home-upkeep-ai': HomeUpkeepAI,
-    'automation-hub': AutomationHub,
-    'two-brains': TwoBrains,
-    'hydra-ai': HydraAI,
-    'tenant-portal-mgmt': TenantPortalMgmt,
-    'georgia-code': GeorgiaCode,
-    'stella-agent': StellaAgent,
-};
+    // All other widgets from the centralized registry
+    ...REGISTRY_COMPONENTS,
+} as Record<string, React.FC>;
 
 export default function Desktop() {
     const { windows, closeWindow, openWindow } = useWindows();
-    const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab } = useLayout();
+    const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab, assignWindowToRegion, moveTabToRegion } = useLayout();
     const { toggleTheme } = useTheme();
     const desktopRef = useRef<HTMLDivElement>(null);
     const [desktopSize, setDesktopSize] = useState({ w: 0, h: 0 });
@@ -368,6 +570,55 @@ export default function Desktop() {
         window.addEventListener('qualia-toast', handleToast);
         return () => window.removeEventListener('qualia-toast', handleToast);
     }, []);
+
+    // Open-widget event (e.g. Cmd+Shift+2 for Two Brains)
+    useEffect(() => {
+        const handleOpenWidget = (e: Event) => {
+            const component = (e as CustomEvent).detail as string;
+            const existing = windowsRef.current.find(w => w.component === component);
+            if (existing) {
+                // restore
+                openWindow(component, component, '');
+            } else {
+                const labels: Record<string, { title: string; icon: string }> = {
+                    'two-brains': { title: 'Two Brains', icon: 'brain' },
+                };
+                const info = labels[component] || { title: component, icon: '■' };
+                openWindow(component, info.title, info.icon);
+            }
+        };
+        window.addEventListener('qualia-open-widget', handleOpenWidget);
+        return () => window.removeEventListener('qualia-open-widget', handleOpenWidget);
+    }, [openWindow]);
+
+    // ── Auto-assign new windows to the correct layout region ──
+    // Whenever a new window appears and regions are enabled, assign it to the
+    // least-occupied region so it snaps into the grid layout from settings.
+    useEffect(() => {
+        if (!settings.regionsEnabled) return;
+        // Compute current region rects from desktop size
+        const desktopEl = document.querySelector<HTMLElement>('.desktop-canvas');
+        const rect = desktopEl?.getBoundingClientRect();
+        if (!rect || rect.width === 0) return;
+        const regions = getRegionRects(settings.regionLayout, rect.width, rect.height);
+        if (regions.length === 0) return;
+
+        // Find all window IDs currently in any region
+        const assignedIds = new Set(Object.values(regionAssignments).flat());
+
+        // For each window not yet assigned to a region, assign to least-occupied region
+        for (const win of windows) {
+            if (win.minimized || assignedIds.has(win.id)) continue;
+            // Find least-occupied region
+            const occupancy = regions.map(r => ({
+                id: r.id,
+                count: (regionAssignments[r.id] || []).length,
+            }));
+            const best = occupancy.reduce((a, b) => a.count <= b.count ? a : b);
+            assignWindowToRegion(win.id, best.id, windows);
+            assignedIds.add(win.id); // prevent double-assign in same pass
+        }
+    }, [windows, settings.regionsEnabled, settings.regionLayout, regionAssignments, assignWindowToRegion]);
 
     // Custom Tooltip System
     useEffect(() => {
@@ -436,7 +687,7 @@ export default function Desktop() {
         e.preventDefault();
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
-            openWindow('file-manager', 'Files', '📁');
+            openWindow('file-manager', 'Files', 'folder-open');
         }
     };
 
@@ -488,13 +739,27 @@ export default function Desktop() {
 
     return (
         <div
-            className="desktop"
+            className="desktop desktop-canvas"
             ref={desktopRef}
+            role="main"
+            aria-label="Dwellium Desktop"
             onContextMenu={handleContextMenu}
             onDoubleClick={handleDesktopDoubleClick}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
         >
+            {/* Skip-to-content link for keyboard/screen-reader users */}
+            <a
+                href="#desktop-content"
+                className="sr-only"
+                onFocus={(e) => { (e.target as HTMLElement).style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:99999;padding:8px 20px;background:#6366f1;color:#fff;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;width:auto;height:auto;clip:auto;white-space:normal;'; }}
+                onBlur={(e) => { (e.target as HTMLElement).style.cssText = ''; }}
+            >
+                Skip to content
+            </a>
+            {/* Hidden live region for screen reader announcements */}
+            <div id="a11y-live-region" className="sr-only" aria-live="polite" aria-atomic="true" />
+            <div id="desktop-content">
             {/* Background grid pattern */}
             <div className="desktop__bg" />
 
@@ -570,34 +835,121 @@ export default function Desktop() {
             {/* Snap overlay */}
             <SnapOverlay />
 
-            {/* Region Tab Bars */}
+            {/* Region Tab Bars — with drag-and-drop reordering */}
             {regionRects.map(region => {
                 const ids = regionAssignments[region.id];
                 if (!ids || ids.length < 2) return null;
+                const maxZ = Math.max(0, ...ids.map(wid => windows.find(w => w.id === wid)?.zIndex || 0));
                 return (
-                    <div key={'tabs-' + region.id} style={{
-                        position: 'absolute', left: region.x, top: region.y,
-                        width: region.w, height: 30, zIndex: 9999,
-                        display: 'flex', gap: 0,
-                        background: 'rgba(15,17,23,0.92)', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        backdropFilter: 'blur(10px)',
-                    }}>
+                    <div
+                        key={'tabs-' + region.id}
+                        data-region-id={region.id}
+                        onDragOver={e => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.15)';
+                        }}
+                        onDragLeave={e => {
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(15,17,23,0.92)';
+                        }}
+                        onDrop={e => {
+                            e.preventDefault();
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(15,17,23,0.92)';
+                            const draggedWindowId = e.dataTransfer.getData('text/tab-window-id');
+                            const sourceRegionId = e.dataTransfer.getData('text/tab-source-region');
+                            if (!draggedWindowId) return;
+
+                            // Find drop position by mouse X relative to existing tabs
+                            const tabBar = e.currentTarget as HTMLElement;
+                            const tabButtons = Array.from(tabBar.querySelectorAll('[data-tab-wid]'));
+                            let insertIdx = ids.length; // default: append at end
+                            for (let i = 0; i < tabButtons.length; i++) {
+                                const rect = tabButtons[i].getBoundingClientRect();
+                                if (e.clientX < rect.left + rect.width / 2) {
+                                    insertIdx = i;
+                                    break;
+                                }
+                            }
+
+                            // If same region, adjust index for the dragged item being removed
+                            if (sourceRegionId === region.id) {
+                                const oldIdx = ids.indexOf(draggedWindowId);
+                                if (oldIdx >= 0 && oldIdx < insertIdx) insertIdx--;
+                            }
+
+                            moveTabToRegion(draggedWindowId, region.id, insertIdx);
+                        }}
+                        style={{
+                            position: 'absolute', left: region.x, top: region.y,
+                            width: region.w, height: 30, zIndex: (maxZ * 10) + 1,
+                            display: 'flex', gap: 0,
+                            background: 'rgba(15,17,23,0.92)', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            backdropFilter: 'blur(10px)',
+                            transition: 'background 0.15s ease',
+                        }}
+                    >
                         {ids.map((wid, idx) => {
                             const win = windows.find(w => w.id === wid);
                             if (!win) return null;
                             const isActive = idx === 0;
                             return (
-                                <button key={wid} onClick={() => setActiveRegionTab(region.id, wid)} style={{
-                                    flex: '0 1 auto', maxWidth: 160, padding: '4px 14px', fontSize: 11,
-                                    fontWeight: isActive ? 600 : 400, cursor: 'pointer',
-                                    background: isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
-                                    border: 'none', borderBottom: isActive ? '2px solid #818cf8' : '2px solid transparent',
-                                    color: isActive ? '#e2e8f0' : '#64748b',
-                                    display: 'flex', alignItems: 'center', gap: 5,
-                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                    transition: 'all 0.15s ease',
-                                }}>
-                                    <span style={{ fontSize: 13 }}>{win.icon}</span> {win.title}
+                                <button
+                                    key={wid}
+                                    data-tab-wid={wid}
+                                    draggable
+                                    onDragStart={e => {
+                                        e.dataTransfer.setData('text/tab-window-id', wid);
+                                        e.dataTransfer.setData('text/tab-source-region', region.id);
+                                        e.dataTransfer.effectAllowed = 'move';
+                                        // Semi-transparent drag image
+                                        const el = e.currentTarget as HTMLElement;
+                                        el.style.opacity = '0.5';
+                                        setTimeout(() => { el.style.opacity = '1'; }, 0);
+                                    }}
+                                    onDragEnd={e => {
+                                        (e.currentTarget as HTMLElement).style.opacity = '1';
+                                    }}
+                                    onClick={() => setActiveRegionTab(region.id, wid)}
+                                    style={{
+                                        flex: '0 1 auto', maxWidth: 160, padding: '4px 10px 4px 14px', fontSize: 11,
+                                        fontWeight: isActive ? 600 : 400, cursor: 'grab',
+                                        background: isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
+                                        border: 'none', borderBottom: isActive ? '2px solid #818cf8' : '2px solid transparent',
+                                        color: isActive ? '#e2e8f0' : '#64748b',
+                                        display: 'flex', alignItems: 'center', gap: 5,
+                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                        transition: 'all 0.15s ease',
+                                        fontFamily: 'inherit',
+                                    }}
+                                >
+                                    <span style={{ fontSize: 13, flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>{(() => { const Icon = getIcon(win.icon); return Icon ? <Icon size={14} strokeWidth={1.75} /> : win.icon; })()}</span>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{win.title}</span>
+                                    {/* × Close button inside the tab */}
+                                    <span
+                                        role="button"
+                                        aria-label={`Close ${win.title}`}
+                                        onClick={e => { e.stopPropagation(); closeWindow(win.id); }}
+                                        style={{
+                                            flexShrink: 0, marginLeft: 2,
+                                            width: 14, height: 14,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            borderRadius: '50%',
+                                            fontSize: 10, lineHeight: 1,
+                                            color: isActive ? '#94a3b8' : '#475569',
+                                            transition: 'all 0.12s ease',
+                                            cursor: 'pointer',
+                                        }}
+                                        onMouseEnter={e => {
+                                            (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.2)';
+                                            (e.currentTarget as HTMLElement).style.color = '#f87171';
+                                        }}
+                                        onMouseLeave={e => {
+                                            (e.currentTarget as HTMLElement).style.background = '';
+                                            (e.currentTarget as HTMLElement).style.color = isActive ? '#94a3b8' : '#475569';
+                                        }}
+                                    >
+                                        ×
+                                    </span>
                                 </button>
                             );
                         })}
@@ -651,7 +1003,7 @@ export default function Desktop() {
 
             {/* Toast Notification */}
             {toast && (
-                <div key={toast.id} className="qualia-toast">
+                <div key={toast.id} className="qualia-toast" role="status" aria-live="polite">
                     {toast.message}
                 </div>
             )}
@@ -659,9 +1011,23 @@ export default function Desktop() {
             {/* Context Menu */}
             {contextMenu && (
                 <div className="desktop-context-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
-                    <button onClick={() => windowsRef.current.forEach(w => closeWindow(w.id))}>✕ Center Focus (Close All)</button>
-                    <button onClick={toggleTheme}>🎨 Toggle Theme</button>
-                    <button onClick={() => window.location.reload()}>🔄 Reload System</button>
+                    <button onClick={() => windowsRef.current.forEach(w => closeWindow(w.id))}>Close All Windows</button>
+                    <button onClick={toggleTheme}>Toggle Theme</button>
+                    <button onClick={() => window.location.reload()}>Reload System</button>
+                    <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 0' }} />
+                    <div style={{ padding: '4px 12px 2px', fontSize: 10, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Skin</div>
+                    <div style={{ display: 'flex', gap: 8, padding: '4px 12px 8px' }}>
+                        {(['default', 'minimal', 'aurora', 'warm', 'neon'] as const).map(skin => (
+                            <button
+                                key={skin}
+                                className={`skin-swatch${document.documentElement.getAttribute('data-skin') === skin ? ' active' : ''}`}
+                                data-skin={skin}
+                                onClick={() => window.dispatchEvent(new CustomEvent('qualia-skin-change', { detail: skin }))}
+                                title={skin.charAt(0).toUpperCase() + skin.slice(1)}
+                                style={{ border: 'none', padding: 0 }}
+                            />
+                        ))}
+                    </div>
                 </div>
             )}
 
@@ -671,6 +1037,7 @@ export default function Desktop() {
                     {tooltip.text}
                 </div>
             )}
+            </div> {/* end #desktop-content */}
         </div>
     );
 }

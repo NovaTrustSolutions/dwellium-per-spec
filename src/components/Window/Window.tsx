@@ -1,7 +1,8 @@
-import { CSSProperties, useRef, useCallback, useEffect, ReactNode } from 'react';
+import { CSSProperties, useRef, useCallback, useEffect, ReactNode, useState } from 'react';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { WindowState, RegionRect } from '../../data/types';
+import { getIcon } from '../Sidebar/iconMap';
 import './Window.css';
 
 export interface WindowProps {
@@ -12,11 +13,14 @@ export interface WindowProps {
 }
 
 export default function Window({ state, children, regionRect, containerStyle }: WindowProps) {
-    const { closeWindow, focusWindow, minimizeWindow, maximizeWindow, updateWindowPosition, updateWindowSize, windows } = useWindows();
+    const { closeWindow, focusWindow, minimizeWindow, maximizeWindow, updateWindowPosition, updateWindowSize, windows, popOutWindow } = useWindows();
     const { computeSnap, setActiveGuides, settings, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments } = useLayout();
     const windowRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
     const resizeRef = useRef({ resizing: false, edge: '', startX: 0, startY: 0, origW: 0, origH: 0, origX: 0, origY: 0 });
+    const [tearoffActive, setTearoffActive] = useState(false);
+    const [tearoffDist, setTearoffDist] = useState(0);
+    const tearoffRef = useRef({ dragging: false, startX: 0, startY: 0 });
 
     // --- Drag with snap + region detection ---
     const onTitleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -162,20 +166,83 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         return () => window.removeEventListener('keydown', handler);
     }, []);
 
+    // --- Tear-off: drag content handle, release OUTSIDE window → pop out ---
+    // IMPORTANT: window.open() MUST be called from a trusted event (mouseup/click),
+    // NOT from mousemove (which browsers always block as popup).
+    const onTearoffMouseDown = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        tearoffRef.current = { dragging: true, startX: e.clientX, startY: e.clientY };
+        setTearoffActive(true);
+        setTearoffDist(0);
+
+        const rect = windowRef.current?.getBoundingClientRect();
+
+        const onMove = (ev: MouseEvent) => {
+            if (!tearoffRef.current.dragging || !rect) return;
+            const dx = ev.clientX - tearoffRef.current.startX;
+            const dy = ev.clientY - tearoffRef.current.startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            setTearoffDist(dist);
+        };
+
+        // window.open() called from mouseup = trusted user gesture → allowed by browser
+        const onUp = (ev: MouseEvent) => {
+            if (!rect) {
+                tearoffRef.current.dragging = false;
+                setTearoffActive(false);
+                setTearoffDist(0);
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.body.style.cursor = '';
+                return;
+            }
+            const dx = ev.clientX - tearoffRef.current.startX;
+            const dy = ev.clientY - tearoffRef.current.startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const outsideWindow =
+                ev.clientX < rect.left - 20 ||
+                ev.clientX > rect.right + 20 ||
+                ev.clientY < rect.top - 20 ||
+                ev.clientY > rect.bottom + 20;
+
+            tearoffRef.current.dragging = false;
+            setTearoffActive(false);
+            setTearoffDist(0);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+
+            // Trigger pop-out if dragged far enough outside (mouseup = trusted event)
+            if (outsideWindow && dist > 60) {
+                popOutWindow(state.id);
+            }
+        };
+
+        document.body.style.cursor = 'grabbing';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    }, [state.id, popOutWindow]);
+
+
     if (state.minimized) return null;
 
     // If region-snapped, override position/size from region rect
     const isRegionSnapped = !!regionRect;
+    const baseZ = state.zIndex * 10;
+    const finalZ = state.maximized ? 100000 + baseZ : baseZ;
     const style = state.maximized
-        ? { left: 0, top: 0, width: '100%', height: '100%', zIndex: state.zIndex }
+        ? { left: 0, top: 0, width: '100%', height: '100%', zIndex: finalZ }
         : isRegionSnapped
-            ? { left: regionRect.x, top: regionRect.y, width: regionRect.w, height: regionRect.h, zIndex: state.zIndex }
-            : { left: state.x, top: state.y, width: state.width, height: state.height, zIndex: state.zIndex };
+            ? { left: regionRect.x, top: regionRect.y, width: regionRect.w, height: regionRect.h, zIndex: finalZ }
+            : { left: state.x, top: state.y, width: state.width, height: state.height, zIndex: finalZ };
+
+    const tearoffProgress = Math.min(tearoffDist / 80, 1); // 0..1
 
     return (
         <div
             ref={windowRef}
-            className={`window ${state.maximized ? 'window--maximized' : ''}`}
+            className={`window ${state.maximized ? 'window--maximized' : ''} ${tearoffActive ? 'window--tearoff' : ''}`}
             style={{ ...style, ...containerStyle }}
             onMouseDown={() => focusWindow(state.id)}
         >
@@ -195,25 +262,51 @@ export default function Window({ state, children, regionRect, containerStyle }: 
 
             {/* Title bar */}
             <div className="window__titlebar" onMouseDown={onTitleMouseDown} onDoubleClick={() => maximizeWindow(state.id)}>
-                <div className="window__titlebar-left">
-                    <span className="window__icon">{state.icon}</span>
-                    <span className="window__title">{state.title}</span>
-                </div>
+                {/* Controls — LEFT side (macOS style) */}
                 <div className="window__controls">
+                    <button className="window__btn window__btn--close" onClick={e => { e.stopPropagation(); closeWindow(state.id); }} title="Close">
+                        <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.5" /><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.5" /></svg>
+                    </button>
                     <button className="window__btn window__btn--minimize" onClick={e => { e.stopPropagation(); minimizeWindow(state.id); }} title="Minimize">
                         <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.5" /></svg>
                     </button>
                     <button className="window__btn window__btn--maximize" onClick={e => { e.stopPropagation(); maximizeWindow(state.id); }} title="Maximize">
                         <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1.2" /></svg>
                     </button>
-                    <button className="window__btn window__btn--close" onClick={e => { e.stopPropagation(); closeWindow(state.id); }} title="Close">
-                        <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.5" /><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.5" /></svg>
+                    <button className="window__btn window__btn--popout" onClick={e => { e.stopPropagation(); popOutWindow(state.id); }} title="Pop out">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4">
+                            <polyline points="6,1 9,1 9,4" /><line x1="9" y1="1" x2="5" y2="5" />
+                            <polyline points="4,2 1,2 1,9 8,9 8,6" />
+                        </svg>
                     </button>
                 </div>
+                <div className="window__titlebar-left">
+                    <span className="window__icon" style={{ display: 'inline-flex', alignItems: 'center' }}>{(() => { const Icon = getIcon(state.icon); return Icon ? <Icon size={14} strokeWidth={1.75} /> : state.icon; })()}</span>
+                    <span className="window__title">{state.title}</span>
+                </div>
+                {/* AI loading shimmer bar */}
+                {state.isLoading && <div className="window__loading-bar" />}
             </div>
 
             {/* Content */}
             <div className="window__content">
+                {/* Tear-off handle — drag out of window boundary to detach */}
+                {!state.maximized && (
+                    <div
+                        className={`window__tearoff-handle ${tearoffActive ? 'window__tearoff-handle--active' : ''}`}
+                        onMouseDown={onTearoffMouseDown}
+                        title="Drag outside window to open in its own browser window"
+                        style={tearoffActive ? { '--tearoff-progress': tearoffProgress } as React.CSSProperties : undefined}
+                    >
+                        <span className="window__tearoff-icon">⠿</span>
+                        <span className="window__tearoff-label">
+                            {tearoffActive
+                                ? tearoffProgress >= 1 ? 'Release to pop out!' : `Pull further to pop out (${Math.round(tearoffProgress * 100)}%)`
+                                : 'Drag outside window to pop out'}
+                        </span>
+                        <span className="window__tearoff-arrow">↗</span>
+                    </div>
+                )}
                 {children}
             </div>
         </div>

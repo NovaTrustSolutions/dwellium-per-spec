@@ -127,6 +127,12 @@ const WIDGET_SEARCH_PROFILES: Record<string, WidgetSearchProfile> = {
         keywords: ['terminal', 'shell', 'cli', 'command', 'console', 'bash'],
         contexts: ['engineering tools', 'command line', 'developer workflow'],
         aliases: ['shell', 'cli']
+    },
+    'pdf-gear': {
+        summary: 'Full document processing suite — convert PDF to Word, Excel, images, merge, split, compress, watermark, and text extraction.',
+        keywords: ['pdf', 'gear', 'convert', 'word', 'excel', 'powerpoint', 'merge', 'split', 'compress', 'watermark', 'ocr', 'image', 'png', 'jpeg', 'txt', 'html', 'docx', 'xlsx', 'template'],
+        contexts: ['document conversion', 'PDF tools', 'file processing', 'office documents', 'merge PDFs', 'split PDF'],
+        aliases: ['pdf gear', 'pdf converter', 'document converter', 'pdf tools', 'pdf suite']
     }
 };
 
@@ -149,7 +155,7 @@ const INTENT_BOOSTS: Array<{ label: string; terms: string[]; components: string[
     {
         label: 'documents and notes',
         terms: ['document', 'docs', 'pdf', 'file', 'notes', 'notepad', 'knowledge'],
-        components: ['file-manager', 'doc-viewer', 'notepad', 'hierarchy-browser']
+        components: ['file-manager', 'doc-viewer', 'notepad', 'hierarchy-browser', 'pdf-gear']
     },
     {
         label: 'project execution',

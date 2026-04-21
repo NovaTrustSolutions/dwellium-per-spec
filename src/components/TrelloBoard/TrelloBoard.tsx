@@ -1,3 +1,4 @@
+import { getAuthToken } from '../../context/UserContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import './TrelloBoard.css';
 import { API_BASE } from '../../config';
@@ -6,7 +7,7 @@ const API = `${API_BASE}/api/trello`;
 
 /** Authenticated fetch — attaches the JWT from localStorage */
 function authFetch(url: string, init?: RequestInit): Promise<Response> {
-    const token = localStorage.getItem('dwellium-auth-token');
+    const token = getAuthToken();
     const headers: Record<string, string> = { ...(init?.headers as Record<string, string> || {}) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (init?.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';

@@ -8,6 +8,8 @@ interface InboxItem {
     sender: string;
     snippet: string;
     summary?: string;
+    /** Optional rendered HTML body — populated only for sources that supply it (e.g. Gmail full-fetch). */
+    body?: string;
     signalClass: 'signal' | 'noise' | 'low_priority';
     urgency: 'high' | 'medium' | 'low';
     status: string;
@@ -358,6 +360,39 @@ export default function InboxWidget() {
                         {/* Expanded detail + actions */}
                         {selectedItem === item.id && (
                             <div className="card-actions" onClick={e => e.stopPropagation()}>
+                                {/* Email Body (Iframe) */}
+                                {item.body ? (
+                                    <iframe 
+                                        title="Email Content"
+                                        srcDoc={`
+                                            <html>
+                                                <head>
+                                                    <style>
+                                                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 12px; margin: 0; background: #fff; color: #111; word-wrap: break-word; }
+                                                        img { max-width: 100%; height: auto; }
+                                                        a { color: #2563eb; }
+                                                    </style>
+                                                </head>
+                                                <body>${item.body}</body>
+                                            </html>
+                                        `}
+                                        style={{
+                                            width: '100%',
+                                            height: '400px',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            background: '#ffffff',
+                                            marginBottom: '16px',
+                                            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                                        }}
+                                        sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                                    />
+                                ) : (
+                                    <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 8, marginBottom: 16, color: '#94a3b8', fontStyle: 'italic', fontSize: 13 }}>
+                                        No rich content available. Viewing summary only.
+                                    </div>
+                                )}
+
                                 {item.routingReasoning && (
                                     <p className="routing-reason">🤖 {item.routingReasoning}</p>
                                 )}

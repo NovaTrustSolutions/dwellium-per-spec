@@ -49,7 +49,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     const [gatePassword, setGatePassword] = useState('');
     const [gateError, setGateError] = useState('');
 
-    const GATE_PASSPHRASE = 'Walkthrough documenting production';
+    const GATE_PASSPHRASE = 'Comet2878!';
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();

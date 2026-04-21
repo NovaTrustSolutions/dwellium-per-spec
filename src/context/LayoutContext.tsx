@@ -89,6 +89,7 @@ interface LayoutContextValue {
     assignWindowToRegion: (windowId: string, regionId: string, allWindows: WindowState[]) => void;
     clearWindowRegion: (windowId: string) => void;
     setActiveRegionTab: (regionId: string, windowId: string) => void;
+    moveTabToRegion: (windowId: string, targetRegionId: string, insertIdx?: number) => void;
 }
 
 const LayoutContext = createContext<LayoutContextValue | null>(null);
@@ -184,6 +185,34 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
             if (!arr || !arr.includes(windowId)) return prev;
             // Move windowId to index 0 (active tab)
             return { ...prev, [regionId]: [windowId, ...arr.filter(id => id !== windowId)] };
+        });
+    }, []);
+
+    /** Move a tab from its current region to a target region at a specific index */
+    const moveTabToRegion = useCallback((windowId: string, targetRegionId: string, insertIdx?: number) => {
+        setRegionAssignments(prev => {
+            const next = { ...prev };
+
+            // Remove from current region
+            for (const rId of Object.keys(next)) {
+                const arr = next[rId];
+                if (arr) {
+                    const idx = arr.indexOf(windowId);
+                    if (idx >= 0) {
+                        next[rId] = [...arr.slice(0, idx), ...arr.slice(idx + 1)];
+                        if (next[rId].length === 0) delete next[rId];
+                    }
+                }
+            }
+
+            // Insert into target region
+            const existing = next[targetRegionId] || [];
+            const pos = (insertIdx !== undefined && insertIdx >= 0) ? Math.min(insertIdx, existing.length) : 0;
+            const newArr = [...existing];
+            newArr.splice(pos, 0, windowId);
+            next[targetRegionId] = newArr;
+
+            return next;
         });
     }, []);
 
@@ -344,7 +373,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
             activeGuides, setActiveGuides,
             computeSnap, fontPresets: FONT_PRESETS,
             regionAssignments, hoveredRegionId, setHoveredRegionId,
-            assignWindowToRegion, clearWindowRegion, setActiveRegionTab,
+            assignWindowToRegion, clearWindowRegion, setActiveRegionTab, moveTabToRegion,
         }}>
             {children}
         </LayoutContext.Provider>

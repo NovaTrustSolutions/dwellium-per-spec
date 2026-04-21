@@ -15,8 +15,8 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.06),
         inset 0 0 0 1px rgba(255, 255, 255, 0.03);
     overflow: hidden;
-    animation: windowOpen 320ms cubic-bezier(0.22, 1.4, 0.36, 1);
-    transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: windowOpen 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: box-shadow 0.2s ease;
 }
 
 /* [9] top highlight wider gradient */
@@ -37,40 +37,21 @@
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 136, 204, 0.1);
 }
 
-/* [11] focused glow intensity with pulse */
+/* [11] focused glow — static, no pulse */
 .window:focus-within,
 .window:active {
     box-shadow:
-        0 24px 64px rgba(0, 0, 0, 0.6),
+        0 20px 56px rgba(0, 0, 0, 0.55),
         0 0 0 1px var(--accent),
-        0 0 32px color-mix(in srgb, var(--accent) 45%, transparent),
+        0 0 24px color-mix(in srgb, var(--accent) 30%, transparent),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    animation: windowFocusPulse 3s ease-in-out infinite;
-}
-
-@keyframes windowFocusPulse {
-
-    0%,
-    100% {
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 35%, transparent);
-    }
-
-    50% {
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent), 0 0 40px color-mix(in srgb, var(--accent) 55%, transparent);
-    }
 }
 
 @keyframes windowOpen {
     from {
         opacity: 0;
-        transform: scale(0.88) translateY(8px);
+        transform: scale(0.94) translateY(6px);
     }
-
-    60% {
-        opacity: 1;
-        transform: scale(1.02) translateY(-2px);
-    }
-
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -88,15 +69,22 @@
 .window__titlebar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    height: 42px;
-    padding: 0 var(--sp-3);
-    background: linear-gradient(180deg, var(--window-titlebar), rgba(0, 0, 0, 0.1));
+    justify-content: flex-start;
+    gap: 10px;
+    flex-direction: row;
+    height: 46px;
+    padding: 0 14px 0 12px;
+    background: linear-gradient(180deg, var(--window-titlebar), rgba(0, 0, 0, 0.08));
     border-bottom: 1px solid var(--border-subtle);
-    cursor: default;
+    cursor: grab;
     flex-shrink: 0;
-    transition: background 0.4s ease;
+    transition: background 0.25s ease;
     position: relative;
+    user-select: none;
+}
+
+.window__titlebar:active {
+    cursor: grabbing;
 }
 
 .window__titlebar::before {
@@ -118,6 +106,8 @@
     align-items: center;
     gap: var(--sp-2);
     overflow: hidden;
+    flex: 1;
+    min-width: 0;
 }
 
 .window__icon {
@@ -135,43 +125,39 @@
     text-overflow: ellipsis;
 }
 
-/* --- Window Controls (16-20) --- */
+/* --- Window Controls --- */
 .window__controls {
     display: flex;
     align-items: center;
-    gap: 7px;
-    /* [19] increased */
+    gap: 8px;
     flex-shrink: 0;
+    margin-right: 4px;
 }
 
-/* [16] size + [20] shadow */
 .window__btn {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     border: none;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    color: transparent;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.15s ease, filter 0.15s ease;
     padding: 0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-    /* [20] */
+    flex-shrink: 0;
 }
 
 .window__btn svg {
     opacity: 0;
-    transition: opacity 0.2s;
-    width: 8px;
-    height: 8px;
+    transition: opacity 0.15s;
+    width: 7px;
+    height: 7px;
 }
 
 .window__controls:hover .window__btn svg {
     opacity: 1;
-    color: rgba(0, 0, 0, 0.6);
+    color: rgba(0, 0, 0, 0.7);
 }
 
 /* [17] improved colors */
@@ -216,10 +202,10 @@
     scroll-behavior: smooth;
 }
 
-/* Remove padding/overflow when hosting full-height components like ARA */
+/* Remove padding when hosting full-height components like ARA — but keep scroll! */
 .window__content:has(> .ara-console) {
     padding: 0;
-    overflow: hidden;
+    overflow: auto;
     display: flex;
     flex-direction: column;
 }
@@ -326,4 +312,123 @@
     width: 12px;
     height: 12px;
     cursor: nesw-resize;
+}
+
+/* --- AI Loading Shimmer Bar (Task 7) --- */
+.window__loading-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--accent) 80%, transparent) 40%,
+        var(--accent) 50%,
+        color-mix(in srgb, var(--accent) 80%, transparent) 60%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmerSlide 1.4s ease-in-out infinite;
+    border-radius: 1px;
+    pointer-events: none;
+    z-index: 30;
+}
+
+@keyframes shimmerSlide {
+    0%   { background-position: 200% center; }
+    100% { background-position: -200% center; }
+}
+
+/* --- Pop-out button in titlebar (Task 9) --- */
+.window__btn--popout {
+    background: rgba(255, 255, 255, 0.12);
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+}
+
+.window__btn--popout:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: scale(1.1);
+}
+/* ── Tearoff Handle ─────────────────────────────────────────────────── */
+.window__tearoff-handle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    font-size: 10px;
+    color: var(--text-tertiary, #64748b);
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: grab;
+    user-select: none;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+    letter-spacing: 0.03em;
+}
+
+.window__tearoff-handle:hover {
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--text-secondary, #94a3b8);
+    border-bottom-color: rgba(99, 102, 241, 0.15);
+}
+
+.window__tearoff-handle:active,
+.window__tearoff-handle--active {
+    cursor: grabbing;
+    background: rgba(99, 102, 241, 0.14);
+    color: #a5b4fc;
+    border-bottom-color: rgba(99, 102, 241, 0.3);
+}
+
+.window__tearoff-icon {
+    font-size: 12px;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.window__tearoff-label {
+    flex: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.window__tearoff-arrow {
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.15s, transform 0.15s;
+    transform: translateX(-4px);
+}
+
+.window__tearoff-handle:hover .window__tearoff-arrow,
+.window__tearoff-handle--active .window__tearoff-arrow {
+    opacity: 0.7;
+    transform: translateX(0);
+}
+
+/* Tearoff progress bar: fills left-to-right as user drags out */
+.window__tearoff-handle--active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: calc(var(--tearoff-progress, 0) * 100%);
+    background: linear-gradient(90deg, #6366f1, #a855f7);
+    border-radius: 0 1px 1px 0;
+    transition: width 0.05s linear;
+}
+
+.window__tearoff-handle {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Window gets a glowing outline while being torn off */
+.window--tearoff {
+    box-shadow:
+        0 0 0 2px rgba(99, 102, 241, 0.5),
+        0 20px 60px rgba(0, 0, 0, 0.5) !important;
 }

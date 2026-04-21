@@ -164,14 +164,15 @@ export default function FileManager() {
 
     const handleOpenFile = useCallback((file: FileItem) => {
         if (VIEWABLE_TYPES.has(file.type)) {
-            // Open in a separate DocViewer window
+            // Store pending request globally so DocViewer can pick it up on cold mount
+            const detail = { fileId: file.id, name: file.name };
+            (window as any).__qualiaDocViewerPendingFile = detail;
+            // Open DocViewer window (may be lazy-loaded)
             openWindow('doc-viewer', file.name, '📑');
             // Dispatch event with retry — DocViewer needs time to mount and register listener
-            const detail = { fileId: file.id, name: file.name };
             const dispatch = (attempt: number) => {
                 if (attempt > 5) return;
                 window.dispatchEvent(new CustomEvent('qualia-docviewer-open-file', { detail }));
-                // Retry with exponential backoff in case DocViewer isn't ready yet
                 setTimeout(() => dispatch(attempt + 1), 300 * Math.pow(2, attempt));
             };
             setTimeout(() => dispatch(0), 300);

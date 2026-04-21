@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
 import './HydraAI.css';
 import { API_BASE } from '../../config';
+import { sanitizeHtml } from '../../utils/safeMarkdown';
 
 const API_HYDRA = `${API_BASE}/api/hydra`;
 
@@ -104,13 +105,13 @@ function renderMarkdown(text: string, panelColor: string) {
             processed = `<span class="hydra-num" style="color:${panelColor}">${num}.</span>${processed.replace(/^\d+\.\s/, '')}`;
         }
         if (processed.startsWith('### ')) {
-            return <h5 key={i} dangerouslySetInnerHTML={{ __html: processed.slice(4) }} />;
+            return <h5 key={i} dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(4)) }} />;
         }
         if (processed.startsWith('## ')) {
-            return <h4 key={i} dangerouslySetInnerHTML={{ __html: processed.slice(3) }} />;
+            return <h4 key={i} dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed.slice(3)) }} />;
         }
         if (processed === '') return <br key={i} />;
-        return <p key={i} dangerouslySetInnerHTML={{ __html: processed }} />;
+        return <p key={i} dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed) }} />;
     });
 }
 

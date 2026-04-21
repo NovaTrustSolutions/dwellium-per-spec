@@ -678,3 +678,342 @@
         transform: translate(-50%, 0) scale(1);
     }
 }
+
+/* ============================================
+   EXPLORER FILE LIST — Quick Look Integration
+   ============================================ */
+
+.explorer-file-list {
+    outline: none;
+    border-radius: var(--radius-sm, 6px);
+    transition: box-shadow 0.2s ease;
+}
+
+.explorer-file-list:focus-within {
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+
+/* Focused file row — keyboard navigation highlight */
+.detail-child-row--focused {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%) !important;
+    border-left: 2px solid rgba(99, 102, 241, 0.5);
+    padding-left: calc(var(--sp-3, 12px) - 2px);
+    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.06);
+}
+
+.detail-child-row--focused .detail-child-row__label {
+    color: var(--text-primary, #e2e8f0);
+    font-weight: 600;
+}
+
+/* File row cursor for clickable rows */
+.detail-child-row--file {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Quick Look eye button */
+.detail-child-row__action--preview {
+    min-width: 30px;
+    padding: 4px 6px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.detail-child-row:hover .detail-child-row__action--preview,
+.detail-child-row--focused .detail-child-row__action--preview {
+    opacity: 1;
+}
+
+.detail-child-row__action--preview:hover {
+    background: rgba(99, 102, 241, 0.12) !important;
+    border-color: rgba(99, 102, 241, 0.25) !important;
+}
+
+/* Open in Window button */
+.detail-child-row__action--open {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%);
+    color: var(--accent-text, #818cf8);
+    border-color: rgba(99, 102, 241, 0.18);
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+.detail-child-row__action--open:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.08) 100%) !important;
+    border-color: rgba(99, 102, 241, 0.35) !important;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12);
+    transform: translateY(-1px);
+}
+
+/* ============================================
+   EXPLORER FILES SECTION — Always-Visible
+   ============================================ */
+
+.explorer-files-section {
+    border-top: 1px solid rgba(99, 102, 241, 0.08);
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
+/* Toolbar row — filter + toggle */
+.explorer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.explorer-filter-input {
+    padding: 4px 10px;
+    font-size: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.3);
+    color: var(--text-primary, #e2e8f0);
+    outline: none;
+    width: 140px;
+    transition: border-color 0.2s ease, background 0.2s ease, width 0.2s ease;
+}
+
+.explorer-filter-input:focus {
+    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(15, 23, 42, 0.5);
+    width: 180px;
+}
+
+.explorer-filter-input::placeholder {
+    color: rgba(148, 163, 184, 0.4);
+}
+
+.explorer-toggle-preview {
+    padding: 4px 8px;
+    font-size: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.2);
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1;
+}
+
+.explorer-toggle-preview:hover {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.25);
+    color: var(--text-primary, #e2e8f0);
+}
+
+.explorer-toggle-preview--active {
+    color: var(--accent-text, #818cf8);
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+/* Hints line */
+.explorer-hints {
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.4);
+    padding: 2px 0 6px;
+    letter-spacing: 0.2px;
+}
+
+/* Split View Layout */
+.explorer-split-view {
+    display: flex;
+    gap: 0;
+    min-height: 200px;
+    max-height: 460px;
+}
+
+.explorer-split-view--with-preview {
+    gap: 1px;
+}
+
+.explorer-split-view .explorer-file-list {
+    flex: 1 1 50%;
+    max-height: 460px;
+    overflow-y: auto;
+    border-right: 1px solid rgba(99, 102, 241, 0.06);
+}
+
+.explorer-split-view--with-preview .explorer-file-list {
+    flex: 0 0 45%;
+    max-width: 45%;
+}
+
+/* ============================================
+   INLINE PREVIEW PANE
+   ============================================ */
+
+.explorer-preview-pane {
+    flex: 1 1 55%;
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.2);
+    border-radius: 0 var(--radius-sm, 6px) var(--radius-sm, 6px) 0;
+    border-left: 1px solid rgba(99, 102, 241, 0.06);
+    animation: explorerPaneFadeIn 0.2s ease;
+}
+
+@keyframes explorerPaneFadeIn {
+    from { opacity: 0; transform: translateX(6px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Preview Header (shared across all types) */
+.explorer-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+    background: rgba(15, 23, 42, 0.15);
+}
+
+.explorer-preview-header__icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.explorer-preview-header__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #e2e8f0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.explorer-preview-header__meta {
+    font-size: 11px;
+    color: var(--text-secondary, #94a3b8);
+    opacity: 0.7;
+}
+
+.explorer-preview-header .ql-btn--open {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(99, 102, 241, 0.04));
+    color: var(--accent-text, #818cf8);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.explorer-preview-header .ql-btn--open:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.08));
+    border-color: rgba(99, 102, 241, 0.35);
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.12);
+}
+
+/* Empty / Idle state */
+.explorer-preview-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    color: var(--text-secondary, #94a3b8);
+    text-align: center;
+    padding: 24px;
+    gap: 6px;
+}
+
+.explorer-preview-empty__icon {
+    font-size: 36px;
+    opacity: 0.3;
+    margin-bottom: 4px;
+}
+
+.explorer-preview-empty p {
+    font-size: 13px;
+    opacity: 0.5;
+    margin: 0;
+}
+
+/* Loading state */
+.explorer-preview-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    gap: 10px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.explorer-preview-spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid rgba(99, 102, 241, 0.15);
+    border-top-color: rgba(99, 102, 241, 0.6);
+    border-radius: 50%;
+    animation: explorerSpin 0.7s linear infinite;
+}
+
+@keyframes explorerSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* Text preview */
+.explorer-preview-text {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.explorer-preview-pre {
+    flex: 1;
+    margin: 0;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-primary, #e2e8f0);
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-y: auto;
+    background: transparent;
+}
+
+.explorer-preview-truncated {
+    padding: 6px 14px;
+    font-size: 11px;
+    color: rgba(251, 191, 36, 0.7);
+    border-top: 1px solid rgba(99, 102, 241, 0.06);
+    text-align: center;
+}
+
+/* Media preview (PDF / Image) */
+.explorer-preview-media {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.explorer-preview-iframe {
+    flex: 1;
+    border: none;
+    width: 100%;
+    min-height: 300px;
+    background: white;
+    border-radius: 0 0 var(--radius-sm, 6px) 0;
+}
+
+.explorer-preview-img {
+    max-width: 100%;
+    max-height: 350px;
+    object-fit: contain;
+    margin: 12px auto;
+    display: block;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}

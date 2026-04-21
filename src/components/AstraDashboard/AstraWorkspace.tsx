@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_BASE } from '../../config';
+import { sanitizeHtml } from '../../utils/safeMarkdown';
 import {
     Send, FileText, ArrowUpRight, ArrowDownLeft, ChevronRight,
     Clock, AlertTriangle, CheckCircle2, Loader2,
@@ -260,7 +261,7 @@ export default function AstraWorkspace() {
                 processed = `<span class="aw-bullet">•</span>${processed.slice(2)}`;
             }
             if (processed === '') return <br key={i} />;
-            return <p key={i} className="aw-line" dangerouslySetInnerHTML={{ __html: processed }} />;
+            return <p key={i} className="aw-line" dangerouslySetInnerHTML={{ __html: sanitizeHtml(processed) }} />;
         });
     };
 

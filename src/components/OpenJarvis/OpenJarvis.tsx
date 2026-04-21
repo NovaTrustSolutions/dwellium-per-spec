@@ -1,26 +1,34 @@
 /**
- * OpenJarvis — Global floating AI assistant for Dwellium
- * Adapted from the Stanford OpenJarvis project (Apache 2.0)
- * https://github.com/open-jarvis/OpenJarvis
+ * Antigravity — Unified AI Assistant for Dwellium
+ * Merges Antigravity (Google Gemini) + Jarvis (ARA/OpenAI) into one widget.
  *
  * Architecture: Floating pill → expandable slide-out panel
  * Available globally across all Dwellium modules.
  *
+ * Engines:
+ * - Gemini ✦ → /api/v1/antigravity/stream (Google DeepMind, workspace-aware)
+ * - ARA 🤖 → /api/ara/chat (Dwellium ARA agent)
+ *
  * Features:
- * - SSE streaming chat with OpenAI-compatible API
+ * - Dual-engine with toggle selector
+ * - SSE streaming for both engines
  * - Markdown rendering with code block copy
  * - Voice input (mic → transcription)
  * - Tool call visualization
- * - Conversation history (localStorage)
- * - Context-aware (knows active module)
- * - Theme-aware (uses Dwellium CSS variables)
- * - Resizable panel
+ * - Multi-conversation history (localStorage)
+ * - Save conversation as document
+ * - Open Full Antigravity IDE launcher
+ * - Connection health check
+ * - Keyboard shortcuts: ⌘J (primary) + ⌘G (alias)
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { getAuthToken } from '../../context/UserContext';
 import './OpenJarvis.css';
+import { FileUploadButton, UploadResult } from '../shared/FileUploadButton';
+import '../shared/FileUploadButton.css';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -73,14 +81,24 @@ interface StreamState {
 }
 
 type SpeechState = 'idle' | 'recording' | 'transcribing';
+type AIEngine = 'gemini' | 'ara';
+type GeminiModel = 'gemini-2.0-flash' | 'gemini-2.5-pro' | 'gemini-2.5-flash';
+
+const GEMINI_MODEL_LABELS: Record<GeminiModel, string> = {
+  'gemini-2.0-flash': 'Flash',
+  'gemini-2.5-pro': 'Pro',
+  'gemini-2.5-flash': '2.5 Flash',
+};
 
 // ─── Config ─────────────────────────────────────────────────────────────
 
 const JARVIS_STORAGE_KEY = 'dwellium-jarvis-conversations';
 const JARVIS_PANEL_STATE_KEY = 'dwellium-jarvis-panel';
-const DWELLIUM_API = 'http://127.0.0.1:3000';
+const DWELLIUM_API = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 const JARVIS_API_BASE_KEY = 'dwellium-jarvis-api-base';
 const JARVIS_MODEL_KEY = 'dwellium-jarvis-model';
+const AG_ENGINE_KEY = 'dwellium-ag-engine';
+const AG_GEMINI_MODEL_KEY = 'dwellium-ag-gemini-model';
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'checking';
 const HEALTH_CHECK_INTERVAL = 30_000; // 30s
@@ -88,16 +106,26 @@ const HEALTH_CHECK_INTERVAL = 30_000; // 30s
 function getApiBase(): string {
   try {
     const saved = localStorage.getItem(JARVIS_API_BASE_KEY);
-    if (saved) return saved.replace(/\/+$/, '');
-  } catch {}
+    if (saved) {
+      // Auto-migrate stale port 3000 → 3002
+      const clean = saved.replace(/\/+$/, '');
+      if (clean.includes(':3000')) {
+        const migrated = clean.replace(':3000', ':3002');
+        localStorage.setItem(JARVIS_API_BASE_KEY, migrated);
+        return migrated;
+      }
+      return clean;
+    }
+  } catch { }
   return DWELLIUM_API;
 }
+
 
 function getModel(): string {
   try {
     const saved = localStorage.getItem(JARVIS_MODEL_KEY);
     if (saved) return saved;
-  } catch {}
+  } catch { }
   return 'gpt-4o-mini';
 }
 
@@ -121,13 +149,11 @@ function saveConversations(data: { conversations: Record<string, Conversation>; 
   localStorage.setItem(JARVIS_STORAGE_KEY, JSON.stringify(data));
 }
 
-function getAuthToken(): string | null {
-  try { return localStorage.getItem('dwellium-auth-token'); } catch { return null; }
-}
+// getAuthToken imported from UserContext (line 28)
 
 // ─── SSE Streaming ──────────────────────────────────────────────────────
 
-async function* streamChat(
+async function* streamChatARA(
   apiBase: string,
   model: string,
   messages: Array<{ role: string; content: string }>,
@@ -203,6 +229,68 @@ async function* streamChat(
           currentEvent = undefined;
         } else if (line.trim() === '') {
           currentEvent = undefined;
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function* streamChatGemini(
+  apiBase: string,
+  geminiModel: string,
+  messages: Array<{ role: string; content: string }>,
+  signal?: AbortSignal,
+): AsyncGenerator<{ event?: string; data: string }> {
+  const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getAuthToken();
+  if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+
+  const latestMessage = messages[messages.length - 1]?.content || '';
+  const history = messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+
+  const response = await fetch(`${apiBase}/api/v1/antigravity/stream`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({ message: latestMessage, model: geminiModel, history }),
+    signal,
+  });
+
+  if (!response.ok) {
+    // Fallback to non-streaming
+    try {
+      const fallbackResp = await fetch(`${apiBase}/api/v1/antigravity/chat`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ message: latestMessage, model: geminiModel, history }),
+        signal,
+      });
+      const json = await fallbackResp.json();
+      const reply = json.data?.reply || json.reply || 'No response.';
+      yield { data: JSON.stringify({ choices: [{ delta: { content: reply }, finish_reason: 'stop' }] }) };
+    } catch {
+      yield { data: JSON.stringify({ choices: [{ delta: { content: `Gemini API error: ${response.status}` }, finish_reason: 'stop' }] }) };
+    }
+    return;
+  }
+
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') return;
+          yield { data };
         }
       }
     }
@@ -416,20 +504,21 @@ function SettingsPanel({
     <div className="oj-settings-overlay" onClick={onClose}>
       <div className="oj-settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="oj-settings-header">
-          <h3>Jarvis Settings</h3>
+          <h3>Antigravity Settings</h3>
           <button onClick={onClose} className="oj-settings-close">×</button>
         </div>
         <div className="oj-settings-body">
           <label className="oj-settings-label">
             API Base URL
-            <input className="oj-settings-input" value={apiBase} onChange={(e) => { setApiBase(e.target.value); localStorage.setItem(JARVIS_API_BASE_KEY, e.target.value); }} placeholder="http://127.0.0.1:3000" />
+            <input className="oj-settings-input" value={apiBase} onChange={(e) => { setApiBase(e.target.value); localStorage.setItem(JARVIS_API_BASE_KEY, e.target.value); }} placeholder="http://localhost:3002" />
           </label>
           <label className="oj-settings-label">
-            Model
+            ARA Model (fallback)
             <input className="oj-settings-input" value={model} onChange={(e) => { setModel(e.target.value); localStorage.setItem(JARVIS_MODEL_KEY, e.target.value); }} placeholder="gpt-4o-mini" />
           </label>
           <div className="oj-settings-hint">
-            Connects to Dwellium ARA backend by default, or any OpenAI-compatible endpoint including a local OpenJarvis server.
+            <strong>Gemini ✦</strong> uses the Dwellium Antigravity backend with full workspace context.<br/>
+            <strong>ARA 🤖</strong> connects to the Dwellium ARA agent or any OpenAI-compatible endpoint.
           </div>
         </div>
       </div>
@@ -438,7 +527,7 @@ function SettingsPanel({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ─── Main Export: Global Floating Jarvis Widget ──────────────────────────
+// ─── Main Export: Global Floating Antigravity Widget ─────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function OpenJarvisWidget() {
@@ -462,6 +551,16 @@ export default function OpenJarvisWidget() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [apiBase, setApiBase] = useState(getApiBase);
   const [model, setModel] = useState(getModel);
+
+  // Engine state (Gemini or ARA)
+  const [engine, setEngine] = useState<AIEngine>(() => {
+    try { return (localStorage.getItem(AG_ENGINE_KEY) as AIEngine) || 'gemini'; } catch { return 'gemini'; }
+  });
+  const [geminiModel, setGeminiModel] = useState<GeminiModel>(() => {
+    try { return (localStorage.getItem(AG_GEMINI_MODEL_KEY) as GeminiModel) || 'gemini-2.0-flash'; } catch { return 'gemini-2.0-flash'; }
+  });
+  const [savingDoc, setSavingDoc] = useState(false);
+  const [docSaved, setDocSaved] = useState(false);
 
   // Speech
   const [speechState, setSpeechState] = useState<SpeechState>('idle');
@@ -527,10 +626,10 @@ export default function OpenJarvisWidget() {
     localStorage.setItem(JARVIS_PANEL_STATE_KEY, isOpen ? 'open' : 'closed');
   }, [isOpen]);
 
-  // Keyboard shortcut: Cmd+J to toggle
+  // Keyboard shortcut: Cmd+J or Cmd+G to toggle
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'j' || e.key === 'g')) {
         e.preventDefault();
         setIsOpen((prev) => !prev);
         setIsMinimized(false);
@@ -596,6 +695,37 @@ export default function OpenJarvisWidget() {
     setStreamState({ isStreaming: false, phase: '', content: '', activeToolCalls: [] });
   }, []);
 
+  // ─── Save conversation as document ─────────────────────────────────
+
+  const saveConversationAsDoc = useCallback(async () => {
+    setSavingDoc(true);
+    try {
+      const token = getAuthToken();
+      const content = messages
+        .filter(m => m.role !== 'system')
+        .map(m => `**${m.role === 'user' ? '👤 User' : '✦ Antigravity'}:** ${m.content}`)
+        .join('\n\n---\n\n');
+
+      const title = `Antigravity Session — ${new Date().toLocaleDateString()}`;
+      const resp = await fetch(`${apiBase}/api/v1/documents`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          title,
+          content: `# ${title}\n\n*Exported from Antigravity AI session*\n\n---\n\n${content}`,
+          category: 'AI Sessions',
+          format: 'markdown',
+        }),
+      });
+      const data = await resp.json();
+      if (data.success) setDocSaved(true);
+    } catch { /* silently fail */ }
+    finally { setSavingDoc(false); }
+  }, [messages, apiBase]);
+
   const sendMessage = useCallback(async () => {
     const content = input.trim();
     if (!content || streamState.isStreaming) return;
@@ -633,7 +763,10 @@ export default function OpenJarvisWidget() {
     setStreamState({ isStreaming: true, phase: 'Generating...', content: '', activeToolCalls: [] });
 
     try {
-      for await (const sseEvent of streamChat(apiBase, model, apiMessages, controller.signal)) {
+      const streamFn = engine === 'gemini'
+        ? streamChatGemini(apiBase, geminiModel, apiMessages, controller.signal)
+        : streamChatARA(apiBase, model, apiMessages, controller.signal);
+      for await (const sseEvent of streamFn) {
         const eventName = sseEvent.event;
 
         if (eventName === 'tool_call_start') {
@@ -641,14 +774,14 @@ export default function OpenJarvisWidget() {
             const d = JSON.parse(sseEvent.data);
             toolCalls.push({ id: generateId(), tool: d.tool, arguments: d.arguments || '', status: 'running' });
             setStreamState((s) => ({ ...s, phase: `Calling ${d.tool}...`, activeToolCalls: [...toolCalls] }));
-          } catch {}
+          } catch { }
         } else if (eventName === 'tool_call_end') {
           try {
             const d = JSON.parse(sseEvent.data);
             const tc = toolCalls.find((t) => t.tool === d.tool && t.status === 'running');
             if (tc) { tc.status = d.success ? 'success' : 'error'; tc.latency = d.latency; tc.result = d.result; }
             setStreamState((s) => ({ ...s, phase: 'Generating...', activeToolCalls: [...toolCalls] }));
-          } catch {}
+          } catch { }
         } else {
           try {
             const d = JSON.parse(sseEvent.data);
@@ -672,7 +805,7 @@ export default function OpenJarvisWidget() {
               }
             }
             if (d.choices?.[0]?.finish_reason === 'stop') break;
-          } catch {}
+          } catch { }
         }
       }
     } catch (err: any) {
@@ -712,7 +845,7 @@ export default function OpenJarvisWidget() {
       // If panel is closed, show unread badge
       if (!isOpen) setUnreadCount((c) => c + 1);
     }
-  }, [input, activeId, apiBase, model, streamState.isStreaming, createConversation, refreshConversations, isOpen]);
+  }, [input, activeId, apiBase, model, geminiModel, engine, streamState.isStreaming, createConversation, refreshConversations, isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -732,7 +865,7 @@ export default function OpenJarvisWidget() {
         try {
           const res = await fetch(`${apiBase}/v1/speech/transcribe`, { method: 'POST', body: (() => { const fd = new FormData(); fd.append('file', blob, 'recording.webm'); return fd; })() });
           if (res.ok) { const r = await res.json(); if (r.text) setInput((p) => (p ? p + ' ' + r.text : r.text)); }
-        } catch {}
+        } catch { }
         setSpeechState('idle');
       };
       recorder.stop();
@@ -778,7 +911,7 @@ export default function OpenJarvisWidget() {
         <button
           className={`oj-fab ${unreadCount > 0 ? 'oj-fab-pulse' : ''}`}
           onClick={togglePanel}
-          title="Open Jarvis (⌘J)"
+          title="Open Antigravity (⌘J)"
         >
           <span className="oj-fab-icon">✦</span>
           <span className={`oj-status-dot oj-status-dot-${connectionStatus}`} />
@@ -797,12 +930,48 @@ export default function OpenJarvisWidget() {
               </button>
               <div className="oj-panel-title">
                 <span className="oj-panel-logo">✦</span>
-                <span>Jarvis</span>
+                <span>Antigravity</span>
                 <span className={`oj-status-dot oj-status-dot-${connectionStatus}`} title={connectionStatus === 'connected' ? 'Connected to Dwellium' : connectionStatus === 'checking' ? 'Connecting...' : 'Disconnected'} />
               </div>
             </div>
             <div className="oj-panel-header-right">
-              <span className="oj-model-badge">{model}</span>
+              {/* Engine Toggle */}
+              <div className="oj-engine-toggle" style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: 2 }}>
+                <button
+                  onClick={() => { setEngine('gemini'); localStorage.setItem(AG_ENGINE_KEY, 'gemini'); }}
+                  className={`oj-panel-btn ${engine === 'gemini' ? 'oj-engine-active' : ''}`}
+                  style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: engine === 'gemini' ? 'rgba(130,100,255,0.3)' : 'transparent', color: engine === 'gemini' ? '#c4b5fd' : 'inherit' }}
+                  title="Gemini (Google DeepMind)"
+                >✦ Gemini</button>
+                <button
+                  onClick={() => { setEngine('ara'); localStorage.setItem(AG_ENGINE_KEY, 'ara'); }}
+                  className={`oj-panel-btn ${engine === 'ara' ? 'oj-engine-active' : ''}`}
+                  style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: engine === 'ara' ? 'rgba(56,189,248,0.3)' : 'transparent', color: engine === 'ara' ? '#7dd3fc' : 'inherit' }}
+                  title="ARA Agent (Dwellium)"
+                >🤖 ARA</button>
+              </div>
+              {/* Gemini model selector */}
+              {engine === 'gemini' && (
+                <select
+                  value={geminiModel}
+                  onChange={(e) => { const v = e.target.value as GeminiModel; setGeminiModel(v); localStorage.setItem(AG_GEMINI_MODEL_KEY, v); }}
+                  style={{ fontSize: 10, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 4, color: 'inherit', padding: '1px 4px', cursor: 'pointer' }}
+                  title="Gemini model"
+                >
+                  {(Object.keys(GEMINI_MODEL_LABELS) as GeminiModel[]).map(m => (
+                    <option key={m} value={m}>{GEMINI_MODEL_LABELS[m]}</option>
+                  ))}
+                </select>
+              )}
+              {engine === 'ara' && <span className="oj-model-badge" style={{ fontSize: 10 }}>{model}</span>}
+              {/* Save as doc */}
+              <button
+                onClick={saveConversationAsDoc}
+                disabled={savingDoc || messages.length === 0}
+                className="oj-panel-btn"
+                title="Save conversation as document"
+                style={{ fontSize: 13 }}
+              >{savingDoc ? '⏳' : docSaved ? '✓' : '💾'}</button>
               <button onClick={() => setSettingsOpen(true)} className="oj-panel-btn" title="Settings">⚙</button>
               <button onClick={() => setIsMinimized(!isMinimized)} className="oj-panel-btn" title="Minimize">─</button>
               <button onClick={togglePanel} className="oj-panel-btn oj-panel-close" title="Close (⌘J)">×</button>
@@ -829,10 +998,15 @@ export default function OpenJarvisWidget() {
                     <div className="oj-empty-icon">✦</div>
                     <h2 className="oj-empty-title">{getGreeting()}</h2>
                     <p className="oj-empty-desc">
-                      Your AI property assistant. Ask about tenants, maintenance, leases, financials — anything across Dwellium.
+                      {engine === 'gemini'
+                        ? 'Powered by Google DeepMind with full Dwellium workspace context. Ask anything.'
+                        : 'Connected to ARA agent for Dwellium operations and tool execution.'}
                     </p>
                     <div className="oj-suggestions">
-                      {['Show overdue work orders', 'Lease expiry summary', 'Vacancy rate across properties'].map((s) => (
+                      {(engine === 'gemini'
+                        ? ['Summarize today\'s inbox', 'Analyze portfolio performance', 'Draft a maintenance report', 'Check lease expirations']
+                        : ['Show overdue work orders', 'Lease expiry summary', 'Vacancy rate across properties']
+                      ).map((s) => (
                         <button key={s} className="oj-suggestion-btn" onClick={() => { setInput(s); }}>
                           {s}
                         </button>
@@ -851,7 +1025,6 @@ export default function OpenJarvisWidget() {
                 )}
               </div>
 
-              {/* Input */}
               <div className="oj-panel-input">
                 <div className="oj-input-box">
                   <textarea
@@ -859,7 +1032,7 @@ export default function OpenJarvisWidget() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Message Jarvis..."
+                    placeholder={engine === 'gemini' ? 'Ask Antigravity (Gemini)...' : 'Message ARA agent...'}
                     rows={1}
                     className="oj-textarea"
                     disabled={streamState.isStreaming}
@@ -868,6 +1041,31 @@ export default function OpenJarvisWidget() {
                     <button onClick={stopStreaming} className="oj-stop-btn" title="Stop">■</button>
                   ) : (
                     <div className="oj-input-actions">
+                      <FileUploadButton
+                        size="sm"
+                        iconOnly
+                        defaultPrompt="Please analyze this and provide property management insights."
+                        onResult={(result: UploadResult) => {
+                          // Inject analysis as assistant message into active conversation
+                          const assistantMsg: ChatMessage = {
+                            id: generateId(),
+                            role: 'assistant',
+                            content: `📎 **${result.originalName}** analyzed\n\n${result.analysis}${result.savedDocumentId ? `\n\n✅ *Saved as document*` : ''}`,
+                            timestamp: Date.now(),
+                          };
+                          let convId = activeId;
+                          if (!convId) convId = createConversation();
+                          const data = loadConversations();
+                          const conv = data.conversations[convId!];
+                          if (conv) {
+                            conv.messages.push(assistantMsg);
+                            conv.updatedAt = Date.now();
+                            saveConversations(data);
+                            setMessages([...conv.messages]);
+                            refreshConversations();
+                          }
+                        }}
+                      />
                       <MicButton state={speechState} onClick={handleMicClick} disabled={streamState.isStreaming} />
                       <button onClick={sendMessage} disabled={!input.trim()} className={`oj-send-btn ${input.trim() ? 'oj-send-active' : ''}`} title="Send">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
@@ -876,7 +1074,7 @@ export default function OpenJarvisWidget() {
                   )}
                 </div>
                 <div className="oj-input-hint">
-                  <kbd>⌘J</kbd> toggle · <kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> new line
+                  <kbd>⌘J</kbd> toggle · <kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> new line · {engine === 'gemini' ? `Gemini ${GEMINI_MODEL_LABELS[geminiModel]}` : `ARA (${model})`}
                 </div>
               </div>
             </>

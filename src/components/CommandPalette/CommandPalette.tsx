@@ -3,6 +3,7 @@ import { DockItem } from '../../data/types';
 import { useWindows } from '../../context/WindowContext';
 import { rankWidgetSearchResults } from '../Sidebar/widgetSearch';
 import { API_BASE } from '../../config';
+import { getIcon } from '../Sidebar/iconMap';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -846,7 +847,7 @@ export default function CommandPalette() {
 
         if (result.kind === 'task') {
             const task = result.payload as TaskItem;
-            openWindow('tasks', 'Tasks', '✅');
+            openWindow('tasks', 'Tasks', 'check-square');
             dispatchDeferred('qualia-taskmenu-focus-task', { taskId: task.id, title: task.title });
             closePalette();
             return;
@@ -854,7 +855,7 @@ export default function CommandPalette() {
 
         if (result.kind === 'inbox') {
             const item = result.payload as InboxMessageItem;
-            openWindow('inbox-zero', 'Inbox Zero', '📭');
+            openWindow('inbox-zero', 'Inbox Zero', 'mail-open');
             dispatchDeferred('qualia-inbox-focus-item', {
                 itemId: item.id,
                 subject: item.subject,
@@ -866,7 +867,7 @@ export default function CommandPalette() {
 
         if (result.kind === 'file') {
             const file = result.payload as FileItem;
-            openWindow('doc-viewer', 'Docs', '📄');
+            openWindow('doc-viewer', 'Docs', 'file-text');
             dispatchDeferred('qualia-docviewer-open-file', { fileId: file.id, name: file.name });
             closePalette();
             return;
@@ -874,7 +875,7 @@ export default function CommandPalette() {
 
         if (result.kind === 'note') {
             const note = result.payload as NoteItem;
-            openWindow('notepad', 'Notepad', '📝');
+            openWindow('notepad', 'Notepad', 'file-edit');
             dispatchDeferred('qualia-notepad-open-note', { noteId: note.id, title: note.title });
             closePalette();
         }
@@ -969,7 +970,7 @@ export default function CommandPalette() {
                                             role="option"
                                             aria-selected={index === selectedIndex}
                                         >
-                                            <span className="command-palette__result-icon">{result.icon}</span>
+                                            <span className="command-palette__result-icon">{(() => { const Icon = getIcon(result.icon); return Icon ? <Icon size={18} strokeWidth={1.75} /> : result.icon; })()}</span>
                                             <span className="command-palette__result-main">
                                                 <span className="command-palette__result-title-row">
                                                     <span className="command-palette__result-title">{result.title}</span>

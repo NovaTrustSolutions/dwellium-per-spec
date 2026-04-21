@@ -135,6 +135,7 @@ export default function DocViewer() {
     const overlayRef = useRef<HTMLCanvasElement | null>(null);
     const sigCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const hasDrainedPending = useRef(false);
 
     // ---- TOAST ----
     const showToast = (msg: string) => {
@@ -308,6 +309,19 @@ export default function DocViewer() {
         window.addEventListener('qualia-docviewer-open-file', onOpenFile);
         return () => window.removeEventListener('qualia-docviewer-open-file', onOpenFile);
     }, [openFileFromPalette]);
+
+    // ---- DRAIN PENDING FILE QUEUE ----
+    // When DocViewer freshly mounts (cold-open), events may arrive before
+    // this component registers its listener. The global queue captures those.
+    useEffect(() => {
+        if (hasDrainedPending.current || files.length === 0) return;
+        hasDrainedPending.current = true;
+        const pending = (window as any).__qualiaDocViewerPendingFile;
+        if (pending) {
+            (window as any).__qualiaDocViewerPendingFile = null;
+            void openFileFromPalette(pending);
+        }
+    }, [files, openFileFromPalette]);
 
     // ---- RENDER PDF PAGE ----
     const renderPage = async (pdf: any, pageNum: number, zoomLevel: number) => {

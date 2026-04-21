@@ -1203,10 +1203,9 @@
     border-radius: 8px;
 }
 
-/* [U44] Chat area flex end alignment for sparse chats */
-.ara-chat-area {
-    justify-content: flex-end;
-}
+/* [U44] Chat area — flex-start is REQUIRED for scrolling.
+   Bottom-alignment for sparse chats is handled by margin-top: auto
+   on .ara-chat-area>*:first-child (U48). DO NOT use flex-end here. */
 
 /* [U45] Mode option active check indicator */
 .ara-mode-option.active::after {

@@ -1,7 +1,15 @@
 /**
- * Strata API — Centralized fetch wrapper for all Strata modules.
- * Talks to the backend at /api/dwellium/*.
+ * Strata API — backend implementation.
+ *
+ * Talks to the real backend at /api/dwellium/* via vite's dev proxy
+ * (or directly in prod builds). Used when VITE_USE_STATIC_API is unset
+ * or false. Routing is done in strataApi.ts (the module barrel).
+ *
+ * Shape contract MUST stay identical to strataApi.static.ts so the
+ * router in strataApi.ts can swap between them transparently.
  */
+
+import { getAuthToken } from '../../context/UserContext';
 
 const API_BASE = '/api/dwellium';
 
@@ -15,7 +23,7 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
     }
 
     const headers: Record<string, string> = {};
-    const token = localStorage.getItem('dwellium-auth-token');
+    const token = getAuthToken();
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
@@ -51,4 +59,19 @@ export function strataPut<T>(path: string, body: unknown): Promise<T> {
 
 export async function strataDelete(path: string): Promise<void> {
     await request<unknown>('DELETE', path);
+}
+
+// ── Cursor Pagination ──────────────────────────────────────
+
+export interface PaginatedResponse<T> {
+    data: T[];
+    pagination: {
+        hasMore: boolean;
+        nextCursor: string | null;
+        limit: number;
+    };
+}
+
+export function strataGetPaginated<T>(path: string, params?: Record<string, string>): Promise<PaginatedResponse<T>> {
+    return request<PaginatedResponse<T>>('GET', path, undefined, params);
 }

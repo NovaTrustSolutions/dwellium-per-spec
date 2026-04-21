@@ -19,9 +19,13 @@
         "noUnusedLocals": false,
         "noUnusedParameters": false,
         "noFallthroughCasesInSwitch": true,
-        "noUncheckedSideEffectImports": true
+        "noUncheckedSideEffectImports": true,
+        "paths": {
+            "@qualia/types": ["../packages/types/index.ts"]
+        }
     },
     "include": [
-        "src"
+        "src",
+        "../packages/types"
     ]
 }

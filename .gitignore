@@ -26,3 +26,9 @@ npm-debug.log*
 
 # TypeScript cache
 *.tsbuildinfo
+node_modules
+
+# Playwright & test artifacts
+playwright-report/
+test-results/
+*.json.bak

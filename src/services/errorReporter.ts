@@ -1,7 +1,10 @@
 /**
  * Error Reporter — Frontend error tracking client
  *
- * Captures runtime errors and sends them to the backend error tracking API.
+ * Captures runtime errors and sends them to:
+ * 1. Sentry (if configured via VITE_SENTRY_DSN)
+ * 2. Backend error tracking API (/api/errors/report)
+ *
  * Rate-limited to 10 errors/minute to prevent flooding.
  *
  * Usage:
@@ -9,6 +12,7 @@
  *   initGlobalErrorHandlers();   // call once at startup
  *   reportError(error, 'MyComponent', { extra: 'context' });
  */
+import { captureError as sentryCaptureError } from './sentry';
 
 const ERROR_ENDPOINT = '/api/errors/report';
 const RATE_LIMIT = 10;          // max errors per window
@@ -40,7 +44,12 @@ export function reportError(
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
 
-    // Fire and forget — don't let reporting failures affect the app
+    // 1. Send to Sentry (if configured)
+    try {
+        sentryCaptureError(error, component, metadata);
+    } catch { /* swallow */ }
+
+    // 2. Send to backend API (fire and forget)
     try {
         const token = localStorage.getItem('dwellium-auth-token');
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };

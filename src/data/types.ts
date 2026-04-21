@@ -25,6 +25,7 @@ export interface WindowState {
     maximized: boolean;
     component: string; // key to lookup which component to render
     regionId?: string | null; // which region this window is snapped to
+    isLoading?: boolean;      // shows shimmer bar in titlebar when true
 }
 
 export type RegionLayout = 'none' | 'halves-h' | 'halves-v' | 'thirds-h' | 'fourths-h' | 'quadrants';
@@ -91,3 +92,5 @@ export interface SnapGuide {
 export type Theme = 'dark' | 'light' | 'trust' | 'vibrant' | 'luxury' | 'healthcare' | 'creative' | 'dark-excellence';
 
 export type FontPairing = 'default' | 'modern' | 'elegant' | 'friendly' | 'brutalist' | 'editorial';
+
+export type Skin = 'default' | 'minimal' | 'aurora' | 'warm' | 'neon';

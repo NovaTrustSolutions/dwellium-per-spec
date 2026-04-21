@@ -1,3 +1,4 @@
+import { getAuthToken } from '../../../context/UserContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Landmark, RefreshCw, Building2, DollarSign, Mail, Phone, FileText, Car, Plus, X } from 'lucide-react';
 import { strataGet, strataPost } from '../strataApi';
@@ -52,7 +53,7 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
     const selectOwner = async (owner: EntityProfile) => {
         setSelected(owner);
         try {
-            const token = localStorage.getItem('dwellium-auth-token');
+            const token = getAuthToken();
             const headers: Record<string, string> = {};
             if (token) headers['Authorization'] = `Bearer ${token}`;
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Building2, MapPin, Home, Plus, X, ChevronRight, ChevronDown,
     RefreshCw, Wrench, LayoutGrid, List, Table2, User, Mail, Phone,
@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
+import { useProperties, useUnits, useEntities, useLinkedData, useModuleConfig, useStrataInvalidate, strataKeys } from '../useStrataQueries';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Property, Unit, EntityProfile, Workitem } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
 import TrelloCardModal from './TrelloCardModal';
@@ -136,8 +138,12 @@ interface PropertiesModuleProps {
 
 export default function PropertiesModule({ searchNavTarget, onNavComplete }: PropertiesModuleProps) {
     const { hasPermission } = useUser();
-    const [properties, setProperties] = useState<Property[]>([]);
-    const [units, setUnits] = useState<Unit[]>([]);
+
+    // ── React Query hooks (replaces manual fetch) ──
+    const propertiesQuery = useProperties();
+    const invalidate = useStrataInvalidate();
+    const queryClient = useQueryClient();
+
     const [selected, setSelected] = useState<Property | null>(null);
     const [view, setView] = useState<View>('list');
     const [showForm, setShowForm] = useState(false);
@@ -149,9 +155,21 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
     const [inspectionFormData, setInspectionFormData] = useState<any>({ type: 'Annual', date: new Date().toISOString().split('T')[0], status: 'Pass', score: '', notes: '' });
     const [showBudgetForm, setShowBudgetForm] = useState(false);
     const [budgetFormData, setBudgetFormData] = useState<any>({});
-    
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+
+    // Bridge variables — existing JSX reads these; RQ provides data behind the scenes
+    const properties = propertiesQuery.data ?? [];
+    const loading = propertiesQuery.isLoading;
+    const error = propertiesQuery.error ? (propertiesQuery.error as Error).message : null;
+
+    // Units + tenants + linked data — scoped to selected property
+    const unitsQuery = useUnits(selected?.id);
+    const tenantsQuery = useEntities('tenant', !!selected);
+    const linkedDataQuery = useLinkedData(selected?.id);
+    const moduleConfigQuery = useModuleConfig(selected?.id);
+
+    const units = unitsQuery.data ?? [];
+    const linkedData = linkedDataQuery.data ?? null;
+
     const [expandedDesc, setExpandedDesc] = useState<string | null>(null);
     const [expandedAssets, setExpandedAssets] = useState<string | null>(null);
     const [cardView, setCardView] = useState<CardView>('grid');
@@ -182,38 +200,37 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
         }
     }, [searchNavTarget, properties, onNavComplete]);
 
-    // Phase 5: Module config
+    // Phase 5: Module config — computed from RQ data
     const [moduleConfig, setModuleConfig] = useState<Record<string, boolean>>({});
     const [showModuleManager, setShowModuleManager] = useState(false);
 
+    // Sync module config from RQ
+    useEffect(() => {
+        const map: Record<string, boolean> = {};
+        MODULE_REGISTRY.forEach(m => { map[m.key] = m.defaultEnabled; });
+        if (moduleConfigQuery.data) {
+            moduleConfigQuery.data.forEach((c: any) => { map[c.moduleKey] = c.enabled; });
+        }
+        setModuleConfig(map);
+    }, [moduleConfigQuery.data]);
+
     // ── Feature 1: Tenant detail for units ──
     const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
-    const [tenants, setTenants] = useState<EntityProfile[]>([]);
+    // Tenants — filter to property-specific when selected
+    const allTenants = tenantsQuery.data ?? [];
+    const tenants = useMemo(() => {
+        if (!selected) return allTenants;
+        const filtered = allTenants.filter(t =>
+            (t.propertyIds || []).includes(selected.id) ||
+            (t.metadata?.propertyName || '').toLowerCase() === (selected?.name || '').toLowerCase()
+        );
+        return filtered.length > 0 ? filtered : allTenants;
+    }, [allTenants, selected]);
     const [matchedTenant, setMatchedTenant] = useState<EntityProfile | null>(null);
 
-    // ── Feature 3: Property Linked Items ──
-    const [linkedData, setLinkedData] = useState<LinkedData | null>(null);
+    // ── Feature 3: Property Linked Items ── (provided by useLinkedData hook)
     const [expandedLinkedSection, setExpandedLinkedSection] = useState<string | null>('workitems');
     const [expandedWorkitem, setExpandedWorkitem] = useState<Workitem | null>(null);
-
-    // Phase 5: Fetch module config when property selected
-    const fetchModuleConfig = useCallback(async (propId: string) => {
-        try {
-            const configs = await strataGet<any[]>('/property-modules', { property_id: propId });
-            const map: Record<string, boolean> = {};
-            MODULE_REGISTRY.forEach(m => { map[m.key] = m.defaultEnabled; });
-            configs.forEach((c: any) => { map[c.moduleKey] = c.enabled; });
-            setModuleConfig(map);
-        } catch (e) {
-            const map: Record<string, boolean> = {};
-            MODULE_REGISTRY.forEach(m => { map[m.key] = m.defaultEnabled; });
-            setModuleConfig(map);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (selected) fetchModuleConfig(selected.id);
-    }, [selected, fetchModuleConfig]);
 
     const handleToggleModule = async (moduleKey: string) => {
         if (!selected) return;
@@ -221,6 +238,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
         setModuleConfig(prev => ({ ...prev, [moduleKey]: newEnabled }));
         try {
             await strataPut('/property-modules', { propertyId: selected.id, moduleKey, enabled: newEnabled });
+            queryClient.invalidateQueries({ queryKey: strataKeys.moduleConfig(selected.id) });
         } catch (e) { console.error(e); }
     };
 
@@ -320,63 +338,22 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
         ? statusFiltered
         : statusFiltered.filter(p => (p.type || '').toLowerCase().replace(/[\s_-]/g, '') === typeFilter);
 
-    const fetchProperties = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await strataGet<Property[]>('/properties');
-            setProperties(data);
-        } catch (e) { console.error(e); setError('Failed to load properties'); }
-        setLoading(false);
-    }, []);
 
-    const fetchUnits = useCallback(async (propertyId: string) => {
-        try {
-            const data = await strataGet<Unit[]>('/units', { property_id: propertyId });
-            setUnits(data);
-        } catch (e) { console.error(e); }
-    }, []);
-
-    const fetchTenants = useCallback(async (propertyId: string) => {
-        try {
-            const data = await strataGet<EntityProfile[]>('/entities', { type: 'tenant' });
-            // Filter tenants whose propertyIds includes this property
-            const filtered = data.filter(t =>
-                (t.propertyIds || []).includes(propertyId) ||
-                (t.metadata?.propertyName || '').toLowerCase() === (selected?.name || '').toLowerCase()
-            );
-            setTenants(filtered.length > 0 ? filtered : data);
-        } catch (e) { console.error(e); }
-    }, [selected]);
-
-    const fetchLinkedData = useCallback(async (propertyId: string) => {
-        try {
-            const data = await strataGet<LinkedData>(`/property-linked/${propertyId}`);
-            setLinkedData(data);
-        } catch (e) { console.error(e); }
-    }, []);
-
-    useEffect(() => { fetchProperties(); }, [fetchProperties]);
 
     const openDetail = (p: Property) => {
         setSelected(p);
         setView('detail');
         setSelectedUnit(null);
         setMatchedTenant(null);
-        fetchUnits(p.id);
-        fetchTenants(p.id);
-        fetchLinkedData(p.id);
+        // RQ auto-fetches units, tenants, linkedData when 'selected' changes
     };
 
     // ── Feature 2: Safe back button ──
     const goBack = () => {
         setView('list');
         setSelected(null);
-        setUnits([]);
         setSelectedUnit(null);
         setMatchedTenant(null);
-        setTenants([]);
-        setLinkedData(null);
         setExpandedLinkedSection('workitems');
         setExpandedAssets(null);
     };
@@ -403,7 +380,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                 unitCount: Number(fd.get('unitCount')) || 0,
             });
             setShowForm(false);
-            fetchProperties();
+            invalidate('properties');
         } catch (err) { console.error(err); }
     };
 
@@ -419,7 +396,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
             });
             setShowEditForm(false);
             setSelected({ ...selected, metadata: updatedMetadata });
-            fetchProperties();
+            invalidate('properties');
         } catch (err) { console.error('Failed to update property', err); }
     };
 
@@ -459,7 +436,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
             await strataDelete(`/properties/${id}`);
             setConfirmDeleteProp(null);
             goBack();
-            fetchProperties();
+            invalidate('properties');
         } catch (err) { console.error(err); }
     };
 
@@ -502,7 +479,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 </button>
                             ))}
                         </div>
-                        <button className="s-btn s-btn-ghost" onClick={fetchProperties}><RefreshCw size={14} /></button>
+                        <button className="s-btn s-btn-ghost" onClick={() => invalidate('properties')}><RefreshCw size={14} /></button>
                         {hasPermission('strata:properties:create') && (
                             <button className="s-btn s-btn-primary" onClick={() => setShowForm(true)}><Plus size={14} /> Add Property</button>
                         )}
@@ -572,7 +549,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                 {loading ? (
                     <LoadingState message="Loading properties…" />
                 ) : error ? (
-                    <ErrorState message={error} onRetry={fetchProperties} />
+                    <ErrorState message={error} onRetry={() => invalidate('properties')} />
                 ) : cardView === 'grid' ? (
                     <div className="s-card-grid">
                         {filteredProperties.map(p => (
@@ -1648,11 +1625,11 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
                                 const handleDeactivate = async (id: string) => {
                                     await strataPost(`/workitems/${id}/deactivate`, {});
-                                    if (selected) fetchLinkedData(selected.id);
+                                    if (selected) queryClient.invalidateQueries({ queryKey: strataKeys.linkedData(selected.id) });
                                 };
                                 const handleReactivate = async (id: string) => {
                                     await strataPost(`/workitems/${id}/reactivate`, {});
-                                    if (selected) fetchLinkedData(selected.id);
+                                    if (selected) queryClient.invalidateQueries({ queryKey: strataKeys.linkedData(selected.id) });
                                 };
 
                                 const statusColor = (s: string) => {

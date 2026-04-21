@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
 import type { PropertySummary } from '../strataTypes';
+import { sanitizeSvg } from '../../../utils/safeMarkdown';
 
 interface DesignHistoryItem {
     id: string;
@@ -235,7 +236,7 @@ export default function DesignStudio() {
                         {currentDesign ? (
                             <div
                                 style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', transition: 'transform 0.15s' }}
-                                dangerouslySetInnerHTML={{ __html: currentDesign.svgContent }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeSvg(currentDesign.svgContent) }}
                             />
                         ) : (
                             <div style={{ textAlign: 'center', color: '#475569' }}>

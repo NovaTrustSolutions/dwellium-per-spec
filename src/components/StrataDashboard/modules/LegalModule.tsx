@@ -1,3 +1,4 @@
+import { getAuthToken } from '../../../context/UserContext';
 import { useState, useEffect, useCallback } from 'react';
 import {
     Scale, Plus, X, ChevronDown, ChevronUp, RefreshCw, AlertTriangle,
@@ -132,7 +133,7 @@ export default function LegalModule() {
 
     // Fetch users for access control picker + current user
     useEffect(() => {
-        const token = localStorage.getItem('dwellium-auth-token');
+        const token = getAuthToken();
         if (!token) return;
         // Get current user
         fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })

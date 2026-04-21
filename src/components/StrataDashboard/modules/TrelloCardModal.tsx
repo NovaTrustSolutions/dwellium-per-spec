@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { getAuthToken } from '../../../context/UserContext';
 import { X, ExternalLink, Paperclip, Calendar, Tag, CheckSquare, Square, Loader, Clock, MessageSquare, Image as ImageIcon } from 'lucide-react';
 
 import type { Workitem } from '../strataTypes';
@@ -44,7 +45,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
 
     const fetchCard = useCallback(async () => {
         if (!cardId) { setLoading(false); return; }
-        const token = localStorage.getItem('dwellium-auth-token');
+        const token = getAuthToken();
         const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
         try {
             const [cardRes, actRes] = await Promise.all([

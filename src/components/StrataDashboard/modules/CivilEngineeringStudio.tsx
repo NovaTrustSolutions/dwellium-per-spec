@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
 import type { Property } from '../strataTypes';
+import { sanitizeSvg } from '../../../utils/safeMarkdown';
 
 const ENG_TYPES = [
     { id: 'site_grading', label: 'Site Grading', icon: <Layers size={14} />, desc: 'Contour lines, cut/fill, elevation' },
@@ -167,7 +168,7 @@ export default function CivilEngineeringStudio() {
                         </div>
                     ) : result?.svgContent ? (
                         <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
-                            dangerouslySetInnerHTML={{ __html: result.svgContent }} />
+                            dangerouslySetInnerHTML={{ __html: sanitizeSvg(result.svgContent) }} />
                     ) : result?.error ? (
                         <div style={{ color: '#ef4444', padding: 20 }}>Error: {result.error}</div>
                     ) : (

@@ -14,6 +14,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, X, Link2, FolderOpen, ChevronRight, Tag, Send, FileText, ClipboardList, Paperclip, Trash2, StickyNote } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
+import { useToast } from '../useToast';
 
 interface ProfileSpace {
     id: string;
@@ -61,6 +62,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ProfileSpaces({ entityType, entityId }: Props) {
+    const { showToast, ToastContainer } = useToast();
     const [spaces, setSpaces] = useState<ProfileSpace[]>([]);
     const [activeSpace, setActiveSpace] = useState<string | null>(null);
     const [links, setLinks] = useState<EntityLink[]>([]);
@@ -140,7 +142,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
             fetchSpaces();
         } catch (e) {
             console.error('Delete space failed:', e);
-            alert('Failed to delete space. Check console for details.');
+            showToast('Failed to delete space', 'error');
         }
     };
 
@@ -583,6 +585,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                     </div>
                 )}
             </div>
+            <ToastContainer />
         </div>
     );
 }

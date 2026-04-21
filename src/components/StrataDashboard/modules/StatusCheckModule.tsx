@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { getAuthToken } from '../../../context/UserContext';
 import { RefreshCw, Wifi, WifiOff, AlertTriangle, Clock, Server, Database, Brain, MessageSquare, Mail, Calendar, HardDrive, FileSearch, Mic, Shield } from 'lucide-react';
 
 interface ServiceStatus {
@@ -52,7 +53,7 @@ export default function StatusCheckModule() {
         setLoading(true);
         setError('');
         try {
-            const token = localStorage.getItem('dwellium-auth-token');
+            const token = getAuthToken();
             const res = await fetch(`${API_BASE}/api/status`, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {},
             });

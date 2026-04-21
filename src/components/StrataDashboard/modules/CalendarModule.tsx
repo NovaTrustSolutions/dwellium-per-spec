@@ -10,7 +10,7 @@ import {
 import { strataGet } from '../strataApi';
 import type { Workitem } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
-import { useUser } from '../../../context/UserContext';
+import { useUser, getAuthToken } from '../../../context/UserContext';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -69,7 +69,7 @@ export default function CalendarModule() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
 
-    const getToken = () => localStorage.getItem('dwellium-auth-token') || '';
+    const getToken = () => getAuthToken() || '';
 
     const fetchEvents = useCallback(async () => {
         setLoading(true);

@@ -33,23 +33,23 @@ describe('OpenJarvisWidget', () => {
 
     it('renders the floating pill button when closed', () => {
         render(<OpenJarvisWidget />);
-        expect(screen.getByTitle('Open Jarvis (⌘J)')).toBeInTheDocument();
+        expect(screen.getByTitle('Open Antigravity (⌘J)')).toBeInTheDocument();
     });
 
     it('opens panel when pill is clicked', async () => {
         const user = userEvent.setup();
         render(<OpenJarvisWidget />);
 
-        await user.click(screen.getByTitle('Open Jarvis (⌘J)'));
+        await user.click(screen.getByTitle('Open Antigravity (⌘J)'));
 
-        expect(screen.getByText('Jarvis')).toBeInTheDocument();
+        expect(screen.getByText('Antigravity')).toBeInTheDocument();
     });
 
     it('shows greeting when panel is open with no messages', async () => {
         const user = userEvent.setup();
         render(<OpenJarvisWidget />);
 
-        await user.click(screen.getByTitle('Open Jarvis (⌘J)'));
+        await user.click(screen.getByTitle('Open Antigravity (⌘J)'));
 
         // The greeting says "Good morning/afternoon/evening, Andy"
         const greetingPattern = /Good (morning|afternoon|evening), Andy/;
@@ -62,16 +62,16 @@ describe('OpenJarvisWidget', () => {
         const user = userEvent.setup();
         render(<OpenJarvisWidget />);
 
-        await user.click(screen.getByTitle('Open Jarvis (⌘J)'));
+        await user.click(screen.getByTitle('Open Antigravity (⌘J)'));
 
-        expect(screen.getByPlaceholderText(/Message Jarvis/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Ask Antigravity/i)).toBeInTheDocument();
     });
 
     it('persists panel state to localStorage', async () => {
         const user = userEvent.setup();
         render(<OpenJarvisWidget />);
 
-        await user.click(screen.getByTitle('Open Jarvis (⌘J)'));
+        await user.click(screen.getByTitle('Open Antigravity (⌘J)'));
 
         expect(localStorage.getItem('dwellium-jarvis-panel')).toBe('open');
     });
@@ -80,14 +80,14 @@ describe('OpenJarvisWidget', () => {
         localStorage.setItem('dwellium-jarvis-panel', 'open');
         render(<OpenJarvisWidget />);
 
-        // Should show the panel header (Jarvis title) rather than the pill
-        expect(screen.getByText('Jarvis')).toBeInTheDocument();
+        // Should show the panel header (Antigravity title) rather than the pill
+        expect(screen.getByText('Antigravity')).toBeInTheDocument();
     });
 
     it('shows connection status dot', async () => {
         render(<OpenJarvisWidget />);
         // Pill button contains status dot
-        const pill = screen.getByTitle('Open Jarvis (⌘J)');
+        const pill = screen.getByTitle('Open Antigravity (⌘J)');
         expect(pill.querySelector('.oj-status-dot')).toBeInTheDocument();
     });
 });

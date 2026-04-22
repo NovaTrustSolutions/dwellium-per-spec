@@ -77,7 +77,7 @@ describe('StellaAgent', () => {
         render(<StellaAgent />);
         expect(screen.getByText('💬 Chat')).toBeInTheDocument();
         expect(screen.getByText('🧩 Skills')).toBeInTheDocument();
-        expect(screen.getByText('🧠 Memory')).toBeInTheDocument();
+        expect(screen.getByText('📂 Memory')).toBeInTheDocument();
         expect(screen.getByText('🎙️ Voice')).toBeInTheDocument();
         expect(screen.getByText('⚙️ Settings')).toBeInTheDocument();
     });
@@ -143,7 +143,7 @@ describe('StellaAgent', () => {
             expect(screen.getByText(/Stella Online/)).toBeInTheDocument();
         });
 
-        await user.click(screen.getByText('🧠 Memory'));
+        await user.click(screen.getByText('📂 Memory'));
 
         await waitFor(() => {
             expect(screen.getByText(/context\.md/)).toBeInTheDocument();

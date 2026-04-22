@@ -16255,7 +16255,7 @@
     "id": "48be69c5-9cb5-4921-b8f0-d26e8c07b1a5",
     "entityType": "vendor",
     "name": "2-STORY TECHNICAL ROOFING LLC",
-    "email": "daniel@2stroofing.com",
+    "email": "vendor-contact@example.com",
     "phone": "Mobile: (555) 555-XXXX",
     "address": null,
     "metadata": {
@@ -16267,7 +16267,7 @@
       "city": "GAINESVILLE",
       "state": "GA",
       "zip": "30507",
-      "paymentType": "Check",
+      "paymentType": "Zelle",
       "send1099": "Yes",
       "workersCompExpiration": "",
       "liabilityInsuranceExpiration": "07/11/2026",
@@ -16289,7 +16289,41 @@
     "category": null,
     "licenseNumber": null,
     "licenseExpiry": null,
-    "ein": null
+    "ein": null,
+    "vendorFederalTax": {
+      "taxpayerName": "2-STORY TECHNICAL ROOFING",
+      "w9Requested": true,
+      "taxIdMasked": "XX-XXX-XXXX",
+      "taxFormAccountNumber": "T5880725740908400331",
+      "send1099": true
+    },
+    "vendorAccountingInfo": {
+      "checkConsolidation": "All bills on single check (hide extra stub detail)",
+      "checkStubBreakdown": "List each bill detail line item (expanded view)",
+      "holdPayments": false,
+      "emailECheckReceipt": true,
+      "paymentTerms": null,
+      "defaultCheckMemo": null,
+      "defaultGlAccount": null,
+      "workOrderAdjustmentPercent": 0,
+      "discount": null,
+      "onlinePayablesEnabled": false,
+      "paymentType": "Zelle",
+      "bankRoutingNumber": null,
+      "bankAccountNumber": null,
+      "savingsAccount": false
+    },
+    "vendorCompliance": {
+      "workersCompExpiration": null,
+      "generalLiabilityExpiration": "2026-07-11",
+      "epaCertificationExpiration": null,
+      "autoInsuranceExpiration": null,
+      "stateLicenseExpiration": null,
+      "contractExpiration": null,
+      "requestComplianceDocumentsCta": true
+    },
+    "paymentMethod": "Zelle",
+    "send1099": true
   },
   {
     "id": "4e38929f-8c7b-4fd2-afc7-649795de56b2",

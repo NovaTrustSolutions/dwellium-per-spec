@@ -26,17 +26,6 @@ on:
       - 'Scripts/derive_appfolio_fixtures.mjs'
       - 'Scripts/verify_no_pii_leak.mjs'
       - '.github/workflows/appfolio-parity-gate.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'packages/types/**'
-      - 'qualia-shell/src/**'
-      - 'qualia-shell/public/data/**'
-      - 'qualia-shell/src/test/appfolioParity/**'
-      - 'qualia-shell/src/components/StrataDashboard/fixtures/appfolioDerived/**'
-      - 'Scripts/derive_appfolio_fixtures.mjs'
-      - 'Scripts/verify_no_pii_leak.mjs'
-      - '.github/workflows/appfolio-parity-gate.yml'
   workflow_dispatch:
 
 concurrency:

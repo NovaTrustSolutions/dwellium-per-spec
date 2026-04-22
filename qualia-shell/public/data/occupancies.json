@@ -1,0 +1,16 @@
+[
+  {
+    "id": "2800",
+    "unitId": "1f54c72d-f59d-42fc-8ac8-f44b92c0c0a4",
+    "primaryTenantId": "38fc9223-d0c2-47f9-bd9d-9e7f10337185",
+    "otherOccupantIds": [
+      "08793d48-9690-4051-9c8c-6f99f8733af0",
+      "87c10658-7815-47c8-8991-c43f177ec562",
+      "3688ceb0-cc6e-4612-b838-f4f5d364c080"
+    ],
+    "moveInDate": "2025-09-19",
+    "moveOutDate": null,
+    "createdAt": "2026-03-05 09:30:09",
+    "updatedAt": "2026-03-05 09:30:09"
+  }
+]

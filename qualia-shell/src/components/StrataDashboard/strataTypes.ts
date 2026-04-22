@@ -48,4 +48,8 @@ export type {
     ResidentLinkage,
     ApiResponse,
     PaginatedResponse,
+    VendorPaymentMethod,
+    VendorFederalTax,
+    VendorAccountingInfo,
+    VendorCompliance,
 } from '../../../../packages/types/index';

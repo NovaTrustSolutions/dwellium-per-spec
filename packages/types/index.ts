@@ -114,6 +114,51 @@ export interface Vehicle {
     state: string | null;
 }
 
+// ─── Task 1.2: Vendor 45-field / 10-block schema ────────────────
+//
+// Captures AppFolio's Federal Tax, Accounting Information, and
+// Compliance blocks as first-class typed shapes on EntityProfile.
+// Source of truth: AppFolio_Screenshots/data/10_vendor_detail_2story_roofing.json.
+// All additions below are optional and additive — existing vendor
+// seeds without these blocks continue to typecheck unchanged.
+
+export type VendorPaymentMethod = 'Check' | 'ACH' | 'Zelle' | 'Wire' | 'Credit Card' | 'Other';
+
+export interface VendorFederalTax {
+    taxpayerName: string;
+    w9Requested: boolean;
+    taxIdMasked: string | null;
+    taxFormAccountNumber: string | null;
+    send1099: boolean;
+}
+
+export interface VendorAccountingInfo {
+    checkConsolidation: string | null;
+    checkStubBreakdown: string | null;
+    holdPayments: boolean;
+    emailECheckReceipt: boolean;
+    paymentTerms: string | null;
+    defaultCheckMemo: string | null;
+    defaultGlAccount: string | null;
+    workOrderAdjustmentPercent: number;
+    discount: number | null;
+    onlinePayablesEnabled: boolean;
+    paymentType: VendorPaymentMethod;
+    bankRoutingNumber: string | null;
+    bankAccountNumber: string | null;
+    savingsAccount: boolean;
+}
+
+export interface VendorCompliance {
+    workersCompExpiration: string | null;
+    generalLiabilityExpiration: string | null;
+    epaCertificationExpiration: string | null;
+    autoInsuranceExpiration: string | null;
+    stateLicenseExpiration: string | null;
+    contractExpiration: string | null;
+    requestComplianceDocumentsCta: boolean;
+}
+
 export interface EntityProfile {
     id: string;
     entityType: EntityType;
@@ -136,6 +181,17 @@ export interface EntityProfile {
     animals?: Animal[];
     vehicles?: Vehicle[];
     isPrimaryTenant?: boolean;
+    // ─── Task 1.2 additions (all optional; backward compatible) ───
+    // Legacy vendor compliance data historically lived loosely under
+    // metadata (coiStatus / coiExpiry / w9OnFile / insuranceCarrier).
+    // Those string-bag fields are retained on `metadata` for back-compat;
+    // the canonical typed shape below supersedes them and is scheduled
+    // to replace the metadata bag in the 2026-Q3 cleanup pass.
+    vendorFederalTax?: VendorFederalTax;
+    vendorAccountingInfo?: VendorAccountingInfo;
+    vendorCompliance?: VendorCompliance;
+    paymentMethod?: VendorPaymentMethod;
+    send1099?: boolean;
 }
 
 export interface Workitem {

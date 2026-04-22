@@ -1,8 +1,9 @@
 name: AppFolio Parity Gate
 
 # Gate for Phase 0-5 of the AppFolio parity plan.
-# Triggered on PRs touching canonical types, the Strata frontend, seed data,
-# or the appfolioParity test suite. See Docs/AppFolio_Parity_Implementation_Plan_v2.md §13.
+# Triggered on pushes to main and PRs touching canonical types, the Strata
+# frontend, seed data, or the appfolioParity test suite.
+# See Docs/AppFolio_Parity_Implementation_Plan_v2.md §13.
 
 on:
   push:

@@ -1,0 +1,25 @@
+{
+    "name": "AstraStrata Property Management",
+    "short_name": "AstraStrata",
+    "description": "AI-powered property management platform — Dwellium",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0e1a",
+    "theme_color": "#6366f1",
+    "orientation": "any",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "/assets/strata-astra-logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "business",
+        "productivity"
+    ],
+    "lang": "en",
+    "dir": "ltr"
+}

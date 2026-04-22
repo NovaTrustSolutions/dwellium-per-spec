@@ -1,0 +1,417 @@
+/* ============================================
+   DWELLIUM DESIGN SYSTEM — CSS Custom Properties
+   ============================================ */
+
+:root {
+  /* --- Typography --- */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  --fs-scale: 1;
+  --fs-xs: calc(0.6875rem * var(--fs-scale));
+  /* 11px */
+  --fs-sm: calc(0.75rem * var(--fs-scale));
+  /* 12px */
+  --fs-base: calc(0.8125rem * var(--fs-scale));
+  /* 13px */
+  --fs-md: calc(0.875rem * var(--fs-scale));
+  /* 14px */
+  --fs-lg: calc(1rem * var(--fs-scale));
+  /* 16px */
+  --fs-xl: calc(1.25rem * var(--fs-scale));
+  /* 20px */
+  --fs-2xl: calc(1.5rem * var(--fs-scale));
+  /* 24px */
+
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* --- Spacing --- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* --- Radius --- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.4);
+  --shadow-window: 0 8px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* --- Transitions --- */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Z-Index Scale --- */
+  --z-base: 1;
+  --z-sidebar: 100;
+  --z-window: 200;
+  --z-dock: 500;
+  --z-modal: 900;
+  --z-tooltip: 1000;
+
+  /* --- Brand --- */
+  --brand-blue: #0088cc;
+  --brand-orange: #f05a28;
+  --brand-blue-light: #33aaee;
+  --brand-orange-light: #ff7b4f;
+
+  /* --- Sidebar Accent (Baby Blue) --- */
+  --sidebar-accent: rgba(100, 180, 255, 0.08);
+  --sidebar-accent-hover: rgba(100, 180, 255, 0.12);
+  --sidebar-accent-border: rgba(100, 180, 255, 0.25);
+  --sidebar-accent-glow: rgba(100, 180, 255, 0.4);
+  --sidebar-group-radius: 8px;
+}
+
+/* ============================================
+   DARK THEME (Default)
+   ============================================ */
+.theme-dark {
+  --bg-desktop: #0d0f12;
+  --bg-surface: #16191f;
+  --bg-surface-elevated: #1c2028;
+  --bg-surface-hover: #22262e;
+  --bg-surface-active: #282d37;
+  --bg-glass: rgba(22, 25, 31, 0.72);
+  --bg-glass-hover: rgba(34, 38, 46, 0.82);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a8;
+  --text-tertiary: #5f6570;
+  --text-inverse: #0d0f12;
+
+  --accent: var(--brand-blue);
+  --accent-hover: var(--brand-blue-light);
+  --accent-subtle: rgba(0, 136, 204, 0.15);
+  --accent-text: #66bbee;
+
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --success: #27ae60;
+
+  --dock-bg: rgba(22, 25, 31, 0.65);
+  --sidebar-bg: rgba(22, 25, 31, 0.85);
+  --window-bg: #1a1d24;
+  --window-titlebar: #21242b;
+  --window-border: rgba(255, 255, 255, 0.08);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
+}
+
+/* ============================================
+   LIGHT THEME
+   ============================================ */
+.theme-light {
+  --bg-desktop: #e8ecf1;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f6f7f9;
+  --bg-surface-hover: #eef0f3;
+  --bg-surface-active: #e2e5ea;
+  --bg-glass: rgba(255, 255, 255, 0.72);
+  --bg-glass-hover: rgba(255, 255, 255, 0.85);
+
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.18);
+
+  --text-primary: #1a1d24;
+  --text-secondary: #5f6570;
+  --text-tertiary: #9aa0a8;
+  --text-inverse: #e8eaed;
+
+  --accent: var(--brand-blue);
+  --accent-hover: #006fa8;
+  --accent-subtle: rgba(0, 136, 204, 0.1);
+  --accent-text: #006fa8;
+
+  --danger: #d63031;
+  --warning: #e17000;
+  --success: #219653;
+
+  --dock-bg: rgba(255, 255, 255, 0.65);
+  --sidebar-bg: rgba(255, 255, 255, 0.88);
+  --window-bg: #ffffff;
+  --window-titlebar: #f6f7f9;
+  --window-border: rgba(0, 0, 0, 0.1);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.22);
+}
+
+/* ============================================
+   TRUST & PROFESSIONALISM (Finance, Enterprise)
+   Mood: Reliable, secure, established
+   ============================================ */
+.theme-trust {
+  --bg-desktop: #F8FAFC;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #F1F5F9;
+  --bg-surface-hover: #E2E8F0;
+  --bg-surface-active: #CBD5E1;
+  --bg-glass: rgba(248, 250, 252, 0.82);
+  --bg-glass-hover: rgba(241, 245, 249, 0.9);
+
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --border-default: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.2);
+
+  --text-primary: #1E293B;
+  --text-secondary: #475569;
+  --text-tertiary: #94A3B8;
+  --text-inverse: #F8FAFC;
+
+  --accent: #0369A1;
+  --accent-hover: #0284C7;
+  --accent-subtle: rgba(3, 105, 161, 0.1);
+  --accent-text: #0369A1;
+
+  --danger: #DC2626;
+  --warning: #D97706;
+  --success: #16A34A;
+
+  --dock-bg: rgba(15, 23, 42, 0.08);
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --window-bg: #ffffff;
+  --window-titlebar: #F1F5F9;
+  --window-border: rgba(15, 23, 42, 0.1);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(15, 23, 42, 0.1);
+  --scrollbar-thumb-hover: rgba(15, 23, 42, 0.2);
+}
+
+/* ============================================
+   VIBRANT & MODERN (Tech Startups, Creative Tools)
+   Mood: Innovative, energetic, forward-thinking
+   ============================================ */
+.theme-vibrant {
+  --bg-desktop: #FFFFFF;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #F5F3FF;
+  --bg-surface-hover: #EDE9FE;
+  --bg-surface-active: #DDD6FE;
+  --bg-glass: rgba(255, 255, 255, 0.82);
+  --bg-glass-hover: rgba(245, 243, 255, 0.9);
+
+  --border-subtle: rgba(99, 102, 241, 0.08);
+  --border-default: rgba(99, 102, 241, 0.15);
+  --border-strong: rgba(99, 102, 241, 0.25);
+
+  --text-primary: #1E293B;
+  --text-secondary: #475569;
+  --text-tertiary: #94A3B8;
+  --text-inverse: #ffffff;
+
+  --accent: #6366F1;
+  --accent-hover: #818CF8;
+  --accent-subtle: rgba(99, 102, 241, 0.1);
+  --accent-text: #4F46E5;
+
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --success: #10B981;
+
+  --dock-bg: rgba(99, 102, 241, 0.06);
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --window-bg: #ffffff;
+  --window-titlebar: #F5F3FF;
+  --window-border: rgba(99, 102, 241, 0.12);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(99, 102, 241, 0.12);
+  --scrollbar-thumb-hover: rgba(99, 102, 241, 0.25);
+}
+
+/* ============================================
+   LUXURY & PREMIUM (High-end Products, Fashion)
+   Mood: Sophisticated, exclusive, timeless
+   ============================================ */
+.theme-luxury {
+  --bg-desktop: #FAFAF9;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #F5F5F4;
+  --bg-surface-hover: #E7E5E4;
+  --bg-surface-active: #D6D3D1;
+  --bg-glass: rgba(250, 250, 249, 0.82);
+  --bg-glass-hover: rgba(245, 245, 244, 0.9);
+
+  --border-subtle: rgba(28, 25, 23, 0.05);
+  --border-default: rgba(28, 25, 23, 0.1);
+  --border-strong: rgba(28, 25, 23, 0.18);
+
+  --text-primary: #292524;
+  --text-secondary: #57534E;
+  --text-tertiary: #A8A29E;
+  --text-inverse: #FAFAF9;
+
+  --accent: #CA8A04;
+  --accent-hover: #EAB308;
+  --accent-subtle: rgba(202, 138, 4, 0.1);
+  --accent-text: #A16207;
+
+  --danger: #B91C1C;
+  --warning: #B45309;
+  --success: #15803D;
+
+  --dock-bg: rgba(28, 25, 23, 0.06);
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --window-bg: #ffffff;
+  --window-titlebar: #F5F5F4;
+  --window-border: rgba(28, 25, 23, 0.08);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(28, 25, 23, 0.1);
+  --scrollbar-thumb-hover: rgba(28, 25, 23, 0.2);
+}
+
+/* ============================================
+   HEALTHCARE / WELLNESS (Medical, Fitness)
+   Mood: Calm, trustworthy, clean
+   ============================================ */
+.theme-healthcare {
+  --bg-desktop: #FFFFFF;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ECFEFF;
+  --bg-surface-hover: #CFFAFE;
+  --bg-surface-active: #A5F3FC;
+  --bg-glass: rgba(255, 255, 255, 0.82);
+  --bg-glass-hover: rgba(236, 254, 255, 0.9);
+
+  --border-subtle: rgba(8, 145, 178, 0.08);
+  --border-default: rgba(8, 145, 178, 0.15);
+  --border-strong: rgba(8, 145, 178, 0.25);
+
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-tertiary: #94A3B8;
+  --text-inverse: #ffffff;
+
+  --accent: #0891B2;
+  --accent-hover: #06B6D4;
+  --accent-subtle: rgba(8, 145, 178, 0.1);
+  --accent-text: #0E7490;
+
+  --danger: #DC2626;
+  --warning: #D97706;
+  --success: #059669;
+
+  --dock-bg: rgba(8, 145, 178, 0.06);
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --window-bg: #ffffff;
+  --window-titlebar: #ECFEFF;
+  --window-border: rgba(8, 145, 178, 0.1);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(8, 145, 178, 0.12);
+  --scrollbar-thumb-hover: rgba(8, 145, 178, 0.25);
+}
+
+/* ============================================
+   CREATIVE / PLAYFUL (Consumer Apps, Entertainment)
+   Mood: Fun, approachable, energetic
+   ============================================ */
+.theme-creative {
+  --bg-desktop: #FEF3C7;
+  --bg-surface: #FFFBEB;
+  --bg-surface-elevated: #FEF9C3;
+  --bg-surface-hover: #FDE68A;
+  --bg-surface-active: #FCD34D;
+  --bg-glass: rgba(254, 243, 199, 0.82);
+  --bg-glass-hover: rgba(254, 249, 195, 0.9);
+
+  --border-subtle: rgba(236, 72, 153, 0.08);
+  --border-default: rgba(236, 72, 153, 0.15);
+  --border-strong: rgba(236, 72, 153, 0.25);
+
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-inverse: #FEF3C7;
+
+  --accent: #EC4899;
+  --accent-hover: #F472B6;
+  --accent-subtle: rgba(236, 72, 153, 0.1);
+  --accent-text: #DB2777;
+
+  --danger: #E11D48;
+  --warning: #F59E0B;
+  --success: #10B981;
+
+  --dock-bg: rgba(236, 72, 153, 0.06);
+  --sidebar-bg: rgba(255, 251, 235, 0.92);
+  --window-bg: #FFFBEB;
+  --window-titlebar: #FEF9C3;
+  --window-border: rgba(236, 72, 153, 0.12);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(236, 72, 153, 0.12);
+  --scrollbar-thumb-hover: rgba(236, 72, 153, 0.25);
+}
+
+/* ============================================
+   DARK MODE EXCELLENCE
+   Technical: 15:1 contrast ratio for text
+   ============================================ */
+.theme-dark-excellence {
+  --bg-desktop: #0A0A0A;
+  --bg-surface: #1A1A1A;
+  --bg-surface-elevated: #222222;
+  --bg-surface-hover: #2A2A2A;
+  --bg-surface-active: #333333;
+  --bg-glass: rgba(26, 26, 26, 0.82);
+  --bg-glass-hover: rgba(42, 42, 42, 0.9);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: #333333;
+  --border-strong: rgba(255, 255, 255, 0.2);
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #A3A3A3;
+  --text-tertiary: #6B6B6B;
+  --text-inverse: #0A0A0A;
+
+  --accent: #3B82F6;
+  --accent-hover: #60A5FA;
+  --accent-subtle: rgba(59, 130, 246, 0.15);
+  --accent-text: #93C5FD;
+
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --success: #10B981;
+
+  --dock-bg: rgba(26, 26, 26, 0.75);
+  --sidebar-bg: rgba(26, 26, 26, 0.92);
+  --window-bg: #1A1A1A;
+  --window-titlebar: #222222;
+  --window-border: #333333;
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+}

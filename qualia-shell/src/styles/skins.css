@@ -1,0 +1,165 @@
+/* ============================================
+   QUALIA — Skin System
+   Apply via: document.documentElement.setAttribute('data-skin', 'name')
+   ============================================ */
+
+/* ── DEFAULT (existing dark glass) ── no overrides needed */
+:root[data-skin="default"],
+:root:not([data-skin]) {
+    /* inherits from global.css */
+}
+
+/* ── MINIMAL — flat, no blur, monochrome ── */
+:root[data-skin="minimal"] {
+    --window-bg: #0e0e0e;
+    --window-border: rgba(255, 255, 255, 0.08);
+    --window-titlebar: #161616;
+    --bg-desktop: #0a0a0a;
+    --bg-surface: #111111;
+    --bg-surface-elevated: #181818;
+    --accent: #e0e0e0;
+    --accent-hover: #ffffff;
+    --text-primary: rgba(255, 255, 255, 0.92);
+    --text-secondary: rgba(255, 255, 255, 0.55);
+    --text-tertiary: rgba(255, 255, 255, 0.3);
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --radius-md: 6px;
+    --radius-lg: 8px;
+}
+
+:root[data-skin="minimal"] .window {
+    backdrop-filter: none;
+    border-radius: 6px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+:root[data-skin="minimal"] .window__titlebar {
+    background: #161616;
+}
+
+/* ── AURORA — teal/violet gradient accents ── */
+:root[data-skin="aurora"] {
+    --accent: #64ffda;
+    --accent-hover: #a0ffed;
+    --window-bg: rgba(10, 18, 30, 0.92);
+    --window-border: rgba(100, 255, 218, 0.15);
+    --window-titlebar: rgba(8, 16, 28, 0.95);
+    --bg-desktop: linear-gradient(135deg, #060b14 0%, #0d1a2e 50%, #0a0e1a 100%);
+    --bg-surface: rgba(12, 22, 40, 0.88);
+    --bg-surface-elevated: rgba(16, 28, 50, 0.92);
+    --text-primary: rgba(220, 255, 248, 0.95);
+    --text-secondary: rgba(100, 255, 218, 0.65);
+    --border-subtle: rgba(100, 255, 218, 0.08);
+}
+
+:root[data-skin="aurora"] .window:focus-within,
+:root[data-skin="aurora"] .window:active {
+    box-shadow:
+        0 20px 56px rgba(0, 20, 40, 0.8),
+        0 0 0 1px rgba(100, 255, 218, 0.4),
+        0 0 32px rgba(100, 255, 218, 0.12);
+}
+
+:root[data-skin="aurora"] .window__titlebar::before {
+    background: linear-gradient(90deg, transparent, rgba(100, 255, 218, 0.04) 50%, transparent);
+}
+
+/* ── WARM — amber/rust, warm blacks ── */
+:root[data-skin="warm"] {
+    --accent: #f59e0b;
+    --accent-hover: #fbbf24;
+    --window-bg: rgba(20, 14, 8, 0.92);
+    --window-border: rgba(245, 158, 11, 0.12);
+    --window-titlebar: rgba(18, 12, 6, 0.95);
+    --bg-desktop: #0e0906;
+    --bg-surface: rgba(24, 16, 8, 0.9);
+    --bg-surface-elevated: rgba(30, 20, 10, 0.92);
+    --text-primary: rgba(255, 240, 220, 0.96);
+    --text-secondary: rgba(245, 195, 120, 0.7);
+    --text-tertiary: rgba(200, 155, 80, 0.45);
+    --border-subtle: rgba(245, 158, 11, 0.08);
+}
+
+:root[data-skin="warm"] .window:focus-within,
+:root[data-skin="warm"] .window:active {
+    box-shadow:
+        0 20px 56px rgba(30, 10, 0, 0.7),
+        0 0 0 1px rgba(245, 158, 11, 0.4),
+        0 0 32px rgba(245, 158, 11, 0.1);
+}
+
+/* ── NEON — high-contrast cyberpunk ── */
+:root[data-skin="neon"] {
+    --accent: #ff2d78;
+    --accent-hover: #ff6fa8;
+    --window-bg: rgba(5, 2, 12, 0.95);
+    --window-border: rgba(255, 45, 120, 0.2);
+    --window-titlebar: rgba(4, 1, 10, 0.98);
+    --bg-desktop: #020008;
+    --bg-surface: rgba(8, 3, 20, 0.92);
+    --bg-surface-elevated: rgba(12, 4, 28, 0.94);
+    --text-primary: rgba(255, 230, 245, 0.98);
+    --text-secondary: rgba(255, 45, 120, 0.75);
+    --text-tertiary: rgba(200, 100, 160, 0.45);
+    --border-subtle: rgba(255, 45, 120, 0.1);
+}
+
+:root[data-skin="neon"] .window:focus-within,
+:root[data-skin="neon"] .window:active {
+    box-shadow:
+        0 20px 56px rgba(255, 45, 120, 0.2),
+        0 0 0 1px rgba(255, 45, 120, 0.5),
+        0 0 40px rgba(255, 45, 120, 0.15);
+}
+
+:root[data-skin="neon"] .window::after {
+    background: linear-gradient(90deg, transparent 5%, rgba(255, 45, 120, 0.3) 30%, rgba(255, 45, 120, 0.35) 50%, rgba(255, 45, 120, 0.3) 70%, transparent 95%);
+}
+
+/* ── Skin Switcher Widget ── */
+.skin-switcher {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+}
+
+.skin-switcher__label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+}
+
+.skin-switcher__swatches {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.skin-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.skin-swatch:hover {
+    transform: scale(1.15);
+}
+
+.skin-swatch.active {
+    border-color: var(--text-primary);
+}
+
+.skin-swatch[data-skin="default"] { background: linear-gradient(135deg, #1a2236, #0d1117); }
+.skin-swatch[data-skin="minimal"] { background: linear-gradient(135deg, #1a1a1a, #0a0a0a); }
+.skin-swatch[data-skin="aurora"]  { background: linear-gradient(135deg, #0a1e2e, #64ffda40); }
+.skin-swatch[data-skin="warm"]    { background: linear-gradient(135deg, #2a1500, #f59e0b40); }
+.skin-swatch[data-skin="neon"]    { background: linear-gradient(135deg, #0c0018, #ff2d7840); }

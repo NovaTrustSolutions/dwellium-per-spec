@@ -1,0 +1,2518 @@
+/* ============================================
+   ARA CONSOLE — Ultra-Premium Personality System
+   100 improvements: 50 UI + 50 Design per persona
+   ============================================ */
+
+/* [D1] Root glass-morphism with personality tint */
+.ara-console {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0px;
+    /* Fill parent flex container */
+    height: 0;
+    /* Force flex to constrain height */
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--window-bg, #0a0a15);
+    position: relative;
+    font-family: 'Inter', 'SF Pro Display', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    isolation: isolate;
+}
+
+/* [D2] Ambient radial gradient using persona accent */
+.ara-console::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 30% 0%, rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06) 0%, transparent 55%),
+        radial-gradient(ellipse at 70% 100%, rgba(var(--ara-accent-rgb, 56, 152, 236), 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    transition: background 0.5s ease;
+}
+
+/* [D3] Scanline texture for depth */
+.ara-console::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg,
+            transparent,
+            transparent 3px,
+            rgba(255, 255, 255, 0.003) 3px,
+            rgba(255, 255, 255, 0.003) 6px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.ara-console>* {
+    position: relative;
+    z-index: 1;
+}
+
+/* ========== MODE BAR ========== */
+/* [D4] Mode bar with frosted glass + accent bottom border */
+.ara-mode-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+    backdrop-filter: blur(16px);
+    min-height: 44px;
+    flex-shrink: 0;
+    transition: border-color 0.4s;
+    position: relative;
+    z-index: 10;
+}
+
+/* [U1] Mode selector container */
+.ara-mode-selector {
+    position: relative;
+    z-index: 50;
+}
+
+/* [D5] Trigger button with accent border glow */
+.ara-mode-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06);
+    border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.18);
+    border-radius: 12px;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit;
+    box-shadow: 0 0 0 3px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.03);
+}
+
+/* [D6] Trigger hover with accent lift */
+.ara-mode-trigger:hover {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.1);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.35);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+}
+
+/* [U2] Open state styling */
+.ara-mode-trigger--open {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.4);
+    box-shadow: 0 0 20px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+}
+
+.ara-mode-icon {
+    font-size: 17px;
+}
+
+/* [D7] Mode name with tracking */
+.ara-mode-name {
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    transition: color 0.3s;
+}
+
+/* [U3] Chevron rotation animation */
+.ara-mode-chevron {
+    font-size: 10px;
+    opacity: 0.5;
+    margin-left: 4px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ara-mode-trigger--open .ara-mode-chevron {
+    transform: rotate(180deg);
+}
+
+/* ========== DROPDOWN OVERLAY ========== */
+/* [U4] Click-outside overlay — critical for fixing click issues */
+.ara-dropdown-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(2px);
+    animation: overlayFade 0.2s ease;
+}
+
+@keyframes overlayFade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ========== DROPDOWN ========== */
+/* [D8] Dropdown with deep glass + accent shadow */
+.ara-mode-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 380px;
+    max-height: 480px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(12, 14, 22, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    box-shadow:
+        0 24px 64px rgba(0, 0, 0, 0.7),
+        0 0 40px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    z-index: 100;
+    backdrop-filter: blur(32px);
+    animation: dropdownReveal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+
+@keyframes dropdownReveal {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* [U5] Dropdown header with title + count */
+.ara-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+/* [D9] Header title with accent glow */
+.ara-dropdown-title {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--ara-accent, #3898ec);
+    text-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+}
+
+/* [U6] Count badge */
+.ara-dropdown-count {
+    font-size: 10px;
+    color: #52525b;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 2px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+}
+
+/* [U7] Scrollable dropdown list */
+.ara-dropdown-list {
+    overflow-y: auto;
+    padding: 6px;
+    flex: 1;
+}
+
+.ara-dropdown-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ara-dropdown-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ara-dropdown-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+/* [U8] Option wrapper for expand/collapse */
+.ara-mode-option-wrap {
+    margin-bottom: 2px;
+}
+
+/* [D10] Mode option with per-persona accent border */
+.ara-mode-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    border-left: 3px solid transparent;
+    color: #d1d5db;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit;
+    position: relative;
+}
+
+/* [D11] Hover with per-persona accent tint */
+.ara-mode-option:hover {
+    background: rgba(var(--opt-accent-rgb, 56, 152, 236), 0.06);
+    border-left-color: var(--opt-accent, #3898ec);
+    transform: translateX(2px);
+}
+
+/* [D12] Active option with accent glow */
+.ara-mode-option.active {
+    background: rgba(var(--opt-accent-rgb, 56, 152, 236), 0.1);
+    border-left-color: var(--opt-accent, #3898ec);
+    color: #e0e0e0;
+    box-shadow: inset 3px 0 12px -4px rgba(var(--opt-accent-rgb, 56, 152, 236), 0.2);
+}
+
+/* [D13] Option icon with glow */
+.ara-mode-option-icon {
+    font-size: 22px;
+    width: 34px;
+    text-align: center;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 6px rgba(var(--opt-accent-rgb, 56, 152, 236), 0.3));
+}
+
+/* [U9] Option info flex column */
+.ara-mode-option-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+/* [D14] Option name with weight */
+.ara-mode-option-name {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: -0.2px;
+    color: #e4e4e7;
+}
+
+/* [U10] Description with ellipsis */
+.ara-mode-option-desc {
+    font-size: 11px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* [U11] Entity guardian badge */
+.ara-entity-badge {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* [U12] Expand/info button */
+.ara-mode-option-expand {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: #52525b;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+
+.ara-mode-option-expand:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #d4d4d8;
+}
+
+/* ========== INLINE DETAIL PANEL ========== */
+/* [D15] Expandable detail with accent top-border */
+.ara-mode-detail {
+    padding: 12px 14px 14px 48px;
+    background: rgba(var(--opt-accent-rgb, 56, 152, 236), 0.03);
+    border-top: 1px solid rgba(var(--opt-accent-rgb, 56, 152, 236), 0.1);
+    border-radius: 0 0 10px 10px;
+    animation: detailReveal 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes detailReveal {
+    from {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    to {
+        opacity: 1;
+        max-height: 300px;
+    }
+}
+
+/* [D16] Lens text with accent color */
+.ara-detail-lens {
+    font-size: 12px;
+    color: var(--opt-accent, #3898ec);
+    font-style: italic;
+    margin: 0 0 10px;
+    line-height: 1.5;
+}
+
+/* [U13] Detail grid layout */
+.ara-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+/* [D17] Detail items with glass bg */
+.ara-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ara-detail-item--forbidden {
+    border-color: rgba(239, 68, 68, 0.12);
+    background: rgba(239, 68, 68, 0.03);
+}
+
+/* [D18] Detail labels */
+.ara-detail-label {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #71717a;
+}
+
+/* [U14] Detail values */
+.ara-detail-value {
+    font-size: 11px;
+    color: #a1a1aa;
+    line-height: 1.5;
+}
+
+.ara-detail-item--forbidden .ara-detail-value {
+    color: #fca5a5;
+}
+
+/* ========== MODE STATUS ========== */
+/* [U15] Status bar alignment */
+.ara-mode-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Jurisdiction toggle — visible only in Lead Counsel mode */
+.ara-jurisdiction-toggle {
+    display: flex;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    animation: dropdownReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ara-jurisdiction-btn {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    color: rgba(255, 255, 255, 0.5);
+    background: transparent;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.ara-jurisdiction-btn:hover {
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.ara-jurisdiction-btn.active {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    box-shadow:
+        0 0 12px rgba(245, 158, 11, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.ara-jurisdiction-btn.active:hover {
+    background: rgba(245, 158, 11, 0.18);
+    box-shadow:
+        0 0 16px rgba(245, 158, 11, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* [D19] Guardian indicator with animated pulse */
+.ara-guardian-indicator {
+    font-size: 11px;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.08);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    font-weight: 700;
+    animation: guardianPulse 2.5s ease infinite;
+    letter-spacing: 0.2px;
+}
+
+@keyframes guardianPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+    }
+
+    50% {
+        box-shadow: 0 0 10px rgba(251, 191, 36, 0.15);
+    }
+}
+
+/* [D20] Clear button with glass + danger hover */
+.ara-clear-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #6b7280;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ara-clear-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    transform: rotate(90deg);
+}
+
+/* ========== MODE HINT (EMPTY STATE) ========== */
+/* [D21] Hint with gradient backdrop */
+.ara-mode-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px;
+    text-align: center;
+    flex: 0 0 auto;
+    /* Don't grow — only take what's needed */
+    max-height: 35%;
+    /* Never exceed 35% of the widget */
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 40%, rgba(var(--ara-accent-rgb, 56, 152, 236), 0.04) 0%, transparent 60%);
+}
+
+/* [D22] Floating icon with bounce */
+.ara-hint-icon {
+    font-size: 54px;
+    margin-bottom: 18px;
+    animation: hintFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3));
+}
+
+@keyframes hintFloat {
+
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-10px) scale(1.05);
+    }
+}
+
+/* [D23] Title with accent gradient text */
+.ara-mode-hint h3 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    background: linear-gradient(135deg, #f4f4f5 0%, var(--ara-accent, #3898ec) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* [D24] Lens text */
+.ara-hint-lens {
+    font-size: 13px;
+    color: var(--ara-accent, #3898ec);
+    font-style: italic;
+    margin: 0 0 8px;
+    opacity: 0.8;
+}
+
+.ara-hint-best {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 0 0 16px;
+}
+
+/* [U16] Hint tags row */
+.ara-hint-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* [D25] Tag pills with glass */
+.ara-hint-tag {
+    font-size: 10px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06);
+    border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+    color: #a1a1aa;
+    font-weight: 600;
+}
+
+/* ========== CHAT AREA ========== */
+/* [U17] Chat scrollable area */
+.ara-chat-area {
+    flex: 1 1 0px;
+    height: 0;
+    /* KEY FIX: forces flex to constrain height */
+    min-height: 0;
+    overflow-y: scroll;
+    /* Always show scrollbar */
+    overflow-x: hidden;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    /* CRITICAL: flex-end breaks scrolling */
+    gap: 14px;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* [D26] Custom scrollbar — always visible */
+.ara-chat-area::-webkit-scrollbar {
+    width: 10px;
+}
+
+.ara-chat-area::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 5px;
+    margin: 4px 0;
+}
+
+.ara-chat-area::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    min-height: 40px;
+}
+
+.ara-chat-area::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.ara-chat-area::-webkit-scrollbar-thumb:active {
+    background: rgba(255, 255, 255, 0.5);
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+/* [D27] Message entry animation */
+.ara-message {
+    max-width: 88%;
+    animation: araMessageIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes araMessageIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* [U18] User message alignment */
+.ara-message--user {
+    align-self: flex-end;
+}
+
+.ara-message--assistant {
+    align-self: flex-start;
+}
+
+/* [U19] Message header row */
+.ara-message-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+}
+
+.ara-message-header--user {
+    justify-content: flex-end;
+}
+
+/* [D28] Avatar diamond with accent glow */
+.ara-avatar {
+    color: var(--ara-accent, #3898ec);
+    font-size: 13px;
+    text-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.5);
+}
+
+/* [D29] Sender label with accent */
+.ara-sender {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--ara-accent, #3898ec);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.ara-sender--user {
+    color: #71717a;
+}
+
+/* [U20] Mode icon in header */
+.ara-msg-mode {
+    font-size: 12px;
+    margin-left: 2px;
+}
+
+.ara-msg-guardian {
+    font-size: 11px;
+    margin-left: 2px;
+}
+
+/* [U21] Timestamp */
+.ara-msg-time {
+    font-size: 9px;
+    color: #3f3f46;
+    font-variant-numeric: tabular-nums;
+    margin-left: auto;
+    font-weight: 500;
+}
+
+.ara-message-header--user .ara-msg-time {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* ========== MESSAGE BUBBLES ========== */
+/* [D30] Assistant bubble with glass + inner glow */
+.ara-message-body {
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.65;
+    position: relative;
+}
+
+/* [D31] User bubble with accent gradient */
+.ara-message--user .ara-message-body {
+    background: linear-gradient(135deg,
+            rgba(var(--ara-accent-rgb, 56, 152, 236), 0.16),
+            rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06));
+    border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
+    color: #e0e0e0;
+    border-bottom-right-radius: 4px;
+}
+
+/* [D32] Assistant bubble with subtle glass */
+.ara-message--assistant .ara-message-body {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #d1d5db;
+    border-bottom-left-radius: 4px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* ========== MARKDOWN RENDERING ========== */
+/* [U22] Paragraph spacing */
+.ara-line {
+    margin: 0 0 4px;
+}
+
+/* [D33] Bold with bright white */
+.ara-line strong {
+    color: #f4f4f5;
+    font-weight: 800;
+}
+
+/* [D34] Italic with accent color */
+.ara-line em {
+    color: var(--ara-accent, #3898ec);
+    font-style: italic;
+}
+
+/* [D35] Inline code with glass bg */
+.ara-line code {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #a5b4fc;
+}
+
+/* [D36] Bullets with accent */
+.ara-bullet,
+.ara-num {
+    color: var(--ara-accent, #3898ec);
+    margin-right: 6px;
+    font-weight: 700;
+}
+
+/* [D37] H2 with accent bottom border */
+.ara-h2 {
+    font-size: 14px;
+    margin: 12px 0 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15);
+    font-weight: 800;
+    color: #e4e4e7;
+}
+
+/* [D38] H3 with accent color */
+.ara-h3 {
+    font-size: 13px;
+    margin: 8px 0 4px;
+    color: var(--ara-accent, #3898ec);
+    font-weight: 700;
+}
+
+/* ========== TYPING INDICATOR ========== */
+/* [D39] Typing dots with accent gradient */
+.ara-typing {
+    display: flex;
+    gap: 5px;
+    padding: 12px 18px;
+}
+
+.ara-typing span {
+    width: 7px;
+    height: 7px;
+    background: var(--ara-gradient, linear-gradient(135deg, #3898ec, #60a5fa));
+    border-radius: 50%;
+    animation: araTypingDot 1.4s ease infinite;
+    box-shadow: 0 0 8px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+}
+
+.ara-typing span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.ara-typing span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes araTypingDot {
+
+    0%,
+    80%,
+    100% {
+        opacity: 0.2;
+        transform: scale(0.7);
+    }
+
+    40% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+}
+
+/* ========== INPUT BAR ========== */
+/* [D40] Input bar with frosted glass */
+.ara-input-bar {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(0, 0, 0, 0.15) 100%);
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+}
+
+/* [D41] Input textarea with accent focus */
+.ara-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 11px 16px;
+    color: #e0e0e0;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    transition: all 0.25s;
+    min-height: 40px;
+    max-height: 120px;
+}
+
+/* [D42] Focus state with accent glow ring */
+.ara-input:focus {
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.4);
+    box-shadow: 0 0 0 3px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06),
+        0 0 20px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.05);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* [U23] Placeholder styling */
+.ara-input::placeholder {
+    color: #374151;
+    font-style: italic;
+}
+
+/* [D43] Send button with persona gradient */
+.ara-send-btn {
+    width: 42px;
+    height: 42px;
+    background: var(--ara-gradient, linear-gradient(135deg, #3898ec, #2563eb));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+    align-self: flex-end;
+    box-shadow: 0 4px 16px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* [D44] Send hover with lift */
+.ara-send-btn:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.06);
+    box-shadow: 0 8px 24px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.ara-send-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.97);
+}
+
+.ara-send-btn:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ========== MIC BUTTON ========== */
+/* [D45] Mic button with glass */
+.ara-mic-btn {
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #6b7280;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    align-self: flex-end;
+}
+
+/* [U24] Mic hover */
+.ara-mic-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+    color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+/* [D46] Active mic with red pulse */
+.ara-mic-btn--active {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #ef4444;
+    animation: araMicPulse 1.6s ease infinite;
+}
+
+.ara-mic-btn--active:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ef4444;
+}
+
+/* [D47] Transcribing state */
+.ara-mic-btn--transcribing {
+    background: rgba(251, 191, 36, 0.08);
+    border-color: rgba(251, 191, 36, 0.25);
+    color: #fbbf24;
+    animation: none;
+}
+
+.ara-mic-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+@keyframes araMicPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+
+    50% {
+        box-shadow: 0 0 20px 4px rgba(239, 68, 68, 0.2);
+    }
+}
+
+/* ========== ADDITIONAL 50 DESIGN ENHANCEMENTS ========== */
+
+/* [D48] Message hover glow */
+.ara-message:hover .ara-message-body {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* [D49] Loading message shimmer */
+.ara-message--loading .ara-message-body {
+    background: linear-gradient(90deg,
+            rgba(255, 255, 255, 0.02) 0%,
+            rgba(255, 255, 255, 0.04) 50%,
+            rgba(255, 255, 255, 0.02) 100%);
+    background-size: 200% 100%;
+    animation: shimmerBg 2s linear infinite;
+}
+
+@keyframes shimmerBg {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* [D50] User message gradient transition on hover */
+.ara-message--user:hover .ara-message-body {
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+}
+
+/* [U25] Smooth transition on all interactive elements */
+.ara-console button {
+    font-family: inherit;
+}
+
+/* [U26] Active state for mode options */
+.ara-mode-option:active {
+    transform: scale(0.98);
+}
+
+/* [U27] Focus visible for accessibility */
+.ara-mode-option:focus-visible,
+.ara-send-btn:focus-visible,
+.ara-mic-btn:focus-visible,
+.ara-clear-btn:focus-visible {
+    outline: 2px solid var(--ara-accent, #3898ec);
+    outline-offset: 2px;
+}
+
+/* [U28] Textarea auto-grow hint */
+.ara-input:not(:empty) {
+    min-height: 44px;
+}
+
+/* [U29] Chat area empty state optimization */
+.ara-chat-area:empty::before {
+    content: '';
+    display: block;
+    height: 100%;
+}
+
+/* [U30] Smooth persona transition */
+.ara-mode-bar,
+.ara-input-bar {
+    transition: border-color 0.4s ease;
+}
+
+/* [U31] Dropdown item last-child spacing */
+.ara-mode-option-wrap:last-child {
+    margin-bottom: 0;
+}
+
+/* [U32] Better touch targets on mobile */
+@media (max-width: 480px) {
+    .ara-mode-option {
+        padding: 14px 16px;
+    }
+
+    .ara-mode-option-expand {
+        width: 32px;
+        height: 32px;
+    }
+
+    .ara-mic-btn,
+    .ara-send-btn {
+        width: 48px;
+        height: 48px;
+    }
+}
+
+/* [U33] Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .ara-message {
+        animation: none;
+    }
+
+    .ara-hint-icon {
+        animation: none;
+    }
+
+    .ara-guardian-indicator {
+        animation: none;
+    }
+
+    .ara-mode-dropdown {
+        animation: none;
+    }
+
+    .ara-typing span {
+        animation: none;
+        opacity: 0.5;
+    }
+}
+
+/* [U34] Print styles */
+@media print {
+
+    .ara-mode-bar,
+    .ara-input-bar,
+    .ara-mode-hint {
+        display: none;
+    }
+
+    .ara-chat-area {
+        overflow: visible;
+    }
+
+    .ara-message {
+        max-width: 100%;
+    }
+}
+
+/* [U35] Selection color with accent */
+.ara-console ::selection {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
+    color: white;
+}
+
+/* [U36] Smooth font rendering */
+.ara-console * {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* [U37] Message body code block overflow */
+.ara-message-body code {
+    word-break: break-word;
+}
+
+/* [U38] Dropdown maxed height indicator */
+.ara-dropdown-list {
+    scrollbar-gutter: stable;
+}
+
+/* [U39] Input bar shadow separator */
+.ara-input-bar {
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* [U40] Mode hint responsive */
+@media (max-width: 360px) {
+    .ara-mode-hint {
+        padding: 32px 16px;
+    }
+
+    .ara-hint-icon {
+        font-size: 40px;
+    }
+
+    .ara-mode-hint h3 {
+        font-size: 16px;
+    }
+}
+
+/* [U41] Dropdown list gap */
+.ara-mode-option-wrap+.ara-mode-option-wrap {
+    margin-top: 1px;
+}
+
+/* [U42] Better option icon centering */
+.ara-mode-option-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+}
+
+/* [U43] Message body image handling */
+.ara-message-body img {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+/* [U44] Chat area — flex-start is REQUIRED for scrolling.
+   Bottom-alignment for sparse chats is handled by margin-top: auto
+   on .ara-chat-area>*:first-child (U48). DO NOT use flex-end here. */
+
+/* [U45] Mode option active check indicator */
+.ara-mode-option.active::after {
+    content: '✓';
+    font-size: 12px;
+    color: var(--opt-accent, #3898ec);
+    margin-left: 6px;
+    font-weight: 800;
+}
+
+/* [U46] Input resize handle hidden */
+.ara-input::-webkit-resizer {
+    display: none;
+}
+
+/* [U47] Dropdown spring origin */
+.ara-mode-dropdown {
+    transform-origin: top left;
+}
+
+/* [U48] Empty chat push messages to bottom */
+.ara-chat-area>*:first-child {
+    margin-top: auto;
+}
+
+/* [U49] Hover cursor on clickable elements */
+.ara-mode-option,
+.ara-mode-trigger,
+.ara-mode-option-expand {
+    cursor: pointer;
+}
+
+/* [U50] Focus trap inside dropdown */
+.ara-mode-dropdown:focus-within {
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
+}
+
+/* ========== TTS BUTTONS ========== */
+
+/* TTS toggle in input bar (matches mic button sizing) */
+.ara-tts-btn {
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #6b7280;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    align-self: flex-end;
+}
+
+.ara-tts-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+    color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+/* TTS enabled state — accent glow */
+.ara-tts-btn--on {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.1);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+    color: var(--ara-accent, #3898ec);
+    box-shadow: 0 0 12px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+}
+
+.ara-tts-btn--on:hover {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.45);
+    box-shadow: 0 0 20px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.18);
+}
+
+/* Mute button — appears while ARA is speaking */
+.ara-mute-btn {
+    width: 42px;
+    height: 42px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 12px;
+    color: #ef4444;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    align-self: flex-end;
+    animation: araMutePulse 1.6s ease infinite;
+}
+
+.ara-mute-btn:hover {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.55);
+    transform: translateY(-1px);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.2);
+}
+
+@keyframes araMutePulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+
+    50% {
+        box-shadow: 0 0 12px 2px rgba(239, 68, 68, 0.15);
+    }
+}
+
+/* Per-message speaker button */
+.ara-speak-btn {
+    background: none;
+    border: none;
+    color: #3f3f46;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    margin-left: 2px;
+    opacity: 0;
+}
+
+.ara-message--assistant:hover .ara-speak-btn {
+    opacity: 1;
+}
+
+.ara-speak-btn:hover {
+    color: var(--ara-accent, #3898ec);
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
+}
+
+.ara-speak-btn--active {
+    opacity: 1;
+    color: var(--ara-accent, #3898ec);
+    animation: araSpeakPulse 1.5s ease infinite;
+}
+
+@keyframes araSpeakPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ========== VOICE SETTINGS PANEL ========== */
+
+/* Gear button (matches TTS button sizing) */
+.ara-voice-settings-btn {
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #6b7280;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    align-self: flex-end;
+}
+
+.ara-voice-settings-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+    color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+.ara-voice-settings-btn--active {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.1);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+    color: var(--ara-accent, #3898ec);
+    box-shadow: 0 0 12px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+}
+
+/* Panel — slides up from bottom */
+.ara-voice-panel {
+    position: absolute;
+    bottom: 64px;
+    left: 12px;
+    right: 12px;
+    background: rgba(12, 14, 22, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    box-shadow:
+        0 -16px 48px rgba(0, 0, 0, 0.6),
+        0 0 30px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(32px);
+    z-index: 50;
+    padding: 0;
+    animation: voicePanelReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+@keyframes voicePanelReveal {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ara-voice-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ara-voice-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ara-voice-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+/* Panel header */
+.ara-voice-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    position: sticky;
+    top: 0;
+    background: rgba(12, 14, 22, 0.98);
+    z-index: 2;
+    border-radius: 18px 18px 0 0;
+}
+
+.ara-voice-panel-header h4 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: #e4e4e7;
+    letter-spacing: -0.2px;
+}
+
+.ara-voice-panel-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: #6b7280;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.ara-voice-panel-close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Provider status bar */
+.ara-voice-provider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ara-voice-provider-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.ara-voice-provider-label {
+    font-size: 11px;
+    color: #a1a1aa;
+    font-weight: 600;
+}
+
+/* Voice sections */
+.ara-voice-section {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ara-voice-section:last-child {
+    border-bottom: none;
+}
+
+.ara-voice-section h5 {
+    margin: 0 0 10px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--ara-accent, #3898ec);
+}
+
+/* Voice list */
+.ara-voice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ara-voice-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.ara-voice-item--active {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06);
+}
+
+.ara-voice-item-select {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    color: #d1d5db;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    text-align: left;
+    transition: all 0.2s;
+    border-radius: 10px;
+}
+
+.ara-voice-item-select:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.ara-voice-item-radio {
+    font-size: 14px;
+    color: var(--ara-accent, #3898ec);
+}
+
+.ara-voice-item-name {
+    font-weight: 600;
+}
+
+.ara-voice-item-delete {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #52525b;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.ara-voice-item-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Clone form */
+.ara-voice-hint {
+    font-size: 11px;
+    color: #6b7280;
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+
+.ara-voice-clone-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ara-voice-name-input {
+    width: 100%;
+    padding: 9px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #e0e0e0;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.ara-voice-name-input:focus {
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.4);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 3px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06);
+}
+
+.ara-voice-name-input::placeholder {
+    color: #52525b;
+}
+
+/* Dropzone */
+.ara-voice-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    border: 2px dashed rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
+    border-radius: 14px;
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.02);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 6px;
+}
+
+.ara-voice-dropzone:hover {
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.4);
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.05);
+    transform: translateY(-1px);
+}
+
+.ara-voice-dropzone--drag {
+    border-color: var(--ara-accent, #3898ec);
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
+    box-shadow: 0 0 24px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+    transform: scale(1.02);
+}
+
+.ara-voice-drop-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.ara-voice-drop-text {
+    font-size: 12px;
+    color: #a1a1aa;
+    font-weight: 600;
+}
+
+.ara-voice-drop-sub {
+    font-size: 10px;
+    color: #52525b;
+}
+
+/* Upload spinner */
+.ara-voice-uploading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ara-accent, #3898ec);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ara-voice-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
+    border-top-color: var(--ara-accent, #3898ec);
+    border-radius: 50%;
+    animation: araVoiceSpin 0.8s linear infinite;
+}
+
+@keyframes araVoiceSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ========== MALE / FEMALE VOICE TOGGLE ========== */
+
+.ara-gender-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 42px;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    align-self: flex-end;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit;
+}
+
+.ara-gender-toggle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
+    transform: translateY(-1px);
+}
+
+.ara-gender-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #52525b;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ara-gender-option--active {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15);
+    color: var(--ara-accent, #3898ec);
+    box-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15);
+}
+
+/* ============================================
+   PREMIUM UI POLISH — 5 Enhancements
+   ============================================ */
+
+/* [P1] Send button gradient shimmer on hover */
+.ara-input-send:hover {
+    background: linear-gradient(135deg, var(--ara-accent, #3898ec), color-mix(in srgb, var(--ara-accent, #3898ec) 70%, #c084fc)) !important;
+    box-shadow: 0 4px 20px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px) scale(1.05);
+}
+
+/* [P2] Message bubble glassmorphism with inner glow */
+.ara-message--assistant .ara-message-body {
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* [P3] Typing indicator enhanced animation */
+.ara-typing-dot {
+    animation: araTypingBounce 1.4s ease-in-out infinite !important;
+}
+
+.ara-typing-dot:nth-child(2) {
+    animation-delay: 0.16s !important;
+}
+
+.ara-typing-dot:nth-child(3) {
+    animation-delay: 0.32s !important;
+}
+
+@keyframes araTypingBounce {
+
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+
+    30% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}
+
+/* [P4] Mode selector pill with accent gradient ring */
+.ara-mode-trigger {
+    background-image: linear-gradient(var(--window-bg, #0a0a15), var(--window-bg, #0a0a15)), linear-gradient(135deg, rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3), rgba(192, 132, 252, 0.2));
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+/* [P5] Input focus expanding glow ring */
+.ara-input-field:focus {
+    box-shadow: 0 0 0 3px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15), 0 0 20px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08) !important;
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.4) !important;
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
+}
+
+/* ========== AI AVATAR (ANAM) ========== */
+
+/* Avatar toggle button in input bar */
+.ara-avatar-btn {
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #6b7280;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    align-self: flex-end;
+}
+
+.ara-avatar-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(168, 85, 247, 0.3);
+    color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+.ara-avatar-btn--active {
+    background: rgba(168, 85, 247, 0.12);
+    border-color: rgba(168, 85, 247, 0.35);
+    color: #a855f7;
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.15);
+    animation: araAvatarPulse 2.5s ease infinite;
+}
+
+.ara-avatar-btn--active:hover {
+    background: rgba(168, 85, 247, 0.18);
+    border-color: rgba(168, 85, 247, 0.5);
+    box-shadow: 0 0 22px rgba(168, 85, 247, 0.22);
+}
+
+@keyframes araAvatarPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 14px rgba(168, 85, 247, 0.15);
+    }
+
+    50% {
+        box-shadow: 0 0 22px rgba(168, 85, 247, 0.25);
+    }
+}
+
+/* Avatar panel — slides up from bottom */
+.ara-avatar-panel {
+    position: absolute;
+    bottom: 64px;
+    left: 12px;
+    right: 12px;
+    background: rgba(8, 10, 18, 0.98);
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: 18px;
+    box-shadow:
+        0 -16px 48px rgba(0, 0, 0, 0.6),
+        0 0 40px rgba(168, 85, 247, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(32px);
+    z-index: 55;
+    overflow: hidden;
+    animation: avatarPanelReveal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes avatarPanelReveal {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ara-avatar-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(168, 85, 247, 0.1);
+    background: rgba(168, 85, 247, 0.04);
+}
+
+.ara-avatar-panel-header h4 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: #e4e4e7;
+    letter-spacing: -0.2px;
+    flex: 1;
+}
+
+.ara-avatar-badge {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 6px;
+    padding: 3px 8px;
+}
+
+.ara-avatar-panel-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: #6b7280;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.ara-avatar-panel-close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Status indicator */
+.ara-avatar-status {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-left: auto;
+}
+
+.ara-avatar-status--connecting {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    animation: araAvatarBlink 1.5s ease infinite;
+}
+
+.ara-avatar-status--connected {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.ara-avatar-status--error {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.ara-avatar-status--idle {
+    color: #6b7280;
+    background: rgba(107, 114, 128, 0.1);
+}
+
+@keyframes araAvatarBlink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Video element */
+.ara-avatar-video-wrap {
+    width: 100%;
+    height: 360px;
+    position: relative;
+    background: #000;
+    border-radius: 0 0 18px 18px;
+    overflow: hidden;
+}
+
+.ara-avatar-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 0 0 18px 18px;
+}
+
+/* Error state */
+.ara-avatar-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 32px 24px;
+    text-align: center;
+    gap: 12px;
+}
+
+.ara-avatar-error-icon {
+    font-size: 36px;
+}
+
+.ara-avatar-error p {
+    margin: 0;
+    font-size: 13px;
+    color: #a1a1aa;
+    line-height: 1.6;
+}
+
+.ara-avatar-error code {
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #c084fc;
+}
+
+.ara-avatar-error-hint {
+    font-size: 11px !important;
+    color: #52525b !important;
+}
+
+/* Connecting spinner overlay */
+.ara-avatar-connecting {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    color: #a855f7;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.ara-avatar-connecting-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(168, 85, 247, 0.2);
+    border-top-color: #a855f7;
+    border-radius: 50%;
+    animation: araVoiceSpin 0.8s linear infinite;
+}
+
+/* ========== AVATAR PASSWORD MODAL ========== */
+
+.ara-avatar-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: avatarModalFadeIn 0.2s ease;
+}
+
+@keyframes avatarModalFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.ara-avatar-modal {
+    width: 340px;
+    max-width: calc(100% - 48px);
+    background: rgba(16, 18, 28, 0.98);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 20px;
+    box-shadow:
+        0 24px 64px rgba(0, 0, 0, 0.6),
+        0 0 48px rgba(168, 85, 247, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    padding: 28px 24px 22px;
+    animation: avatarModalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes avatarModalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.92) translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.ara-avatar-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.ara-avatar-modal-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.ara-avatar-modal-header h4 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    color: #f4f4f5;
+    letter-spacing: -0.3px;
+}
+
+.ara-avatar-modal-desc {
+    font-size: 12px;
+    color: #71717a;
+    line-height: 1.6;
+    margin: 0 0 18px;
+}
+
+.ara-avatar-modal-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: #e4e4e7;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+    letter-spacing: 2px;
+}
+
+.ara-avatar-modal-input:focus {
+    border-color: rgba(168, 85, 247, 0.45);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.08);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.ara-avatar-modal-input--error {
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08) !important;
+    animation: avatarShake 0.4s ease;
+}
+
+@keyframes avatarShake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-6px);
+    }
+
+    40% {
+        transform: translateX(5px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(3px);
+    }
+}
+
+.ara-avatar-modal-input::placeholder {
+    color: #52525b;
+    letter-spacing: 0;
+}
+
+.ara-avatar-modal-error {
+    display: block;
+    font-size: 11px;
+    color: #ef4444;
+    margin-top: 8px;
+    font-weight: 600;
+}
+
+.ara-avatar-modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+.ara-avatar-modal-cancel {
+    padding: 9px 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.ara-avatar-modal-cancel:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #d1d5db;
+}
+
+.ara-avatar-modal-submit {
+    padding: 9px 22px;
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.25);
+}
+
+.ara-avatar-modal-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(168, 85, 247, 0.35);
+    filter: brightness(1.1);
+}
+
+/* ========== RESPONSE META / ACTIONS ========== */
+.ara-message-meta {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ara-message-meta-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.ara-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.ara-meta-toggle {
+    background: transparent;
+    border: none;
+    color: var(--ara-accent, #3898ec);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.ara-message-meta-detail {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ara-meta-block strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #f8fafc;
+    font-size: 12px;
+}
+
+.ara-meta-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.ara-meta-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) auto;
+    gap: 8px;
+    color: #cbd5e1;
+    font-size: 12px;
+}
+
+.ara-meta-list li span:last-child {
+    color: #94a3b8;
+    text-align: right;
+}
+
+.ara-actions-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.ara-actions-header,
+.ara-actions-row,
+.ara-action-form-actions,
+.ara-observability-last {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ara-actions-header span {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+    letter-spacing: 0.02em;
+}
+
+.ara-actions-toggle,
+.ara-action-btn,
+.ara-avatar-reconnect-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.22);
+    border-radius: 10px;
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
+    color: #e2e8f0;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ara-actions-toggle:hover,
+.ara-action-btn:hover,
+.ara-avatar-reconnect-btn:hover {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.14);
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.32);
+}
+
+.ara-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.ara-action-btn--secondary {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ara-action-form {
+    display: grid;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(10, 14, 25, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ara-action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+}
+
+.ara-action-field {
+    display: grid;
+    gap: 6px;
+    color: #cbd5e1;
+    font-size: 12px;
+}
+
+.ara-action-field span {
+    font-weight: 600;
+}
+
+.ara-action-field input,
+.ara-action-field select {
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #f8fafc;
+    padding: 9px 11px;
+    outline: none;
+}
+
+.ara-action-field input:focus,
+.ara-action-field select:focus {
+    border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.35);
+    box-shadow: 0 0 0 3px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
+}
+
+.ara-action-feedback {
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ara-action-feedback--success {
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    color: #86efac;
+}
+
+.ara-action-feedback--error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+.ara-action-feedback--warning {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+}
+
+.ara-action-feedback--context {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
+    border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
+    color: #bfdbfe;
+}
+
+.ara-observability {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ara-observability-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.ara-observability-card {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ara-observability-card span,
+.ara-observability-last {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.ara-observability-card strong,
+.ara-observability-last strong {
+    color: #f8fafc;
+}
+
+.ara-observability-failure {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.16);
+    color: #fecaca;
+    font-size: 11px;
+}
+
+.ara-observability-failure strong {
+    color: #fff1f2;
+}
+
+.ara-voice-fallbacks {
+    margin-top: 8px;
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1.5;
+}

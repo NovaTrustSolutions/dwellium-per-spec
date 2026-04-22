@@ -1,0 +1,2383 @@
+/* ========================================
+   STRATA DASHBOARD — Scoped Styles
+   All styles scoped under .strata-dashboard
+   ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+.strata-dashboard {
+    /* -- Base Colors (default = dark) -- */
+    --s-bg-primary: var(--bg-desktop, #0a0e1a);
+    --s-bg-secondary: var(--bg-surface, #0f1424);
+    --s-bg-tertiary: var(--bg-surface-elevated, #151b2e);
+    --s-bg-elevated: var(--bg-surface-hover, #1a2138);
+    --s-bg-surface: var(--bg-surface-active, #1e2642);
+    --s-bg-hover: var(--bg-surface-hover, #242d4a);
+
+    /* -- Glass -- */
+    --s-glass-bg: var(--bg-glass, rgba(22, 30, 56, 0.65));
+    --s-glass-bg-strong: var(--bg-glass-hover, rgba(22, 30, 56, 0.85));
+    --s-glass-border: var(--border-default, rgba(99, 130, 255, 0.12));
+    --s-glass-border-hover: var(--border-strong, rgba(99, 130, 255, 0.25));
+    --s-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --s-glass-blur: blur(16px);
+
+    /* -- Accent Colors — inherit from global accent -- */
+    --s-accent-primary: var(--accent, #6366f1);
+    --s-accent-primary-hover: var(--accent-hover, #818cf8);
+    --s-accent-primary-glow: rgba(99, 102, 241, 0.3);
+    --s-accent-gradient: linear-gradient(135deg, var(--accent, #6366f1), #3b82f6, #06b6d4);
+
+    /* -- Semantic Colors -- */
+    --s-success: var(--success, #10b981);
+    --s-success-bg: rgba(16, 185, 129, 0.12);
+    --s-success-border: rgba(16, 185, 129, 0.25);
+    --s-warning: var(--warning, #f59e0b);
+    --s-warning-bg: rgba(245, 158, 11, 0.12);
+    --s-warning-border: rgba(245, 158, 11, 0.25);
+    --s-danger: var(--danger, #ef4444);
+    --s-danger-bg: rgba(239, 68, 68, 0.12);
+    --s-danger-border: rgba(239, 68, 68, 0.25);
+    --s-info: #06b6d4;
+    --s-info-bg: rgba(6, 182, 212, 0.12);
+    --s-info-border: rgba(6, 182, 212, 0.25);
+
+    /* -- Text — inherit from global theme -- */
+    --s-text-primary: var(--text-primary, #f1f5f9);
+    --s-text-secondary: var(--text-secondary, #94a3b8);
+    --s-text-tertiary: var(--text-tertiary, #64748b);
+    --s-text-accent: var(--accent-text, #a5b4fc);
+
+    /* -- Typography — use global font stack -- */
+    --s-font-sans: var(--font-primary, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    --s-font-mono: var(--font-mono, 'JetBrains Mono', 'Fira Code', monospace);
+    --s-font-primary: var(--font-primary, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+
+    /* -- Spacing -- */
+    --s-space-1: 0.25rem;
+    --s-space-2: 0.5rem;
+    --s-space-3: 0.75rem;
+    --s-space-4: 1rem;
+    --s-space-5: 1.25rem;
+    --s-space-6: 1.5rem;
+    --s-space-8: 2rem;
+
+    /* -- Border Radius -- */
+    --s-radius-sm: 6px;
+    --s-radius-md: 10px;
+    --s-radius-lg: 14px;
+    --s-radius-xl: 20px;
+    --s-radius-full: 9999px;
+
+    /* -- Shadows -- */
+    --s-shadow-glow: 0 0 24px var(--s-accent-primary-glow);
+
+    /* -- Hardcoded RGBA helpers (theme-aware, dark default) -- */
+    --s-separator: rgba(255, 255, 255, 0.04);
+    --s-row-hover: rgba(99, 130, 255, 0.04);
+    --s-row-border: rgba(99, 130, 255, 0.06);
+
+    /* -- Transitions -- */
+    --s-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --s-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    font-family: var(--s-font-sans);
+    color: var(--s-text-primary);
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 100%;
+    padding: var(--s-space-6);
+    background: var(--s-bg-primary);
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.35s ease, color 0.35s ease;
+}
+
+/* ═══════════════════════════════════════════
+   LIGHT THEME OVERRIDES
+   Applies to: light, trust, vibrant, luxury,
+               healthcare, creative
+   ═══════════════════════════════════════════ */
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .strata-dashboard {
+    --s-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    --s-accent-primary-glow: rgba(99, 102, 241, 0.15);
+    --s-success-bg: rgba(16, 185, 129, 0.08);
+    --s-warning-bg: rgba(245, 158, 11, 0.08);
+    --s-danger-bg: rgba(239, 68, 68, 0.08);
+    --s-info-bg: rgba(6, 182, 212, 0.08);
+    --s-separator: rgba(0, 0, 0, 0.06);
+    --s-row-hover: rgba(0, 0, 0, 0.03);
+    --s-row-border: rgba(0, 0, 0, 0.06);
+}
+
+/* ---------- Dashboard Layout ---------- */
+.strata-dashboard .s-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-space-6);
+}
+
+/* ---------- Header ---------- */
+.strata-dashboard .s-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--s-space-2);
+}
+
+.strata-dashboard .s-header__title {
+    font-size: 1.625rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: var(--s-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.strata-dashboard .s-header__subtitle {
+    color: var(--s-text-tertiary);
+    font-size: 0.8125rem;
+    margin-top: var(--s-space-1);
+}
+
+/* ---------- KPI Grid ---------- */
+.strata-dashboard .s-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--s-space-5);
+}
+
+/* ---------- Glass Card ---------- */
+.strata-dashboard .s-glass-card {
+    background: var(--s-glass-bg);
+    backdrop-filter: var(--s-glass-blur);
+    -webkit-backdrop-filter: var(--s-glass-blur);
+    border: 1px solid var(--s-glass-border);
+    border-radius: var(--s-radius-lg);
+    padding: var(--s-space-6);
+    transition: all var(--s-transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.strata-dashboard .s-glass-card:hover {
+    border-color: var(--s-glass-border-hover);
+    box-shadow: var(--s-glass-shadow);
+    transform: translateY(-2px);
+}
+
+.strata-dashboard .s-glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--s-glass-border-hover), transparent);
+    opacity: 0;
+    transition: opacity var(--s-transition-normal);
+}
+
+.strata-dashboard .s-glass-card:hover::before {
+    opacity: 1;
+}
+
+/* ---------- KPI Card ---------- */
+.strata-dashboard .s-kpi-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-space-3);
+}
+
+.strata-dashboard .s-kpi-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.strata-dashboard .s-kpi-card-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--s-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.strata-dashboard .s-kpi-card-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.strata-dashboard .s-kpi-card-icon.blue {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--s-accent-primary);
+}
+
+.strata-dashboard .s-kpi-card-icon.green {
+    background: var(--s-success-bg);
+    color: var(--s-success);
+}
+
+.strata-dashboard .s-kpi-card-icon.amber {
+    background: var(--s-warning-bg);
+    color: var(--s-warning);
+}
+
+.strata-dashboard .s-kpi-card-icon.red {
+    background: var(--s-danger-bg);
+    color: var(--s-danger);
+}
+
+.strata-dashboard .s-kpi-trend {
+    display: flex;
+    align-items: center;
+    gap: var(--s-space-1);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--s-radius-full);
+}
+
+.strata-dashboard .s-kpi-trend.up {
+    color: var(--s-success);
+    background: var(--s-success-bg);
+}
+
+.strata-dashboard .s-kpi-trend.down {
+    color: var(--s-danger);
+    background: var(--s-danger-bg);
+}
+
+.strata-dashboard .s-kpi-trend svg {
+    width: 12px;
+    height: 12px;
+}
+
+.strata-dashboard .s-kpi-card-value {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+}
+
+.strata-dashboard .s-kpi-card-label {
+    font-size: 0.8125rem;
+    color: var(--s-text-secondary);
+    font-weight: 500;
+}
+
+.strata-dashboard .s-kpi-card-sub {
+    font-size: 0.6875rem;
+    color: var(--s-text-tertiary);
+    margin-top: var(--s-space-1);
+}
+
+/* ---------- Charts Grid ---------- */
+.strata-dashboard .s-charts-grid {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: var(--s-space-5);
+}
+
+.strata-dashboard .s-chart-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-space-4);
+}
+
+.strata-dashboard .s-chart-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.strata-dashboard .s-chart-card-header h3 {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.strata-dashboard .s-chart-tabs {
+    display: flex;
+    gap: var(--s-space-1);
+    background: var(--s-bg-tertiary);
+    padding: 3px;
+    border-radius: var(--s-radius-md);
+}
+
+.strata-dashboard .s-chart-tab {
+    padding: var(--s-space-1) var(--s-space-3);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    border-radius: var(--s-radius-sm);
+    color: var(--s-text-tertiary);
+    transition: all var(--s-transition-fast);
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: inherit;
+}
+
+.strata-dashboard .s-chart-tab:hover {
+    color: var(--s-text-secondary);
+}
+
+.strata-dashboard .s-chart-tab.active {
+    background: var(--s-accent-primary);
+    color: white;
+}
+
+.strata-dashboard .s-chart-container {
+    width: 100%;
+    height: 280px;
+}
+
+/* ---------- Bottom Grid ---------- */
+.strata-dashboard .s-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--s-space-5);
+}
+
+/* ---------- Activity Feed ---------- */
+.strata-dashboard .s-activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-space-1);
+}
+
+.strata-dashboard .s-activity-feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--s-space-2);
+}
+
+.strata-dashboard .s-activity-feed-header h3 {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.strata-dashboard .s-activity-feed-header a {
+    font-size: 0.6875rem;
+    color: var(--s-accent-primary);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.strata-dashboard .s-activity-feed-header a:hover {
+    color: var(--s-accent-primary-hover);
+}
+
+.strata-dashboard .s-activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s-space-3);
+    padding: var(--s-space-3) 0;
+    border-bottom: 1px solid var(--s-separator);
+}
+
+.strata-dashboard .s-activity-item:last-child {
+    border-bottom: none;
+}
+
+.strata-dashboard .s-activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--s-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.strata-dashboard .s-activity-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.strata-dashboard .s-activity-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.strata-dashboard .s-activity-content p {
+    font-size: 0.8125rem;
+    color: var(--s-text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.strata-dashboard .s-activity-content p strong {
+    color: var(--s-text-primary);
+    font-weight: 600;
+}
+
+.strata-dashboard .s-activity-time {
+    font-size: 0.6875rem;
+    color: var(--s-text-tertiary);
+    margin-top: 2px;
+    display: block;
+}
+
+/* ---------- Upcoming Events ---------- */
+.strata-dashboard .s-upcoming-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-space-2);
+}
+
+.strata-dashboard .s-upcoming-item {
+    display: flex;
+    align-items: center;
+    gap: var(--s-space-3);
+    padding: var(--s-space-3);
+    border-radius: var(--s-radius-md);
+    background: var(--s-bg-tertiary);
+    transition: all var(--s-transition-fast);
+}
+
+.strata-dashboard .s-upcoming-item:hover {
+    background: var(--s-bg-hover);
+}
+
+.strata-dashboard .s-upcoming-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 42px;
+    padding: var(--s-space-1);
+    border-radius: var(--s-radius-sm);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.strata-dashboard .s-upcoming-date .month {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--s-accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.strata-dashboard .s-upcoming-date .day {
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: var(--s-text-primary);
+    line-height: 1;
+}
+
+.strata-dashboard .s-upcoming-info {
+    flex: 1;
+}
+
+.strata-dashboard .s-upcoming-info h4 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.strata-dashboard .s-upcoming-info span {
+    font-size: 0.6875rem;
+    color: var(--s-text-tertiary);
+}
+
+.strata-dashboard .s-upcoming-badge {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: var(--s-radius-full);
+}
+
+.strata-dashboard .s-upcoming-badge.lease {
+    background: var(--s-info-bg);
+    color: var(--s-info);
+    border: 1px solid var(--s-info-border);
+}
+
+.strata-dashboard .s-upcoming-badge.maintenance {
+    background: var(--s-warning-bg);
+    color: var(--s-warning);
+    border: 1px solid var(--s-warning-border);
+}
+
+.strata-dashboard .s-upcoming-badge.inspection {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--s-accent-primary-hover);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.strata-dashboard .s-upcoming-badge.payment {
+    background: var(--s-success-bg);
+    color: var(--s-success);
+    border: 1px solid var(--s-success-border);
+}
+
+/* ---------- Quick Actions ---------- */
+.strata-dashboard .s-quick-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-space-3);
+}
+
+.strata-dashboard .s-quick-action-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--s-space-3);
+    padding: var(--s-space-4);
+    border-radius: var(--s-radius-md);
+    background: var(--s-bg-tertiary);
+    border: 1px solid transparent;
+    transition: all var(--s-transition-fast);
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+}
+
+.strata-dashboard .s-quick-action-btn:hover {
+    background: var(--s-bg-hover);
+    border-color: var(--s-glass-border-hover);
+    transform: translateY(-1px);
+}
+
+.strata-dashboard .s-qa-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--s-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.strata-dashboard .s-qa-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.strata-dashboard .s-qa-text {
+    text-align: left;
+}
+
+.strata-dashboard .s-qa-text h4 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.strata-dashboard .s-qa-text span {
+    font-size: 0.6875rem;
+    color: var(--s-text-tertiary);
+}
+
+/* ---------- Animations ---------- */
+@keyframes s-fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.strata-dashboard .s-animate-fade-in {
+    animation: s-fadeIn 0.5s ease-out forwards;
+}
+
+.strata-dashboard .s-delay-1 {
+    animation-delay: 0.05s;
+}
+
+.strata-dashboard .s-delay-2 {
+    animation-delay: 0.1s;
+}
+
+.strata-dashboard .s-delay-3 {
+    animation-delay: 0.15s;
+}
+
+.strata-dashboard .s-delay-4 {
+    animation-delay: 0.2s;
+}
+
+.strata-dashboard .s-delay-5 {
+    animation-delay: 0.25s;
+}
+
+.strata-dashboard .s-delay-6 {
+    animation-delay: 0.3s;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+    .strata-dashboard .s-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .strata-dashboard .s-charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .strata-dashboard .s-bottom-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ========================================
+   STRATA SHELL — Sidebar + Module Layout
+   ======================================== */
+
+.strata-dashboard.strata-shell {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+}
+
+/* ── Sidebar ── */
+.strata-dashboard .s-sidebar {
+    width: 200px;
+    min-width: 200px;
+    background: var(--s-bg-secondary);
+    border-right: 1px solid var(--s-glass-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.strata-dashboard .s-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 16px 14px;
+    font-family: var(--s-font-primary);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--s-text-primary);
+    border-bottom: 1px solid var(--s-glass-border);
+}
+
+.strata-dashboard .s-sidebar-brand svg {
+    color: var(--s-accent-primary);
+}
+
+.strata-dashboard .s-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    gap: 2px;
+    flex: 1;
+}
+
+.strata-dashboard .s-sidebar-footer {
+    padding: 8px;
+    border-top: 1px solid var(--s-glass-border);
+}
+
+.strata-dashboard .s-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--s-text-secondary);
+    font-family: var(--s-font-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.strata-dashboard .s-nav-item:hover {
+    background: var(--s-bg-hover);
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-nav-item.active {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--s-accent-primary);
+}
+
+.strata-dashboard .s-nav-item.active svg {
+    color: var(--s-accent-primary);
+}
+
+/* ── Main Content ── */
+.strata-dashboard .s-main-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0;
+}
+
+/* ========================================
+   MODULE SHARED STYLES
+   ======================================== */
+
+.strata-dashboard .s-module {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    font-family: var(--s-font-primary);
+}
+
+.strata-dashboard .s-module-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.strata-dashboard .s-module-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--s-text-primary);
+    margin: 0;
+}
+
+.strata-dashboard .s-module-subtitle {
+    font-size: 0.8rem;
+    color: var(--s-text-tertiary);
+    margin: 2px 0 0;
+}
+
+.strata-dashboard .s-module-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ── Buttons ── */
+.strata-dashboard .s-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: var(--s-font-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.strata-dashboard .s-btn-primary {
+    background: var(--s-accent-primary);
+    color: #fff;
+}
+
+.strata-dashboard .s-btn-primary:hover {
+    background: var(--s-accent-primary-hover);
+    box-shadow: 0 0 12px var(--s-accent-primary-glow);
+}
+
+.strata-dashboard .s-btn-ghost {
+    background: transparent;
+    color: var(--s-text-secondary);
+    border-color: var(--s-glass-border);
+}
+
+.strata-dashboard .s-btn-ghost:hover {
+    background: var(--s-bg-hover);
+    color: var(--s-text-primary);
+    border-color: var(--s-glass-border-hover);
+}
+
+.strata-dashboard .s-btn-sm {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+}
+
+.strata-dashboard .s-btn-xs {
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+}
+
+.strata-dashboard .s-btn-icon {
+    background: none;
+    border: none;
+    color: var(--s-text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s ease;
+}
+
+.strata-dashboard .s-btn-icon:hover {
+    color: var(--s-text-primary);
+}
+
+/* ── Inputs ── */
+.strata-dashboard .s-input {
+    background: var(--s-bg-tertiary);
+    border: 1px solid var(--s-glass-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--s-text-primary);
+    font-family: var(--s-font-primary);
+    font-size: 0.85rem;
+    width: 100%;
+    transition: border-color 0.2s ease;
+}
+
+.strata-dashboard .s-input:focus {
+    outline: none;
+    border-color: var(--s-accent-primary);
+    box-shadow: 0 0 0 2px var(--s-accent-primary-glow);
+}
+
+.strata-dashboard .s-input-sm {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    width: auto;
+    min-width: 120px;
+}
+
+.strata-dashboard select.s-input {
+    cursor: pointer;
+}
+
+.strata-dashboard textarea.s-input {
+    resize: vertical;
+}
+
+/* ── Glass Card ── */
+.strata-dashboard .s-glass-card {
+    background: var(--s-glass-bg);
+    backdrop-filter: var(--s-glass-blur);
+    border: 1px solid var(--s-glass-border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+/* ── Property Card Grid ── */
+.strata-dashboard .s-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.strata-dashboard .s-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.strata-dashboard .s-clickable:hover {
+    border-color: var(--s-glass-border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--s-glass-shadow);
+}
+
+.strata-dashboard .s-prop-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.strata-dashboard .s-prop-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--s-accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.strata-dashboard .s-prop-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--s-text-primary);
+    margin: 0 0 4px;
+}
+
+.strata-dashboard .s-prop-address {
+    font-size: 0.75rem;
+    color: var(--s-text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.strata-dashboard .s-prop-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 12px;
+}
+
+.strata-dashboard .s-prop-stat-value {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-prop-stat-label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--s-text-tertiary);
+    text-transform: capitalize;
+}
+
+.strata-dashboard .s-prop-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--s-accent-primary);
+    padding-top: 10px;
+    border-top: 1px solid var(--s-glass-border);
+}
+
+/* ── Badges ── */
+.strata-dashboard .s-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
+}
+
+.strata-dashboard .s-badge.active,
+.strata-dashboard .s-badge.occupied,
+.strata-dashboard .s-badge.paid,
+.strata-dashboard .s-badge.completed {
+    background: var(--s-success-bg);
+    color: var(--s-success);
+}
+
+.strata-dashboard .s-badge.vacant,
+.strata-dashboard .s-badge.applied {
+    background: var(--s-info-bg);
+    color: var(--s-info);
+}
+
+.strata-dashboard .s-badge.maintenance,
+.strata-dashboard .s-badge.in_progress,
+.strata-dashboard .s-badge.expiring,
+.strata-dashboard .s-badge.screening {
+    background: var(--s-warning-bg);
+    color: var(--s-warning);
+}
+
+.strata-dashboard .s-badge.turn,
+.strata-dashboard .s-badge.open,
+.strata-dashboard .s-badge.expired,
+.strata-dashboard .s-badge.critical {
+    background: var(--s-danger-bg);
+    color: var(--s-danger);
+}
+
+.strata-dashboard .s-badge.review,
+.strata-dashboard .s-badge.approved {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--s-accent-primary-hover);
+}
+
+.strata-dashboard .s-badge.capex {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fde047;
+}
+
+.strata-dashboard .s-badge.ro {
+    background: rgba(59, 130, 246, 0.1);
+    color: #93c5fd;
+}
+
+.strata-dashboard .s-badge.coming-soon {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--s-accent-primary);
+    font-size: 0.7rem;
+}
+
+.strata-dashboard .s-badge.lease_signed,
+.strata-dashboard .s-badge.move_in {
+    background: var(--s-success-bg);
+    color: var(--s-success);
+}
+
+.strata-dashboard .s-badge-sm {
+    padding: 2px 7px;
+    font-size: 0.65rem;
+}
+
+/* ── Table ── */
+.strata-dashboard .s-table-wrap {
+    overflow-x: auto;
+}
+
+.strata-dashboard .s-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    color: var(--s-text-secondary);
+}
+
+.strata-dashboard .s-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--s-text-tertiary);
+    border-bottom: 1px solid var(--s-glass-border);
+}
+
+.strata-dashboard .s-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--s-row-border);
+}
+
+.strata-dashboard .s-table tr:hover td {
+    background: var(--s-row-hover);
+}
+
+.strata-dashboard .s-td-bold {
+    font-weight: 600;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-text-success {
+    color: var(--s-success);
+}
+
+.strata-dashboard .s-text-muted {
+    color: var(--s-text-tertiary);
+    font-size: 0.78rem;
+}
+
+/* ── Split View (list + detail) ── */
+.strata-dashboard .s-split-view {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 16px;
+    min-height: 0;
+}
+
+.strata-dashboard .s-list-panel {
+    background: var(--s-glass-bg);
+    backdrop-filter: var(--s-glass-blur);
+    border: 1px solid var(--s-glass-border);
+    border-radius: 12px;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+}
+
+.strata-dashboard .s-list-item {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--s-row-border);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.strata-dashboard .s-list-item:hover {
+    background: var(--s-bg-hover);
+}
+
+.strata-dashboard .s-list-item.active {
+    background: rgba(99, 102, 241, 0.1);
+    border-left: 3px solid var(--s-accent-primary);
+}
+
+.strata-dashboard .s-list-item-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.strata-dashboard .s-list-item-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.strata-dashboard .s-list-item-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--s-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.strata-dashboard .s-list-item-sub {
+    font-size: 0.72rem;
+    color: var(--s-text-tertiary);
+}
+
+.strata-dashboard .s-list-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.strata-dashboard .s-list-item-date {
+    font-size: 0.7rem;
+    color: var(--s-text-tertiary);
+}
+
+.strata-dashboard .s-detail-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+}
+
+.strata-dashboard .s-empty-detail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--s-text-tertiary);
+    gap: 12px;
+    background: var(--s-glass-bg);
+    border-radius: 12px;
+    border: 1px dashed var(--s-glass-border);
+}
+
+.strata-dashboard .s-priority-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.strata-dashboard .s-priority-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid;
+}
+
+/* ── Loading/Empty States (legacy, kept for compat) ── */
+.strata-dashboard .s-loading,
+.strata-dashboard .s-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--s-text-tertiary);
+    font-size: 0.85rem;
+}
+
+/* ══════════════════════════════════════════════
+   StateView — shared loading / empty / error
+   ══════════════════════════════════════════════ */
+
+@keyframes s-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes s-state-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.strata-dashboard .s-state-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    gap: 10px;
+    padding: 32px 24px;
+    animation: s-state-fade-in 0.3s ease-out;
+}
+
+/* ── Spinner ── */
+.strata-dashboard .s-state-spinner {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid rgba(99, 102, 241, 0.12);
+    border-top-color: var(--s-accent-primary);
+    animation: s-spin 0.8s linear infinite;
+}
+
+/* ── Icon (empty / error) ── */
+.strata-dashboard .s-state-icon {
+    color: var(--s-text-tertiary);
+    opacity: 0.35;
+}
+
+/* ── Text ── */
+.strata-dashboard .s-state-message {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--s-text-secondary);
+    text-align: center;
+}
+
+.strata-dashboard .s-state-sub {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--s-text-tertiary);
+    text-align: center;
+    max-width: 280px;
+}
+
+/* ── Action slot ── */
+.strata-dashboard .s-state-action {
+    margin-top: 6px;
+}
+
+/* ── Retry button ── */
+.strata-dashboard .s-state-retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 7px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--s-accent-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.strata-dashboard .s-state-retry:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: var(--s-accent-primary);
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.15);
+}
+
+/* ── Error variant ── */
+.strata-dashboard .s-state-error .s-state-icon {
+    color: var(--s-danger);
+    opacity: 0.6;
+}
+
+.strata-dashboard .s-state-error .s-state-message {
+    color: var(--s-danger);
+}
+
+.strata-dashboard .s-state-error .s-state-sub {
+    color: var(--s-text-tertiary);
+}
+
+/* ── Search Box ── */
+.strata-dashboard .s-search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--s-bg-tertiary);
+    border: 1px solid var(--s-glass-border);
+    border-radius: 8px;
+    padding: 0 10px;
+}
+
+.strata-dashboard .s-search-box svg {
+    color: var(--s-text-tertiary);
+    flex-shrink: 0;
+}
+
+.strata-dashboard .s-search-box input {
+    border: none;
+    background: transparent;
+    padding: 7px 0;
+    width: 140px;
+}
+
+.strata-dashboard .s-search-box input:focus {
+    outline: none;
+}
+
+/* ── Avatar ── */
+.strata-dashboard .s-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--s-accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.strata-dashboard .s-avatar.vendor {
+    background: var(--s-warning-bg);
+    color: var(--s-warning);
+}
+
+.strata-dashboard .s-avatar.owner {
+    background: var(--s-success-bg);
+    color: var(--s-success);
+}
+
+.strata-dashboard .s-avatar-lg {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--s-accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.strata-dashboard .s-avatar-lg.vendor {
+    background: var(--s-warning-bg);
+    color: var(--s-warning);
+}
+
+.strata-dashboard .s-avatar-lg.owner {
+    background: var(--s-success-bg);
+    color: var(--s-success);
+}
+
+/* ── Modal ── */
+.strata-dashboard .s-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.strata-dashboard .s-modal {
+    background: var(--s-bg-secondary);
+    border: 1px solid var(--s-glass-border);
+    border-radius: 16px;
+    padding: 24px;
+    width: min(480px, 90vw);
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.strata-dashboard .s-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.strata-dashboard .s-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--s-glass-border);
+}
+
+/* ── Forms ── */
+.strata-dashboard .s-form-group {
+    margin-bottom: 14px;
+}
+
+.strata-dashboard .s-form-group label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--s-text-secondary);
+    margin-bottom: 5px;
+}
+
+.strata-dashboard .s-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.strata-dashboard .s-form-check {
+    display: flex;
+    align-items: center;
+}
+
+.strata-dashboard .s-form-check label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.strata-dashboard .s-form-check input[type="checkbox"] {
+    accent-color: var(--s-accent-primary);
+    width: 16px;
+    height: 16px;
+}
+
+/* ── Breadcrumb ── */
+.strata-dashboard .s-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--s-text-tertiary);
+    font-size: 0.85rem;
+}
+
+.strata-dashboard .s-breadcrumb span {
+    color: var(--s-text-primary);
+    font-weight: 600;
+}
+
+/* ── Detail Card ── */
+.strata-dashboard .s-detail-card {
+    margin-bottom: 0;
+}
+
+.strata-dashboard .s-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.strata-dashboard .s-detail-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-detail-address {
+    font-size: 0.8rem;
+    color: var(--s-text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.strata-dashboard .s-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.strata-dashboard .s-detail-stat {
+    text-align: center;
+}
+
+.strata-dashboard .s-detail-stat-value {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-detail-stat-label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--s-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+}
+
+/* ── Turn Board ── */
+.strata-dashboard .s-turn-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+}
+
+.strata-dashboard .s-turn-cell {
+    background: var(--s-bg-tertiary);
+    border-radius: 8px;
+    border-left: 3px solid;
+    padding: 8px;
+    text-align: center;
+    transition: transform 0.15s ease;
+}
+
+.strata-dashboard .s-turn-cell:hover {
+    transform: scale(1.05);
+}
+
+.strata-dashboard .s-turn-unit {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-turn-status {
+    font-size: 0.65rem;
+    text-transform: capitalize;
+    margin-top: 2px;
+}
+
+.strata-dashboard .s-turn-rent {
+    font-size: 0.7rem;
+    color: var(--s-text-tertiary);
+    margin-top: 2px;
+}
+
+/* ── Status Workflow ── */
+.strata-dashboard .s-status-flow {
+    display: flex;
+    gap: 4px;
+    margin: 16px 0;
+}
+
+.strata-dashboard .s-status-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--s-bg-tertiary);
+    font-size: 0.72rem;
+    color: var(--s-text-tertiary);
+    text-transform: capitalize;
+}
+
+.strata-dashboard .s-status-step.done {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--s-accent-primary);
+}
+
+.strata-dashboard .s-status-step.current {
+    background: rgba(99, 102, 241, 0.2);
+    color: #fff;
+}
+
+.strata-dashboard .s-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+/* ── Work Order Detail ── */
+.strata-dashboard .s-wo-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.strata-dashboard .s-wo-detail-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-wo-section {
+    margin-top: 16px;
+}
+
+.strata-dashboard .s-wo-section h4 {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--s-text-secondary);
+    margin: 0 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.strata-dashboard .s-tag-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.strata-dashboard .s-wo-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--s-glass-border);
+}
+
+/* ── 3-Bid Grid ── */
+.strata-dashboard .s-bids-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.strata-dashboard .s-bid-slot {
+    background: var(--s-bg-tertiary);
+    border: 1px dashed var(--s-glass-border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--s-text-tertiary);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.strata-dashboard .s-bid-slot:hover {
+    border-color: var(--s-accent-primary);
+    color: var(--s-accent-primary);
+}
+
+/* ── Kanban Board ── */
+.strata-dashboard .s-kanban {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.strata-dashboard .s-kanban-column {
+    min-width: 220px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.strata-dashboard .s-kanban-column-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-kanban-col-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.strata-dashboard .s-kanban-count {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: var(--s-bg-tertiary);
+    padding: 1px 7px;
+    border-radius: 10px;
+    color: var(--s-text-tertiary);
+}
+
+.strata-dashboard .s-kanban-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.strata-dashboard .s-kanban-card {
+    background: var(--s-glass-bg);
+    backdrop-filter: var(--s-glass-blur);
+    border: 1px solid var(--s-glass-border);
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.strata-dashboard .s-kanban-card:hover {
+    border-color: var(--s-glass-border-hover);
+    transform: translateY(-1px);
+}
+
+.strata-dashboard .s-kanban-card.active {
+    border-color: var(--s-accent-primary);
+    box-shadow: 0 0 8px var(--s-accent-primary-glow);
+}
+
+.strata-dashboard .s-kanban-card h4 {
+    margin: 0 0 6px;
+    font-size: 0.85rem;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-kanban-card-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--s-text-tertiary);
+}
+
+.strata-dashboard .s-kanban-card-date {
+    font-size: 0.68rem;
+    color: var(--s-text-tertiary);
+    margin-top: 6px;
+}
+
+.strata-dashboard .s-kanban-card-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ── View Toggle ── */
+.strata-dashboard .s-view-toggle {
+    display: flex;
+    gap: 2px;
+    background: var(--s-bg-tertiary);
+    border-radius: 8px;
+    padding: 2px;
+}
+
+/* ── Vetting Panel ── */
+.strata-dashboard .s-vetting-panel {
+    margin-top: 12px;
+}
+
+.strata-dashboard .s-vetting-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.strata-dashboard .s-vetting-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.strata-dashboard .s-vetting-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.strata-dashboard .s-vetting-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--s-row-border);
+}
+
+.strata-dashboard .s-vetting-row label {
+    font-size: 0.78rem;
+    color: var(--s-text-tertiary);
+    font-weight: 600;
+}
+
+.strata-dashboard .s-vetting-row span {
+    font-size: 0.82rem;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-vetting-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ── Tenant Profile ── */
+.strata-dashboard .s-tenant-profile,
+.strata-dashboard .s-vendor-profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.strata-dashboard .s-tenant-contact,
+.strata-dashboard .s-vendor-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--s-text-secondary);
+}
+
+.strata-dashboard .s-tenant-contact div,
+.strata-dashboard .s-vendor-contact div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Ledger ── */
+.strata-dashboard .s-ledger {
+    font-size: 0.8rem;
+}
+
+.strata-dashboard .s-ledger-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr 1fr;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--s-row-border);
+}
+
+.strata-dashboard .s-ledger-header {
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--s-text-tertiary);
+    border-bottom: 1px solid var(--s-glass-border);
+}
+
+/* ── Communication ── */
+.strata-dashboard .s-comm-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--s-row-border);
+}
+
+.strata-dashboard .s-comm-icon {
+    color: var(--s-accent-primary);
+    padding-top: 2px;
+}
+
+.strata-dashboard .s-comm-subject {
+    font-size: 0.85rem;
+    color: var(--s-text-primary);
+    font-weight: 500;
+}
+
+.strata-dashboard .s-comm-meta {
+    font-size: 0.72rem;
+    color: var(--s-text-tertiary);
+    margin-top: 2px;
+}
+
+/* ── Portal Stub ── */
+.strata-dashboard .s-portal-stub {
+    text-align: center;
+    padding: 24px;
+}
+
+.strata-dashboard .s-portal-stub h3 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+}
+
+/* ── COI Status ── */
+.strata-dashboard .s-coi-status {
+    border: 1px solid;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ── Vendor Rating ── */
+.strata-dashboard .s-vendor-rating {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--s-text-secondary);
+    margin-top: 8px;
+}
+
+.strata-dashboard .s-rating-stars {
+    color: var(--s-warning);
+    letter-spacing: 2px;
+}
+
+/* ── Dispatch ── */
+.strata-dashboard .s-dispatch-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.strata-dashboard .s-dispatch-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: var(--s-bg-tertiary);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--s-text-secondary);
+}
+
+/* ── Owner Props ── */
+.strata-dashboard .s-owner-props {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.strata-dashboard .s-owner-prop-card {
+    background: var(--s-bg-tertiary);
+    border-radius: 8px;
+    padding: 10px;
+    border-left: 3px solid var(--s-accent-primary);
+}
+
+.strata-dashboard .s-owner-prop-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--s-text-primary);
+}
+
+.strata-dashboard .s-owner-prop-meta {
+    font-size: 0.72rem;
+    color: var(--s-text-tertiary);
+    margin-top: 2px;
+}
+
+.strata-dashboard .s-owner-prop-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--s-text-secondary);
+}
+
+/* ── Responsive adjustments for modules ── */
+@media (max-width: 900px) {
+    .strata-dashboard .s-split-view {
+        grid-template-columns: 1fr;
+    }
+
+    .strata-dashboard .s-kanban {
+        flex-direction: column;
+    }
+
+    .strata-dashboard .s-kanban-column {
+        min-width: unset;
+    }
+
+    .strata-dashboard .s-detail-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .strata-dashboard .s-bids-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .strata-dashboard .s-form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================
+   PREMIUM UI POLISH — 5 Enhancements
+   ============================================ */
+
+/* [P1] Data row hover highlight with border accent */
+.strata-table-row {
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.strata-table-row:hover {
+    background: rgba(99, 102, 241, 0.06) !important;
+    box-shadow: inset 3px 0 0 var(--accent, #6366f1);
+    transform: translateX(2px);
+}
+
+/* [P2] Column header sort indicator glow */
+.strata-th--sorted {
+    color: var(--accent, #6366f1) !important;
+    text-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+}
+
+.strata-th--sorted::after {
+    filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.5));
+}
+
+/* [P3] Filter badge pill with glass effect */
+.strata-filter-tag,
+.strata-active-filter {
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.strata-filter-tag:hover,
+.strata-active-filter:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+/* [P4] Panel card hover lift */
+.strata-card,
+.strata-panel {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.3s ease;
+}
+
+.strata-card:hover,
+.strata-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    border-color: rgba(99, 102, 241, 0.15);
+}
+
+/* [P5] Table zebra stripe with glass effect */
+.strata-table-row:nth-child(even) {
+    background: var(--s-row-hover);
+}
+
+/* ========================================
+   PROPERTY WORKSPACE — Tab Navigation
+   ======================================== */
+
+.strata-dashboard .s-workspace-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 8px 0 4px;
+    border-bottom: 1px solid var(--s-separator);
+    margin-bottom: 12px;
+}
+
+.strata-dashboard .s-workspace-tab {
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--s-text-tertiary, #64748b);
+    font-family: var(--s-font-primary, 'Inter', sans-serif);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.strata-dashboard .s-workspace-tab:hover {
+    background: var(--s-row-hover);
+    color: var(--s-text-secondary, #94a3b8);
+    border-color: var(--s-separator);
+}
+
+.strata-dashboard .s-workspace-tab.active {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--s-accent-primary, #6366f1);
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.1);
+}
+
+/* ========================================
+   PHASE 2 — Work Item Cards & Filters
+   ======================================== */
+
+.strata-dashboard .s-workitem-card {
+    position: relative;
+    transition: all 0.2s ease;
+}
+.strata-dashboard .s-workitem-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Filter pill animations */
+.strata-dashboard .s-filter-pills button {
+    transition: all 0.15s ease;
+}
+.strata-dashboard .s-filter-pills button:hover {
+    transform: scale(1.04);
+}
+
+/* Tracking toggle */
+.strata-dashboard .s-tracking-toggle button {
+    transition: all 0.2s ease;
+}
+.strata-dashboard .s-tracking-toggle button:hover {
+    filter: brightness(1.15);
+}
+
+/* Search input focus glow */
+.strata-dashboard .s-glass-card input[type="text"]:focus {
+    border-color: rgba(99, 102, 241, 0.4) !important;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LIGHT THEME — Inline-style overrides for Strata sub-modules
+   These override hardcoded dark hex values in TSX inline styles
+   ═══════════════════════════════════════════════════════════ */
+
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .strata-dashboard {
+
+    /* ── Modals & Overlays ── */
+    & [style*="background: #1e293b"],
+    & [style*="background: '#1e293b'"],
+    & [style*="background: #111827"],
+    & [style*="background: '#111827'"],
+    & [style*="background: #1e2130"],
+    & [style*="background: '#1e2130'"],
+    & [style*="background: #0f172a"],
+    & [style*="background: '#0f172a'"],
+    & [style*="background: #1a1a2e"],
+    & [style*="background: '#1a1a2e'"],
+    & [style*="background: #1e2537"],
+    & [style*="background: '#1e2537'"],
+    & [style*="background: #0f1624"],
+    & [style*="background: '#0f1624'"],
+    & [style*="background: #0f1219"],
+    & [style*="background: '#0f1219'"] {
+        background: var(--bg-surface) !important;
+    }
+
+    /* ── Primary text color overrides ── */
+    & [style*="color: #e2e8f0"],
+    & [style*="color: '#e2e8f0'"],
+    & [style*="color: #f1f5f9"],
+    & [style*="color: '#f1f5f9'"],
+    & [style*="color: #cbd5e1"],
+    & [style*="color: '#cbd5e1'"] {
+        color: var(--text-primary) !important;
+    }
+
+    /* ── Secondary text color overrides ── */
+    & [style*="color: #94a3b8"],
+    & [style*="color: '#94a3b8'"] {
+        color: var(--text-secondary) !important;
+    }
+
+    /* ── Tertiary text color overrides ── */
+    & [style*="color: #64748b"],
+    & [style*="color: '#64748b'"],
+    & [style*="color: #475569"],
+    & [style*="color: '#475569'"] {
+        color: var(--text-tertiary) !important;
+    }
+
+    /* ── Select dropdown options ── */
+    & select option {
+        background: var(--bg-surface) !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* ── Inputs ── */
+    & input,
+    & textarea,
+    & select {
+        background: var(--bg-surface-elevated) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-default) !important;
+    }
+
+    & input::placeholder,
+    & textarea::placeholder {
+        color: var(--text-tertiary) !important;
+    }
+
+    /* ── White-alpha → Black-alpha border overrides ── */
+    & [style*="border: 1px solid rgba(255,255,255,"],
+    & [style*="border: 1px solid rgba(255, 255, 255,"] {
+        border-color: var(--border-default) !important;
+    }
+
+    /* ── Separator borders ── */
+    & [style*="borderBottom: '1px solid rgba(255,255,255,"],
+    & [style*="border-bottom: 1px solid rgba(255,255,255,"] {
+        border-bottom-color: var(--border-subtle) !important;
+    }
+
+    /* ── Recharts Tooltip overrides ── */
+    & .recharts-tooltip-wrapper {
+        background: var(--bg-surface) !important;
+        border-color: var(--border-default) !important;
+    }
+
+    /* ── Premium polish overrides ── */
+    & .strata-table-row:hover {
+        background: rgba(0, 0, 0, 0.04) !important;
+        box-shadow: inset 3px 0 0 var(--accent);
+    }
+
+    & .strata-card:hover,
+    & .strata-panel:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(0, 0, 0, 0.02);
+    }
+
+    & .strata-filter-tag,
+    & .strata-active-filter {
+        box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LIGHT THEME — TenantPortal CSS overrides
+   ═══════════════════════════════════════════════════════════ */
+
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .tp-module {
+    /* Header */
+    & .tp-header {
+        border-bottom-color: var(--border-subtle);
+    }
+    & .tp-header::after {
+        background: linear-gradient(90deg, var(--accent), var(--accent-hover), transparent);
+    }
+    & .tp-title {
+        background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+    & .tp-subtitle { color: var(--text-tertiary); }
+    & .tp-search-icon { color: var(--text-tertiary); }
+
+    /* Search & inputs */
+    & .tp-search {
+        border-color: var(--border-default);
+        background: var(--bg-surface-elevated);
+        color: var(--text-primary);
+    }
+    & .tp-search:focus { background: var(--bg-surface); }
+    & .tp-search::placeholder { color: var(--text-tertiary); }
+
+    /* Refresh button */
+    & .tp-refresh-btn {
+        border-color: var(--border-default);
+        background: var(--bg-surface-elevated);
+        color: var(--text-tertiary);
+    }
+
+    /* KPI Cards */
+    & .tp-kpi-card {
+        background: var(--bg-surface);
+        border-color: var(--border-subtle);
+    }
+    & .tp-kpi-card:hover { border-color: var(--border-default); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    & .tp-kpi-value { color: var(--text-primary); }
+    & .tp-kpi-label { color: var(--text-tertiary); }
+
+    /* Tabs */
+    & .tp-tabs {
+        background: var(--bg-surface-elevated);
+        border-color: var(--border-subtle);
+    }
+    & .tp-tab { color: var(--text-tertiary); }
+    & .tp-tab:hover { color: var(--text-secondary); background: var(--bg-surface-hover); }
+    & .tp-tab.active { color: var(--accent-text); }
+    & .tp-tab.active::after { background: var(--accent); }
+
+    /* Cards */
+    & .tp-card {
+        background: var(--bg-surface);
+        border-color: var(--border-subtle);
+    }
+    & .tp-card-header {
+        border-bottom-color: var(--border-subtle);
+    }
+    & .tp-card-header h3 { color: var(--text-primary); }
+    & .tp-count { color: var(--text-tertiary); background: var(--bg-surface-elevated); }
+
+    /* Tables */
+    & .tp-table-wrap { border-color: var(--border-subtle); }
+    & .tp-table thead th {
+        color: var(--text-tertiary);
+        background: var(--bg-surface-elevated);
+        border-bottom-color: var(--border-default);
+    }
+    & .tp-table tbody tr { border-bottom-color: var(--border-subtle); }
+    & .tp-table tbody tr:hover { background: rgba(0,0,0,0.03); }
+    & .tp-table td { color: var(--text-secondary); }
+    & .tp-cell-name { color: var(--text-primary) !important; }
+    & .tp-cell-sub { color: var(--text-tertiary) !important; }
+    & .tp-cell-money { color: var(--success) !important; }
+    & .tp-table tbody tr.tp-row-selected { border-left-color: var(--accent); }
+
+    /* Detail card */
+    & .tp-detail-card { border-left-color: var(--accent); border-color: var(--border-default); background: var(--accent-subtle); }
+    & .tp-detail-header { border-bottom-color: var(--border-subtle); }
+    & .tp-detail-name { color: var(--text-primary); }
+    & .tp-detail-item {
+        color: var(--text-secondary);
+        background: var(--bg-surface-elevated);
+        border-color: var(--border-subtle);
+    }
+    & .tp-detail-item:hover { border-color: var(--border-default); }
+    & .tp-detail-item svg { color: var(--accent); }
+    & .tp-detail-item-label { color: var(--text-tertiary); }
+    & .tp-detail-item-value { color: var(--text-primary); }
+
+    /* Pagination */
+    & .tp-pagination { border-top-color: var(--border-subtle); }
+    & .tp-pagination-info { color: var(--text-tertiary); }
+    & .tp-page-btn {
+        border-color: var(--border-default);
+        background: var(--bg-surface-elevated);
+        color: var(--text-secondary);
+    }
+    & .tp-page-indicator { color: var(--text-tertiary); }
+
+    /* Messages */
+    & .tp-msg { border-color: var(--border-subtle); }
+    & .tp-msg:hover { border-color: var(--border-default); }
+    & .tp-msg-inbound { background: rgba(34, 197, 94, 0.05); }
+    & .tp-msg-outbound { background: var(--accent-subtle); }
+    & .tp-msg-sender { color: var(--text-primary); }
+    & .tp-msg-subject { color: var(--text-tertiary); }
+    & .tp-msg-time { color: var(--text-tertiary); }
+    & .tp-msg-body { color: var(--text-secondary); }
+
+    /* Reply form */
+    & .tp-reply-title { color: var(--text-primary); }
+    & .tp-input {
+        border-color: var(--border-default);
+        background: var(--bg-surface-elevated);
+        color: var(--text-primary);
+    }
+    & .tp-input::placeholder { color: var(--text-tertiary); }
+    & .tp-btn-ghost {
+        border-color: var(--border-default);
+        color: var(--text-secondary);
+    }
+    & .tp-btn-ghost:hover {
+        border-color: var(--border-strong);
+        color: var(--text-primary);
+        background: var(--bg-surface-hover);
+    }
+    & .tp-reply-btn { color: var(--accent-text); }
+
+    /* Empty & loading states */
+    & .tp-empty { color: var(--text-tertiary); }
+    & .tp-empty h4 { color: var(--text-secondary); }
+    & .tp-empty p { color: var(--text-tertiary); }
+    & .tp-skeleton {
+        background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 75%);
+        background-size: 200% 100%;
+    }
+
+    /* Occupancy ring */
+    & .tp-occupancy-ring-text { color: var(--text-primary); }
+    & .tp-days-left.safe { color: var(--text-secondary); }
+    & .tp-lease-progress { background: var(--border-subtle); }
+}

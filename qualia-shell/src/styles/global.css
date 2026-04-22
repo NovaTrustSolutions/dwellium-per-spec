@@ -1,0 +1,340 @@
+/* ============================================
+   GLOBAL STYLES
+   ============================================ */
+@import './variables.css';
+@import './animations.css';
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: var(--font-primary);
+    font-size: var(--fs-base);
+    color: var(--text-primary);
+    background-color: var(--bg-desktop);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* [1] sharper text */
+    user-select: none;
+    cursor: default;
+}
+
+/* --- Scrollbar [2] smoother --- */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--radius-full);
+    transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+/* [3] Selection with accent glow */
+::selection {
+    background: color-mix(in srgb, var(--accent) 85%, white);
+    color: white;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* [4] Focus ring with offset */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: inherit;
+}
+
+/* [5] Smooth transitions on interactive elements */
+a,
+button,
+input,
+textarea,
+select {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* --- Utility --- */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* --- Theme transition --- */
+body.transitioning,
+body.transitioning * {
+    transition: background-color 400ms ease, color 400ms ease, border-color 400ms ease, box-shadow 400ms ease !important;
+}
+
+/* --- Premium Scrollbar — Always Visible (thin) --- */
+*::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb, rgba(255, 255, 255, 0.12));
+    border-radius: var(--radius-full);
+    transition: background 0.3s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover, rgba(255, 255, 255, 0.25));
+}
+
+*::-webkit-scrollbar-thumb:active {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+*::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-full);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIGHT THEME — GLOBAL TEXT CONTRAST SAFETY NET
+   Ensures ALL text is dark and fully readable when any light theme
+   is active. Overrides hardcoded rgba(255,255,255,...) and dark-only
+   hex colors from component CSS designed for dark backgrounds.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) {
+
+    /* ── 1. Global default — all body text is dark ── */
+    color: var(--text-primary);
+
+    /* ── 2. Catchall — any element that doesn't set its own color ── */
+    & * {
+        color: inherit;
+    }
+
+    /* ── 3. Override hardcoded rgba(255,255,255,...) text colors (CSS classes) ──
+       These are written by dark-theme-first component CSS and become
+       invisible on white/light backgrounds. Force them to use
+       proper semantic tokens. */
+
+    /* Primary-level rgba white text → dark primary */
+    & [style*="color: rgba(255,255,255,0.9"],
+    & [style*="color: rgba(255, 255, 255, 0.9"],
+    & [style*="color: rgba(255,255,255,0.85"],
+    & [style*="color: rgba(255, 255, 255, 0.85"],
+    & [style*="color: rgba(255,255,255,0.8"],
+    & [style*="color: rgba(255, 255, 255, 0.8"],
+    & [style*="color: 'rgba(255,255,255,0.9"],
+    & [style*="color: 'rgba(255, 255, 255, 0.9"],
+    & [style*="color: 'rgba(255,255,255,0.85"],
+    & [style*="color: 'rgba(255, 255, 255, 0.85"],
+    & [style*="color: 'rgba(255,255,255,0.8"],
+    & [style*="color: 'rgba(255, 255, 255, 0.8"],
+    & [style*="color:'rgba(255"],
+    & [style*="color: #e2e8f0"],
+    & [style*="color: '#e2e8f0"],
+    & [style*="color: #f1f5f9"],
+    & [style*="color: '#f1f5f9"],
+    & [style*="color: #cbd5e1"],
+    & [style*="color: '#cbd5e1"],
+    & [style*="color: #e5e7eb"],
+    & [style*="color: '#e5e7eb"],
+    & [style*="color: #f8fafc"],
+    & [style*="color: '#f8fafc"],
+    & [style*="color: white"],
+    & [style*="color: '#fff"],
+    & [style*="color: '#ffffff"],
+    & [style*="color:#fff"],
+    & [style*="color: #fff "] {
+        color: var(--text-primary) !important;
+    }
+
+    /* Secondary-level rgba white text → dark secondary */
+    & [style*="color: rgba(255,255,255,0.7"],
+    & [style*="color: rgba(255, 255, 255, 0.7"],
+    & [style*="color: rgba(255,255,255,0.6"],
+    & [style*="color: rgba(255, 255, 255, 0.6"],
+    & [style*="color: 'rgba(255,255,255,0.7"],
+    & [style*="color: 'rgba(255, 255, 255, 0.7"],
+    & [style*="color: 'rgba(255,255,255,0.6"],
+    & [style*="color: 'rgba(255, 255, 255, 0.6"],
+    & [style*="color: #94a3b8"],
+    & [style*="color: '#94a3b8"],
+    & [style*="color: #9ca3af"],
+    & [style*="color: '#9ca3af"],
+    & [style*="color: #a1a1aa"],
+    & [style*="color: '#a1a1aa"] {
+        color: var(--text-secondary) !important;
+    }
+
+    /* Tertiary-level rgba white text → dark tertiary */
+    & [style*="color: rgba(255,255,255,0.5"],
+    & [style*="color: rgba(255, 255, 255, 0.5"],
+    & [style*="color: rgba(255,255,255,0.4"],
+    & [style*="color: rgba(255, 255, 255, 0.4"],
+    & [style*="color: rgba(255,255,255,0.35"],
+    & [style*="color: rgba(255, 255, 255, 0.35"],
+    & [style*="color: rgba(255,255,255,0.3"],
+    & [style*="color: rgba(255, 255, 255, 0.3"],
+    & [style*="color: 'rgba(255,255,255,0.5"],
+    & [style*="color: 'rgba(255, 255, 255, 0.5"],
+    & [style*="color: 'rgba(255,255,255,0.4"],
+    & [style*="color: 'rgba(255, 255, 255, 0.4"],
+    & [style*="color: 'rgba(255,255,255,0.35"],
+    & [style*="color: 'rgba(255, 255, 255, 0.35"],
+    & [style*="color: 'rgba(255,255,255,0.3"],
+    & [style*="color: 'rgba(255, 255, 255, 0.3"],
+    & [style*="color: #64748b"],
+    & [style*="color: '#64748b"],
+    & [style*="color: #475569"],
+    & [style*="color: '#475569"],
+    & [style*="color: #6b7280"],
+    & [style*="color: '#6b7280"] {
+        color: var(--text-tertiary) !important;
+    }
+
+    /* ── 4. Override hardcoded dark background hex values from inline styles ── */
+    & [style*="background: #0"],
+    & [style*="background: '#0"],
+    & [style*="background:#0"],
+    & [style*="background: #1"],
+    & [style*="background: '#1"],
+    & [style*="background:#1"],
+    & [style*="backgroundColor: '#0"],
+    & [style*="backgroundColor: '#1"],
+    & [style*="background: #2"],
+    & [style*="background: '#2"],
+    & [style*="backgroundColor: '#2"] {
+        background: var(--bg-surface) !important;
+    }
+
+    /* ── 5. Override dark-only borders that use rgba(255,255,255,...) ── */
+    & [style*="border"] [style*="rgba(255,255,255,"],
+    & [style*="border"] [style*="rgba(255, 255, 255,"],
+    & [style*="borderBottom: '1px solid rgba(255"],
+    & [style*="border-bottom: 1px solid rgba(255"] {
+        border-color: var(--border-default) !important;
+    }
+
+    /* ── 6. Common dark-bg classes that components use ── */
+    & .command-palette,
+    & .fact-check-log,
+    & .thought-weaver,
+    & .ara-console,
+    & .automation-hub,
+    & .file-manager,
+    & .doc-viewer,
+    & .inbox-widget,
+    & .inbox-zero,
+    & .two-brains,
+    & .home-upkeep,
+    & .transcription-hub,
+    & .intelligence-dashboard,
+    & .security-portal,
+    & .notepad-widget,
+    & .open-jarvis,
+    & .control-panel {
+        color: var(--text-primary);
+    }
+
+    /* ── 7. SVG icons — ensure they inherit proper color ── */
+    & svg {
+        color: inherit;
+    }
+
+    /* ── 8. Placeholder text ── */
+    & input::placeholder,
+    & textarea::placeholder {
+        color: var(--text-tertiary) !important;
+    }
+
+    /* ── 9. Recharts / data visualization text ── */
+    & .recharts-text,
+    & .recharts-cartesian-axis-tick-value {
+        fill: var(--text-secondary) !important;
+    }
+    & .recharts-tooltip-wrapper {
+        color: var(--text-primary) !important;
+    }
+
+    /* ── 10. Window chrome ── */
+    & .window__title,
+    & .window__titlebar {
+        color: var(--text-primary);
+    }
+
+    /* ── 11. Desktop context text ── */
+    & .desktop__empty-text,
+    & .desktop__clock {
+        color: var(--text-secondary);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UNIVERSAL WIDGET SCROLLBAR GUARANTEE
+   Forces every widget root container inside a window to be scrollable.
+   The .window__content already has overflow:auto, but many widgets
+   set their own inner flex containers that eat the available space
+   and have overflow:hidden. This rule ensures the PRIMARY scrollable
+   area inside each widget always scrolls.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Force scrollability on all widget main content areas */
+.window__content > .transcription-hub,
+.window__content > .ara-console,
+.window__content > .thought-weaver,
+.window__content > .fact-check-log,
+.window__content > .automation-hub,
+.window__content > .file-manager,
+.window__content > .inbox-zero,
+.window__content > .inbox-widget,
+.window__content > .control-panel,
+.window__content > .security-portal,
+.window__content > .trello-board,
+.window__content > .strata-dashboard,
+.window__content > .astra-dashboard,
+.window__content > .intelligence-dashboard,
+.window__content > .tenant-portal,
+.window__content > .notepad-widget,
+.window__content > .home-upkeep,
+.window__content > .two-brains,
+.window__content > .hydra-ai,
+.window__content > .doc-viewer,
+.window__content > .open-jarvis,
+.window__content > .georgia-code,
+.window__content > .pdfgear {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    min-height: 0;
+}
+
+/* Ensure the window__content itself NEVER blocks scrolling for hosted widgets */
+.window__content {
+    overflow: auto !important;
+    min-height: 0;
+}

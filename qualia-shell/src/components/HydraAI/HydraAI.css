@@ -1,0 +1,1198 @@
+/* ============================================
+   Hydra-AI — Multi-Model Reasoning Widget
+   Dark glassmorphism, dynamic grid layouts
+   ============================================ */
+
+.hydra-ai {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: rgba(10, 14, 26, 0.95);
+    color: #e2e8f0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    overflow: hidden;
+}
+
+/* ── Header Bar ── */
+
+.hydra-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.hydra-logo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #a855f7, #6366f1, #22d3ee);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    white-space: nowrap;
+}
+
+.hydra-logo-icon {
+    font-size: 18px;
+    -webkit-text-fill-color: initial;
+}
+
+.hydra-head-selectors {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.hydra-head-pill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    background: rgba(30, 41, 59, 0.6);
+    color: #94a3b8;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.hydra-head-pill:hover {
+    border-color: rgba(100, 116, 139, 0.5);
+    background: rgba(30, 41, 59, 0.8);
+}
+
+.hydra-head-pill.active {
+    color: #fff;
+    border-color: var(--head-color, #6366f1);
+    background: rgba(var(--head-color-rgb, '99,102,241'), 0.2);
+    box-shadow: 0 0 8px rgba(var(--head-color-rgb, '99,102,241'), 0.2);
+}
+
+.hydra-head-pill-icon {
+    font-size: 12px;
+}
+
+.hydra-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.hydra-layout-btn,
+.hydra-synth-btn,
+.hydra-clear-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+    background: rgba(30, 41, 59, 0.5);
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.hydra-layout-btn:hover,
+.hydra-synth-btn:hover,
+.hydra-clear-btn:hover {
+    background: rgba(30, 41, 59, 0.8);
+    color: #e2e8f0;
+}
+
+.hydra-synth-btn.active {
+    color: #22d3ee;
+    border-color: rgba(34, 211, 238, 0.4);
+    background: rgba(34, 211, 238, 0.1);
+}
+
+/* ── Prompt Input ── */
+
+.hydra-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(15, 23, 42, 0.5);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+    flex-shrink: 0;
+}
+
+.hydra-input {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+    background: rgba(15, 23, 42, 0.8);
+    color: #e2e8f0;
+    font-family: inherit;
+    font-size: 13px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.4;
+}
+
+.hydra-input:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.hydra-input::placeholder {
+    color: #475569;
+}
+
+.hydra-send-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.hydra-send-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.hydra-send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.hydra-head-count {
+    font-size: 10px;
+    color: #64748b;
+    padding: 2px 6px;
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* ── Response Grid ── */
+
+.hydra-content {
+    flex: 1;
+    overflow: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hydra-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: #475569;
+}
+
+.hydra-empty-icon {
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+.hydra-empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.hydra-empty-desc {
+    font-size: 12px;
+    text-align: center;
+    max-width: 340px;
+    line-height: 1.5;
+}
+
+/* ── Query Block ── */
+
+.hydra-query-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hydra-query-prompt {
+    padding: 8px 12px;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 8px;
+    border-left: 3px solid #6366f1;
+    font-size: 12.5px;
+    color: #94a3b8;
+}
+
+.hydra-query-prompt strong {
+    color: #e2e8f0;
+}
+
+.hydra-response-grid {
+    display: grid;
+    gap: 10px;
+}
+
+/* Layout modes */
+.hydra-response-grid.layout-columns-2 {
+    grid-template-columns: 1fr 1fr;
+}
+
+.hydra-response-grid.layout-columns-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.hydra-response-grid.layout-columns-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.hydra-response-grid.layout-columns-5 {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.hydra-response-grid.layout-columns-5>.hydra-panel:nth-child(4) {
+    grid-column: 1 / 2;
+}
+
+.hydra-response-grid.layout-columns-5>.hydra-panel:nth-child(5) {
+    grid-column: 2 / 4;
+}
+
+.hydra-response-grid.layout-rows {
+    grid-template-columns: 1fr;
+}
+
+/* ── Response Panels ── */
+
+.hydra-panel {
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    border: 1px solid rgba(100, 116, 139, 0.15);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+    min-height: 160px;
+    transition: border-color 0.3s;
+}
+
+.hydra-panel:hover {
+    border-color: rgba(var(--panel-color-rgb, '99,102,241'), 0.35);
+}
+
+.hydra-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+    background: rgba(var(--panel-color-rgb, '99,102,241'), 0.06);
+}
+
+.hydra-panel-icon {
+    font-size: 14px;
+}
+
+.hydra-panel-name {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--panel-color, #6366f1);
+}
+
+.hydra-panel-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.hydra-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    background: rgba(30, 41, 59, 0.6);
+    color: #94a3b8;
+}
+
+.hydra-badge.success {
+    color: #22c55e;
+}
+
+.hydra-badge.error {
+    color: #ef4444;
+}
+
+.hydra-badge.timeout {
+    color: #f59e0b;
+}
+
+.hydra-panel-body {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #cbd5e1;
+}
+
+.hydra-panel-body p {
+    margin: 0 0 8px;
+}
+
+.hydra-panel-body strong {
+    color: #e2e8f0;
+}
+
+.hydra-panel-body em {
+    color: #94a3b8;
+}
+
+.hydra-panel-body code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #a5b4fc;
+    font-size: 11.5px;
+}
+
+.hydra-panel-body h4,
+.hydra-panel-body h5 {
+    margin: 12px 0 6px;
+    color: #e2e8f0;
+    font-size: 13px;
+}
+
+.hydra-panel-body .hydra-bullet {
+    color: var(--panel-color, #6366f1);
+    margin-right: 4px;
+}
+
+.hydra-panel-body .hydra-num {
+    color: var(--panel-color, #6366f1);
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* Loading skeleton */
+.hydra-panel-loading {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hydra-skeleton {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg,
+            rgba(100, 116, 139, 0.08) 0%,
+            rgba(100, 116, 139, 0.15) 50%,
+            rgba(100, 116, 139, 0.08) 100%);
+    background-size: 200% 100%;
+    animation: hydra-shimmer 1.5s ease-in-out infinite;
+}
+
+.hydra-skeleton:nth-child(1) {
+    width: 90%;
+}
+
+.hydra-skeleton:nth-child(2) {
+    width: 75%;
+}
+
+.hydra-skeleton:nth-child(3) {
+    width: 85%;
+}
+
+.hydra-skeleton:nth-child(4) {
+    width: 60%;
+}
+
+.hydra-skeleton:nth-child(5) {
+    width: 70%;
+}
+
+@keyframes hydra-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Error state */
+.hydra-panel-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 20px 12px;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.hydra-panel-error-icon {
+    font-size: 24px;
+    opacity: 0.6;
+}
+
+.hydra-panel-error-msg {
+    font-size: 11px;
+    color: #ef4444;
+    max-width: 200px;
+    word-break: break-word;
+}
+
+/* ── Synthesis Panel ── */
+
+.hydra-synthesis {
+    border-radius: 10px;
+    border: 1px solid rgba(34, 211, 238, 0.2);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+}
+
+.hydra-synthesis-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(34, 211, 238, 0.06);
+    border-bottom: 1px solid rgba(34, 211, 238, 0.1);
+    cursor: pointer;
+    user-select: none;
+}
+
+.hydra-synthesis-header:hover {
+    background: rgba(34, 211, 238, 0.1);
+}
+
+.hydra-synthesis-title {
+    font-weight: 600;
+    font-size: 13px;
+    background: linear-gradient(135deg, #22d3ee, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hydra-synthesis-toggle {
+    margin-left: auto;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.hydra-synthesis-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.hydra-synth-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.hydra-synth-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hydra-synth-section-title.agree {
+    color: #22c55e;
+}
+
+.hydra-synth-section-title.disagree {
+    color: #f59e0b;
+}
+
+.hydra-synth-section-title.best {
+    color: #22d3ee;
+}
+
+.hydra-synth-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hydra-synth-list li {
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #cbd5e1;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 6px;
+    line-height: 1.5;
+}
+
+.hydra-synth-best {
+    padding: 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #e2e8f0;
+    background: rgba(34, 211, 238, 0.04);
+    border-radius: 8px;
+    border-left: 3px solid #22d3ee;
+}
+
+/* ── Scrollbar ── */
+.hydra-content::-webkit-scrollbar,
+.hydra-panel-body::-webkit-scrollbar {
+    width: 5px;
+}
+
+.hydra-content::-webkit-scrollbar-track,
+.hydra-panel-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.hydra-content::-webkit-scrollbar-thumb,
+.hydra-panel-body::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: 3px;
+}
+
+.hydra-content::-webkit-scrollbar-thumb:hover,
+.hydra-panel-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.5);
+}
+
+/* ── Layout Dropdown ── */
+
+.hydra-layout-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.hydra-layout-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 140px;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid rgba(100, 116, 139, 0.2);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(16px);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hydra-layout-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 11.5px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+}
+
+.hydra-layout-option:hover {
+    background: rgba(99, 102, 241, 0.1);
+    color: #e2e8f0;
+}
+
+.hydra-layout-option.active {
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.hydra-layout-option-icon {
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+}
+
+/* ── Head Pill Wrap (pill + gear) ── */
+
+.hydra-head-pill-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    position: relative;
+}
+
+.hydra-head-gear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #475569;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: -4px;
+    opacity: 0;
+}
+
+.hydra-head-pill-wrap:hover .hydra-head-gear {
+    opacity: 1;
+}
+
+.hydra-head-gear:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--head-color, #a5b4fc);
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: rotate(90deg);
+}
+
+/* ── Add Head Button ── */
+
+.hydra-add-head-btn {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px dashed rgba(99, 102, 241, 0.35);
+    background: transparent;
+    color: #6366f1;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.hydra-add-head-btn:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+}
+
+/* ── Regrow Modal ── */
+
+.hydra-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    animation: hydra-fade-in 0.2s ease;
+}
+
+@keyframes hydra-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.hydra-modal {
+    width: 520px;
+    max-width: 95vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(10, 14, 26, 0.97);
+    backdrop-filter: blur(24px);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 40px rgba(99, 102, 241, 0.1);
+    animation: hydra-modal-in 0.25s ease;
+    overflow: hidden;
+}
+
+@keyframes hydra-modal-in {
+    from {
+        transform: translateY(20px) scale(0.96);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.hydra-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.12);
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.hydra-modal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hydra-modal-icon {
+    font-size: 18px;
+}
+
+.hydra-modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #a855f7, #6366f1, #22d3ee);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hydra-modal-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(100, 116, 139, 0.15);
+    color: #94a3b8;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hydra-modal-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.hydra-modal-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.hydra-modal-row {
+    display: flex;
+    gap: 12px;
+}
+
+.hydra-modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hydra-modal-field label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.hydra-modal-hint {
+    font-weight: 400;
+    text-transform: none;
+    color: #475569;
+    font-size: 10px;
+}
+
+.hydra-modal-val {
+    font-weight: 700;
+    color: #a5b4fc;
+    text-transform: none;
+}
+
+.hydra-modal-field input[type="text"],
+.hydra-modal-field select {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+    background: rgba(15, 23, 42, 0.8);
+    color: #e2e8f0;
+    font-family: inherit;
+    font-size: 12.5px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.hydra-modal-field input[type="text"]:focus,
+.hydra-modal-field select:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.hydra-modal-field input::placeholder {
+    color: #475569;
+}
+
+.hydra-modal-field select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+}
+
+.hydra-modal-field select option {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+/* ── Slider ── */
+
+.hydra-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(100, 116, 139, 0.2);
+    outline: none;
+    cursor: pointer;
+    margin: 4px 0 0;
+}
+
+.hydra-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    border: 2px solid rgba(10, 14, 26, 0.8);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+    transition: transform 0.15s;
+}
+
+.hydra-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.hydra-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #475569;
+    margin-top: 2px;
+}
+
+/* ── Color Picker ── */
+
+.hydra-color-input {
+    width: 100%;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+    background: rgba(15, 23, 42, 0.8);
+    cursor: pointer;
+    padding: 2px;
+}
+
+.hydra-color-input::-webkit-color-swatch-wrapper {
+    padding: 2px;
+}
+
+.hydra-color-input::-webkit-color-swatch {
+    border-radius: 5px;
+    border: none;
+}
+
+/* ── Toggle Switch ── */
+
+.hydra-toggle-row {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 10px !important;
+}
+
+.hydra-toggle {
+    width: 38px;
+    height: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    background: rgba(30, 41, 59, 0.8);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.hydra-toggle.on {
+    background: rgba(34, 197, 94, 0.3);
+    border-color: rgba(34, 197, 94, 0.5);
+}
+
+.hydra-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #94a3b8;
+    transition: all 0.2s ease;
+}
+
+.hydra-toggle.on .hydra-toggle-thumb {
+    left: 20px;
+    background: #22c55e;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+/* ── Emoji Picker ── */
+
+.hydra-emoji-picker {
+    position: relative;
+}
+
+.hydra-emoji-current {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+    background: rgba(15, 23, 42, 0.8);
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.hydra-emoji-grid {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid rgba(100, 116, 139, 0.2);
+    background: rgba(15, 23, 42, 0.97);
+    backdrop-filter: blur(16px);
+    z-index: 10;
+    display: none;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    min-width: 130px;
+}
+
+.hydra-emoji-picker:hover .hydra-emoji-grid,
+.hydra-emoji-picker:focus-within .hydra-emoji-grid {
+    display: grid;
+}
+
+.hydra-emoji-opt {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.hydra-emoji-opt:hover {
+    background: rgba(99, 102, 241, 0.15);
+    transform: scale(1.15);
+}
+
+.hydra-emoji-opt.active {
+    background: rgba(99, 102, 241, 0.25);
+    box-shadow: 0 0 6px rgba(99, 102, 241, 0.3);
+}
+
+/* ── Modal Error ── */
+
+.hydra-modal-error {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    font-size: 12px;
+}
+
+/* ── Modal Footer ── */
+
+.hydra-modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid rgba(99, 102, 241, 0.12);
+    background: rgba(15, 23, 42, 0.3);
+}
+
+.hydra-modal-cancel-btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+    background: rgba(30, 41, 59, 0.5);
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.hydra-modal-cancel-btn:hover {
+    background: rgba(30, 41, 59, 0.8);
+    color: #e2e8f0;
+}
+
+.hydra-modal-save-btn {
+    padding: 7px 18px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hydra-modal-save-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+}
+
+.hydra-modal-save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hydra-modal-delete-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.hydra-modal-delete-btn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.hydra-modal-delete-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Modal scrollbar ── */
+.hydra-modal-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.hydra-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.hydra-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: 2px;
+}
+/* ============================================
+   PREMIUM UI POLISH — 5 Enhancements
+   ============================================ */
+
+/* [P1] Response panel gradient headers */
+.hydra-panel-header, .hydra-head-header {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(139, 92, 246, 0.03), transparent) !important;
+    position: relative;
+}
+.hydra-panel-header::after, .hydra-head-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.2), transparent);
+}
+
+/* [P2] Model selector accent ring */
+.hydra-model-select, .hydra-head-select {
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+.hydra-model-select:focus, .hydra-head-select:focus {
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 0 16px rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+/* [P3] Comparison diff highlight */
+.hydra-diff-add { background: rgba(34, 197, 94, 0.08); border-left: 2px solid #22c55e; }
+.hydra-diff-remove { background: rgba(239, 68, 68, 0.08); border-left: 2px solid #ef4444; }
+
+/* [P4] Synthesis merge animation */
+.hydra-synthesis, .hydra-merged {
+    animation: hydraSynthesis 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes hydraSynthesis {
+    0% { opacity: 0; transform: scale(0.95) translateY(8px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* [P5] Panel resize handle glow */
+.hydra-resize-handle, .hydra-divider {
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.hydra-resize-handle:hover, .hydra-divider:hover {
+    background: rgba(99, 102, 241, 0.15) !important;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+}

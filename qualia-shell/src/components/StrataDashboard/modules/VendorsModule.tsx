@@ -6,6 +6,9 @@ import { useUser } from '../../../context/UserContext';
 import ProfileSpaces from './ProfileSpaces';
 import { useToast } from '../useToast';
 import { LoadingState, ErrorState } from '../StateView';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import ComplianceTab from './__vendors/ComplianceTab';
+import AccountingTab from './__vendors/AccountingTab';
 
 const VENDOR_TYPES = [
     'Plumber', 'Electrician', 'HVAC', 'Landscaping', 'General Contractor',
@@ -40,7 +43,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState<EntityProfile | null>(null);
     const [showForm, setShowForm] = useState(false);
-    const [detailTab, setDetailTab] = useState<'overview' | 'ledger' | 'documents' | 'performance' | 'spaces'>('overview');
+    const [detailTab, setDetailTab] = useState<'overview' | 'ledger' | 'documents' | 'performance' | 'spaces' | 'compliance' | 'accounting'>('overview');
     const [ledger, setLedger] = useState<any[]>([]);
     const [vendorBalance, setVendorBalance] = useState(0);
     const [showLedgerForm, setShowLedgerForm] = useState(false);
@@ -621,8 +624,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                 </div>
 
                                 {/* Detail Tab Bar */}
-                                <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 12 }}>
-                                    {(['overview', 'ledger', 'documents', 'performance', 'spaces'] as const).map(tab => (
+                                <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 12, flexWrap: 'wrap' }}>
+                                    {(['overview', 'ledger', 'documents', 'performance', 'compliance', 'accounting', 'spaces'] as const).map(tab => (
                                         <button key={tab} onClick={() => setDetailTab(tab)} style={{
                                             padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                                             background: 'none', border: 'none',
@@ -1078,6 +1081,14 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             )}
                                         </div>
                                     </>
+                                ) : detailTab === 'compliance' ? (
+                                    <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#f87171' }}>Tab unavailable.</div>}>
+                                        <ComplianceTab vendor={selected} />
+                                    </ErrorBoundary>
+                                ) : detailTab === 'accounting' ? (
+                                    <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#f87171' }}>Tab unavailable.</div>}>
+                                        <AccountingTab vendor={selected} />
+                                    </ErrorBoundary>
                                 ) : detailTab === 'spaces' ? (
                                     <ProfileSpaces entityType="vendor" entityId={selected.id} />
                                 ) : null}

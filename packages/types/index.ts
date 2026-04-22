@@ -70,6 +70,50 @@ export interface Unit {
     updatedAt: string;
 }
 
+// ─── Task 1.1: Occupancy 1:N relations ──────────────────────────
+//
+// Models the AppFolio-style occupancy: one primary (financially
+// responsible) tenant plus N other occupants in a single unit.
+// All new EntityProfile fields below are optional to preserve
+// backward compatibility with every seed and existing consumer.
+
+export interface Occupancy {
+    id: string;
+    unitId: string | null;
+    primaryTenantId: string;
+    otherOccupantIds: string[];
+    moveInDate: string | null;
+    moveOutDate: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface EmergencyContact {
+    name: string;
+    relationship: string;
+    phone: string;
+    email: string | null;
+}
+
+export interface Animal {
+    id: string;
+    species: string;
+    breed: string | null;
+    name: string;
+    weight: number | null;
+    isServiceAnimal: boolean;
+}
+
+export interface Vehicle {
+    id: string;
+    make: string;
+    model: string;
+    year: number | null;
+    color: string | null;
+    licensePlate: string | null;
+    state: string | null;
+}
+
 export interface EntityProfile {
     id: string;
     entityType: EntityType;
@@ -86,6 +130,12 @@ export interface EntityProfile {
     ein: string | null;
     createdAt: string;
     updatedAt: string;
+    // ─── Task 1.1 additions (all optional; backward compatible) ───
+    occupancyId?: string | null;
+    emergencyContacts?: EmergencyContact[];
+    animals?: Animal[];
+    vehicles?: Vehicle[];
+    isPrimaryTenant?: boolean;
 }
 
 export interface Workitem {

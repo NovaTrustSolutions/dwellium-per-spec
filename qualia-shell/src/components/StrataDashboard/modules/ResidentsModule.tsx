@@ -18,7 +18,9 @@ import { API_BASE } from '../../../config';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import ProfileSpaces from './ProfileSpaces';
 import { LoadingState, ErrorState } from '../StateView';
-import type { ResidentHistoryEvent, ResidentLinkage, CommunicationTemplate } from '../strataTypes';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
+import type { ResidentHistoryEvent, ResidentLinkage, CommunicationTemplate, Occupancy } from '../strataTypes';
 
 const API = API_BASE;
 
@@ -192,6 +194,99 @@ function CommTab({ tenantId, tenantName }: { tenantId: string; tenantName: strin
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1,
             }}><Send size={12} /> {sending ? 'Sending…' : `Send to ${tenantName}`}</button>
             {sent && <div style={{ fontSize: 11, color: sent.startsWith('✓') ? '#10b981' : '#ef4444', fontWeight: 600 }}>{sent}</div>}
+        </div>
+    );
+}
+
+/**
+ * OtherOccupantsSection — Task 1.1
+ *
+ * Renders a collapsible panel listing the non-primary occupants who share
+ * the primary tenant's unit. Fetches `/occupancies` filtered by the primary
+ * tenant id, then resolves `otherOccupantIds` against the already-loaded
+ * tenant list. Emits a Sentry breadcrumb on expand/collapse for GR-13.
+ */
+function OtherOccupantsSection({ tenant, allTenants }: { tenant: Tenant; allTenants: Tenant[] }) {
+    const [open, setOpen] = useState(true);
+    const [occupancy, setOccupancy] = useState<Occupancy | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        strataGet<Occupancy[]>('/occupancies', { primaryTenantId: tenant.id })
+            .then((rows) => {
+                if (cancelled) return;
+                const occ = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+                setOccupancy(occ);
+            })
+            .catch(() => { if (!cancelled) setOccupancy(null); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [tenant.id]);
+
+    const others = (occupancy?.otherOccupantIds ?? [])
+        .map((id) => allTenants.find((t) => t.id === id))
+        .filter((t): t is Tenant => Boolean(t));
+
+    if (!loading && (!occupancy || others.length === 0)) return null;
+
+    const toggle = () => {
+        const next = !open;
+        setOpen(next);
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.click',
+                message: `residents.otherOccupants.${next ? 'expand' : 'collapse'}`,
+                level: 'info',
+                data: { tenantId: tenant.id, occupancyId: occupancy?.id ?? null, count: others.length },
+            });
+        } catch {
+            // addBreadcrumb is a no-op when Sentry isn't initialized.
+        }
+    };
+
+    return (
+        <div
+            data-testid="other-occupants-section"
+            style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)', marginBottom: 10 }}
+        >
+            <button
+                onClick={toggle}
+                aria-expanded={open}
+                style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 14px', border: 'none', background: 'none',
+                    color: '#94a3b8', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
+                    textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+            >
+                <Users size={12} /> Other Occupants
+                <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 10, background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', fontSize: 10, fontWeight: 700 }}>
+                    {loading ? '…' : others.length}
+                </span>
+                <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+                    {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </span>
+            </button>
+            {open && (
+                <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {loading && <div style={{ fontSize: 11, color: '#475569' }}>Loading occupants…</div>}
+                    {!loading && others.map((o) => (
+                        <div
+                            key={o.id}
+                            data-testid="other-occupant-row"
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}
+                        >
+                            <Users size={12} color="#64748b" />
+                            <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>{o.name}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: 10, color: '#64748b' }}>
+                                {o.metadata?.tenantType || 'Other Occupant'}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -569,6 +664,15 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                 <DetailSection title="Other" icon={<FileText size={12} />} defaultOpen={false}>
                                     <Field label="Primary Tenant" value={md.primaryTenant} /><Field label="License Plates" value={md.licensePlates} /><Field label="Pets" value={md.pets} /><Field label="Tenant Notes" value={md.tenantNotes} full />
                                 </DetailSection>
+                                {md.primaryTenant === 'Yes' && (
+                                    <ErrorBoundary fallback={
+                                        <div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>
+                                            Other Occupants unavailable.
+                                        </div>
+                                    }>
+                                        <OtherOccupantsSection tenant={selected} allTenants={tenants} />
+                                    </ErrorBoundary>
+                                )}
                                 <DetailSection title="Spaces & Projects" icon={<Users size={12} />} defaultOpen={false}>
                                     <ProfileSpaces entityType="tenant" entityId={selected.id} />
                                 </DetailSection>

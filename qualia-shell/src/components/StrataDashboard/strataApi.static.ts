@@ -129,6 +129,14 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
         const entries = rows.slice(offset, offset + limit);
         return { entries, total };
     }
+    if (path === '/occupancies') {
+        // Task 1.1: 1:N occupancy (primary tenant + N other occupants).
+        // Seeded from qualia-shell/public/data/occupancies.json.
+        let f = await loadTable('occupancies') as any[];
+        if (params?.primaryTenantId) f = f.filter(o => o.primaryTenantId === params.primaryTenantId);
+        if (params?.unitId) f = f.filter(o => o.unitId === params.unitId);
+        return f;
+    }
     if (path === '/notes') return filterBy(await loadTable('notes') as any[], params);
     if (path === '/communications') return filterBy(await loadTable('communications') as any[], params);
     if (path === '/compliance') return filterBy(await loadTable('compliance') as any[], params);
@@ -257,6 +265,10 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
     // /units/{id}
     m = path.match(/^\/units\/([^/]+)$/);
     if (m) return (await loadTable('units')).find((u: any) => u.id === m![1]) || null;
+
+    // /occupancies/{id}  (Task 1.1)
+    m = path.match(/^\/occupancies\/([^/]+)$/);
+    if (m) return (await loadTable('occupancies')).find((o: any) => o.id === m![1]) || null;
 
     // /workitems/{id}
     m = path.match(/^\/workitems\/([^/]+)$/);

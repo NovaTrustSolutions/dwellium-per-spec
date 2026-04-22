@@ -1,0 +1,8 @@
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+.vscode/
+.idea/
+/node_modules
+qualia-shell/

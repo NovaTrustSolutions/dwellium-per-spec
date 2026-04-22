@@ -1,0 +1,31 @@
+{
+  "source": "AppFolio zohouryproperties - Tenants",
+  "captured_at": "2026-04-19",
+  "url": "/occupancies?page=1&sort=name:asc",
+  "total_tenants": 3274,
+  "page_size": 20,
+  "tabs": ["Tenants", "Owners", "Vendors"],
+  "alphabet_filter_available": true,
+  "visible_properties": [
+    "Huntington Lane Apartments - 152 Dodd St, Marietta, GA 30060",
+    "Washington Gardens Apartments - 4555 Washington Rd, Atlanta, GA 30349",
+    "Summerfield Apartments - 4581 S Kirkman Rd, Orlando, FL 32811",
+    "Riverwood Club Apartments - 901 Bolton Rd, Atlanta, GA 30331",
+    "Woodland Parc Townhomes - Bell Drive, Smyrna, GA 30080"
+  ],
+  "sample_tenants_page_1": [
+    { "name": "De dios, Marcelina", "status": "Past", "property": "Huntington Lane Apartments - 152 Dodd St, Apt D", "unit": "0909 A" },
+    { "name": "Glover, Jasmine", "status": "Past", "property": "Washington Gardens Apartments - 4555 Washington Rd", "unit": "001O" },
+    { "name": "Harmon, Amiyah", "status": "Past", "property": "Summerfield Apartments - 4581 S Kirkman Rd", "unit": "3901" },
+    { "name": "NARVAEZ, ANTHONY", "status": "Past", "property": "Summerfield Apartments - 4581 S Kirkman Rd", "unit": "9102", "phone": "(939) 228-0430" },
+    { "name": "Palmer Jr., Kenneth", "status": "Past", "property": "Riverwood Club Apartments - 901 Bolton Rd", "unit": "A05" },
+    { "name": "POLEON, ISHBEL", "status": "Past", "property": "Summerfield Apartments - 4581 S Kirkman Rd", "unit": "5501", "phone": "(340) 244-9017" },
+    { "name": "White, Willie", "status": "Current", "property": "Riverwood Club Apartments - 901 Bolton Rd", "unit": "B03" },
+    { "name": "1 brm, MODEL", "status": "Past", "property": "Washington Gardens Apartments", "unit": "001I" },
+    { "name": "2BRM, model", "status": "Past", "property": "Washington Gardens Apartments", "unit": "022I" },
+    { "name": "ABDELOUAHED, HAMID", "status": "Past", "property": "Summerfield Apartments", "unit": "2908", "phone": "(407) 239-9900" },
+    { "name": "ABDELSADEK, MOHAMED A.", "status": "Past", "property": "Summerfield Apartments", "unit": "6907" },
+    { "name": "Abdulkarim, Nafisah G.", "status": "Past", "property": "Woodland Parc Townhomes", "unit": "2779-2", "phone": "(980) 210-4930" },
+    { "name": "ABREU, MARIO G.", "status": "Past", "property": "Summerfield Apartments", "unit": "3905", "phone": "(407) 404-0737" }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "capturedAt": "2026-04-20T15:10:45.282Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "phase": "Phase 0.0 Task 0.0.7 — Lighthouse baseline (sandbox smoke)",
+  "target": "http://localhost:4173/",
+  "runs": 3,
+  "environment": {
+    "node": "v22.22.0",
+    "os": "linux arm64 (sandbox)",
+    "note": "Captured in Cowork sandbox against vite-built dist + static-API mode. Re-run on macOS dev box to produce the canonical baseline."
+  },
+  "averages": {
+    "scores": {
+      "performance": 0.67,
+      "accessibility": 0.9,
+      "bestPractices": 0.96,
+      "seo": 0.91
+    },
+    "metrics": {
+      "FCP": 5105.627333333334,
+      "LCP": 5402.941,
+      "TBT": 0,
+      "CLS": 0,
+      "SI": 5105.627333333334,
+      "TTI": 5402.941
+    }
+  },
+  "rawRuns": [
+    {
+      "performance": 0.67,
+      "accessibility": 0.9,
+      "bestPractices": 0.96,
+      "seo": 0.91,
+      "metrics": {
+        "FCP": 5102.32,
+        "LCP": 5403.48,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 5102.32,
+        "TTI": 5403.48
+      }
+    },
+    {
+      "performance": 0.67,
+      "accessibility": 0.9,
+      "bestPractices": 0.96,
+      "seo": 0.91,
+      "metrics": {
+        "FCP": 5112.63,
+        "LCP": 5402.445,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 5112.63,
+        "TTI": 5402.445
+      }
+    },
+    {
+      "performance": 0.67,
+      "accessibility": 0.9,
+      "bestPractices": 0.96,
+      "seo": 0.91,
+      "metrics": {
+        "FCP": 5101.932,
+        "LCP": 5402.898,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 5101.932,
+        "TTI": 5402.898000000001
+      }
+    }
+  ]
+}

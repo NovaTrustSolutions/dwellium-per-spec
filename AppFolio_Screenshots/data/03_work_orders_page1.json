@@ -1,0 +1,32 @@
+{
+  "source": "AppFolio zohouryproperties - Work Orders (Open filter)",
+  "captured_at": "2026-04-19",
+  "url": "/maintenance/service_requests/work_orders",
+  "total_work_orders": 1563,
+  "page_size": 50,
+  "maintenance_submenu_tabs": ["Work Orders", "Recurring Work Orders", "Inspections", "Unit Turns", "Projects", "Purchase Orders", "Inventory", "Fixed Assets", "Maintenance Performer"],
+  "assignees": ["Candice Ohalloran", "Elisa Cerini", "Joshua Grieb", "Lisa Zohoury", "Wendy Powell"],
+  "status_values": ["All", "Open", "New", "New by Appfolio", "Assigned", "Assigned by Appfolio", "Scheduled", "Waiting", "Estimate Requested", "Estimated", "Work Done", "Ready to Bill", "Completed", "Completed No Need To Bill", "Canceled"],
+  "saved_filters": ["Unassigned Resident Requested", "Unassigned Internal", "Work Done and Unbilled", "Ready to Bill"],
+  "sample_orders_newest_first": [
+    { "id": "19511-1", "status": "New", "source": "Resident", "property": "Woodland Parc Townhomes", "unit": "2789-1", "tenant": "Brianna M. Jackson", "created": "2026-04-17", "description": "Fire alarm needs replaced. Beeping and can't reach." },
+    { "id": "19510-1", "status": "New", "source": "Internal", "property": "Riverwood Club Apartments", "unit": "C06", "tenant": "Monshineak D. Mitchell", "created": "2026-04-17", "description": "Plug outlet not working in first bedroom and window does not open. Install knob on kitchen drawer." },
+    { "id": "19508-1", "status": "New", "source": "Internal", "property": "Riverwood Club Apartments", "unit": "D13", "tenant": "Tommy D. Bennett", "created": "2026-04-16", "description": "All of the plugs in the kitchen are not working." },
+    { "id": "19504-1", "status": "New", "source": "Resident", "property": "Riverwood Club Apartments", "unit": "H04", "tenant": "Victor E. Thomas", "created": "2026-04-15", "description": "Ac water reservoir is full of water and overflowing" },
+    { "id": "19503-1", "status": "New", "source": "Internal", "property": "Riverwood Club Apartments", "unit": "C15", "tenant": "Antoniya J. White*", "created": "2026-04-15", "description": "Repair the stove vent." },
+    { "id": "19499-1", "status": "New", "source": "Internal", "property": "Riverwood Club Apartments", "unit": "H01", "tenant": "Steve R. George", "created": "2026-04-15", "description": "A/C blowing out hot air." },
+    { "id": "19496-1", "status": "New", "source": "Resident", "property": "Woodland Parc Townhomes", "unit": "2838-4", "tenants": ["Joey S. Johnson", "Stephanie D. Krall", "Parini V. Patel", "Justin M. Krall"], "created": "2026-04-15", "description": "Microwave light (shining down on the stove, not inside the microwave) went out." },
+    { "id": "19441-1", "status": "Assigned", "vendor": "CS COOPER RESIDENTIAL CONTRACTORS, LLC", "property": "Woodland Parc Townhomes", "unit": "2767-3", "tenants": ["Kevin D. Rapplean", "Matthew A. Bigda", "Carter E. Johnson"], "created": "2026-04-01", "description": "Replace sheetrock from leak 2 weeks ago" },
+    { "id": "19438-1", "status": "Assigned", "vendor": "GEORGIA POWER", "assignee": "Maria Diaz", "property": "2070 AZALEA DRIVE", "created": "2026-04-01" },
+    { "id": "19429-1", "status": "Assigned", "vendor": "JIMENEZ HOME REPAIRS LLC", "property": "Woodland Parc Townhomes", "unit": "2763-3", "tenants": ["Michael L. Mullen", "Tiffany M. James"], "created": "2026-03-31", "description": "Kitchen sink faucet is extremely loose. Maintenance noticed it while here and stated to put in an additional request so this can be completed when coming back to paint over ceiling leak." },
+    { "id": "19424-1", "status": "New", "source": "Resident", "property": "Wieuca Property", "tenants": ["Samuel F. Grey", "George E. Hughes", "Nicholas W. Bronold", "Alan R. Clark"], "created": "2026-03-30", "description": "Yellow jackets getting inside house." },
+    { "id": "19172-1", "status": "Work Done", "vendor": "CS COOPER RESIDENTIAL CONTRACTORS, LLC", "property": "Woodland Parc Townhomes", "unit": "2771-2", "created": "2026-01-21", "description": "Dishwasher Friction Pad Sleeves came off so dishwasher has a hard time staying closed." },
+    { "id": "19277-1", "status": "Waiting", "property": "Riverwood Club Apartments", "unit": "C15", "tenant": "Antoniya J. White*", "created": "2026-02-18", "description": "Floor dipping and cracking." }
+  ],
+  "observations": {
+    "recurring_work_orders": "Georgia Power utility ticket auto-generated monthly for 2070 AZALEA DRIVE — chain from Aug 2024 through Apr 2026.",
+    "aha_inspections": "Riverwood Club: 9 AHA (Atlanta Housing Authority) inspection WOs scheduled 04/27/2026 - 04/30/2026 — Section 8 compliance batch.",
+    "primary_properties": ["Woodland Parc Townhomes", "Riverwood Club Apartments", "Wieuca Property", "2070 AZALEA DRIVE"],
+    "asterisked_tenants": "Asterisk (*) in tenant names likely indicates primary/lead tenant on shared lease."
+  }
+}

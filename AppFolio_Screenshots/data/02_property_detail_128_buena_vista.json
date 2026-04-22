@@ -1,0 +1,35 @@
+{
+  "source": "AppFolio zohouryproperties - Property Detail /properties/18",
+  "captured_at": "2026-04-19",
+  "property_id": 18,
+  "name": "128 BUENA VISTA DR N",
+  "type": "Single-Family",
+  "address": "128 Buena Vista Dr N, Dunedin, FL 34698",
+  "county": "Pinellas County",
+  "tabs_visible": ["Property", "Budget", "Marketing", "Comparables", "Showing Settings"],
+  "status": "Vacant",
+  "rent_ready": false,
+  "lockbox": null,
+  "description": "Purchased on Oct. 16, 2009 From: Dolan & Brenda Ricketts, 1750 Santa Barbara Dr., Dunedin, FL 34698. Settlement Agent: Wolinka & Wolinka Title Ins Agency. Purchase Price: $2,270,000 (fully furnished). Pinellas County Parcel 22/28/15/23310/011/0160",
+  "portfolio": "NASSER J. ZOHOURY, MD",
+  "management_start": "2009-10-16",
+  "rental": { "bedrooms": 4, "bathrooms": 7.0, "sqft": null, "market_rent": null, "application_fee": 69.00, "nsf_fee": 50.00 },
+  "non_revenue_unit": { "status": "Yes", "type": "Other", "start": "2019-09-10" },
+  "owners": [{ "name": "The Nasser Zohoury Revocable Trust", "percent_owned": 100.0, "percent_distributed": 100.0 }],
+  "late_fee_policy": { "effective": "2021-02-01", "base_fee": 0.00, "grace_days": 4, "grace_balance": 0.00 },
+  "maintenance": { "limit": 0.00, "insurance_expiration": null, "home_warranty": false, "pre_auth_entry": false },
+  "fixed_assets": [
+    { "asset_id": 8, "type": "Pump: Pool, Fountain", "status": "Installed", "placed_in_service": "2021-07-01", "warranty_expiration": "2026-07-01" },
+    { "asset_id": 9, "type": "Pump: Pool, Fountain", "status": "Installed", "placed_in_service": "2021-07-27", "warranty_expiration": "2026-07-31" },
+    { "asset_id": 15, "type": "Refrigerator", "status": "Installed", "placed_in_service": "2022-07-19" },
+    { "asset_id": 16, "type": "Toilet/Tank/Plumbing", "status": "Installed", "placed_in_service": "2022-07-16" }
+  ],
+  "attachment_count": 19,
+  "attachment_sample": [
+    { "name": "Duke Energy Water Heater Repair & Replacement Plan Renews on 2-16-19 128BV.pdf", "uploaded_by": "Lisa Zohoury", "date": "2018-12-26" },
+    { "name": "Service_Order_2797463_4-12-18_Southern_Green_128_BV.pdf", "uploaded_by": "Lisa Zohoury", "date": "2018-04-12" },
+    { "name": "Contract_with_Southern_Green_4-5-18_128BV.pdf", "uploaded_by": "Lisa Zohoury", "date": "2018-04-07" },
+    { "name": "Massey_Pest_Prevention_Agreement_4-28-17.pdf", "uploaded_by": "Lisa Zohoury", "date": "2018-04-04" },
+    { "name": "2017_Notice_of_Proposed_Property_Taxes_128_BV.pdf", "uploaded_by": "Lisa Zohoury", "date": "2017-09-09" }
+  ]
+}

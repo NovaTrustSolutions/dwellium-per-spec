@@ -1,0 +1,3 @@
+Error: Failed to launch: Error: spawn /bin/sh ENOENT
+
+[1A[2K

@@ -1,0 +1,37 @@
+name: PII Scan
+
+# Dedicated PII scanner that runs on every PR (not just parity-gated paths).
+# Strict scope (appfolioDerived/) blocks merge; legacy scope (public/data/)
+# emits a warning but doesn't block — see Scripts/verify_no_pii_leak.mjs.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pii-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Run verify_no_pii_leak.mjs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25'
+
+      - name: Run strict-scope PII scanner
+        run: node Scripts/verify_no_pii_leak.mjs
+
+      - name: Show legacy findings (informational)
+        if: always()
+        run: node Scripts/verify_no_pii_leak.mjs --show-legacy || true

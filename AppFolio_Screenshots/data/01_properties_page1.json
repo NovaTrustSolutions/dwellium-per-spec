@@ -1,0 +1,20 @@
+{
+  "source": "AppFolio zohouryproperties - Properties list",
+  "captured_at": "2026-04-19",
+  "url": "/properties?page=1&sort=name:asc",
+  "total_properties": 50,
+  "page_size": 10,
+  "headers": ["Name", "Type", "Units", "Vacant", "Owners"],
+  "properties_page_1": [
+    { "name": "128 BUENA VISTA DR N", "address": "128 Buena Vista Dr N, Dunedin, FL 34698", "type": "Single-Family", "units": 1, "vacant": 0, "owner": "The Nasser Zohoury Revocable Trust" },
+    { "name": "2070 AZALEA DRIVE", "address": "2070 Azalea Drive, Roswell, GA 30075", "type": "Single-Family", "units": 1, "vacant": 0, "owner": "The Nasser Zohoury Revocable Trust" },
+    { "name": "2227 WAYSIDE DR", "address": "2227 Wayside Dr, Atlanta, GA 30319", "type": "Single-Family", "units": 1, "vacant": 0, "owner": null },
+    { "name": "2262 HARBOR VIEW DRIVE", "address": "2262 Harbor View Dr, Dunedin, FL 34698", "type": "Single-Family", "units": 1, "vacant": 0, "owner": "Lisa M. Zohoury" },
+    { "name": "305 Hilltop Drive", "address": "305 Hilltop Dr, Upper Sandusky, OH 43351", "type": "Single-Family", "units": 1, "vacant": 0, "owner": null },
+    { "name": "4409 ST ANDREWS DR", "address": "4409 ST ANDREWS DR NW, ATLANTA, GA 30327", "type": "Single-Family", "units": 1, "vacant": 0, "owner": null },
+    { "name": "498 Meadow Rd aka Ski Country Chalet", "address": "498 Meadow Rd, Snowmass Village, CO 81612", "type": "Single-Family", "units": 1, "vacant": 0, "owner": "The Nasser Zohoury Revocable Trust" },
+    { "name": "Andre' J Zohoury", "address": "128 Buena Vista Dr N, Dunedin, FL 34698", "type": "Single-Family", "units": 1, "vacant": 0, "owner": null },
+    { "name": "ANZO Consulting, LLC", "address": "128 Buena Vista Dr N, Dunedin, FL 34698", "type": "Single-Family", "units": 1, "vacant": 0, "owner": null },
+    { "name": "ANZO, LLC", "address": "4409 SAINT ANDREWS DR NW, ATLANTA, GA 30327", "type": "Single-Family", "units": 1, "vacant": 0, "owner": null }
+  ]
+}

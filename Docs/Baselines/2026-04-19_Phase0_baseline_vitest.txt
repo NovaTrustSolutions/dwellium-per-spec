@@ -1,0 +1,2270 @@
+
+[1m[46m RUN [49m[22m [36mv4.1.0 [39m[90m/sessions/blissful-vibrant-lamport/mnt/Dwellium -Per Spec/qualia-shell[39m
+
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mGET calls correct URL and returns parsed JSON[32m 82[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mGET attaches auth token from localStorage[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mGET serializes query params correctly[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mGET filters out empty/undefined query params[32m 0[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mPOST sends JSON body[32m 0[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mPUT sends JSON body[32m 0[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mDELETE calls correct method[32m 0[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mthrows on non-OK response with error message[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22mthrows with statusText when JSON parse fails[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/strataApi.test.ts[2m > [22mstrataApi[2m > [22momits auth header when no token in localStorage[32m 0[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mlogin() sends credentials and stores token on success[32m 12[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mlogin() returns error on failed login[32m 4[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mlogin() handles network errors[32m 4[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mlogout() clears user state and token[32m 3[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mhasMinRole() respects role hierarchy[32m 3[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mhasPermission() returns true for god role on any permission[32m 2[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mhasPermission() checks permissions map for non-god roles[32m 3[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mvalidates stored token on mount and sets user[32m 52[2mms[22m[39m
+ [32m✓[39m src/test/UserContext.test.tsx[2m > [22mUserContext[2m > [22mclears invalid stored token on mount[32m 54[2mms[22m[39m
+[90mstdout[2m | src/test/ARAConsole.test.tsx[2m > [22m[2mARAConsole[2m > [22m[2mshows context sources and diagnostics for ARA replies
+[22m[39m[ARA] Loaded 1 personalities
+
+[90mstdout[2m | src/test/ARAConsole.test.tsx[2m > [22m[2mARAConsole[2m > [22m[2mcreates notes and workitems from the conversation action panel
+[22m[39m[ARA] Loaded 1 personalities
+
+ [32m✓[39m src/test/ARAConsole.test.tsx[2m > [22mARAConsole[2m > [22mshows context sources and diagnostics for ARA replies[33m 458[2mms[22m[39m
+[90mstdout[2m | src/test/ARAConsole.test.tsx[2m > [22m[2mARAConsole[2m > [22m[2mrestores the saved conversation for the active mode from local storage
+[22m[39m[ARA] Loaded 1 personalities
+
+ [32m✓[39m src/test/ARAConsole.test.tsx[2m > [22mARAConsole[2m > [22mcreates notes and workitems from the conversation action panel[33m 718[2mms[22m[39m
+ [32m✓[39m src/test/ARAConsole.test.tsx[2m > [22mARAConsole[2m > [22mrestores the saved conversation for the active mode from local storage[32m 10[2mms[22m[39m
+[90mstderr[2m | src/test/StellaAgent.test.tsx[2m > [22m[2mStellaAgent[2m > [22m[2mrenders tab bar with all 5 tabs
+[22m[39mAn update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/StellaAgent.test.tsx[2m > [22m[2mStellaAgent[2m > [22m[2mshows welcome message in chat tab
+[22m[39mAn update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to StellaAgent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ [31m×[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mrenders tab bar with all 5 tabs[32m 32[2mms[22m[39m
+[31m   → Unable to find an element with the text: 🧠 Memory. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"stella"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"stella__tabs"[31m
+      [36m>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab stella__tab--active"[31m
+          [33mtitle[31m=[32m"Chat"[31m
+        [36m>[31m
+          [0m💬[0m
+          [0m [0m
+          [0mChat[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Honcho"[31m
+        [36m>[31m
+          [0m🧠[0m
+          [0m [0m
+          [0mHoncho[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Hermes"[31m
+        [36m>[31m
+          [0m⚡[0m
+          [0m [0m
+          [0mHermes[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Skills"[31m
+        [36m>[31m
+          [0m🧩[0m
+          [0m [0m
+          [0mSkills[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Memory"[31m
+        [36m>[31m
+          [0m📂[0m
+          [0m [0m
+          [0mMemory[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Cron"[31m
+        [36m>[31m
+          [0m⏰[0m
+          [0m [0m
+          [0mCron[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"MCP"[31m
+        [36m>[31m
+          [0m🔌[0m
+          [0m [0m
+          [0mMCP[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Voice"[31m
+        [36m>[31m
+          [0m🎙️[0m
+          [0m [0m
+          [0mVoice[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Settings"[31m
+        [36m>[31m
+          [0m⚙️[0m
+          [0m [0m
+          [0mSettings[0m
+        [36m</button>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"stella__status-bar"[31m
+      [36m>[31m
+        [36m<span[31m
+          [33mclass[31m=[32m"stella__status-dot stella__status-dot--loading"[31m
+        [36m/>[31m
+        [36m<span>[31m
+          [0mStella [0m
+          [0mConnecting…[0m
+        [36m</span>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"stella__chat"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"stella__messages"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"stella__msg stella__msg--system"[31m
+          [36m>[31m
+            [0m⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more.[0m
+          [36m</div>[31m
+          [36m<div />[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"stella__input-area"[31m
+        [36m>[31m
+          [36m<input[31m
+            [33maccept[31m=[32m".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.md,.doc,.docx"[31m
+            [33mid[31m=[32m"fub-file-input"[31m
+            [33mstyle[31m=[32m"display: none;"[31m
+            [33mtype[31m=[32m"file"[31m
+          [36m/>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"fub-trigger fub-trigger--sm"[31m
+            [33mtitle[31m=[32m"Upload file for AI analysis (images, PDF, txt, docx)"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [36m<svg[31m
+              [33mfill[31m=[32m"none"[31m
+              [33mheight[31m=[32m"16"[31m
+              [33mstroke[31m=[32m"currentColor"[31m
+              [33mstroke-linecap[31m=[32m"round"[31m
+              [33mstroke-linejoin[31m=[32m"round"[31m
+              [33mstroke-width[31m=[32m"2"[31m
+              [33mviewBox[31m=[32m"0 0 24 24"[31m
+              [33mwidth[31m=[32m"16"[31m
+            [36m>[31m
+              [36m<path[31m
+                [33md[31m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[31m
+              [36m/>[31m
+              [36m<polyline[31m
+                [33mpoints[31m=[32m"17 8 12 3 7 8"[31m
+              [36m/>[31m
+              [36m<line[31m
+                [33mx1[31m=[32m"12"[31m
+                [33mx2[31m=[32m"12"[31m
+                [33my1[31m=[32m"3"[31m
+                [33my2[31m=[32m"15"[31m
+              [36m/>[31m
+            [36m</svg>[31m
+          [36m</button>[31m
+          [36m<textarea[31m
+            [33mclass[31m=[32m"stella__input"[31m
+            [33mdisabled[31m=[32m""[31m
+            [33mplaceholder[31m=[32m"Stella is offline"[31m
+            [33mrows[31m=[32m"1"[31m
+          [36m/>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"stella__send-btn"[31m
+            [33mdisabled[31m=[32m""[31m
+            [33mtitle[31m=[32m"Send"[31m
+          [36m>[31m
+            [0m➤[0m
+          [36m</button>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [32m✓[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mshows Stella Online after init + status check[32m 12[2mms[22m[39m
+ [32m✓[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mshows version and latency when online[32m 9[2mms[22m[39m
+ [32m✓[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mshows welcome message in chat tab[32m 5[2mms[22m[39m
+[90mstderr[2m | src/test/Terminal.test.tsx[2m > [22m[2mTerminal[2m > [22m[2mrenders header with terminal title
+[22m[39mAn update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/Terminal.test.tsx[2m > [22m[2mTerminal[2m > [22m[2mrenders header with terminal title
+[22m[39mAn update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/Terminal.test.tsx[2m > [22m[2mTerminal[2m > [22m[2mhas Restart and Focus buttons
+[22m[39mAn update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/Terminal.test.tsx[2m > [22m[2mTerminal[2m > [22m[2mhas Restart and Focus buttons
+[22m[39mAn update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/Terminal.test.tsx[2m > [22m[2mTerminal[2m > [22m[2mhas signal buttons (Ctrl+C, Ctrl+D)
+[22m[39mAn update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/Terminal.test.tsx[2m > [22m[2mTerminal[2m > [22m[2mhas signal buttons (Ctrl+C, Ctrl+D)
+[22m[39mAn update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Terminal inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ [32m✓[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22msends a message and receives a response[32m 183[2mms[22m[39m
+ [32m✓[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mswitches to Skills tab and shows skills[32m 39[2mms[22m[39m
+ [31m×[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mswitches to Memory tab and shows files[32m 11[2mms[22m[39m
+[31m   → Unable to find an element with the text: 🧠 Memory. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"stella"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"stella__tabs"[31m
+      [36m>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab stella__tab--active"[31m
+          [33mtitle[31m=[32m"Chat"[31m
+        [36m>[31m
+          [0m💬[0m
+          [0m [0m
+          [0mChat[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Honcho"[31m
+        [36m>[31m
+          [0m🧠[0m
+          [0m [0m
+          [0mHoncho[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Hermes"[31m
+        [36m>[31m
+          [0m⚡[0m
+          [0m [0m
+          [0mHermes[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Skills"[31m
+        [36m>[31m
+          [0m🧩[0m
+          [0m [0m
+          [0mSkills[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Memory"[31m
+        [36m>[31m
+          [0m📂[0m
+          [0m [0m
+          [0mMemory[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Cron"[31m
+        [36m>[31m
+          [0m⏰[0m
+          [0m [0m
+          [0mCron[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"MCP"[31m
+        [36m>[31m
+          [0m🔌[0m
+          [0m [0m
+          [0mMCP[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Voice"[31m
+        [36m>[31m
+          [0m🎙️[0m
+          [0m [0m
+          [0mVoice[0m
+        [36m</button>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"stella__tab "[31m
+          [33mtitle[31m=[32m"Settings"[31m
+        [36m>[31m
+          [0m⚙️[0m
+          [0m [0m
+          [0mSettings[0m
+        [36m</button>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"stella__status-bar"[31m
+      [36m>[31m
+        [36m<span[31m
+          [33mclass[31m=[32m"stella__status-dot stella__status-dot--online"[31m
+        [36m/>[31m
+        [36m<span>[31m
+          [0mStella [0m
+          [0mOnline[0m
+        [36m</span>[31m
+        [36m<span[31m
+          [33mclass[31m=[32m"stella__version"[31m
+        [36m>[31m
+          [0mv[0m
+          [0m1.2.0[0m
+        [36m</span>[31m
+        [36m<span[31m
+          [33mclass[31m=[32m"stella__latency"[31m
+        [36m>[31m
+          [0m42[0m
+          [0mms[0m
+        [36m</span>[31m
+        [36m<span[31m
+          [33mclass[31m=[32m"stella__pid"[31m
+        [36m>[31m
+          [0mPID [0m
+          [0m12345[0m
+        [36m</span>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"stella__chat"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"stella__messages"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"stella__msg stella__msg--system"[31m
+          [36m>[31m
+            [0m⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more.[0m
+          [36m</div>[31m
+          [36m<div />[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"stella__input-area"[31m
+        [36m>[31m
+          [36m<input[31m
+            [33maccept[31m=[32m".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.md,.doc,.docx"[31m
+            [33mid[31m=[32m"fub-file-input"[31m
+            [33mstyle[31m=[32m"display: none;"[31m
+            [33mtype[31m=[32m"file"[31m
+          [36m/>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"fub-trigger fub-trigger--sm"[31m
+            [33mtitle[31m=[32m"Upload file for AI analysis (images, PDF, txt, docx)"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [36m<svg[31m
+              [33mfill[31m=[32m"none"[31m
+              [33mheight[31m=[32m"16"[31m
+              [33mstroke[31m=[32m"currentColor"[31m
+              [33mstroke-linecap[31m=[32m"round"[31m
+              [33mstroke-linejoin[31m=[32m"round"[31m
+              [33mstroke-width[31m=[32m"2"[31m
+              [33mviewBox[31m=[32m"0 0 24 24"[31m
+              [33mwidth[31m=[32m"16"[31m
+            [36m>[31m
+              [36m<path[31m
+                [33md[31m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[31m
+              [36m/>[31m
+              [36m<polyline[31m
+                [33mpoints[31m=[32m"17 8 12 3 7 8"[31m
+              [36m/>[31m
+              [36m<line[31m
+                [33mx1[31m=[32m"12"[31m
+                [33mx2[31m=[32m"12"[31m
+                [33my1[31m=[32m"3"[31m
+                [33my2[31m=[32m"15"[31m
+              [36m/>[31m
+            [36m</svg>[31m
+          [36m</button>[31m
+          [36m<textarea[31m
+            [33mclass[31m=[32m"stella__input"[31m
+            [33mplaceholder[31m=[32m"Ask Stella anything…"[31m
+            [33mrows[31m=[32m"1"[31m
+          [36m/>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"stella__send-btn"[31m
+            [33mdisabled[31m=[32m""[31m
+            [33mtitle[31m=[32m"Send"[31m
+          [36m>[31m
+            [0m➤[0m
+          [36m</button>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [32m✓[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mswitches to Settings tab and shows provider config[32m 39[2mms[22m[39m
+ [32m✓[39m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mshows offline banner and retry/initialize buttons when offline[32m 9[2mms[22m[39m
+ [32m✓[39m src/test/Terminal.test.tsx[2m > [22mTerminal[2m > [22mrenders header with terminal title[32m 27[2mms[22m[39m
+ [32m✓[39m src/test/Terminal.test.tsx[2m > [22mTerminal[2m > [22mshows initial output from session creation[32m 10[2mms[22m[39m
+ [32m✓[39m src/test/Terminal.test.tsx[2m > [22mTerminal[2m > [22mshows tools from capabilities[32m 9[2mms[22m[39m
+ [32m✓[39m src/test/Terminal.test.tsx[2m > [22mTerminal[2m > [22mhas Restart and Focus buttons[32m 7[2mms[22m[39m
+ [32m✓[39m src/test/Terminal.test.tsx[2m > [22mTerminal[2m > [22mhas signal buttons (Ctrl+C, Ctrl+D)[32m 5[2mms[22m[39m
+ [32m✓[39m src/test/Terminal.test.tsx[2m > [22mTerminal[2m > [22msends command via the command input form[32m 176[2mms[22m[39m
+ [32m✓[39m src/test/Terminal.test.tsx[2m > [22mTerminal[2m > [22msends SIGINT when Ctrl+C button is clicked[32m 33[2mms[22m[39m
+[90mstderr[2m | src/test/GlobalSearch.test.tsx[2m > [22m[2mGlobalSearch[2m > [22m[2mrenders the search input with ⌘K placeholder
+[22m[39mAn update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/GlobalSearch.test.tsx[2m > [22m[2mGlobalSearch[2m > [22m[2mrenders facet filter chips
+[22m[39mAn update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ [32m✓[39m src/test/GlobalSearch.test.tsx[2m > [22mGlobalSearch[2m > [22mrenders the search input with ⌘K placeholder[32m 69[2mms[22m[39m
+ [32m✓[39m src/test/GlobalSearch.test.tsx[2m > [22mGlobalSearch[2m > [22mrenders facet filter chips[32m 14[2mms[22m[39m
+[90mstderr[2m | src/test/GlobalSearch.test.tsx[2m > [22m[2mGlobalSearch[2m > [22m[2mshows search results after debounced input
+[22m[39mAn update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/GlobalSearch.test.tsx[2m > [22m[2mGlobalSearch[2m > [22m[2mcalls onNavigate when a result is clicked
+[22m[39mAn update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/GlobalSearch.test.tsx[2m > [22m[2mGlobalSearch[2m > [22m[2mcalls onNavigate when a result is clicked
+[22m[39mRemoving a style property during rerender (borderColor) when a conflicting property is set (border) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values.
+
+ [32m✓[39m src/test/GlobalSearch.test.tsx[2m > [22mGlobalSearch[2m > [22mshows search results after debounced input[32m 126[2mms[22m[39m
+[90mstderr[2m | src/test/GlobalSearch.test.tsx[2m > [22m[2mGlobalSearch[2m > [22m[2mclears query and closes dropdown on Escape
+[22m[39mAn update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/GlobalSearch.test.tsx[2m > [22m[2mGlobalSearch[2m > [22m[2mclears query and closes dropdown on Escape
+[22m[39mRemoving a style property during rerender (borderColor) when a conflicting property is set (border) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values.
+
+ [32m✓[39m src/test/GlobalSearch.test.tsx[2m > [22mGlobalSearch[2m > [22mcalls onNavigate when a result is clicked[32m 124[2mms[22m[39m
+ [32m✓[39m src/test/GlobalSearch.test.tsx[2m > [22mGlobalSearch[2m > [22mclears query and closes dropdown on Escape[32m 78[2mms[22m[39m
+[90mstderr[2m | src/test/GlobalSearch.test.tsx[2m > [22m[2mGlobalSearch[2m > [22m[2mshows no-results state when search returns empty
+[22m[39mAn update to GlobalSearch inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ [32m✓[39m src/test/GlobalSearch.test.tsx[2m > [22mGlobalSearch[2m > [22mshows no-results state when search returns empty[32m 59[2mms[22m[39m
+ [32m✓[39m src/test/GlobalSearch.test.tsx[2m > [22mGlobalSearch[2m > [22mshows health indicator based on index health[32m 21[2mms[22m[39m
+ [32m✓[39m src/test/SecurityPortal.test.tsx[2m > [22mSecurityPortal[2m > [22mrenders the auth screen with access code input[32m 21[2mms[22m[39m
+ [32m✓[39m src/test/SecurityPortal.test.tsx[2m > [22mSecurityPortal[2m > [22mshows auth error on invalid code[32m 155[2mms[22m[39m
+ [32m✓[39m src/test/SecurityPortal.test.tsx[2m > [22mSecurityPortal[2m > [22mauthenticates and shows the incident form[32m 67[2mms[22m[39m
+ [32m✓[39m src/test/ErrorBoundary.test.tsx[2m > [22mErrorBoundary[2m > [22mrenders children when no error occurs[32m 17[2mms[22m[39m
+ [32m✓[39m src/test/ErrorBoundary.test.tsx[2m > [22mErrorBoundary[2m > [22mshows fallback UI when child throws[32m 47[2mms[22m[39m
+ [32m✓[39m src/test/ErrorBoundary.test.tsx[2m > [22mErrorBoundary[2m > [22mcalls reportError when a child throws[32m 8[2mms[22m[39m
+ [32m✓[39m src/test/ErrorBoundary.test.tsx[2m > [22mErrorBoundary[2m > [22mshows "Try Again" button that resets error state[32m 10[2mms[22m[39m
+ [32m✓[39m src/test/ErrorBoundary.test.tsx[2m > [22mErrorBoundary[2m > [22mrenders custom fallback when provided[32m 2[2mms[22m[39m
+ [32m✓[39m src/test/ErrorBoundary.test.tsx[2m > [22mErrorBoundary[2m > [22mcalls onError callback when provided[32m 7[2mms[22m[39m
+ [32m✓[39m src/test/SecurityPortal.test.tsx[2m > [22mSecurityPortal[2m > [22msubmits an incident and shows confirmation[32m 179[2mms[22m[39m
+ [32m✓[39m src/test/SecurityPortal.test.tsx[2m > [22mSecurityPortal[2m > [22mcan file another report after submission[32m 154[2mms[22m[39m
+[90mstderr[2m | src/test/OpenJarvis.test.tsx[2m > [22m[2mOpenJarvisWidget[2m > [22m[2mrenders the floating pill button when closed
+[22m[39mAn update to OpenJarvisWidget inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/OpenJarvis.test.tsx[2m > [22m[2mOpenJarvisWidget[2m > [22m[2mopens panel when pill is clicked
+[22m[39mAn update to OpenJarvisWidget inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/OpenJarvis.test.tsx[2m > [22m[2mOpenJarvisWidget[2m > [22m[2mshows greeting when panel is open with no messages
+[22m[39mAn update to OpenJarvisWidget inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/OpenJarvis.test.tsx[2m > [22m[2mOpenJarvisWidget[2m > [22m[2mhas a textarea for input when panel is open
+[22m[39mAn update to OpenJarvisWidget inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/OpenJarvis.test.tsx[2m > [22m[2mOpenJarvisWidget[2m > [22m[2mpersists panel state to localStorage
+[22m[39mAn update to OpenJarvisWidget inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/OpenJarvis.test.tsx[2m > [22m[2mOpenJarvisWidget[2m > [22m[2mrestores open state from localStorage
+[22m[39mAn update to OpenJarvisWidget inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/OpenJarvis.test.tsx[2m > [22m[2mOpenJarvisWidget[2m > [22m[2mshows connection status dot
+[22m[39mAn update to OpenJarvisWidget inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ [31m×[39m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mrenders the floating pill button when closed[32m 22[2mms[22m[39m
+[31m   → Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [31m×[39m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mopens panel when pill is clicked[32m 5[2mms[22m[39m
+[31m   → Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [31m×[39m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mshows greeting when panel is open with no messages[32m 4[2mms[22m[39m
+[31m   → Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [31m×[39m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mhas a textarea for input when panel is open[32m 2[2mms[22m[39m
+[31m   → Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [31m×[39m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mpersists panel state to localStorage[32m 4[2mms[22m[39m
+[31m   → Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [31m×[39m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mrestores open state from localStorage[32m 43[2mms[22m[39m
+[31m   → Unable to find an element with the text: Jarvis. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"oj-panel "[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"oj-panel-header"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"oj-panel-header-left"[31m
+        [36m>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"oj-panel-btn"[31m
+            [33mtitle[31m=[32m"History"[31m
+          [36m>[31m
+            [36m<svg[31m
+              [33mfill[31m=[32m"none"[31m
+              [33mheight[31m=[32m"16"[31m
+              [33mstroke[31m=[32m"currentColor"[31m
+              [33mstroke-width[31m=[32m"2"[31m
+              [33mviewBox[31m=[32m"0 0 24 24"[31m
+              [33mwidth[31m=[32m"16"[31m
+            [36m>[31m
+              [36m<path[31m
+                [33md[31m=[32m"M12 8v4l3 3"[31m
+              [36m/>[31m
+              [36m<circle[31m
+                [33mcx[31m=[32m"12"[31m
+                [33mcy[31m=[32m"12"[31m
+                [33mr[31m=[32m"10"[31m
+              [36m/>[31m
+            [36m</svg>[31m
+          [36m</button>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"oj-panel-title"[31m
+          [36m>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"oj-panel-logo"[31m
+            [36m>[31m
+              [0m✦[0m
+            [36m</span>[31m
+            [36m<span>[31m
+              [0mAntigravity[0m
+            [36m</span>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+              [33mtitle[31m=[32m"Connecting..."[31m
+            [36m/>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"oj-panel-header-right"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"oj-engine-toggle"[31m
+            [33mstyle[31m=[32m"display: flex; gap: 2px; background: rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 2px;"[31m
+          [36m>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"oj-panel-btn oj-engine-active"[31m
+              [33mstyle[31m=[32m"font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(130, 100, 255, 0.3); color: rgb(196, 181, 253);"[31m
+              [33mtitle[31m=[32m"Gemini (Google DeepMind)"[31m
+            [36m>[31m
+              [0m✦ Gemini[0m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"oj-panel-btn "[31m
+              [33mstyle[31m=[32m"font-size: 11px; padding: 2px 6px; border-radius: 4px; background: transparent; color: inherit;"[31m
+              [33mtitle[31m=[32m"ARA Agent (Dwellium)"[31m
+            [36m>[31m
+              [0m🤖 ARA[0m
+            [36m</button>[31m
+          [36m</div>[31m
+          [36m<select[31m
+            [33mstyle[31m=[32m"font-size: 10px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 4px; color: inherit; padding: 1px 4px; cursor: pointer;"[31m
+            [33mtitle[31m=[32m"Gemini model"[31m
+          [36m>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"gemini-2.0-flash"[31m
+            [36m>[31m
+              [0mFlash[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"gemini-2.5-pro"[31m
+            [36m>[31m
+              [0mPro[0m
+            [36m</option>[31m
+            [36m<option[31m
+              [33mvalue[31m=[32m"gemini-2.5-flash"[31m
+            [36m>[31m
+              [0m2.5 Flash[0m
+            [36m</option>[31m
+          [36m</select>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"oj-panel-btn"[31m
+            [33mdisabled[31m=[32m""[31m
+            [33mstyle[31m=[32m"font-size: 13px;"[31m
+            [33mtitle[31m=[32m"Save conversation as document"[31m
+          [36m>[31m
+            [0m💾[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"oj-panel-btn"[31m
+            [33mtitle[31m=[32m"Settings"[31m
+          [36m>[31m
+            [0m⚙[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"oj-panel-btn"[31m
+            [33mtitle[31m=[32m"Minimize"[31m
+          [36m>[31m
+            [0m─[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"oj-panel-btn oj-panel-close"[31m
+            [33mtitle[31m=[32m"Close (⌘J)"[31m
+          [36m>[31m
+            [0m×[0m
+          [36m</button>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"oj-panel-body"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"oj-empty"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"oj-empty-icon"[31m
+          [36m>[31m
+            [0m✦[0m
+          [36m</div>[31m
+          [36m<h2[31m
+            [33mclass[31m=[32m"oj-empty-title"[31m
+          [36m>[31m
+            [0mGood afternoon, Andy[0m
+          [36m</h2>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"oj-empty-desc"[31m
+          [36m>[31m
+            [0mPowered by Google DeepMind with full Dwellium workspace context. Ask anything.[0m
+          [36m</p>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"oj-suggestions"[31m
+          [36m>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"oj-suggestion-btn"[31m
+            [36m>[31m
+              [0mSummarize today's inbox[0m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"oj-suggestion-btn"[31m
+            [36m>[31m
+              [0mAnalyze portfolio performance[0m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"oj-suggestion-btn"[31m
+            [36m>[31m
+              [0mDraft a maintenance report[0m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"oj-suggestion-btn"[31m
+            [36m>[31m
+              [0mCheck lease expirations[0m
+            [36m</button>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"oj-panel-input"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"oj-input-box"[31m
+        [36m>[31m
+          [36m<textarea[31m
+            [33mclass[31m=[32m"oj-textarea"[31m
+            [33mplaceholder[31m=[32m"Ask Antigravity (Gemini)..."[31m
+            [33mrows[31m=[32m"1"[31m
+            [33mstyle[31m=[32m"height: 0px;"[31m
+          [36m/>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"oj-input-actions"[31m
+          [36m>[31m
+            [36m<input[31m
+              [33maccept[31m=[32m".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.md,.doc,.docx"[31m
+              [33mid[31m=[32m"fub-file-input"[31m
+              [33mstyle[31m=[32m"display: none;"[31m
+              [33mtype[31m=[32m"file"[31m
+            [36m/>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"fub-trigger fub-trigger--sm"[31m
+              [33mtitle[31m=[32m"Upload file for AI analysis (images, PDF, txt, docx)"[31m
+              [33mtype[31m=[32m"button"[31m
+            [36m>[31m
+              [36m<svg[31m
+                [33mfill[31m=[32m"none"[31m
+                [33mheight[31m=[32m"16"[31m
+                [33mstroke[31m=[32m"currentColor"[31m
+                [33mstroke-linecap[31m=[32m"round"[31m
+                [33mstroke-linejoin[31m=[32m"round"[31m
+                [33mstroke-width[31m=[32m"2"[31m
+                [33mviewBox[31m=[32m"0 0 24 24"[31m
+                [33mwidth[31m=[32m"16"[31m
+              [36m>[31m
+                [36m<path[31m
+                  [33md[31m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[31m
+                [36m/>[31m
+                [36m<polyline[31m
+                  [33mpoints[31m=[32m"17 8 12 3 7 8"[31m
+                [36m/>[31m
+                [36m<line[31m
+                  [33mx1[31m=[32m"12"[31m
+                  [33mx2[31m=[32m"12"[31m
+                  [33my1[31m=[32m"3"[31m
+                  [33my2[31m=[32m"15"[31m
+                [36m/>[31m
+              [36m</svg>[31m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"oj-mic-btn "[31m
+              [33mtitle[31m=[32m"Voice"[31m
+            [36m>[31m
+              [36m<svg[31m
+                [33mfill[31m=[32m"currentColor"[31m
+                [33mheight[31m=[32m"16"[31m
+                [33mviewBox[31m=[32m"0 0 16 16"[31m
+                [33mwidth[31m=[32m"16"[31m
+              [36m>[31m
+                [36m<path[31m
+                  [33md[31m=[32m"M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0V3z"[31m
+                [36m/>[31m
+                [36m<path[31m
+                  [33md[31m=[32m"M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"[31m
+                [36m/>[31m
+              [36m</svg>[31m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"oj-send-btn "[31m
+              [33mdisabled[31m=[32m""[31m
+              [33mtitle[31m=[32m"Send"[31m
+            [36m>[31m
+              [36m<svg[31m
+                [33mfill[31m=[32m"none"[31m
+                [33mheight[31m=[32m"16"[31m
+                [33mstroke[31m=[32m"currentColor"[31m
+                [33mstroke-linecap[31m=[32m"round"[31m
+                [33mstroke-linejoin[31m=[32m"round"[31m
+                [33mstroke-width[31m=[32m"2.5"[31m
+                [33mviewBox[31m=[32m"0 0 24 24"[31m
+                [33mwidth[31m=[32m"16"[31m
+              [36m>[31m
+                [36m<path[31m
+                  [33md[31m=[32m"M12 19V5M5 12l7-7 7 7"[31m
+                [36m/>[31m
+              [36m</svg>[31m
+            [36m</button>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"oj-input-hint"[31m
+        [36m>[31m
+          [36m<kbd>[31m
+            [0m⌘J[0m
+          [36m</kbd>[31m
+          [0m toggle · [0m
+          [36m<kbd>[31m
+            [0mEnter[0m
+          [36m</kbd>[31m
+          [0m send · [0m
+          [36m<kbd>[31m
+            [0mShift+Enter[0m
+          [36m</kbd>[31m
+          [0m new line · [0m
+          [0mGemini Flash[0m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [31m×[39m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mshows connection status dot[32m 2[2mms[22m[39m
+[31m   → Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [32m✓[39m src/test/errorReporter.test.ts[2m > [22merrorReporter[2m > [22msends POST to /api/errors/report with correct payload[33m 326[2mms[22m[39m
+ [32m✓[39m src/test/errorReporter.test.ts[2m > [22merrorReporter[2m > [22mattaches auth token from localStorage[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/errorReporter.test.ts[2m > [22merrorReporter[2m > [22maccepts string errors[32m 0[2mms[22m[39m
+ [32m✓[39m src/test/errorReporter.test.ts[2m > [22merrorReporter[2m > [22mtruncates message to 2000 chars[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/errorReporter.test.ts[2m > [22merrorReporter[2m > [22mrate-limits after 10 calls[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/errorReporter.test.ts[2m > [22merrorReporter[2m > [22mnever throws even if fetch rejects[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/useToast.test.tsx[2m > [22museToast[2m > [22mstarts with no toasts[32m 6[2mms[22m[39m
+ [32m✓[39m src/test/useToast.test.tsx[2m > [22museToast[2m > [22mshowToast adds a toast[32m 2[2mms[22m[39m
+ [32m✓[39m src/test/useToast.test.tsx[2m > [22museToast[2m > [22mtoast auto-dismisses after timeout[32m 4[2mms[22m[39m
+ [32m✓[39m src/test/useToast.test.tsx[2m > [22museToast[2m > [22mmultiple toasts stack[32m 1[2mms[22m[39m
+ [32m✓[39m src/test/useToast.test.tsx[2m > [22museToast[2m > [22mshowToast defaults to info type[32m 1[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 9 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mrenders the floating pill button when closed
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/OpenJarvis.test.tsx:[2m36:23[22m[39m
+    [90m 34|[39m     [34mit[39m([32m'renders the floating pill button when closed'[39m[33m,[39m () [33m=>[39m {
+    [90m 35|[39m         [34mrender[39m([33m<[39m[33mOpenJarvisWidget[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m 36|[39m         expect(screen.getByTitle('Open Jarvis (⌘J)')).toBeInTheDocumen…
+    [90m   |[39m                       [31m^[39m
+    [90m 37|[39m     })[33m;[39m
+    [90m 38|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mopens panel when pill is clicked
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/OpenJarvis.test.tsx:[2m43:33[22m[39m
+    [90m 41|[39m         [34mrender[39m([33m<[39m[33mOpenJarvisWidget[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m 42|[39m
+    [90m 43|[39m         [35mawait[39m user[33m.[39m[34mclick[39m(screen[33m.[39m[34mgetByTitle[39m([32m'Open Jarvis (⌘J)'[39m))[33m;[39m
+    [90m   |[39m                                 [31m^[39m
+    [90m 44|[39m
+    [90m 45|[39m         [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'Jarvis'[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mshows greeting when panel is open with no messages
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/OpenJarvis.test.tsx:[2m52:33[22m[39m
+    [90m 50|[39m         [34mrender[39m([33m<[39m[33mOpenJarvisWidget[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m 51|[39m
+    [90m 52|[39m         [35mawait[39m user[33m.[39m[34mclick[39m(screen[33m.[39m[34mgetByTitle[39m([32m'Open Jarvis (⌘J)'[39m))[33m;[39m
+    [90m   |[39m                                 [31m^[39m
+    [90m 53|[39m
+    [90m 54|[39m         [90m// The greeting says "Good morning/afternoon/evening, Andy"[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mhas a textarea for input when panel is open
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/OpenJarvis.test.tsx:[2m65:33[22m[39m
+    [90m 63|[39m         [34mrender[39m([33m<[39m[33mOpenJarvisWidget[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m 64|[39m
+    [90m 65|[39m         [35mawait[39m user[33m.[39m[34mclick[39m(screen[33m.[39m[34mgetByTitle[39m([32m'Open Jarvis (⌘J)'[39m))[33m;[39m
+    [90m   |[39m                                 [31m^[39m
+    [90m 66|[39m
+    [90m 67|[39m         expect(screen.getByPlaceholderText(/Message Jarvis/i)).toBeInT…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mpersists panel state to localStorage
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/OpenJarvis.test.tsx:[2m74:33[22m[39m
+    [90m 72|[39m         [34mrender[39m([33m<[39m[33mOpenJarvisWidget[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m 73|[39m
+    [90m 74|[39m         [35mawait[39m user[33m.[39m[34mclick[39m(screen[33m.[39m[34mgetByTitle[39m([32m'Open Jarvis (⌘J)'[39m))[33m;[39m
+    [90m   |[39m                                 [31m^[39m
+    [90m 75|[39m
+    [90m 76|[39m         expect(localStorage.getItem('dwellium-jarvis-panel')).toBe('op…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mrestores open state from localStorage
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element with the text: Jarvis. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"oj-panel "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"oj-panel-header"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"oj-panel-header-left"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"oj-panel-btn"[39m
+            [33mtitle[39m=[32m"History"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 8v4l3 3"[39m
+              [36m/>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"12"[39m
+                [33mcy[39m=[32m"12"[39m
+                [33mr[39m=[32m"10"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+          [36m</button>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"oj-panel-title"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"oj-panel-logo"[39m
+            [36m>[39m
+              [0m✦[0m
+            [36m</span>[39m
+            [36m<span>[39m
+              [0mAntigravity[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"oj-status-dot oj-status-dot-checking"[39m
+              [33mtitle[39m=[32m"Connecting..."[39m
+            [36m/>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"oj-panel-header-right"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"oj-engine-toggle"[39m
+            [33mstyle[39m=[32m"display: flex; gap: 2px; background: rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 2px;"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"oj-panel-btn oj-engine-active"[39m
+              [33mstyle[39m=[32m"font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(130, 100, 255, 0.3); color: rgb(196, 181, 253);"[39m
+              [33mtitle[39m=[32m"Gemini (Google DeepMind)"[39m
+            [36m>[39m
+              [0m✦ Gemini[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"oj-panel-btn "[39m
+              [33mstyle[39m=[32m"font-size: 11px; padding: 2px 6px; border-radius: 4px; background: transparent; color: inherit;"[39m
+              [33mtitle[39m=[32m"ARA Agent (Dwellium)"[39m
+            [36m>[39m
+              [0m🤖 ARA[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<select[39m
+            [33mstyle[39m=[32m"font-size: 10px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 4px; color: inherit; padding: 1px 4px; cursor: pointer;"[39m
+            [33mtitle[39m=[32m"Gemini model"[39m
+          [36m>[39m
+            [36m<option[39m
+              [33mvalue[39m=[32m"gemini-2.0-flash"[39m
+            [36m>[39m
+              [0mFlash[0m
+            [36m</option>[39m
+            [36m<option[39m
+              [33mvalue[39m=[32m"gemini-2.5-pro"[39m
+            [36m>[39m
+              [0mPro[0m
+            [36m</option>[39m
+            [36m<option[39m
+              [33mvalue[39m=[32m"gemini-2.5-flash"[39m
+            [36m>[39m
+              [0m2.5 Flash[0m
+            [36m</option>[39m
+          [36m</select>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"oj-panel-btn"[39m
+            [33mdisabled[39m=[32m""[39m
+            [33mstyle[39m=[32m"font-size: 13px;"[39m
+            [33mtitle[39m=[32m"Save conversation as document"[39m
+          [36m>[39m
+            [0m💾[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"oj-panel-btn"[39m
+            [33mtitle[39m=[32m"Settings"[39m
+          [36m>[39m
+            [0m⚙[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"oj-panel-btn"[39m
+            [33mtitle[39m=[32m"Minimize"[39m
+          [36m>[39m
+            [0m─[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"oj-panel-btn oj-panel-close"[39m
+            [33mtitle[39m=[32m"Close (⌘J)"[39m
+          [36m>[39m
+            [0m×[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"oj-panel-body"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"oj-empty"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"oj-empty-icon"[39m
+          [36m>[39m
+            [0m✦[0m
+          [36m</div>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"oj-empty-title"[39m
+          [36m>[39m
+            [0mGood afternoon, Andy[0m
+          [36m</h2>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"oj-empty-desc"[39m
+          [36m>[39m
+            [0mPowered by Google DeepMind with full Dwellium workspace context. Ask anything.[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"oj-suggestions"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"oj-suggestion-btn"[39m
+            [36m>[39m
+              [0mSummarize today's inbox[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"oj-suggestion-btn"[39m
+            [36m>[39m
+              [0mAnalyze portfolio performance[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"oj-suggestion-btn"[39m
+            [36m>[39m
+              [0mDraft a maintenance report[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"oj-suggestion-btn"[39m
+            [36m>[39m
+              [0mCheck lease expirations[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"oj-panel-input"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"oj-input-box"[39m
+        [36m>[39m
+          [36m<textarea[39m
+            [33mclass[39m=[32m"oj-textarea"[39m
+            [33mplaceholder[39m=[32m"Ask Antigravity (Gemini)..."[39m
+            [33mrows[39m=[32m"1"[39m
+            [33mstyle[39m=[32m"height: 0px;"[39m
+          [36m/>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"oj-input-actions"[39m
+          [36m>[39m
+            [36m<input[39m
+              [33maccept[39m=[32m".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.md,.doc,.docx"[39m
+              [33mid[39m=[32m"fub-file-input"[39m
+              [33mstyle[39m=[32m"display: none;"[39m
+              [33mtype[39m=[32m"file"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"fub-trigger fub-trigger--sm"[39m
+              [33mtitle[39m=[32m"Upload file for AI analysis (images, PDF, txt, docx)"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[39m
+                [36m/>[39m
+                [36m<polyline[39m
+                  [33mpoints[39m=[32m"17 8 12 3 7 8"[39m
+                [36m/>[39m
+                [36m<line[39m
+                  [33mx1[39m=[32m"12"[39m
+                  [33mx2[39m=[32m"12"[39m
+                  [33my1[39m=[32m"3"[39m
+                  [33my2[39m=[32m"15"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"oj-mic-btn "[39m
+              [33mtitle[39m=[32m"Voice"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mfill[39m=[32m"currentColor"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mviewBox[39m=[32m"0 0 16 16"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0V3z"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"oj-send-btn "[39m
+              [33mdisabled[39m=[32m""[39m
+              [33mtitle[39m=[32m"Send"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2.5"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 19V5M5 12l7-7 7 7"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"oj-input-hint"[39m
+        [36m>[39m
+          [36m<kbd>[39m
+            [0m⌘J[0m
+          [36m</kbd>[39m
+          [0m toggle · [0m
+          [36m<kbd>[39m
+            [0mEnter[0m
+          [36m</kbd>[39m
+          [0m send · [0m
+          [36m<kbd>[39m
+            [0mShift+Enter[0m
+          [36m</kbd>[39m
+          [0m new line · [0m
+          [0mGemini Flash[0m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/OpenJarvis.test.tsx:[2m84:23[22m[39m
+    [90m 82|[39m
+    [90m 83|[39m         // Should show the panel header (Jarvis title) rather than the…
+    [90m 84|[39m         [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'Jarvis'[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+    [90m   |[39m                       [31m^[39m
+    [90m 85|[39m     })[33m;[39m
+    [90m 86|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/test/OpenJarvis.test.tsx[2m > [22mOpenJarvisWidget[2m > [22mshows connection status dot
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the title: Open Jarvis (⌘J).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<button[31m
+      [33mclass[31m=[32m"oj-fab "[31m
+      [33mtitle[31m=[32m"Open Antigravity (⌘J)"[31m
+    [36m>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-fab-icon"[31m
+      [36m>[31m
+        [0m✦[0m
+      [36m</span>[31m
+      [36m<span[31m
+        [33mclass[31m=[32m"oj-status-dot oj-status-dot-checking"[31m
+      [36m/>[31m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/OpenJarvis.test.tsx:[2m90:29[22m[39m
+    [90m 88|[39m         [34mrender[39m([33m<[39m[33mOpenJarvisWidget[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m 89|[39m         [90m// Pill button contains status dot[39m
+    [90m 90|[39m         [35mconst[39m pill [33m=[39m screen[33m.[39m[34mgetByTitle[39m([32m'Open Jarvis (⌘J)'[39m)[33m;[39m
+    [90m   |[39m                             [31m^[39m
+    [90m 91|[39m         expect(pill.querySelector('.oj-status-dot')).toBeInTheDocument…
+    [90m 92|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mrenders tab bar with all 5 tabs
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element with the text: 🧠 Memory. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"stella"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"stella__tabs"[39m
+      [36m>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab stella__tab--active"[39m
+          [33mtitle[39m=[32m"Chat"[39m
+        [36m>[39m
+          [0m💬[0m
+          [0m [0m
+          [0mChat[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Honcho"[39m
+        [36m>[39m
+          [0m🧠[0m
+          [0m [0m
+          [0mHoncho[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Hermes"[39m
+        [36m>[39m
+          [0m⚡[0m
+          [0m [0m
+          [0mHermes[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Skills"[39m
+        [36m>[39m
+          [0m🧩[0m
+          [0m [0m
+          [0mSkills[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Memory"[39m
+        [36m>[39m
+          [0m📂[0m
+          [0m [0m
+          [0mMemory[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Cron"[39m
+        [36m>[39m
+          [0m⏰[0m
+          [0m [0m
+          [0mCron[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"MCP"[39m
+        [36m>[39m
+          [0m🔌[0m
+          [0m [0m
+          [0mMCP[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Voice"[39m
+        [36m>[39m
+          [0m🎙️[0m
+          [0m [0m
+          [0mVoice[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Settings"[39m
+        [36m>[39m
+          [0m⚙️[0m
+          [0m [0m
+          [0mSettings[0m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"stella__status-bar"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"stella__status-dot stella__status-dot--loading"[39m
+        [36m/>[39m
+        [36m<span>[39m
+          [0mStella [0m
+          [0mConnecting…[0m
+        [36m</span>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"stella__chat"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"stella__messages"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"stella__msg stella__msg--system"[39m
+          [36m>[39m
+            [0m⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more.[0m
+          [36m</div>[39m
+          [36m<div />[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"stella__input-area"[39m
+        [36m>[39m
+          [36m<input[39m
+            [33maccept[39m=[32m".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.md,.doc,.docx"[39m
+            [33mid[39m=[32m"fub-file-input"[39m
+            [33mstyle[39m=[32m"display: none;"[39m
+            [33mtype[39m=[32m"file"[39m
+          [36m/>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"fub-trigger fub-trigger--sm"[39m
+            [33mtitle[39m=[32m"Upload file for AI analysis (images, PDF, txt, docx)"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"17 8 12 3 7 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12"[39m
+                [33my1[39m=[32m"3"[39m
+                [33my2[39m=[32m"15"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+          [36m</button>[39m
+          [36m<textarea[39m
+            [33mclass[39m=[32m"stella__input"[39m
+            [33mdisabled[39m=[32m""[39m
+            [33mplaceholder[39m=[32m"Stella is offline"[39m
+            [33mrows[39m=[32m"1"[39m
+          [36m/>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"stella__send-btn"[39m
+            [33mdisabled[39m=[32m""[39m
+            [33mtitle[39m=[32m"Send"[39m
+          [36m>[39m
+            [0m➤[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/StellaAgent.test.tsx:[2m80:23[22m[39m
+    [90m 78|[39m         [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'💬 Chat'[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+    [90m 79|[39m         [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'🧩 Skills'[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+    [90m 80|[39m         [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'🧠 Memory'[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+    [90m   |[39m                       [31m^[39m
+    [90m 81|[39m         [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'🎙️ Voice'[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+    [90m 82|[39m         [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'⚙️ Settings'[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/test/StellaAgent.test.tsx[2m > [22mStellaAgent[2m > [22mswitches to Memory tab and shows files
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element with the text: 🧠 Memory. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"stella"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"stella__tabs"[39m
+      [36m>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab stella__tab--active"[39m
+          [33mtitle[39m=[32m"Chat"[39m
+        [36m>[39m
+          [0m💬[0m
+          [0m [0m
+          [0mChat[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Honcho"[39m
+        [36m>[39m
+          [0m🧠[0m
+          [0m [0m
+          [0mHoncho[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Hermes"[39m
+        [36m>[39m
+          [0m⚡[0m
+          [0m [0m
+          [0mHermes[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Skills"[39m
+        [36m>[39m
+          [0m🧩[0m
+          [0m [0m
+          [0mSkills[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Memory"[39m
+        [36m>[39m
+          [0m📂[0m
+          [0m [0m
+          [0mMemory[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Cron"[39m
+        [36m>[39m
+          [0m⏰[0m
+          [0m [0m
+          [0mCron[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"MCP"[39m
+        [36m>[39m
+          [0m🔌[0m
+          [0m [0m
+          [0mMCP[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Voice"[39m
+        [36m>[39m
+          [0m🎙️[0m
+          [0m [0m
+          [0mVoice[0m
+        [36m</button>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"stella__tab "[39m
+          [33mtitle[39m=[32m"Settings"[39m
+        [36m>[39m
+          [0m⚙️[0m
+          [0m [0m
+          [0mSettings[0m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"stella__status-bar"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"stella__status-dot stella__status-dot--online"[39m
+        [36m/>[39m
+        [36m<span>[39m
+          [0mStella [0m
+          [0mOnline[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"stella__version"[39m
+        [36m>[39m
+          [0mv[0m
+          [0m1.2.0[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"stella__latency"[39m
+        [36m>[39m
+          [0m42[0m
+          [0mms[0m
+        [36m</span>[39m
+        [36m<span[39m
+          [33mclass[39m=[32m"stella__pid"[39m
+        [36m>[39m
+          [0mPID [0m
+          [0m12345[0m
+        [36m</span>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"stella__chat"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"stella__messages"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"stella__msg stella__msg--system"[39m
+          [36m>[39m
+            [0m⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more.[0m
+          [36m</div>[39m
+          [36m<div />[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"stella__input-area"[39m
+        [36m>[39m
+          [36m<input[39m
+            [33maccept[39m=[32m".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.md,.doc,.docx"[39m
+            [33mid[39m=[32m"fub-file-input"[39m
+            [33mstyle[39m=[32m"display: none;"[39m
+            [33mtype[39m=[32m"file"[39m
+          [36m/>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"fub-trigger fub-trigger--sm"[39m
+            [33mtitle[39m=[32m"Upload file for AI analysis (images, PDF, txt, docx)"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"17 8 12 3 7 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12"[39m
+                [33my1[39m=[32m"3"[39m
+                [33my2[39m=[32m"15"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+          [36m</button>[39m
+          [36m<textarea[39m
+            [33mclass[39m=[32m"stella__input"[39m
+            [33mplaceholder[39m=[32m"Ask Stella anything…"[39m
+            [33mrows[39m=[32m"1"[39m
+          [36m/>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"stella__send-btn"[39m
+            [33mdisabled[39m=[32m""[39m
+            [33mtitle[39m=[32m"Send"[39m
+          [36m>[39m
+            [0m➤[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/test/StellaAgent.test.tsx:[2m146:33[22m[39m
+    [90m144|[39m         })[33m;[39m
+    [90m145|[39m
+    [90m146|[39m         [35mawait[39m user[33m.[39m[34mclick[39m(screen[33m.[39m[34mgetByText[39m([32m'🧠 Memory'[39m))[33m;[39m
+    [90m   |[39m                                 [31m^[39m
+    [90m147|[39m
+    [90m148|[39m         [35mawait[39m [34mwaitFor[39m(() [33m=>[39m {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m9 passed[39m[22m[90m (11)[39m
+[2m      Tests [22m [1m[31m9 failed[39m[22m[2m | [22m[1m[32m65 passed[39m[22m[90m (74)[39m
+[2m   Start at [22m 16:01:38
+[2m   Duration [22m 14.72s[2m (transform 610ms, setup 3.51s, import 4.09s, tests 3.62s, environment 28.52s)[22m
+

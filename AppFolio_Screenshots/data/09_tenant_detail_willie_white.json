@@ -1,0 +1,81 @@
+{
+  "source": "AppFolio zohouryproperties - Tenant/Occupancy Detail",
+  "captured_at": "2026-04-19",
+  "url": "/occupancies/2800/selected_tenant/5538",
+  "occupancy_id": 2800,
+  "selected_tenant_id": 5538,
+  "selected_tenant_name": "Willie White",
+  "summary": {
+    "property_unit": "Riverwood Club Apartments - B03",
+    "address": "901 Bolton Rd. NW, Apt B03, Atlanta, GA 30331",
+    "monthly_charges": 1595.00,
+    "current_balance": -7986.40,
+    "deposit": 850.00,
+    "last_receipt_date": "2025-09-25",
+    "lease_end_date": "2026-09-30",
+    "online_portal_status": "Active"
+  },
+  "tenants_on_lease": {
+    "primary": "LaSonta M. Westbrook",
+    "other_occupants": ["Willie White", "Olivia White", "Elijah Westbrook"]
+  },
+  "status_panel": {
+    "balance": -7986.40,
+    "delinquency_notes": [],
+    "last_receipt": "2025-09-25",
+    "evicting": false,
+    "in_collections": false,
+    "certified_funds_only": false,
+    "allow_online_payments": true,
+    "require_online_payments_in_full": false,
+    "eligible_for_renewal": true,
+    "tags": []
+  },
+  "occupant_status": {
+    "type": "Other Occupant",
+    "status": "Current",
+    "start_date": "2025-09-19",
+    "end_date": null
+  },
+  "insurance_upsell_card": {
+    "product": "FolioGuard Smart Ensure",
+    "pitch": "automated insurance requirement tracking/enforcement",
+    "cta": "Contact Me",
+    "note_for_dwellium": "AppFolio aggressively upsells this to Core-tier customers — indicates insurance tracking is a COMMON PAIN POINT for ZP-Group-sized operators. Dwellium should ship this baseline in the Compliance module."
+  },
+  "monthly_charges": [
+    { "account": "4100: Rent Income", "amount": 1595.00, "start": "2025-09-23", "end": null, "next_charge_date": "2026-05-01", "previous_charge_date": "2026-04-01", "previous_status": "PAID" },
+    { "account": "4100: Rent Income", "amount": 1595.00, "note": "duplicate row (likely legacy charge-split or display artifact)" },
+    { "account": "4100: Rent Income", "amount": 1595.00, "note": "duplicate row (likely legacy charge-split or display artifact)" }
+  ],
+  "lease_information": {
+    "deposit_paid": 850.00,
+    "nsf_fee": 49.00,
+    "eligible_for_rent_increase_on": "2026-09-23",
+    "late_fee_policy_source": "property-level (no tenant override)"
+  },
+  "recent_emails_sample_count": 49,
+  "recent_emails_sample": [
+    { "sent": "2026-04-16 04:55 PM", "to": "LaSonta M. Westbrook", "from": "Ashley Johnson", "subject": "Important Community Notice: Vehicle Safety Reminder", "status": "Opened" },
+    { "sent": "2026-04-15 03:44 PM", "to": "LaSonta M. Westbrook", "from": "Ashley Johnson", "subject": "Paperless Payment Transition & Resident Portal Instructions", "status": "Opened" },
+    { "sent": "2026-04-15 03:42 PM", "to": "LaSonta M. Westbrook", "from": "Ashley Johnson", "subject": "Important Update: Changes to Accepted Payment Methods Effective April 30, 2026", "status": "Opened" },
+    { "sent": "2026-04-14 01:47 PM", "to": "LaSonta M. Westbrook", "from": "Ashley Johnson", "subject": "Water Service Interruption Notice - April 15, 2026", "status": "Opened" },
+    { "sent": "2026-04-13 03:36 PM", "to": "LaSonta M. Westbrook", "from": "Ashley Johnson", "subject": "Community Garden Launch", "status": "Opened" },
+    { "sent": "2026-04-09 01:26 PM", "to": "LaSonta M. Westbrook", "from": "Ashley Johnson", "subject": "Online Rent Payments & Community Reminder", "status": "Opened" },
+    { "sent": "2026-03-27 05:04 PM", "to": "LaSonta M. Westbrook", "from": "Ashley Johnson", "subject": "Sidewalk Notice - Wet Concrete", "status": "Opened" }
+  ],
+  "sections_visible": [
+    "Summary", "Tenants", "Status", "Tags", "FolioGuard Smart Ensure (upsell)",
+    "Contact", "Phone Numbers", "Emails", "Addresses", "Occupant Status",
+    "Electronic Cash Payments", "Screening", "Emergency Contact",
+    "Upcoming Activities", "Insurance Coverage", "Notes", "Texts", "Emails",
+    "Monthly Charges", "Recurring Charges", "Lease Information",
+    "Financials", "Late Fee Policy", "Animals", "Vehicles", "Audit Log", "Attachments"
+  ],
+  "dwellium_mapping_notes": {
+    "GAP-RES-01": "Occupancy entity is distinct from Tenant entity — one Occupancy has multiple Tenants, each with Type (Primary/Other Occupant) + Status (Current/Past) + Start/End dates. Dwellium's Resident module needs this 1:N structure.",
+    "GAP-COMM-01": "Resident emails are batched community announcements from Ashley Johnson (presumably community manager). C-1 email router should classify these as 'community_broadcast' vs individual tenant correspondence.",
+    "GAP-AR-01": "Monthly charge row shows account, amount, start/end, next/previous dates + status — this is the canonical ledger row for Dwellium's AR module.",
+    "GAP-LEASE-03": "Late fee policy inherits from property but can be overridden per-tenant. Dwellium lease model must support BOTH."
+  }
+}

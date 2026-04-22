@@ -1,0 +1,47 @@
+feat(shell): F-1 Universal Shell + WIP sync — Phase 3-H handoff alignment
+
+Brings the qualia-shell app into full alignment with the Phase 3-H
+Engineer Handoff spec reviewed from AstraStrata Review.
+
+F-1 Universal Shell (Option C — 4-column persistent frame):
+- New UniversalShell component with Filing Cabinet / Scratch Pad /
+  Canvas / Orchestrator columns
+- ContainerAdapter + per-column AdapterBoundary (RT-01 isolation)
+- lazyWithReload utility + WIDGET_REGISTRY derivation pattern (Fix #026)
+- Canary tokens [CT-3H-HANDOFF-M4Q7] and [CT-3E-ARCH-W8K3] embedded
+  for traceability
+
+Auth:
+- Gate passphrase updated to "Comet2878!" in LoginScreen.tsx and
+  kept in sync in e2e/helpers/auth.ts
+
+Other WIP bundled in this branch:
+- InboxZero: Analytics, Capabilities, ColdEmailBlocker, GlobalAudit,
+  Newsletters, NifIntelligence, OpenTracker, ReplyTracker,
+  RulesManager, SmartActions, Stats tabs + InboxZeroTypes + queries
+- DocViewer: TemplateGenerator component + styles
+- PDFGear, PopupShell, QuickLook, NotebookLMContext, Antigravity,
+  HonchoHermesPanel components
+- Sidebar iconMap + widgetSearch updates
+- Strata modules: Calendar, CivilEngineeringStudio, DesignStudio,
+  Legal, Owners, ProfileSpaces, Properties, StatusCheck,
+  TrelloCardModal + strataApi/types/useStrataQueries
+- Shell/Desktop/Window/Sidebar CSS + component polish
+- ARAConsole, AstraWorkspace, CommandPalette, ErrorBoundary,
+  FileManager, HydraAI, InboxWidget, OpenJarvis, StellaAgent,
+  TranscriptionHub, TrelloBoard, TwoBrains updates
+- New registry/, providers/, hooks/, config/, services/ layers
+- Sentry service scaffold
+- Test suites: GlobalSearch, OpenJarvis, SecurityPortal,
+  StellaAgent, Terminal
+- safeMarkdown util
+- E2E: playwright.config + e2e/ suite
+- .gitignore hardened to exclude scratch/backup dirs
+
+Build verified: vite build passed. UniversalShell chunk present in dist/.
+Widget audit: 26/26 registered widgets + 33/33 Strata modules +
+5/5 Astra tabs operational. TranscriptionHub (2874 LOC) confirmed
+fully operational with MicrophoneTranscriber, fact-check, legal
+scan, and 3 export formats.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>

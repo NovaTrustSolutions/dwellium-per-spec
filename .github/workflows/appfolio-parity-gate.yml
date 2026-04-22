@@ -1,0 +1,86 @@
+name: AppFolio Parity Gate
+
+# Gate for Phase 0-5 of the AppFolio parity plan.
+# Triggered on PRs touching canonical types, the Strata frontend, seed data,
+# or the appfolioParity test suite. See Docs/AppFolio_Parity_Implementation_Plan_v2.md §13.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/types/**'
+      - 'qualia-shell/src/**'
+      - 'qualia-shell/public/data/**'
+      - 'qualia-shell/src/test/appfolioParity/**'
+      - 'qualia-shell/src/components/StrataDashboard/fixtures/appfolioDerived/**'
+      - 'Scripts/derive_appfolio_fixtures.mjs'
+      - 'Scripts/verify_no_pii_leak.mjs'
+      - '.github/workflows/appfolio-parity-gate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Build, test, and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25'
+          cache: npm
+          cache-dependency-path: qualia-shell/package-lock.json
+
+      - name: Install dependencies
+        working-directory: qualia-shell
+        run: npm ci --prefer-offline --no-audit
+
+      - name: TypeScript build (tsc -b)
+        working-directory: qualia-shell
+        run: npx tsc -b
+
+      - name: Vitest
+        working-directory: qualia-shell
+        run: npx vitest run --reporter=default --reporter=junit --outputFile.junit=../Docs/Baselines/ci_vitest_${{ github.run_id }}.xml
+        continue-on-error: false
+
+      - name: Install Playwright browsers
+        working-directory: qualia-shell
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Playwright E2E
+        working-directory: qualia-shell
+        run: npx playwright test
+
+      - name: Vite build (seeds=true)
+        working-directory: qualia-shell
+        env:
+          VITE_APPFOLIO_SEEDS: 'true'
+        run: npx vite build
+
+      - name: Vite build (seeds=false)
+        working-directory: qualia-shell
+        env:
+          VITE_APPFOLIO_SEEDS: 'false'
+        run: npx vite build
+
+      - name: PII leak scan (strict)
+        run: node Scripts/verify_no_pii_leak.mjs
+
+      - name: Upload baseline artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-gate-${{ github.run_id }}
+          path: |
+            qualia-shell/playwright-report
+            qualia-shell/test-results
+            Docs/Baselines/ci_vitest_${{ github.run_id }}.xml
+          retention-days: 14

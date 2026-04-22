@@ -1,0 +1,67 @@
+{
+  "source": "AppFolio zohouryproperties - Reporting > Insurance Enforcement + Compliance Feature Flags",
+  "captured_at": "2026-04-19",
+  "url": "/buffered_reports/insurance_enforcement",
+  "report_name": "Insurance Enforcement",
+  "report_columns": [
+    { "name": "Property", "type": "string", "link": "property_link" },
+    { "name": "Unit", "type": "string", "link": "unit_link" },
+    { "name": "Resident", "type": "string", "link": "occupancy_link" },
+    { "name": "LeaseRequiresInsurance", "type": "string" },
+    { "name": "InsuranceRequirement", "type": "string" },
+    { "name": "ActiveCoverage", "type": "string" }
+  ],
+  "hidden_columns_available": [
+    "PropertyName", "PropertyId", "PropertyAddress", "PropertyStreet",
+    "PropertyStreet2", "PropertyCity", "PropertyState", "PropertyZip",
+    "unit_id", "occupancy_id"
+  ],
+  "current_rows": "No Rows To Show — indicates either no unit-level insurance requirement is flagged OR no residents are currently out-of-compliance. Confirms the enforcement module exists but is not actively used by this portfolio.",
+  "compliance_feature_flags_from_accessControl": {
+    "renters_insurance": {
+      "InsuranceEnforcementReport": true,
+      "TenantInsuranceCoverageReport": true,
+      "InsuranceAuditReport": false,
+      "InsuranceUsageReport": false,
+      "interpretation": "Portfolio tracks policy enforcement per-lease but is NOT subscribed to AppFolio's paid Insurance add-on (InsuranceAudit + InsuranceUsage are disabled)."
+    },
+    "affordable_housing_section_8": {
+      "AffordableHousingProgramStatusReport": true,
+      "AffordableHousingUnitDirectoryReport": true,
+      "AffordableHousingHapVoucherSummaryReport": true,
+      "AffordableHousingHudWaitlistReport": true,
+      "AffordableHousingHudWaitlistActivitiesReport": true,
+      "AffordableHousingTenantDemographicReport": true,
+      "IncomeCertifications": true,
+      "TaxCreditBuildingDirectoryReport": true,
+      "TaxCreditComplianceReport": true,
+      "interpretation": "Full Section 8 / HCV / LIHTC compliance stack is enabled — HAP voucher tracking, HUD waitlist, income certs, and tax-credit compliance. Matches the AHA inspection batch observed at Riverwood Club."
+    },
+    "unit_turns_and_make_ready": {
+      "UnitTurnDetailReport": true,
+      "UnitInspectionReport": true,
+      "InspectionDetailReport": true
+    },
+    "financial_compliance": {
+      "Owner1099Report": true,
+      "Vendor1099Report": true,
+      "ArizonaRenterTaxReport": true,
+      "RentBureauTenantsReport": false,
+      "RentBureauTxnsReport": false
+    },
+    "data_exports_restricted": {
+      "AttachmentDataReport": false,
+      "BankDataReport": false,
+      "TenantDataReport": false,
+      "VendorDataReport": false,
+      "interpretation": "Raw data-export reports are disabled in this tenant — AP/AR/ledger export is only available via the standard reports, not the bulk data dumps. Typical access tier for a non-enterprise license."
+    }
+  },
+  "dwellium_mapping_notes": {
+    "GAP-COMP-02": "Insurance Enforcement report schema (6 visible + 10 hidden columns) = direct model for Dwellium Compliance module's Insurance tab. Per-lease boolean + requirement-string + active-coverage-string is the minimum viable schema.",
+    "GAP-ASTRA-04": "Affordable Housing feature flags confirm: HAP voucher summary + HUD waitlist + Income Certifications + Tax Credit Compliance are distinct sub-reports. Astra's Section 8 ledger should surface at minimum HAP portion + Tenant portion + Voucher status + Income recert date.",
+    "GAP-LEASE-03": "LeaseRequiresInsurance is a LEASE-LEVEL field (not tenant-level) — Dwellium's lease model needs boolean `requires_insurance` + string `coverage_minimum` + linked `active_policy_id`."
+  },
+  "scheduled_reports_submenu_discovered": ["Reports", "Scheduled Reports", "Metrics", "Surveys"],
+  "report_export_formats": ["PDF Landscape/Portrait", "Excel", "CSV", "Email"]
+}

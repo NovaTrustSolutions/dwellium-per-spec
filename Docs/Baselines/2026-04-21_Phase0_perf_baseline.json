@@ -1,0 +1,67 @@
+{
+  "capturedAt": "2026-04-21T13:42:17.077Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "phase": "Phase 0.0 Task 0.0.7 — Lighthouse baseline",
+  "target": "http://localhost:4173/",
+  "runs": 3,
+  "averages": {
+    "scores": {
+      "performance": 0.8099999999999999,
+      "accessibility": 0.9,
+      "bestPractices": 1,
+      "seo": 0.83
+    },
+    "metrics": {
+      "FCP": 2252.971183333333,
+      "LCP": 4653.371833333334,
+      "TBT": 9.333333333333334,
+      "CLS": 0,
+      "SI": 2252.971183333333,
+      "TTI": 4653.371833333334
+    }
+  },
+  "rawRuns": [
+    {
+      "performance": 0.79,
+      "accessibility": 0.9,
+      "bestPractices": 1,
+      "seo": 0.83,
+      "metrics": {
+        "FCP": 2253.0494,
+        "LCP": 4953.6866,
+        "TBT": 28,
+        "CLS": 0,
+        "SI": 2253.0494,
+        "TTI": 4953.6866
+      }
+    },
+    {
+      "performance": 0.82,
+      "accessibility": 0.9,
+      "bestPractices": 1,
+      "seo": 0.83,
+      "metrics": {
+        "FCP": 2253.0814,
+        "LCP": 4503.3874,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 2253.0814,
+        "TTI": 4503.3874
+      }
+    },
+    {
+      "performance": 0.82,
+      "accessibility": 0.9,
+      "bestPractices": 1,
+      "seo": 0.83,
+      "metrics": {
+        "FCP": 2252.78275,
+        "LCP": 4503.041499999999,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 2252.78275,
+        "TTI": 4503.041499999999
+      }
+    }
+  ]
+}

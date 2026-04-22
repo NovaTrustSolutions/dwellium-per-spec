@@ -1,0 +1,12 @@
+{
+  "source": "AppFolio zohouryproperties - Leases (Ready to Countersign view)",
+  "captured_at": "2026-04-19",
+  "url": "/lease_documents",
+  "tabs": ["All", "Ready to Countersign", "Out for Signing", "Printed"],
+  "default_tab": "Ready to Countersign",
+  "columns": ["Tenants", "Unit Name", "Lease Generation Date", "Status", "Action"],
+  "pending_countersign": [
+    { "tenant": "Jamel D. Brown*", "unit": "Riverwood Club Apartments - H12", "lease_generation_date": "2026-03-31 05:58 PM", "status": "Ready to Countersign", "action": "Countersign" },
+    { "tenant": "Vanessa V. Blunt*", "unit": "Riverwood Club Apartments - D14", "lease_generation_date": "2026-03-31 05:24 PM", "status": "Ready to Countersign", "action": "Countersign" }
+  ]
+}

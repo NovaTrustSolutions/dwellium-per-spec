@@ -1,0 +1,95 @@
+{
+  "source": "AppFolio zohouryproperties - Work Order Detail",
+  "captured_at": "2026-04-19",
+  "url": "/maintenance/service_requests/19511/work_orders/19523",
+  "service_request_id": 19511,
+  "work_order_id": 19523,
+  "work_order_number": "19511-1",
+  "status": "New",
+  "service_request": {
+    "description": "Fire alarm needs replaced. Beeping and can't reach.",
+    "created_on": "2026-04-17",
+    "created_by": "Brianna M. Jackson",
+    "priority": "Normal",
+    "permission_to_enter": "Yes",
+    "recent_work_orders_for_unit": 1,
+    "open_count": 1
+  },
+  "property": {
+    "name": "Woodland Parc Townhomes",
+    "unit": "2789-1-4",
+    "address": "2789 Bell Drive, Smyrna, GA 30080",
+    "property_notes": null,
+    "unit_notes": "Building 1 Lot 3",
+    "maintenance_limit": null,
+    "home_warranty_company": null,
+    "home_warranty_expires": null
+  },
+  "owner": { "name": "Southeastern Apartment Investment Corp", "notes": null },
+  "resident": {
+    "name": "Brianna M. Jackson",
+    "mobile": "(404) 824-1830",
+    "email": "brianna87@gmail.com",
+    "pets": "shih poo (shih tzu/poodle mix)"
+  },
+  "work_order_actions_available": [
+    "Notify Owner", "Notify Tenant", "Schedule", "Next Follow-up Date",
+    "Mark Work Done", "Mark Ready to Bill", "Create In-house Bill",
+    "Create 3rd-Party Vendor Bill", "Mark Completed", "Waiting", "Cancel"
+  ],
+  "tracking_actions": ["Track", "Edit", "Delete", "Print", "Text", "Email"],
+  "owner_approved": false,
+  "job": {
+    "description": "Fire alarm needs replaced. Beeping and can't reach.",
+    "vendor": null,
+    "trade": "No Trade Assigned",
+    "vendor_instructions": null
+  },
+  "scheduling": {
+    "status": "This work order has not been scheduled yet",
+    "next_follow_up_date": null,
+    "assignee": "Unassigned",
+    "resident_availability": {
+      "monday": "2026-04-20",
+      "time_windows_edt": ["8:00am-12:00pm", "10:00am-2:00pm", "1:00pm-5:00pm"]
+    }
+  },
+  "actions_log": [
+    { "ts": "2026-04-17 08:24 PM", "actor": "System", "event": "Resident submitted preferred times", "detail": "04/20/2026 at 08:00AM-12:00PM EDT, 10:00AM-02:00PM EDT, 01:00PM-05:00PM EDT" },
+    { "ts": "2026-04-17 08:24 PM", "actor": "Brianna M. Jackson", "event": "Submitted online" }
+  ],
+  "sections_visible": [
+    "Service Request Header", "Property/Unit/Owner/Resident",
+    "Work Order", "Job", "Scheduling", "Actions Log",
+    "View as Maintenance Tech", "Labor", "Purchase Orders",
+    "Withheld Amount from Owner", "Invoices", "Texts", "Emails",
+    "Attachments", "Notes"
+  ],
+  "tier_info_from_encoded_header": {
+    "tier": "Core",
+    "disabled_entitlements": [
+      "apm_agent_of_record", "apm_custom_fields", "apm_performance_insights",
+      "apm_property_staff", "plus_user", "max_user", "apm_custom_user_roles",
+      "apm_database_api", "apm_realmx_performers (all variants)",
+      "apm_bulk_bill_upload_ids", "prepayment_by_property",
+      "apm_affordable_housing", "apm_audit_center", "apm_leasing_crm",
+      "apm_leasing_revenue_management", "apm_signals",
+      "apm_revenue_management", "apm_rental_app_price_quotes",
+      "apm_rental_applications_multiple_templates",
+      "apm_leasing_metrics_dashboard", "apm_maintenance_offline_inspections",
+      "apm_maintenance_schedules", "apm_maintenance_billing_rules",
+      "apm_granular_permissions", "apm_reports_viewable_ids",
+      "apm_reporting_api", "apm_report_connection",
+      "apm_bulk_move_out", "apm_bulk_renewal_offers", "apm_bulk_pricer",
+      "apm_student_housing_v2", "apm_bulk_download_leases",
+      "apm_tenant_demographic_summary_reports", "apm_waive_ach_fees",
+      "apm_workflow_management", "realmx_flows"
+    ],
+    "interpretation": "Portfolio is on AppFolio's 'Core' tier — all premium add-ons are DISABLED. This is meaningful for Dwellium positioning: ZP Group is a real ~$2M-purchase-price-tier SFR operator on the base AppFolio SKU, NOT an enterprise customer. Dwellium's target ICP for initial adoption."
+  },
+  "dwellium_mapping_notes": {
+    "GAP-MAINT-01": "Work Order detail schema (service_request → work_order → job → scheduling → actions_log → labor → PO → invoices → texts → emails → attachments → notes) is the canonical model to port into Dwellium's Maintenance module.",
+    "recurring_pattern": "2789 Bell Drive fire alarm = typical resident-submitted request. Dwellium's intake UI should replicate: description + priority + permission_to_enter + 3 time windows.",
+    "C-1_router_relevance": "This resident-submitted request arrived via the AppFolio resident portal — Dwellium's C-1 email router should classify equivalent emails and route to the Maintenance workflow with the same fields."
+  }
+}

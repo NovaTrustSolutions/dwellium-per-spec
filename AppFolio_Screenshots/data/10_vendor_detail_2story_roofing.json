@@ -1,0 +1,68 @@
+{
+  "source": "AppFolio zohouryproperties - Vendor Detail",
+  "captured_at": "2026-04-19",
+  "url": "/vendors/2716",
+  "vendor_id": 2716,
+  "name": "2-STORY TECHNICAL ROOFING LLC",
+  "primary_contact_name": "Danny Bourdua",
+  "website": "www.2stroofing.com",
+  "vendor_type": "General",
+  "phone_numbers": [{ "type": "Mobile", "number": "(678) 936-2606", "notes": "Zelle linked" }],
+  "emails": ["daniel@2stroofing.com", "dbourdua@yahoo.com"],
+  "addresses": [{ "type": "Primary", "street": "3122 OLD CORNELIA HWY", "city": "GAINESVILLE", "state": "GA", "zip": "30507" }],
+  "vendor_portal_activated": true,
+  "federal_tax": {
+    "taxpayer_name": "2-STORY TECHNICAL ROOFING",
+    "w9_requested": true,
+    "tax_id_masked": "XX-XXX4232",
+    "tax_form_account_number": "T5880725740908400331",
+    "send_1099": true
+  },
+  "accounting_information": {
+    "check_consolidation": "All bills on single check (hide extra stub detail)",
+    "check_stub_breakdown": "List each bill detail line item (expanded view)",
+    "hold_payments": false,
+    "email_echeck_receipt": true,
+    "payment_terms": null,
+    "default_check_memo": null,
+    "default_gl_account": null,
+    "work_order_adjustment_percent": 0.00,
+    "discount": null,
+    "online_payables_enabled": false,
+    "payment_type": "Check",
+    "bank_routing_number": null,
+    "bank_account_number": null,
+    "savings_account": false
+  },
+  "compliance": {
+    "workers_comp_expiration": null,
+    "general_liability_expiration": "2026-07-11",
+    "epa_certification_expiration": null,
+    "auto_insurance_expiration": null,
+    "state_license_expiration": null,
+    "contract_expiration": null,
+    "request_compliance_documents_cta": true
+  },
+  "survey_responses": [],
+  "notes": [
+    { "posted_by": "Lisa Zohoury", "ts": "2024-10-19 10:37:05 AM", "body": "@Candice.Palacio request for W-9 and COI for Workers' Comp Insurance. If exempt, need written statement from Board of WC. Current COI does not show Southeastern Apartment Investment Corp as 'additional insured' — needs correction." },
+    { "posted_by": "Lisa Zohoury", "ts": "2024-01-17 12:40:13 PM", "body": "Did not send 1099 since paid with Zelle." }
+  ],
+  "texts_sample": [
+    { "from": "System", "ts": "2026-01-30 1:27 PM", "body": "New job from Woodland Parc #19206-1, Location: Bell Drive, Smyrna, GA 30080, View details link, Reply STOP to unsubscribe." }
+  ],
+  "sections_visible": [
+    "Name + Contact Name", "Website + Vendor Type", "Contact",
+    "Phone Numbers", "Emails", "Addresses",
+    "Vendor Communications Portal Activated",
+    "Federal Tax (W-9, 1099)", "Accounting Information",
+    "Payment Type + Bank Info", "Compliance (6 expiration dates)",
+    "Survey Responses", "Notes", "Texts", "Emails", "Audit Log", "Attachments"
+  ],
+  "dwellium_mapping_notes": {
+    "GAP-VEND-01": "Vendor schema needs: Federal Tax block (W-9 request flag + masked tax ID + 1099 boolean), Accounting block (payment terms, default GL, check consolidation), Compliance block (6 distinct expiration dates), Portal activation boolean, and free-form Notes thread.",
+    "GAP-COMP-01": "Vendor compliance has 6 separate expiration dates (Workers' Comp, General Liability, EPA, Auto Insurance, State License, Contract). Dwellium's Vendor Compliance widget should surface rollup 'next expiring cert' + per-vendor detail.",
+    "GAP-BILL-01": "Zelle-paid vendors bypass 1099 — Dwellium's AP module must support this. Lisa's 1/17/2024 note is the real-world case for this exception.",
+    "GAP-COMM-02": "System-generated SMS to vendor (with appfol.io shortlink + STOP-to-unsubscribe) is the canonical Dwellium dispatch-notification template."
+  }
+}

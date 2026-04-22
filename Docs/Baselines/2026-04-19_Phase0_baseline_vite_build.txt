@@ -1,0 +1,95 @@
+vite v6.4.1 building for production...
+transforming...
+
+new URL("ort-wasm-simd-threaded.jsep.wasm", import.meta.url) doesn't exist at build time, it will remain unchanged to be resolved at runtime. If this is intended, you can use the /* @vite-ignore */ comment to suppress this warning.
+✓ 3269 modules transformed.
+rendering chunks...
+computing gzip size...
+../../../../../tmp/vite-baseline-dist/index.html                                  1.46 kB │ gzip:   0.63 kB
+../../../../../tmp/vite-baseline-dist/assets/pdf.worker-BA9kU3Pw.mjs          1,978.10 kB
+../../../../../tmp/vite-baseline-dist/assets/Terminal-ClR34Isi.css                3.18 kB │ gzip:   1.11 kB
+../../../../../tmp/vite-baseline-dist/assets/UniversalShell-B_jT3nb_.css          3.91 kB │ gzip:   1.22 kB
+../../../../../tmp/vite-baseline-dist/assets/NotebookLMContext-DhlDcGSo.css       6.25 kB │ gzip:   1.72 kB
+../../../../../tmp/vite-baseline-dist/assets/Notepad-DJTnzvwR.css                 6.92 kB │ gzip:   1.87 kB
+../../../../../tmp/vite-baseline-dist/assets/FactCheckLog-CQ6wa12K.css            8.02 kB │ gzip:   2.17 kB
+../../../../../tmp/vite-baseline-dist/assets/GeorgiaCode-By7_BOvi.css             8.58 kB │ gzip:   2.32 kB
+../../../../../tmp/vite-baseline-dist/assets/TemplateGenerator-CmVSmPPY.css       8.88 kB │ gzip:   2.10 kB
+../../../../../tmp/vite-baseline-dist/assets/FileManager-b4H5OkNH.css             8.89 kB │ gzip:   2.24 kB
+../../../../../tmp/vite-baseline-dist/assets/PDFGear-QZKN4NYD.css                 9.90 kB │ gzip:   2.32 kB
+../../../../../tmp/vite-baseline-dist/assets/ControlPanel-DkZvNx39.css           10.37 kB │ gzip:   2.44 kB
+../../../../../tmp/vite-baseline-dist/assets/TaskMenu-DBXQ6504.css               10.62 kB │ gzip:   2.67 kB
+../../../../../tmp/vite-baseline-dist/assets/TrelloBoard-D3KMY51E.css            12.71 kB │ gzip:   2.72 kB
+../../../../../tmp/vite-baseline-dist/assets/DocViewer-CTUIHLkR.css              12.86 kB │ gzip:   3.06 kB
+../../../../../tmp/vite-baseline-dist/assets/TenantPortalModule-DAV_hcrt.css     12.93 kB │ gzip:   3.07 kB
+../../../../../tmp/vite-baseline-dist/assets/HomeUpkeepAI-DPyUBJss.css           13.82 kB │ gzip:   3.28 kB
+../../../../../tmp/vite-baseline-dist/assets/ThoughtWeaver-CwpsuCjV.css          14.03 kB │ gzip:   3.19 kB
+../../../../../tmp/vite-baseline-dist/assets/AutomationHub-CkneEyPR.css          15.54 kB │ gzip:   3.52 kB
+../../../../../tmp/vite-baseline-dist/assets/HydraAI-C4L_hr-x.css                17.86 kB │ gzip:   3.89 kB
+../../../../../tmp/vite-baseline-dist/assets/TwoBrains-CXOaZ1Mr.css              20.48 kB │ gzip:   4.33 kB
+../../../../../tmp/vite-baseline-dist/assets/StellaAgent-CvP6g8cH.css            31.76 kB │ gzip:   5.87 kB
+../../../../../tmp/vite-baseline-dist/assets/InboxZero-DNV8qdAO.css              36.66 kB │ gzip:   7.13 kB
+../../../../../tmp/vite-baseline-dist/assets/ARAConsole-CidT3Hy0.css             37.46 kB │ gzip:   6.96 kB
+../../../../../tmp/vite-baseline-dist/assets/AstraDashboard-CnkgEVSb.css         38.17 kB │ gzip:   6.06 kB
+../../../../../tmp/vite-baseline-dist/assets/StrataDashboard-D-kmmUvB.css        53.80 kB │ gzip:   7.43 kB
+../../../../../tmp/vite-baseline-dist/assets/TranscriptionHub-CILTOIJ6.css       54.10 kB │ gzip:   9.93 kB
+../../../../../tmp/vite-baseline-dist/assets/index-NxkiLNFQ.css                 158.98 kB │ gzip:  27.61 kB
+../../../../../tmp/vite-baseline-dist/assets/chevron-right-DJ4h94ve.js            0.30 kB │ gzip:   0.25 kB
+../../../../../tmp/vite-baseline-dist/assets/search-Cqctjf5J.js                   0.34 kB │ gzip:   0.27 kB
+../../../../../tmp/vite-baseline-dist/assets/flame-clG-qA6z.js                    0.37 kB │ gzip:   0.29 kB
+../../../../../tmp/vite-baseline-dist/assets/calendar-DFzLPM-X.js                 0.43 kB │ gzip:   0.31 kB
+../../../../../tmp/vite-baseline-dist/assets/users-9_Ny-soF.js                    0.48 kB │ gzip:   0.33 kB
+../../../../../tmp/vite-baseline-dist/assets/TenantPortalMgmt-DrKuAFI6.js         0.50 kB │ gzip:   0.36 kB
+../../../../../tmp/vite-baseline-dist/assets/layout-dashboard-BAd0tCFk.js         0.52 kB │ gzip:   0.31 kB
+../../../../../tmp/vite-baseline-dist/assets/phone-Dx2Tw7cB.js                    0.83 kB │ gzip:   0.44 kB
+../../../../../tmp/vite-baseline-dist/assets/scale-BKLGS9Vi.js                    0.87 kB │ gzip:   0.42 kB
+../../../../../tmp/vite-baseline-dist/assets/loader-CUI8NwkQ.js                   1.09 kB │ gzip:   0.43 kB
+../../../../../tmp/vite-baseline-dist/assets/refresh-cw-C5CgwkPg.js               1.10 kB │ gzip:   0.47 kB
+../../../../../tmp/vite-baseline-dist/assets/layers-DIdQvKMV.js                   1.49 kB │ gzip:   0.58 kB
+../../../../../tmp/vite-baseline-dist/assets/trending-up-sdSkKgap.js              2.38 kB │ gzip:   0.66 kB
+../../../../../tmp/vite-baseline-dist/assets/useToast-DoxaftjG.js                 3.57 kB │ gzip:   1.79 kB
+../../../../../tmp/vite-baseline-dist/assets/OpenTracker-CybjS4TN.js              5.84 kB │ gzip:   2.28 kB
+../../../../../tmp/vite-baseline-dist/assets/NotebookLMContext-BF3yhEpM.js        6.62 kB │ gzip:   2.21 kB
+../../../../../tmp/vite-baseline-dist/assets/Terminal-BdjBeRL4.js                 7.16 kB │ gzip:   2.46 kB
+../../../../../tmp/vite-baseline-dist/assets/Notepad-C3FPXrxe.js                  7.34 kB │ gzip:   2.67 kB
+../../../../../tmp/vite-baseline-dist/assets/FactCheckLog-xZPjirWV.js             7.50 kB │ gzip:   2.69 kB
+../../../../../tmp/vite-baseline-dist/assets/FileManager-NG2Z6Z5T.js              7.75 kB │ gzip:   2.74 kB
+../../../../../tmp/vite-baseline-dist/assets/GeorgiaCode-CmKfjz24.js              7.77 kB │ gzip:   2.81 kB
+../../../../../tmp/vite-baseline-dist/assets/TaskMenu-6qcEgmDc.js                 9.27 kB │ gzip:   3.28 kB
+../../../../../tmp/vite-baseline-dist/assets/TrelloBoard-BcMd3cPg.js              9.43 kB │ gzip:   2.98 kB
+../../../../../tmp/vite-baseline-dist/assets/useQuery-DiNFM6GF.js                10.46 kB │ gzip:   3.72 kB
+../../../../../tmp/vite-baseline-dist/assets/TemplateGenerator-BDybWdpY.js       10.91 kB │ gzip:   3.56 kB
+../../../../../tmp/vite-baseline-dist/assets/ColdEmailBlocker-DNTFDsDD.js        11.18 kB │ gzip:   3.17 kB
+../../../../../tmp/vite-baseline-dist/assets/ThoughtWeaver-CbCf4G8t.js           11.18 kB │ gzip:   3.37 kB
+../../../../../tmp/vite-baseline-dist/assets/NifIntelligence-W4T37nA5.js         11.46 kB │ gzip:   2.85 kB
+../../../../../tmp/vite-baseline-dist/assets/UniversalShell-C-dzj_tJ.js          11.95 kB │ gzip:   4.08 kB
+../../../../../tmp/vite-baseline-dist/assets/SmartActions-CbWCZo5O.js            13.99 kB │ gzip:   3.83 kB
+../../../../../tmp/vite-baseline-dist/assets/ControlPanel-Sww4Fhei.js            14.29 kB │ gzip:   3.29 kB
+../../../../../tmp/vite-baseline-dist/assets/ReplyTracker-CDJkF8jy.js            14.96 kB │ gzip:   3.64 kB
+../../../../../tmp/vite-baseline-dist/assets/PDFGear-DDKprICU.js                 16.55 kB │ gzip:   5.43 kB
+../../../../../tmp/vite-baseline-dist/assets/HydraAI-DKx_zlfl.js                 16.71 kB │ gzip:   5.16 kB
+../../../../../tmp/vite-baseline-dist/assets/HomeUpkeepAI-Bf46d087.js            18.34 kB │ gzip:   4.67 kB
+../../../../../tmp/vite-baseline-dist/assets/WorkOrdersModule-DhUByry9.js        18.92 kB │ gzip:   5.43 kB
+../../../../../tmp/vite-baseline-dist/assets/TenantPortalModule-D_xTk_7Y.js      19.99 kB │ gzip:   4.98 kB
+../../../../../tmp/vite-baseline-dist/assets/AnalyticsDashboard-HKBolki_.js      20.03 kB │ gzip:   4.82 kB
+../../../../../tmp/vite-baseline-dist/assets/TwoBrains-D7dzOJLF.js               20.49 kB │ gzip:   6.14 kB
+../../../../../tmp/vite-baseline-dist/assets/RulesManager-CVPsSXwY.js            20.68 kB │ gzip:   4.55 kB
+../../../../../tmp/vite-baseline-dist/assets/safeMarkdown-BNEhRygk.js            25.03 kB │ gzip:   9.68 kB
+../../../../../tmp/vite-baseline-dist/assets/DocViewer-W_9o1pv_.js               31.14 kB │ gzip:   9.64 kB
+../../../../../tmp/vite-baseline-dist/assets/ARAConsole-eKc2mPyQ.js              39.78 kB │ gzip:  11.65 kB
+../../../../../tmp/vite-baseline-dist/assets/AstraDashboard-Xg0RAi1_.js          41.23 kB │ gzip:  11.09 kB
+../../../../../tmp/vite-baseline-dist/assets/AutomationHub-D2N54nP5.js           43.74 kB │ gzip:  12.87 kB
+../../../../../tmp/vite-baseline-dist/assets/StellaAgent-5Ssc_A-l.js             57.77 kB │ gzip:  13.87 kB
+../../../../../tmp/vite-baseline-dist/assets/MaintenanceModule-DgT1gsva.js       63.04 kB │ gzip:  15.01 kB
+../../../../../tmp/vite-baseline-dist/assets/index-1yBoi7Al.js                   87.71 kB │ gzip:  22.21 kB
+../../../../../tmp/vite-baseline-dist/assets/InboxZero-DCUin_8U.js               92.59 kB │ gzip:  24.60 kB
+../../../../../tmp/vite-baseline-dist/assets/PDFButton-BsQ80Mq5.js              430.78 kB │ gzip: 178.18 kB
+../../../../../tmp/vite-baseline-dist/assets/pdf-CE_K4jFx.js                    445.49 kB │ gzip: 131.74 kB
+../../../../../tmp/vite-baseline-dist/assets/index-CobOZFHb.js                  597.31 kB │ gzip: 179.85 kB
+../../../../../tmp/vite-baseline-dist/assets/StrataDashboard-CP4-wN5c.js        981.15 kB │ gzip: 235.44 kB
+../../../../../tmp/vite-baseline-dist/assets/TranscriptionHub-DgjH1DmF.js     2,339.80 kB │ gzip: 832.47 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 8.53s

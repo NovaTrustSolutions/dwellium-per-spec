@@ -1,0 +1,32 @@
+{
+  "source": "AppFolio zohouryproperties - Vendors",
+  "captured_at": "2026-04-19",
+  "url": "/vendors",
+  "total_vendors": 3040,
+  "page_size": 20,
+  "tabs": ["Tenants", "Owners", "Vendors"],
+  "trade_categories": [
+    "Alarm/Security", "Appliances", "Capital Improvements", "Carpet Cleaning", "Carpet/Flooring",
+    "Cleaning", "Deck Repair", "Doors/Windows", "Drywall Repair", "Electrical", "Elevator Services",
+    "Fences/Gates", "Fire/Water Damage", "Fireplace/Chimney", "Garage Doors", "General Contractor",
+    "Gutter Cleaning", "Handyperson", "HVAC", "Inspections", "Keys/Locks", "Landscaping", "Other",
+    "Painting", "Parking Lots/Driveways", "Pest Control", "Plumbing", "Pool/Spa",
+    "Preventative Maintenance", "Redevelopment", "Repairs and Maintenance: Exterior",
+    "Repairs and Maintenance: Interior", "Roofing", "Septic System", "Smoke/Carbon Monoxide Detectors",
+    "Snow Removal", "Trash/Recycling", "Turnover", "Utilities"
+  ],
+  "sample_vendors_page_1": [
+    { "name": "1-800-GOT-JUNK?", "phone": "(727) 242-5236", "email": "pinellascounty@1800gotjunk.com" },
+    { "name": "1001 NIGHTS PERSIAN", "phone": "(678) 353-6329" },
+    { "name": "10129 CAVA NORTH BUCKHEAD" },
+    { "name": "12 OAKS PARKING, LLC" },
+    { "name": "2-STORY TECHNICAL ROOFING LLC", "phone": "(678) 936-2606", "email": "daniel@2stroofing.com" },
+    { "name": "201 CONTRACTING CO." },
+    { "name": "404GUTTERS", "phone": "(404) 488-8377" },
+    { "name": "888-COOL", "phone": "(850) 888-2665", "email": "extremelimotruck@gmail.com" }
+  ],
+  "observations": {
+    "mixed_purpose": "The vendor book includes non-maintenance entities (restaurants: 15TH STREET FISHERIES, 1920 TAVERN, 53 BANK RESTAURANT, 285 WEST SOUL FOOD, 7-ELEVEN, 7LEAVES CAFE, 90 PERIMETER CENTER WEST RESTAURANT / SEASONS 52; retail: 1800FLOWERS, 99 IMPORTS, 365 MARKET). These likely represent AP/owner expense-tracking entries, not active maintenance vendors.",
+    "active_maintenance_vendors_spotted_in_work_orders": ["CS COOPER RESIDENTIAL CONTRACTORS, LLC", "JIMENEZ HOME REPAIRS LLC", "2-STORY TECHNICAL ROOFING LLC", "GEORGIA POWER"]
+  }
+}

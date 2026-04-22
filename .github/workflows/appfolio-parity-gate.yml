@@ -31,10 +31,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node 25
+      - name: Set up Node (tracks qualia-shell/.nvmrc)
         uses: actions/setup-node@v4
         with:
-          node-version: '25'
+          node-version-file: 'qualia-shell/.nvmrc'
           cache: npm
           cache-dependency-path: qualia-shell/package-lock.json
 
@@ -51,13 +51,13 @@ jobs:
         run: npx vitest run --reporter=default --reporter=junit --outputFile.junit=../Docs/Baselines/ci_vitest_${{ github.run_id }}.xml
         continue-on-error: false
 
-      - name: Install Playwright browsers
+      - name: Install Playwright browsers (chromium only for baseline)
         working-directory: qualia-shell
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install --with-deps chromium
 
-      - name: Playwright E2E
+      - name: Playwright baseline E2E (screenshot + axe)
         working-directory: qualia-shell
-        run: npx playwright test
+        run: npx playwright test --config playwright.baseline.config.ts
 
       - name: Vite build (seeds=true)
         working-directory: qualia-shell

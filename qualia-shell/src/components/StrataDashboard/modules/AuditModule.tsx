@@ -8,8 +8,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { strataGet } from '../strataApi';
-import { Search, RefreshCw, ChevronDown, ChevronRight, User, Clock, Shield, Filter, ChevronLeft, Plus, Archive, X, ShieldCheck, Zap, AlertTriangle } from 'lucide-react';
+import { Search, RefreshCw, ChevronDown, ChevronRight, User, Clock, Shield, Filter, ChevronLeft, Plus, Archive, X, ShieldCheck, Zap, AlertTriangle, Activity } from 'lucide-react';
 import { strataPost } from '../strataApi';
+// Task 2.7 — unified-timeline types (canonical from packages/types).
+// The pre-existing local `interface AuditEntry` below is a distinct
+// shape (numeric id, audit_log.json row) and is NOT replaced.
+import type { AuditEvent, UnifiedTimelineView } from '../strataTypes';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 interface AuditEntry {
     id: number;
@@ -79,7 +85,13 @@ export default function AuditModule() {
     const [expanded, setExpanded] = useState<number | null>(null);
     const [userFilter, setUserFilter] = useState('');
     const [uniqueUsers, setUniqueUsers] = useState<{ id: string; name: string; role: string }[]>([]);
-    const [viewTab, setViewTab] = useState<'audit' | 'archive' | 'compliance'>('audit');
+    const [viewTab, setViewTab] = useState<'audit' | 'archive' | 'compliance' | 'unified'>('audit');
+    // Task 2.7 — unified-timeline state. Fail-soft: empty arrays on error,
+    // no toast; the 'audit-unified-empty' testid paints so CDP / Playwright
+    // can distinguish "render succeeded, no data" from "render crashed".
+    const [unifiedEvents, setUnifiedEvents] = useState<AuditEvent[]>([]);
+    const [unifiedBreakdown, setUnifiedBreakdown] = useState<UnifiedTimelineView['sourceBreakdown'] | null>(null);
+    const [unifiedLoading, setUnifiedLoading] = useState(false);
     const [complianceFindings, setComplianceFindings] = useState<any[]>([]);
     const [complianceSummary, setComplianceSummary] = useState<any>(null);
     const [complianceLoading, setComplianceLoading] = useState(false);
@@ -120,6 +132,39 @@ export default function AuditModule() {
     }, [search, page, userFilter]);
 
     useEffect(() => { fetchAudit(); }, [fetchAudit]);
+
+    // Task 2.7 — Unified timeline fetcher. Runs when the 'unified' sub-tab
+    // is active. Fail-soft: any error → empty state with empty testid.
+    // Sentry breadcrumb on successful load (no-op without DSN).
+    useEffect(() => {
+        if (viewTab !== 'unified') return;
+        let cancelled = false;
+        (async () => {
+            setUnifiedLoading(true);
+            try {
+                const data = await strataGet<UnifiedTimelineView>('/audit/unified-timeline');
+                if (cancelled) return;
+                setUnifiedEvents(Array.isArray(data?.events) ? data.events : []);
+                setUnifiedBreakdown(data?.sourceBreakdown ?? null);
+                try {
+                    Sentry.addBreadcrumb({
+                        category: 'ui.load',
+                        message: 'audit.unified.loaded',
+                        level: 'info',
+                        data: { total: data?.total ?? 0, sourceBreakdown: data?.sourceBreakdown ?? null },
+                    });
+                } catch { /* Sentry no-op when DSN unset */ }
+            } catch {
+                if (!cancelled) {
+                    setUnifiedEvents([]);
+                    setUnifiedBreakdown(null);
+                }
+            } finally {
+                if (!cancelled) setUnifiedLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [viewTab]);
 
     const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : 1;
 
@@ -200,13 +245,22 @@ export default function AuditModule() {
 
             {/* Sub-tabs */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
-                {([{ id: 'audit' as const, label: 'Audit Log', Icon: Shield }, { id: 'archive' as const, label: 'Archive Search', Icon: Archive }, { id: 'compliance' as const, label: 'Compliance Audit', Icon: ShieldCheck }]).map(t => (
-                    <button key={t.id} onClick={() => setViewTab(t.id)} style={{
-                        padding: '6px 14px', border: 'none', borderRadius: 6,
-                        background: viewTab === t.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                        color: viewTab === t.id ? '#818cf8' : '#94a3b8',
-                        cursor: 'pointer', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4,
-                    }}>
+                {([{ id: 'audit' as const, label: 'Audit Log', Icon: Shield }, { id: 'archive' as const, label: 'Archive Search', Icon: Archive }, { id: 'compliance' as const, label: 'Compliance Audit', Icon: ShieldCheck }, { id: 'unified' as const, label: 'Unified Timeline', Icon: Activity }]).map(t => (
+                    <button
+                        key={t.id}
+                        data-testid={t.id === 'unified' ? 'audit-unified-tab' : undefined}
+                        onClick={() => {
+                            setViewTab(t.id);
+                            if (t.id === 'unified') {
+                                try { Sentry.addBreadcrumb({ category: 'ui.click', message: 'audit.unified.tab.click', level: 'info' }); } catch { /* no-op */ }
+                            }
+                        }}
+                        style={{
+                            padding: '6px 14px', border: 'none', borderRadius: 6,
+                            background: viewTab === t.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
+                            color: viewTab === t.id ? '#818cf8' : '#94a3b8',
+                            cursor: 'pointer', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4,
+                        }}>
                         <t.Icon size={13} /> {t.label}
                     </button>
                 ))}
@@ -650,6 +704,116 @@ export default function AuditModule() {
                     )}
                 </div>
             )}
+
+            {/* ═══ UNIFIED TIMELINE TAB (Task 2.7 — B3 closure) ═══
+                Joins 5 source tables (compliance + insurance + workitem
+                actionsLog + audit_log + communication) into a chronological
+                AuditEvent list with explicit per-event `source` provenance.
+                ErrorBoundary wraps the surface per GR-13. */}
+            {viewTab === 'unified' && (
+                <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Unified timeline unavailable.</div>}>
+                    <div data-testid="audit-unified-timeline" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {/* Source breakdown header */}
+                        {unifiedBreakdown && (
+                            <div data-testid="audit-unified-source-breakdown" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginRight: 8 }}>Sources</span>
+                                {(['compliance', 'insurance', 'workitem', 'audit_log', 'communication'] as const).map(src => (
+                                    <span key={src} style={{
+                                        fontSize: 11, fontWeight: 600,
+                                        padding: '2px 8px', borderRadius: 5,
+                                        background: 'rgba(99,102,241,0.1)', color: '#a5b4fc',
+                                    }}>
+                                        {src.replace('_', ' ')}: {unifiedBreakdown[src] ?? 0}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {unifiedLoading && (
+                            <div style={{ padding: '24px 14px', color: '#64748b', fontSize: 12, textAlign: 'center' }}>
+                                <RefreshCw size={14} className="spin" /> Loading unified timeline…
+                            </div>
+                        )}
+
+                        {!unifiedLoading && unifiedEvents.length === 0 && (
+                            <div
+                                data-testid="audit-unified-empty"
+                                style={{ padding: '40px 20px', textAlign: 'center', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.06)' }}
+                            >
+                                <Activity size={36} strokeWidth={1} style={{ color: '#475569', marginBottom: 8 }} />
+                                <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>No unified-timeline events yet. Events appear as compliance, insurance, work-orders, and system actions accumulate across the portfolio.</p>
+                            </div>
+                        )}
+
+                        {!unifiedLoading && unifiedEvents.map(ev => {
+                            const sourceColor = SOURCE_COLORS[ev.source] ?? '#64748b';
+                            const sev = ev.severity;
+                            return (
+                                <div
+                                    key={ev.id}
+                                    data-testid="audit-unified-event-row"
+                                    data-source={ev.source}
+                                    onClick={() => {
+                                        try { Sentry.addBreadcrumb({ category: 'ui.click', message: 'audit.unified.event.click', level: 'info', data: { source: ev.source, sourceId: ev.sourceId } }); } catch { /* no-op */ }
+                                    }}
+                                    style={{
+                                        display: 'flex', gap: 12, alignItems: 'flex-start',
+                                        padding: '12px 14px', borderRadius: 8, cursor: 'pointer',
+                                        background: 'rgba(255,255,255,0.02)',
+                                        borderLeft: `3px solid ${sourceColor}`,
+                                        border: '1px solid rgba(255,255,255,0.04)',
+                                    }}
+                                >
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+                                            <span
+                                                data-testid="audit-unified-source-badge"
+                                                style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, padding: '2px 6px', borderRadius: 4, background: `${sourceColor}22`, color: sourceColor }}
+                                            >
+                                                {ev.source.replace('_', ' ')}
+                                            </span>
+                                            <span
+                                                data-testid="audit-unified-severity-badge"
+                                                style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, padding: '2px 6px', borderRadius: 4, background: SEVERITY_BG[sev], color: SEVERITY_FG[sev] }}
+                                            >
+                                                {sev}
+                                            </span>
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{ev.title}</span>
+                                        </div>
+                                        {ev.description && (
+                                            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>{ev.description}</div>
+                                        )}
+                                        <div style={{ fontSize: 10, color: '#64748b', display: 'flex', gap: 10 }}>
+                                            {ev.actor && <span>{ev.actor}</span>}
+                                            <span>{formatTimestamp(ev.timestamp)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </ErrorBoundary>
+            )}
         </div>
     );
 }
+
+// Task 2.7 — source/severity color maps. Kept module-scoped (not inline)
+// so tests can import them if needed and so the render block stays clean.
+const SOURCE_COLORS: Record<string, string> = {
+    compliance: '#818cf8',
+    insurance: '#3b82f6',
+    workitem: '#f59e0b',
+    audit_log: '#94a3b8',
+    communication: '#22c55e',
+};
+const SEVERITY_BG: Record<string, string> = {
+    info: 'rgba(148,163,184,0.15)',
+    warning: 'rgba(245,158,11,0.15)',
+    critical: 'rgba(239,68,68,0.15)',
+};
+const SEVERITY_FG: Record<string, string> = {
+    info: '#94a3b8',
+    warning: '#f59e0b',
+    critical: '#ef4444',
+};

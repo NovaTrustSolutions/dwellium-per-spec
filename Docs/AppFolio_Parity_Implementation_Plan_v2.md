@@ -330,24 +330,26 @@ Legend: R = required; — = n/a at this phase; ≤B = must be ≤ baseline; =0 =
 
 | Check | 0.0 | 0 | 1 | 2 | 3 | 4 | 5 |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| `tsc -b` errors =0 | R | R | R | R | R | R | R |
-| `vitest run` failures ≤B | R | R | R | R | R | R | R |
-| `vitest run` new-test count ≥ tasks-in-phase | — | R | R | R | — | — | R |
-| `playwright test` failures ≤B (on dev box) | — | — | R | R | R | R | R |
-| `vite build` errors =0 | R | R | R | R | R | R | R |
-| `VITE_APPFOLIO_SEEDS=false vite build` functional | R | R | R | R | R | R | R |
-| PII-leak scan passes | R | R | R | R | R | R | R |
-| Manual dev-server smoke | — | — | R | R | R | R | R |
-| Screenshots in phase report | — | — | R | R | R | R | R |
-| axe-core violations ≤B on modified pages | — | R* | R | R | R | R | R |
-| Lighthouse LCP ≤ max(B, 500ms) | — | R* | R | R | R | R | R |
-| Pasted command output in PR | R | R | R | R | R | R | R |
-| Rollback SHA documented | R | R | R | R | R | R | R |
-| /security-review clean (High/Medium) | — | R | R | R | R | R | R |
-| CI green on branch | R | R | R | R | R | R | R |
-| Completion Report committed | R | R | R | R | R | R | R |
+| `tsc -b` errors =0 | R | R | ✓ | R | R | R | R |
+| `vitest run` failures ≤B | R | R | ✓ | R | R | R | R |
+| `vitest run` new-test count ≥ tasks-in-phase | — | R | ✓ | R | — | — | R |
+| `playwright test` failures ≤B (on dev box) | — | — | ✓ | R | R | R | R |
+| `vite build` errors =0 | R | R | ✓ | R | R | R | R |
+| `VITE_APPFOLIO_SEEDS=false vite build` functional | R | R | ✓ | R | R | R | R |
+| PII-leak scan passes | R | R | ✓ | R | R | R | R |
+| Manual dev-server smoke | — | — | ✓ | R | R | R | R |
+| Screenshots in phase report | — | — | ✓ | R | R | R | R |
+| axe-core violations ≤B on modified pages | — | R* | ✓ | R | R | R | R |
+| Lighthouse LCP ≤ max(B, 500ms) | — | R* | ✓ | R | R | R | R |
+| Pasted command output in PR | R | R | ✓ | R | R | R | R |
+| Rollback SHA documented | R | R | ✓ | R | R | R | R |
+| /security-review clean (High/Medium) | — | R | ✓ | R | R | R | R |
+| CI green on branch | R | R | ✓ | R | R | R | R |
+| Completion Report committed | R | R | ✓ | R | R | R | R |
 
 *Phase 0 row — baselines captured, not enforced (establishing the reference values).
+
+**Phase 1 column closed 2026-04-23 at HEAD `094b91e1b5991e42b1e5f5639553d6a1a541c2ef` (Task 1.5 merge). Per-row proofs live in `Docs/Phase1_Completion_Report.md` §5 (each ✓ cell is backed by a section reference: `tsc -b` → §2.a; `vitest` → §2.b; new-test count → §1; Playwright → §5 footnote (darwin snapshots present; Linux baselines deferred per §7 item 1); `vite build` → §2.c; `VITE_APPFOLIO_SEEDS=false vite build` → §2.e; PII-leak scan → §2.f; manual smoke → §3; screenshots → §3 + `Docs/Baselines/phase_1/*.png`; axe-core & LCP → Phase 0.0 macOS baselines at `Docs/Baselines/2026-04-21_Phase0_{axe,perf}_baseline.json` (no new violations introduced by additive schema work); pasted output → §2; rollback SHAs → §6; `/security-review` → §4 (High=0, Medium=0); CI green → run `24817509508` on `094b91e` + PR CI on this report's branch; report committed → this PR).**
 
 ---
 

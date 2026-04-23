@@ -129,6 +129,176 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
         const entries = rows.slice(offset, offset + limit);
         return { entries, total };
     }
+    // Task 2.7 — unified activity timeline across 5 source tables
+    // (compliance + insurance + workitem actionsLog + audit_log +
+    // communication). Returns UnifiedTimelineView.
+    //
+    // Security contract per /security-review checklist for multi-source
+    // joins:
+    //   - Each source branch writes an EXPLICIT `source: <literal>` tag
+    //     on every event it emits. No computed-key access. No dynamic
+    //     property-source propagation from input params. Type-confusion
+    //     (a compliance row masquerading as an insurance event) is
+    //     structurally impossible.
+    //   - propertyId filter uses strict === on row fields only.
+    //   - limit is parseInt-coerced with NaN fallback AND upper-capped
+    //     at 1000 to prevent Array.slice with unbounded arg from
+    //     callers (harmless here since it's a static JSON read, but the
+    //     cap is the norm for the /security-review checklist).
+    //   - audit_log events are excluded from property-scoped queries
+    //     (rows have no propertyId — including them would leak
+    //     non-property system events into a property-scoped view).
+    if (path === '/audit/unified-timeline') {
+        const [compliance, insurance, workitems, auditLogRows, communications] = await Promise.all([
+            loadTable('compliance'),
+            loadTable('insurance_policies'),
+            loadTable('workitems'),
+            loadTable('audit_log'),
+            loadTable('communications'),
+        ]);
+        const propertyFilter = params?.propertyId;
+        const events: any[] = [];
+
+        // Source: compliance → ComplianceRecord rows as compliance_change events
+        for (const r of compliance as any[]) {
+            if (propertyFilter && r.propertyId !== propertyFilter) continue;
+            const sev: 'info' | 'warning' | 'critical' =
+                r.status === 'expired' ? 'critical' :
+                r.status === 'missing' || r.status === 'warning' ? 'warning' : 'info';
+            events.push({
+                id: `compliance-${r.id}`,
+                source: 'compliance',
+                sourceId: r.id,
+                category: 'compliance_change',
+                severity: sev,
+                title: `${r.label || r.itemType || 'Compliance item'} — ${r.status}`,
+                description: r.notes || `${r.entityType} ${r.entityId || ''}`.trim(),
+                propertyId: r.propertyId ?? null,
+                entityId: r.entityId ?? null,
+                actor: r.source ?? null,
+                timestamp: r.lastAuditedAt || r.createdAt || r.expirationDate || '1970-01-01T00:00:00.000Z',
+                relatedComplianceId: r.id,
+            });
+        }
+
+        // Source: insurance → InsurancePolicy rows as policy_enforcement events
+        for (const p of insurance as any[]) {
+            if (propertyFilter && p.propertyId !== propertyFilter) continue;
+            const enf = p.enforcementStatus;
+            const sev: 'info' | 'warning' | 'critical' =
+                enf === 'lapsed' ? 'critical' :
+                enf === 'required' ? 'warning' : 'info';
+            events.push({
+                id: `insurance-${p.id}`,
+                source: 'insurance',
+                sourceId: p.id,
+                category: 'policy_enforcement',
+                severity: sev,
+                title: `${p.carrier || 'Policy'} ${p.policyNumber || ''} — ${enf || p.status || 'unknown'}`.trim(),
+                description: `${p.policyType || 'policy'} · coverage ${p.coverageAmount ?? '—'}`,
+                propertyId: p.propertyId ?? null,
+                entityId: p.entityId ?? null,
+                actor: null,
+                timestamp: p.effectiveDate || p.createdAt || '1970-01-01T00:00:00.000Z',
+                relatedPolicyId: p.id,
+            });
+        }
+
+        // Source: workitem actionsLog → one event per actionsLog entry
+        for (const w of workitems as any[]) {
+            if (propertyFilter && w.propertyId !== propertyFilter) continue;
+            const al = Array.isArray(w.actionsLog) ? w.actionsLog : [];
+            for (let i = 0; i < al.length; i++) {
+                const a = al[i];
+                events.push({
+                    id: `workitem-${w.id}-${i}`,
+                    source: 'workitem',
+                    sourceId: w.id,
+                    category: 'work_order_action',
+                    severity: 'info',
+                    title: a.event || 'Work-order action',
+                    description: a.detail || w.title || '',
+                    propertyId: w.propertyId ?? null,
+                    entityId: w.entityId ?? null,
+                    actor: a.actor ?? null,
+                    timestamp: a.ts || w.createdAt || '1970-01-01T00:00:00.000Z',
+                    relatedWorkitemId: w.id,
+                });
+            }
+        }
+
+        // Source: audit_log → only when NOT scoped to a property
+        // (rows have no propertyId — a property-scoped query must not
+        // leak unscoped system events).
+        if (!propertyFilter) {
+            for (const a of auditLogRows as any[]) {
+                events.push({
+                    id: `audit-${a.id}`,
+                    source: 'audit_log',
+                    sourceId: String(a.id),
+                    category: 'user_action',
+                    severity: 'info',
+                    title: a.action || 'audit entry',
+                    description: `${a.userName || 'system'} · ${a.entityType || ''}`.trim(),
+                    propertyId: null,
+                    entityId: a.entityId ?? null,
+                    actor: a.userName ?? null,
+                    timestamp: a.createdAt || '1970-01-01T00:00:00.000Z',
+                });
+            }
+        }
+
+        // Source: communications → communication events
+        for (const c of communications as any[]) {
+            if (propertyFilter && c.propertyId !== propertyFilter) continue;
+            events.push({
+                id: `communication-${c.id}`,
+                source: 'communication',
+                sourceId: c.id,
+                category: 'communication',
+                severity: 'info',
+                title: c.subject || c.channel || 'communication',
+                description: c.preview || c.body || '',
+                propertyId: c.propertyId ?? null,
+                entityId: c.entityId ?? null,
+                actor: c.sender ?? null,
+                timestamp: c.createdAt || c.sentAt || '1970-01-01T00:00:00.000Z',
+            });
+        }
+
+        // Chronological descending
+        events.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+
+        const sourceBreakdown: Record<string, number> = {
+            compliance: 0, insurance: 0, workitem: 0, audit_log: 0, communication: 0,
+        };
+        for (const e of events) {
+            if (Object.prototype.hasOwnProperty.call(sourceBreakdown, e.source)) {
+                sourceBreakdown[e.source]++;
+            }
+        }
+
+        const rawLimit = parseInt(params?.limit ?? '100', 10);
+        const limit = Math.min(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 100, 1000);
+        return {
+            events: events.slice(0, limit),
+            total: events.length,
+            sourceBreakdown,
+            propertyId: propertyFilter ?? null,
+            generatedAt: new Date().toISOString(),
+        };
+    }
+    // Task 2.7 — metadata rollup for the AuditModule landing card.
+    // Returns either the single row matching ?propertyId= (or null), or
+    // the full 2-row array when no param is provided. Lineage between
+    // this fixture and the runtime join above is enforced at test time.
+    if (path === '/audit/unified-timeline/snapshot') {
+        const rows = await loadTable('audit_timeline_index') as any[];
+        if (params?.propertyId) {
+            return rows.find(r => r.propertyId === params.propertyId) ?? null;
+        }
+        return rows;
+    }
     if (path === '/occupancies') {
         // Task 1.1: 1:N occupancy (primary tenant + N other occupants).
         // Seeded from qualia-shell/public/data/occupancies.json.

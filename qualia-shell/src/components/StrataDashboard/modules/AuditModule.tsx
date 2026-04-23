@@ -127,12 +127,14 @@ export default function AuditModule() {
         if (!q.trim()) { setArchiveResults([]); return; }
         setArchiveLoading(true);
         try {
-            const token = localStorage.getItem('dwellium_token');
-            const res = await fetch(`http://localhost:3000/api/search?q=${encodeURIComponent(q)}&k=20`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            if (data.success) setArchiveResults(data.data || []);
+            // Task 2.7 — rewired off direct localhost:3000 fetch onto the
+            // strataGet router so static (Netlify) + backend modes both
+            // serve the archive-search tab. Fixes scheduling-pass §6 item #9.
+            // Defensive shape: backend mode returns {success, data}; static
+            // /search returns {results, total}; accept either.
+            const data = await strataGet<any>('/search', { q });
+            const list = data?.results ?? data?.data ?? [];
+            setArchiveResults(Array.isArray(list) ? list : []);
         } catch (e) { console.error(e); }
         setArchiveLoading(false);
     }, []);

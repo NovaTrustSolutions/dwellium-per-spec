@@ -1,6 +1,6 @@
-# AppFolio Parity Implementation Plan — v2.0
+# AppFolio Parity Implementation Plan — v2.1
 
-**Version.** 2.0 (2026-04-19). Supersedes v1.0 after self-graded 7/10 review. Changes tracked in the Changelog at the bottom.
+**Version.** 2.1 (2026-04-23). Incremental clarifications after v2.0. Changes tracked in the Changelog at the bottom.
 
 **Goal.** Close the schema, UI, and fixture gaps identified in `AppFolio_vs_Strata_Gap_Analysis.md` so Strata reaches functional parity with AppFolio on the 12 "Covered" + 10 "Partial" modules, while preserving the 8 Strata-unique and 3 Strata-extending differentiators. Target: a prospective AppFolio customer can migrate without dropping data.
 
@@ -359,6 +359,15 @@ Legend: R = required; — = n/a at this phase; ≤B = must be ≤ baseline; =0 =
 
 **Phase 1 column closed 2026-04-23 at HEAD `094b91e1b5991e42b1e5f5639553d6a1a541c2ef` (Task 1.5 merge). Per-row proofs live in `Docs/Phase1_Completion_Report.md` §5 (each ✓ cell is backed by a section reference: `tsc -b` → §2.a; `vitest` → §2.b; new-test count → §1; Playwright → §5 footnote (darwin snapshots present; Linux baselines deferred per §7 item 1); `vite build` → §2.c; `VITE_APPFOLIO_SEEDS=false vite build` → §2.e; PII-leak scan → §2.f; manual smoke → §3; screenshots → §3 + `Docs/Baselines/phase_1/*.png`; axe-core & LCP → Phase 0.0 macOS baselines at `Docs/Baselines/2026-04-21_Phase0_{axe,perf}_baseline.json` (no new violations introduced by additive schema work); pasted output → §2; rollback SHAs → §6; `/security-review` → §4 (High=0, Medium=0); CI green → run `24817509508` on `094b91e` + PR CI on this report's branch; report committed → this PR).**
 
+**Phase 2 — per-task progress tracker** (Phase-2 column in the matrix above remains `R` until all 10 Phase-2 tasks close; each row-per-task below backs a task's exit-gate independently).
+
+| Task | Status | Merge SHA | Closure date | Per-row proof location |
+|---|:-:|---|---|---|
+| 2.3 — ComplianceEngine: vendor matrix + Section-8 rollup | ✓ | (populated by this PR's squash-to-main) | 2026-04-23 | `Docs/Phase2_Task_2_3_Completion_Report.md` (Summary / §2 strict-gate paste / §3 CDP render proof / §4 /security-review / §5 verification matrix / §6 rollback / §7 deferred / §8 next-task unblock) |
+| 2.1, 2.2, 2.4–2.10 | pending | — | — | — |
+
+Task-2.3 closure references Appendix D row 1's pre-recorded Phase-2 ownership of `packages/types/index.ts` (serial 2.3 → 2.5 → 2.7; text landed in PR #8 / `1bb7518` and preserved by this PR without re-edit).
+
 ---
 
 ## §10. Risk Register (owners + triggers, not just a list)
@@ -580,6 +589,9 @@ Baseline row is captured in `Docs/Baselines/2026-04-19_Phase0_fixture_counts.jso
 
 ## Changelog
 
+- **v2.1 (2026-04-23).** Incremental, non-breaking clarifications after Phase-2 Task 2.3 close. Additions:
+  - §9 Phase-2 per-task progress tracker with Task 2.3 row flipped to ✓ and a reference to `Docs/Phase2_Task_2_3_Completion_Report.md`. Phase-2 column cells remain `R` until all 10 tasks close.
+  - Formal credit: Appendix D row 1 Phase-2 ownership text ("Task 2.3 → 2.5 → 2.7 strictly serial") was landed by PR #8 (squash `1bb7518`) as part of the Phase-2 pre-req hygiene bundle. v2.1 leaves that text untouched — Task 2.3's PR (this one) relies on it rather than re-asserting it. Subsequent B3 chain tasks (2.5, 2.7) rebase onto Task 2.3's type additions per the declared serialization.
 - **v2.0 (2026-04-19).** Rewrite after v1.0 self-scored 7/10. Additions:
   - §1 Definition of Ready, §2 Definition of Done
   - §3 GR-4 reworded from "binary green" to "no regression from baseline"

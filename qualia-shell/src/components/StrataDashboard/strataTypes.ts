@@ -63,4 +63,9 @@ export type {
     TenantPaymentMethod,
     RecurringChargeStatus,
     RecurringCharge,
+    ComplianceEntityType,
+    ComplianceItemType,
+    ComplianceStatus,
+    ComplianceRecord,
+    Section8Rollup,
 } from '../../../../packages/types/index';

@@ -140,9 +140,54 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
     if (path === '/notes') return filterBy(await loadTable('notes') as any[], params);
     if (path === '/communications') return filterBy(await loadTable('communications') as any[], params);
     if (path === '/compliance') return filterBy(await loadTable('compliance') as any[], params);
-    if (path === '/compliance/audit') return [];
+    // Task 2.3 — audit view returns the full ComplianceRecord list with
+    // optional entityType/entityId/itemType/source filters. Replaces the
+    // pre-Phase-2 empty-array stub so ComplianceEngine's Audit panel
+    // shows real rows without flipping the global /compliance shape.
+    if (path === '/compliance/audit') {
+        let rows = await loadTable('compliance') as any[];
+        if (params?.entityType) rows = rows.filter(r => r.entityType === params.entityType);
+        if (params?.entityId) rows = rows.filter(r => r.entityId === params.entityId);
+        if (params?.itemType) rows = rows.filter(r => r.itemType === params.itemType);
+        if (params?.source) rows = rows.filter(r => r.source === params.source);
+        return rows;
+    }
     if (path === '/compliance/gaps') return [];
-    if (path === '/compliance/portfolio-rollup') return { overall: 100, categories: {} };
+    // Task 2.3 — portfolio rollup extended with `section8` key. Pre-existing
+    // `overall` + `categories` keys preserved for consumer back-compat
+    // (ComplianceEngine.tsx reads both shapes defensively via `any`).
+    if (path === '/compliance/portfolio-rollup') {
+        const rows = await loadTable('compliance') as any[];
+        const s8 = (await loadTable('section8_rollup') as any[])[0] ?? null;
+        const nonMissing = rows.filter(r => r.status !== 'missing' && r.status !== 'expired').length;
+        const overall = rows.length > 0 ? Math.round((nonMissing / rows.length) * 100) : 100;
+        const byType = (type: string) => rows.filter(r => r.entityType === type);
+        const counts = (subset: any[]) => ({
+            total: subset.length,
+            compliant: subset.filter(r => r.status === 'valid' || r.status === 'tracked').length,
+            missing: subset.filter(r => r.status === 'missing').length,
+            expiring: subset.filter(r => r.status === 'warning' || r.status === 'scheduled').length,
+            expired: subset.filter(r => r.status === 'expired').length,
+        });
+        return {
+            overall,
+            categories: {
+                vendor: counts(byType('vendor')),
+                inspection: counts(byType('inspection')),
+                policy: counts(byType('policy')),
+                property: counts(byType('property')),
+            },
+            section8: s8,
+        };
+    }
+    // Task 2.3 — new exact-match route; returns the single Section8Rollup
+    // object (or null) from the committed section8_rollup.json fixture.
+    // Lineage between this fixture and the underlying 9 AHA rows in
+    // compliance.json is enforced at test time (see complianceEngine.test.ts).
+    if (path === '/compliance/section8-rollup') {
+        const rows = await loadTable('section8_rollup') as any[];
+        return rows[0] ?? null;
+    }
     if (path === '/compliance/reminders') return [];
     if (path === '/incidents') return filterBy(await loadTable('incidents') as any[], params);
     if (path === '/insurance-policies') return filterBy(await loadTable('insurance_policies') as any[], params);

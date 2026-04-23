@@ -1,0 +1,50 @@
+{
+  "capturedAt": "2026-04-23T16:06:06.497Z",
+  "devUrl": "http://localhost:5173/",
+  "probe": {
+    "complianceLen": 15,
+    "rollupLen": 1,
+    "rollup": {
+      "propertyId": "riverwood-club",
+      "propertyName": "Riverwood Club Apartments",
+      "totalScheduled": 9,
+      "uniqueInspectionDates": [
+        "2026-04-27",
+        "2026-04-28",
+        "2026-04-29",
+        "2026-04-30"
+      ],
+      "nextInspectionDate": "2026-04-27",
+      "status": "attention",
+      "generatedAt": "2026-04-23T00:00:00.000Z"
+    }
+  },
+  "nav": {
+    "steps": [
+      {
+        "step": "open-strata",
+        "ok": true
+      },
+      {
+        "step": "open-compliance",
+        "ok": true,
+        "count": 28
+      },
+      {
+        "step": "open-vendor-matrix",
+        "ok": true
+      }
+    ],
+    "hasSection8Card": true,
+    "hasVendorMatrix": true,
+    "s8Property": "Riverwood Club Apartments",
+    "s8Count": "9",
+    "s8Next": "2026-04-27",
+    "s8Status": "Attention"
+  },
+  "consoleErrors": 0,
+  "consoleErrorSamples": [],
+  "consoleExceptions": 0,
+  "consoleWarnings": 2,
+  "screenshotPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_3/ComplianceEngine-vendor-matrix.png"
+}

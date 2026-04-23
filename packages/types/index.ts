@@ -368,6 +368,76 @@ export interface RecurringCharge {
     updatedAt: string;
 }
 
+// ─── Task 2.3: ComplianceEngine — vendor matrix + Section-8 rollup ───
+//
+// Promotes the existing module-local `ComplianceItem` shape (declared
+// inside ComplianceEngine.tsx) into a canonical type in the shared
+// package. New enums below are additive — no existing union is
+// narrowed, no existing field is renamed or retyped. Consumers of the
+// old local interface continue to typecheck because `ComplianceRecord`
+// is a superset of the prior shape (one added field: `source`, which
+// was already present on AppFolio-derived rows as a provenance tag).
+//
+// Section8Rollup is a separate, committed-fixture aggregate over the
+// 9 AHA inspection rows at Riverwood Club. Lineage is enforced at
+// test time (see complianceEngine.test.ts it-block #4) — the fixture
+// is authoritative, and the raw rows must agree with it.
+//
+// Source of truth: AppFolio_Screenshots/data/10_vendor_detail_2story_roofing.json
+// (vendor compliance block) + AppFolio_Screenshots/data/07_insurance_compliance.json
+// (Section-8 / AHA / HCV / LIHTC feature-flag context).
+
+export type ComplianceEntityType = 'vendor' | 'inspection' | 'policy' | 'property';
+
+export type ComplianceItemType =
+    | 'workers_comp'
+    | 'general_liability'
+    | 'epa_certification'
+    | 'auto_insurance'
+    | 'state_license'
+    | 'contract'
+    | 'section_8_aha'
+    | 'insurance'
+    | 'coi'
+    | 'w9'
+    | 'llc_renewal'
+    | 'pool_permit'
+    | 'business_license'
+    | 'tax_filing';
+
+export type ComplianceStatus = 'valid' | 'tracked' | 'warning' | 'expired' | 'missing' | 'scheduled';
+
+export interface ComplianceRecord {
+    id: string;
+    entityType: ComplianceEntityType;
+    entityId: string;
+    entityName: string | null;
+    itemType: ComplianceItemType;
+    label: string;
+    status: ComplianceStatus;
+    expirationDate: string | null;
+    propertyId: string | null;
+    documentFileId: string | null;
+    carrier: string | null;
+    policyNumber: string | null;
+    coverageLimits: string | null;
+    notes: string;
+    source: string | null;
+    lastAuditedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Section8Rollup {
+    propertyId: string;
+    propertyName: string;
+    totalScheduled: number;
+    uniqueInspectionDates: string[];
+    nextInspectionDate: string | null;
+    status: 'on-track' | 'attention' | 'overdue';
+    generatedAt: string;
+}
+
 export interface Evidence {
     id: string;
     workitemId: string;

@@ -22,10 +22,17 @@ import {
     FileText, Users, Calendar, Star, Mail, TrendingUp, Bell,
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
-import type { Property, EntityProfile } from '../strataTypes';
+import type { Property, EntityProfile, ComplianceRecord, Section8Rollup } from '../strataTypes';
 import { useToast } from '../useToast';
 import { LoadingState, ErrorState } from '../StateView';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
+// Task 2.3 — `ComplianceRecord` in packages/types is the canonical shape;
+// the module-local alias keeps every existing render path untouched while
+// the few new Section-8 code paths below reference the canonical type
+// directly. Additive-only: no union narrowing propagates to existing
+// call sites because we keep the looser shape internally.
 interface ComplianceItem {
     id: string; entityType: string; entityId: string;
     itemType: string; label: string; status: string;
@@ -33,6 +40,10 @@ interface ComplianceItem {
     carrier: string | null; policyNumber: string | null;
     coverageLimits: string | null; notes: string;
     lastAuditedAt: string | null; createdAt: string; updatedAt: string;
+    // Optional fields present on Task 2.3 canonical ComplianceRecord rows:
+    entityName?: string | null;
+    propertyId?: string | null;
+    source?: string | null;
 }
 
 // EntityProfile imported from strataTypes (canonical)
@@ -88,6 +99,7 @@ export default function ComplianceEngine() {
     const [mindMapHover, setMindMapHover] = useState<{ id: string; x: number; y: number } | null>(null);
     const [centralNode, setCentralNode] = useState<string>('');
     const [portfolioRollup, setPortfolioRollup] = useState<any>(null);
+    const [section8Rollup, setSection8Rollup] = useState<Section8Rollup | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -115,6 +127,32 @@ export default function ComplianceEngine() {
             } catch { setPortfolioRollup(null); }
         })();
     }, [items]);
+
+    // Task 2.3 — Section 8 (AHA) rollup for the vendor-matrix view header.
+    // Fails soft: a missing fixture returns null and the card simply
+    // does not render. Sentry breadcrumb is best-effort (no-op when
+    // DSN is not configured).
+    useEffect(() => {
+        (async () => {
+            try {
+                const data = await strataGet<Section8Rollup | null>('/compliance/section8-rollup');
+                setSection8Rollup(data);
+                try {
+                    Sentry.addBreadcrumb({
+                        category: 'ui.load',
+                        message: 'compliance.section8Rollup.loaded',
+                        level: 'info',
+                        data: {
+                            propertyId: data?.propertyId ?? null,
+                            totalScheduled: data?.totalScheduled ?? 0,
+                        },
+                    });
+                } catch { /* Sentry no-op when DSN unset */ }
+            } catch {
+                setSection8Rollup(null);
+            }
+        })();
+    }, []);
 
     const sendReminder = async (item: EnrichedComplianceItem) => {
         try {
@@ -402,7 +440,10 @@ export default function ComplianceEngine() {
                                     color: view === m ? '#10b981' : '#64748b', fontSize: 10,
                                     whiteSpace: 'nowrap',
                                 }}
-                                onClick={() => setView(m)}>
+                                onClick={() => {
+                                    setView(m);
+                                    try { Sentry.addBreadcrumb({ category: 'ui.click', message: `compliance.view.${m}`, level: 'info' }); } catch { /* Sentry no-op when DSN unset */ }
+                                }}>
                                 <Icon size={12} /> {label}
                             </button>
                         ))}
@@ -921,6 +962,70 @@ export default function ComplianceEngine() {
 
                     {/* ═══ VIEW 5: VENDOR MATRIX ═══ */}
                     {view === 'vendor-matrix' && (
+                      <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Vendor Matrix unavailable.</div>}>
+                        <div data-testid="compliance-vendor-matrix">
+                        {/* Task 2.3 — Section 8 (AHA) Rollup card. Renders above the
+                            Vendor Matrix table when the /compliance/section8-rollup
+                            fixture is present. Null-safe: renders nothing if the
+                            fixture is missing (fail-soft per GR-13). */}
+                        {section8Rollup && (
+                            <div
+                                data-testid="compliance-section8-card"
+                                className="s-glass-card"
+                                style={{
+                                    padding: '14px 16px', marginBottom: 12,
+                                    border: '1px solid rgba(99,102,241,0.25)',
+                                    background: 'rgba(99,102,241,0.04)',
+                                }}
+                                onClick={() => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: 'compliance.section8Rollup.inspect', level: 'info', data: { propertyId: section8Rollup.propertyId } }); } catch { /* no-op */ } }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <Shield size={14} color="#818cf8" />
+                                        <div>
+                                            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                                Section 8 (AHA) Rollup
+                                            </div>
+                                            <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, marginTop: 2 }} data-testid="compliance-section8-property">
+                                                {section8Rollup.propertyName}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 10, color: '#64748b' }}>Scheduled</div>
+                                            <div style={{ fontSize: 15, color: '#e2e8f0', fontWeight: 700 }} data-testid="compliance-section8-count">
+                                                {section8Rollup.totalScheduled}
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 10, color: '#64748b' }}>Next Inspection</div>
+                                            <div style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 600 }} data-testid="compliance-section8-next">
+                                                {section8Rollup.nextInspectionDate ?? '—'}
+                                            </div>
+                                        </div>
+                                        <div
+                                            style={{
+                                                padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                                                background: section8Rollup.status === 'overdue'
+                                                    ? 'rgba(239,68,68,0.15)'
+                                                    : section8Rollup.status === 'attention'
+                                                        ? 'rgba(245,158,11,0.15)'
+                                                        : 'rgba(16,185,129,0.15)',
+                                                color: section8Rollup.status === 'overdue'
+                                                    ? '#ef4444'
+                                                    : section8Rollup.status === 'attention'
+                                                        ? '#f59e0b'
+                                                        : '#10b981',
+                                            }}
+                                            data-testid="compliance-section8-status"
+                                        >
+                                            {section8Rollup.status === 'on-track' ? 'On Track' : section8Rollup.status === 'attention' ? 'Attention' : 'Overdue'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                                 <thead>
@@ -963,6 +1068,8 @@ export default function ComplianceEngine() {
                                 </tbody>
                             </table>
                         </div>
+                        </div>
+                      </ErrorBoundary>
                     )}
                 </>
             )}

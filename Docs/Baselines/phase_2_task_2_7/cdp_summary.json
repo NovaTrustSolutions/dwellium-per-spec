@@ -1,0 +1,71 @@
+{
+  "capturedAt": "2026-04-23T23:12:30.745Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "sign-in-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-pm",
+      "result": {
+        "found": true,
+        "clicked": true,
+        "label": "+Property Management"
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-audit-log-module",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-unified-tab",
+      "result": {
+        "found": true
+      }
+    }
+  ],
+  "probe": {
+    "snapshotRows": 2,
+    "snapshotPropertyIds": [
+      "e4b440e9-5062-4da1-ae25-818dffab8b3b",
+      "52d4e301-3cbf-4a32-91eb-d20be9d06959"
+    ],
+    "complianceRows": 15,
+    "insuranceRows": 6,
+    "workitemRows": 1139,
+    "auditLogRows": 370,
+    "communicationRows": 0
+  },
+  "rowProbe": {
+    "rowCount": 100,
+    "emptyPainted": false,
+    "breakdownPainted": true,
+    "containerPainted": true,
+    "sourceBadges": 100,
+    "severityBadges": 100,
+    "firstThreeSources": [
+      "insurance",
+      "compliance",
+      "compliance"
+    ]
+  },
+  "pngBytes": 709776,
+  "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_7/AuditModule-unified-timeline.png"
+}

@@ -438,6 +438,89 @@ export interface Section8Rollup {
     generatedAt: string;
 }
 
+// ─── Task 2.5: InsuranceModule — FolioGuard enforcement ───
+//
+// Promotes the existing InsuranceModule.tsx-local `Policy` interface
+// (a subset shape) into a canonical `InsurancePolicy` type in the
+// shared package, and introduces the AppFolio "Insurance Enforcement
+// Report" concept via an `enforcementStatus` union + FolioGuardRollup
+// aggregate.
+//
+// Source of truth: AppFolio_Screenshots/data/07_insurance_compliance.json
+// (Insurance Enforcement Report schema: 6 visible columns plus access-
+// control flags showing InsuranceEnforcementReport + TenantInsuranceCoverageReport
+// enabled for the portfolio). GAP-COMP-02 in that file's dwellium_mapping_notes
+// calls this the "direct model for Dwellium Compliance module's Insurance tab."
+//
+// Additive-only (GR-2): all extension fields on InsurancePolicy are
+// optional; the interface itself is net-new (no existing type renamed or
+// narrowed); `EnforcementStatus` is a net-new union. InsuranceModule.tsx's
+// module-local `interface Policy` (L20-35 of that file) stays as-is in
+// this commit and is aliased to `InsurancePolicy` in commit 4, same
+// additive pattern as Task 2.3's ComplianceItem → ComplianceRecord.
+//
+// Task 2.5 is link 2/3 of the B3 serial chain (2.3 → 2.5 → 2.7) per
+// Docs/Session_Notes/2026-04-23_phase_2_schedule.md §3 SCC-A, rebasing
+// onto Task 2.3's type additions landed at `36ee8ca`.
+
+export type InsurancePolicyType =
+    | 'liability'
+    | 'property'
+    | 'flood'
+    | 'umbrella'
+    | 'workers_comp'
+    | 'auto'
+    | 'other';
+
+export type InsurancePolicyStatus = 'active' | 'expired' | 'cancelled' | 'pending';
+
+// Enforcement states map AppFolio's Insurance Enforcement Report
+// (LeaseRequiresInsurance × InsuranceRequirement × ActiveCoverage) to an
+// enum:
+//   - 'required'      → enforcement applies, coverage not yet verified
+//   - 'not-required'  → lease does not require insurance
+//   - 'lapsed'        → required but coverage missing/expired (RED)
+//   - 'fulfilled'     → required + active coverage verified (GREEN)
+export type EnforcementStatus = 'required' | 'not-required' | 'lapsed' | 'fulfilled';
+
+export interface InsurancePolicy {
+    id: string;
+    propertyId: string;
+    policyType: InsurancePolicyType;
+    policyNumber: string;
+    carrier: string;
+    agentName: string;
+    agentPhone: string;
+    premiumAnnual: number | null;
+    coverageAmount: number | null;
+    deductible: number | null;
+    effectiveDate: string;
+    expirationDate: string;
+    status: InsurancePolicyStatus;
+    notes: string;
+    metadata: Record<string, any>;
+    createdAt: string;
+    updatedAt: string;
+    // ─── Task 2.5 FolioGuard additions (all optional; backward compatible) ───
+    enforcementStatus?: EnforcementStatus;
+    leaseRequiresInsurance?: boolean;
+    insuranceRequirement?: string | null;
+    activeCoverageVerified?: boolean;
+}
+
+export interface FolioGuardRollup {
+    propertyId: string;
+    propertyName: string;
+    totalPolicies: number;
+    required: number;
+    notRequired: number;
+    lapsed: number;
+    fulfilled: number;
+    lapsedRatio: number;
+    status: 'on-track' | 'attention' | 'overdue';
+    generatedAt: string;
+}
+
 export interface Evidence {
     id: string;
     workitemId: string;

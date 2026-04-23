@@ -1,6 +1,6 @@
-# AppFolio Parity Implementation Plan — v2.1
+# AppFolio Parity Implementation Plan — v2.2
 
-**Version.** 2.1 (2026-04-23). Incremental clarifications after v2.0. Changes tracked in the Changelog at the bottom.
+**Version.** 2.2 (2026-04-23). Incremental clarifications after v2.1. Changes tracked in the Changelog at the bottom.
 
 **Goal.** Close the schema, UI, and fixture gaps identified in `AppFolio_vs_Strata_Gap_Analysis.md` so Strata reaches functional parity with AppFolio on the 12 "Covered" + 10 "Partial" modules, while preserving the 8 Strata-unique and 3 Strata-extending differentiators. Target: a prospective AppFolio customer can migrate without dropping data.
 
@@ -363,10 +363,11 @@ Legend: R = required; — = n/a at this phase; ≤B = must be ≤ baseline; =0 =
 
 | Task | Status | Merge SHA | Closure date | Per-row proof location |
 |---|:-:|---|---|---|
-| 2.3 — ComplianceEngine: vendor matrix + Section-8 rollup | ✓ | (populated by this PR's squash-to-main) | 2026-04-23 | `Docs/Phase2_Task_2_3_Completion_Report.md` (Summary / §2 strict-gate paste / §3 CDP render proof / §4 /security-review / §5 verification matrix / §6 rollback / §7 deferred / §8 next-task unblock) |
-| 2.1, 2.2, 2.4–2.10 | pending | — | — | — |
+| 2.3 — ComplianceEngine: vendor matrix + Section-8 rollup | ✓ | `36ee8ca` | 2026-04-23 | `Docs/Phase2_Task_2_3_Completion_Report.md` (Summary / §2 strict-gate paste / §3 CDP render proof / §4 /security-review / §5 verification matrix / §6 rollback / §7 deferred / §8 next-task unblock) |
+| 2.5 — InsuranceModule: FolioGuard enforcement | ✓ | (populated by this PR's squash-to-main) | 2026-04-23 | `Docs/Phase2_Task_2_5_Completion_Report.md` (same 8-section template as Task 2.3; backs every ✓ cell with a section reference) |
+| 2.1, 2.2, 2.4, 2.6–2.10 | pending | — | — | — |
 
-Task-2.3 closure references Appendix D row 1's pre-recorded Phase-2 ownership of `packages/types/index.ts` (serial 2.3 → 2.5 → 2.7; text landed in PR #8 / `1bb7518` and preserved by this PR without re-edit).
+Task-2.3 and Task-2.5 closures reference Appendix D row 1's pre-recorded Phase-2 ownership of `packages/types/index.ts` (serial 2.3 → 2.5 → 2.7; text landed in PR #8 / `1bb7518` and preserved by both PRs without re-edit). Task 2.5 rebases onto Task 2.3's type additions; Task 2.7 now unblocks and is the final B3-chain link.
 
 ---
 
@@ -589,6 +590,10 @@ Baseline row is captured in `Docs/Baselines/2026-04-19_Phase0_fixture_counts.jso
 
 ## Changelog
 
+- **v2.2 (2026-04-23).** Incremental, non-breaking clarifications after Phase-2 Task 2.5 close. Additions:
+  - §9 Phase-2 per-task tracker: Task 2.3 row Merge SHA backfilled to `36ee8ca` (mechanical carry-over from PR #9 squash-to-main); Task 2.5 row added with ✓ status and pointer to `Docs/Phase2_Task_2_5_Completion_Report.md`.
+  - Appendix D row for `public/data/compliance.json` currently reads `Task 2.3 + 2.5 (sequential)`, which the scheduling pass (`Docs/Session_Notes/2026-04-23_phase_2_schedule.md` §6 item #1) identified as over-specification: Task 2.5's task-body file list covers `insurance_policies.json` only. v2.2 formally accepts the scheduling-pass resolution (task-body lists govern non-conflict-prone files); Appendix D text stays untouched to avoid git no-op hunks but is documented as a deferred cleanup candidate when the broader Appendix D pass lands.
+  - B3 chain status post-2.5: `2.3 ✓ / 2.5 ✓ / 2.7 unblocked`. Task 2.7 (AuditModule unified timeline) is the final link and can open immediately.
 - **v2.1 (2026-04-23).** Incremental, non-breaking clarifications after Phase-2 Task 2.3 close. Additions:
   - §9 Phase-2 per-task progress tracker with Task 2.3 row flipped to ✓ and a reference to `Docs/Phase2_Task_2_3_Completion_Report.md`. Phase-2 column cells remain `R` until all 10 tasks close.
   - Formal credit: Appendix D row 1 Phase-2 ownership text ("Task 2.3 → 2.5 → 2.7 strictly serial") was landed by PR #8 (squash `1bb7518`) as part of the Phase-2 pre-req hygiene bundle. v2.1 leaves that text untouched — Task 2.3's PR (this one) relies on it rather than re-asserting it. Subsequent B3 chain tasks (2.5, 2.7) rebase onto Task 2.3's type additions per the declared serialization.

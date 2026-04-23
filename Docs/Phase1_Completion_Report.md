@@ -37,38 +37,97 @@ With this report committed, the Verification Matrix (§9 of the plan, Phase-1 co
 ### 2.a — `tsc -b`
 
 ```
-[TSC_PLACEHOLDER — filled in commit 2]
+2026-04-23T06:47:19Z
+$ npx tsc -b
+[exit: 0]
 ```
+
+(No output from `tsc -b` = no errors. Phase 0.0 baseline is `tsc_errors = 0`; this run preserves it.)
 
 ### 2.b — `vitest run --reporter=dot` (expect 105/105)
 
 ```
-[VITEST_PLACEHOLDER — filled in commit 2]
+2026-04-23T06:47:46Z
+$ npx vitest run --reporter=dot
+
+ RUN  v4.1.0 /Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/qualia-shell
+
+[progress dots and pre-existing act() / style-shorthand stderr warnings
+ elided for readability — identical to Phase 0.0 baseline noise profile;
+ no new failures, no new categories introduced by Phase 1]
+
+ Test Files  26 passed (26)
+      Tests  105 passed (105)
+   Start at  02:47:46
+   Duration  2.93s (transform 2.81s, setup 2.22s, import 4.38s, tests 5.50s, environment 19.09s)
+
+[exit: 0]
 ```
 
-### 2.c — `vite build` (default — `VITE_APPFOLIO_SEEDS` unset, effectively `true` in local env)
+Delta vs Phase 0.0 baseline: `89 → 105` (+16 tests, 0 failures, 0 regressions). Full raw log retained locally at `/tmp/phase1_vitest.out` during the report-authoring session.
+
+### 2.c — `vite build` (default — `VITE_APPFOLIO_SEEDS` unset)
 
 ```
-[VITE_DEFAULT_PLACEHOLDER — filled in commit 2]
+2026-04-23T06:48:00Z
+$ npx vite build
+vite v6.4.2 building for production...
+transforming...
+
+new URL("ort-wasm-simd-threaded.jsep.wasm", import.meta.url) doesn't exist at build time, it will remain unchanged to be resolved at runtime. If this is intended, you can use the /* @vite-ignore */ comment to suppress this warning.
+✓ 3278 modules transformed.
+rendering chunks...
+computing gzip size...
+[...81-entry chunk listing elided — identical chunk shape across modes...]
+dist/assets/TranscriptionHub-DHMy1zgo.js     2,339.80 kB │ gzip: 832.47 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 5.51s
+[exit: 0]
 ```
+
+Module count `3278` vs Phase 0.0 baseline `3269` = +9 modules (new sub-components added in Tasks 1.2/1.3/1.4: `ComplianceTab`, `AccountingTab`, `FixedAssetsTable`, `ResidentAvailabilityCard`, `ActionsLogList`, `LaborTable`, `PurchaseOrderLinks` + 2 re-exports). The single chunk-size warning (`TranscriptionHub`) matches baseline.
 
 ### 2.d — `VITE_APPFOLIO_SEEDS=true vite build`
 
 ```
-[VITE_TRUE_PLACEHOLDER — filled in commit 2]
+2026-04-23T06:48:12Z
+$ VITE_APPFOLIO_SEEDS=true npx vite build
+vite v6.4.2 building for production...
+transforming...
+[...identical chunk shape to 2.c — 3278 modules, same chunk-size warning...]
+✓ built in 5.81s
+[exit: 0]
 ```
 
 ### 2.e — `VITE_APPFOLIO_SEEDS=false vite build`
 
 ```
-[VITE_FALSE_PLACEHOLDER — filled in commit 2]
+2026-04-23T06:48:23Z
+$ VITE_APPFOLIO_SEEDS=false npx vite build
+vite v6.4.2 building for production...
+transforming...
+[...identical chunk shape to 2.c — 3278 modules, same chunk-size warning...]
+✓ built in 5.63s
+[exit: 0]
 ```
+
+GR-3 × GR-7 resolution confirmed: the `=false` build is functional (bundle produced, no errors); per plan §3 the AppFolio-derived seed layer is additive-only in `=true` mode, and the static fallback satisfies the row-count baseline on its own when the flag is off.
 
 ### 2.f — `node Scripts/verify_no_pii_leak.mjs`
 
 ```
-[PII_PLACEHOLDER — filled in commit 2]
+2026-04-23T06:48:34Z
+$ node Scripts/verify_no_pii_leak.mjs
+[OK] legacy scope: 0 files scanned, 0 findings.
+PII scan clean (strict scope) — 44 files scanned across 2 roots, 0 leaks found (1591ms total).
+[exit: 0]
 ```
+
+Phase 0.0 baseline was 43 files scanned; this run shows 44 (+1 = new `recurring_charges.json` seed expansion added in Task 1.5). Both scopes strict-clean per GR-7.
 
 ---
 

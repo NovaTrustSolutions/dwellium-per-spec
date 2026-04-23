@@ -68,4 +68,9 @@ export type {
     ComplianceStatus,
     ComplianceRecord,
     Section8Rollup,
+    InsurancePolicyType,
+    InsurancePolicyStatus,
+    EnforcementStatus,
+    InsurancePolicy,
+    FolioGuardRollup,
 } from '../../../../packages/types/index';

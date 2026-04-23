@@ -17,6 +17,12 @@ import { LoadingState, EmptyState, ErrorState } from '../StateView';
 import TrelloCardModal from './TrelloCardModal';
 import { useUser } from '../../../context/UserContext';
 import ProfileSpaces from './ProfileSpaces';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
+import ResidentAvailabilityCard from './__maintenance/ResidentAvailabilityCard';
+import ActionsLogList from './__maintenance/ActionsLogList';
+import LaborTable from './__maintenance/LaborTable';
+import PurchaseOrderLinks from './__maintenance/PurchaseOrderLinks';
 
 /* ── Sub-tab types ── */
 type MaintTab = 'work-orders' | 'recurring' | 'inspections' | 'unit-turns' | 'projects' | 'purchase-orders' | 'inventory' | 'fixed-assets' | 'history';
@@ -94,8 +100,10 @@ function priorityIcon(p: string) {
 }
 
 /* ── Collapsible section ── */
-function Section({ title, icon, children, defaultOpen = true }: {
+function Section({ title, icon, children, defaultOpen = true, onToggle }: {
     title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean;
+    /** Called after the open-state flips. Used by Task 1.4 sections to emit Sentry breadcrumbs (GR-13). */
+    onToggle?: (next: boolean) => void;
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
@@ -104,7 +112,7 @@ function Section({ title, icon, children, defaultOpen = true }: {
             border: '1px solid rgba(255,255,255,0.06)',
             borderRadius: 10, overflow: 'hidden', marginBottom: 8,
         }}>
-            <button onClick={() => setOpen(!open)} style={{
+            <button onClick={() => setOpen(o => { const next = !o; onToggle?.(next); return next; })} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 14px', border: 'none', background: 'none',
                 color: '#a5b4fc', cursor: 'pointer', fontSize: 12, fontWeight: 700,
@@ -654,6 +662,87 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                 <Field label="Last Updated" value={item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
                 <Field label="Resolved" value={item.resolvedAt ? new Date(item.resolvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
             </Section>
+
+            {/* ════════ Task 1.4 — Work Order detail-panel extensions ════════ */}
+            {/* Each section is additive: renders only when the typed field is present.
+                ErrorBoundary isolates rendering faults so one bad section doesn't kill
+                the whole panel. Sentry breadcrumbs emit on expand/collapse (GR-13). */}
+
+            {/* ── Work Order Info (6 primitives: WO #, permission, owner approval, trade, instructions, next follow-up) ── */}
+            {(item.workOrderNumber || item.permissionToEnter !== undefined || item.ownerApproved !== undefined || item.trade || item.vendorInstructions || item.nextFollowUpDate) && (
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Work Order Info unavailable.</div>}>
+                    <Section
+                        title="Work Order Info"
+                        icon={<Wrench size={13} />}
+                        defaultOpen={false}
+                        onToggle={(next) => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: `maintenance.workOrderInfo.${next ? 'expand' : 'collapse'}`, level: 'info', data: { itemId: item.id } }); } catch { /* no-op */ } }}
+                    >
+                        <Field label="Work Order #" value={item.workOrderNumber} />
+                        <Field label="Permission to Enter" value={item.permissionToEnter === undefined ? undefined : (item.permissionToEnter ? 'Yes' : 'No')} />
+                        <Field label="Owner Approved" value={item.ownerApproved === undefined ? undefined : (item.ownerApproved ? 'Yes' : 'No')} />
+                        <Field label="Trade" value={item.trade ?? undefined} />
+                        <Field label="Vendor Instructions" value={item.vendorInstructions ?? undefined} />
+                        <Field label="Next Follow-up" value={item.nextFollowUpDate ?? undefined} />
+                    </Section>
+                </ErrorBoundary>
+            )}
+
+            {/* ── Resident Availability ── */}
+            {item.residentAvailability && (
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Resident Availability unavailable.</div>}>
+                    <Section
+                        title="Resident Availability"
+                        icon={<CalendarDays size={13} />}
+                        defaultOpen={false}
+                        onToggle={(next) => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: `maintenance.residentAvailability.${next ? 'expand' : 'collapse'}`, level: 'info', data: { itemId: item.id, windows: item.residentAvailability?.timeWindows.length ?? 0 } }); } catch { /* no-op */ } }}
+                    >
+                        <ResidentAvailabilityCard availability={item.residentAvailability} />
+                    </Section>
+                </ErrorBoundary>
+            )}
+
+            {/* ── Actions Log ── */}
+            {item.actionsLog && item.actionsLog.length > 0 && (
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Actions Log unavailable.</div>}>
+                    <Section
+                        title={`Actions Log (${item.actionsLog.length})`}
+                        icon={<ClipboardCheck size={13} />}
+                        defaultOpen={false}
+                        onToggle={(next) => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: `maintenance.actionsLog.${next ? 'expand' : 'collapse'}`, level: 'info', data: { itemId: item.id, entries: item.actionsLog?.length ?? 0 } }); } catch { /* no-op */ } }}
+                    >
+                        <ActionsLogList entries={item.actionsLog} />
+                    </Section>
+                </ErrorBoundary>
+            )}
+
+            {/* ── Labor ── */}
+            {item.laborEntries && (
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Labor table unavailable.</div>}>
+                    <Section
+                        title={`Labor (${item.laborEntries.length})`}
+                        icon={<PenTool size={13} />}
+                        defaultOpen={false}
+                        onToggle={(next) => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: `maintenance.labor.${next ? 'expand' : 'collapse'}`, level: 'info', data: { itemId: item.id, entries: item.laborEntries?.length ?? 0 } }); } catch { /* no-op */ } }}
+                    >
+                        <LaborTable entries={item.laborEntries} />
+                    </Section>
+                </ErrorBoundary>
+            )}
+
+            {/* ── Purchase Orders ── */}
+            {item.purchaseOrders && (
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Purchase Orders unavailable.</div>}>
+                    <Section
+                        title={`Purchase Orders (${item.purchaseOrders.length})`}
+                        icon={<ExternalLink size={13} />}
+                        defaultOpen={false}
+                        onToggle={(next) => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: `maintenance.purchaseOrders.${next ? 'expand' : 'collapse'}`, level: 'info', data: { itemId: item.id, pos: item.purchaseOrders?.length ?? 0 } }); } catch { /* no-op */ } }}
+                    >
+                        <PurchaseOrderLinks purchaseOrders={item.purchaseOrders} />
+                    </Section>
+                </ErrorBoundary>
+            )}
+            {/* ════════ end Task 1.4 ════════ */}
 
             {/* ── Dual Status (Manager + Tenant) ── */}
             {meta.tenantStatus && (

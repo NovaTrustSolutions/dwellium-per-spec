@@ -32098,5 +32098,57 @@
     "reactivatedAt": null,
     "recordType": null,
     "recordId": null
+  },
+  {
+    "id": "b7a6b911-c4c2-4d37-bbf4-1955119e115b",
+    "type": "work_order",
+    "title": "Fire alarm needs replaced. Beeping and can't reach.",
+    "description": "Fire alarm needs replaced. Beeping and can't reach.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "unitId": "d51d8682-bde3-4d60-b0e8-71de2170038e",
+    "assignedTo": null,
+    "createdBy": "3ebb1993-7fcd-4218-8f8d-89025d760e00",
+    "dueDate": null,
+    "domain": "maintenance",
+    "tags": ["Property: Woodland Parc Townhomes", "Unit: 2789-1", "source: appfolio-task-1-4"],
+    "metadata": {
+      "source": "appfolio",
+      "appfolioServiceRequestId": 19511,
+      "appfolioWorkOrderId": 19523,
+      "recentWorkOrdersForUnit": 1,
+      "openCount": 1
+    },
+    "parentId": null,
+    "threadChannel": "tenant",
+    "resolvedAt": null,
+    "createdAt": "2026-04-17T20:24:00.000Z",
+    "updatedAt": "2026-04-17T20:24:00.000Z",
+    "trackingState": "active",
+    "moduleKey": "maintenance",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "workOrderNumber": "19511-1",
+    "permissionToEnter": true,
+    "ownerApproved": false,
+    "trade": "No Trade Assigned",
+    "vendorInstructions": null,
+    "nextFollowUpDate": null,
+    "residentAvailability": {
+      "date": "2026-04-20",
+      "dayOfWeek": "monday",
+      "timeWindows": ["8:00am-12:00pm", "10:00am-2:00pm", "1:00pm-5:00pm"],
+      "timezone": "EDT"
+    },
+    "actionsLog": [
+      { "ts": "2026-04-17 08:24 PM", "actor": "System", "event": "Resident submitted preferred times", "detail": "04/20/2026 at 08:00AM-12:00PM EDT, 10:00AM-02:00PM EDT, 01:00PM-05:00PM EDT" },
+      { "ts": "2026-04-17 08:24 PM", "actor": "Brianna Jackson", "event": "Submitted online", "detail": null }
+    ],
+    "laborEntries": [],
+    "purchaseOrders": []
   }
 ]

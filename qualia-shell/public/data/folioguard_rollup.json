@@ -1,0 +1,14 @@
+[
+  {
+    "propertyId": "riverwood-club",
+    "propertyName": "Riverwood Club Apartments",
+    "totalPolicies": 3,
+    "required": 1,
+    "notRequired": 0,
+    "lapsed": 1,
+    "fulfilled": 1,
+    "lapsedRatio": 0.333,
+    "status": "overdue",
+    "generatedAt": "2026-04-23T00:00:00.000Z"
+  }
+]

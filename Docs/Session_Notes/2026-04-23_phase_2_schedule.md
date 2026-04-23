@@ -187,4 +187,17 @@ Ten items. Same STOP-and-ack discipline as Phase 1: resolve each before the matc
 - On ack, a **separate** session opens `phase-2/pre-vite-env-fix` (§0), then Task 2.3 on its own branch per §5.
 - Plan amendments (Appendix D + any scope-positive items from §6 #7, #8, #9) should be committed to `Docs/AppFolio_Parity_Implementation_Plan_v2.md` as a v2.1 changelog entry before the matching task opens.
 
+---
+
+## §8. Verification — Vite optional-chaining fix (Phase-2 pre-req, 2026-04-23)
+
+Captured against `npm run dev` + `VITE_USE_STATIC_API=true` on this branch (`phase-2/pre-vite-env-fix`), using a CDP harness (force-imports `strataApi.ts` + probes 5 endpoints; reads `Runtime.consoleAPICalled` + `[strataApi]` mode breadcrumb). Evidence: `Docs/Baselines/phase_2_prereq/{before,after}.png` + `{before,after}.summary.json`.
+
+| Capture | strataApi mode breadcrumb | probe results | console.error count |
+|---|---|---|---|
+| **before** (`(import.meta as any)?.env?.VITE_USE_STATIC_API`) | `[strataApi] mode=backend (/api/dwellium proxy)` | 0 fulfilled / 5 rejected | **5** |
+| **after** (`import.meta.env.VITE_USE_STATIC_API`) | `[strataApi] mode=static (fixtures + localStorage)` | 5 fulfilled / 0 rejected | **0** |
+
+**Delta.** 5 → 0 console errors; mode flips from backend to static as intended. Phase-1 deferral #4 is closed by this branch. Phase-2 Task 2.3 unblocks once this branch merges.
+
 🧪

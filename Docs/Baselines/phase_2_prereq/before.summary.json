@@ -1,0 +1,11 @@
+{
+  "label": "before",
+  "png": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_prereq/before.png",
+  "errorCount": 5,
+  "warnCount": 0,
+  "exceptionCount": 0,
+  "modeLog": "[strataApi] mode=backend (/api/dwellium proxy) | [harness] dynamic-import: imported; fulfilled=0; rejected=5 | [harness] clicks: pm={\"clicked\":true,\"text\":\"◆DWELLIUMSign Out«Good morning, Andy☀️ 57°FLet's build the f\"} strata={\"clicked\":false} maint={\"clicked\":false} url=http://localhost:5173/strata",
+  "errorSources": {
+    "unknown": 5
+  }
+}

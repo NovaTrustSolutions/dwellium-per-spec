@@ -1,0 +1,9 @@
+{
+  "label": "after",
+  "png": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_prereq/after.png",
+  "errorCount": 0,
+  "warnCount": 0,
+  "exceptionCount": 0,
+  "modeLog": "[strataApi] mode=static (fixtures + localStorage) | [harness] dynamic-import: imported; fulfilled=5; rejected=0 | [harness] clicks: pm={\"clicked\":true,\"text\":\"◆DWELLIUMSign Out«Good morning, Andy☀️ 57°FLet's build the f\"} strata={\"clicked\":false} maint={\"clicked\":false} url=http://localhost:5173/strata",
+  "errorSources": {}
+}

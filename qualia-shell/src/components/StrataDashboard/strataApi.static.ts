@@ -191,6 +191,19 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
     if (path === '/compliance/reminders') return [];
     if (path === '/incidents') return filterBy(await loadTable('incidents') as any[], params);
     if (path === '/insurance-policies') return filterBy(await loadTable('insurance_policies') as any[], params);
+    // Task 2.5 — new exact-match route; returns the single FolioGuardRollup
+    // for a given property (via ?propertyId=) or the first available rollup
+    // if no param is provided. Lineage between folioguard_rollup.json and
+    // insurance_policies.json is enforced at test time (see insurance.test.ts
+    // it-block #4). Strict === filter on propertyId value; no computed-key
+    // access. Matches the Task 2.3 /compliance/section8-rollup pattern.
+    if (path === '/insurance/folioguard-rollup') {
+        const rows = await loadTable('folioguard_rollup') as any[];
+        if (params?.propertyId) {
+            return rows.find(r => r.propertyId === params.propertyId) ?? null;
+        }
+        return rows[0] ?? null;
+    }
     if (path === '/invoices') return filterBy(await loadTable('invoices') as any[], params);
     if (path === '/intake/queue') return loadTable('intake_queue');
     if (path === '/intake/stats') return { pending: 0, approved: 0, total: 0 };

@@ -521,6 +521,71 @@ export interface FolioGuardRollup {
     generatedAt: string;
 }
 
+// ─── Task 2.7: AuditModule — unified activity timeline (B3 closure) ───
+//
+// Final link of the B3 serial chain (2.3 → 2.5 → 2.7) per
+// Docs/Session_Notes/2026-04-23_phase_2_schedule.md §3 SCC-A. Task 2.7
+// does NOT re-declare any Task-2.3 or Task-2.5 type; the unified timeline
+// is an aggregation SHAPE that the handler populates from multiple source
+// tables at query time, with each AuditEvent carrying an explicit `source`
+// provenance tag (defends against type-confusion per the /security-review
+// checklist for multi-source join handlers).
+//
+// Plan reference: v2.0 §8 Task 2.7 rescope ("WO actions log + communication
+// log as a unified activity timeline for a given entity") + Phase-2
+// Clarifications item #3 (rewire AuditModule.tsx archive-search off direct
+// localhost:3000 fetch + extend /audit handler). Scope reconciliation acked
+// 2026-04-23: unified multi-source AuditEvent joining 5 sources (compliance
+// + insurance + workitem actionsLog + audit_log + communication).
+//
+// Sources that can materialize into an AuditEvent:
+//   - 'compliance'     → ComplianceRecord (Task 2.3)
+//   - 'insurance'      → InsurancePolicy (Task 2.5)
+//   - 'workitem'       → Workitem.actionsLog[] entries (Task 1.4)
+//   - 'audit_log'      → pre-existing audit_log.json rows
+//   - 'communication'  → Communication (existing; fixture currently empty)
+
+export type AuditEventSource =
+    | 'compliance'
+    | 'insurance'
+    | 'workitem'
+    | 'audit_log'
+    | 'communication';
+
+export type AuditEventSeverity = 'info' | 'warning' | 'critical';
+
+export type AuditEventCategory =
+    | 'compliance_change'
+    | 'policy_enforcement'
+    | 'work_order_action'
+    | 'user_action'
+    | 'communication';
+
+export interface AuditEvent {
+    id: string;
+    source: AuditEventSource;
+    sourceId: string;
+    category: AuditEventCategory;
+    severity: AuditEventSeverity;
+    title: string;
+    description: string;
+    propertyId: string | null;
+    entityId: string | null;
+    actor: string | null;
+    timestamp: string;
+    relatedComplianceId?: string;
+    relatedPolicyId?: string;
+    relatedWorkitemId?: string;
+}
+
+export interface UnifiedTimelineView {
+    events: AuditEvent[];
+    total: number;
+    sourceBreakdown: Record<AuditEventSource, number>;
+    propertyId: string | null;
+    generatedAt: string;
+}
+
 export interface Evidence {
     id: string;
     workitemId: string;

@@ -34,6 +34,52 @@ export type UserRole = 'god' | 'admin' | 'manager' | 'viewer' | 'tenant';
 // Core Entity Interfaces
 // ═══════════════════════════════════════════════════════════════
 
+// ─── Task 1.3: Property schema — purchase history / late fee / maintenance / fixed assets ───
+//
+// Promotes AppFolio's Property Detail blocks out of the untyped
+// `metadata: Record<string, any>` bag into typed shapes. Existing
+// modules (PropertiesModule.tsx) continue to read legacy metadata.*
+// values; the typed fields below are preferred when present and fall
+// back to the untyped bag otherwise — same coexistence pattern used
+// for vendor fields in Task 1.2.
+//
+// Source of truth: AppFolio_Screenshots/data/02_property_detail_128_buena_vista.json
+
+export interface PurchaseHistory {
+    purchaseDate: string;
+    amount: number;
+    seller: string | null;
+    settlementAgent: string | null;
+    parcel: string | null;
+    notes: string | null;
+}
+
+export interface LateFeePolicy {
+    effectiveOn: string | null;
+    baseAmount: string | null;
+    eligibleCharges: string | null;
+    dailyAmountMonthlyMax: string | null;
+    gracePeriod: string | null;
+    graceBalance: string | null;
+}
+
+export interface MaintenanceConfig {
+    maintenanceLimit: number | null;
+    insuranceExpiration: string | null;
+    homeWarranty: boolean;
+    preAuthEntry: boolean;
+    notes: string | null;
+}
+
+export interface FixedAsset {
+    assetId: string;
+    type: string;
+    status: string;
+    placedInService: string | null;
+    warrantyExpiration: string | null;
+    serialNumber: string | null;
+}
+
 export interface Property {
     id: string;
     name: string;
@@ -52,6 +98,12 @@ export interface Property {
     propertyManager: string | null;
     createdAt: string;
     updatedAt: string;
+    // ─── Task 1.3 additions (all optional; backward compatible) ───
+    purchaseHistory?: PurchaseHistory[];
+    lateFeePolicy?: LateFeePolicy;
+    maintenanceConfig?: MaintenanceConfig;
+    fixedAssets?: FixedAsset[];
+    parcelNumber?: string;
 }
 
 export interface Unit {

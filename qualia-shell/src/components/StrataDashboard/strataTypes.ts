@@ -52,4 +52,8 @@ export type {
     VendorFederalTax,
     VendorAccountingInfo,
     VendorCompliance,
+    PurchaseHistory,
+    LateFeePolicy,
+    MaintenanceConfig,
+    FixedAsset,
 } from '../../../../packages/types/index';

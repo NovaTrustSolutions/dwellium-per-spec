@@ -12,7 +12,7 @@ import { useUser } from '../../../context/UserContext';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import { useProperties, useUnits, useEntities, useLinkedData, useModuleConfig, useStrataInvalidate, strataKeys } from '../useStrataQueries';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Property, Unit, EntityProfile, Workitem } from '../strataTypes';
+import type { Property, Unit, EntityProfile, Workitem, PurchaseHistory, LateFeePolicy, MaintenanceConfig, FixedAsset } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
 import TrelloCardModal from './TrelloCardModal';
 import ProfileSpaces from './ProfileSpaces';
@@ -20,6 +20,9 @@ import PropertyOverview from './PropertyOverview';
 import UtilitiesModule from './UtilitiesModule';
 import VehiclesPanel from './VehiclesPanel';
 import InsuranceModule from './InsuranceModule';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
+import FixedAssetsTable from './__properties/FixedAssetsTable';
 
 interface LinkedData {
     workitems: Workitem[];
@@ -80,8 +83,11 @@ const MODULE_REGISTRY: ModuleRegistryEntry[] = [
 const fmtType = (t: string) => t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 /* ── Collapsible Detail Section (reused from ResidentsModule pattern) ── */
-function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
-    title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; onEdit?: () => void;
+function DetailSection({ title, icon, children, defaultOpen = true, onEdit, onToggle }: {
+    title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean;
+    onEdit?: () => void;
+    /** Called after the open-state flips. Used by Task 1.3 collapsibles to emit Sentry breadcrumbs (GR-13). */
+    onToggle?: (next: boolean) => void;
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
@@ -90,7 +96,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
             border: '1px solid rgba(255,255,255,0.05)', marginBottom: 10,
         }}>
             <button
-                onClick={() => setOpen(o => !o)}
+                onClick={() => setOpen(o => { const next = !o; onToggle?.(next); return next; })}
                 style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 14px', border: 'none', background: 'none',
@@ -1191,17 +1197,67 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 </DetailSection>
                             )}
 
-                            {/* ───── LATE FEE POLICY ───── */}
-                            {pm.lateFeePolicy && (
-                                <DetailSection title="Late Fee Policy" icon={<AlertTriangle size={12} />} defaultOpen={false}>
-                                    <Field label="Effective On" value={pm.lateFeePolicy.effectiveOn} />
-                                    <Field label="Base Amount" value={pm.lateFeePolicy.baseAmount} />
-                                    <Field label="Eligible Charges" value={pm.lateFeePolicy.eligibleCharges} />
-                                    <Field label="Daily Amount / Monthly Max" value={pm.lateFeePolicy.dailyAmountMonthlyMax} />
-                                    <Field label="Grace Period" value={pm.lateFeePolicy.gracePeriod} />
-                                    <Field label="Grace Balance" value={pm.lateFeePolicy.graceBalance} />
-                                </DetailSection>
-                            )}
+                            {/* ───── PURCHASE HISTORY (Task 1.3) ───── */}
+                            {(() => {
+                                const ph = selected.purchaseHistory;
+                                if (!ph || ph.length === 0) return null;
+                                const crumb = (next: boolean) => {
+                                    try {
+                                        Sentry.addBreadcrumb({
+                                            category: 'ui.click',
+                                            message: `properties.purchaseHistory.${next ? 'expand' : 'collapse'}`,
+                                            level: 'info',
+                                            data: { propertyId: selected.id, entries: ph.length },
+                                        });
+                                    } catch { /* Sentry no-op when DSN unset */ }
+                                };
+                                return (
+                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Purchase History unavailable.</div>}>
+                                        <DetailSection title="Purchase History" icon={<History size={12} />} defaultOpen={false} onToggle={crumb}>
+                                            <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="purchase-history-section">
+                                                {ph.map((p, i) => (
+                                                    <div key={i} data-testid={`purchase-history-entry-${i}`} style={{ padding: 10, borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+                                                        <Field label="Purchase Date" value={p.purchaseDate} />
+                                                        <Field label="Amount" value={`$${p.amount.toLocaleString()}`} />
+                                                        <Field label="Seller" value={p.seller || '—'} />
+                                                        <Field label="Settlement Agent" value={p.settlementAgent || '—'} />
+                                                        <Field label="Parcel" value={p.parcel || '—'} full />
+                                                        {p.notes && <Field label="Notes" value={p.notes} full />}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </DetailSection>
+                                    </ErrorBoundary>
+                                );
+                            })()}
+
+                            {/* ───── LATE FEE POLICY (Task 1.3 — typed preferred, legacy fallback) ───── */}
+                            {(() => {
+                                const lfp: LateFeePolicy | undefined = selected.lateFeePolicy ?? pm.lateFeePolicy;
+                                if (!lfp) return null;
+                                const crumb = (next: boolean) => {
+                                    try {
+                                        Sentry.addBreadcrumb({
+                                            category: 'ui.click',
+                                            message: `properties.lateFeePolicy.${next ? 'expand' : 'collapse'}`,
+                                            level: 'info',
+                                            data: { propertyId: selected.id, source: selected.lateFeePolicy ? 'typed' : 'metadata' },
+                                        });
+                                    } catch { /* no-op */ }
+                                };
+                                return (
+                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Late Fee Policy unavailable.</div>}>
+                                        <DetailSection title="Late Fee Policy" icon={<AlertTriangle size={12} />} defaultOpen={false} onToggle={crumb}>
+                                            <Field label="Effective On" value={lfp.effectiveOn ?? undefined} />
+                                            <Field label="Base Amount" value={lfp.baseAmount ?? undefined} />
+                                            <Field label="Eligible Charges" value={lfp.eligibleCharges ?? undefined} />
+                                            <Field label="Daily Amount / Monthly Max" value={lfp.dailyAmountMonthlyMax ?? undefined} />
+                                            <Field label="Grace Period" value={lfp.gracePeriod ?? undefined} />
+                                            <Field label="Grace Balance" value={lfp.graceBalance ?? undefined} />
+                                        </DetailSection>
+                                    </ErrorBoundary>
+                                );
+                            })()}
 
                             {/* ───── INSPECTIONS ───── */}
                             <DetailSection title={`Inspections (${(Array.isArray(pm.inspections) ? pm.inspections : []).length})`} icon={<ListChecks size={12} />} defaultOpen={false}>
@@ -1258,64 +1314,81 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 <Field label="Variance Threshold (%)" value={pm.budgets?.varianceThresholdPercentage ? `${pm.budgets.varianceThresholdPercentage}%` : '—'} />
                             </DetailSection>
 
-                            {/* ───── MAINTENANCE INFORMATION ───── */}
-                            {(pm.maintenanceLimit || pm.hasHomeWarranty || pm.maintenanceNotes) && (
-                                <DetailSection title="Maintenance Information" icon={<Wrench size={12} />} defaultOpen={false}>
-                                    <Field label="Maintenance Limit" value={pm.maintenanceLimit} />
-                                    <Field label="Insurance Expiration" value={pm.insuranceExpiration} />
-                                    <Field label="Has Home Warranty Coverage" value={pm.hasHomeWarranty} />
-                                    <Field label="Unit Entry Pre-authorized" value={pm.unitEntryPreauthorized} />
-                                    <Field label="Maintenance Notes" value={pm.maintenanceNotes} full />
-                                    <Field label="Online Maintenance Request Instructions" value={pm.onlineMaintenanceRequestInstructions} full />
-                                </DetailSection>
-                            )}
+                            {/* ───── MAINTENANCE CONFIG (Task 1.3 — typed preferred, legacy fallback) ───── */}
+                            {(() => {
+                                const mc: MaintenanceConfig | undefined = selected.maintenanceConfig;
+                                const hasTyped = !!mc;
+                                const hasLegacy = !!(pm.maintenanceLimit || pm.hasHomeWarranty || pm.maintenanceNotes);
+                                if (!hasTyped && !hasLegacy) return null;
+                                // Prefer typed fields per-slot; fall back to legacy metadata reads.
+                                const limit = mc?.maintenanceLimit != null ? `$${mc.maintenanceLimit.toLocaleString()}` : pm.maintenanceLimit;
+                                const insuranceExp = mc?.insuranceExpiration ?? pm.insuranceExpiration;
+                                const warranty = mc ? (mc.homeWarranty ? 'Yes' : 'No') : pm.hasHomeWarranty;
+                                const preAuth = mc ? (mc.preAuthEntry ? 'Yes' : 'No') : pm.unitEntryPreauthorized;
+                                const notes = mc?.notes ?? pm.maintenanceNotes;
+                                const crumb = (next: boolean) => {
+                                    try {
+                                        Sentry.addBreadcrumb({
+                                            category: 'ui.click',
+                                            message: `properties.maintenanceConfig.${next ? 'expand' : 'collapse'}`,
+                                            level: 'info',
+                                            data: { propertyId: selected.id, source: hasTyped ? 'typed' : 'metadata' },
+                                        });
+                                    } catch { /* no-op */ }
+                                };
+                                return (
+                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Maintenance Configuration unavailable.</div>}>
+                                        <DetailSection title="Maintenance Configuration" icon={<Wrench size={12} />} defaultOpen={false} onToggle={crumb}>
+                                            <Field label="Maintenance Limit" value={limit} />
+                                            <Field label="Insurance Expiration" value={insuranceExp} />
+                                            <Field label="Has Home Warranty Coverage" value={warranty} />
+                                            <Field label="Unit Entry Pre-authorized" value={preAuth} />
+                                            <Field label="Maintenance Notes" value={notes} full />
+                                            <Field label="Online Maintenance Request Instructions" value={pm.onlineMaintenanceRequestInstructions} full />
+                                        </DetailSection>
+                                    </ErrorBoundary>
+                                );
+                            })()}
 
-                            {/* ───── FIXED ASSETS ───── */}
-                            {pm.fixedAssets?.length > 0 && (
-                                <div className="s-glass-card">
-                                    <div
-                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: expandedAssets === selected.id ? '1rem' : 0 }}
-                                        onClick={() => setExpandedAssets(expandedAssets === selected.id ? null : selected.id)}
-                                    >
-                                        <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                                            <Wrench size={16} />
-                                            Fixed Assets
-                                            <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 400 }}>({pm.fixedAssets.length})</span>
-                                        </h3>
-                                        {expandedAssets === selected.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                    </div>
-                                    {expandedAssets === selected.id && (
-                                        <div className="s-table-wrap">
-                                            <table className="s-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Asset ID</th>
-                                                        <th>Serial #</th>
-                                                        <th>Type</th>
-                                                        <th>Status</th>
-                                                        <th>Placed in Service</th>
-                                                        <th>Warranty Expiration</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {pm.fixedAssets.map((a: any, i: number) => (
-                                                        <tr key={i}>
-                                                            <td style={{ color: 'var(--s-accent, #6366f1)' }}>{a.assetId}</td>
-                                                            <td>{a.serialNumber || '—'}</td>
-                                                            <td className="s-td-bold">{a.type}</td>
-                                                            <td>
-                                                                <span className={`s-badge ${a.status === 'Installed' ? 'active' : 'maintenance'}`}>{a.status}</span>
-                                                            </td>
-                                                            <td>{a.placedInService || '—'}</td>
-                                                            <td>{a.warrantyExpiration || '—'}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                            {/* ───── FIXED ASSETS (Task 1.3 — typed preferred, legacy fallback) ───── */}
+                            {(() => {
+                                const typedAssets: FixedAsset[] | undefined = selected.fixedAssets;
+                                const legacyAssets = Array.isArray(pm.fixedAssets) ? (pm.fixedAssets as FixedAsset[]) : [];
+                                const assets: FixedAsset[] = (typedAssets && typedAssets.length > 0) ? typedAssets : legacyAssets;
+                                if (assets.length === 0) return null;
+                                const isOpen = expandedAssets === selected.id;
+                                const source = typedAssets && typedAssets.length > 0 ? 'typed' : 'metadata';
+                                const toggle = () => {
+                                    const next = !isOpen;
+                                    setExpandedAssets(next ? selected.id : null);
+                                    try {
+                                        Sentry.addBreadcrumb({
+                                            category: 'ui.click',
+                                            message: `properties.fixedAssets.${next ? 'expand' : 'collapse'}`,
+                                            level: 'info',
+                                            data: { propertyId: selected.id, count: assets.length, source },
+                                        });
+                                    } catch { /* no-op */ }
+                                };
+                                return (
+                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Fixed Assets unavailable.</div>}>
+                                        <div className="s-glass-card" data-testid="fixed-assets-collapsible">
+                                            <div
+                                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isOpen ? '1rem' : 0 }}
+                                                onClick={toggle}
+                                            >
+                                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                                                    <Wrench size={16} />
+                                                    Fixed Assets
+                                                    <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 400 }}>({assets.length})</span>
+                                                </h3>
+                                                {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                            </div>
+                                            {isOpen && <FixedAssetsTable assets={assets} />}
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                    </ErrorBoundary>
+                                );
+                            })()}
 
                             {/* ───── PROPERTY GROUPS ───── */}
                             {pm.propertyGroups && (

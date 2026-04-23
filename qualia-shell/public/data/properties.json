@@ -1,6 +1,38 @@
 [
   {
     "id": "e4b440e9-5062-4da1-ae25-818dffab8b3b",
+    "parcelNumber": "22/28/15/23310/011/0160",
+    "purchaseHistory": [
+      {
+        "purchaseDate": "2009-10-16",
+        "amount": 2270000,
+        "seller": "Prior owner (redacted per GR-6)",
+        "settlementAgent": "Wolinka & Wolinka Title Ins Agency",
+        "parcel": "22/28/15/23310/011/0160",
+        "notes": "Purchased fully furnished."
+      }
+    ],
+    "lateFeePolicy": {
+      "effectiveOn": "2021-02-01",
+      "baseAmount": "Flat fee of $0.00",
+      "eligibleCharges": "All",
+      "dailyAmountMonthlyMax": null,
+      "gracePeriod": "Late fees post after 4 days",
+      "graceBalance": "$0.00"
+    },
+    "maintenanceConfig": {
+      "maintenanceLimit": 0,
+      "insuranceExpiration": null,
+      "homeWarranty": false,
+      "preAuthEntry": false,
+      "notes": null
+    },
+    "fixedAssets": [
+      { "assetId": "8",  "type": "Pump: Pool, Fountain",    "status": "Installed", "placedInService": "2021-07-01", "warrantyExpiration": "2026-07-01", "serialNumber": null },
+      { "assetId": "9",  "type": "Pump: Pool, Fountain",    "status": "Installed", "placedInService": "2021-07-27", "warrantyExpiration": "2026-07-31", "serialNumber": null },
+      { "assetId": "15", "type": "Refrigerator",            "status": "Installed", "placedInService": "2022-07-19", "warrantyExpiration": null,         "serialNumber": null },
+      { "assetId": "16", "type": "Toilet/Tank/Plumbing",    "status": "Installed", "placedInService": "2022-07-16", "warrantyExpiration": null,         "serialNumber": null }
+    ],
     "name": "128 BUENA VISTA DR N",
     "address": "128 Buena Vista Dr N, Dunedin, FL 34698",
     "type": "residential",

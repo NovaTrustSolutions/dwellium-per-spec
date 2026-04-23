@@ -157,6 +157,15 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
     if (path === '/leasing/alerts') return [];
     if (path === '/maintenance/sla-report') return { metrics: { avgResponseTime: 0, avgResolutionTime: 0, slaCompliance: 100, openCount: 0, resolvedCount: 0 } };
     if (path === '/maintenance/recurring-templates') return loadTable('recurring_charges');
+    // Task 1.5 — canonical AR/tenant-recurring-rent endpoint (additive; existing
+    // /maintenance/recurring-templates route kept intact for back-compat).
+    if (path === '/recurring-charges') {
+        let f = await loadTable('recurring_charges') as any[];
+        if (params?.tenantId) f = f.filter(r => r.tenantId === params.tenantId);
+        if (params?.occupancyId) f = f.filter(r => r.occupancyId === params.occupancyId);
+        if (params?.propertyId) f = f.filter(r => r.propertyId === params.propertyId);
+        return f;
+    }
     if (path === '/maintenance/history') return loadTable('maintenance_alerts');
     if (path === '/search/health') return { status: 'ok', indexed: 0 };
     if (path === '/search/saved') return loadTable('saved_searches');

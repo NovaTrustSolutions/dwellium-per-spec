@@ -56,4 +56,8 @@ export type {
     LateFeePolicy,
     MaintenanceConfig,
     FixedAsset,
+    ResidentAvailability,
+    ActionLogEntry,
+    LaborEntry,
+    PurchaseOrderLink,
 } from '../../../../packages/types/index';

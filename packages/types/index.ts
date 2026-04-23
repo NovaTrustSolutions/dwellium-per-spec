@@ -246,6 +246,50 @@ export interface EntityProfile {
     send1099?: boolean;
 }
 
+// ─── Task 1.4: Workitem schema — resident availability / actions log / labor / POs ───
+//
+// HIGHEST-criticality extension in Phase 1: Workitem is the shared
+// spine across MaintenanceModule, LegalModule, ProjectsModule,
+// LeasingModule, and WorkOrdersModule. Every addition below is
+// strictly optional — no existing field changes shape or nullability,
+// no WorkitemType/Status/Priority/Domain union is widened. TSC on the
+// full suite is the gate that guarantees no consumer breaks.
+//
+// Source of truth: AppFolio_Screenshots/data/08_work_order_detail_19511.json
+
+export interface ResidentAvailability {
+    date: string | null;
+    dayOfWeek: string | null;
+    timeWindows: string[];
+    timezone: string | null;
+}
+
+export interface ActionLogEntry {
+    ts: string;
+    actor: string;
+    event: string;
+    detail: string | null;
+}
+
+export interface LaborEntry {
+    id: string;
+    technician: string;
+    date: string | null;
+    hours: number | null;
+    rate: number | null;
+    totalCost: number | null;
+    description: string | null;
+}
+
+export interface PurchaseOrderLink {
+    id: string;
+    poNumber: string;
+    vendor: string | null;
+    amount: number | null;
+    status: string;
+    createdAt: string | null;
+}
+
 export interface Workitem {
     id: string;
     type: WorkitemType;
@@ -273,6 +317,17 @@ export interface Workitem {
     recordId: string | null;
     createdAt: string;
     updatedAt: string;
+    // ─── Task 1.4 additions (all optional; backward compatible) ───
+    residentAvailability?: ResidentAvailability;
+    actionsLog?: ActionLogEntry[];
+    laborEntries?: LaborEntry[];
+    purchaseOrders?: PurchaseOrderLink[];
+    workOrderNumber?: string;
+    permissionToEnter?: boolean;
+    ownerApproved?: boolean;
+    trade?: string | null;
+    vendorInstructions?: string | null;
+    nextFollowUpDate?: string | null;
 }
 
 export interface Evidence {

@@ -322,6 +322,14 @@ v1.0 Task 5.1 was one line. v2.0 decomposes into four tasks:
 - **5.1c — API version bump.** Bump the API version header `X-Qualia-API: v2`. Old clients continue to get the v1 shape with new fields omitted. Backward-compat contract.
 - **5.1d — Migration script.** Any DB column additions go here. Forward-only, no destructive changes. Down-migration lives in a separate file but is not run in Phase 5.
 
+### Phase 2 Clarifications (added 2026-04-23 from scheduling pass)
+
+Reality-contact items surfaced by `Docs/Session_Notes/2026-04-23_phase_2_schedule.md` §6. Each is scope-positive (additive) against the v2.0 §8 baseline; no existing task is reduced and no existing route is changed.
+
+1. **Task 2.4 — forecast static handler.** `ForecastModule.tsx` currently hits the backend at `/api/forecast` and has no static-mode counterpart. Task 2.4's "50-property seed" therefore also requires a new `/forecast` route handler in `strataApi.static.ts`. Scope-positive; additive; no existing route changed.
+2. **Task 2.8 — sentiment static handlers.** `SentimentModule.tsx` currently hits the backend at `/api/sentiment/trends` and `/api/sentiment/response`. Task 2.8 adds new handlers in `strataApi.static.ts` (planned route list: `/sentiment/scores`, `/sentiment/history`, `/sentiment/by-entity`), backed by a new `qualia-shell/public/data/sentiment_scores.json` fixture. `entities.json` is **not** touched — at-risk storage lives in the new fixture to avoid re-contaminating the Phase-1 tenant surface.
+3. **Task 2.7 — AuditModule strataApi rewire.** v2.0 §8 rescoped Task 2.7 to a unified activity-timeline viewer on the assumption that `AuditModule.tsx` already consumed data via `strataApi.ts`. Scheduling verified the module hits `localhost:3000/api/search` directly, bypassing the router. Rescope: the strataApi.ts rewire and the `/audit` static-handler extension (merging workitem actions log + communication_log by entity) are included in Task 2.7's ownership. No new task is created.
+
 ---
 
 ## §9. Verification Matrix (expanded from v1.0)
@@ -557,7 +565,7 @@ Baseline row is captured in `Docs/Baselines/2026-04-19_Phase0_fixture_counts.jso
 
 | File | Owner — Phase 1 | Owner — Phase 2 | Owner — Phase 3 | Owner — Phase 4 | Owner — Phase 5 |
 |---|---|---|---|---|---|
-| `packages/types/index.ts` | Task 1.1–1.5 sequentially | Task 2.3 only | — | — | Task 5.1a |
+| `packages/types/index.ts` | Task 1.1–1.5 sequentially | Phase-2 ownership: Task 2.3 → 2.5 → 2.7 (strictly serial). Tasks 2.5 and 2.7 rebase onto 2.3's type additions rather than modifying the file independently. | — | — | Task 5.1a |
 | `qualia-shell/src/components/StrataDashboard/strataTypes.ts` | shadow of ↑ | ↑ | — | — | ↑ |
 | `strataApi.static.ts` | Task 1.1 only | Task 2.* rebase onto each other | — | Task 4.7 only | — |
 | `strataApi.backend.ts` | NO (GR-5) | NO | NO | NO | Task 5.1b |

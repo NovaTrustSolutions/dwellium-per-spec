@@ -19,7 +19,7 @@ import * as staticImpl from './strataApi.static';
 
 // Vite inlines import.meta.env.VITE_* at build time. String compare is
 // deliberate — env vars are always strings when set via CLI/.env.
-const RAW_FLAG = (import.meta as any)?.env?.VITE_USE_STATIC_API;
+const RAW_FLAG = import.meta.env.VITE_USE_STATIC_API;
 const USE_STATIC =
     RAW_FLAG === true || RAW_FLAG === 'true' || RAW_FLAG === '1';
 

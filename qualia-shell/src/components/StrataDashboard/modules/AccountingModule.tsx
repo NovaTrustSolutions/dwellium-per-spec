@@ -6,13 +6,16 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     DollarSign, RefreshCw, ArrowUpRight, ArrowDownRight, TrendingUp,
     Building2, CreditCard, FileText, BookOpen, ArrowLeftRight,
-    AlertTriangle, Search, CheckCircle, Clock, Landmark, Plus, X
+    AlertTriangle, Search, CheckCircle, Clock, Landmark, Plus, X, Repeat
 } from 'lucide-react';
 import { strataGet, strataPost } from '../strataApi';
 import { useUser } from '../../../context/UserContext';
 import ProfileSpaces from './ProfileSpaces';
+import type { RecurringCharge } from '../strataTypes';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
-type AcctTab = 'overview' | 'receivables' | 'payables' | 'bank-accounts' | 'journal-entries' | 'bank-transfers' | 'gl-accounts' | 'tenant-ledger' | 'diagnostics';
+type AcctTab = 'overview' | 'receivables' | 'payables' | 'bank-accounts' | 'journal-entries' | 'bank-transfers' | 'gl-accounts' | 'tenant-ledger' | 'recurring-charges' | 'diagnostics';
 
 interface Invoice {
     id: string; type: string; vendorOrTenant: string; amount: number; status: string;
@@ -28,6 +31,7 @@ const TABS: { id: AcctTab; label: string; icon: typeof DollarSign }[] = [
     { id: 'bank-transfers', label: 'Bank Transfers', icon: ArrowLeftRight },
     { id: 'gl-accounts', label: 'GL Accounts', icon: FileText },
     { id: 'tenant-ledger', label: 'Tenant Ledger', icon: CreditCard },
+    { id: 'recurring-charges', label: 'Recurring Charges', icon: Repeat },
     { id: 'diagnostics', label: 'Diagnostics', icon: AlertTriangle },
 ];
 
@@ -109,6 +113,10 @@ export default function AccountingModule() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [showAddEntry, setShowAddEntry] = useState(false);
+    // Task 1.5 — Recurring Charges tab state.
+    const [recurringCharges, setRecurringCharges] = useState<RecurringCharge[]>([]);
+    const [recurringLoading, setRecurringLoading] = useState(false);
+    const [recurringError, setRecurringError] = useState<string | null>(null);
 
     const TAB_PERMS: Record<AcctTab, string> = {
         overview: 'strata:accounting:overview',
@@ -119,6 +127,7 @@ export default function AccountingModule() {
         'bank-transfers': 'strata:accounting:bank-transfers',
         'gl-accounts': 'strata:accounting:gl-accounts',
         'tenant-ledger': 'strata:accounting:tenant-ledger',
+        'recurring-charges': 'strata:accounting:recurring-charges',
         diagnostics: 'strata:accounting:diagnostics',
     };
     const visibleTabs = TABS.filter(t => hasPermission(TAB_PERMS[t.id]));
@@ -133,6 +142,27 @@ export default function AccountingModule() {
     }, []);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    // Task 1.5 — lazy-load recurring charges when tab becomes active; emit
+    // a Sentry breadcrumb on tab activation (GR-13, safe no-op without DSN).
+    useEffect(() => {
+        if (tab !== 'recurring-charges') return;
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.click',
+                message: 'accounting.recurringCharges.tabActivated',
+                level: 'info',
+            });
+        } catch { /* no-op when Sentry not initialised */ }
+        let cancelled = false;
+        setRecurringLoading(true);
+        setRecurringError(null);
+        strataGet<RecurringCharge[]>('/recurring-charges')
+            .then((rows) => { if (!cancelled) setRecurringCharges(rows); })
+            .catch((err) => { if (!cancelled) setRecurringError(err?.message || 'Failed to load recurring charges'); })
+            .finally(() => { if (!cancelled) setRecurringLoading(false); });
+        return () => { cancelled = true; };
+    }, [tab]);
 
     const ar = invoices.filter(i => i.type === 'receivable');
     const ap = invoices.filter(i => i.type === 'payable');
@@ -432,6 +462,54 @@ export default function AccountingModule() {
                         );
                     })}
                 </div>
+            )}
+
+            {/* ══════════ RECURRING CHARGES (Task 1.5) ══════════ */}
+            {tab === 'recurring-charges' && (
+                <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Recurring Charges tab unavailable.</div>}>
+                    <div className="s-glass-card" data-testid="recurring-charges-tab">
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: '#e2e8f0', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Repeat size={14} />Recurring Charges
+                            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#64748b', fontWeight: 400 }}>{recurringCharges.length} row{recurringCharges.length === 1 ? '' : 's'}</span>
+                        </div>
+                        {recurringLoading ? (
+                            <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 12 }}>Loading…</div>
+                        ) : recurringError ? (
+                            <div style={{ padding: 24, textAlign: 'center', color: '#f87171', fontSize: 12 }}>{recurringError}</div>
+                        ) : recurringCharges.length === 0 ? (
+                            <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 12 }}>No recurring charges on file.</div>
+                        ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                        {['Account', 'Amount', 'Payment Method', 'Start', 'End', 'Next', 'Previous', 'Status', 'Notes'].map(h => (
+                                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recurringCharges.map(rc => (
+                                        <tr key={rc.id} data-testid={`recurring-charge-row-${rc.id}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                            <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>{rc.account}</td>
+                                            <td style={{ padding: '8px 12px', color: '#10b981', fontWeight: 700 }}>${rc.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.paymentMethod ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.startDate ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.endDate ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.nextChargeDate ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.previousChargeDate ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px' }}>
+                                                {rc.previousStatus ? (
+                                                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(rc.previousStatus.toLowerCase() === 'paid' ? 'paid' : rc.previousStatus.toLowerCase() === 'partial' ? 'pending' : 'overdue')}15`, color: statusColor(rc.previousStatus.toLowerCase() === 'paid' ? 'paid' : rc.previousStatus.toLowerCase() === 'partial' ? 'pending' : 'overdue'), fontWeight: 600 }}>{rc.previousStatus}</span>
+                                                ) : '—'}
+                                            </td>
+                                            <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 11, fontStyle: rc.notes ? 'italic' : 'normal' }}>{rc.notes ?? '—'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </ErrorBoundary>
             )}
 
             {/* ══════════ DIAGNOSTICS ══════════ */}

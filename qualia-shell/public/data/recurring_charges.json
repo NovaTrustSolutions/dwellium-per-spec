@@ -1,1 +1,54 @@
-[]
+[
+  {
+    "id": "rc-1595-willie-001",
+    "occupancyId": "2800",
+    "tenantId": "08793d48-9690-4051-9c8c-6f99f8733af0",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": "1f54c72d-f59d-42fc-8ac8-f44b92c0c0a4",
+    "account": "4100: Rent Income",
+    "amount": 1595.00,
+    "startDate": "2025-09-23",
+    "endDate": null,
+    "nextChargeDate": "2026-05-01",
+    "previousChargeDate": "2026-04-01",
+    "previousStatus": "PAID",
+    "paymentMethod": "ACH",
+    "notes": "Canonical monthly rent schedule for occupancy 2800 (Willie White / Unit B03).",
+    "createdAt": "2025-09-23T00:00:00.000Z",
+    "updatedAt": "2026-04-01T00:00:00.000Z"
+  },
+  {
+    "id": "rc-1595-willie-002",
+    "occupancyId": "2800",
+    "tenantId": "08793d48-9690-4051-9c8c-6f99f8733af0",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": "1f54c72d-f59d-42fc-8ac8-f44b92c0c0a4",
+    "account": "4100: Rent Income",
+    "amount": 1595.00,
+    "startDate": null,
+    "endDate": null,
+    "nextChargeDate": null,
+    "previousChargeDate": null,
+    "previousStatus": null,
+    "notes": "AppFolio duplicate row (likely legacy charge-split or display artifact) — preserved verbatim for Task 1.5 AppFolio-parity. Phase 2+ may collapse.",
+    "createdAt": "2025-09-23T00:00:00.000Z",
+    "updatedAt": "2026-04-01T00:00:00.000Z"
+  },
+  {
+    "id": "rc-1595-willie-003",
+    "occupancyId": "2800",
+    "tenantId": "08793d48-9690-4051-9c8c-6f99f8733af0",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": "1f54c72d-f59d-42fc-8ac8-f44b92c0c0a4",
+    "account": "4100: Rent Income",
+    "amount": 1595.00,
+    "startDate": null,
+    "endDate": null,
+    "nextChargeDate": null,
+    "previousChargeDate": null,
+    "previousStatus": null,
+    "notes": "AppFolio duplicate row (likely legacy charge-split or display artifact) — preserved verbatim for Task 1.5 AppFolio-parity. Phase 2+ may collapse.",
+    "createdAt": "2025-09-23T00:00:00.000Z",
+    "updatedAt": "2026-04-01T00:00:00.000Z"
+  }
+]

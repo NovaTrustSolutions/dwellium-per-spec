@@ -330,6 +330,44 @@ export interface Workitem {
     nextFollowUpDate?: string | null;
 }
 
+// ─── Task 1.5: Accounting — recurring charges + payment method enum ───
+//
+// New top-level collection for tenant-side recurring rent schedules.
+// Distinct from Workitem by design — Task 1.4 just stabilized the
+// 5-consumer Workitem surface with a cross-type contamination guard,
+// so Task 1.5 adds a new type rather than re-extending that surface.
+// The DoR's monthly_charges block models a rent schedule (recurring
+// plan), not a one-shot charge event — different shape, different
+// interface.
+//
+// Payment-method enum is parallel to (not derived from) VendorPaymentMethod:
+// vendors and tenants are distinct domains that may legitimately diverge
+// later (e.g., tenant-only "Portal", or "Wire" dropped for tenants).
+//
+// Source of truth: AppFolio_Screenshots/data/09_tenant_detail_willie_white.json
+
+export type TenantPaymentMethod = 'Check' | 'ACH' | 'Zelle' | 'Wire' | 'Credit Card' | 'Other';
+export type RecurringChargeStatus = 'PAID' | 'UNPAID' | 'PARTIAL' | 'SCHEDULED';
+
+export interface RecurringCharge {
+    id: string;
+    occupancyId: string | null;
+    tenantId: string | null;
+    propertyId: string | null;
+    unitId: string | null;
+    account: string;
+    amount: number;
+    startDate: string | null;
+    endDate: string | null;
+    nextChargeDate: string | null;
+    previousChargeDate: string | null;
+    previousStatus: RecurringChargeStatus | null;
+    paymentMethod?: TenantPaymentMethod;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface Evidence {
     id: string;
     workitemId: string;

@@ -6,6 +6,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Shield, Plus, X, Edit2, Trash2, AlertTriangle, CheckCircle, Clock, FileText, Upload, ChevronDown, ChevronUp, Briefcase, BarChart3 } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
+import type { FolioGuardRollup, InsurancePolicy } from '../strataTypes';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 const POLICY_TYPES = [
     { key: 'liability', label: 'General Liability', color: '#6366f1' },
@@ -17,22 +20,11 @@ const POLICY_TYPES = [
     { key: 'other', label: 'Other', color: '#64748b' },
 ] as const;
 
-interface Policy {
-    id: string;
-    propertyId: string;
-    policyType: string;
-    policyNumber: string;
-    carrier: string;
-    agentName: string;
-    agentPhone: string;
-    premiumAnnual: number | null;
-    coverageAmount: number | null;
-    deductible: number | null;
-    effectiveDate: string;
-    expirationDate: string;
-    status: string;
-    notes: string;
-}
+// Task 2.5 — canonical shape is `InsurancePolicy` in packages/types.
+// The module-local alias preserves every existing render path without
+// needing a union-narrowing audit; new Task-2.5 code paths reference
+// the canonical type directly for FolioGuard state.
+type Policy = InsurancePolicy;
 
 interface Props {
     propertyId: string;
@@ -58,6 +50,9 @@ export default function InsuranceModule({ propertyId }: Props) {
     const [policyDocs, setPolicyDocs] = useState<Record<string, any[]>>({});
     const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
     const [linkedWorkitems, setLinkedWorkitems] = useState<any[]>([]);
+    // Task 2.5 — FolioGuard rollup for this property. Null when the
+    // fixture does not cover the current propertyId (fail-soft).
+    const [folioguardRollup, setFolioguardRollup] = useState<FolioGuardRollup | null>(null);
 
     const fetchPolicies = useCallback(async () => {
         try {
@@ -78,6 +73,33 @@ export default function InsuranceModule({ propertyId }: Props) {
             } catch { setRollup(null); }
         })();
     }, [propertyId, policies]);
+
+    // Task 2.5 — FolioGuard rollup fetch (GR-13 observability).
+    // Fails soft: missing fixture → setFolioguardRollup(null) and the
+    // card does not render. Sentry breadcrumb is best-effort (no-op
+    // without DSN).
+    useEffect(() => {
+        (async () => {
+            try {
+                const data = await strataGet<FolioGuardRollup | null>('/insurance/folioguard-rollup', { propertyId });
+                setFolioguardRollup(data);
+                try {
+                    Sentry.addBreadcrumb({
+                        category: 'ui.load',
+                        message: 'insurance.folioguard.loaded',
+                        level: 'info',
+                        data: {
+                            propertyId,
+                            totalPolicies: data?.totalPolicies ?? 0,
+                            lapsed: data?.lapsed ?? 0,
+                        },
+                    });
+                } catch { /* Sentry no-op when DSN unset */ }
+            } catch {
+                setFolioguardRollup(null);
+            }
+        })();
+    }, [propertyId]);
 
     // Fetch docs for expanded policy
     useEffect(() => {
@@ -152,6 +174,71 @@ export default function InsuranceModule({ propertyId }: Props) {
                     <Plus size={12} /> Add Policy
                 </button>
             </div>
+
+            {/* Task 2.5 — FolioGuard Rollup card. Renders above the existing
+                Compliance Score Strip when /insurance/folioguard-rollup
+                returns data for this property. Fail-soft: null → not rendered.
+                ErrorBoundary wraps the whole surface per GR-13. */}
+            <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12, marginBottom: 12 }}>FolioGuard unavailable.</div>}>
+                {folioguardRollup && (
+                    <div
+                        data-testid="insurance-folioguard-card"
+                        className="s-glass-card"
+                        style={{
+                            padding: '14px 16px', marginBottom: 12,
+                            border: '1px solid rgba(99,102,241,0.25)',
+                            background: 'rgba(99,102,241,0.04)',
+                        }}
+                        onClick={() => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: 'insurance.folioguard.inspect', level: 'info', data: { propertyId: folioguardRollup.propertyId, lapsed: folioguardRollup.lapsed } }); } catch { /* no-op */ } }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <Shield size={14} color="#818cf8" />
+                                <div>
+                                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                        FolioGuard Enforcement
+                                    </div>
+                                    <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, marginTop: 2 }} data-testid="insurance-folioguard-property">
+                                        {folioguardRollup.propertyName}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: 10, color: '#64748b' }}>Policies</div>
+                                    <div style={{ fontSize: 15, color: '#e2e8f0', fontWeight: 700 }} data-testid="insurance-folioguard-total">
+                                        {folioguardRollup.totalPolicies}
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: 10, color: '#64748b' }}>Lapsed</div>
+                                    <div style={{ fontSize: 15, color: folioguardRollup.lapsed > 0 ? '#ef4444' : '#10b981', fontWeight: 700 }} data-testid="insurance-folioguard-lapsed">
+                                        {folioguardRollup.lapsed}
+                                    </div>
+                                </div>
+                                <div
+                                    style={{
+                                        padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                                        background: folioguardRollup.status === 'overdue'
+                                            ? 'rgba(239,68,68,0.15)'
+                                            : folioguardRollup.status === 'attention'
+                                                ? 'rgba(245,158,11,0.15)'
+                                                : 'rgba(16,185,129,0.15)',
+                                        color: folioguardRollup.status === 'overdue'
+                                            ? '#ef4444'
+                                            : folioguardRollup.status === 'attention'
+                                                ? '#f59e0b'
+                                                : '#10b981',
+                                    }}
+                                    data-testid="insurance-folioguard-status"
+                                >
+                                    {folioguardRollup.status === 'on-track' ? 'On Track' : folioguardRollup.status === 'attention' ? 'Attention' : 'Overdue'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </ErrorBoundary>
 
             {/* Compliance Score Strip */}
             {rollup && (

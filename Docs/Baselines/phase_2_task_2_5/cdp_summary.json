@@ -1,0 +1,63 @@
+{
+  "capturedAt": "2026-04-23T17:29:18.266Z",
+  "devUrl": "http://localhost:5173/",
+  "targetPropertyId": "e4b440e9-5062-4da1-ae25-818dffab8b3b",
+  "probe": {
+    "insuranceLen": 6,
+    "rollupLen": 2,
+    "rollupPropertyIds": [
+      "riverwood-club",
+      "e4b440e9-5062-4da1-ae25-818dffab8b3b"
+    ],
+    "bvRollup": {
+      "propertyId": "e4b440e9-5062-4da1-ae25-818dffab8b3b",
+      "propertyName": "128 BUENA VISTA DR N",
+      "totalPolicies": 2,
+      "required": 0,
+      "notRequired": 0,
+      "lapsed": 1,
+      "fulfilled": 1,
+      "lapsedRatio": 0.5,
+      "status": "overdue",
+      "generatedAt": "2026-04-23T00:00:00.000Z"
+    }
+  },
+  "nav": {
+    "steps": [
+      {
+        "step": "expand-pm",
+        "ok": true,
+        "note": "already expanded or absent"
+      },
+      {
+        "step": "open-strata",
+        "ok": true
+      },
+      {
+        "step": "open-properties",
+        "ok": true
+      },
+      {
+        "step": "click-bv-property",
+        "ok": true,
+        "candidates": 2
+      },
+      {
+        "step": "click-insurance-tab",
+        "ok": true
+      }
+    ],
+    "hasFolioGuardCard": true,
+    "hasInsuranceModule": true,
+    "fg_property": "128 BUENA VISTA DR N",
+    "fg_total": "2",
+    "fg_lapsed": "1",
+    "fg_status": "Overdue",
+    "bodySnippet": "◆\nDWELLIUM\nSign Out\n«\nGood afternoon, Andy\n⛅ 80°F\nLet's build the future\n+\nDOMAINS\nWIDGETS\n▼\n▶\n−\nPROPERTY MANAGEMENT\n≡\nAstra\n≡\nStrata\n≡\nUniversal Shell\n≡\nTrello\n≡\nInbox Zero\n≡\nSettings\n≡\nTenant Portal\n+\nAI TOOLS\n+\nFILING CABINET\nSYSTEM ONLINE\nOptions\nSkip to content\n◀\n✕\n⬜⬜\n⬜⬜⬜\n⊞\nRIGHT\nStrata\n⠿\nDrag outside window to pop out\n↗\nStrata\nAll\nProperty\nTenant\nVendor\nWorkitem\nInsurance\nCompliance\nLegal\nIncident\nOverview\nManager Home\nCalendar\nProperties\nLeasing\nResidents\nVendors\nOwners\nAccounting\nMaintenance\nReporting\nCommunication\nProfiles & Entities\nCorporate Review\nIntegrations\nTenant Portal\nForecast\nSentiment\nLegal\nProjects\nAudit Log\nStatus Check\nCompliance\nDesign Studio\nCivil Engineering\nIncidents\nSettings\nSign Out\n← Properties\n128 BUENA VISTA DR N\nOverview\nInfo\nUnits\nWork\nDocuments\n🚗 Vehicles\n⚡ Utilities\n🛡️ Insurance\n128 BUENA VISTA DR N\n\n128 Buena Vista Dr N, Dunedin, FL 34698\n\nActive\nEdit\nDelete\nInsurance Policies\n(2)\nAdd Policy\nFOLIOGUARD ENFORCEMENT\n128 BUENA VISTA DR N\nPolicies\n2\nLapsed\n1\nOverdue\n100%\nProperty Compliance\n✓\n⚠\n✗\n0—\nState Farm\nPROPERTY\n252d left\nPolicy: PLY-2026-0001\nPremium: $2,400/yr\nCoverage: $500,000\nDeductible: $1,000\nEffective: 2026-01-01\nDocuments & Links\nFEMA NFIP\nFLOOD\nExpired 477d ago\nPolicy: FLD-2025\nDocuments & Links\nTax\nLegal\nLegal Issues\nhio\nvcctcyhcg\nnew space\nghfjhgf\nTest Space\nhfgxchgcd\njghcffjhj\nhjcfgjhfjhf\ndfgvdfg\nRemove\nMerge\nNew Space\nLINKED WORKITEMS\n(0)\nLink\nNOTES\n(0)\nENTITY TAGS\n(0)\nNo tags — link to properties, owners, tenants, vendo"
+  },
+  "consoleErrors": 0,
+  "consoleErrorSamples": [],
+  "consoleExceptions": 0,
+  "consoleWarnings": 2,
+  "screenshotPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_5/InsuranceModule-folioguard.png"
+}

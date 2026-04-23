@@ -60,4 +60,7 @@ export type {
     ActionLogEntry,
     LaborEntry,
     PurchaseOrderLink,
+    TenantPaymentMethod,
+    RecurringChargeStatus,
+    RecurringCharge,
 } from '../../../../packages/types/index';

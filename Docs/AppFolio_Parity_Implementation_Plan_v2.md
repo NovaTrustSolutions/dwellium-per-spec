@@ -557,7 +557,7 @@ Baseline row is captured in `Docs/Baselines/2026-04-19_Phase0_fixture_counts.jso
 
 | File | Owner — Phase 1 | Owner — Phase 2 | Owner — Phase 3 | Owner — Phase 4 | Owner — Phase 5 |
 |---|---|---|---|---|---|
-| `packages/types/index.ts` | Task 1.1–1.5 sequentially | Task 2.3 only | — | — | Task 5.1a |
+| `packages/types/index.ts` | Task 1.1–1.5 sequentially | Phase-2 ownership: Task 2.3 → 2.5 → 2.7 (strictly serial). Tasks 2.5 and 2.7 rebase onto 2.3's type additions rather than modifying the file independently. | — | — | Task 5.1a |
 | `qualia-shell/src/components/StrataDashboard/strataTypes.ts` | shadow of ↑ | ↑ | — | — | ↑ |
 | `strataApi.static.ts` | Task 1.1 only | Task 2.* rebase onto each other | — | Task 4.7 only | — |
 | `strataApi.backend.ts` | NO (GR-5) | NO | NO | NO | Task 5.1b |

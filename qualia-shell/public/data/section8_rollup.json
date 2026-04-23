@@ -1,0 +1,16 @@
+[
+  {
+    "propertyId": "riverwood-club",
+    "propertyName": "Riverwood Club Apartments",
+    "totalScheduled": 9,
+    "uniqueInspectionDates": [
+      "2026-04-27",
+      "2026-04-28",
+      "2026-04-29",
+      "2026-04-30"
+    ],
+    "nextInspectionDate": "2026-04-27",
+    "status": "attention",
+    "generatedAt": "2026-04-23T00:00:00.000Z"
+  }
+]

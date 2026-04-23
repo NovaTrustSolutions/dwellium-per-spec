@@ -10,5 +10,17 @@
     "lapsedRatio": 0.333,
     "status": "overdue",
     "generatedAt": "2026-04-23T00:00:00.000Z"
+  },
+  {
+    "propertyId": "e4b440e9-5062-4da1-ae25-818dffab8b3b",
+    "propertyName": "128 BUENA VISTA DR N",
+    "totalPolicies": 2,
+    "required": 0,
+    "notRequired": 0,
+    "lapsed": 1,
+    "fulfilled": 1,
+    "lapsedRatio": 0.5,
+    "status": "overdue",
+    "generatedAt": "2026-04-23T00:00:00.000Z"
   }
 ]

@@ -158,27 +158,45 @@ describe('insurance parity — InsuranceModule FolioGuard enforcement (Task 2.5)
         }
     });
 
-    it('FolioGuard rollup lineage: folioguard_rollup.json aggregate agrees with Riverwood Club rows in insurance_policies.json', () => {
+    it('FolioGuard rollup lineage: folioguard_rollup.json aggregates agree with Riverwood Club + 128 Buena Vista rows in insurance_policies.json', () => {
         const rollups = folioguardRollupSeed as unknown as FolioGuardRollup[];
-        expect(rollups).toHaveLength(1);
-        const rollup = rollups[0];
-        expect(rollup.propertyId).toBe(RIVERWOOD_PROPERTY_ID);
-        expect(rollup.propertyName).toBe(RIVERWOOD_PROPERTY_NAME);
+        expect(rollups).toHaveLength(2);
 
-        // Derive the aggregate from the 3 Riverwood rows and compare.
-        const river = (insuranceSeed as unknown as InsurancePolicy[])
+        // Riverwood Club rollup: 3 synthetic rows exercising
+        // fulfilled / lapsed / required. propertyId is a synthetic tag
+        // ("riverwood-club") shared with Task 2.3's Section-8 rollup
+        // rather than a real properties.json UUID.
+        const river = rollups.find(r => r.propertyId === RIVERWOOD_PROPERTY_ID)!;
+        expect(river).toBeDefined();
+        expect(river.propertyName).toBe(RIVERWOOD_PROPERTY_NAME);
+        const riverRows = (insuranceSeed as unknown as InsurancePolicy[])
             .filter(r => r.propertyId === RIVERWOOD_PROPERTY_ID);
-        expect(rollup.totalPolicies).toBe(river.length);
-        expect(rollup.fulfilled).toBe(river.filter(r => r.enforcementStatus === 'fulfilled').length);
-        expect(rollup.lapsed).toBe(river.filter(r => r.enforcementStatus === 'lapsed').length);
-        expect(rollup.required).toBe(river.filter(r => r.enforcementStatus === 'required').length);
-        expect(rollup.notRequired).toBe(river.filter(r => r.enforcementStatus === 'not-required').length);
+        expect(river.totalPolicies).toBe(riverRows.length);
+        expect(river.fulfilled).toBe(riverRows.filter(r => r.enforcementStatus === 'fulfilled').length);
+        expect(river.lapsed).toBe(riverRows.filter(r => r.enforcementStatus === 'lapsed').length);
+        expect(river.required).toBe(riverRows.filter(r => r.enforcementStatus === 'required').length);
+        expect(river.notRequired).toBe(riverRows.filter(r => r.enforcementStatus === 'not-required').length);
+        const riverDenom = river.required + river.fulfilled + river.lapsed;
+        const riverRatio = riverDenom > 0 ? river.lapsed / riverDenom : 0;
+        expect(Math.abs(river.lapsedRatio - riverRatio)).toBeLessThan(0.001);
+        expect(['on-track', 'attention', 'overdue']).toContain(river.status);
 
-        const denom = rollup.required + rollup.fulfilled + rollup.lapsed;
-        const derivedRatio = denom > 0 ? rollup.lapsed / denom : 0;
-        // Fixture stores 0.333; allow ±0.001 tolerance for rounding.
-        expect(Math.abs(rollup.lapsedRatio - derivedRatio)).toBeLessThan(0.001);
-        expect(['on-track', 'attention', 'overdue']).toContain(rollup.status);
+        // 128 Buena Vista rollup: exists so the CDP render proof can
+        // target a real properties.json UUID and actually paint the
+        // FolioGuard card. Aggregates the 2 pre-existing insurance rows
+        // (State Farm fulfilled + FEMA NFIP lapsed).
+        const bv = rollups.find(r => r.propertyId === PRE_EXISTING_PROPERTY_ID)!;
+        expect(bv).toBeDefined();
+        expect(bv.propertyName).toBe('128 BUENA VISTA DR N');
+        const bvRows = (insuranceSeed as unknown as InsurancePolicy[])
+            .filter(r => r.propertyId === PRE_EXISTING_PROPERTY_ID);
+        expect(bv.totalPolicies).toBe(bvRows.length);
+        expect(bv.fulfilled).toBe(bvRows.filter(r => r.enforcementStatus === 'fulfilled').length);
+        expect(bv.lapsed).toBe(bvRows.filter(r => r.enforcementStatus === 'lapsed').length);
+        const bvDenom = bv.required + bv.fulfilled + bv.lapsed;
+        const bvRatio = bvDenom > 0 ? bv.lapsed / bvDenom : 0;
+        expect(Math.abs(bv.lapsedRatio - bvRatio)).toBeLessThan(0.001);
+        expect(['on-track', 'attention', 'overdue']).toContain(bv.status);
     });
 
     it('static API: /insurance-policies returns 6 rows; ?enforcementStatus=lapsed returns 2; /insurance/folioguard-rollup returns rollup by propertyId', async () => {
@@ -198,6 +216,12 @@ describe('insurance parity — InsuranceModule FolioGuard enforcement (Task 2.5)
         expect(riverRollup!.propertyId).toBe(RIVERWOOD_PROPERTY_ID);
         expect(riverRollup!.totalPolicies).toBe(3);
         expect(riverRollup!.lapsed).toBe(1);
+
+        // 128 Buena Vista rollup resolves for the real properties.json UUID.
+        const bvRollup = await strataGet<FolioGuardRollup | null>('/insurance/folioguard-rollup', { propertyId: PRE_EXISTING_PROPERTY_ID });
+        expect(bvRollup).not.toBeNull();
+        expect(bvRollup!.propertyId).toBe(PRE_EXISTING_PROPERTY_ID);
+        expect(bvRollup!.totalPolicies).toBe(2);
 
         // No-param form returns the first rollup (demo-friendly fallback).
         const defaultRollup = await strataGet<FolioGuardRollup | null>('/insurance/folioguard-rollup');

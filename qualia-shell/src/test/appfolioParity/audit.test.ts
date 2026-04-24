@@ -233,13 +233,16 @@ describe('audit parity — AuditModule unified timeline (Task 2.7)', () => {
         }
     });
 
-    it('static API /audit/unified-timeline/snapshot returns the 2-row fixture; ?propertyId=<BV UUID> resolves to BV; both rows key on REAL properties.json UUIDs (DoR-PRE2)', async () => {
+    it('static API /audit/unified-timeline/snapshot returns the 3-row fixture; ?propertyId=<BV UUID> resolves to BV; all rows key on REAL properties.json UUIDs (DoR-PRE2)', async () => {
         const { strataGet } = await import('../../components/StrataDashboard/strataApi.static');
 
-        // No-param returns the full array (both rows).
+        // No-param returns the full array. Length bumped 2 -> 3 by
+        // Task 2.2 (+ Riverwood Club Apartments row added alongside
+        // the communications.json seed). All three propertyIds remain
+        // real properties.json UUIDs (DoR-PRE2 preserved).
         const all = await strataGet<typeof auditTimelineIndexSeed>('/audit/unified-timeline/snapshot');
         expect(Array.isArray(all)).toBe(true);
-        expect(all).toHaveLength(2);
+        expect(all).toHaveLength(3);
 
         // Every snapshot row's propertyId exists in properties.json (DoR-PRE2).
         const realPropertyIds = new Set((propertiesSeed as unknown as Array<{ id: string }>).map(p => p.id));

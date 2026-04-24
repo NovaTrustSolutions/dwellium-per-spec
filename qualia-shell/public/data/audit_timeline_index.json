@@ -2,27 +2,40 @@
   {
     "propertyId": "e4b440e9-5062-4da1-ae25-818dffab8b3b",
     "propertyName": "128 BUENA VISTA DR N",
-    "total": 2,
+    "total": 4,
     "sourceBreakdown": {
       "compliance": 0,
       "insurance": 2,
       "workitem": 0,
       "audit_log": 0,
-      "communication": 0
+      "communication": 2
     },
-    "generatedAt": "2026-04-23T00:00:00.000Z"
+    "generatedAt": "2026-04-24T00:00:00.000Z"
   },
   {
     "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
     "propertyName": "Woodland Parc Townhomes",
-    "total": 2,
+    "total": 4,
     "sourceBreakdown": {
       "compliance": 0,
       "insurance": 0,
       "workitem": 2,
       "audit_log": 0,
-      "communication": 0
+      "communication": 2
     },
-    "generatedAt": "2026-04-23T00:00:00.000Z"
+    "generatedAt": "2026-04-24T00:00:00.000Z"
+  },
+  {
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "total": 2,
+    "sourceBreakdown": {
+      "compliance": 0,
+      "insurance": 0,
+      "workitem": 0,
+      "audit_log": 0,
+      "communication": 2
+    },
+    "generatedAt": "2026-04-24T00:00:00.000Z"
   }
 ]

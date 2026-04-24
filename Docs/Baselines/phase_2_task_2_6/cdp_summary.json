@@ -1,0 +1,101 @@
+{
+  "capturedAt": "2026-04-24T10:45:54.111Z",
+  "devUrl": "http://localhost:5173/",
+  "targetPropertyId": "e4b440e9-5062-4da1-ae25-818dffab8b3b",
+  "steps": [
+    {
+      "step": "nav-root",
+      "result": {
+        "url": "http://localhost:5173/"
+      }
+    },
+    {
+      "step": "click-start-overlay",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-property-management",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-properties-nav",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-bv-property",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-utilities-tab",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-dom",
+      "result": {
+        "moduleRendered": true,
+        "utilityHeadingCount": 1,
+        "dukeHits": 1,
+        "masseyHits": 1,
+        "gaPowerHits": 0,
+        "utilityCountBadge": 2,
+        "providersInCard": [
+          "Duke Energy",
+          "Massey Pest"
+        ],
+        "utilityCardText": "Utilities(2) Add UtilityDuke EnergyElectricAcct: XXXX-XXXX-0001Water heater planMassey PestTrashAcct: XXXX-XXXX-0002Pest control — quarterly (fallback to 'trash' utility type; see Task 2.6 report §7 for pest-type UX follow-up)",
+        "urlHash": ""
+      }
+    },
+    {
+      "step": "guard",
+      "result": {
+        "moduleRendered": true,
+        "dukeOnPage": true,
+        "masseyOnPage": true,
+        "georgiaAbsentOnBV": true,
+        "utilityCountBadgeIs2": true,
+        "utilityCardShowsBothProviders": true,
+        "zeroConsoleErrors": true,
+        "zeroPageErrors": true,
+        "allPass": true
+      }
+    },
+    {
+      "step": "screenshot",
+      "result": {
+        "pngBytes": 575010,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_6/UtilitiesModule_BV.png"
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

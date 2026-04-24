@@ -10,6 +10,11 @@ import {
 import { strataGet } from '../strataApi';
 import type { Communication } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
+// Task 2.2 — GR-13 observability wiring: ErrorBoundary wraps the
+// module body; Sentry breadcrumbs are try/catch-wrapped so missing
+// DSN is a silent no-op (matches Task 1.5 / 2.3 / 2.5 / 2.7 pattern).
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 type CommTab = 'inbox' | 'letters' | 'forms';
 
@@ -68,6 +73,16 @@ export default function CommunicationModule() {
         try {
             const data = await strataGet<Communication[]>('/communications');
             setMessages(data);
+            // Task 2.2 — GR-13 breadcrumb on successful load. Fail-soft
+            // try/catch around Sentry so missing DSN doesn't surface.
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.load',
+                    message: 'communication.module.loaded',
+                    level: 'info',
+                    data: { messageCount: Array.isArray(data) ? data.length : 0 },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
         } catch (e) { console.error(e); }
         setLoading(false);
     }, []);
@@ -79,7 +94,8 @@ export default function CommunicationModule() {
     );
 
     return (
-        <div className="s-module">
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Communication module unavailable.</div>}>
+        <div className="s-module" data-testid="communication-module">
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">Communication</h2>
@@ -135,15 +151,28 @@ export default function CommunicationModule() {
                         <div className="s-loading">Loading messages…</div>
                     ) : (
                         <div className="s-split-view">
-                            <div className="s-list-panel">
+                            <div className="s-list-panel" data-testid="communication-list">
                                 {filteredMessages.length === 0 ? (
-                                    <div className="s-empty">No messages found</div>
+                                    <div className="s-empty" data-testid="communication-empty">No messages found</div>
                                 ) : (
                                     filteredMessages.map(msg => (
                                         <div
                                             key={msg.id}
+                                            data-testid="communication-row"
+                                            data-channel={msg.channel}
                                             className={`s-list-item ${selected?.id === msg.id ? 'active' : ''}`}
-                                            onClick={() => setSelected(msg)}
+                                            onClick={() => {
+                                                setSelected(msg);
+                                                // Task 2.2 — GR-13 click breadcrumb (fail-soft).
+                                                try {
+                                                    Sentry.addBreadcrumb({
+                                                        category: 'ui.click',
+                                                        message: 'communication.message.click',
+                                                        level: 'info',
+                                                        data: { id: msg.id, channel: msg.channel, direction: msg.direction },
+                                                    });
+                                                } catch { /* no-op */ }
+                                            }}
                                         >
                                             <div className="s-list-item-top">
                                                 <div className="s-avatar" style={{ background: `${channelColor(msg.channel)}20`, color: channelColor(msg.channel) }}>
@@ -164,7 +193,7 @@ export default function CommunicationModule() {
                                 )}
                             </div>
 
-                            <div className="s-detail-panel">
+                            <div className="s-detail-panel" data-testid="communication-detail">
                                 {selected ? (
                                     <div className="s-glass-card">
                                         <h3 style={{ margin: '0 0 6px', color: '#e2e8f0', fontSize: 16 }}>{selected.subject || '(No subject)'}</h3>
@@ -254,5 +283,6 @@ export default function CommunicationModule() {
                 </div>
             )}
         </div>
+        </ErrorBoundary>
     );
 }

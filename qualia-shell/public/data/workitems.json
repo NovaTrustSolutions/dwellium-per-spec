@@ -32112,7 +32112,11 @@
     "createdBy": "3ebb1993-7fcd-4218-8f8d-89025d760e00",
     "dueDate": null,
     "domain": "maintenance",
-    "tags": ["Property: Woodland Parc Townhomes", "Unit: 2789-1", "source: appfolio-task-1-4"],
+    "tags": [
+      "Property: Woodland Parc Townhomes",
+      "Unit: 2789-1",
+      "source: appfolio-task-1-4"
+    ],
     "metadata": {
       "source": "appfolio",
       "appfolioServiceRequestId": 19511,
@@ -32141,14 +32145,343 @@
     "residentAvailability": {
       "date": "2026-04-20",
       "dayOfWeek": "monday",
-      "timeWindows": ["8:00am-12:00pm", "10:00am-2:00pm", "1:00pm-5:00pm"],
+      "timeWindows": [
+        "8:00am-12:00pm",
+        "10:00am-2:00pm",
+        "1:00pm-5:00pm"
+      ],
       "timezone": "EDT"
     },
     "actionsLog": [
-      { "ts": "2026-04-17 08:24 PM", "actor": "System", "event": "Resident submitted preferred times", "detail": "04/20/2026 at 08:00AM-12:00PM EDT, 10:00AM-02:00PM EDT, 01:00PM-05:00PM EDT" },
-      { "ts": "2026-04-17 08:24 PM", "actor": "Brianna Jackson", "event": "Submitted online", "detail": null }
+      {
+        "ts": "2026-04-17 08:24 PM",
+        "actor": "System",
+        "event": "Resident submitted preferred times",
+        "detail": "04/20/2026 at 08:00AM-12:00PM EDT, 10:00AM-02:00PM EDT, 01:00PM-05:00PM EDT"
+      },
+      {
+        "ts": "2026-04-17 08:24 PM",
+        "actor": "Brianna Jackson",
+        "event": "Submitted online",
+        "detail": null
+      }
     ],
     "laborEntries": [],
     "purchaseOrders": []
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-01",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-27"
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-02",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-27"
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-03",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-27"
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-04",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-28"
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-05",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-28"
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-06",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-28"
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-07",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-29"
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-08",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-29"
+  },
+  {
+    "id": "wi-task-2-1-riverwood-insp-09",
+    "type": "inspection",
+    "title": "Section 8 (AHA) Inspection — Riverwood Club (unit TBD)",
+    "description": "Scheduled AHA Section-8 inspection per annual review cycle. Inspector to verify HQS (Housing Quality Standards) pass across 13 categories.",
+    "status": "open",
+    "priority": "medium",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "unitId": null,
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "compliance",
+    "tags": [
+      "section8",
+      "aha",
+      "inspection"
+    ],
+    "metadata": {
+      "inspectionType": "section_8_aha",
+      "source": "task-2-1-calendar-inspection-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": "scheduled",
+    "moduleKey": "calendar",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-24T00:00:00.000Z",
+    "updatedAt": "2026-04-24T00:00:00.000Z",
+    "dueDate": "2026-04-30"
   }
 ]

@@ -11,6 +11,12 @@ import { strataGet } from '../strataApi';
 import type { Workitem } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
 import { useUser, getAuthToken } from '../../../context/UserContext';
+// Task 2.1 — GR-13 observability wiring. ErrorBoundary wraps the
+// module body; Sentry breadcrumbs are try/catch-wrapped so missing
+// DSN is a silent no-op (matches Task 1.5 / 2.3 / 2.5 / 2.7 / 2.2
+// precedent).
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -77,6 +83,19 @@ export default function CalendarModule() {
         try {
             const data = await strataGet<Workitem[]>('/workitems');
             setEvents(data);
+            // Task 2.1 — GR-13 breadcrumb on successful load. Fail-soft
+            // try/catch around Sentry so missing DSN doesn't surface.
+            try {
+                const inspectionCount = Array.isArray(data)
+                    ? data.filter(w => w.type === 'inspection').length
+                    : 0;
+                Sentry.addBreadcrumb({
+                    category: 'ui.load',
+                    message: 'calendar.module.loaded',
+                    level: 'info',
+                    data: { eventCount: Array.isArray(data) ? data.length : 0, inspectionCount },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
         } catch (e) { console.error(e); setError('Failed to load calendar events'); }
         setLoading(false);
     }, []);
@@ -145,7 +164,8 @@ export default function CalendarModule() {
     const webcalUrl = `webcal://localhost:3000/api/calendar/export/ics`;
 
     return (
-        <div className="s-module">
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Calendar module unavailable.</div>}>
+        <div className="s-module" data-testid="calendar-module">
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">Calendar</h2>
@@ -372,7 +392,7 @@ export default function CalendarModule() {
                                 </div>
 
                                 {/* Calendar Cells */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                                <div data-testid="calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
                                     {calendarDays.map((day, i) => {
                                         if (day === null) return <div key={`e-${i}`} style={{ height: 72 }} />;
                                         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -383,6 +403,7 @@ export default function CalendarModule() {
                                         return (
                                             <div
                                                 key={day}
+                                                data-date={dateStr}
                                                 onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                                                 style={{
                                                     height: 72,
@@ -397,10 +418,15 @@ export default function CalendarModule() {
                                                 <div style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isToday ? '#10b981' : '#94a3b8', marginBottom: 2 }}>{day}</div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}>
                                                     {dayEvents.slice(0, 3).map((ev, idx) => (
-                                                        <div key={idx} style={{
-                                                            fontSize: 9, padding: '1px 4px', borderRadius: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                                            background: `${typeColor[ev.type] || '#6366f1'}20`, color: typeColor[ev.type] || '#a5b4fc',
-                                                        }}>
+                                                        <div
+                                                            key={idx}
+                                                            data-testid="calendar-grid-event-dot"
+                                                            data-type={ev.type}
+                                                            style={{
+                                                                fontSize: 9, padding: '1px 4px', borderRadius: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                                background: `${typeColor[ev.type] || '#6366f1'}20`, color: typeColor[ev.type] || '#a5b4fc',
+                                                            }}
+                                                        >
                                                             {ev.title}
                                                         </div>
                                                     ))}
@@ -418,7 +444,7 @@ export default function CalendarModule() {
 
                     {/* Event Detail Panel */}
                     {hasPermission('strata:calendar:day-detail') && (
-                        <div style={{ flex: 1, minWidth: 260 }}>
+                        <div style={{ flex: 1, minWidth: 260 }} data-testid="calendar-event-detail">
                             <div className="s-glass-card" style={{ padding: 16 }}>
                                 <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CalendarDays size={16} />
@@ -449,27 +475,47 @@ export default function CalendarModule() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <p style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>No events on this date</p>
+                                        <p data-testid="calendar-empty" style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>No events on this date</p>
                                     )
                                 ) : (
                                     <p style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>Click a date to view events</p>
                                 )}
                             </div>
 
-                            {/* Upcoming Events */}
+                            {/* Upcoming Events — slice bumped 8 -> 30 so Task 2.1's
+                                9 AHA inspection seed can render alongside other
+                                upcoming events without pre-filter capping. */}
                             <div className="s-glass-card" style={{ padding: 16, marginTop: 12 }}>
                                 <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600 }}>Upcoming</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                     {events
                                         .filter(e => e.dueDate && e.dueDate >= todayStr)
                                         .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''))
-                                        .slice(0, 8)
+                                        .slice(0, 30)
                                         .map(ev => (
-                                            <div key={ev.id} style={{
-                                                display: 'flex', alignItems: 'center', gap: 8,
-                                                padding: '6px 8px', borderRadius: 6,
-                                                background: 'rgba(255,255,255,0.02)',
-                                            }}>
+                                            <div
+                                                key={ev.id}
+                                                data-testid={ev.type === 'inspection' ? 'calendar-inspection-event' : undefined}
+                                                data-due-date={ev.type === 'inspection' ? ev.dueDate ?? undefined : undefined}
+                                                onClick={() => {
+                                                    if (ev.type === 'inspection') {
+                                                        try {
+                                                            Sentry.addBreadcrumb({
+                                                                category: 'ui.click',
+                                                                message: 'calendar.inspection.click',
+                                                                level: 'info',
+                                                                data: { id: ev.id, dueDate: ev.dueDate, propertyId: ev.propertyId },
+                                                            });
+                                                        } catch { /* no-op */ }
+                                                    }
+                                                }}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: 8,
+                                                    padding: '6px 8px', borderRadius: 6,
+                                                    background: 'rgba(255,255,255,0.02)',
+                                                    cursor: ev.type === 'inspection' ? 'pointer' : 'default',
+                                                }}
+                                            >
                                                 <span style={{ color: typeColor[ev.type] || '#a5b4fc' }}>{typeIcon(ev.type)}</span>
                                                 <div style={{ flex: 1, overflow: 'hidden' }}>
                                                     <div style={{ fontSize: 12, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
@@ -490,5 +536,6 @@ export default function CalendarModule() {
                 </div>
             )}
         </div>
+        </ErrorBoundary>
     );
 }

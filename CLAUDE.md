@@ -8,12 +8,12 @@
 
 ## Current State (as of 2026-04-24)
 
-- **HEAD:** `b98e84c` (`feat(phase-2): Task 2.2 — CommunicationModule seed + thread rollup + audit light-up (#12)`) — will advance to the Task 2.1 squash SHA on PR #13 merge.
-- **Last green CI run:** `24871523900` — `AppFolio Parity Gate` — HEAD at `b98e84c` — `https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/24871523900`
-- **Phase 0.0 closed:** 2026-04-22. Exit gate report: `Docs/Baselines/phase_0_0_exit_gate_report.md`. All 10 verify-steps (0.0.1 – 0.0.9 + 0.0.5b) pass. CI integrated and green on the strict gates (tsc + vitest 139/139 post-Task-2.1 + vite dual-mode build + PII scan strict).
+- **HEAD:** `67768c9` (`feat(phase-2): Task 2.1 — CalendarModule 9 AHA Section-8 inspection seed (Riverwood Club) (#13)`) — will advance to the Task 2.10 squash SHA on PR #14 merge.
+- **Last green CI run:** `24873615434` — `AppFolio Parity Gate` — HEAD at `67768c9` — `https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/24873615434`
+- **Phase 0.0 closed:** 2026-04-22. Exit gate report: `Docs/Baselines/phase_0_0_exit_gate_report.md`. All 10 verify-steps (0.0.1 – 0.0.9 + 0.0.5b) pass. CI integrated and green on the strict gates (tsc + vitest 147/147 post-Task-2.10 + vite dual-mode build + PII scan strict).
 - **Phase 1 closed:** 2026-04-23 at HEAD `094b91e1b5991e42b1e5f5639553d6a1a541c2ef` (Task 1.5 merge). See `Docs/Phase1_Completion_Report.md`.
-- **Phase 2 — B3 serial chain closed:** 2026-04-23 at HEAD `40875db` (Task 2.7 merge). Tasks 2.3 / 2.5 / 2.7 closed sequentially on `packages/types/index.ts`. Remaining Phase-2 tasks open to general pool. Task 2.2 (Communication, `b98e84c`) + Task 2.1 (Calendar AHA inspection seed, this PR) are the first two general-pool tasks landed post-B3.
-- **Next phase starting point:** Phase 2 general pool post-B3. Remaining tasks after this PR: **2.4, 2.6, 2.8, 2.9, 2.10** (5 items; Task 2.1 Calendar closes here). See `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 tracker.
+- **Phase 2 — B3 serial chain closed:** 2026-04-23 at HEAD `40875db` (Task 2.7 merge). Tasks 2.3 / 2.5 / 2.7 closed sequentially on `packages/types/index.ts`. Remaining Phase-2 tasks open to general pool. Task 2.2 (Communication, `b98e84c`) + Task 2.1 (Calendar AHA inspection seed, `67768c9`) + Task 2.10 (PropertyTimeline multi-source merge, this PR) are the first three general-pool tasks landed post-B3.
+- **Next phase starting point:** Phase 2 general pool post-B3. Remaining tasks after this PR: **2.4, 2.6, 2.8, 2.9** (4 items; Task 2.10 PropertyTimeline closes here). See `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 tracker.
 
 ---
 

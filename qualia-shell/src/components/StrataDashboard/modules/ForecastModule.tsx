@@ -2,43 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp, DollarSign, Building, AlertCircle, RefreshCw } from 'lucide-react';
 import { strataGet } from '../strataApi';
-
-// Forecast engine lives outside the dwellium CRUD API, so it stays as a raw fetch.
-const API = 'http://localhost:3000';
-
-interface MonthlyForecast {
-    month: string;
-    label: string;
-    projectedRevenue: number;
-    projectedExpenses: number;
-    netCashFlow: number;
-    occupancyRate: number;
-    occupiedUnits: number;
-    totalUnits: number;
-}
-
-interface ForecastResult {
-    propertyId: string | null;
-    propertyName: string;
-    months: MonthlyForecast[];
-    summary: {
-        totalRevenue: number;
-        totalExpenses: number;
-        totalNet: number;
-        avgOccupancy: number;
-        breakEvenOccupancy: number;
-    };
-    assumptions: {
-        occupancyRateOverride: number | null;
-        rentChangePercent: number;
-        baseMonthlyExpenseRate: number;
-    };
-}
+import type { ForecastResult } from '@qualia/types';
+// Task 2.4 — GR-13 observability wiring + ErrorBoundary, mirrors the
+// 2.1 / 2.2 / 2.10 retrofit pattern. Sentry breadcrumbs are
+// try/catch-wrapped so missing DSN is silent in test/local builds.
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 const fmt = (n: number) => `$${n.toLocaleString()}`;
 const fmtK = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(0)}k` : `$${n}`;
 
-export default function ForecastModule() {
+function ForecastModuleInner() {
     const [forecast, setForecast] = useState<ForecastResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -48,9 +22,6 @@ export default function ForecastModule() {
     const [occupancy, setOccupancy] = useState(85);
     const [useOccupancyOverride, setUseOccupancyOverride] = useState(false);
     const [rentChange, setRentChange] = useState(0);
-
-    const token = localStorage.getItem('dwellium_token');
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
     useEffect(() => {
         // Route the property picker through strataApi (static/backend both work).
@@ -68,27 +39,56 @@ export default function ForecastModule() {
         setLoading(true);
         setError('');
         try {
-            const params = new URLSearchParams({
+            // Task 2.4 — rewired off raw localhost:3000/api/forecast to
+            // strataGet so static mode is functional. Mirrors the Task 2.7
+            // AuditModule rewire precedent (was hitting localhost directly,
+            // bypassing the strataApi.ts router; same fix here).
+            const params: Record<string, string> = {
                 months: String(months),
                 rentChange: String(rentChange),
-                ...(selectedProperty && { propertyId: selectedProperty }),
-                ...(useOccupancyOverride && { occupancy: String(occupancy) }),
-            });
-            const res = await fetch(`${API}/api/forecast?${params}`, { headers });
-            const data = await res.json();
-            if (data.success) setForecast(data.data);
-            else setError(data.error || 'Failed to load forecast');
-        } catch {
-            setError('Could not connect to backend');
+            };
+            if (selectedProperty) params.propertyId = selectedProperty;
+            if (useOccupancyOverride) params.occupancy = String(occupancy);
+            const data = await strataGet<ForecastResult>('/forecast', params);
+            setForecast(data);
+            // Task 2.4 — GR-13 breadcrumb on successful run.
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.run',
+                    message: 'forecast.run',
+                    level: 'info',
+                    data: {
+                        propertyId: selectedProperty || null,
+                        months,
+                        rentChange,
+                        occupancyOverride: useOccupancyOverride ? occupancy : null,
+                        totalRevenue: data?.summary?.totalRevenue ?? 0,
+                    },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+        } catch (e: any) {
+            setError(e?.message || 'Failed to load forecast');
         } finally {
             setLoading(false);
         }
     }, [months, rentChange, selectedProperty, occupancy, useOccupancyOverride]);
 
+    // Task 2.4 — GR-13 breadcrumb on initial module load.
+    useEffect(() => {
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.load',
+                message: 'forecast.module.loaded',
+                level: 'info',
+                data: { propertyCount: properties.length },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
+    }, [properties.length]);
+
     const netColor = (n: number) => n >= 0 ? '#22c55e' : '#ef4444';
 
     return (
-        <div className="forecast-module" style={{ padding: '20px', fontFamily: 'Inter, sans-serif', color: '#e2e8f0' }}>
+        <div className="forecast-module" data-testid="forecast-module" style={{ padding: '20px', fontFamily: 'Inter, sans-serif', color: '#e2e8f0' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
@@ -102,6 +102,7 @@ export default function ForecastModule() {
                 <button
                     onClick={runForecast}
                     disabled={loading}
+                    data-testid="forecast-run-button"
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                 >
                     <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
@@ -116,6 +117,7 @@ export default function ForecastModule() {
                     <select
                         value={selectedProperty}
                         onChange={e => setSelectedProperty(e.target.value)}
+                        data-testid="forecast-property-select"
                         style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: '#e2e8f0', fontSize: 13 }}
                     >
                         <option value="">All Properties</option>
@@ -156,14 +158,14 @@ export default function ForecastModule() {
             {forecast && (
                 <>
                     {/* Summary Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+                    <div data-testid="forecast-summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
                         {[
-                            { icon: <DollarSign size={16} />, label: 'Projected Revenue', value: fmt(forecast.summary.totalRevenue), color: '#22c55e' },
-                            { icon: <DollarSign size={16} />, label: 'Projected Expenses', value: fmt(forecast.summary.totalExpenses), color: '#f97316' },
-                            { icon: <TrendingUp size={16} />, label: 'Net Cash Flow', value: fmt(forecast.summary.totalNet), color: netColor(forecast.summary.totalNet) },
-                            { icon: <Building size={16} />, label: 'Avg Occupancy', value: `${forecast.summary.avgOccupancy}%`, color: '#6366f1' },
+                            { id: 'revenue', testid: 'forecast-summary-revenue', icon: <DollarSign size={16} />, label: 'Projected Revenue', value: fmt(forecast.summary.totalRevenue), color: '#22c55e' },
+                            { id: 'expenses', testid: 'forecast-summary-expenses', icon: <DollarSign size={16} />, label: 'Projected Expenses', value: fmt(forecast.summary.totalExpenses), color: '#f97316' },
+                            { id: 'net', testid: 'forecast-summary-net', icon: <TrendingUp size={16} />, label: 'Net Cash Flow', value: fmt(forecast.summary.totalNet), color: netColor(forecast.summary.totalNet) },
+                            { id: 'occupancy', testid: 'forecast-summary-occupancy', icon: <Building size={16} />, label: 'Avg Occupancy', value: `${forecast.summary.avgOccupancy}%`, color: '#6366f1' },
                         ].map(card => (
-                            <div key={card.label} style={{ background: '#1e2537', borderRadius: 10, padding: 14 }}>
+                            <div key={card.id} data-testid={card.testid} style={{ background: '#1e2537', borderRadius: 10, padding: 14 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: 12, marginBottom: 6 }}>
                                     {card.icon} {card.label}
                                 </div>
@@ -211,7 +213,7 @@ export default function ForecastModule() {
                             </thead>
                             <tbody>
                                 {forecast.months.map(m => (
-                                    <tr key={m.month} style={{ borderBottom: '1px solid #1a2233' }}>
+                                    <tr key={m.month} data-testid="forecast-monthly-row" style={{ borderBottom: '1px solid #1a2233' }}>
                                         <td style={{ padding: '10px 12px', color: '#f1f5f9', fontWeight: 500 }}>{m.label}</td>
                                         <td style={{ padding: '10px 12px', color: '#22c55e' }}>{fmt(m.projectedRevenue)}</td>
                                         <td style={{ padding: '10px 12px', color: '#f97316' }}>{fmt(m.projectedExpenses)}</td>
@@ -225,5 +227,17 @@ export default function ForecastModule() {
                 </>
             )}
         </div>
+    );
+}
+
+// Task 2.4 — ErrorBoundary wrap mirrors the 2.1 / 2.2 / 2.10 retrofit
+// pattern. Inner module body holds the hooks; this exported wrapper
+// owns the boundary so a render fault in any sub-section degrades
+// gracefully instead of taking the whole shell down.
+export default function ForecastModule() {
+    return (
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Forecast module unavailable.</div>}>
+            <ForecastModuleInner />
+        </ErrorBoundary>
     );
 }

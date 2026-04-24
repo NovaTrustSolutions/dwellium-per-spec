@@ -1,0 +1,113 @@
+{
+  "capturedAt": "2026-04-24T07:26:58.689Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "click-start-overlay",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-property-management",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "sidebar-widgets",
+      "result": {
+        "count": 7,
+        "samples": [
+          {
+            "label": "Astra",
+            "title": "Astra (Middle-click to close)"
+          },
+          {
+            "label": "Strata",
+            "title": "Strata (Middle-click to close)"
+          },
+          {
+            "label": "Universal Shell",
+            "title": "Universal Shell (Middle-click to close)"
+          },
+          {
+            "label": "Trello",
+            "title": "Trello (Middle-click to close)"
+          },
+          {
+            "label": "Inbox Zero",
+            "title": "Inbox Zero (Middle-click to close)"
+          },
+          {
+            "label": "Settings",
+            "title": "Settings (Middle-click to close)"
+          },
+          {
+            "label": "Tenant Portal",
+            "title": "Tenant Portal (Middle-click to close)"
+          }
+        ]
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-forecast",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-dom",
+      "result": {
+        "moduleRendered": true,
+        "propertyOptionCount": 37,
+        "monthlyRowCount": 12,
+        "summaryRevenueText": " Projected Revenue$3,515,964",
+        "summaryExpensesText": " Projected Expenses$1,230,588",
+        "summaryNetText": " Net Cash Flow$2,285,376",
+        "summaryOccupancyText": " Avg Occupancy13%",
+        "hasErrorBanner": false
+      }
+    },
+    {
+      "step": "guard",
+      "result": {
+        "moduleRendered": true,
+        "monthlyRowCountIs12": true,
+        "propertyOptionCountAtLeast37": true,
+        "summaryRevenuePositive": true,
+        "noErrorBanner": true,
+        "zeroConsoleErrors": true,
+        "zeroPageErrors": true,
+        "allPass": true
+      }
+    },
+    {
+      "step": "screenshot",
+      "result": {
+        "pngBytes": 508024,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_4/ForecastModule.png"
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

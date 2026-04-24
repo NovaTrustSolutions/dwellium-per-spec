@@ -804,6 +804,49 @@ export interface PropertyReportCards {
     openIncidents: number;
 }
 
+// ─── Task 2.4 — Forecast static handler shapes ──────────────────
+//
+// Models the contract returned by the new GET /forecast static handler
+// in strataApi.static.ts. ForecastModule.tsx is rewired off the raw
+// localhost:3000/api/forecast fetch (Task 2.7 AuditModule precedent)
+// and consumes these shapes via strataGet<ForecastResult>('/forecast').
+// Pure projection from units.json (rentAmount × occupied) and the
+// per-property maintenanceConfig.maintenanceLimit (Task 1.3 field) —
+// no synthetic data; every number traces back to seed.
+
+export interface MonthlyForecast {
+    month: string;
+    label: string;
+    projectedRevenue: number;
+    projectedExpenses: number;
+    netCashFlow: number;
+    occupancyRate: number;
+    occupiedUnits: number;
+    totalUnits: number;
+}
+
+export interface ForecastSummary {
+    totalRevenue: number;
+    totalExpenses: number;
+    totalNet: number;
+    avgOccupancy: number;
+    breakEvenOccupancy: number;
+}
+
+export interface ForecastAssumptions {
+    occupancyRateOverride: number | null;
+    rentChangePercent: number;
+    baseMonthlyExpenseRate: number;
+}
+
+export interface ForecastResult {
+    propertyId: string | null;
+    propertyName: string;
+    months: MonthlyForecast[];
+    summary: ForecastSummary;
+    assumptions: ForecastAssumptions;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Resident Administration Types
 // ═══════════════════════════════════════════════════════════════

@@ -13,7 +13,7 @@
 6. `43b6558` — `docs(plan+repo): v2.6 -> v2.7 + §9 Task 2.4 row + 3 retroactive drift corrections + CLAUDE.md sweep` — three drift-correction changelog entries.
 7. *This report + CDP render proof (commit 7).*
 
-**Merge SHA (post-squash).** _(populated by squash-to-main on close)_
+**Merge SHA (post-squash).** `17c77b4` — squash-merge on 2026-04-24T08:03:17Z.
 **Closure date.** 2026-04-24.
 
 ---

@@ -1,0 +1,61 @@
+{
+  "capturedAt": "2026-04-24T04:55:11.393Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "sign-in-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-calendar-module",
+      "result": {
+        "found": true
+      }
+    }
+  ],
+  "guard": {
+    "rowCount": 9,
+    "moduleRendered": true,
+    "gridRendered": true,
+    "gridInspectionDots": 9,
+    "dueDateDistribution": {
+      "2026-04-27": 3,
+      "2026-04-28": 3,
+      "2026-04-29": 2,
+      "2026-04-30": 1
+    }
+  },
+  "result": {
+    "pngBytes": 602818,
+    "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_1/CalendarModule-inspections.png"
+  },
+  "probe": {
+    "workitemsTotal": 1148,
+    "task21Count": 9,
+    "task21Dates": [
+      "2026-04-27",
+      "2026-04-27",
+      "2026-04-27",
+      "2026-04-28",
+      "2026-04-28",
+      "2026-04-28",
+      "2026-04-29",
+      "2026-04-29",
+      "2026-04-30"
+    ]
+  }
+}

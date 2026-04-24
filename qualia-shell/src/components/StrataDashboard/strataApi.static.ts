@@ -508,13 +508,169 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
         };
     }
 
-    // /property-activity/{id}
+    // /property-activity/{id} — Task 2.10 multi-source merge upgrade.
+    //
+    // Pre-Task-2.10: workitems-only projection, sliced top-50, emitted
+    // events with `date` field (mismatched ActivityEvent.timestamp
+    // contract — latent bug that timeAgo() rendered blank). Still
+    // projected `type: w.type` (workitem SUBTYPE like 'task' / 'work_order'
+    // / 'lease') which never matched PropertyTimeline.tsx's eventIcon
+    // switch literals ('workitem' / 'incident' / 'audit') — effectively
+    // rendered every row with the Clock default icon.
+    //
+    // Task 2.10 upgrade — merges 5 sources (workitems + communications +
+    // compliance + insurance; audit_log EXCLUDED per property-scoped
+    // cross-property leak guard, Task 2.7 precedent at L244). Every
+    // event carries an explicit LITERAL source tag from the widened
+    // ActivityEventSource union (no computed keys from input params).
+    // Returns PropertyTimelineView (superset of {events} — existing
+    // sole consumer at PropertyTimeline.tsx:60 reads `.events` and is
+    // unaffected). sourceBreakdown pre-initialized with all 6 keys
+    // explicit to 0 so tests can assert `sourceBreakdown.audit === 0`
+    // as a field-exists-with-value check.
     m = path.match(/^\/property-activity\/(.+)$/);
     if (m) {
         const pid = m[1];
-        const wis = (await loadTable('workitems') as any[]).filter(w => w.propertyId === pid);
-        const events = wis.slice(0, 50).map(w => ({ id: w.id, type: w.type, title: w.title, status: w.status, date: w.createdAt || w.updatedAt, priority: w.priority }));
-        return { events };
+        const [workitems, communications, compliance, insurance] = await Promise.all([
+            loadTable('workitems'),
+            loadTable('communications'),
+            loadTable('compliance'),
+            loadTable('insurance_policies'),
+        ]);
+
+        const events: any[] = [];
+
+        // Source: workitem → one event per row with matching propertyId.
+        for (const w of workitems as any[]) {
+            if (w.propertyId !== pid) continue;
+            events.push({
+                id: `workitem-${w.id}`,
+                type: 'workitem',
+                sourceId: w.id,
+                title: w.title || 'Work item',
+                action: w.status || 'created',
+                status: w.status,
+                priority: w.priority,
+                domain: w.domain,
+                actor: w.assignedTo || w.createdBy || 'system',
+                timestamp: w.updatedAt || w.createdAt || '1970-01-01T00:00:00.000Z',
+                entityType: 'workitem',
+                entityId: w.id,
+                propertyId: w.propertyId ?? null,
+                description: w.description || '',
+                relatedWorkitemId: w.id,
+            });
+        }
+
+        // Source: communication → one event per row scoped to this property.
+        for (const c of communications as any[]) {
+            if (c.propertyId !== pid) continue;
+            events.push({
+                id: `communication-${c.id}`,
+                type: 'communication',
+                sourceId: c.id,
+                title: c.subject || c.channel || 'Communication',
+                action: c.direction === 'inbound' ? 'received' : 'sent',
+                actor: c.fromAddress || 'system',
+                timestamp: c.createdAt || '1970-01-01T00:00:00.000Z',
+                entityType: 'communication',
+                entityId: c.id,
+                propertyId: c.propertyId ?? null,
+                description: c.preview || c.body || '',
+                relatedCommunicationId: c.id,
+            });
+        }
+
+        // Source: compliance → one event per ComplianceRecord row scoped.
+        for (const r of compliance as any[]) {
+            if (r.propertyId !== pid) continue;
+            const sev: 'high' | 'medium' | 'low' =
+                r.status === 'expired' ? 'high' :
+                r.status === 'missing' || r.status === 'warning' ? 'medium' : 'low';
+            events.push({
+                id: `compliance-${r.id}`,
+                type: 'compliance',
+                sourceId: r.id,
+                title: `${r.label || r.itemType || 'Compliance item'} — ${r.status}`,
+                action: r.status || 'scheduled',
+                status: r.status,
+                severity: sev,
+                actor: r.source || 'system',
+                timestamp: r.lastAuditedAt || r.createdAt || r.expirationDate || '1970-01-01T00:00:00.000Z',
+                entityType: r.entityType || 'compliance',
+                entityId: r.id,
+                propertyId: r.propertyId ?? null,
+                description: r.notes || '',
+                relatedComplianceId: r.id,
+            });
+        }
+
+        // Source: insurance → one event per InsurancePolicy row scoped.
+        for (const p of insurance as any[]) {
+            if (p.propertyId !== pid) continue;
+            const enf = p.enforcementStatus;
+            const sev: 'high' | 'medium' | 'low' =
+                enf === 'lapsed' ? 'high' :
+                enf === 'required' ? 'medium' : 'low';
+            events.push({
+                id: `insurance-${p.id}`,
+                type: 'insurance',
+                sourceId: p.id,
+                title: `${p.carrier || 'Policy'} ${p.policyNumber || ''} — ${enf || p.status || 'active'}`.trim(),
+                action: enf || p.status || 'active',
+                status: p.status,
+                severity: sev,
+                actor: p.source || 'system',
+                timestamp: p.effectiveDate || p.createdAt || '1970-01-01T00:00:00.000Z',
+                entityType: 'insurance',
+                entityId: p.id,
+                propertyId: p.propertyId ?? null,
+                description: `${p.policyType || 'policy'} · coverage ${p.coverageAmount ?? '—'}`,
+                relatedPolicyId: p.id,
+            });
+        }
+
+        // audit_log INTENTIONALLY EXCLUDED per Task 2.10 Ambiguity #3
+        // (security-critical cross-property leak guard). audit_log rows
+        // have no propertyId, so including them would mix non-property
+        // system events into a property-scoped view. Task 2.7 precedent.
+
+        // Chronological descending by ISO timestamp with frozen epoch
+        // fallback — no arithmetic on untrusted input.
+        events.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+
+        // sourceBreakdown FULL-INIT — all 6 ActivityEventSource keys
+        // explicit with 0 so `sourceBreakdown.audit === 0` is a
+        // field-exists-with-value assertion in tests (rather than
+        // relying on undefined). `audit` + `incident` remain 0 for
+        // property-scoped queries by design.
+        const sourceBreakdown: Record<string, number> = {
+            workitem: 0,
+            incident: 0,
+            audit: 0,
+            communication: 0,
+            compliance: 0,
+            insurance: 0,
+        };
+        for (const e of events) {
+            if (Object.prototype.hasOwnProperty.call(sourceBreakdown, e.type)) {
+                sourceBreakdown[e.type]++;
+            }
+        }
+
+        const rawLimit = parseInt(params?.limit ?? '50', 10);
+        const limit = Math.min(
+            Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 50,
+            500,
+        );
+
+        return {
+            events: events.slice(0, limit),
+            total: events.length,
+            propertyId: pid,
+            sourceBreakdown,
+            generatedAt: new Date().toISOString(),
+        };
     }
 
     // /property-linked/{id}

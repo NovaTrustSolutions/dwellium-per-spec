@@ -1,0 +1,91 @@
+{
+  "capturedAt": "2026-04-24T03:30:54.548Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "captures": {
+    "communication": {
+      "steps": [
+        {
+          "step": "sign-in-andy",
+          "result": {
+            "found": true
+          }
+        },
+        {
+          "step": "fill-gate",
+          "result": {
+            "found": true
+          }
+        },
+        {
+          "step": "click-strata",
+          "result": {
+            "found": true
+          }
+        },
+        {
+          "step": "click-communication-module",
+          "result": {
+            "found": true
+          }
+        }
+      ],
+      "guard": {
+        "rowCount": 6,
+        "moduleRendered": true,
+        "listRendered": true,
+        "emptyRendered": false,
+        "firstThreeChannels": [
+          "email",
+          "email",
+          "sms"
+        ]
+      },
+      "result": {
+        "pngBytes": 637681,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_2/CommunicationModule-list.png"
+      }
+    },
+    "auditLightUp": {
+      "steps": [
+        {
+          "step": "click-audit-log-module",
+          "result": {
+            "found": true
+          }
+        },
+        {
+          "step": "click-unified-tab",
+          "result": {
+            "found": true
+          }
+        }
+      ],
+      "guard": {
+        "rowCount": 100,
+        "communicationSourceBadges": 6,
+        "communicationEventRows": 6,
+        "allSources": [
+          "insurance",
+          "compliance",
+          "communication",
+          "workitem",
+          "audit log"
+        ]
+      },
+      "result": {
+        "pngBytes": 688261,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_2/AuditModule-unified-timeline-with-comms.png"
+      }
+    }
+  },
+  "probe": {
+    "communicationRows": 6,
+    "communicationPropertyIds": [
+      "e4b440e9-5062-4da1-ae25-818dffab8b3b",
+      "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+      "705a6f52-f4a1-403b-ae3f-b3954b2cdac1"
+    ],
+    "auditIndexRows": 3,
+    "auditIndexCommunicationSum": 6
+  }
+}

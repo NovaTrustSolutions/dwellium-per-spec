@@ -114,9 +114,10 @@ describe('calendar parity — 9 AHA Section-8 inspection WOs for Riverwood Club 
         }) as typeof fetch;
     });
 
-    it('seed contract — workitems.json 1139 -> 1148 (+9 Task-2.1 Section-8 AHA rows); every new row on real Riverwood UUID (DoR-PRE2)', () => {
+    it('seed contract — workitems.json 1139 -> 1148 -> 1151 (+9 Task-2.1 AHA / +3 Task-2.6 utility); Task-2.1 rows still on real Riverwood UUID (DoR-PRE2)', () => {
         const seed = workitemsSeed as unknown as Workitem[];
-        expect(seed).toHaveLength(1148);
+        // 1151 = 1138 pre-Task-1.4 + 1 (Task 1.4) + 9 (Task 2.1) + 3 (Task 2.6).
+        expect(seed).toHaveLength(1151);
 
         const task21Rows = getTask21Rows();
         expect(task21Rows).toHaveLength(9);

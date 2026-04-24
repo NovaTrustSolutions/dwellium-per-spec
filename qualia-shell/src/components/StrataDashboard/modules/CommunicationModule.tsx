@@ -89,9 +89,15 @@ export default function CommunicationModule() {
 
     useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
-    const filteredMessages = messages.filter(m =>
-        !search || m.subject?.toLowerCase().includes(search.toLowerCase()) || m.fromAddress?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredMessages = messages.filter(m => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+            m.subject?.toLowerCase().includes(q) ||
+            m.fromAddress?.toLowerCase().includes(q) ||
+            m.preview?.toLowerCase().includes(q)
+        );
+    });
 
     return (
         <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Communication module unavailable.</div>}>

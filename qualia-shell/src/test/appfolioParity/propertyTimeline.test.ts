@@ -69,7 +69,7 @@ describe('propertyTimeline parity — /property-activity multi-source merge (Tas
         ]));
     });
 
-    it('BV seed inventory — 4 rows (2 insurance + 2 communication) via Option (b) scope-gate; drift-bound assertion [4, 68) tracks Phase-3 aspiration', () => {
+    it('BV seed inventory — 6 rows (2 insurance + 2 communication + 2 Task-2.6 utility workitems) post-Task-2.6; drift-bound assertion [4, 68) still tracks Phase-3 aspiration', () => {
         // Direct-fixture inventory (pre-handler), property-scoped.
         const bvInsurance = (insuranceSeed as unknown as Array<{ propertyId: string }>).filter(r => r.propertyId === BUENA_VISTA_PROPERTY_ID);
         const bvComms = (communicationsSeed as unknown as Array<{ propertyId?: string | null }>).filter(r => r.propertyId === BUENA_VISTA_PROPERTY_ID);
@@ -78,26 +78,27 @@ describe('propertyTimeline parity — /property-activity multi-source merge (Tas
 
         expect(bvInsurance).toHaveLength(2);
         expect(bvComms).toHaveLength(2);
-        expect(bvWorkitems).toHaveLength(0);
+        expect(bvWorkitems).toHaveLength(2); // +2 Task-2.6: Duke Energy water-heater + Massey Pest on BV.
         expect(bvCompliance).toHaveLength(0);
 
         const total = bvInsurance.length + bvComms.length + bvWorkitems.length + bvCompliance.length;
-        // Drift-bound assertion: today 4; Phase-3 aspiration 68 (19 attachments +
-        // 49 emails per §6 L38). If growth pushes `total` into [68, ∞), the
-        // upper-bound fails and forces scope re-review.
+        // Drift-bound assertion: today 6 (was 4 pre-Task-2.6); Phase-3 aspiration
+        // 68 (19 attachments + 49 emails per §6 L38). Lower bound (>= 4) preserved
+        // as a soft floor; upper bound (< 68) unchanged — Task-2.6 delta stays
+        // well within the cap.
         expect(total).toBeGreaterThanOrEqual(4);
         expect(total).toBeLessThan(68);
     });
 
-    it('/property-activity/{BV UUID} returns PropertyTimelineView with 4 events merged from 2 sources (insurance + communication)', async () => {
+    it('/property-activity/{BV UUID} returns PropertyTimelineView with 6 events merged from 3 sources (insurance + communication + workitem) post-Task-2.6', async () => {
         const { strataGet } = await import('../../components/StrataDashboard/strataApi.static');
         const view = await strataGet<PropertyTimelineView>(`/property-activity/${BUENA_VISTA_PROPERTY_ID}`);
 
         expect(view).toBeDefined();
         expect(view.propertyId).toBe(BUENA_VISTA_PROPERTY_ID);
-        expect(view.total).toBe(4);
+        expect(view.total).toBe(6); // 2 insurance + 2 comm + 2 Task-2.6 utility workitems.
         expect(Array.isArray(view.events)).toBe(true);
-        expect(view.events).toHaveLength(4);
+        expect(view.events).toHaveLength(6);
         expect(typeof view.generatedAt).toBe('string');
 
         // sourceBreakdown full-init — all 6 keys present with explicit 0
@@ -107,7 +108,7 @@ describe('propertyTimeline parity — /property-activity multi-source merge (Tas
         }
         expect(view.sourceBreakdown.insurance).toBe(2);
         expect(view.sourceBreakdown.communication).toBe(2);
-        expect(view.sourceBreakdown.workitem).toBe(0);
+        expect(view.sourceBreakdown.workitem).toBe(2); // +2 Task-2.6: Duke Energy + Massey Pest utility workitems for BV.
         expect(view.sourceBreakdown.compliance).toBe(0);
         expect(view.sourceBreakdown.incident).toBe(0);
 
@@ -202,13 +203,13 @@ describe('propertyTimeline parity — /property-activity multi-source merge (Tas
 
         // Default (no limit param).
         const def = await strataGet<PropertyTimelineView>(`/property-activity/${BUENA_VISTA_PROPERTY_ID}`);
-        // BV has only 4 events total; both default and capped return all 4.
+        // BV has 6 events total post-Task-2.6 (was 4); both default and capped return all.
         expect(def.events.length).toBeLessThanOrEqual(50);
 
         // Small limit.
         const small = await strataGet<PropertyTimelineView>(`/property-activity/${BUENA_VISTA_PROPERTY_ID}`, { limit: '2' });
         expect(small.events.length).toBeLessThanOrEqual(2);
-        expect(small.total).toBe(4); // total unaffected by limit
+        expect(small.total).toBe(6); // total unaffected by limit (2 insurance + 2 comm + 2 Task-2.6 utility).
 
         // Huge limit hits the 500 cap.
         const huge = await strataGet<PropertyTimelineView>(`/property-activity/${BUENA_VISTA_PROPERTY_ID}`, { limit: '999999' });

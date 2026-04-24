@@ -60,13 +60,14 @@ describe('workitems parity — WO 19511-1 fire alarm (Task 1.4)', () => {
         }) as typeof fetch;
     });
 
-    it('seed length is exactly 1148 (+1 Task-1.4 WO 19511 + 9 Task-2.1 Section-8 AHA inspection WOs on Riverwood)', () => {
+    it('seed length is exactly 1151 (+1 Task-1.4 WO 19511 + 9 Task-2.1 Section-8 AHA + 3 Task-2.6 utility WOs)', () => {
         const seed = workitemsSeed as unknown as Workitem[];
         // 1138 pre-Task-1.4 baseline + 1 WO 19511-1 (Task 1.4) + 9 AHA
-        // inspections (Task 2.1 — this PR). Future workitems-writer tasks
-        // (Task 2.9 per scheduling-pass §6 item #10 resolution) will bump
-        // this again with their own deltas + comment line.
-        expect(seed).toHaveLength(1148);
+        // inspections (Task 2.1) + 3 utility accounts (Task 2.6 — this PR:
+        // Duke Energy + Massey Pest on BV, Georgia Power on Riverwood).
+        // Future workitems writers (Task 2.9 per scheduling-pass §6 item
+        // #10 resolution) will bump again with their own deltas + comment.
+        expect(seed).toHaveLength(1151);
     });
 
     it('new WO 19511-1 carries typed residentAvailability (3 windows) + actionsLog (2 entries) + empty labor/PO arrays', () => {

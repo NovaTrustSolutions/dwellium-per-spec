@@ -139,6 +139,28 @@ describe('communication parity — CommunicationModule seed + thread rollup (Tas
         expect(seed.filter(r => r.propertyId === BUENA_VISTA_PROPERTY_ID)).toHaveLength(2);
         expect(seed.filter(r => r.propertyId === WOODLAND_PARC_PROPERTY_ID)).toHaveLength(2);
         expect(seed.filter(r => r.propertyId === RIVERWOOD_PROPERTY_ID)).toHaveLength(2);
+
+        // Task 2.2 follow-up (commit 0 piggyback, landed on the Task 2.1
+        // branch) — CommunicationModule.tsx filteredMessages now queries
+        // preview alongside subject + fromAddress. Mirror that predicate
+        // on the seed: searching for "maintenance" should match two BV
+        // thread rows via preview (in addition to subject matches).
+        const matchFilter = (q: string) => seed.filter(m => {
+            const lc = q.toLowerCase();
+            return (
+                m.subject?.toLowerCase().includes(lc) ||
+                m.fromAddress?.toLowerCase().includes(lc) ||
+                m.preview?.toLowerCase().includes(lc)
+            );
+        });
+        // "technician" appears ONLY in preview/body for WP thread rows,
+        // not in subject or fromAddress — pre-fix the filter missed these.
+        // Post-fix: both WP rows match via preview text.
+        const technicianMatches = matchFilter('technician');
+        expect(technicianMatches.length).toBeGreaterThanOrEqual(2);
+        for (const m of technicianMatches) {
+            expect(m.preview?.toLowerCase()).toContain('technician');
+        }
     });
 
     it('static API /communications returns 6 rows (no param); ?propertyId=<BV UUID> returns 2; camelCase+snake_case auto-map via filterBy', async () => {

@@ -73,4 +73,9 @@ export type {
     EnforcementStatus,
     InsurancePolicy,
     FolioGuardRollup,
+    AuditEventSource,
+    AuditEventSeverity,
+    AuditEventCategory,
+    AuditEvent,
+    UnifiedTimelineView,
 } from '../../../../packages/types/index';

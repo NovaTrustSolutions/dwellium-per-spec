@@ -1,6 +1,6 @@
-# AppFolio Parity Implementation Plan — v2.2
+# AppFolio Parity Implementation Plan — v2.3
 
-**Version.** 2.2 (2026-04-23). Incremental clarifications after v2.1. Changes tracked in the Changelog at the bottom.
+**Version.** 2.3 (2026-04-23). Incremental clarifications after v2.2 — documents the B3-chain closure at Task 2.7 merge. Changes tracked in the Changelog at the bottom.
 
 **Goal.** Close the schema, UI, and fixture gaps identified in `AppFolio_vs_Strata_Gap_Analysis.md` so Strata reaches functional parity with AppFolio on the 12 "Covered" + 10 "Partial" modules, while preserving the 8 Strata-unique and 3 Strata-extending differentiators. Target: a prospective AppFolio customer can migrate without dropping data.
 
@@ -364,10 +364,11 @@ Legend: R = required; — = n/a at this phase; ≤B = must be ≤ baseline; =0 =
 | Task | Status | Merge SHA | Closure date | Per-row proof location |
 |---|:-:|---|---|---|
 | 2.3 — ComplianceEngine: vendor matrix + Section-8 rollup | ✓ | `36ee8ca` | 2026-04-23 | `Docs/Phase2_Task_2_3_Completion_Report.md` (Summary / §2 strict-gate paste / §3 CDP render proof / §4 /security-review / §5 verification matrix / §6 rollback / §7 deferred / §8 next-task unblock) |
-| 2.5 — InsuranceModule: FolioGuard enforcement | ✓ | (populated by this PR's squash-to-main) | 2026-04-23 | `Docs/Phase2_Task_2_5_Completion_Report.md` (same 8-section template as Task 2.3; backs every ✓ cell with a section reference) |
-| 2.1, 2.2, 2.4, 2.6–2.10 | pending | — | — | — |
+| 2.5 — InsuranceModule: FolioGuard enforcement | ✓ | `f6d3fb2` | 2026-04-23 | `Docs/Phase2_Task_2_5_Completion_Report.md` (same 8-section template as Task 2.3; backs every ✓ cell with a section reference) |
+| 2.7 — AuditModule: unified activity timeline (B3 chain closure) | ✓ | (populated by this PR's squash-to-main) | 2026-04-23 | `Docs/Phase2_Task_2_7_Completion_Report.md` (same 8-section template as Task 2.3 / 2.5; backs every ✓ cell with a section reference) |
+| 2.1, 2.2, 2.4, 2.6, 2.8–2.10 | pending | — | — | — |
 
-Task-2.3 and Task-2.5 closures reference Appendix D row 1's pre-recorded Phase-2 ownership of `packages/types/index.ts` (serial 2.3 → 2.5 → 2.7; text landed in PR #8 / `1bb7518` and preserved by both PRs without re-edit). Task 2.5 rebases onto Task 2.3's type additions; Task 2.7 now unblocks and is the final B3-chain link.
+Task-2.3 / 2.5 / 2.7 closures reference Appendix D row 1's pre-recorded Phase-2 ownership of `packages/types/index.ts` (serial 2.3 → 2.5 → 2.7; text landed in PR #8 / `1bb7518` and preserved by all three PRs without re-edit). Task 2.5 rebased onto Task 2.3's type additions; Task 2.7 rebased onto Task 2.5's. **B3 serial chain CLOSED** at Task 2.7 merge (HEAD `(populated by this PR's squash-to-main)`): `packages/types/index.ts` Phase-2 serial ownership retires, and the remaining Phase-2 tasks (2.1, 2.2, 2.4, 2.6, 2.8, 2.9, 2.10) open to the general pool per Appendix D's illustrative treatment.
 
 ---
 
@@ -590,6 +591,11 @@ Baseline row is captured in `Docs/Baselines/2026-04-19_Phase0_fixture_counts.jso
 
 ## Changelog
 
+- **v2.3 (2026-04-23).** Incremental, non-breaking clarifications after Phase-2 Task 2.7 close (B3 serial-chain closure). Additions:
+  - §9 Phase-2 per-task tracker: Task 2.5 row Merge SHA backfilled to `f6d3fb2` (mechanical carry-over from PR #10 squash-to-main); Task 2.7 row added with ✓ status and pointer to `Docs/Phase2_Task_2_7_Completion_Report.md`; pending-row updated to `2.1, 2.2, 2.4, 2.6, 2.8–2.10` (2.7 removed).
+  - §9 post-tracker note updated: **B3 serial chain CLOSED** at Task 2.7 merge. `packages/types/index.ts` Phase-2 serial ownership retires. Remaining Phase-2 tasks (2.1, 2.2, 2.4, 2.6, 2.8, 2.9, 2.10) open to general pool per Appendix D's illustrative treatment.
+  - Scheduling-pass §6 item #9 ("AuditModule.tsx archive-search direct-fetch to localhost:3000") resolved opportunistically by Task 2.7 PR (the unified-timeline PR already touched the file, so the rewire to `strataGet('/search', ...)` landed in the same commit). Documented in Task 2.7 completion report §7.
+  - Appendix D row 1 text UNTOUCHED (landed in PR #8 / `1bb7518`; preserved by PR #9, PR #10, and this PR).
 - **v2.2 (2026-04-23).** Incremental, non-breaking clarifications after Phase-2 Task 2.5 close. Additions:
   - §9 Phase-2 per-task tracker: Task 2.3 row Merge SHA backfilled to `36ee8ca` (mechanical carry-over from PR #9 squash-to-main); Task 2.5 row added with ✓ status and pointer to `Docs/Phase2_Task_2_5_Completion_Report.md`.
   - Appendix D row for `public/data/compliance.json` currently reads `Task 2.3 + 2.5 (sequential)`, which the scheduling pass (`Docs/Session_Notes/2026-04-23_phase_2_schedule.md` §6 item #1) identified as over-specification: Task 2.5's task-body file list covers `insurance_policies.json` only. v2.2 formally accepts the scheduling-pass resolution (task-body lists govern non-conflict-prone files); Appendix D text stays untouched to avoid git no-op hunks but is documented as a deferred cleanup candidate when the broader Appendix D pass lands.

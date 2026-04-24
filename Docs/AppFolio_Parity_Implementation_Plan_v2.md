@@ -1,6 +1,6 @@
-# AppFolio Parity Implementation Plan — v2.3
+# AppFolio Parity Implementation Plan — v2.4
 
-**Version.** 2.3 (2026-04-23). Incremental clarifications after v2.2 — documents the B3-chain closure at Task 2.7 merge. Changes tracked in the Changelog at the bottom.
+**Version.** 2.4 (2026-04-24). Incremental clarifications after v2.3 — documents Task 2.2 (Communication seed) close as the first Phase-2 general-pool task post-B3. Changes tracked in the Changelog at the bottom.
 
 **Goal.** Close the schema, UI, and fixture gaps identified in `AppFolio_vs_Strata_Gap_Analysis.md` so Strata reaches functional parity with AppFolio on the 12 "Covered" + 10 "Partial" modules, while preserving the 8 Strata-unique and 3 Strata-extending differentiators. Target: a prospective AppFolio customer can migrate without dropping data.
 
@@ -365,10 +365,11 @@ Legend: R = required; — = n/a at this phase; ≤B = must be ≤ baseline; =0 =
 |---|:-:|---|---|---|
 | 2.3 — ComplianceEngine: vendor matrix + Section-8 rollup | ✓ | `36ee8ca` | 2026-04-23 | `Docs/Phase2_Task_2_3_Completion_Report.md` (Summary / §2 strict-gate paste / §3 CDP render proof / §4 /security-review / §5 verification matrix / §6 rollback / §7 deferred / §8 next-task unblock) |
 | 2.5 — InsuranceModule: FolioGuard enforcement | ✓ | `f6d3fb2` | 2026-04-23 | `Docs/Phase2_Task_2_5_Completion_Report.md` (same 8-section template as Task 2.3; backs every ✓ cell with a section reference) |
-| 2.7 — AuditModule: unified activity timeline (B3 chain closure) | ✓ | (populated by this PR's squash-to-main) | 2026-04-23 | `Docs/Phase2_Task_2_7_Completion_Report.md` (same 8-section template as Task 2.3 / 2.5; backs every ✓ cell with a section reference) |
-| 2.1, 2.2, 2.4, 2.6, 2.8–2.10 | pending | — | — | — |
+| 2.7 — AuditModule: unified activity timeline (B3 chain closure) | ✓ | `40875db` | 2026-04-23 | `Docs/Phase2_Task_2_7_Completion_Report.md` (same 8-section template as Task 2.3 / 2.5; backs every ✓ cell with a section reference) |
+| 2.2 — CommunicationModule: seed + thread rollup + unified-timeline light-up | ✓ | (populated by this PR's squash-to-main) | 2026-04-24 | `Docs/Phase2_Task_2_2_Completion_Report.md` (same 8-section template as Task 2.3 / 2.5 / 2.7; backs every ✓ cell with a section reference) |
+| 2.1, 2.4, 2.6, 2.8, 2.9, 2.10 | pending | — | — | — |
 
-Task-2.3 / 2.5 / 2.7 closures reference Appendix D row 1's pre-recorded Phase-2 ownership of `packages/types/index.ts` (serial 2.3 → 2.5 → 2.7; text landed in PR #8 / `1bb7518` and preserved by all three PRs without re-edit). Task 2.5 rebased onto Task 2.3's type additions; Task 2.7 rebased onto Task 2.5's. **B3 serial chain CLOSED** at Task 2.7 merge (HEAD `(populated by this PR's squash-to-main)`): `packages/types/index.ts` Phase-2 serial ownership retires, and the remaining Phase-2 tasks (2.1, 2.2, 2.4, 2.6, 2.8, 2.9, 2.10) open to the general pool per Appendix D's illustrative treatment.
+Task-2.3 / 2.5 / 2.7 closures reference Appendix D row 1's pre-recorded Phase-2 ownership of `packages/types/index.ts` (serial 2.3 → 2.5 → 2.7; text landed in PR #8 / `1bb7518` and preserved by all three PRs without re-edit). Task 2.5 rebased onto Task 2.3's type additions; Task 2.7 rebased onto Task 2.5's. **B3 serial chain CLOSED** at Task 2.7 merge (HEAD `40875db`): `packages/types/index.ts` Phase-2 serial ownership retires, and the remaining Phase-2 tasks open to the general pool per Appendix D's illustrative treatment. Task 2.2 (Communication seed — closed here) is the first general-pool task landed post-B3.
 
 ---
 
@@ -591,6 +592,12 @@ Baseline row is captured in `Docs/Baselines/2026-04-19_Phase0_fixture_counts.jso
 
 ## Changelog
 
+- **v2.4 (2026-04-24).** Incremental, non-breaking clarifications after Phase-2 Task 2.2 (Communication seed) close — the first general-pool Phase-2 task landed post-B3. Additions:
+  - §9 Phase-2 per-task tracker: Task 2.7 row Merge SHA backfilled to `40875db` (mechanical carry-over from PR #11 squash-to-main on 2026-04-23); B3 closure note placeholder `(populated by this PR's squash-to-main)` replaced with literal `40875db`; Task 2.2 row added with ✓ status and pointer to `Docs/Phase2_Task_2_2_Completion_Report.md`; pending-row narrowed to 6 items (`2.1, 2.4, 2.6, 2.8, 2.9, 2.10` — Task 2.2 removed, Task 2.8 Sentiment retained pending).
+  - **Task 2.2 (Communication) closed; earlier handoff mislabeling as 2.8 corrected at DoR per plan §9 source-of-truth.** The task spec draft initially called this "Task 2.8" but plan v2.3 §8 L330 + scheduling-pass §6 L36 both assign 2.8 to Sentiment static handlers, while §8 L305 explicitly assigns Communication to Task 2.2. Plan is source of truth; the task was executed and documented as Task 2.2 throughout the branch, PR, and completion report.
+  - Task 2.2 opportunistic additive-only schema extension on `packages/types/index.ts` `Communication` interface — 5 optional fields (`propertyId`, `threadId`, `preview`, `readStatus`, `attachmentCount`) + 1 new union (`CommunicationReadStatus`) + 1 new aggregate (`CommunicationThreadRollup`). GR-2 preserved (zero Phase-1 consumer break).
+  - Task 2.2 seed `communications.json` 0 → 6 rows across 3 real `properties.json` UUIDs (128 Buena Vista, Woodland Parc Townhomes, Riverwood Club Apartments). `audit_timeline_index.json` refreshed in the same commit: BV + WP communication counts 0 → 2 each, Riverwood added as 3rd row. Task 2.7 /audit/unified-timeline join now lights up `source: 'communication'` automatically via its pre-existing defensive `c.propertyId` read.
+  - Appendix D row 1 text UNTOUCHED (precedent preserved across PRs #8, #9, #10, #11, and now #12).
 - **v2.3 (2026-04-23).** Incremental, non-breaking clarifications after Phase-2 Task 2.7 close (B3 serial-chain closure). Additions:
   - §9 Phase-2 per-task tracker: Task 2.5 row Merge SHA backfilled to `f6d3fb2` (mechanical carry-over from PR #10 squash-to-main); Task 2.7 row added with ✓ status and pointer to `Docs/Phase2_Task_2_7_Completion_Report.md`; pending-row updated to `2.1, 2.2, 2.4, 2.6, 2.8–2.10` (2.7 removed).
   - §9 post-tracker note updated: **B3 serial chain CLOSED** at Task 2.7 merge. `packages/types/index.ts` Phase-2 serial ownership retires. Remaining Phase-2 tasks (2.1, 2.2, 2.4, 2.6, 2.8, 2.9, 2.10) open to general pool per Appendix D's illustrative treatment.

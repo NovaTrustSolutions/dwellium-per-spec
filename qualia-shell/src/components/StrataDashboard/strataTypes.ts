@@ -80,4 +80,6 @@ export type {
     UnifiedTimelineView,
     CommunicationReadStatus,
     CommunicationThreadRollup,
+    ActivityEventSource,
+    PropertyTimelineView,
 } from '../../../../packages/types/index';

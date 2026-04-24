@@ -1,0 +1,58 @@
+{
+  "capturedAt": "2026-04-24T06:01:33.999Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "sign-in-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-properties-module",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-bv-property",
+      "result": {
+        "found": true,
+        "clicked": "H3"
+      }
+    }
+  ],
+  "guard": {
+    "rowCount": 4,
+    "moduleRendered": true,
+    "breakdownRendered": true,
+    "sources": [
+      "communication",
+      "insurance"
+    ],
+    "hasInsurance": true,
+    "hasCommunication": true
+  },
+  "result": {
+    "pngBytes": 793641,
+    "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_10/PropertyTimeline-BV.png"
+  },
+  "probe": {
+    "bvInsurance": 2,
+    "bvCommunications": 2,
+    "bvCompliance": 0,
+    "bvWorkitems": 0
+  }
+}

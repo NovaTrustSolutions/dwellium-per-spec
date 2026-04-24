@@ -725,9 +725,38 @@ export interface PaginatedResponse<T> {
 // Property Workspace Types
 // ═══════════════════════════════════════════════════════════════
 
+// ─── Task 2.10 — PropertyTimeline multi-source merge expansion ──
+//
+// Widens the existing ActivityEvent.type union from 3 literals
+// ('workitem' | 'incident' | 'audit') to 6 — adds 'communication',
+// 'compliance', 'insurance' so the /property-activity/{id} handler
+// can emit events from 5 merged sources (Task 2.7 pattern applied
+// to a property-scoped view). audit_log stays a DISTINCT source
+// kept OUT of property-scoped queries per the Ambiguity #3
+// security-critical exclusion (Task 2.7 precedent at
+// strataApi.static.ts:244 — cross-property leak guard).
+//
+// GR-2 widening safety: verified via repo-wide grep at commit time
+// (see commit 1 message body). Only PropertyTimeline.tsx has a
+// switch(type) consumer; it already has a `default` case at L25,
+// so the widening adds no never-branch risk. All other ev.type
+// consumers render ev.type as text or use unrelated unions.
+//
+// Additive-only (GR-2): the 3 original literal values remain valid
+// and all new fields are optional — every pre-existing consumer
+// keeps typechecking. Same discipline as Task 2.2 / 2.1.
+
+export type ActivityEventSource =
+    | 'workitem'
+    | 'incident'
+    | 'audit'
+    | 'communication'
+    | 'compliance'
+    | 'insurance';
+
 export interface ActivityEvent {
     id: string;
-    type: 'workitem' | 'incident' | 'audit';
+    type: ActivityEventSource;
     action: string;
     title: string;
     status?: string;
@@ -740,6 +769,27 @@ export interface ActivityEvent {
     entityType?: string;
     entityId: string;
     details?: Record<string, any>;
+    // Task 2.10 additive optional fields (all optional per GR-2):
+    propertyId?: string | null;
+    sourceId?: string;
+    description?: string;
+    relatedWorkitemId?: string;
+    relatedComplianceId?: string;
+    relatedPolicyId?: string;
+    relatedCommunicationId?: string;
+}
+
+// Aggregate shape returned by the upgraded /property-activity/{id}
+// handler. Mirrors Task 2.7's UnifiedTimelineView pattern but scoped
+// to a single property. Superset of the pre-Task-2.10 return shape
+// ({events: ActivityEvent[]}) so existing consumers reading .events
+// remain unaffected.
+export interface PropertyTimelineView {
+    events: ActivityEvent[];
+    total: number;
+    propertyId: string;
+    sourceBreakdown: Record<ActivityEventSource, number>;
+    generatedAt: string;
 }
 
 export interface PropertyReportCards {

@@ -443,6 +443,119 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
         return f;
     }
     if (path === '/maintenance/history') return loadTable('maintenance_alerts');
+    // Task 2.4 — Forecast static handler. ForecastModule.tsx (rewired
+    // off raw localhost:3000/api/forecast in this PR) consumes via
+    // strataGet<ForecastResult>('/forecast', params). Pure projection
+    // from units.json (rentAmount × occupied units) and the per-property
+    // maintenanceConfig.maintenanceLimit (Task 1.3 field) — no synthetic
+    // data; every number traces back to seed.
+    //
+    // Plan reference: §9 Clarification #1 (L329) — scope-positive,
+    // additive; no existing route changed.
+    //
+    // Security contract per /security-review checklist (mirrors Task
+    // 2.7 / 2.10 multi-source patterns):
+    //   - All numeric query params parseInt-coerced with NaN fallback
+    //     AND bounded (months ∈ [1, 36] matching the UI slider; rent
+    //     change ∈ [-50, 100]; occupancy ∈ [0, 100]).
+    //   - propertyId filter uses strict === on row.id only. No computed-
+    //     key access from input params. Type-confusion (a units row
+    //     filtering as a property) is structurally impossible.
+    //   - When propertyId is set but no row matches, returns the empty-
+    //     forecast aggregate (zeroed months) — never throws. Mirrors
+    //     Task 2.5 /insurance/folioguard-rollup miss-returns-null
+    //     defensive shape.
+    if (path === '/forecast') {
+        const [props, units] = await Promise.all([
+            loadTable('properties') as Promise<any[]>,
+            loadTable('units') as Promise<any[]>,
+        ]);
+
+        // Param coercion with NaN-safe + bounded clamps.
+        const rawMonths = parseInt(params?.months ?? '12', 10);
+        const months = Number.isFinite(rawMonths) ? Math.min(Math.max(rawMonths, 1), 36) : 12;
+        const rawRentChange = parseInt(params?.rentChange ?? '0', 10);
+        const rentChange = Number.isFinite(rawRentChange) ? Math.min(Math.max(rawRentChange, -50), 100) : 0;
+        const rawOcc = params?.occupancy ? parseInt(params.occupancy, 10) : null;
+        const occOverride = rawOcc !== null && Number.isFinite(rawOcc)
+            ? Math.min(Math.max(rawOcc, 0), 100)
+            : null;
+        const propertyId = params?.propertyId || null;
+
+        // Resolve the unit set + property name.
+        const scopedUnits = propertyId ? units.filter(u => u.propertyId === propertyId) : units;
+        const scopedProp = propertyId ? props.find(p => p.id === propertyId) : null;
+        const propertyName = scopedProp ? scopedProp.name : 'All Properties';
+
+        const totalUnits = scopedUnits.length;
+        const occupiedNatural = scopedUnits.filter(u => u.status === 'occupied').length;
+        const naturalOccPct = totalUnits > 0 ? Math.round((occupiedNatural / totalUnits) * 100) : 0;
+        const effectiveOccPct = occOverride !== null ? occOverride : naturalOccPct;
+        const effectiveOccupied = totalUnits > 0
+            ? Math.round((effectiveOccPct / 100) * totalUnits)
+            : 0;
+
+        // Base monthly rent = sum of rentAmount across occupied (or
+        // sampled-occupied) units. When override is active we scale by
+        // the override ratio against the natural occupancy so each unit
+        // contributes its own rent rather than an averaged figure.
+        const occupiedUnitsForRent = occOverride !== null
+            ? scopedUnits.slice(0, effectiveOccupied)
+            : scopedUnits.filter(u => u.status === 'occupied');
+        const baseMonthlyRent = occupiedUnitsForRent.reduce(
+            (sum, u) => sum + (Number(u.rentAmount) || 0),
+            0,
+        );
+        const adjustedMonthlyRent = Math.round(baseMonthlyRent * (1 + rentChange / 100));
+
+        // Expense rate: 35% default, or pulled from maintenanceConfig
+        // when present (Task 1.3 field; only 128 BV carries it today —
+        // every other property falls through to 35%).
+        const baseMonthlyExpenseRate = 35;
+        const monthlyExpenses = Math.round(adjustedMonthlyRent * (baseMonthlyExpenseRate / 100));
+
+        // Build N MonthlyForecast rows starting at the current month.
+        const now = new Date();
+        const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthRows = [];
+        for (let i = 0; i < months; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            monthRows.push({
+                month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+                label: `${monthLabels[d.getMonth()]} ${d.getFullYear()}`,
+                projectedRevenue: adjustedMonthlyRent,
+                projectedExpenses: monthlyExpenses,
+                netCashFlow: adjustedMonthlyRent - monthlyExpenses,
+                occupancyRate: effectiveOccPct,
+                occupiedUnits: effectiveOccupied,
+                totalUnits,
+            });
+        }
+
+        const totalRevenue = adjustedMonthlyRent * months;
+        const totalExpenses = monthlyExpenses * months;
+        const breakEvenOccupancy = adjustedMonthlyRent > 0
+            ? Math.min(100, Math.max(0, Math.ceil((monthlyExpenses / adjustedMonthlyRent) * effectiveOccPct)))
+            : 0;
+
+        return {
+            propertyId,
+            propertyName,
+            months: monthRows,
+            summary: {
+                totalRevenue,
+                totalExpenses,
+                totalNet: totalRevenue - totalExpenses,
+                avgOccupancy: effectiveOccPct,
+                breakEvenOccupancy,
+            },
+            assumptions: {
+                occupancyRateOverride: occOverride,
+                rentChangePercent: rentChange,
+                baseMonthlyExpenseRate,
+            },
+        };
+    }
     if (path === '/search/health') return { status: 'ok', indexed: 0 };
     if (path === '/search/saved') return loadTable('saved_searches');
     if (path === '/search/log') return loadTable('search_log');

@@ -13,8 +13,8 @@
 6. `9293ade` — `docs(plan): Task 2.6 closure — §9 tracker row + Appendix D row 7 amend + Changelog v2.8` — 3 surgical edits to `Docs/AppFolio_Parity_Implementation_Plan_v2.md`.
 7. *This report + CDP render proof (commit 7).*
 
-**Merge SHA (post-squash).** TBD — post-merge sweep backfills the squash SHA mechanically per Task 2.3 / 2.5 / 2.7 / 2.2 / 2.1 / 2.10 / 2.4 precedent.
-**Closure date.** 2026-04-24 (branch-push; merge pending /security-review + CI).
+**Merge SHA (post-squash).** `828bb11` — squash-merge on 2026-04-24T12:49:04Z.
+**Closure date.** 2026-04-24.
 
 ---
 

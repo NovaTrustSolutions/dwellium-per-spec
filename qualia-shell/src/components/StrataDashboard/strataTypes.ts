@@ -78,4 +78,6 @@ export type {
     AuditEventCategory,
     AuditEvent,
     UnifiedTimelineView,
+    CommunicationReadStatus,
+    CommunicationThreadRollup,
 } from '../../../../packages/types/index';

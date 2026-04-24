@@ -618,6 +618,28 @@ export interface Report {
     createdAt: string;
 }
 
+// ─── Task 2.2 — Communication seed extension ─────────────────────
+//
+// Additive fields on the existing Communication interface and a new
+// CommunicationThreadRollup aggregate. GR-2 additive-only: every
+// Phase-1 consumer that instantiates a Communication by name
+// (tests, fixtures, existing render paths in CommunicationModule.tsx)
+// continues to typecheck because all new fields are optional.
+//
+// `propertyId` is the join key Task 2.7's /audit/unified-timeline
+// handler already reads defensively at L242 — seeding it here
+// "lights up" the source: 'communication' branch automatically.
+//
+// `threadId` enables threaded conversation grouping and powers the
+// new /communications/thread-rollup route. `preview`, `readStatus`,
+// and `attachmentCount` mirror AppFolio's inbox list-view affordances
+// (short excerpt, unread chip, paperclip icon).
+//
+// Plan reference: v2.3 §8 L305 ("Task 2.2 (Communication seed)") +
+// v2.4 §9 tracker row added at this PR's merge.
+
+export type CommunicationReadStatus = 'unread' | 'read' | 'archived';
+
 export interface Communication {
     id: string;
     workitemId: string | null;
@@ -629,6 +651,26 @@ export interface Communication {
     body: string;
     entityId: string | null;
     createdAt: string;
+    // Task 2.2 — additive fields (all optional, GR-2):
+    propertyId?: string | null;
+    threadId?: string | null;
+    preview?: string;
+    readStatus?: CommunicationReadStatus;
+    attachmentCount?: number;
+}
+
+// Aggregate shape returned by /communications/thread-rollup. Mirrors
+// the Task 2.3 Section8Rollup / Task 2.5 FolioGuardRollup pattern:
+// derivable from communications.json rows at query time; no separate
+// fixture required. Lineage enforced at test time.
+export interface CommunicationThreadRollup {
+    threadId: string | null;
+    propertyId: string | null;
+    participantCount: number;
+    messageCount: number;
+    lastMessageAt: string;
+    channels: ChannelType[];
+    unreadCount: number;
 }
 
 export interface User {

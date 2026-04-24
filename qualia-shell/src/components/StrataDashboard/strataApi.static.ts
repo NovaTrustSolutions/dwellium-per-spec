@@ -309,6 +309,54 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
     }
     if (path === '/notes') return filterBy(await loadTable('notes') as any[], params);
     if (path === '/communications') return filterBy(await loadTable('communications') as any[], params);
+    // Task 2.2 — thread rollup. Aggregates communications.json rows by
+    // threadId into CommunicationThreadRollup objects. Optional
+    // ?propertyId= filter uses strict === on the row's own propertyId.
+    // Rows with threadId === null fall into a solo bucket (keyed by
+    // `__solo-<rowId>` — prefix guarantees no collision with real
+    // threadIds). Mirrors the Task 2.3 Section8Rollup / Task 2.5
+    // FolioGuardRollup / Task 2.7 unified-timeline patterns: pure
+    // function, no SQL, no computed-key access from input params, and
+    // no data source beyond the trusted static fixture. Results sorted
+    // chronologically descending by lastMessageAt.
+    if (path === '/communications/thread-rollup') {
+        const rows = await loadTable('communications') as any[];
+        const propertyFilter = params?.propertyId;
+        const scoped = propertyFilter
+            ? rows.filter(r => r.propertyId === propertyFilter)
+            : rows;
+        const threads = new Map<string, any>();
+        for (const r of scoped) {
+            const key = r.threadId || `__solo-${r.id}`;
+            if (!threads.has(key)) {
+                threads.set(key, {
+                    threadId: r.threadId ?? null,
+                    propertyId: r.propertyId ?? null,
+                    _participants: new Set<string>(),
+                    messageCount: 0,
+                    lastMessageAt: '1970-01-01T00:00:00.000Z',
+                    _channels: new Set<string>(),
+                    unreadCount: 0,
+                });
+            }
+            const t = threads.get(key);
+            t.messageCount++;
+            if (r.fromAddress) t._participants.add(r.fromAddress);
+            if (r.toAddress) t._participants.add(r.toAddress);
+            if (r.channel) t._channels.add(r.channel);
+            if ((r.createdAt || '') > t.lastMessageAt) t.lastMessageAt = r.createdAt;
+            if (r.readStatus === 'unread') t.unreadCount++;
+        }
+        return [...threads.values()].map(t => ({
+            threadId: t.threadId,
+            propertyId: t.propertyId,
+            participantCount: t._participants.size,
+            messageCount: t.messageCount,
+            lastMessageAt: t.lastMessageAt,
+            channels: [...t._channels],
+            unreadCount: t.unreadCount,
+        })).sort((a, b) => (b.lastMessageAt || '').localeCompare(a.lastMessageAt || ''));
+    }
     if (path === '/compliance') return filterBy(await loadTable('compliance') as any[], params);
     // Task 2.3 — audit view returns the full ComplianceRecord list with
     // optional entityType/entityId/itemType/source filters. Replaces the

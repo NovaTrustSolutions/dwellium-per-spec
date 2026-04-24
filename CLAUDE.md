@@ -6,12 +6,14 @@
 
 ---
 
-## Current State (as of 2026-04-22)
+## Current State (as of 2026-04-24)
 
-- **HEAD:** `934c304` (`docs(phase-0.0): close exit gate — all 10 verify steps green`)
-- **Last green CI run:** `24792493110` — `AppFolio Parity Gate` — HEAD at `42c1d31` — `https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/24792493110`
-- **Phase 0.0 closed:** 2026-04-22. Exit gate report: `Docs/Baselines/phase_0_0_exit_gate_report.md`. All 10 verify-steps (0.0.1 – 0.0.9 + 0.0.5b) pass. CI integrated and green on the strict gates (tsc + vitest 89/89 + vite dual-mode build + PII scan strict).
-- **Next phase starting point:** Phase 1 — Top-5 schema extensions, 5 sequential tasks on `packages/types/index.ts`. See `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §7 (Phase 1). Open first PR from HEAD `934c304`.
+- **HEAD:** `40875db` (`feat(phase-2): Task 2.7 — AuditModule unified timeline (B3 chain closure) (#11)`) — will advance to the Task 2.2 squash SHA on PR #12 merge.
+- **Last green CI run:** `24869096898` — `AppFolio Parity Gate` — HEAD at `40875db` — `https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/24869096898`
+- **Phase 0.0 closed:** 2026-04-22. Exit gate report: `Docs/Baselines/phase_0_0_exit_gate_report.md`. All 10 verify-steps (0.0.1 – 0.0.9 + 0.0.5b) pass. CI integrated and green on the strict gates (tsc + vitest 131/131 post-Task-2.2 + vite dual-mode build + PII scan strict).
+- **Phase 1 closed:** 2026-04-23 at HEAD `094b91e1b5991e42b1e5f5639553d6a1a541c2ef` (Task 1.5 merge). See `Docs/Phase1_Completion_Report.md`.
+- **Phase 2 — B3 serial chain closed:** 2026-04-23 at HEAD `40875db` (Task 2.7 merge). Tasks 2.3 / 2.5 / 2.7 closed sequentially on `packages/types/index.ts`. Remaining Phase-2 tasks open to general pool.
+- **Next phase starting point:** Phase 2 general pool post-B3. Remaining tasks after this PR: **2.1, 2.4, 2.6, 2.8, 2.9, 2.10** (Task 2.2 Communication closes here). See `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 tracker.
 
 ---
 

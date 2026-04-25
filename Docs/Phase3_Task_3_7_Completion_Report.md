@@ -8,10 +8,10 @@
 
 1. `59b84c1` — `feat(phase-3): Task 3.7 commit C — ProjectsModule GR-13 retrofit (ErrorBoundary + 4 Sentry breadcrumbs + 7 testids + isStaticMode write-guard)` — single-file diff to `qualia-shell/src/components/StrataDashboard/modules/ProjectsModule.tsx` (+92 / −9). Vitest delta on commit: 0 (171/171 baseline preserved — render contract unchanged).
 2. `c4cc363` — `test(phase-3): Task 3.7 commit D — projects.module.test.tsx (3 render-level it-blocks closing plan v2 §15 L491 GR-13 unit-test mandate)` — new sibling file `qualia-shell/src/test/appfolioParity/projects.module.test.tsx` (267 lines). Vitest delta on commit: **+3** (171 → 174; 26 → 27 test files).
-3. `<F-TBD>` — `docs(phase-3): Task 3.7 commit F — CDP render proof + plan v2 sweep (§9 Phase-3 sub-tracker + v2.11 changelog) + completion report` — bundled docs/artifact commit. Vitest delta on commit: 0 (no source changes).
+3. `5687015` — `docs(phase-3): Task 3.7 commit F — CDP render proof + plan v2 sweep (§9 Phase-3 sub-tracker + v2.11 changelog) + completion report` — bundled docs/artifact commit. Vitest delta on commit: 0 (no source changes).
 
-**Merge SHA (post-squash).** `<TBD>` — set at PR squash-merge time.
-**Closure date.** `<TBD>` — set at PR close.
+**Merge SHA (post-squash).** `fe9b642` — squash-merge on 2026-04-25 (PR #19).
+**Closure date.** 2026-04-25.
 
 ---
 
@@ -211,11 +211,11 @@ Atomic per-commit rollback supported (3 commits total in branch — retrofit / t
 
 ```
 # Full revert (restore pre-Task-3.7 state — back to main@f2d60ca)
-git revert <F-SHA> c4cc363 59b84c1
+git revert 5687015 c4cc363 59b84c1
 
 # Selective: revert only the docs (keep retrofit + tests; plan v2 + completion
 # report + CDP artifacts removed; runtime behavior unchanged).
-git revert <F-SHA>
+git revert 5687015
 
 # Selective: revert only the tests (keep retrofit + docs; vitest 174 → 171
 # baseline; render-test coverage of GR-13 mandate retracts).
@@ -252,6 +252,6 @@ git revert 59b84c1
 - Task 3.8 (CorporateReview GR-13 retrofit) becomes unblocked — opens by branching off `main` post-3.7-merge (which inherits commit C's Inner-wrapper + commit D's test-mock pattern as the canonical template).
 - Phase-2 → Phase-3 ledger drops from 10 → 8 deferred items per §7 entry #5.
 
-**Next DoR.** Phase-3 Task 3.8 (CorporateReview) DoR opens once Task 3.7 squash-merges. Expected DoR shape: PRE0 numbering already cleared (3.8); PRE1 codebase reality contact on `CorporateReview.tsx` (locate strataApi import line, write sites, view structure for testid placement); PRE2 test baseline (174 → predicted 177 with 3 it-blocks); (a)–(f) ack chain with Task 3.7 as precedent reference instead of Task 2.8 (since Task 3.7 sits between SentimentModule and CorporateReview as the closest mirrored shape). Recommended branch name: `feat/phase-3-task-3.8-corporate-review-gr13-retrofit` off `main@<3.7-merge-SHA>`.
+**Next DoR.** Phase-3 Task 3.8 (CorporateReview) DoR opens once Task 3.7 squash-merges. Expected DoR shape: PRE0 numbering already cleared (3.8); PRE1 codebase reality contact on `CorporateReview.tsx` (locate strataApi import line, write sites, view structure for testid placement); PRE2 test baseline (174 → predicted 177 with 3 it-blocks); (a)–(f) ack chain with Task 3.7 as precedent reference instead of Task 2.8 (since Task 3.7 sits between SentimentModule and CorporateReview as the closest mirrored shape). Recommended branch name: `feat/phase-3-task-3.8-corporate-review-gr13-retrofit` off `main@fe9b642`.
 
 **Phase-3 chain ETA.** With 3.8 + 3.9 each estimated at the same effort envelope as 3.7 (1 day end-to-end including DoR / strict gate / CDP / report / sweep / merge), the full 3-PR chain closes within ~3 working days from 3.7 merge — assuming no adverse §7 item #3 (Playwright event-delegation) discovery escalates into a blocker.

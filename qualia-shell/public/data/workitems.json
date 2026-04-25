@@ -32600,5 +32600,43 @@
     "createdAt": "2026-04-24T00:00:00.000Z",
     "updatedAt": "2026-04-24T00:00:00.000Z",
     "dueDate": null
+  },
+  {
+    "id": "wi-task-2-9-project-01",
+    "type": "work_order",
+    "title": "Replace sheetrock — Unit 2767-3",
+    "description": "Sheetrock replacement project for Woodland Parc Townhomes Unit 2767-3 (workOrderNumber 19441-1). Assigned vendor: CS Cooper Residential Contractors LLC.",
+    "status": "in_progress",
+    "priority": "medium",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "unitId": "7837b811-5346-4f79-802f-37e16ee37b74",
+    "assignedTo": null,
+    "createdBy": null,
+    "domain": "maintenance",
+    "tags": [
+      "project",
+      "sheetrock",
+      "task-2-9"
+    ],
+    "metadata": {
+      "vendorId": "e013ce70-3930-43db-94fc-743bcac83779",
+      "vendorName": "CS Cooper Residential Contractors LLC",
+      "source": "task-2-9-projects-seed"
+    },
+    "parentId": null,
+    "threadChannel": "management",
+    "resolvedAt": null,
+    "trackingState": null,
+    "moduleKey": "projects",
+    "queueKey": null,
+    "deactivatedAt": null,
+    "reactivatedAt": null,
+    "recordType": null,
+    "recordId": null,
+    "createdAt": "2026-04-25T00:00:00.000Z",
+    "updatedAt": "2026-04-25T00:00:00.000Z",
+    "dueDate": null,
+    "workOrderNumber": "19441-1",
+    "trade": "drywall"
   }
 ]

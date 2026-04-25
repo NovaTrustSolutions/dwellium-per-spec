@@ -556,6 +556,125 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
             },
         };
     }
+    // Task 2.8 — Sentiment static handlers. SentimentModule.tsx (rewired
+    // off raw localhost:3000/api/sentiment/* in this PR) consumes via
+    // strataGet<SentimentScoreView>('/sentiment/scores'). Three handlers
+    // are added per plan v2.8 §8 L330: /sentiment/scores (portfolio
+    // view), /sentiment/history?tenantId=X (per-tenant response log),
+    // /sentiment/by-entity?entityType=property&entityId=Y (rollup).
+    // Backed by qualia-shell/public/data/sentiment_scores.json (NEW
+    // fixture, 40 rows / 20 at-risk / deterministic from sorted
+    // entities.json tenantIds — no real AppFolio PII; entities.json
+    // explicitly NOT touched per plan §8 L330).
+    //
+    // Plan reference: §8 Clarification #2 (L330) — scope-positive,
+    // additive; no existing route changed.
+    //
+    // Security contract per /security-review checklist (mirrors Task
+    // 2.4 / 2.7 / 2.10 multi-source patterns):
+    //   - Numeric query params (none currently — placeholders only —
+    //     guarded with strict === filters).
+    //   - tenantId / entityId / propertyId filters use strict === on
+    //     row.tenantId / row.propertyId only. No computed-key access
+    //     from input params; type-confusion structurally impossible.
+    //   - Unknown tenantId on /sentiment/history returns the empty-
+    //     responses aggregate (zeroed stats). Mirrors Task 2.5
+    //     /insurance/folioguard-rollup miss-returns-defensive shape.
+    //   - Unknown entityId on /sentiment/by-entity returns the
+    //     zero-aggregate shape. Never throws.
+    if (path === '/sentiment/scores') {
+        const all = await loadTable('sentiment_scores') as any[];
+        let scoped = all;
+        if (params?.propertyId) {
+            scoped = scoped.filter(r => r.propertyId === params.propertyId);
+        }
+        if (params?.atRisk === 'true') {
+            scoped = scoped.filter(r => r.atRisk === true);
+        }
+        const totalTracked = scoped.length;
+        const atRiskCount = scoped.filter(r => r.atRisk === true).length;
+        const improvingCount = scoped.filter(r => r.trend === 'improving').length;
+        const avgScore = totalTracked > 0
+            ? +(scoped.reduce((s, r) => s + (Number(r.avgScore) || 0), 0) / totalTracked).toFixed(2)
+            : 0;
+        return {
+            trends: scoped,
+            totalTracked,
+            atRiskCount,
+            improvingCount,
+            avgScore,
+        };
+    }
+    if (path === '/sentiment/history') {
+        const tenantId = params?.tenantId;
+        if (!tenantId) {
+            return {
+                tenantId: '',
+                tenantName: '',
+                responses: [],
+                stats: { count: 0, avg: 0, min: 0, max: 0, latestDate: null },
+            };
+        }
+        const all = await loadTable('sentiment_scores') as any[];
+        const row = all.find(r => r.tenantId === tenantId);
+        if (!row) {
+            return {
+                tenantId,
+                tenantName: '',
+                responses: [],
+                stats: { count: 0, avg: 0, min: 0, max: 0, latestDate: null },
+            };
+        }
+        const responses = Array.isArray(row.responses) ? row.responses : [];
+        const scores = responses.map((r: any) => Number(r.score) || 0);
+        const count = responses.length;
+        const avg = count > 0 ? +(scores.reduce((a: number, b: number) => a + b, 0) / count).toFixed(2) : 0;
+        const min = count > 0 ? Math.min(...scores) : 0;
+        const max = count > 0 ? Math.max(...scores) : 0;
+        const latestDate = count > 0
+            ? responses
+                .map((r: any) => r.surveyDate)
+                .filter(Boolean)
+                .sort()
+                .slice(-1)[0] ?? null
+            : null;
+        return {
+            tenantId: row.tenantId,
+            tenantName: row.tenantName,
+            responses,
+            stats: { count, avg, min, max, latestDate },
+        };
+    }
+    if (path === '/sentiment/by-entity') {
+        const entityType = params?.entityType || '';
+        const entityId = params?.entityId || '';
+        const all = await loadTable('sentiment_scores') as any[];
+        let byTenant: any[] = [];
+        let entityName = '';
+        if (entityType === 'property' && entityId) {
+            byTenant = all.filter(r => r.propertyId === entityId);
+            entityName = byTenant[0]?.propertyName || '';
+        } else if (entityType === 'community' && entityId) {
+            // Community rollup: treat entityId as a property name match
+            // (no community-level fixture today; defensive shape only).
+            byTenant = all.filter(r => r.propertyName === entityId);
+            entityName = entityId;
+        }
+        const totalTracked = byTenant.length;
+        const atRiskCount = byTenant.filter(r => r.atRisk === true).length;
+        const avgScore = totalTracked > 0
+            ? +(byTenant.reduce((s, r) => s + (Number(r.avgScore) || 0), 0) / totalTracked).toFixed(2)
+            : 0;
+        return {
+            entityType,
+            entityId,
+            entityName,
+            totalTracked,
+            atRiskCount,
+            avgScore,
+            byTenant,
+        };
+    }
     if (path === '/search/health') return { status: 'ok', indexed: 0 };
     if (path === '/search/saved') return loadTable('saved_searches');
     if (path === '/search/log') return loadTable('search_log');

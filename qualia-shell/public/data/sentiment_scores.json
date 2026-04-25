@@ -1,0 +1,1715 @@
+[
+  {
+    "id": "00401282-ba5e-4ce6-8a88-28945fa0be97",
+    "tenantId": "00401282-ba5e-4ce6-8a88-28945fa0be97",
+    "tenantName": "Jasmine Baker*",
+    "unit": "B07",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 1,
+    "avgScore": 2.4,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-00401282-0",
+        "score": 1,
+        "comments": "Slow response on a leak request last week.",
+        "surveyDate": "2026-04-24T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-00401282-1",
+        "score": 2,
+        "comments": "Heat is uneven during cold spells.",
+        "surveyDate": "2026-04-10T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-00401282-2",
+        "score": 3,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-03-27T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "004316e3-c3e3-4efd-b711-55d621e8a37e",
+    "tenantId": "004316e3-c3e3-4efd-b711-55d621e8a37e",
+    "tenantName": "Loretta Bailey*",
+    "unit": "H03",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 2,
+    "avgScore": 2.5,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-004316e3-0",
+        "score": 2,
+        "comments": "Heat is uneven during cold spells.",
+        "surveyDate": "2026-04-23T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-004316e3-1",
+        "score": 3,
+        "comments": "Noise issues persist on the third floor.",
+        "surveyDate": "2026-04-09T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-004316e3-2",
+        "score": 3,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-03-26T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-004316e3-3",
+        "score": 3,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-03-12T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "00bf7583-7260-4cbe-bf74-92973c7f3ad5",
+    "tenantId": "00bf7583-7260-4cbe-bf74-92973c7f3ad5",
+    "tenantName": "Bennett, Tommy D.",
+    "unit": "D13",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 1,
+    "avgScore": 2.6,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-00bf7583-0",
+        "score": 1,
+        "comments": "Noise issues persist on the third floor.",
+        "surveyDate": "2026-04-22T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-00bf7583-1",
+        "score": 3,
+        "comments": "Package room access is occasionally an issue.",
+        "surveyDate": "2026-04-08T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-00bf7583-2",
+        "score": 3,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-03-25T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-00bf7583-3",
+        "score": 3,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-03-11T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-00bf7583-4",
+        "score": 3,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-02-25T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "0171bf3e-c52d-4530-90ab-9bf92224d527",
+    "tenantId": "0171bf3e-c52d-4530-90ab-9bf92224d527",
+    "tenantName": "Collin Reid",
+    "unit": "2814-5",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 2,
+    "avgScore": 2.4,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0171bf3e-0",
+        "score": 2,
+        "comments": "Package room access is occasionally an issue.",
+        "surveyDate": "2026-04-21T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0171bf3e-1",
+        "score": 2,
+        "comments": "Trash chute jammed twice this month.",
+        "surveyDate": "2026-04-07T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0171bf3e-2",
+        "score": 3,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-03-24T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "01897c4c-fa76-4842-950d-a499b2184ead",
+    "tenantId": "01897c4c-fa76-4842-950d-a499b2184ead",
+    "tenantName": "Evan Devine",
+    "unit": "2771-2",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 1,
+    "avgScore": 2.5,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-01897c4c-0",
+        "score": 1,
+        "comments": "Trash chute jammed twice this month.",
+        "surveyDate": "2026-04-20T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-01897c4c-1",
+        "score": 3,
+        "comments": "Hallway lighting flickers at night.",
+        "surveyDate": "2026-04-06T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-01897c4c-2",
+        "score": 3,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-03-23T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-01897c4c-3",
+        "score": 3,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-03-09T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "025a8d72-7d85-45c2-b471-bd76387d614b",
+    "tenantId": "025a8d72-7d85-45c2-b471-bd76387d614b",
+    "tenantName": "Aiwane Iboaya",
+    "unit": "2806-5",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 2,
+    "avgScore": 2.6,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-025a8d72-0",
+        "score": 2,
+        "comments": "Hallway lighting flickers at night.",
+        "surveyDate": "2026-04-24T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-025a8d72-1",
+        "score": 3,
+        "comments": "Renewal pricing felt high relative to the area.",
+        "surveyDate": "2026-04-10T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-025a8d72-2",
+        "score": 3,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-03-27T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-025a8d72-3",
+        "score": 3,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-03-13T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-025a8d72-4",
+        "score": 3,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-02-27T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "0357ab21-cc28-4c78-97f2-9d62f0295d17",
+    "tenantId": "0357ab21-cc28-4c78-97f2-9d62f0295d17",
+    "tenantName": "JONATHAN LAOSY",
+    "unit": "2826-4",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 1,
+    "avgScore": 2.4,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0357ab21-0",
+        "score": 1,
+        "comments": "Renewal pricing felt high relative to the area.",
+        "surveyDate": "2026-04-23T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0357ab21-1",
+        "score": 2,
+        "comments": "Pest control follow-up was delayed.",
+        "surveyDate": "2026-04-09T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0357ab21-2",
+        "score": 3,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-03-26T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "03cc5612-ae06-4b26-8b2e-9261bd4808b1",
+    "tenantId": "03cc5612-ae06-4b26-8b2e-9261bd4808b1",
+    "tenantName": "Ashley West",
+    "unit": "D14",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 2,
+    "avgScore": 2.5,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-03cc5612-0",
+        "score": 2,
+        "comments": "Pest control follow-up was delayed.",
+        "surveyDate": "2026-04-22T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-03cc5612-1",
+        "score": 3,
+        "comments": "Garage gate has been intermittent.",
+        "surveyDate": "2026-04-08T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-03cc5612-2",
+        "score": 3,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-03-25T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-03cc5612-3",
+        "score": 3,
+        "comments": "",
+        "surveyDate": "2026-03-11T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "06d14a35-33c1-470a-baea-39eff168979a",
+    "tenantId": "06d14a35-33c1-470a-baea-39eff168979a",
+    "tenantName": "Dennis, Daryl C.",
+    "unit": "E12",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 1,
+    "avgScore": 2.6,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-06d14a35-0",
+        "score": 1,
+        "comments": "Garage gate has been intermittent.",
+        "surveyDate": "2026-04-21T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-06d14a35-1",
+        "score": 3,
+        "comments": "Clarity on lease terms could be better.",
+        "surveyDate": "2026-04-07T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-06d14a35-2",
+        "score": 3,
+        "comments": "",
+        "surveyDate": "2026-03-24T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-06d14a35-3",
+        "score": 3,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-03-10T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-06d14a35-4",
+        "score": 3,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-02-24T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "06fc705e-6e22-4e1d-8c98-5b1babdd03b7",
+    "tenantId": "06fc705e-6e22-4e1d-8c98-5b1babdd03b7",
+    "tenantName": "Camaiya Cotton",
+    "unit": "I04",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 2,
+    "avgScore": 2.4,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-06fc705e-0",
+        "score": 2,
+        "comments": "Clarity on lease terms could be better.",
+        "surveyDate": "2026-04-20T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-06fc705e-1",
+        "score": 2,
+        "comments": "",
+        "surveyDate": "2026-04-06T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-06fc705e-2",
+        "score": 3,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-03-23T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "070d0280-2e6a-4454-b184-cd9ed6fa02db",
+    "tenantId": "070d0280-2e6a-4454-b184-cd9ed6fa02db",
+    "tenantName": "Carolyn Stokes*",
+    "unit": "C10",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 1,
+    "avgScore": 2.5,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-070d0280-0",
+        "score": 1,
+        "comments": "",
+        "surveyDate": "2026-04-24T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-070d0280-1",
+        "score": 3,
+        "comments": "Slow response on a leak request last week.",
+        "surveyDate": "2026-04-10T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-070d0280-2",
+        "score": 3,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-03-27T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-070d0280-3",
+        "score": 3,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-03-13T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "07841802-fe6a-4a5e-a1d5-6072423e5117",
+    "tenantId": "07841802-fe6a-4a5e-a1d5-6072423e5117",
+    "tenantName": "Vera Ilyushina",
+    "unit": "2783-1",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 2,
+    "avgScore": 2.6,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-07841802-0",
+        "score": 2,
+        "comments": "Slow response on a leak request last week.",
+        "surveyDate": "2026-04-23T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-07841802-1",
+        "score": 3,
+        "comments": "Heat is uneven during cold spells.",
+        "surveyDate": "2026-04-09T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-07841802-2",
+        "score": 3,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-03-26T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-07841802-3",
+        "score": 3,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-03-12T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-07841802-4",
+        "score": 3,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-02-26T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "08793d48-9690-4051-9c8c-6f99f8733af0",
+    "tenantId": "08793d48-9690-4051-9c8c-6f99f8733af0",
+    "tenantName": "Willie White",
+    "unit": "B03",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 1,
+    "avgScore": 2.4,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-08793d48-0",
+        "score": 1,
+        "comments": "Heat is uneven during cold spells.",
+        "surveyDate": "2026-04-22T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-08793d48-1",
+        "score": 2,
+        "comments": "Noise issues persist on the third floor.",
+        "surveyDate": "2026-04-08T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-08793d48-2",
+        "score": 3,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-03-25T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "0963d9e6-df58-4d5f-a569-a33149edcb49",
+    "tenantId": "0963d9e6-df58-4d5f-a569-a33149edcb49",
+    "tenantName": "Daniel, Varchon D.",
+    "unit": "G07",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 2,
+    "avgScore": 2.5,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0963d9e6-0",
+        "score": 2,
+        "comments": "Noise issues persist on the third floor.",
+        "surveyDate": "2026-04-21T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0963d9e6-1",
+        "score": 3,
+        "comments": "Package room access is occasionally an issue.",
+        "surveyDate": "2026-04-07T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0963d9e6-2",
+        "score": 3,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-03-24T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0963d9e6-3",
+        "score": 3,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-03-10T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "0aff5ad4-035b-46e2-8c99-1fd860b69a8c",
+    "tenantId": "0aff5ad4-035b-46e2-8c99-1fd860b69a8c",
+    "tenantName": "Jacqueline Greenlee",
+    "unit": "C01",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 1,
+    "avgScore": 2.6,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0aff5ad4-0",
+        "score": 1,
+        "comments": "Package room access is occasionally an issue.",
+        "surveyDate": "2026-04-20T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0aff5ad4-1",
+        "score": 3,
+        "comments": "Trash chute jammed twice this month.",
+        "surveyDate": "2026-04-06T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0aff5ad4-2",
+        "score": 3,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-03-23T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0aff5ad4-3",
+        "score": 3,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-03-09T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0aff5ad4-4",
+        "score": 3,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-02-23T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "0b52c755-7629-4986-91b8-3e495e0459f8",
+    "tenantId": "0b52c755-7629-4986-91b8-3e495e0459f8",
+    "tenantName": "Cook, Carisa",
+    "unit": "E02",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 2,
+    "avgScore": 2.4,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0b52c755-0",
+        "score": 2,
+        "comments": "Trash chute jammed twice this month.",
+        "surveyDate": "2026-04-24T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0b52c755-1",
+        "score": 2,
+        "comments": "Hallway lighting flickers at night.",
+        "surveyDate": "2026-04-10T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0b52c755-2",
+        "score": 3,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-03-27T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "0ce6d9b0-6fea-40f5-bd76-430b78e24f3f",
+    "tenantId": "0ce6d9b0-6fea-40f5-bd76-430b78e24f3f",
+    "tenantName": "Kendrick Minton",
+    "unit": "E16",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 1,
+    "avgScore": 2.5,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0ce6d9b0-0",
+        "score": 1,
+        "comments": "Hallway lighting flickers at night.",
+        "surveyDate": "2026-04-23T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0ce6d9b0-1",
+        "score": 3,
+        "comments": "Renewal pricing felt high relative to the area.",
+        "surveyDate": "2026-04-09T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0ce6d9b0-2",
+        "score": 3,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-03-26T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0ce6d9b0-3",
+        "score": 3,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-03-12T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "0cfbda91-0d1b-49cc-bc21-65daefd16da1",
+    "tenantId": "0cfbda91-0d1b-49cc-bc21-65daefd16da1",
+    "tenantName": "Makayla Weems",
+    "unit": "A06",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 2,
+    "avgScore": 2.6,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0cfbda91-0",
+        "score": 2,
+        "comments": "Renewal pricing felt high relative to the area.",
+        "surveyDate": "2026-04-22T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0cfbda91-1",
+        "score": 3,
+        "comments": "Pest control follow-up was delayed.",
+        "surveyDate": "2026-04-08T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0cfbda91-2",
+        "score": 3,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-03-25T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0cfbda91-3",
+        "score": 3,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-03-11T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0cfbda91-4",
+        "score": 3,
+        "comments": "",
+        "surveyDate": "2026-02-25T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "0e166a70-b725-4131-a0ac-0eac5618c072",
+    "tenantId": "0e166a70-b725-4131-a0ac-0eac5618c072",
+    "tenantName": "Patricia Neal*",
+    "unit": "I06",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 1,
+    "avgScore": 2.4,
+    "trend": "declining",
+    "consecutiveDeclines": 3,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0e166a70-0",
+        "score": 1,
+        "comments": "Pest control follow-up was delayed.",
+        "surveyDate": "2026-04-21T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0e166a70-1",
+        "score": 2,
+        "comments": "Garage gate has been intermittent.",
+        "surveyDate": "2026-04-07T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0e166a70-2",
+        "score": 3,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-03-24T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "0e855116-143d-43f6-96b1-ee3e886cf3a7",
+    "tenantId": "0e855116-143d-43f6-96b1-ee3e886cf3a7",
+    "tenantName": "Dain Barrow",
+    "unit": "2782-6",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 2,
+    "avgScore": 2.5,
+    "trend": "declining",
+    "consecutiveDeclines": 4,
+    "atRisk": true,
+    "responses": [
+      {
+        "id": "sr-0e855116-0",
+        "score": 2,
+        "comments": "Garage gate has been intermittent.",
+        "surveyDate": "2026-04-20T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0e855116-1",
+        "score": 3,
+        "comments": "Clarity on lease terms could be better.",
+        "surveyDate": "2026-04-06T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0e855116-2",
+        "score": 3,
+        "comments": "",
+        "surveyDate": "2026-03-23T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0e855116-3",
+        "score": 3,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-03-09T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "0e9213db-78db-4f92-8bf9-933a85562cec",
+    "tenantId": "0e9213db-78db-4f92-8bf9-933a85562cec",
+    "tenantName": "Blunt, Vanessa V.",
+    "unit": "D14",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 5,
+    "avgScore": 4.3,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-0e9213db-0",
+        "score": 5,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-04-24T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0e9213db-1",
+        "score": 4,
+        "comments": "",
+        "surveyDate": "2026-04-10T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0e9213db-2",
+        "score": 4,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-03-27T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0e9213db-3",
+        "score": 4,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-03-13T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-0e9213db-4",
+        "score": 4,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-02-27T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "0fed4e87-4257-4c56-980b-50598efa5d12",
+    "tenantId": "0fed4e87-4257-4c56-980b-50598efa5d12",
+    "tenantName": "Alexandre Zayat Jardim",
+    "unit": "2773-2",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 3,
+    "avgScore": 3.5,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-0fed4e87-0",
+        "score": 3,
+        "comments": "",
+        "surveyDate": "2026-04-23T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-0fed4e87-1",
+        "score": 3,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-04-09T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-0fed4e87-2",
+        "score": 4,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-03-26T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "1011d1a8-0cea-49fb-a94d-c25a3d06def1",
+    "tenantId": "1011d1a8-0cea-49fb-a94d-c25a3d06def1",
+    "tenantName": "TRENA CAMPBELL",
+    "unit": "D10",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 4,
+    "avgScore": 3.9,
+    "trend": "improving",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-1011d1a8-0",
+        "score": 4,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-04-22T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-1011d1a8-1",
+        "score": 3,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-04-08T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-1011d1a8-2",
+        "score": 4,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-03-25T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-1011d1a8-3",
+        "score": 3,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-03-11T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "111258fb-e84f-4030-a1c4-4f7c9b6941ca",
+    "tenantId": "111258fb-e84f-4030-a1c4-4f7c9b6941ca",
+    "tenantName": "Raymond Campbell",
+    "unit": "2810-5",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 5,
+    "avgScore": 4.3,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-111258fb-0",
+        "score": 5,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-04-21T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-111258fb-1",
+        "score": 4,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-04-07T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-111258fb-2",
+        "score": 4,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-03-24T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-111258fb-3",
+        "score": 4,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-03-10T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-111258fb-4",
+        "score": 4,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-02-24T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "116d66c9-427d-4490-b767-1b2030917960",
+    "tenantId": "116d66c9-427d-4490-b767-1b2030917960",
+    "tenantName": "Bohler Featherston",
+    "unit": "2761-3",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 3,
+    "avgScore": 3.5,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-116d66c9-0",
+        "score": 3,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-04-20T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-116d66c9-1",
+        "score": 3,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-04-06T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-116d66c9-2",
+        "score": 4,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-03-23T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "1191485d-d1cf-4f74-ab5b-63335e7e8ff4",
+    "tenantId": "1191485d-d1cf-4f74-ab5b-63335e7e8ff4",
+    "tenantName": "Carisa Laney",
+    "unit": "D02",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 4,
+    "avgScore": 3.9,
+    "trend": "improving",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-1191485d-0",
+        "score": 4,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-04-24T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-1191485d-1",
+        "score": 3,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-04-10T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-1191485d-2",
+        "score": 4,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-03-27T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-1191485d-3",
+        "score": 3,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-03-13T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "12484114-1516-47b1-8e1d-8406a458a400",
+    "tenantId": "12484114-1516-47b1-8e1d-8406a458a400",
+    "tenantName": "William Pryor*",
+    "unit": "J01",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 5,
+    "avgScore": 4.3,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-12484114-0",
+        "score": 5,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-04-23T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-12484114-1",
+        "score": 4,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-04-09T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-12484114-2",
+        "score": 4,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-03-26T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-12484114-3",
+        "score": 4,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-03-12T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-12484114-4",
+        "score": 4,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-02-26T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "1388e23d-a705-42e8-9cd1-56d25101259f",
+    "tenantId": "1388e23d-a705-42e8-9cd1-56d25101259f",
+    "tenantName": "Daryl Dennis",
+    "unit": "E12",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 3,
+    "avgScore": 3.5,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-1388e23d-0",
+        "score": 3,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-04-22T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-1388e23d-1",
+        "score": 3,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-04-08T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-1388e23d-2",
+        "score": 4,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-03-25T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "14622c11-394f-4f54-b404-eb8167d110fb",
+    "tenantId": "14622c11-394f-4f54-b404-eb8167d110fb",
+    "tenantName": "Arredondo, Ethan T.",
+    "unit": "2814-5",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 4,
+    "avgScore": 3.9,
+    "trend": "improving",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-14622c11-0",
+        "score": 4,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-04-21T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-14622c11-1",
+        "score": 3,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-04-07T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-14622c11-2",
+        "score": 4,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-03-24T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-14622c11-3",
+        "score": 3,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-03-10T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "15070c1b-dc26-421b-87e8-b59de2129c08",
+    "tenantId": "15070c1b-dc26-421b-87e8-b59de2129c08",
+    "tenantName": "April Garrett",
+    "unit": "E06",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 5,
+    "avgScore": 4.3,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-15070c1b-0",
+        "score": 5,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-04-20T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-15070c1b-1",
+        "score": 4,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-04-06T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-15070c1b-2",
+        "score": 4,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-03-23T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-15070c1b-3",
+        "score": 4,
+        "comments": "",
+        "surveyDate": "2026-03-09T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-15070c1b-4",
+        "score": 4,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-02-23T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "150e5084-9f98-4cb4-b915-0116bb97c169",
+    "tenantId": "150e5084-9f98-4cb4-b915-0116bb97c169",
+    "tenantName": "Jake Mitchell",
+    "unit": "2777-2",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 3,
+    "avgScore": 3.5,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-150e5084-0",
+        "score": 3,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-04-24T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-150e5084-1",
+        "score": 3,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-04-10T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-150e5084-2",
+        "score": 4,
+        "comments": "",
+        "surveyDate": "2026-03-27T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "15e72ab4-bee7-4416-a5c2-b5d46c41e2fb",
+    "tenantId": "15e72ab4-bee7-4416-a5c2-b5d46c41e2fb",
+    "tenantName": "Shayla Ross",
+    "unit": "2779-2",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 4,
+    "avgScore": 3.9,
+    "trend": "improving",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-15e72ab4-0",
+        "score": 4,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-04-23T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-15e72ab4-1",
+        "score": 3,
+        "comments": "",
+        "surveyDate": "2026-04-09T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-15e72ab4-2",
+        "score": 4,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-03-26T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-15e72ab4-3",
+        "score": 3,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-03-12T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "15fb1bbe-e7af-47fb-80d9-70823d0ca61e",
+    "tenantId": "15fb1bbe-e7af-47fb-80d9-70823d0ca61e",
+    "tenantName": "Eric Shelby",
+    "unit": "2802-5",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 5,
+    "avgScore": 4.3,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-15fb1bbe-0",
+        "score": 5,
+        "comments": "",
+        "surveyDate": "2026-04-22T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-15fb1bbe-1",
+        "score": 4,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-04-08T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-15fb1bbe-2",
+        "score": 4,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-03-25T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-15fb1bbe-3",
+        "score": 4,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-03-11T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-15fb1bbe-4",
+        "score": 4,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-02-25T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "19030389-f0d0-4cd5-a62b-6a5d567ce7c9",
+    "tenantId": "19030389-f0d0-4cd5-a62b-6a5d567ce7c9",
+    "tenantName": "Kanneshia Burdett*",
+    "unit": "J07",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 3,
+    "avgScore": 3.5,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-19030389-0",
+        "score": 3,
+        "comments": "Maintenance response time has been excellent.",
+        "surveyDate": "2026-04-21T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-19030389-1",
+        "score": 3,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-04-07T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-19030389-2",
+        "score": 4,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-03-24T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "19ec3c67-ef2d-40aa-a007-4bc4f6739956",
+    "tenantId": "19ec3c67-ef2d-40aa-a007-4bc4f6739956",
+    "tenantName": "Armour, Stancer",
+    "unit": "A11",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 4,
+    "avgScore": 3.9,
+    "trend": "improving",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-19ec3c67-0",
+        "score": 4,
+        "comments": "Unit repairs were completed on schedule.",
+        "surveyDate": "2026-04-20T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-19ec3c67-1",
+        "score": 3,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-04-06T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-19ec3c67-2",
+        "score": 4,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-03-23T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-19ec3c67-3",
+        "score": 3,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-03-09T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "1a78362e-fa81-4e3a-a3a9-d9bc69ef7758",
+    "tenantId": "1a78362e-fa81-4e3a-a3a9-d9bc69ef7758",
+    "tenantName": "Keith Sheffield",
+    "unit": "I05",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 5,
+    "avgScore": 4.3,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-1a78362e-0",
+        "score": 5,
+        "comments": "Appreciate the parking signage update.",
+        "surveyDate": "2026-04-24T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-1a78362e-1",
+        "score": 4,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-04-10T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-1a78362e-2",
+        "score": 4,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-03-27T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-1a78362e-3",
+        "score": 4,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-03-13T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-1a78362e-4",
+        "score": 4,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-02-27T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "204360ab-41d8-4a39-b2ae-77302941a90f",
+    "tenantId": "204360ab-41d8-4a39-b2ae-77302941a90f",
+    "tenantName": "Bailey, Loretta J.",
+    "unit": "H03",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 3,
+    "avgScore": 3.5,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-204360ab-0",
+        "score": 3,
+        "comments": "Trash pickup is consistent and reliable.",
+        "surveyDate": "2026-04-23T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-204360ab-1",
+        "score": 3,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-04-09T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-204360ab-2",
+        "score": 4,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-03-26T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  },
+  {
+    "id": "20543c49-d067-4d29-8911-d2de76c5f1e4",
+    "tenantId": "20543c49-d067-4d29-8911-d2de76c5f1e4",
+    "tenantName": "ShanQuavious Parks*",
+    "unit": "H11",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 4,
+    "avgScore": 3.9,
+    "trend": "improving",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-20543c49-0",
+        "score": 4,
+        "comments": "Lobby and common areas look clean.",
+        "surveyDate": "2026-04-22T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-20543c49-1",
+        "score": 3,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-04-08T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-20543c49-2",
+        "score": 4,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-03-25T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-20543c49-3",
+        "score": 3,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-03-11T00:00:00.000Z",
+        "channel": "email"
+      }
+    ]
+  },
+  {
+    "id": "20746c02-4ac4-4ab9-93fc-d3104ab30953",
+    "tenantId": "20746c02-4ac4-4ab9-93fc-d3104ab30953",
+    "tenantName": "Carlos Reed Jr",
+    "unit": "C05",
+    "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+    "propertyName": "Riverwood Club Apartments",
+    "latestScore": 5,
+    "avgScore": 4.3,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-20746c02-0",
+        "score": 5,
+        "comments": "Pool maintenance has been on schedule.",
+        "surveyDate": "2026-04-21T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-20746c02-1",
+        "score": 4,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-04-07T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-20746c02-2",
+        "score": 4,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-03-24T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-20746c02-3",
+        "score": 4,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-03-10T00:00:00.000Z",
+        "channel": "sms"
+      },
+      {
+        "id": "sr-20746c02-4",
+        "score": 4,
+        "comments": "Quick turnaround on the renewal paperwork.",
+        "surveyDate": "2026-02-24T00:00:00.000Z",
+        "channel": "manual"
+      }
+    ]
+  },
+  {
+    "id": "21009cd0-beaf-41c8-8d7c-fcf4fdc2de9d",
+    "tenantId": "21009cd0-beaf-41c8-8d7c-fcf4fdc2de9d",
+    "tenantName": "Joel Kreider",
+    "unit": "2818-4",
+    "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+    "propertyName": "Woodland Parc Townhomes",
+    "latestScore": 3,
+    "avgScore": 3.5,
+    "trend": "stable",
+    "consecutiveDeclines": 0,
+    "atRisk": false,
+    "responses": [
+      {
+        "id": "sr-21009cd0-0",
+        "score": 3,
+        "comments": "Move-in walkthrough was thorough.",
+        "surveyDate": "2026-04-20T00:00:00.000Z",
+        "channel": "manual"
+      },
+      {
+        "id": "sr-21009cd0-1",
+        "score": 3,
+        "comments": "Online portal is easy to use.",
+        "surveyDate": "2026-04-06T00:00:00.000Z",
+        "channel": "email"
+      },
+      {
+        "id": "sr-21009cd0-2",
+        "score": 4,
+        "comments": "Quiet hours have been respected.",
+        "surveyDate": "2026-03-23T00:00:00.000Z",
+        "channel": "sms"
+      }
+    ]
+  }
+]

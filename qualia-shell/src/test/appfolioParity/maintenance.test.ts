@@ -60,14 +60,14 @@ describe('workitems parity — WO 19511-1 fire alarm (Task 1.4)', () => {
         }) as typeof fetch;
     });
 
-    it('seed length is exactly 1151 (+1 Task-1.4 WO 19511 + 9 Task-2.1 Section-8 AHA + 3 Task-2.6 utility WOs)', () => {
+    it('seed length is exactly 1152 (+1 Task-1.4 WO 19511 + 9 Task-2.1 Section-8 AHA + 3 Task-2.6 utility WOs + 1 Task-2.9 project WO 19441-1)', () => {
         const seed = workitemsSeed as unknown as Workitem[];
         // 1138 pre-Task-1.4 baseline + 1 WO 19511-1 (Task 1.4) + 9 AHA
-        // inspections (Task 2.1) + 3 utility accounts (Task 2.6 — this PR:
-        // Duke Energy + Massey Pest on BV, Georgia Power on Riverwood).
-        // Future workitems writers (Task 2.9 per scheduling-pass §6 item
-        // #10 resolution) will bump again with their own deltas + comment.
-        expect(seed).toHaveLength(1151);
+        // inspections (Task 2.1) + 3 utility accounts (Task 2.6:
+        // Duke Energy + Massey Pest on BV, Georgia Power on Riverwood)
+        // + 1 project WO 19441-1 (Task 2.9 — this PR: Replace sheetrock
+        // on Woodland Parc Townhomes Unit 2767-3, vendor CS Cooper).
+        expect(seed).toHaveLength(1152);
     });
 
     it('new WO 19511-1 carries typed residentAvailability (3 windows) + actionsLog (2 entries) + empty labor/PO arrays', () => {
@@ -146,15 +146,24 @@ describe('workitems parity — WO 19511-1 fire alarm (Task 1.4)', () => {
         ));
         expect(taintedOtherTypes, 'non-work_order entries must not carry Task 1.4 fields').toHaveLength(0);
 
-        // Among the ~369 existing work_orders, only WO 19511-1 carries the typed fields.
+        // Among the work_orders, only WO 19511-1 (Task 1.4) and WO 19441-1
+        // (Task 2.9 — Replace sheetrock on Woodland Parc Unit 2767-3,
+        // vendor CS Cooper) legitimately carry Task 1.4 optional fields.
+        // Task 2.9's row uses workOrderNumber + trade; everything else is
+        // undefined.
+        const TASK_2_9_PROJECT_ID = 'wi-task-2-9-project-01';
         const workOrders = seed.filter((w) => w.type === 'work_order');
-        const tainted = workOrders.filter((w) => w.id !== WO_ID && (
-            w.residentAvailability !== undefined ||
-            w.actionsLog !== undefined ||
-            w.laborEntries !== undefined ||
-            w.purchaseOrders !== undefined ||
-            w.workOrderNumber !== undefined
-        ));
-        expect(tainted, 'only WO 19511-1 should carry Task 1.4 typed fields among work_orders').toHaveLength(0);
+        const tainted = workOrders.filter((w) =>
+            w.id !== WO_ID &&
+            w.id !== TASK_2_9_PROJECT_ID &&
+            (
+                w.residentAvailability !== undefined ||
+                w.actionsLog !== undefined ||
+                w.laborEntries !== undefined ||
+                w.purchaseOrders !== undefined ||
+                w.workOrderNumber !== undefined
+            )
+        );
+        expect(tainted, 'only WO 19511-1 (Task 1.4) and WO 19441-1 (Task 2.9) should carry Task 1.4 typed fields among work_orders').toHaveLength(0);
     });
 });

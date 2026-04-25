@@ -8,7 +8,7 @@
 1. `b8fc555` — `feat(phase-2): Task 2.9 commit B — append project WO 19441-1 + bump downstream baseline pins` — append 1 row to `workitems.json` (1151 → 1152) + bump 3 downstream baseline pins (`maintenance.test.ts:63/70` row count, `maintenance.test.ts:132` cross-type contamination guard, `calendar.test.tsx:117/120` row count). Vitest delta on commit: 0.
 2. `c27e1bc` — `test(phase-2): Task 2.9 commit D — projects.test.ts (1 placeholder → 6 it-blocks)` — replace Phase-0 placeholder with 6 contract tests against the new row + the by-entity grouping logic. Vitest delta on commit: +5 (6 new − 1 placeholder).
 
-**Merge SHA (post-squash).** `<TBD-on-merge>` — backfilled mechanically by the post-merge sweep per the Task 2.4 / 2.10 / 2.1 / 2.2 / 2.5 / 2.3 / 2.6 / 2.8 precedent.
+**Merge SHA (post-squash).** `1a7a39b` — squash-merge on 2026-04-25T05:29:08Z (PR #18). 🎉 **Phase-2 closure commit.**
 **Closure date.** 2026-04-25.
 
 ---

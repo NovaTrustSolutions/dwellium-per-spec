@@ -6,14 +6,14 @@
 
 ---
 
-## Current State (as of 2026-04-24)
+## Current State (as of 2026-04-25)
 
-- **HEAD:** `0a7f3ef` (`feat(phase-2): Task 2.8 — Sentiment static handlers + at-risk fixture + SentimentModule rewire (#17)`) — sixth general-pool Phase-2 task landed post-B3.
-- **Last green CI run:** `24921903474` — `AppFolio Parity Gate` — HEAD at `0a7f3ef` — `https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/24921903474`
-- **Phase 0.0 closed:** 2026-04-22. Exit gate report: `Docs/Baselines/phase_0_0_exit_gate_report.md`. All 10 verify-steps (0.0.1 – 0.0.9 + 0.0.5b) pass. CI integrated and green on the strict gates (tsc + vitest 166/166 post-Task-2.8 + vite dual-mode build + PII scan strict).
+- **HEAD:** `1a7a39b` (`feat(phase-2): Task 2.9 — Projects: WO 19441-1 canonical project workitem (Phase-2 closure) (#18)`) — seventh and **final** general-pool Phase-2 task landed post-B3. **🎉 Phase-2 closed.**
+- **Last green CI run:** `24923624351` — `AppFolio Parity Gate` — HEAD at `1a7a39b` — `https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/24923624351`
+- **Phase 0.0 closed:** 2026-04-22. Exit gate report: `Docs/Baselines/phase_0_0_exit_gate_report.md`. All 10 verify-steps (0.0.1 – 0.0.9 + 0.0.5b) pass. CI integrated and green on the strict gates (tsc + vitest 171/171 post-Task-2.9 + vite dual-mode build + PII scan strict).
 - **Phase 1 closed:** 2026-04-23 at HEAD `094b91e1b5991e42b1e5f5639553d6a1a541c2ef` (Task 1.5 merge). See `Docs/Phase1_Completion_Report.md`.
-- **Phase 2 — B3 serial chain closed:** 2026-04-23 at HEAD `40875db` (Task 2.7 merge). Tasks 2.3 / 2.5 / 2.7 closed sequentially on `packages/types/index.ts`. Remaining Phase-2 tasks open to general pool. Task 2.2 (Communication, `b98e84c`) + Task 2.1 (Calendar AHA inspection seed, `67768c9`) + Task 2.10 (PropertyTimeline multi-source merge, `fba4d65`) + Task 2.4 (Forecast static handler + ForecastModule rewire, `17c77b4`) + Task 2.6 (Utilities — utility-vendor workitem seed, `828bb11`) + Task 2.8 (Sentiment — 3 static handlers + at-risk fixture + SentimentModule rewire; `isStaticMode` precedent established, `0a7f3ef`) are the first six general-pool tasks landed post-B3.
-- **Next phase starting point:** Phase 2 general pool post-B3. Remaining tasks: **2.9** (1 item — Phase-2 closure is one merge away). See `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 tracker.
+- **Phase 2 closed:** 2026-04-25 at HEAD `1a7a39b` (Task 2.9 merge). All 10 Phase-2 tasks merged green: B3 serial chain (Tasks 2.3 `36ee8ca` → 2.5 `f6d3fb2` → 2.7 `40875db`, closed 2026-04-23 on `packages/types/index.ts`) + general pool post-B3 (all seven: Task 2.2 Communication seed `b98e84c` → Task 2.1 Calendar AHA inspections `67768c9` → Task 2.10 PropertyTimeline multi-source merge `fba4d65` → Task 2.4 Forecast static handler + ForecastModule rewire `17c77b4` → Task 2.6 Utilities utility-vendor workitem seed `828bb11` → Task 2.8 Sentiment 3 static handlers + at-risk fixture + SentimentModule rewire (`isStaticMode` precedent) `0a7f3ef` → Task 2.9 Projects WO 19441-1 canonical project workitem `1a7a39b`). Plan §9 Phase-2 column flips `R` → `✓` for all 16 verification rows. Per-task completion reports at `Docs/Phase2_Task_2_X_Completion_Report.md` (X = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10).
+- **Next phase starting point:** Phase 3 (AppFolio re-capture). Consolidated Phase-3 deferred-items ledger (10 items spanning Tasks 2.4 / 2.6 / 2.8 / 2.9) lives in `Docs/Phase2_Task_2_9_Completion_Report.md` §8. Top candidates: (i) AppFolio re-capture pipeline for missing tenant/property surfaces (v1 "3,274 captured tenants" → 322 actual; "50-property seed" → 36 actual); (ii) 3-module GR-13 retrofit grouped PR (TenantPortalModule + CorporateReview + ProjectsModule — recommended order: ProjectsModule first since it's already routed through `strataApi.ts`).
 
 ---
 

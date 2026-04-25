@@ -1,0 +1,165 @@
+{
+  "capturedAt": "2026-04-25T07:53:10.239Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "nav-root",
+      "result": {
+        "url": "http://127.0.0.1:5173/"
+      }
+    },
+    {
+      "step": "click-start-overlay",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-property-management",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-projects-nav",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-by-entity",
+      "result": {
+        "moduleRendered": true,
+        "woodlandParcGroupVisible": true,
+        "woodlandParcGroupTestid": "projects-entity-group-property:52d4e301-3cbf-4a32-91eb-d20be9d06959",
+        "replaceSheetrockTitleVisible": true
+      }
+    },
+    {
+      "step": "scroll-to-woodland",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "screenshot-woodland-bucket",
+      "result": {
+        "pngBytes": 515275,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_7/01_projects_by_entity_woodland_parc.png"
+      }
+    },
+    {
+      "step": "click-kanban-tab",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-kanban",
+      "result": {
+        "kanbanColumnCount": 5,
+        "kanbanColumnTestids": [
+          "projects-kanban-column-open",
+          "projects-kanban-column-in_progress",
+          "projects-kanban-column-review",
+          "projects-kanban-column-completed",
+          "projects-kanban-column-cancelled"
+        ]
+      }
+    },
+    {
+      "step": "screenshot-kanban-full",
+      "result": {
+        "pngBytes": 559905,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_7/02_projects_kanban_full.png"
+      }
+    },
+    {
+      "step": "click-all-tab",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-all",
+      "result": {
+        "allViewSwitchable": true
+      }
+    },
+    {
+      "step": "click-by-entity-tab",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-wo-19441-card",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-card-expanded",
+      "result": {
+        "cardFound": true,
+        "buttonsInCard": 1,
+        "markInactiveFound": true,
+        "cardInnerTextSample": "Replace sheetrock — Unit 2767-3projectsheetrocktask-2-9in progressSheetrock replacement project for Woodland Parc Townhomes Unit 2767-3 (workOrderNumber 19441-1). Assigned vendor: CS Cooper Residentia"
+      }
+    },
+    {
+      "step": "click-mark-inactive",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-static-mode-feedback",
+      "result": {
+        "staticModeFeedbackVisible": true
+      }
+    },
+    {
+      "step": "screenshot-static-mode-feedback",
+      "result": {
+        "pngBytes": 532317,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_7/03_projects_static_mode_feedback.png"
+      }
+    },
+    {
+      "step": "guard",
+      "result": {
+        "moduleRendered": true,
+        "byEntityViewVisible": true,
+        "woodlandParcGroupVisible": true,
+        "replaceSheetrockTitleVisible": true,
+        "kanbanViewSwitchable": true,
+        "allViewSwitchable": true,
+        "staticModeFeedbackVisible": true,
+        "zeroConsoleErrors": true,
+        "zeroPageErrors": true,
+        "allPass": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

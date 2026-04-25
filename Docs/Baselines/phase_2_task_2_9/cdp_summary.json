@@ -1,0 +1,91 @@
+{
+  "capturedAt": "2026-04-25T05:06:07.880Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "nav-root",
+      "result": {
+        "url": "http://127.0.0.1:5173/"
+      }
+    },
+    {
+      "step": "click-start-overlay",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-property-management",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-projects-nav",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-dom",
+      "result": {
+        "moduleRendered": true,
+        "woodlandParcGroupVisible": true,
+        "replaceSheetrockTitleVisible": true,
+        "woodlandParcOccurrences": 3,
+        "replaceSheetrockOccurrences": 1
+      }
+    },
+    {
+      "step": "screenshot-full",
+      "result": {
+        "pngBytes": 538944,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_9/02_projects_by_entity_full.png"
+      }
+    },
+    {
+      "step": "scroll-to-woodland",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "screenshot-woodland-bucket",
+      "result": {
+        "pngBytes": 518387,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_9/01_projects_by_entity_woodland_parc.png"
+      }
+    },
+    {
+      "step": "guard",
+      "result": {
+        "moduleRendered": true,
+        "woodlandParcGroupVisible": true,
+        "replaceSheetrockTitleVisible": true,
+        "zeroConsoleErrors": true,
+        "zeroPageErrors": true,
+        "allPass": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

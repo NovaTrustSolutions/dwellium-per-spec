@@ -9,7 +9,7 @@
 2. `0e103ec` — `feat(phase-2): Task 2.8 commit C — module rewire + types hoist + isStaticMode export` — types hoist into `packages/types/index.ts` (post-B3 additive append, 4th post-2.7 amendment after Tasks 2.2 / 2.10 / 2.4); `export const isStaticMode = USE_STATIC;` added to `strataApi.ts:36` immediately after the canonical 3-form-aware `USE_STATIC` derivation; `SentimentModule.tsx` full rewire (raw fetches → `strataGet`; POST guarded on imported `isStaticMode`; ErrorBoundary wrap; 4 Sentry breadcrumbs; `data-testid` anchors per (f) Option 1). Vitest delta on commit: 0.
 3. `19eb965` — `test(phase-2): Task 2.8 commit D — sentiment.test.ts (1 placeholder → 8 it-blocks)` — replaces the Phase-0 placeholder stub with 8 contract tests modeled on `forecast.test.ts` (Task 2.4 precedent); covers all 3 handlers, GR-2 entities.json drift guard (322 + 0 non-active), GR-3 fixture FK integrity + uniquePropertyIds.size === 2 pin, aggregate + channel-type consistency, community-branch defensive shape. Vitest delta on commit: +7 (8 new − 1 placeholder).
 
-**Merge SHA (post-squash).** `<TBD-on-merge>` — backfilled mechanically by the post-merge sweep per the Task 2.4 / 2.10 / 2.1 / 2.2 / 2.5 / 2.3 / 2.6 precedent.
+**Merge SHA (post-squash).** `0a7f3ef` — squash-merge on 2026-04-25T03:49:51Z (PR #17).
 **Closure date.** 2026-04-24.
 
 ---

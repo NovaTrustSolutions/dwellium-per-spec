@@ -8,12 +8,12 @@
 
 ## Current State (as of 2026-04-24)
 
-- **HEAD:** `828bb11` (`feat(phase-2): Task 2.6 — UtilitiesModule utility-vendor workitem seed (Duke Energy + Massey Pest on 128 BV, Georgia Power on Riverwood) (#16)`) — fifth general-pool Phase-2 task landed post-B3.
-- **Last green CI run:** `24890364216` — `AppFolio Parity Gate` — HEAD at `828bb11` — `https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/24890364216`
-- **Phase 0.0 closed:** 2026-04-22. Exit gate report: `Docs/Baselines/phase_0_0_exit_gate_report.md`. All 10 verify-steps (0.0.1 – 0.0.9 + 0.0.5b) pass. CI integrated and green on the strict gates (tsc + vitest 159/159 post-Task-2.6 + vite dual-mode build + PII scan strict).
+- **HEAD:** `0a7f3ef` (`feat(phase-2): Task 2.8 — Sentiment static handlers + at-risk fixture + SentimentModule rewire (#17)`) — sixth general-pool Phase-2 task landed post-B3.
+- **Last green CI run:** `24921903474` — `AppFolio Parity Gate` — HEAD at `0a7f3ef` — `https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/24921903474`
+- **Phase 0.0 closed:** 2026-04-22. Exit gate report: `Docs/Baselines/phase_0_0_exit_gate_report.md`. All 10 verify-steps (0.0.1 – 0.0.9 + 0.0.5b) pass. CI integrated and green on the strict gates (tsc + vitest 166/166 post-Task-2.8 + vite dual-mode build + PII scan strict).
 - **Phase 1 closed:** 2026-04-23 at HEAD `094b91e1b5991e42b1e5f5639553d6a1a541c2ef` (Task 1.5 merge). See `Docs/Phase1_Completion_Report.md`.
-- **Phase 2 — B3 serial chain closed:** 2026-04-23 at HEAD `40875db` (Task 2.7 merge). Tasks 2.3 / 2.5 / 2.7 closed sequentially on `packages/types/index.ts`. Remaining Phase-2 tasks open to general pool. Task 2.2 (Communication, `b98e84c`) + Task 2.1 (Calendar AHA inspection seed, `67768c9`) + Task 2.10 (PropertyTimeline multi-source merge, `fba4d65`) + Task 2.4 (Forecast static handler + ForecastModule rewire, `17c77b4`) + Task 2.6 (Utilities — utility-vendor workitem seed, `828bb11`) are the first five general-pool tasks landed post-B3.
-- **Next phase starting point:** Phase 2 general pool post-B3. Remaining tasks: **2.8, 2.9** (2 items). See `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 tracker.
+- **Phase 2 — B3 serial chain closed:** 2026-04-23 at HEAD `40875db` (Task 2.7 merge). Tasks 2.3 / 2.5 / 2.7 closed sequentially on `packages/types/index.ts`. Remaining Phase-2 tasks open to general pool. Task 2.2 (Communication, `b98e84c`) + Task 2.1 (Calendar AHA inspection seed, `67768c9`) + Task 2.10 (PropertyTimeline multi-source merge, `fba4d65`) + Task 2.4 (Forecast static handler + ForecastModule rewire, `17c77b4`) + Task 2.6 (Utilities — utility-vendor workitem seed, `828bb11`) + Task 2.8 (Sentiment — 3 static handlers + at-risk fixture + SentimentModule rewire; `isStaticMode` precedent established, `0a7f3ef`) are the first six general-pool tasks landed post-B3.
+- **Next phase starting point:** Phase 2 general pool post-B3. Remaining tasks: **2.9** (1 item — Phase-2 closure is one merge away). See `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 tracker.
 
 ---
 

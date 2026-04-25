@@ -1,0 +1,104 @@
+{
+  "capturedAt": "2026-04-25T03:07:24.356Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "nav-root",
+      "result": {
+        "url": "http://127.0.0.1:5173/"
+      }
+    },
+    {
+      "step": "click-start-overlay",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-property-management",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-sentiment-nav",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-dom-all-tab",
+      "result": {
+        "moduleRendered": true,
+        "tenantRowCount": 40,
+        "atRiskRowCount": 20,
+        "statsCardCount": 4,
+        "hasTabAll": true,
+        "hasTabAtrisk": true,
+        "hasTabAdd": true
+      }
+    },
+    {
+      "step": "screenshot-all-tab",
+      "result": {
+        "pngBytes": 544825,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_8/01_sentiment_all_tenants.png"
+      }
+    },
+    {
+      "step": "click-tab-atrisk",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-dom-atrisk-tab",
+      "result": {
+        "tenantRowCount": 20,
+        "atRiskRowCount": 20
+      }
+    },
+    {
+      "step": "screenshot-atrisk-tab",
+      "result": {
+        "pngBytes": 525067,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_2_task_2_8/02_sentiment_at_risk_20.png"
+      }
+    },
+    {
+      "step": "guard",
+      "result": {
+        "moduleRendered": true,
+        "allTabRowCountIs40": true,
+        "allTabAtRiskCountIs20": true,
+        "statsCardCountIs4": true,
+        "allThreeTabsPresent": true,
+        "atriskTabRowCountIs20": true,
+        "atriskTabAtRiskCountIs20": true,
+        "zeroConsoleErrors": true,
+        "zeroPageErrors": true,
+        "allPass": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

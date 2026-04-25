@@ -25,6 +25,16 @@ const USE_STATIC =
 
 const impl = USE_STATIC ? staticImpl : backendImpl;
 
+// Task 2.8 — module-level static-mode detection. SentimentModule
+// imports this to short-circuit POST writes in static-mode builds.
+// Must use the canonical USE_STATIC derivation (3-form aware: true,
+// 'true', '1') — inline `import.meta.env.VITE_USE_STATIC_API ===
+// 'true'` checks at the module level would silently diverge from the
+// router's own routing decision when the flag is set as boolean true
+// or '1', causing static-mode builds to send POSTs to a backend that
+// isn't there.
+export const isStaticMode = USE_STATIC;
+
 // One-shot console breadcrumb so devs can tell which mode is active.
 // Using a window flag to dedupe across HMR reloads.
 if (typeof window !== 'undefined' && !(window as any).__strataApiModeLogged) {

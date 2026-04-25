@@ -847,6 +847,84 @@ export interface ForecastResult {
     assumptions: ForecastAssumptions;
 }
 
+// ─── Task 2.8 — Sentiment static handler shapes ─────────────────
+//
+// Models the contract returned by the new GET /sentiment/* static
+// handlers in strataApi.static.ts. SentimentModule.tsx is rewired off
+// the raw localhost:3000/api/sentiment/{trends,response} fetch
+// (Task 2.4 ForecastModule precedent) and consumes these shapes via
+// strataGet<SentimentScoreView>('/sentiment/scores'),
+// strataGet<SentimentHistory>('/sentiment/history?tenantId=X'),
+// strataGet<SentimentByEntity>('/sentiment/by-entity?...').
+//
+// Backed by qualia-shell/public/data/sentiment_scores.json (40 rows
+// / 20 at-risk, deterministic from sorted entities.json tenantIds).
+// entities.json explicitly NOT touched per plan v2.8 §8 L330 — the
+// at-risk set lives in the new fixture, not on the tenant surface.
+//
+// Post-B3 additive append (4th post-2.7 amendment after Tasks 2.2 /
+// 2.10 / 2.4); Appendix D row 1 text UNCHANGED per precedent across
+// PRs #8–#16.
+
+export type SentimentTrendDirection = 'improving' | 'stable' | 'declining';
+export type SentimentChannel = 'manual' | 'email' | 'sms';
+
+export interface SentimentResponse {
+    id: string;
+    score: number;
+    comments: string;
+    surveyDate: string;
+    channel: SentimentChannel;
+}
+
+export interface SentimentScore {
+    id: string;
+    tenantId: string;
+    tenantName: string;
+    unit: string;
+    propertyId: string;
+    propertyName: string;
+    latestScore: number;
+    avgScore: number;
+    trend: SentimentTrendDirection;
+    consecutiveDeclines: number;
+    atRisk: boolean;
+    responses: SentimentResponse[];
+}
+
+export interface SentimentScoreView {
+    trends: SentimentScore[];
+    totalTracked: number;
+    atRiskCount: number;
+    improvingCount: number;
+    avgScore: number;
+}
+
+export interface SentimentHistoryStats {
+    count: number;
+    avg: number;
+    min: number;
+    max: number;
+    latestDate: string | null;
+}
+
+export interface SentimentHistory {
+    tenantId: string;
+    tenantName: string;
+    responses: SentimentResponse[];
+    stats: SentimentHistoryStats;
+}
+
+export interface SentimentByEntity {
+    entityType: string;
+    entityId: string;
+    entityName: string;
+    totalTracked: number;
+    atRiskCount: number;
+    avgScore: number;
+    byTenant: SentimentScore[];
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Resident Administration Types
 // ═══════════════════════════════════════════════════════════════

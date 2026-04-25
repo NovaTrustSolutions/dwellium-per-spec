@@ -1,22 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AlertTriangle, TrendingDown, TrendingUp, Minus, Plus, CheckCircle } from 'lucide-react';
-import { strataGet } from '../strataApi';
+import { strataGet, isStaticMode } from '../strataApi';
+import type { SentimentScore, SentimentScoreView } from '@qualia/types';
+// Task 2.8 — GR-13 observability wiring + ErrorBoundary, mirrors the
+// 2.1 / 2.2 / 2.4 / 2.10 retrofit pattern. Sentry breadcrumbs are
+// try/catch-wrapped so missing DSN is silent in test/local builds.
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 const API = 'http://localhost:3000';
-
-interface SentimentTrend {
-    tenantId: string;
-    tenantName: string;
-    unit: string;
-    propertyName: string;
-    latestScore: number;
-    avgScore: number;
-    trend: 'improving' | 'stable' | 'declining';
-    consecutiveDeclines: number;
-    atRisk: boolean;
-    responses: { id: string; score: number; comments: string; surveyDate: string; channel: string }[];
-}
 
 const SCORE_COLORS = ['', '#ef4444', '#f97316', '#eab308', '#22c55e', '#16a34a'];
 const SCORE_LABELS = ['', 'Very Unsatisfied', 'Unsatisfied', 'Neutral', 'Satisfied', 'Very Satisfied'];
@@ -35,11 +28,11 @@ function TrendIcon({ trend }: { trend: string }) {
     return <Minus size={14} color="#94a3b8" />;
 }
 
-export default function SentimentModule() {
-    const [trends, setTrends] = useState<SentimentTrend[]>([]);
+function SentimentModuleInner() {
+    const [trends, setTrends] = useState<SentimentScore[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'all' | 'atRisk' | 'add'>('all');
-    const [selected, setSelected] = useState<SentimentTrend | null>(null);
+    const [selected, setSelected] = useState<SentimentScore | null>(null);
     const [newSurvey, setNewSurvey] = useState({ tenantId: '', score: 3, comments: '', channel: 'manual' });
     const [submitMsg, setSubmitMsg] = useState('');
     const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
@@ -49,10 +42,21 @@ export default function SentimentModule() {
 
     useEffect(() => {
         setLoading(true);
-        fetch(`${API}/api/sentiment/trends`, { headers })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) setTrends(d.data);
+        // Task 2.8 — rewired off raw localhost:3000/api/sentiment/trends
+        // to strataGet so static mode is functional. Mirrors Task 2.4
+        // ForecastModule + Task 2.7 AuditModule rewire precedents.
+        strataGet<SentimentScoreView>('/sentiment/scores')
+            .then(view => {
+                setTrends(view.trends);
+            })
+            .catch(() => {
+                try {
+                    Sentry.addBreadcrumb({
+                        category: 'ui.fetch',
+                        message: 'sentiment.fetch.error',
+                        level: 'warning',
+                    });
+                } catch { /* Sentry no-op when DSN unset */ }
             })
             .finally(() => setLoading(false));
 
@@ -63,20 +67,56 @@ export default function SentimentModule() {
                 setTenants(rows.map((t: any) => ({ id: t.id, name: t.name })));
             })
             .catch(() => setTenants([]));
+
+        // Task 2.8 — GR-13 breadcrumb on initial module load.
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.load',
+                message: 'sentiment.module.loaded',
+                level: 'info',
+                data: { staticMode: isStaticMode },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
     }, []);
 
     const submitSurvey = async () => {
         if (!newSurvey.tenantId) return setSubmitMsg('Please select a tenant');
+        // Task 2.8 — static-mode guard. Static deck is read-only;
+        // backend mode keeps the original POST + refresh path. Uses
+        // the canonical isStaticMode export (3-form-aware) rather than
+        // an inline import.meta.env check to avoid divergence with the
+        // router's routing decision.
+        if (isStaticMode) {
+            setSubmitMsg('🗒️ Survey submission requires backend mode (static deck is read-only).');
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.submit',
+                    message: 'sentiment.survey.submit.skipped',
+                    level: 'info',
+                    data: { tenantId: newSurvey.tenantId, channel: newSurvey.channel },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+            return;
+        }
         const res = await fetch(`${API}/api/sentiment/response`, {
             method: 'POST', headers, body: JSON.stringify(newSurvey),
         });
         const d = await res.json();
         if (d.success) {
             setSubmitMsg('✅ Response recorded');
-            // Refresh trends
-            const r2 = await fetch(`${API}/api/sentiment/trends`, { headers });
-            const d2 = await r2.json();
-            if (d2.success) setTrends(d2.data);
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.submit',
+                    message: 'sentiment.survey.submit',
+                    level: 'info',
+                    data: { tenantId: newSurvey.tenantId, score: newSurvey.score, channel: newSurvey.channel },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+            // Refresh trends via the static-aware route.
+            try {
+                const view = await strataGet<SentimentScoreView>('/sentiment/scores');
+                setTrends(view.trends);
+            } catch { /* leave existing trends in place on refresh failure */ }
         } else {
             setSubmitMsg(`❌ ${d.error}`);
         }
@@ -86,7 +126,7 @@ export default function SentimentModule() {
     const displayTrends = activeView === 'atRisk' ? atRisk : trends;
 
     return (
-        <div style={{ padding: 20, fontFamily: 'Inter, sans-serif', color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div data-testid="sentiment-module" style={{ padding: 20, fontFamily: 'Inter, sans-serif', color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -110,7 +150,7 @@ export default function SentimentModule() {
                     { label: 'Improving', value: trends.filter(t => t.trend === 'improving').length, color: '#22c55e' },
                     { label: 'Avg Score', value: trends.length ? (trends.reduce((s, t) => s + t.avgScore, 0) / trends.length).toFixed(1) + '/5' : 'N/A', color: '#eab308' },
                 ].map(s => (
-                    <div key={s.label} style={{ background: '#1e2537', borderRadius: 10, padding: 14 }}>
+                    <div key={s.label} data-testid="sentiment-stats-card" style={{ background: '#1e2537', borderRadius: 10, padding: 14 }}>
                         <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{s.label}</div>
                         <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
                     </div>
@@ -121,6 +161,7 @@ export default function SentimentModule() {
             <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #334155', paddingBottom: 0 }}>
                 {([['all', 'All Tenants'], ['atRisk', `At Risk (${atRisk.length})`], ['add', '+ Record Survey']] as const).map(([key, label]) => (
                     <button key={key} onClick={() => setActiveView(key)}
+                        data-testid={`sentiment-tab-${key === 'atRisk' ? 'atrisk' : key}`}
                         style={{ padding: '8px 16px', background: activeView === key ? '#6366f1' : 'transparent', border: 'none', borderRadius: '6px 6px 0 0', color: activeView === key ? '#fff' : '#94a3b8', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                         {label}
                     </button>
@@ -199,6 +240,8 @@ export default function SentimentModule() {
                                 <tbody>
                                     {displayTrends.map(t => (
                                         <tr key={t.tenantId} onClick={() => setSelected(s => s?.tenantId === t.tenantId ? null : t)}
+                                            data-testid="sentiment-tenant-row"
+                                            {...(t.atRisk ? { 'data-atrisk': 'true' } : {})}
                                             style={{ borderBottom: '1px solid #1a2233', cursor: 'pointer', background: selected?.tenantId === t.tenantId ? '#293244' : 'transparent', transition: 'background 0.15s' }}>
                                             <td style={{ padding: '10px 14px', color: '#f1f5f9', fontWeight: 500 }}>
                                                 {t.atRisk && <AlertTriangle size={12} color="#ef4444" style={{ marginRight: 6, verticalAlign: 'middle' }} />}
@@ -219,7 +262,7 @@ export default function SentimentModule() {
 
                     {/* Detail panel */}
                     {selected && (
-                        <div style={{ background: '#1e2537', borderRadius: 12, padding: 18 }}>
+                        <div data-testid="sentiment-detail-panel" style={{ background: '#1e2537', borderRadius: 12, padding: 18 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                                 <div>
                                     <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>{selected.tenantName}</div>
@@ -233,7 +276,7 @@ export default function SentimentModule() {
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: selected.trend === 'declining' ? '#ef4444' : selected.trend === 'improving' ? '#22c55e' : '#94a3b8' }}>
                                     <TrendIcon trend={selected.trend} /> {selected.trend}
                                 </span>
-                                {selected.atRisk && <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>⚠ At Risk</span>}
+                                {selected.atRisk && <span data-testid="sentiment-detail-atrisk-badge" style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>⚠ At Risk</span>}
                             </div>
 
                             {selected.responses.length > 1 && (
@@ -268,5 +311,17 @@ export default function SentimentModule() {
                 </div>
             )}
         </div>
+    );
+}
+
+// Task 2.8 — ErrorBoundary wrap mirrors the 2.1 / 2.2 / 2.4 / 2.10
+// retrofit pattern. Inner module body holds the hooks; this exported
+// wrapper owns the boundary so a render fault in any sub-section
+// degrades gracefully instead of taking the whole shell down.
+export default function SentimentModule() {
+    return (
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Sentiment module unavailable.</div>}>
+            <SentimentModuleInner />
+        </ErrorBoundary>
     );
 }

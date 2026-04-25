@@ -16,9 +16,17 @@ import {
     CheckCircle2, XCircle, ArrowRightLeft, Search, LayoutGrid, List,
     Building2, Truck, Users, GitBranch, Layers, Plus,
 } from 'lucide-react';
-import { strataGet, strataPost, strataPut } from '../strataApi';
+import { strataGet, strataPost, strataPut, isStaticMode } from '../strataApi';
 import type { Workitem, Property } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
+// Task 3.7 — GR-13 observability wiring + ErrorBoundary, mirrors the
+// Task 2.4 / 2.8 SentimentModule retrofit pattern. Sentry breadcrumbs
+// are try/catch-wrapped so missing DSN is silent in test/local builds.
+// isStaticMode short-circuits the strataPut write path with an inline
+// feedback banner — the canonical 3-form-aware export from strataApi.ts
+// avoids divergence with the router's routing decision.
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 type ViewMode = 'by-entity' | 'all' | 'kanban';
 type StatusGroup = 'active' | 'inactive';
@@ -31,13 +39,14 @@ const ENTITY_ICON: Record<string, React.ReactNode> = {
     tenant: <Users size={14} />,
 };
 
-export default function ProjectsModule() {
+function ProjectsModuleInner() {
     const [items, setItems] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>('by-entity');
+    const [statusFeedback, setStatusFeedback] = useState('');
 
     const fetchProjects = useCallback(async () => {
         setLoading(true);
@@ -48,15 +57,59 @@ export default function ProjectsModule() {
             ]);
             setItems(wiData);
             setProperties(propData);
-        } catch (e) { console.error(e); setError('Failed to load projects'); }
+        } catch (e) {
+            console.error(e);
+            setError('Failed to load projects');
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.fetch',
+                    message: 'projects.fetch.error',
+                    level: 'warning',
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+        }
         setLoading(false);
     }, []);
 
-    useEffect(() => { fetchProjects(); }, [fetchProjects]);
+    useEffect(() => {
+        fetchProjects();
+        // Task 3.7 — GR-13 breadcrumb on initial module load.
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.load',
+                message: 'projects.module.loaded',
+                level: 'info',
+                data: { staticMode: isStaticMode },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
+    }, [fetchProjects]);
 
     const toggleStatus = async (id: string, currentStatus: string) => {
         const newStatus = ['open', 'in_progress'].includes(currentStatus) ? 'completed' : 'open';
+        // Task 3.7 — static-mode guard. Static deck is read-only;
+        // backend mode keeps the original strataPut + refresh path. Uses
+        // the canonical isStaticMode export (3-form-aware) rather than
+        // an inline import.meta.env check to avoid divergence with the
+        // router's routing decision. Mirrors SentimentModule.tsx:89-100.
+        if (isStaticMode) {
+            setStatusFeedback('🗒️ Status updates require backend mode (static deck is read-only).');
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.submit',
+                    message: 'projects.status.toggle.skipped',
+                    level: 'info',
+                    data: { workitemId: id, attemptedStatus: newStatus },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+            return;
+        }
         try {
+            Sentry.addBreadcrumb({
+                category: 'ui.submit',
+                message: 'projects.status.toggle.sent',
+                level: 'info',
+                data: { workitemId: id, attemptedStatus: newStatus },
+            });
             await strataPut(`/workitems/${id}`, { status: newStatus });
             fetchProjects();
         } catch (e) { console.error(e); }
@@ -145,7 +198,7 @@ export default function ProjectsModule() {
         const md = wi.metadata || {};
 
         return (
-            <div style={{
+            <div data-testid={`projects-card-${wi.id}`} style={{
                 background: 'rgba(255,255,255,0.02)',
                 border: '1px solid rgba(255,255,255,0.05)',
                 borderRadius: 10, overflow: 'hidden',
@@ -242,7 +295,7 @@ export default function ProjectsModule() {
         const inactive = group.items.filter(w => ['completed', 'cancelled'].includes(w.status));
 
         return (
-            <div className="s-glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div data-testid={`projects-entity-group-${groupKey}`} className="s-glass-card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div
                     onClick={() => setCollapsed(!collapsed)}
                     style={{
@@ -288,7 +341,7 @@ export default function ProjectsModule() {
     };
 
     return (
-        <div className="s-module">
+        <div data-testid="projects-module" className="s-module">
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">
@@ -309,6 +362,7 @@ export default function ProjectsModule() {
                         ]).map(([mode, Icon, label]) => (
                             <button
                                 key={mode}
+                                data-testid={`projects-view-mode-${mode}`}
                                 className="s-btn s-btn-ghost"
                                 style={{
                                     padding: '5px 10px', borderRadius: 0, margin: 0, gap: 4,
@@ -321,9 +375,25 @@ export default function ProjectsModule() {
                             </button>
                         ))}
                     </div>
-                    <button className="s-btn s-btn-ghost" onClick={fetchProjects}><RefreshCw size={14} /></button>
+                    <button data-testid="projects-refresh-btn" className="s-btn s-btn-ghost" onClick={fetchProjects}><RefreshCw size={14} /></button>
                 </div>
             </div>
+
+            {/* Task 3.7 — isStaticMode write-guard feedback banner.
+                Sticky until the next toggle action overwrites it (mirrors
+                SentimentModule.tsx submitMsg semantics). Asserted in
+                projects.module.test.tsx via getByText. */}
+            {statusFeedback && (
+                <div style={{
+                    padding: '8px 14px',
+                    background: 'rgba(239,68,68,0.06)',
+                    border: '1px solid rgba(239,68,68,0.2)',
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    fontSize: 12,
+                    color: '#fca5a5',
+                }}>{statusFeedback}</div>
+            )}
 
             {/* Search */}
             <div style={{
@@ -334,6 +404,7 @@ export default function ProjectsModule() {
             }}>
                 <Search size={14} style={{ color: '#64748b' }} />
                 <input
+                    data-testid="projects-search-input"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search projects…"
@@ -365,7 +436,7 @@ export default function ProjectsModule() {
                     gap: 12, alignItems: 'start',
                 }}>
                     {kanbanColumns.map(col => (
-                        <div key={col.status}>
+                        <div key={col.status} data-testid={`projects-kanban-column-${col.status}`}>
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
                                 padding: '8px 12px', borderRadius: 8,
@@ -412,5 +483,17 @@ export default function ProjectsModule() {
                 </div>
             )}
         </div>
+    );
+}
+
+// Task 3.7 — ErrorBoundary wrap mirrors the Task 2.1 / 2.2 / 2.4 / 2.10 / 2.8
+// SentimentModule retrofit pattern. Inner module body holds the hooks; this
+// exported wrapper owns the boundary so a render fault in any sub-section
+// degrades gracefully instead of taking the whole shell down.
+export default function ProjectsModule() {
+    return (
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Projects module unavailable.</div>}>
+            <ProjectsModuleInner />
+        </ErrorBoundary>
     );
 }

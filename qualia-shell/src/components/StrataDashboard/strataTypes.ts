@@ -85,4 +85,8 @@ export type {
     ReviewStatus,
     DocPriority,
     ReviewDocument,
+    PortalTab,
+    TenantPortalPagination,
+    TenantPortalStats,
+    TenantPortalMessage,
 } from '../../../../packages/types/index';

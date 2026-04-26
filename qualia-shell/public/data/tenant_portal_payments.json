@@ -1,0 +1,122 @@
+[
+    {
+        "id": "tp-pay-001",
+        "tenantId": "c428e8d2-4cfa-4470-b5a7-9fd871e5c4f3",
+        "tenantName": "Jimmy Armour",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "F03",
+        "title": "Monthly Rent — May 2026",
+        "amount": 895.00,
+        "status": "paid",
+        "createdAt": "2026-05-01T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-002",
+        "tenantId": "93c7c039-d531-42cb-be79-6f9a8054b04a",
+        "tenantName": "Stancer Armour",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "A11",
+        "title": "Monthly Rent — May 2026",
+        "amount": 1000.00,
+        "status": "pending",
+        "createdAt": "2026-05-01T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-003",
+        "tenantId": "f1001348-2c16-46ec-b2ca-264a5e30d315",
+        "tenantName": "Aletha Armstrong",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "G14",
+        "title": "Monthly Rent — May 2026",
+        "amount": 1405.00,
+        "status": "overdue",
+        "createdAt": "2026-05-01T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-004",
+        "tenantId": "fc761553-643e-473d-a9fe-5d817b745002",
+        "tenantName": "Larry Williams",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "J13",
+        "title": "Monthly Rent — May 2026",
+        "amount": 1182.00,
+        "status": "paid",
+        "createdAt": "2026-05-01T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-005",
+        "tenantId": "237e3c01-c534-4e84-ae23-406310be97b2",
+        "tenantName": "Navana Williams",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "C16",
+        "title": "Monthly Rent — May 2026",
+        "amount": 1182.00,
+        "status": "paid",
+        "createdAt": "2026-05-01T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-006",
+        "tenantId": "8c550b50-238d-450f-89d5-456819af0612",
+        "tenantName": "Terrence Williams",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "B05",
+        "title": "Concession credit — Apr 2026",
+        "amount": 0.00,
+        "status": "paid",
+        "createdAt": "2026-04-15T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-007",
+        "tenantId": "004316e3-c3e3-4efd-b711-55d621e8a37e",
+        "tenantName": "Loretta Bailey",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "H03",
+        "title": "Late fee — Apr 2026",
+        "amount": 50.00,
+        "status": "overdue",
+        "createdAt": "2026-04-10T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-008",
+        "tenantId": "00401282-ba5e-4ce6-8a88-28945fa0be97",
+        "tenantName": "Jasmine Baker",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "B07",
+        "title": "Monthly Rent — May 2026",
+        "amount": 1696.00,
+        "status": "paid",
+        "createdAt": "2026-05-01T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-009",
+        "tenantId": "bb1483a7-9b37-4264-b5e7-886fe0c4d9f9",
+        "tenantName": "Patrick Baker",
+        "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+        "propertyName": "Riverwood Club Apartments",
+        "unitNumber": "E11",
+        "title": "Monthly Rent — May 2026",
+        "amount": 1380.00,
+        "status": "pending",
+        "createdAt": "2026-05-01T09:00:00.000Z"
+    },
+    {
+        "id": "tp-pay-010",
+        "tenantId": "dca3231d-c36f-4791-a6d0-49e25d46ea8e",
+        "tenantName": "JULIANA CASTRO",
+        "propertyId": "e58b7930-29e5-40ed-863e-94543839a512",
+        "propertyName": "Ski Country Chalet",
+        "unitNumber": "498 Meadow Rd",
+        "title": "Monthly Rent — May 2026",
+        "amount": 3000.00,
+        "status": "paid",
+        "createdAt": "2026-05-01T09:00:00.000Z"
+    }
+]

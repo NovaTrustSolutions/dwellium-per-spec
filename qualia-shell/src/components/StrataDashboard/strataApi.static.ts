@@ -1022,6 +1022,226 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
         return docs;
     }
 
+    // Task 3.9 — Tenant Portal GET handlers. TenantPortalModule.tsx
+    // (rewired off `authFetch(${API}/api/tenant/admin/...)` in this PR)
+    // consumes via strataGet<TenantPortalStats | any[]>. Six handlers
+    // covering /stats /directory /maintenance /payments /messages
+    // /lease-alerts. Four are derived live from existing fixtures
+    // (entities + units + workitems); two consume NEW fixtures
+    // (tenant_portal_payments.json + tenant_portal_messages.json).
+    //
+    // Plan reference: §9 Phase-3 sub-tracker Task 3.9 row +
+    // DoR PRE0-3 fixture strategy ack.
+    //
+    // Security contract per /security-review checklist (mirrors Tasks
+    // 2.4 / 2.7 / 2.10 / 3.8 multi-source patterns):
+    //   - Search filter is plain substring `.toLowerCase()` match on
+    //     row.tenantName / row.unitNumber / row.propertyName (string
+    //     fields only). No computed-key access from input params.
+    //   - Numeric query params: none (page/limit dropped at module
+    //     side per the Task 3.9 retrofit; static handler returns the
+    //     full filtered array and the module renders a synthetic
+    //     totalPages=1 to hide PageControls).
+    //   - Strict === filter on identity fields (tenantId, propertyId).
+    //   - Lease-alerts cutoff is computed against `Date.now()` at
+    //     request time; rows with malformed leaseEnd are filtered out
+    //     by the Number.isFinite gate.
+    if (path === '/tenant/admin/stats') {
+        const [tenants, units, workitems] = await Promise.all([
+            loadTable('entities') as Promise<any[]>,
+            loadTable('units') as Promise<any[]>,
+            loadTable('workitems') as Promise<any[]>,
+        ]);
+        const tenantRows = tenants.filter(e => e.entityType === 'tenant' && e.status === 'active');
+        const totalTenants = tenantRows.length;
+        const totalUnits = units.length;
+        const occupiedUnits = units.filter(u => u.status === 'occupied').length;
+        const vacantUnits = units.filter(u => u.status === 'vacant').length;
+        const openMaintenanceRequests = workitems.filter(w =>
+            w.type === 'work_order' &&
+            w.domain === 'maintenance' &&
+            (w.status === 'open' || w.status === 'in_progress')
+        ).length;
+        const now = Date.now();
+        const ninetyDaysMs = 90 * 86400000;
+        const expiringLeases = units.filter(u => {
+            if (!u.leaseEnd) return false;
+            const t = new Date(u.leaseEnd).getTime();
+            return Number.isFinite(t) && t > now && (t - now) <= ninetyDaysMs;
+        }).length;
+        return {
+            totalTenants,
+            totalUnits,
+            occupiedUnits,
+            vacantUnits,
+            openMaintenanceRequests,
+            expiringLeases,
+        };
+    }
+
+    if (path === '/tenant/admin/directory') {
+        const [tenants, units] = await Promise.all([
+            loadTable('entities') as Promise<any[]>,
+            loadTable('units') as Promise<any[]>,
+        ]);
+        const tenantRows = tenants.filter(e => e.entityType === 'tenant' && e.status === 'active');
+        // Build a unit lookup keyed by currentTenantId (the units fixture
+        // stores the tenant by name string for legacy reasons; match by
+        // exact name where available, else fall back to the tenant's
+        // first propertyId).
+        const unitByName = new Map<string, any>();
+        for (const u of units) {
+            if (u.currentTenantId) unitByName.set(String(u.currentTenantId), u);
+        }
+        const now = Date.now();
+        const rows = tenantRows.map(t => {
+            const u = unitByName.get(t.name) || null;
+            const leaseEnd = u?.leaseEnd ?? null;
+            let leaseRemainingDays: number | null = null;
+            if (leaseEnd) {
+                const ts = new Date(leaseEnd).getTime();
+                if (Number.isFinite(ts)) {
+                    leaseRemainingDays = Math.max(0, Math.round((ts - now) / 86400000));
+                }
+            }
+            const emailRaw = typeof t.email === 'string' ? t.email.split(',')[0].trim() : '';
+            return {
+                id: t.id,
+                name: t.name,
+                email: emailRaw,
+                phone: t.phone || null,
+                unitNumber: u?.unitNumber || t.metadata?.unit || null,
+                propertyName: t.metadata?.propertyName || null,
+                rentAmount: u?.rentAmount ?? null,
+                leaseStart: u?.leaseStart ?? null,
+                leaseEnd,
+                leaseRemainingDays,
+                status: t.status,
+            };
+        });
+        if (params?.search) {
+            const q = params.search.toLowerCase();
+            return rows.filter(r =>
+                (r.name || '').toLowerCase().includes(q) ||
+                (r.unitNumber || '').toLowerCase().includes(q) ||
+                (r.propertyName || '').toLowerCase().includes(q)
+            );
+        }
+        return rows;
+    }
+
+    if (path === '/tenant/admin/maintenance') {
+        const [workitems, units, tenants] = await Promise.all([
+            loadTable('workitems') as Promise<any[]>,
+            loadTable('units') as Promise<any[]>,
+            loadTable('entities') as Promise<any[]>,
+        ]);
+        const unitById = new Map<string, any>();
+        for (const u of units) unitById.set(u.id, u);
+        const tenantById = new Map<string, any>();
+        for (const e of tenants) tenantById.set(e.id, e);
+        const wos = workitems.filter(w =>
+            w.type === 'work_order' && w.domain === 'maintenance'
+        );
+        const rows = wos.map(w => {
+            const u = w.unitId ? unitById.get(w.unitId) : null;
+            const tenantNameFromUnit = u?.currentTenantId ? String(u.currentTenantId) : '';
+            const tenantById_ = w.assignedTo ? tenantById.get(w.assignedTo) : null;
+            return {
+                id: w.id,
+                title: w.title || '',
+                tenantName: tenantNameFromUnit || tenantById_?.name || '',
+                unitNumber: u?.unitNumber || null,
+                priority: w.priority || 'medium',
+                status: w.status || 'open',
+                createdAt: w.createdAt || '1970-01-01T00:00:00.000Z',
+            };
+        });
+        if (params?.search) {
+            const q = params.search.toLowerCase();
+            return rows.filter(r =>
+                (r.title || '').toLowerCase().includes(q) ||
+                (r.tenantName || '').toLowerCase().includes(q) ||
+                (r.unitNumber || '').toLowerCase().includes(q)
+            );
+        }
+        return rows;
+    }
+
+    if (path === '/tenant/admin/payments') {
+        const rows = await loadTable<any>('tenant_portal_payments');
+        if (params?.search) {
+            const q = params.search.toLowerCase();
+            return rows.filter(r =>
+                (r.tenantName || '').toLowerCase().includes(q) ||
+                (r.title || '').toLowerCase().includes(q) ||
+                (r.unitNumber || '').toLowerCase().includes(q)
+            );
+        }
+        return rows;
+    }
+
+    if (path === '/tenant/admin/messages') {
+        const rows = await loadTable<any>('tenant_portal_messages');
+        if (params?.search) {
+            const q = params.search.toLowerCase();
+            return rows.filter(r =>
+                (r.tenantName || '').toLowerCase().includes(q) ||
+                (r.subject || '').toLowerCase().includes(q) ||
+                (r.body || '').toLowerCase().includes(q)
+            );
+        }
+        return rows;
+    }
+
+    if (path === '/tenant/admin/lease-alerts') {
+        const [units, tenants] = await Promise.all([
+            loadTable('units') as Promise<any[]>,
+            loadTable('entities') as Promise<any[]>,
+        ]);
+        const tenantByName = new Map<string, any>();
+        for (const e of tenants) {
+            if (e.entityType === 'tenant' && e.name) tenantByName.set(String(e.name), e);
+        }
+        const now = Date.now();
+        const ninetyDaysMs = 90 * 86400000;
+        const alerts: any[] = [];
+        for (const u of units) {
+            if (!u.leaseEnd) continue;
+            const ts = new Date(u.leaseEnd).getTime();
+            if (!Number.isFinite(ts)) continue;
+            const delta = ts - now;
+            if (delta <= 0 || delta > ninetyDaysMs) continue;
+            const daysRemaining = Math.max(0, Math.round(delta / 86400000));
+            const urgency: 'high' | 'medium' | 'low' =
+                daysRemaining <= 30 ? 'high' :
+                    daysRemaining <= 60 ? 'medium' : 'low';
+            const t = u.currentTenantId ? tenantByName.get(String(u.currentTenantId)) : null;
+            const emailRaw = typeof t?.email === 'string' ? t.email.split(',')[0].trim() : '';
+            alerts.push({
+                urgency,
+                tenantName: u.currentTenantId || '',
+                tenantEmail: emailRaw,
+                propertyName: t?.metadata?.propertyName || '',
+                unitNumber: u.unitNumber || '',
+                leaseEnd: u.leaseEnd,
+                daysRemaining,
+                rentAmount: u.rentAmount ?? 0,
+            });
+        }
+        // Sort by daysRemaining ascending (most urgent first).
+        alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
+        if (params?.search) {
+            const q = params.search.toLowerCase();
+            return alerts.filter(a =>
+                (a.tenantName || '').toLowerCase().includes(q) ||
+                (a.unitNumber || '').toLowerCase().includes(q) ||
+                (a.propertyName || '').toLowerCase().includes(q)
+            );
+        }
+        return alerts;
+    }
+
     // Fallback
     console.warn('[StaticAPI] Unhandled GET:', path, params);
     return [];
@@ -1142,6 +1362,32 @@ function matchWriteRoute(method: string, path: string, body: any): any {
         });
         updateRecord('corporate_review', docId, { workitemId: wi.id });
         return { document: { id: docId, workitemId: wi.id }, workitem: wi };
+    }
+
+    // Task 3.9 — Tenant Portal message-send write endpoint.
+    // TenantPortalModuleInner guards this site with an isStaticMode
+    // early-return at sendReply (TenantPortalModule.tsx — search for
+    // `tenant-portal.message.skipped`), so this handler never fires
+    // from the module path; it exists for completeness so direct-test
+    // access (and any future non-guarded consumer) gets a coherent
+    // mock-shape response. Routes through createRecord on
+    // tenant_portal_messages so dataCache + localStorage overlay stay
+    // consistent across reloads. ID prefix `static-msg-${randomUUID}`
+    // mirrors Task 3.8's `static-upload-${randomUUID}` precedent
+    // (collision-resistant under burst-test; see Task 3.8 §1 entry #7).
+    if (method === 'POST' && (crm = path.match(/^\/tenant\/admin\/messages\/([^/]+)$/))) {
+        const tenantId = crm[1];
+        const b = body as any;
+        return createRecord('tenant_portal_messages', {
+            id: `static-msg-${crypto.randomUUID()}`,
+            tenantId,
+            tenantName: '',
+            direction: 'outbound',
+            subject: b?.subject || '',
+            body: b?.body || '',
+            channel: 'email',
+            readStatus: 'unread',
+        });
     }
 
     for (const { route, table } of crudRoutes) {

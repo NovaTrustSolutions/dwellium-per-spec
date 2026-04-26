@@ -1,0 +1,155 @@
+{
+  "capturedAt": "2026-04-26T12:30:29.868Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "nav-root",
+      "result": {
+        "url": "http://127.0.0.1:5173/"
+      }
+    },
+    {
+      "step": "click-start-overlay",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-property-management",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-tenant-portal-nav",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-directory-view",
+      "result": {
+        "moduleRendered": true,
+        "allFiveTabsPresent": true,
+        "tabsFound": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "searchInputVisible": true,
+        "refreshButtonVisible": true,
+        "directoryRowCount": 322
+      }
+    },
+    {
+      "step": "screenshot-directory-view",
+      "result": {
+        "pngBytes": 505406,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_9/01_tenant_portal_directory_view.png"
+      }
+    },
+    {
+      "step": "click-lease-alerts-tab",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-lease-alerts-tab",
+      "result": {
+        "leaseAlertsTabSwitched": true
+      }
+    },
+    {
+      "step": "click-messages-tab",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-messages-tab",
+      "result": {
+        "messagesTabSwitched": true,
+        "replyButtonCount": 6
+      }
+    },
+    {
+      "step": "screenshot-messages-view",
+      "result": {
+        "pngBytes": 535085,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_9/02_tenant_portal_messages_view.png"
+      }
+    },
+    {
+      "step": "click-first-reply",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "fill-reply-form",
+      "result": {
+        "filled": true
+      }
+    },
+    {
+      "step": "click-send-reply",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-static-mode-banner",
+      "result": {
+        "staticModeBannerTestidVisible": true,
+        "staticModeBannerTextVisible": true
+      }
+    },
+    {
+      "step": "screenshot-static-mode-banner",
+      "result": {
+        "pngBytes": 525053,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_9/03_tenant_portal_static_mode_message_banner.png"
+      }
+    },
+    {
+      "step": "guard",
+      "result": {
+        "moduleRendered": true,
+        "allFiveTabsPresent": true,
+        "searchInputVisible": true,
+        "refreshButtonVisible": true,
+        "directoryRowsVisible": true,
+        "leaseAlertsTabSwitchable": true,
+        "messagesTabSwitchable": true,
+        "staticModeBannerTestidVisible": true,
+        "staticModeBannerTextVisible": true,
+        "zeroConsoleErrors": true,
+        "zeroPageErrors": true,
+        "allPass": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

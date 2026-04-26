@@ -956,3 +956,27 @@ export interface ResidentLinkage {
 // ═══════════════════════════════════════════════════════════════
 
 export type StrataModule = 'overview' | 'manager-home' | 'calendar' | 'properties' | 'work-orders' | 'leasing' | 'residents' | 'vendors' | 'owners' | 'accounting' | 'maintenance' | 'reporting' | 'communication' | 'profiles' | 'corporate-review' | 'integrations' | 'tenant-portal' | 'forecast' | 'sentiment' | 'legal' | 'projects' | 'audit' | 'status-check' | 'visualization' | 'incidents' | 'compliance' | 'design-studio' | 'civil-engineering';
+
+// ═══════════════════════════════════════════════════════════════
+// Corporate Review Types
+// ═══════════════════════════════════════════════════════════════
+// Phase-3 Task 3.8 hoist from CorporateReview.tsx:14-28 (5th post-B3
+// additive append after Tasks 2.2 / 2.10 / 2.4 / 2.8). Mirrors the
+// inline shape line-for-line — additive only, no removals.
+
+export type ReviewStatus = 'pending' | 'triaged' | 'approved' | 'rejected';
+
+export type DocPriority = 'critical' | 'high' | 'medium' | 'low';
+
+export interface ReviewDocument {
+    id: string;
+    filename: string;
+    uploadedBy: string;
+    status: ReviewStatus;
+    priority: DocPriority;
+    category: string;
+    notes: string;
+    workitemId: string | null;
+    createdAt: string;
+    updatedAt: string;
+}

@@ -11,8 +11,8 @@
 3. `d011e36` — `test(phase-3): Task 3.9 commit D — tenant-portal.test.ts (6 fixture it-blocks) + tenant-portal.module.test.tsx (3 render it-blocks closing plan v2 §15 L491 GR-13 unit-test mandate)` — 2 NEW test files (230 + 296 lines). Vitest delta on commit: **+9** (183 → 192; 29 → 31 test files).
 4. `(commit F SHA — this commit)` — `docs(phase-3): Task 3.9 commit F — CDP render proof + plan v2 sweep (§9 Phase-3 sub-tracker + §21 Appendix D updates + v2.13 changelog) + completion report` — bundled docs/artifact commit. Vitest delta on commit: **0** (no source changes).
 
-**Merge SHA (post-squash).** `(post-merge — sweep backfills)` — squash-merge on 2026-04-25 (PR #21).
-**Closure date.** 2026-04-25.
+**Merge SHA (post-squash).** `08fc669` — squash-merge on 2026-04-26 (PR #21).
+**Closure date.** 2026-04-26.
 
 ---
 

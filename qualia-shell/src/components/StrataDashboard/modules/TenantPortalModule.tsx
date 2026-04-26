@@ -1,7 +1,20 @@
 /**
  * TenantPortalModule — Management-side tenant portal inside Strata
  *
- * 50 UX improvements over baseline:
+ * Phase-3 Task 3.9 retrofit: GR-13 observability (ErrorBoundary wrap +
+ * 4 try/catch-wrapped Sentry breadcrumbs + 11 data-testid anchors) +
+ * raw `authFetch` → `strataApi` rewire (2 strataGet + 1 strataPost) +
+ * 1 isStaticMode write-guard on the SINGLE POST site (sendReply) with
+ * a sticky `statusFeedback` banner between the gradient header and
+ * the KPI row. Mirrors Task 3.7 (ProjectsModule) Inner/Outer split
+ * shape and Task 3.8 (CorporateReview) strataApi rewire shape — see
+ * commit body. Final retrofit-chain task (3.7 → 3.8 → 3.9); closure
+ * retires the sequential chain. Multipart strataUpload not consumed
+ * (no file-upload paths in TenantPortal — first post-3.8 task to
+ * skip strataApi.ts amendments and consume the existing patterns
+ * exclusively).
+ *
+ * 50 UX improvements over baseline preserved verbatim:
  * 1. CSS class-based styling (no inline styles)
  * 2. Entrance fade-in animation
  * 3. Gradient header accent line
@@ -63,11 +76,10 @@ import {
 } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import './TenantPortal.css';
-import { API_BASE } from '../../../config';
-
-const API = API_BASE;
-
-type PortalTab = 'directory' | 'maintenance' | 'payments' | 'messages' | 'lease-alerts';
+import { strataGet, strataPost, isStaticMode } from '../strataApi';
+import type { PortalTab, TenantPortalPagination, TenantPortalStats } from '../strataTypes';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 const TABS: { id: PortalTab; label: string; icon: typeof Users }[] = [
     { id: 'directory', label: 'Directory', icon: Users },
@@ -77,10 +89,8 @@ const TABS: { id: PortalTab; label: string; icon: typeof Users }[] = [
     { id: 'lease-alerts', label: 'Lease Alerts', icon: AlertTriangle },
 ];
 
-interface Pagination { page: number; limit: number; total: number; totalPages: number; }
-interface Stats {
-    totalTenants: number; totalUnits: number; occupiedUnits: number;
-    vacantUnits: number; openMaintenanceRequests: number; expiringLeases: number;
+function staticModeMessage(): string {
+    return '🗒️ Send message requires backend mode (static deck is read-only).';
 }
 
 // Initials helper
@@ -94,19 +104,20 @@ const nameColor = (name: string) => {
     return colors[Math.abs(h) % colors.length];
 };
 
-export default function TenantPortalModule() {
-    const { hasPermission, authFetch } = useUser();
+function TenantPortalModuleInner() {
+    const { hasPermission } = useUser();
     const [tab, setTab] = useState<PortalTab>('directory');
     const [search, setSearch] = useState('');
-    const [stats, setStats] = useState<Stats | null>(null);
+    const [stats, setStats] = useState<TenantPortalStats | null>(null);
     const [data, setData] = useState<any[]>([]);
-    const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 50, total: 0, totalPages: 0 });
+    const [pagination, setPagination] = useState<TenantPortalPagination>({ page: 1, limit: 50, total: 0, totalPages: 0 });
     const [loading, setLoading] = useState(true);
     const [selectedTenant, setSelectedTenant] = useState<any | null>(null);
     const [replyTo, setReplyTo] = useState<any | null>(null);
     const [replySubject, setReplySubject] = useState('');
     const [replyBody, setReplyBody] = useState('');
     const [sending, setSending] = useState(false);
+    const [statusFeedback, setStatusFeedback] = useState<string>('');
 
     const TAB_PERMS: Record<PortalTab, string> = {
         directory: 'strata:tenant-portal:directory',
@@ -117,50 +128,102 @@ export default function TenantPortalModule() {
     };
     const visibleTabs = TABS.filter(t => hasPermission(TAB_PERMS[t.id]));
 
-    // Fetch stats
+    // Fetch stats — strataGet returns the TenantPortalStats object directly
+    // (no envelope; Task 3.8 byte-shape precedent — see PRE0-6 in DoR).
     const fetchStats = useCallback(async () => {
         try {
-            const res = await authFetch(`${API}/api/tenant/admin/stats`);
-            const json = await res.json();
-            if (json.success) setStats(json.data);
-        } catch (e) { console.error('[TenantPortal Admin] Stats:', e); }
-    }, [authFetch]);
+            const result = await strataGet<TenantPortalStats>('/tenant/admin/stats');
+            setStats(result);
+        } catch (e) {
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.fetch',
+                    message: 'tenant-portal.fetch.error',
+                    level: 'warning',
+                    data: { action: 'stats' },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+            console.error('[TenantPortal Admin] Stats:', e);
+        }
+    }, []);
 
-    // Fetch tab data
-    const fetchTabData = useCallback(async (page = 1) => {
+    // Fetch tab data — static handler returns the FULL filtered array;
+    // module computes a synthetic single-page pagination so the existing
+    // PageControls auto-hides (totalPages <= 1 short-circuit at L243).
+    const fetchTabData = useCallback(async (_page = 1) => {
         setLoading(true);
         const endpoint = tab === 'lease-alerts' ? 'lease-alerts' : tab;
-        const params = new URLSearchParams({ page: String(page), limit: '50' });
-        if (search) params.set('search', search);
+        const params: Record<string, string> = {};
+        if (search) params.search = search;
         try {
-            const res = await authFetch(`${API}/api/tenant/admin/${endpoint}?${params}`);
-            const json = await res.json();
-            if (json.success) {
-                setData(json.data);
-                setPagination(json.pagination || { page: 1, limit: 50, total: json.data.length, totalPages: 1 });
-            }
-        } catch (e) { console.error('[TenantPortal Admin] Fetch:', e); }
+            const result = await strataGet<any[]>(`/tenant/admin/${endpoint}`, params);
+            const rows = Array.isArray(result) ? result : [];
+            setData(rows);
+            setPagination({
+                page: 1,
+                limit: rows.length || 50,
+                total: rows.length,
+                totalPages: 1,
+            });
+        } catch (e) {
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.fetch',
+                    message: 'tenant-portal.fetch.error',
+                    level: 'warning',
+                    data: { action: `tab-${tab}` },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+            console.error('[TenantPortal Admin] Fetch:', e);
+            setData([]);
+            setPagination({ page: 1, limit: 50, total: 0, totalPages: 0 });
+        }
         setLoading(false);
-    }, [tab, search, authFetch]);
+    }, [tab, search]);
 
-    useEffect(() => { fetchStats(); }, [fetchStats]);
+    useEffect(() => {
+        fetchStats();
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.load',
+                message: 'tenant-portal.module.loaded',
+                level: 'info',
+                data: { staticMode: isStaticMode },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
+    }, [fetchStats]);
     useEffect(() => { fetchTabData(1); }, [tab, search]); // eslint-disable-line
 
     const goPage = (p: number) => { if (p >= 1 && p <= pagination.totalPages) fetchTabData(p); };
 
     const sendReply = async () => {
         if (!replyTo || !replySubject.trim() || !replyBody.trim()) return;
+        const tenantId = replyTo.tenantId || replyTo.entityId;
+        if (isStaticMode) {
+            setStatusFeedback(staticModeMessage());
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.submit',
+                    message: 'tenant-portal.message.skipped',
+                    level: 'info',
+                    data: { tenantId },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+            return;
+        }
         setSending(true);
         try {
-            const res = await authFetch(`${API}/api/tenant/admin/messages/${replyTo.tenantId || replyTo.entityId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subject: replySubject, body: replyBody }),
+            Sentry.addBreadcrumb({
+                category: 'ui.submit',
+                message: 'tenant-portal.message.sent',
+                level: 'info',
+                data: { tenantId },
             });
-            if ((await res.json()).success) {
-                setReplyTo(null); setReplySubject(''); setReplyBody('');
-                fetchTabData(pagination.page);
-            }
+        } catch { /* Sentry no-op when DSN unset */ }
+        try {
+            await strataPost(`/tenant/admin/messages/${tenantId}`, { subject: replySubject, body: replyBody });
+            setReplyTo(null); setReplySubject(''); setReplyBody('');
+            fetchTabData(pagination.page);
         } catch (e) { console.error(e); }
         setSending(false);
     };
@@ -300,6 +363,7 @@ export default function TenantPortalModule() {
                                 <tbody>
                                     {data.map((t: any) => (
                                         <tr key={t.id}
+                                            data-testid={`tenant-portal-row-${t.id}`}
                                             className={`tp-row-clickable ${selectedTenant?.id === t.id ? 'tp-row-selected' : ''}`}
                                             onClick={() => setSelectedTenant(selectedTenant?.id === t.id ? null : t)}>
                                             <td>
@@ -579,7 +643,10 @@ export default function TenantPortalModule() {
                                 onChange={e => setReplyBody(e.target.value)}
                             />
                             <div className="tp-reply-actions">
-                                <button className="tp-btn-primary" onClick={sendReply}
+                                <button
+                                    data-testid="tenant-portal-send-message-btn"
+                                    className="tp-btn-primary"
+                                    onClick={sendReply}
                                     disabled={sending || !replySubject.trim() || !replyBody.trim()}>
                                     <Send size={12} /> {sending ? 'Sending…' : 'Send Reply'}
                                 </button>
@@ -730,7 +797,7 @@ export default function TenantPortalModule() {
     };
 
     return (
-        <div className="tp-module">
+        <div data-testid="tenant-portal-module" className="tp-module">
             {/* Header */}
             <div className="tp-header">
                 <div>
@@ -743,6 +810,7 @@ export default function TenantPortalModule() {
                 <div className="tp-header-actions">
                     <div className="tp-search-wrap">
                         <input
+                            data-testid="tenant-portal-search-input"
                             className="tp-search"
                             placeholder="Search tenants, units, properties…"
                             value={search}
@@ -750,12 +818,30 @@ export default function TenantPortalModule() {
                         />
                         <Search size={14} className="tp-search-icon" />
                     </div>
-                    <button className="tp-refresh-btn" onClick={() => { fetchStats(); fetchTabData(pagination.page); }}
+                    <button
+                        data-testid="tenant-portal-refresh-btn"
+                        className="tp-refresh-btn"
+                        onClick={() => { fetchStats(); fetchTabData(pagination.page); }}
                         title="Refresh data">
                         <RefreshCw size={14} />
                     </button>
                 </div>
             </div>
+
+            {/* Static-mode write-guard banner (sticky-until-replaced; placed
+              between the gradient header and the KPI row per DoR (e)). */}
+            {statusFeedback && (
+                <div
+                    data-testid="tenant-portal-static-banner"
+                    className="s-glass-card"
+                    style={{
+                        padding: '8px 12px', color: '#fbbf24', fontSize: 12,
+                        borderColor: 'rgba(251,191,36,0.4)', display: 'flex', alignItems: 'center', gap: 8,
+                    }}
+                >
+                    <AlertTriangle size={14} /> {statusFeedback}
+                </div>
+            )}
 
             <KpiRow />
 
@@ -765,6 +851,7 @@ export default function TenantPortalModule() {
                     const Icon = t.icon;
                     return (
                         <button key={t.id}
+                            data-testid={`tenant-portal-tab-${t.id}`}
                             onClick={() => { setTab(t.id); setSearch(''); setSelectedTenant(null); }}
                             className={`tp-tab ${tab === t.id ? 'active' : ''}`}>
                             <Icon size={14} /> {t.label}
@@ -775,5 +862,19 @@ export default function TenantPortalModule() {
 
             {renderContent()}
         </div>
+    );
+}
+
+export default function TenantPortalModule() {
+    return (
+        <ErrorBoundary
+            fallback={
+                <div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>
+                    Tenant Portal module unavailable.
+                </div>
+            }
+        >
+            <TenantPortalModuleInner />
+        </ErrorBoundary>
     );
 }

@@ -1,0 +1,112 @@
+[
+    {
+        "id": "tp-msg-001",
+        "tenantId": "c428e8d2-4cfa-4470-b5a7-9fd871e5c4f3",
+        "tenantName": "Jimmy Armour",
+        "direction": "inbound",
+        "subject": "Faucet leak under kitchen sink",
+        "body": "Hi, the kitchen sink has been dripping for two days. Could maintenance take a look?",
+        "channel": "email",
+        "createdAt": "2026-04-23T15:24:00.000Z",
+        "readStatus": "read"
+    },
+    {
+        "id": "tp-msg-002",
+        "tenantId": "c428e8d2-4cfa-4470-b5a7-9fd871e5c4f3",
+        "tenantName": "Jimmy Armour",
+        "direction": "outbound",
+        "subject": "Re: Faucet leak under kitchen sink",
+        "body": "Hi Jimmy, work order created. Maintenance will visit tomorrow between 10 AM and 12 PM.",
+        "channel": "email",
+        "createdAt": "2026-04-23T16:10:00.000Z",
+        "readStatus": "read"
+    },
+    {
+        "id": "tp-msg-003",
+        "tenantId": "f1001348-2c16-46ec-b2ca-264a5e30d315",
+        "tenantName": "Aletha Armstrong",
+        "direction": "inbound",
+        "subject": "Lease renewal question",
+        "body": "My lease is up in September. What are my renewal options?",
+        "channel": "email",
+        "createdAt": "2026-04-22T10:05:00.000Z",
+        "readStatus": "read"
+    },
+    {
+        "id": "tp-msg-004",
+        "tenantId": "f1001348-2c16-46ec-b2ca-264a5e30d315",
+        "tenantName": "Aletha Armstrong",
+        "direction": "outbound",
+        "subject": "Re: Lease renewal question",
+        "body": "Thanks for reaching out. Renewal packet attached — 12-month and 6-month options available. Reply to confirm.",
+        "channel": "email",
+        "createdAt": "2026-04-22T11:30:00.000Z",
+        "readStatus": "read"
+    },
+    {
+        "id": "tp-msg-005",
+        "tenantId": "fc761553-643e-473d-a9fe-5d817b745002",
+        "tenantName": "Larry Williams",
+        "direction": "inbound",
+        "subject": "Heat not working",
+        "body": "Heat shut off overnight in unit J13. Indoor temp is 58F.",
+        "channel": "email",
+        "createdAt": "2026-04-24T07:42:00.000Z",
+        "readStatus": "unread"
+    },
+    {
+        "id": "tp-msg-006",
+        "tenantId": "237e3c01-c534-4e84-ae23-406310be97b2",
+        "tenantName": "Navana Williams",
+        "direction": "inbound",
+        "subject": "Late fee question",
+        "body": "I see a late fee on my April bill but I paid on the 4th — within the grace period. Could you check?",
+        "channel": "email",
+        "createdAt": "2026-04-21T14:18:00.000Z",
+        "readStatus": "read"
+    },
+    {
+        "id": "tp-msg-007",
+        "tenantId": "237e3c01-c534-4e84-ae23-406310be97b2",
+        "tenantName": "Navana Williams",
+        "direction": "outbound",
+        "subject": "Re: Late fee question",
+        "body": "Confirmed — payment posted within grace period. Late fee waived; updated balance reflects on next statement.",
+        "channel": "email",
+        "createdAt": "2026-04-21T15:42:00.000Z",
+        "readStatus": "read"
+    },
+    {
+        "id": "tp-msg-008",
+        "tenantId": "004316e3-c3e3-4efd-b711-55d621e8a37e",
+        "tenantName": "Loretta Bailey",
+        "direction": "inbound",
+        "subject": "Maintenance schedule for hallway lights",
+        "body": "When are the hallway light replacements scheduled? Two of three are out on the H-corridor.",
+        "channel": "email",
+        "createdAt": "2026-04-20T09:11:00.000Z",
+        "readStatus": "unread"
+    },
+    {
+        "id": "tp-msg-009",
+        "tenantId": "00401282-ba5e-4ce6-8a88-28945fa0be97",
+        "tenantName": "Jasmine Baker",
+        "direction": "inbound",
+        "subject": "Parking permit renewal",
+        "body": "My parking permit expires May 1. How do I renew?",
+        "channel": "email",
+        "createdAt": "2026-04-19T18:45:00.000Z",
+        "readStatus": "read"
+    },
+    {
+        "id": "tp-msg-010",
+        "tenantId": "bb1483a7-9b37-4264-b5e7-886fe0c4d9f9",
+        "tenantName": "Patrick Baker",
+        "direction": "outbound",
+        "subject": "Welcome packet — Riverwood Club Apartments",
+        "body": "Welcome to Riverwood Club. Onboarding packet attached: parking, trash schedule, maintenance request portal access.",
+        "channel": "email",
+        "createdAt": "2026-04-18T13:00:00.000Z",
+        "readStatus": "read"
+    }
+]

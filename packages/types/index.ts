@@ -980,3 +980,44 @@ export interface ReviewDocument {
     createdAt: string;
     updatedAt: string;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Tenant Portal Types
+// ═══════════════════════════════════════════════════════════════
+// Phase-3 Task 3.9 hoist from TenantPortalModule.tsx (6th post-B3
+// additive amendment after Tasks 2.2 / 2.10 / 2.4 / 2.8 / 3.8 —
+// Task 3.7 was the only post-B3 task to skip; 3.9 returns to
+// additive-append cadence). Mirrors the inline shape line-for-line
+// — additive only, no removals. `Pagination` and `Stats` were too
+// generic to live unprefixed in a global types module so they are
+// hoisted as `TenantPortalPagination` and `TenantPortalStats`.
+
+export type PortalTab = 'directory' | 'maintenance' | 'payments' | 'messages' | 'lease-alerts';
+
+export interface TenantPortalPagination {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+}
+
+export interface TenantPortalStats {
+    totalTenants: number;
+    totalUnits: number;
+    occupiedUnits: number;
+    vacantUnits: number;
+    openMaintenanceRequests: number;
+    expiringLeases: number;
+}
+
+export interface TenantPortalMessage {
+    id: string;
+    tenantId: string;
+    tenantName: string;
+    direction: 'inbound' | 'outbound';
+    subject: string;
+    body: string;
+    channel: string;
+    createdAt: string;
+    readStatus: 'read' | 'unread';
+}

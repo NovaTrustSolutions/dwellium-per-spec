@@ -53,6 +53,17 @@ export function strataPost<T>(path: string, body: unknown): Promise<T> {
     return impl.strataPost<T>(path, body);
 }
 
+// Task 3.8 — multipart upload precedent. Mirrors strataPost shape but
+// takes FormData directly (not a JSON body). Backend mode forwards the
+// FormData via fetch without a Content-Type header (the browser sets
+// the multipart boundary automatically); static mode constructs a
+// mock-shape response from the FormData fields. Established here for
+// CorporateReview's /upload path; reusable for any future multipart
+// surfaces.
+export function strataUpload<T>(path: string, formData: FormData): Promise<T> {
+    return impl.strataUpload<T>(path, formData);
+}
+
 export function strataPut<T>(path: string, body: unknown): Promise<T> {
     return impl.strataPut<T>(path, body);
 }

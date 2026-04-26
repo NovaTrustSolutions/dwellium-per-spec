@@ -53,6 +53,22 @@ export function strataPost<T>(path: string, body: unknown): Promise<T> {
     return request<T>('POST', path, body);
 }
 
+// Task 3.8 — multipart upload. Issues `POST <path>` with FormData body;
+// no `Content-Type` header so the browser sets the multipart boundary
+// automatically. Auth header still forwarded. Mirrors `request` error
+// handling but keeps body untransformed.
+export async function strataUpload<T>(path: string, formData: FormData): Promise<T> {
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || `API error ${res.status}`);
+    }
+    return res.json();
+}
+
 export function strataPut<T>(path: string, body: unknown): Promise<T> {
     return request<T>('PUT', path, body);
 }

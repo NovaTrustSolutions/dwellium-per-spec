@@ -1,31 +1,24 @@
 /**
  * CorporateReview — Upload, triage, approve, and convert documents to workitems.
  * Corporate-level document review pipeline for the Strata dashboard.
+ *
+ * Phase-3 Task 3.8 retrofit: GR-13 observability (ErrorBoundary wrap +
+ * 6 try/catch-wrapped Sentry breadcrumbs + 11 data-testid anchors) +
+ * raw fetch → strataApi rewire (1 strataGet + 4 strataPost + 1
+ * strataUpload) + 5 isStaticMode write-guards on all POST sites with a
+ * sticky `statusFeedback` banner above the status filter row. Mirrors
+ * Task 3.7 (ProjectsModule) Inner/Outer split shape and Task 2.8
+ * (SentimentModule) strataApi rewire shape — see commit body.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { API_BASE } from '../../../config';
 import {
     Upload, Filter, CheckCircle2, XCircle, Clock, FileText,
-    Search, RefreshCw, ChevronRight, AlertTriangle, Plus
+    Search, RefreshCw, AlertTriangle, Plus
 } from 'lucide-react';
-
-const API = API_BASE;
-
-type ReviewStatus = 'pending' | 'triaged' | 'approved' | 'rejected';
-type DocPriority = 'critical' | 'high' | 'medium' | 'low';
-
-interface ReviewDocument {
-    id: string;
-    filename: string;
-    uploadedBy: string;
-    status: ReviewStatus;
-    priority: DocPriority;
-    category: string;
-    notes: string;
-    workitemId: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
+import { strataGet, strataPost, strataUpload, isStaticMode } from '../strataApi';
+import type { ReviewStatus, DocPriority, ReviewDocument } from '../strataTypes';
+import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 
 const STATUS_COLORS: Record<ReviewStatus, string> = {
     pending: '#eab308',
@@ -43,7 +36,13 @@ const PRIORITY_COLORS: Record<DocPriority, string> = {
 
 const CATEGORIES = ['Invoice', 'Lease', 'Compliance', 'Insurance', 'Legal', 'Tax', 'Other'];
 
-export default function CorporateReview() {
+type WriteAction = 'Upload' | 'Triage' | 'Approve' | 'Reject' | 'Create workitem';
+
+function staticModeMessage(action: WriteAction): string {
+    return `🗒️ ${action} requires backend mode (static deck is read-only).`;
+}
+
+function CorporateReviewInner() {
     const [docs, setDocs] = useState<ReviewDocument[]>([]);
     const [filter, setFilter] = useState<ReviewStatus | 'all'>('all');
     const [search, setSearch] = useState('');
@@ -54,24 +53,40 @@ export default function CorporateReview() {
     const [uploadPriority, setUploadPriority] = useState<DocPriority>('medium');
     const [uploadNotes, setUploadNotes] = useState('');
     const [feedback, setFeedback] = useState<string | null>(null);
+    const [statusFeedback, setStatusFeedback] = useState<string>('');
     const [loading, setLoading] = useState(false);
 
     const fetchDocs = useCallback(async () => {
         try {
-            const params = new URLSearchParams();
-            if (filter !== 'all') params.set('status', filter);
-            if (search) params.set('search', search);
-            const res = await fetch(`${API}/api/corporate-review?${params}`);
-            if (res.ok) {
-                setDocs(await res.json());
-            }
+            const params: Record<string, string> = {};
+            if (filter !== 'all') params.status = filter;
+            if (search) params.search = search;
+            const data = await strataGet<ReviewDocument[]>('/corporate-review', params);
+            setDocs(data);
         } catch {
             // Backend route not available — show empty
             setDocs([]);
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.fetch',
+                    message: 'corporate-review.fetch.error',
+                    level: 'warning',
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
         }
     }, [filter, search]);
 
-    useEffect(() => { fetchDocs(); }, [fetchDocs]);
+    useEffect(() => {
+        fetchDocs();
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.load',
+                message: 'corporate-review.module.loaded',
+                level: 'info',
+                data: { staticMode: isStaticMode },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
+    }, [fetchDocs]);
 
     const showToast = (msg: string) => {
         setFeedback(msg);
@@ -80,14 +95,37 @@ export default function CorporateReview() {
 
     const handleUpload = async () => {
         if (!uploadFile) return;
+        if (isStaticMode) {
+            setStatusFeedback(staticModeMessage('Upload'));
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.submit',
+                    message: 'corporate-review.upload.skipped',
+                    level: 'info',
+                    data: { filename: uploadFile.name, category: uploadCategory, priority: uploadPriority },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+            setShowUpload(false);
+            setUploadFile(null);
+            setUploadNotes('');
+            return;
+        }
         setLoading(true);
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.submit',
+                message: 'corporate-review.upload.sent',
+                level: 'info',
+                data: { filename: uploadFile.name, size: uploadFile.size, category: uploadCategory, priority: uploadPriority },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
         try {
             const formData = new FormData();
             formData.append('file', uploadFile);
             formData.append('category', uploadCategory);
             formData.append('priority', uploadPriority);
             formData.append('notes', uploadNotes);
-            await fetch(`${API}/api/corporate-review/upload`, { method: 'POST', body: formData });
+            await strataUpload<ReviewDocument>('/corporate-review/upload', formData);
             showToast('📄 Document uploaded');
             setShowUpload(false);
             setUploadFile(null);
@@ -99,58 +137,58 @@ export default function CorporateReview() {
         setLoading(false);
     };
 
-    const triageDoc = async (doc: ReviewDocument, priority: DocPriority) => {
+    const submitWrite = async (
+        doc: ReviewDocument,
+        action: Exclude<WriteAction, 'Upload'>,
+        path: string,
+        body: unknown,
+        successToast: string,
+        failureToast: string,
+    ) => {
+        if (isStaticMode) {
+            setStatusFeedback(staticModeMessage(action));
+            try {
+                Sentry.addBreadcrumb({
+                    category: 'ui.submit',
+                    message: 'corporate-review.submit.skipped',
+                    level: 'info',
+                    data: { docId: doc.id, action: action.toLowerCase().replace(' ', '-') },
+                });
+            } catch { /* Sentry no-op when DSN unset */ }
+            return;
+        }
         try {
-            await fetch(`${API}/api/corporate-review/${doc.id}/triage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ priority }),
+            Sentry.addBreadcrumb({
+                category: 'ui.submit',
+                message: 'corporate-review.submit.sent',
+                level: 'info',
+                data: { docId: doc.id, action: action.toLowerCase().replace(' ', '-') },
             });
-            showToast('✅ Document triaged');
+        } catch { /* Sentry no-op when DSN unset */ }
+        try {
+            await strataPost(path, body);
+            showToast(successToast);
             fetchDocs();
         } catch {
-            showToast('❌ Triage failed');
+            showToast(failureToast);
         }
     };
 
-    const approveDoc = async (doc: ReviewDocument) => {
-        try {
-            await fetch(`${API}/api/corporate-review/${doc.id}/approve`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            showToast('✅ Document approved');
-            fetchDocs();
-        } catch {
-            showToast('❌ Approval failed');
-        }
-    };
+    const triageDoc = (doc: ReviewDocument, priority: DocPriority) =>
+        submitWrite(doc, 'Triage', `/corporate-review/${doc.id}/triage`, { priority },
+            '✅ Document triaged', '❌ Triage failed');
 
-    const rejectDoc = async (doc: ReviewDocument) => {
-        try {
-            await fetch(`${API}/api/corporate-review/${doc.id}/reject`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            showToast('🚫 Document rejected');
-            fetchDocs();
-        } catch {
-            showToast('❌ Rejection failed');
-        }
-    };
+    const approveDoc = (doc: ReviewDocument) =>
+        submitWrite(doc, 'Approve', `/corporate-review/${doc.id}/approve`, {},
+            '✅ Document approved', '❌ Approval failed');
 
-    const createWorkitem = async (doc: ReviewDocument) => {
-        try {
-            await fetch(`${API}/api/corporate-review/${doc.id}/create-workitem`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            showToast('🔗 Workitem created from document');
-            fetchDocs();
-        } catch {
-            showToast('❌ Failed to create workitem');
-        }
-    };
+    const rejectDoc = (doc: ReviewDocument) =>
+        submitWrite(doc, 'Reject', `/corporate-review/${doc.id}/reject`, {},
+            '🚫 Document rejected', '❌ Rejection failed');
+
+    const createWorkitem = (doc: ReviewDocument) =>
+        submitWrite(doc, 'Create workitem', `/corporate-review/${doc.id}/create-workitem`, {},
+            '🔗 Workitem created from document', '❌ Failed to create workitem');
 
     const filtered = docs.filter(d =>
         (filter === 'all' || d.status === filter) &&
@@ -170,24 +208,46 @@ export default function CorporateReview() {
     };
 
     return (
-        <div className="strata-module" style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+        <div data-testid="corporate-review-module" className="strata-module" style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+            {/* Static-mode write-guard banner (sticky-until-replaced) */}
+            {statusFeedback && (
+                <div
+                    className="s-glass-card"
+                    style={{
+                        padding: '8px 12px', color: '#fbbf24', fontSize: 12,
+                        borderColor: 'rgba(251,191,36,0.4)', display: 'flex', alignItems: 'center', gap: 8,
+                    }}
+                >
+                    <AlertTriangle size={14} /> {statusFeedback}
+                </div>
+            )}
+
             {/* Status Bar */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {(['all', 'pending', 'triaged', 'approved', 'rejected'] as const).map(s => (
-                    <button key={s} onClick={() => setFilter(s)} style={{
-                        padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'pointer',
-                        fontSize: 13, fontWeight: 600,
-                        background: filter === s ? (s === 'all' ? '#6366f1' : STATUS_COLORS[s]) : 'rgba(255,255,255,0.06)',
-                        color: filter === s ? '#fff' : '#aaa',
-                    }}>
+                    <button
+                        key={s}
+                        data-testid={`corporate-review-status-filter-${s}`}
+                        onClick={() => setFilter(s)}
+                        style={{
+                            padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                            fontSize: 13, fontWeight: 600,
+                            background: filter === s ? (s === 'all' ? '#6366f1' : STATUS_COLORS[s]) : 'rgba(255,255,255,0.06)',
+                            color: filter === s ? '#fff' : '#aaa',
+                        }}
+                    >
                         {s === 'all' ? `All (${docs.length})` : `${s.charAt(0).toUpperCase() + s.slice(1)} (${counts[s]})`}
                     </button>
                 ))}
                 <div style={{ flex: 1 }} />
-                <button onClick={() => setShowUpload(true)} style={{
-                    padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1',
-                    color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
-                }}>
+                <button
+                    data-testid="corporate-review-upload-btn"
+                    onClick={() => setShowUpload(true)}
+                    style={{
+                        padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1',
+                        color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                >
                     <Upload size={14} /> Upload Document
                 </button>
             </div>
@@ -195,9 +255,18 @@ export default function CorporateReview() {
             {/* Search */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '6px 12px' }}>
                 <Search size={14} style={{ color: '#888' }} />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents..."
-                    style={{ flex: 1, background: 'transparent', border: 'none', color: '#eee', fontSize: 13, outline: 'none' }} />
-                <button onClick={fetchDocs} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><RefreshCw size={14} /></button>
+                <input
+                    data-testid="corporate-review-search-input"
+                    value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents..."
+                    style={{ flex: 1, background: 'transparent', border: 'none', color: '#eee', fontSize: 13, outline: 'none' }}
+                />
+                <button
+                    data-testid="corporate-review-refresh-btn"
+                    onClick={fetchDocs}
+                    style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}
+                >
+                    <RefreshCw size={14} />
+                </button>
             </div>
 
             {/* Document List */}
@@ -209,12 +278,16 @@ export default function CorporateReview() {
                     </div>
                 )}
                 {filtered.map(doc => (
-                    <div key={doc.id} onClick={() => setSelected(selected?.id === doc.id ? null : doc)}
+                    <div
+                        key={doc.id}
+                        data-testid={`corporate-review-card-${doc.id}`}
+                        onClick={() => setSelected(selected?.id === doc.id ? null : doc)}
                         style={{
                             ...cardStyle, cursor: 'pointer',
                             borderColor: selected?.id === doc.id ? '#6366f1' : 'rgba(255,255,255,0.08)',
                             transition: 'border-color 0.2s',
-                        }}>
+                        }}
+                    >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <FileText size={16} style={{ color: '#6366f1' }} />
                             <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: '#eee' }}>{doc.filename}</span>
@@ -237,26 +310,46 @@ export default function CorporateReview() {
                             <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingLeft: 26 }}>
                                 {doc.status === 'pending' && (
                                     <>
-                                        <button onClick={e => { e.stopPropagation(); triageDoc(doc, 'high'); }} style={btnStyle('#3b82f6')}>
+                                        <button
+                                            data-testid={`corporate-review-action-triage-high-${doc.id}`}
+                                            onClick={e => { e.stopPropagation(); triageDoc(doc, 'high'); }}
+                                            style={btnStyle('#3b82f6')}
+                                        >
                                             <Filter size={12} /> Triage (High)
                                         </button>
-                                        <button onClick={e => { e.stopPropagation(); triageDoc(doc, 'medium'); }} style={btnStyle('#eab308')}>
+                                        <button
+                                            data-testid={`corporate-review-action-triage-med-${doc.id}`}
+                                            onClick={e => { e.stopPropagation(); triageDoc(doc, 'medium'); }}
+                                            style={btnStyle('#eab308')}
+                                        >
                                             <Filter size={12} /> Triage (Med)
                                         </button>
                                     </>
                                 )}
                                 {(doc.status === 'pending' || doc.status === 'triaged') && (
                                     <>
-                                        <button onClick={e => { e.stopPropagation(); approveDoc(doc); }} style={btnStyle('#22c55e')}>
+                                        <button
+                                            data-testid={`corporate-review-action-approve-${doc.id}`}
+                                            onClick={e => { e.stopPropagation(); approveDoc(doc); }}
+                                            style={btnStyle('#22c55e')}
+                                        >
                                             <CheckCircle2 size={12} /> Approve
                                         </button>
-                                        <button onClick={e => { e.stopPropagation(); rejectDoc(doc); }} style={btnStyle('#ef4444')}>
+                                        <button
+                                            data-testid={`corporate-review-action-reject-${doc.id}`}
+                                            onClick={e => { e.stopPropagation(); rejectDoc(doc); }}
+                                            style={btnStyle('#ef4444')}
+                                        >
                                             <XCircle size={12} /> Reject
                                         </button>
                                     </>
                                 )}
                                 {doc.status === 'approved' && !doc.workitemId && (
-                                    <button onClick={e => { e.stopPropagation(); createWorkitem(doc); }} style={btnStyle('#6366f1')}>
+                                    <button
+                                        data-testid={`corporate-review-action-create-workitem-${doc.id}`}
+                                        onClick={e => { e.stopPropagation(); createWorkitem(doc); }}
+                                        style={btnStyle('#6366f1')}
+                                    >
                                         <Plus size={12} /> Create Workitem
                                     </button>
                                 )}
@@ -327,4 +420,16 @@ function btnStyle(color: string): React.CSSProperties {
     };
 }
 
-
+export default function CorporateReview() {
+    return (
+        <ErrorBoundary
+            fallback={
+                <div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>
+                    Corporate Review module unavailable.
+                </div>
+            }
+        >
+            <CorporateReviewInner />
+        </ErrorBoundary>
+    );
+}

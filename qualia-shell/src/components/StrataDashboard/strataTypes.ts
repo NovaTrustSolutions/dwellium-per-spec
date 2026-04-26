@@ -82,4 +82,7 @@ export type {
     CommunicationThreadRollup,
     ActivityEventSource,
     PropertyTimelineView,
+    ReviewStatus,
+    DocPriority,
+    ReviewDocument,
 } from '../../../../packages/types/index';

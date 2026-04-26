@@ -1002,6 +1002,26 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
     // /gmail
     if (path.startsWith('/gmail/')) return { success: true };
 
+    // Task 3.8 — Corporate Review GET handler. Backed by
+    // `corporate_review.json` (12-doc fixture; FK-correct workitemId
+    // values for `approved` rows). Status + search params filter
+    // client-side. Mirrors the lightweight filter pattern used by
+    // sentiment/workitems handlers — no pagination (corpus is small).
+    if (path === '/corporate-review') {
+        let docs = await loadTable<{ id: string; status: string; priority: string; filename: string; category: string; [k: string]: any }>('corporate_review');
+        if (params?.status && params.status !== 'all') {
+            docs = docs.filter(d => d.status === params.status);
+        }
+        if (params?.search) {
+            const q = params.search.toLowerCase();
+            docs = docs.filter(d =>
+                d.filename.toLowerCase().includes(q) ||
+                d.category.toLowerCase().includes(q)
+            );
+        }
+        return docs;
+    }
+
     // Fallback
     console.warn('[StaticAPI] Unhandled GET:', path, params);
     return [];
@@ -1075,6 +1095,55 @@ function matchWriteRoute(method: string, path: string, body: any): any {
         return { success: true, synced: 0, message: 'Static mode — Trello sync disabled.' };
     }
 
+    // Task 3.8 — Corporate Review write endpoints. CorporateReviewInner
+    // guards each write site with isStaticMode early-return, so these
+    // handlers never fire from the module path; they exist for
+    // completeness so direct-test access (and any future non-guarded
+    // consumer) gets a coherent mock-shape response. All operations
+    // route through createRecord / updateRecord so dataCache +
+    // localStorage overlay stay consistent across reloads.
+    if (method === 'POST' && path === '/corporate-review/upload') {
+        const b = body as any;
+        return createRecord('corporate_review', {
+            id: `static-upload-${crypto.randomUUID()}`,
+            filename: b?.filename || 'static-upload.bin',
+            uploadedBy: 'andy@dwellium.test',
+            status: 'pending',
+            priority: b?.priority || 'medium',
+            category: b?.category || 'static-upload',
+            notes: b?.notes || '',
+            workitemId: null,
+        });
+    }
+    let crm: RegExpMatchArray | null;
+    if (method === 'POST' && (crm = path.match(/^\/corporate-review\/([^/]+)\/triage$/))) {
+        const b = body as any;
+        return updateRecord('corporate_review', crm[1], {
+            status: 'triaged',
+            priority: b?.priority || 'medium',
+        });
+    }
+    if (method === 'POST' && (crm = path.match(/^\/corporate-review\/([^/]+)\/approve$/))) {
+        return updateRecord('corporate_review', crm[1], { status: 'approved' });
+    }
+    if (method === 'POST' && (crm = path.match(/^\/corporate-review\/([^/]+)\/reject$/))) {
+        return updateRecord('corporate_review', crm[1], { status: 'rejected' });
+    }
+    if (method === 'POST' && (crm = path.match(/^\/corporate-review\/([^/]+)\/create-workitem$/))) {
+        const docId = crm[1];
+        const wi = createRecord('workitems', {
+            type: 'work_order',
+            title: `Workitem from corporate review document ${docId}`,
+            description: 'Auto-created from approved corporate review document.',
+            status: 'open',
+            priority: 'medium',
+            domain: 'corporate',
+            tags: ['corporate-review-derived'],
+        });
+        updateRecord('corporate_review', docId, { workitemId: wi.id });
+        return { document: { id: docId, workitemId: wi.id }, workitem: wi };
+    }
+
     for (const { route, table } of crudRoutes) {
         const m = path.match(route);
         if (m) {
@@ -1093,6 +1162,23 @@ export function strataGet<T>(path: string, params?: Record<string, string>): Pro
     return matchRoute(path, params) as Promise<T>;
 }
 export function strataPost<T>(path: string, body: unknown): Promise<T> {
+    return Promise.resolve(matchWriteRoute('POST', path, body) as T);
+}
+// Task 3.8 — multipart upload (static-mode stub). FormData fields are
+// flattened into a plain object before dispatch so matchWriteRoute can
+// pick out filename/category/priority/notes. The File entry's `.name`
+// is captured as `filename` and `.size` as `size`. Static-mode always
+// returns the createRecord mock-shape from /corporate-review/upload.
+export function strataUpload<T>(path: string, formData: FormData): Promise<T> {
+    const body: Record<string, any> = {};
+    formData.forEach((value, key) => {
+        if (typeof File !== 'undefined' && value instanceof File) {
+            body.filename = value.name;
+            body.size = value.size;
+        } else {
+            body[key] = value;
+        }
+    });
     return Promise.resolve(matchWriteRoute('POST', path, body) as T);
 }
 export function strataPut<T>(path: string, body: unknown): Promise<T> {

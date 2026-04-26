@@ -1,0 +1,142 @@
+{
+  "capturedAt": "2026-04-26T01:04:19.131Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "nav-root",
+      "result": {
+        "url": "http://127.0.0.1:5173/"
+      }
+    },
+    {
+      "step": "click-start-overlay",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-property-management",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-corporate-review-nav",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "probe-all-view",
+      "result": {
+        "moduleRendered": true,
+        "allFiveStatusFiltersPresent": true,
+        "statusFiltersFound": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "uploadButtonVisible": true,
+        "searchInputVisible": true,
+        "refreshButtonVisible": true,
+        "cardCount": 12
+      }
+    },
+    {
+      "step": "screenshot-all-view",
+      "result": {
+        "pngBytes": 544856,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_8/01_corporate_review_all_view.png"
+      }
+    },
+    {
+      "step": "click-pending-filter",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-pending-filter",
+      "result": {
+        "pendingCardCount": 4
+      }
+    },
+    {
+      "step": "screenshot-pending-filter",
+      "result": {
+        "pngBytes": 529660,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_8/02_corporate_review_pending_filter.png"
+      }
+    },
+    {
+      "step": "expand-pending-card",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-card-expanded",
+      "result": {
+        "triageButtonFound": true,
+        "triageButtonText": " Triage (High)"
+      }
+    },
+    {
+      "step": "click-triage-high",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-static-mode-banner",
+      "result": {
+        "staticModeBannerVisible": true
+      }
+    },
+    {
+      "step": "screenshot-static-mode-banner",
+      "result": {
+        "pngBytes": 528156,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_8/03_corporate_review_static_mode_triage_banner.png"
+      }
+    },
+    {
+      "step": "guard",
+      "result": {
+        "moduleRendered": true,
+        "allFiveStatusFiltersPresent": true,
+        "uploadButtonVisible": true,
+        "searchInputVisible": true,
+        "refreshButtonVisible": true,
+        "allViewCardCountCorrect": true,
+        "pendingFilterCardCountCorrect": true,
+        "staticModeBannerVisible": true,
+        "zeroConsoleErrors": true,
+        "zeroPageErrors": true,
+        "allPass": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

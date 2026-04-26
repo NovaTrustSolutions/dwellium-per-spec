@@ -9,9 +9,9 @@
 1. `d1913fe` — `feat(phase-3): Task 3.8 commit B — corporate_review.json fixture (12 docs, FK-correct) + ReviewDocument types hoist to packages/types` — additive-only baseline pin. 2 files (`packages/types/index.ts` +21 / `qualia-shell/public/data/corporate_review.json` +145). Vitest delta on commit: **0** (174/174 baseline preserved — no consumers wired yet).
 2. `1a7a913` — `feat(phase-3): Task 3.8 commit C — CorporateReview GR-13 retrofit + strataApi rewire (Inner/Outer + 6 fetch sites + 5 isStaticMode write-guards + 6 breadcrumbs + 11 testids + strataUpload precedent + 6 static handlers)` — 5-file retrofit + rewire. `CorporateReview.tsx` (+200 / −95) + `strataApi.ts` (+11) + `strataApi.backend.ts` (+16) + `strataApi.static.ts` (+86) + `strataTypes.ts` (+3). Vitest delta on commit: **0** (174/174 baseline preserved — render contract unchanged, tests come in D).
 3. `9d47987` — `test(phase-3): Task 3.8 commit D — corporate-review.test.ts (6 fixture it-blocks) + corporate-review.module.test.tsx (3 render it-blocks closing plan v2 §15 L491 GR-13 unit-test mandate)` — 2 NEW test files (139 + 212 lines). Vitest delta on commit: **+9** (174 → 183; 27 → 29 test files).
-4. `<commit-F-SHA>` — `docs(phase-3): Task 3.8 commit F — CDP render proof + plan v2 sweep (§9 Phase-3 sub-tracker + §15 L491 wording fix + §21 Appendix D updates + v2.12 changelog) + completion report` — bundled docs/artifact commit. Vitest delta on commit: **0** (no source changes).
+4. `afd1990` — `docs(phase-3): Task 3.8 commit F — CDP render proof + plan v2 sweep (§9 Phase-3 sub-tracker + §15 L491 wording fix + §21 Appendix D updates + v2.12 changelog) + completion report` — bundled docs/artifact commit. Vitest delta on commit: **0** (no source changes).
 
-**Merge SHA (post-squash).** `<post-merge-SHA — backfilled in sweep>` — squash-merge on 2026-04-25 (PR #20).
+**Merge SHA (post-squash).** `b4b7c9a` — squash-merge on 2026-04-25 (PR #20).
 **Closure date.** 2026-04-25.
 
 ---
@@ -234,11 +234,15 @@ Atomic per-commit rollback supported (4 commits total in branch — baseline / r
 
 ```
 # Full revert (restore pre-Task-3.8 state — back to main@757e0f4)
-git revert <F-SHA> 9d47987 1a7a913 d1913fe
+git revert b4b7c9a   # squash-merge revert (single-commit; preferred since the PR was squashed)
+
+# Pre-squash atomic per-commit rollback (only viable from a checkout of the
+# pre-merge branch — squash collapses these into b4b7c9a on main):
+git revert afd1990 9d47987 1a7a913 d1913fe
 
 # Selective: revert only the docs (keep baseline + retrofit + tests; plan v2 +
 # completion report + CDP artifacts removed; runtime behavior unchanged).
-git revert <F-SHA>
+git revert afd1990
 
 # Selective: revert only the tests (keep baseline + retrofit + docs; vitest
 # 183 → 174 baseline; render-test coverage of GR-13 mandate retracts).
@@ -274,6 +278,10 @@ git revert d1913fe
 
 6. **`packages/types/index.ts` Phase-3 column precedent break.** Task 3.7's v2.11 changelog predicted "Appendix D Phase-3 column **stays empty** for all rows" for the 3-PR retrofit chain. Task 3.8 supersedes (v2.12 changelog) — 4 row updates + 1 NEW row required. Task 3.9 may or may not add to the matrix depending on whether TenantPortal has its own type hoist or static handlers. Phase-3 column is now active.
 
+7. **Playwright baseline pass count drift 2 → 4** (post-merge observation). On Task 3.7 sweep run `24927092067`, the Playwright baseline reported 2 passes; on Task 3.8 PR run `24946208978` and post-merge run `24946665727`, it reports 4 passes (with 9 failures + 3 did-not-run). Could be timing-sensitive stabilization (jsdom warm-up reaching more modules) or coincidental Task 3.8 changes enabling some assertions (e.g., the `corporate-review-module` testid newly resolving). Non-blocking — Playwright baselines remain `continue-on-error: true` per CLAUDE.md L24 pending Linux snapshot capture. **v2.15 candidate** alongside **v2.14** Node.js 20 actions deprecation workflow bump.
+
+8. **v2.13 follow-up retired by Task 3.8 close.** Task 3.7 §7 entry #3 (Playwright `page.locator(...).click()` vs React event delegation) was tagged as a Phase-3 v2.13 follow-up candidate at 3.7 closure. Task 3.8 CDP probe used programmatic native click via `page.evaluate(...)` as the DEFAULT (not fallback) and recorded first-try success across all 3 testid-anchored click paths (status-filter-pending, expand-pending-card, click-triage-high) with zero retries. The workaround is empirically validated; v2.13 is **retired by demonstration** rather than by root-cause investigation. Surviving Phase-3 plan-version follow-ups: **v2.14** (Node.js 20 actions deprecation workflow bump — due 2026-09-16 per GitHub deprecation calendar); **v2.15 candidate** (Playwright baseline pass-count drift per #7 above).
+
 ---
 
 ## §8 — Next-task unblock + Phase-3 chain status
@@ -284,6 +292,6 @@ git revert d1913fe
 - Task 3.9 (TenantPortal GR-13 retrofit) becomes unblocked — opens by branching off `main` post-3.8-merge (which inherits commit C's Inner-wrapper + commit D's test-mock pattern as the canonical template, plus the `strataUpload` precedent if TenantPortal uses any multipart paths).
 - Phase-3 deferred-items ledger drops from 8 → 6 per §7 entry #4.
 
-**Next DoR.** Phase-3 Task 3.9 (TenantPortal) DoR opens once Task 3.8 squash-merges. Expected DoR shape: PRE0 numbering already cleared (3.9); PRE1 codebase reality contact on `TenantPortalModule.tsx` (locate strataApi import line, write sites, view structure for testid placement); PRE2 test baseline (183 → predicted 186-189 with 3 render it-blocks ± fixture additions); (a)–(f) ack chain with Task 3.8 as precedent reference (since 3.8 sits between 3.7 and 3.9 as the closest mirrored shape — 3.9 likely inherits the rewire dimension if TenantPortal has any raw-fetch sites). Recommended branch name: `feat/phase-3-task-3.9-tenant-portal-gr13-retrofit` off `main@<task-3-8-squash-SHA>`.
+**Next DoR.** Phase-3 Task 3.9 (TenantPortal) DoR opens once Task 3.8 squash-merges. Expected DoR shape: PRE0 numbering already cleared (3.9); PRE1 codebase reality contact on `TenantPortalModule.tsx` (locate strataApi import line, write sites, view structure for testid placement); PRE2 test baseline (183 → predicted 186-189 with 3 render it-blocks ± fixture additions); (a)–(f) ack chain with Task 3.8 as precedent reference (since 3.8 sits between 3.7 and 3.9 as the closest mirrored shape — 3.9 likely inherits the rewire dimension if TenantPortal has any raw-fetch sites). Recommended branch name: `feat/phase-3-task-3.9-tenant-portal-gr13-retrofit` off `main@b4b7c9a`. Forward-look: TenantPortalModule is the largest of the chain (~779 LOC) and uses an `authFetch` wrapper — subtle variant from 3.8's raw-fetch rewire; will inherit 3.8's `strataUpload` auth-token forwarding pattern for any multipart paths.
 
 **Phase-3 chain ETA.** With 3.9 estimated at the same effort envelope as 3.8 (1 day end-to-end including DoR / strict gate / CDP / report / sweep / merge), the full 3-PR chain closes within ~2 working days from 3.8 merge (3.7 closed 2026-04-25 / 3.8 closes 2026-04-25 — same-day double-close keeps the chain on the original ETA). Phase-3 parallel batch (3.1, 3.2, 3.3, 3.4) remains unblocked by the chain.

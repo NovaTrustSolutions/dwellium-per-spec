@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, Search, RefreshCw, Plus, X, Shield, AlertTriangle, CheckCircle, Mail, Phone, DollarSign, FileText, Link2, Trash2, Tag, Filter, Building2, Unlink, Upload, Award, BarChart3, UserCheck, UserX, Clock, Settings2 } from 'lucide-react';
+import { Truck, Search, RefreshCw, Plus, X, Shield, AlertTriangle, CheckCircle, Mail, Phone, DollarSign, FileText, Link2, Trash2, Tag, Filter, Building2, Unlink, Upload, Award, BarChart3, UserCheck, UserX, Clock, Settings2, ChevronUp, ChevronDown, ExternalLink } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
-import type { EntityProfile, Workitem } from '../strataTypes';
+import type { EntityProfile, Workitem, VendorFederalTax, VendorAccountingInfo, VendorCompliance } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
 import ProfileSpaces from './ProfileSpaces';
 import { useToast } from '../useToast';
 import { LoadingState, ErrorState } from '../StateView';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
+import { Sentry } from '../../../services/sentry';
 import ComplianceTab from './__vendors/ComplianceTab';
 import AccountingTab from './__vendors/AccountingTab';
 
@@ -28,6 +29,273 @@ function getCoiStatus(vendor: EntityProfile): { status: string; color: string; e
     return { status: coiStatus, color: colors[coiStatus] || colors.unknown, expiry };
 }
 
+// ─── Task 3.2: Vendor detail 10-block layout (parallel-batch #2) ───
+//
+// Renders the 10 AppFolio-parity blocks per v1 plan L166 as the content
+// of the existing overview tab. Additive render-layer extension; tab bar
+// preserved. Drift #10 — Blocks 1/2/3 read metadata fields (vendorType /
+// contactName / address / vendorPortalActivated) since EntityProfile core
+// has only single-string email/phone/address. Drift #11 — only 1/3,218
+// vendor entities have typed Task-1.2 blocks; Blocks 4/5/6/7 implement
+// metadata fallback chains for the 3,217 remaining vendors per the
+// deprecation comment at packages/types/index.ts L237-241.
+
+/** Parse a legacy MM/DD/YYYY string OR an ISO YYYY-MM-DD date into Date. */
+function parseLegacyDate(s: string | undefined | null): Date | null {
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const d = new Date(s.length === 10 ? `${s}T00:00:00` : s);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s.trim());
+    if (!m) return null;
+    const d = new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function fmtIsoDate(d: Date | null): string {
+    if (!d) return '—';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Module-local label/value row helper for Block content. NOT exported. */
+function BlockRow({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }}>
+            <span style={{ color: '#64748b', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>{label}</span>
+            <span style={{ color: '#cbd5e1', textAlign: 'right', wordBreak: 'break-word', fontSize: 12 }}>{value}</span>
+        </div>
+    );
+}
+
+/** Module-local collapsible wrapper. NOT exported — Blocks render standalone in tests. */
+function BlockSection({
+    title, slug, expanded, onToggle, children,
+}: {
+    title: string;
+    slug: string;
+    expanded: boolean;
+    onToggle: (next: boolean) => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="s-glass-card" style={{ marginBottom: 8, padding: '10px 14px' }}>
+            <button
+                type="button"
+                onClick={() => onToggle(!expanded)}
+                aria-expanded={expanded}
+                aria-controls={`vendor-block-${slug}`}
+                style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: 0, border: 'none', background: 'none',
+                    color: '#e2e8f0', fontSize: 13, fontWeight: 700, letterSpacing: 0.4,
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                }}
+            >
+                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                <span style={{ flex: 1 }}>{title}</span>
+            </button>
+            {expanded && <div style={{ marginTop: 8 }}>{children}</div>}
+        </div>
+    );
+}
+
+const xLinkBtnStyle: React.CSSProperties = {
+    marginTop: 8, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+    background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)',
+    color: '#818cf8', fontFamily: 'inherit',
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+};
+
+// ── Block 1: Identity ──
+export function BlockIdentity({ vendor }: { vendor: EntityProfile }) {
+    return (
+        <div data-testid="vendor-block-identity">
+            <BlockRow label="Name" value={vendor.name} />
+            <BlockRow label="Vendor Type" value={vendor.metadata?.vendorType ?? '—'} />
+            <BlockRow label="Contact Name" value={vendor.metadata?.contactName ?? '—'} />
+            <BlockRow label="Website" value="—" />
+        </div>
+    );
+}
+
+// ── Block 2: Contact ──
+export function BlockContact({ vendor }: { vendor: EntityProfile }) {
+    const address = vendor.address ?? vendor.metadata?.address ?? '—';
+    return (
+        <div data-testid="vendor-block-contact">
+            <BlockRow label="Email" value={vendor.email ?? '—'} />
+            <BlockRow label="Phone" value={vendor.phone ?? '—'} />
+            <BlockRow label="Address" value={address} />
+        </div>
+    );
+}
+
+// ── Block 3: Portal (tri-state per Drift #10) ──
+export function BlockPortal({ vendor }: { vendor: EntityProfile }) {
+    const raw = vendor.metadata?.vendorPortalActivated;
+    const status = (raw === 'Yes' || raw === true)
+        ? 'Activated'
+        : (raw === 'No' || raw === false)
+            ? 'Not activated'
+            : 'Not configured';
+    return (
+        <div data-testid="vendor-block-portal">
+            <BlockRow label="Portal Status" value={status} />
+        </div>
+    );
+}
+
+// ── Block 4: Federal Tax (typed root ?? metadata fallback per Drift #11) ──
+export function BlockFederalTax({ vendor }: { vendor: EntityProfile }) {
+    const ft: VendorFederalTax | undefined = vendor.vendorFederalTax;
+    const taxpayerName = ft?.taxpayerName ?? vendor.name;
+    const send1099 = ft?.send1099 ?? (vendor.metadata?.send1099 === 'Yes');
+    const w9Requested = ft?.w9Requested;
+    return (
+        <div data-testid="vendor-block-federal-tax">
+            <BlockRow label="Taxpayer Name" value={taxpayerName} />
+            <BlockRow label="W-9 Requested" value={w9Requested === undefined ? '—' : (w9Requested ? 'Yes' : 'No')} />
+            <BlockRow label="Tax ID" value={ft?.taxIdMasked ?? '—'} />
+            <BlockRow label="Tax Form Account #" value={ft?.taxFormAccountNumber ?? '—'} />
+            <BlockRow label="Send 1099" value={send1099 ? 'Yes' : 'No'} />
+        </div>
+    );
+}
+
+// ── Block 5: Accounting (compressed 3-KPI summary + cross-link) ──
+export function BlockAccounting({ vendor, onCrossLink }: { vendor: EntityProfile; onCrossLink?: () => void }) {
+    const ai: VendorAccountingInfo | undefined = vendor.vendorAccountingInfo;
+    const paymentType = ai?.paymentType ?? vendor.metadata?.paymentType ?? '—';
+    const paymentTerms = ai?.paymentTerms ?? '—';
+    const onlinePayables = ai?.onlinePayablesEnabled === true ? 'Enabled' : 'Disabled';
+    return (
+        <div data-testid="vendor-block-accounting">
+            <BlockRow label="Payment Type" value={paymentType} />
+            <BlockRow label="Payment Terms" value={paymentTerms} />
+            <BlockRow label="Online Payables" value={onlinePayables} />
+            <button
+                type="button"
+                onClick={onCrossLink}
+                disabled={!onCrossLink}
+                style={{ ...xLinkBtnStyle, cursor: onCrossLink ? 'pointer' : 'default' }}
+            >
+                View detailed Accounting <ExternalLink size={11} />
+            </button>
+        </div>
+    );
+}
+
+// ── Block 6: Payment Type ──
+export function BlockPaymentType({ vendor }: { vendor: EntityProfile }) {
+    const paymentMethod = vendor.paymentMethod ?? vendor.metadata?.paymentType ?? '—';
+    const send1099 = vendor.send1099 ?? (vendor.metadata?.send1099 === 'Yes');
+    return (
+        <div data-testid="vendor-block-payment-type">
+            <BlockRow label="Payment Method" value={paymentMethod} />
+            <BlockRow label="Send 1099" value={send1099 ? 'Yes' : 'No'} />
+        </div>
+    );
+}
+
+// ── Block 7: Compliance (compressed 3-KPI summary + cross-link; today injectable for tests) ──
+export function BlockCompliance({
+    vendor, today = new Date(), onCrossLink,
+}: {
+    vendor: EntityProfile;
+    today?: Date;
+    onCrossLink?: () => void;
+}) {
+    const tc: VendorCompliance | undefined = vendor.vendorCompliance;
+    const md: Record<string, any> = vendor.metadata ?? {};
+    const fields: { label: string; date: Date | null }[] = [
+        { label: 'Workers Comp', date: parseLegacyDate(tc?.workersCompExpiration) ?? parseLegacyDate(md.workersCompExpiration) },
+        { label: 'GL', date: parseLegacyDate(tc?.generalLiabilityExpiration) ?? parseLegacyDate(md.liabilityInsuranceExpiration) },
+        { label: 'EPA', date: parseLegacyDate(tc?.epaCertificationExpiration) ?? parseLegacyDate(md.epaCertificationExpiration) },
+        { label: 'Auto', date: parseLegacyDate(tc?.autoInsuranceExpiration) ?? parseLegacyDate(md.autoInsuranceExpiration) },
+        { label: 'State License', date: parseLegacyDate(tc?.stateLicenseExpiration) ?? parseLegacyDate(md.stateLicenseExpiration) },
+        { label: 'Contract', date: parseLegacyDate(tc?.contractExpiration) ?? parseLegacyDate(md.contractExpiration) },
+    ];
+    const t = today.getTime();
+    const active = fields.filter(f => f.date && f.date.getTime() >= t);
+    const expired = fields.filter(f => f.date && f.date.getTime() < t);
+    const nearest = active.slice().sort((a, b) => a.date!.getTime() - b.date!.getTime())[0];
+    const nearestDisplay = nearest ? `${nearest.label}: ${fmtIsoDate(nearest.date)}` : '—';
+    return (
+        <div data-testid="vendor-block-compliance">
+            <BlockRow label="Active" value={`${active.length} / 6 docs on file`} />
+            <BlockRow label="Nearest Expiry" value={nearestDisplay} />
+            <BlockRow
+                label="Expired"
+                value={
+                    <span style={expired.length > 0 ? { color: '#f87171', fontWeight: 700 } : undefined}>
+                        {expired.length} expired
+                    </span>
+                }
+            />
+            <button
+                type="button"
+                onClick={onCrossLink}
+                disabled={!onCrossLink}
+                style={{ ...xLinkBtnStyle, cursor: onCrossLink ? 'pointer' : 'default' }}
+            >
+                View detailed Compliance <ExternalLink size={11} />
+            </button>
+        </div>
+    );
+}
+
+// ── Block 8: Survey (stub per v1 L168 — no schema fields) ──
+export function BlockSurvey(_props: { vendor: EntityProfile }) {
+    return (
+        <div data-testid="vendor-block-survey" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            Survey responses not yet captured. Coming soon — Phase-5 wires vendor satisfaction survey responses (NPS, response rate, last-completed timestamp) once the survey-collection pipeline lands.
+        </div>
+    );
+}
+
+// ── Block 9: Notes (semi-typed — reads vendor.metadata?.notes; null-safe stub per Q3 Option A) ──
+export function BlockNotes({ vendor }: { vendor: EntityProfile }) {
+    const raw = vendor.metadata?.notes;
+    if (Array.isArray(raw) && raw.length > 0) {
+        return (
+            <div data-testid="vendor-block-notes" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {raw.map((n: any, i: number) => {
+                    const body = (n && typeof n === 'object' && (n.body ?? n.content)) || (typeof n === 'string' ? n : String(n));
+                    const meta = n && typeof n === 'object' ? [n.posted_by, n.ts].filter(Boolean).join(' · ') : '';
+                    return (
+                        <div key={i} style={{ fontSize: 12, color: '#94a3b8', padding: '6px 0', borderBottom: i < raw.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                            <div>{body}</div>
+                            {meta && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>{meta}</div>}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+        return (
+            <div data-testid="vendor-block-notes" style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'pre-line' }}>
+                {raw}
+            </div>
+        );
+    }
+    return (
+        <div data-testid="vendor-block-notes" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            No notes recorded.
+        </div>
+    );
+}
+
+// ── Block 10: Activity (stub per v1 L168 — no schema fields) ──
+export function BlockActivity(_props: { vendor: EntityProfile }) {
+    return (
+        <div data-testid="vendor-block-activity" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            Activity log not yet captured. Coming soon — Phase-5 wires per-vendor audit log (timestamp + actor + event + detail) once the audit-pipeline lands.
+        </div>
+    );
+}
+
 interface VendorsModuleProps {
     searchNavTarget?: { type: string; id: string } | null;
     onNavComplete?: () => void;
@@ -44,6 +312,25 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
     const [selected, setSelected] = useState<EntityProfile | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [detailTab, setDetailTab] = useState<'overview' | 'ledger' | 'documents' | 'performance' | 'spaces' | 'compliance' | 'accounting'>('overview');
+    // Task 3.2: 10-block collapse state on the overview tab. Default-EXPANDED per Q2 ack
+    // (AppFolio parity per v1 plan L166 "matching AppFolio's visual grouping").
+    const [blockExpanded, setBlockExpanded] = useState<Record<string, boolean>>({
+        identity: true, contact: true, portal: true, 'federal-tax': true,
+        accounting: true, 'payment-type': true, compliance: true,
+        survey: true, notes: true, activity: true,
+    });
+    const toggleBlock = useCallback((slug: string, next: boolean) => {
+        setBlockExpanded(prev => ({ ...prev, [slug]: next }));
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.block-toggle',
+                message: 'vendors.detail.block.toggled',
+                level: 'info',
+                data: { block: slug, expanded: next, vendorId: selected?.id },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selected?.id]);
     const [ledger, setLedger] = useState<any[]>([]);
     const [vendorBalance, setVendorBalance] = useState(0);
     const [showLedgerForm, setShowLedgerForm] = useState(false);
@@ -497,7 +784,6 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                 {/* Vendor Detail */}
                 <div className="s-detail-panel">
                     {selected ? (() => {
-                        const coi = getCoiStatus(selected);
                         return (
                             <>
                                 <div className="s-glass-card">
@@ -641,16 +927,39 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                 {detailTab === 'overview' ? (
                                     <>
 
-                                        {/* COI Tracking */}
-                                        <div className="s-glass-card">
-                                            <h3 style={{ marginBottom: '1rem' }}><Shield size={16} /> Certificate of Insurance</h3>
-                                            <div className="s-coi-status" style={{ borderColor: coi.color }}>
-                                                <div style={{ color: coi.color, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    {coiIcon(coi.status)} <strong>{coi.status.toUpperCase()}</strong>
-                                                </div>
-                                                {coi.expiry && <div className="s-text-muted">Expires: {coi.expiry}</div>}
-                                            </div>
-                                        </div>
+                                        {/* ── Task 3.2: 10-Block AppFolio Parity Layout (per v1 plan L166) ── */}
+                                        <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#f87171' }}>Vendor detail unavailable.</div>}>
+                                            <BlockSection title="Identity" slug="identity" expanded={blockExpanded.identity} onToggle={(n) => toggleBlock('identity', n)}>
+                                                <BlockIdentity vendor={selected} />
+                                            </BlockSection>
+                                            <BlockSection title="Contact" slug="contact" expanded={blockExpanded.contact} onToggle={(n) => toggleBlock('contact', n)}>
+                                                <BlockContact vendor={selected} />
+                                            </BlockSection>
+                                            <BlockSection title="Portal" slug="portal" expanded={blockExpanded.portal} onToggle={(n) => toggleBlock('portal', n)}>
+                                                <BlockPortal vendor={selected} />
+                                            </BlockSection>
+                                            <BlockSection title="Federal Tax" slug="federal-tax" expanded={blockExpanded['federal-tax']} onToggle={(n) => toggleBlock('federal-tax', n)}>
+                                                <BlockFederalTax vendor={selected} />
+                                            </BlockSection>
+                                            <BlockSection title="Accounting" slug="accounting" expanded={blockExpanded.accounting} onToggle={(n) => toggleBlock('accounting', n)}>
+                                                <BlockAccounting vendor={selected} onCrossLink={() => setDetailTab('accounting')} />
+                                            </BlockSection>
+                                            <BlockSection title="Payment Type" slug="payment-type" expanded={blockExpanded['payment-type']} onToggle={(n) => toggleBlock('payment-type', n)}>
+                                                <BlockPaymentType vendor={selected} />
+                                            </BlockSection>
+                                            <BlockSection title="Compliance" slug="compliance" expanded={blockExpanded.compliance} onToggle={(n) => toggleBlock('compliance', n)}>
+                                                <BlockCompliance vendor={selected} onCrossLink={() => setDetailTab('compliance')} />
+                                            </BlockSection>
+                                            <BlockSection title="Survey" slug="survey" expanded={blockExpanded.survey} onToggle={(n) => toggleBlock('survey', n)}>
+                                                <BlockSurvey vendor={selected} />
+                                            </BlockSection>
+                                            <BlockSection title="Notes" slug="notes" expanded={blockExpanded.notes} onToggle={(n) => toggleBlock('notes', n)}>
+                                                <BlockNotes vendor={selected} />
+                                            </BlockSection>
+                                            <BlockSection title="Activity" slug="activity" expanded={blockExpanded.activity} onToggle={(n) => toggleBlock('activity', n)}>
+                                                <BlockActivity vendor={selected} />
+                                            </BlockSection>
+                                        </ErrorBoundary>
 
                                         {/* Quick Dispatch */}
                                         {hasPermission('strata:vendors:work-orders') && (
@@ -811,24 +1120,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             })()}
                                         </div>
 
-                                        {/* ── Vendor Notes ── */}
-                                        {selected.metadata?.notes && (
-                                            <div className="s-glass-card">
-                                                <h3 style={{ marginBottom: '0.75rem', fontSize: 14 }}>Notes</h3>
-                                                <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
-                                                    {typeof selected.metadata.notes === 'string'
-                                                        ? selected.metadata.notes
-                                                        : Array.isArray(selected.metadata.notes)
-                                                            ? selected.metadata.notes.map((n: any, i: number) => (
-                                                                <div key={i} style={{ padding: '6px 0', borderBottom: i < selected.metadata.notes.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                                                                    {n.content || n}
-                                                                </div>
-                                                            ))
-                                                            : null
-                                                    }
-                                                </div>
-                                            </div>
-                                        )}
+                                        {/* (Vendor Notes inline block removed by Task 3.2 — subsumed by BlockNotes in the 10-block layout above.) */}
                                     </>
                                 ) : detailTab === 'ledger' ? (
                                     <>

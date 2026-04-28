@@ -8,9 +8,9 @@
 
 1. `6ccb221` — `feat(phase-3): Task 3.3 commit C — PropertiesModule additive tab parity (4 NEW AppFolio core tabs: Budget / Marketing / Comparables / Showing Settings + 1 NEW tab-switch breadcrumb + 8 NEW data-testid anchors)` — single-file diff to `qualia-shell/src/components/StrataDashboard/modules/PropertiesModule.tsx` (+60 / −3). Vitest delta on commit: 0 (192/192 baseline preserved — render contract unchanged for existing tabs; new branches only fire when new tab keys are active).
 2. `5dbefb8` — `test(phase-3): Task 3.3 commit D — properties.module.test.tsx (4 placeholder isolation it-blocks; LAYOUT-CLASS first PRE2 calibration) + export 4 NEW Placeholders for direct render-test import` — 2-file diff: `PropertiesModule.tsx` (+4 / −4 — `export` keywords on the 4 NEW Placeholders) + new `qualia-shell/src/test/appfolioParity/properties.module.test.tsx` (99 lines). Vitest delta on commit: **+4** (192 → 196; 31 → 32 test files).
-3. `<commit-F-SHA>` — `docs(phase-3): Task 3.3 commit F — CDP render proof + plan v2 sweep (§9 Phase-3 sub-tracker + v2.14 changelog) + completion report` — bundled docs/artifact commit. Vitest delta on commit: 0 (no source changes).
+3. `3da7d3a` — `docs(phase-3): Task 3.3 commit F — CDP render proof + plan v2 sweep (§9 Phase-3 sub-tracker + v2.14 changelog) + completion report` — bundled docs/artifact commit. Vitest delta on commit: 0 (no source changes).
 
-**Merge SHA (post-squash).** `<post-merge-SHA — backfilled in sweep>` — squash-merge on 2026-04-27 (PR #22).
+**Merge SHA (post-squash).** `d2c5652` — squash-merge on 2026-04-27 (PR #22).
 **Closure date.** 2026-04-27.
 
 ---
@@ -215,11 +215,15 @@ Atomic per-commit rollback supported (3 commits total in branch — module addit
 
 ```
 # Full revert (restore pre-Task-3.3 state — back to main@e148906)
-git revert <F-SHA> 5dbefb8 6ccb221
+git revert d2c5652   # squash-merge revert (single-commit; preferred since the PR was squashed)
+
+# Pre-squash atomic per-commit rollback (only viable from a checkout of the
+# pre-merge branch — squash collapses these into d2c5652 on main):
+git revert 3da7d3a 5dbefb8 6ccb221
 
 # Selective: revert only the docs (keep module additive + tests; plan v2 +
 # completion report + CDP artifacts removed; runtime behavior unchanged).
-git revert <F-SHA>
+git revert 3da7d3a
 
 # Selective: revert only the tests + exports (keep module additive + docs;
 # vitest 196 → 192 baseline; render-test coverage of placeholders retracts;
@@ -231,9 +235,6 @@ git revert 5dbefb8
 # tests fail because they import 4 placeholders that don't exist; module
 # reverts to 5-tab CORE_TABS without the 4 AppFolio parity stubs).
 git revert 6ccb221
-
-# Post-merge (single squash commit on main):
-git revert <merge-SHA>   # preferred — single-commit revert
 ```
 
 **Per-commit gate verification:** each commit was independently green on `tsc -b` + `vitest run` + both `vite build` modes + PII scan. Commit C: 192/192 baseline preserved (render contract unchanged). Commit D: 196/196 (+4 new). Commit F: 196/196 (no source change). For a clean partial rollback, prefer C+D pair revert (back out module + tests together) — selective rollback of C alone leaves D in a broken state (D imports placeholders that no longer exist).

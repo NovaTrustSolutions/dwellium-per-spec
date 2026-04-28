@@ -1,0 +1,165 @@
+{
+  "capturedAt": "2026-04-28T01:19:12.416Z",
+  "devUrl": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "step": "nav-root",
+      "result": {
+        "url": "http://127.0.0.1:5173/"
+      }
+    },
+    {
+      "step": "click-start-overlay",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-andy",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "fill-gate",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "expand-property-management",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-strata",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "click-properties-nav",
+      "result": {
+        "found": true
+      }
+    },
+    {
+      "step": "open-first-property-detail",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-all-tab-buttons",
+      "result": {
+        "overview": true,
+        "info": true,
+        "units": true,
+        "work": true,
+        "documents": true,
+        "budget": true,
+        "marketing": true,
+        "comparables": true,
+        "showing-settings": true
+      }
+    },
+    {
+      "step": "screenshot-detail-overview",
+      "result": {
+        "pngBytes": 504184,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_3/01_property_detail_overview_with_9_tabs.png"
+      }
+    },
+    {
+      "step": "click-new-tab-budget",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-new-tab-content-budget",
+      "result": {
+        "contentVisible": true,
+        "contentText": "💰BudgetBudget tab — property-level budget tracking will land in Phase 5 (P&L, variance vs forecast, vendor spend rollup)."
+      }
+    },
+    {
+      "step": "click-new-tab-marketing",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-new-tab-content-marketing",
+      "result": {
+        "contentVisible": true,
+        "contentText": "📣MarketingMarketing tab — listing syndication, photo management, and campaign ROI will land in Phase 5."
+      }
+    },
+    {
+      "step": "click-new-tab-comparables",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-new-tab-content-comparables",
+      "result": {
+        "contentVisible": true,
+        "contentText": "📊ComparablesComparables tab — comparable property data, sales/rent comps, and market-band positioning will land in Phase 5."
+      }
+    },
+    {
+      "step": "click-new-tab-showing-settings",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "probe-new-tab-content-showing-settings",
+      "result": {
+        "contentVisible": true,
+        "contentText": "🗓️Showing SettingsShowing Settings tab — showing schedule, agent access, and self-tour configuration will land in Phase 5."
+      }
+    },
+    {
+      "step": "screenshot-showing-settings-active",
+      "result": {
+        "pngBytes": 546001,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_3/02_property_detail_showing_settings_placeholder.png"
+      }
+    },
+    {
+      "step": "click-budget-tab-final",
+      "result": {
+        "clicked": true
+      }
+    },
+    {
+      "step": "screenshot-budget-active",
+      "result": {
+        "pngBytes": 511594,
+        "pngPath": "/Users/ilyaklipinitser/Downloads/Dwellium -Per Spec/Docs/Baselines/phase_3_task_3_3/03_property_detail_budget_placeholder.png"
+      }
+    },
+    {
+      "step": "guard",
+      "result": {
+        "moduleRendered": true,
+        "allNineTabsPresent": true,
+        "budgetContentVisible": true,
+        "marketingContentVisible": true,
+        "comparablesContentVisible": true,
+        "showingSettingsContentVisible": true,
+        "budgetBodyTextCorrect": true,
+        "marketingBodyTextCorrect": true,
+        "zeroConsoleErrors": true,
+        "zeroPageErrors": true,
+        "allPass": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

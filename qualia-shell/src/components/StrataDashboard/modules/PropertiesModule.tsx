@@ -76,28 +76,28 @@ function IncidentsPlaceholder({ propertyId }: { propertyId: string }) {
  * line-for-line: s-glass-card / 24px 20px padding / centered / #94a3b8 text /
  * 32px emoji / 14px title bold / 12px body. data-testid on the root div
  * carries the per-tab content anchor used by render tests + CDP probe. ── */
-function BudgetPlaceholder({ propertyId }: { propertyId: string }) {
+export function BudgetPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" data-testid="property-tab-content-budget" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>💰</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Budget</div>
         <div style={{ fontSize: 12 }}>Budget tab — property-level budget tracking will land in Phase 5 (P&amp;L, variance vs forecast, vendor spend rollup).</div>
     </div>;
 }
-function MarketingPlaceholder({ propertyId }: { propertyId: string }) {
+export function MarketingPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" data-testid="property-tab-content-marketing" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>📣</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Marketing</div>
         <div style={{ fontSize: 12 }}>Marketing tab — listing syndication, photo management, and campaign ROI will land in Phase 5.</div>
     </div>;
 }
-function ComparablesPlaceholder({ propertyId }: { propertyId: string }) {
+export function ComparablesPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" data-testid="property-tab-content-comparables" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>📊</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Comparables</div>
         <div style={{ fontSize: 12 }}>Comparables tab — comparable property data, sales/rent comps, and market-band positioning will land in Phase 5.</div>
     </div>;
 }
-function ShowingSettingsPlaceholder({ propertyId }: { propertyId: string }) {
+export function ShowingSettingsPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" data-testid="property-tab-content-showing-settings" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🗓️</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Showing Settings</div>

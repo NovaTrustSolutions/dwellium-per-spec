@@ -190,6 +190,113 @@ function ItemCard({ item, selected, onClick }: { item: Workitem; selected: boole
 }
 
 /* ════════════════════════════════════════════
+   TASK 3.4 — WO detail 15-section additive Blocks
+   ════════════════════════════════════════════
+   6 NEW exported Block components (parallel-batch #3 / final batch survivor).
+   Path B isolation tested in src/test/appfolioParity/maintenance.module.test.tsx.
+
+   Order matches v1 L170 sub-order (Service Request / Property-Unit-Owner-Resident /
+   Work Order / Job / Scheduling / Actions Log / View-as-Maintenance-Tech /
+   Labor / Purchase Orders / Withheld Amount / Invoices / Texts / Emails /
+   Attachments / Notes — in AppFolio's order). Sections 1/2/4 inline-upgraded
+   inside DetailPanel; Sections 3/6/8/9/14 already shipped at Task 1.4
+   (untouched here); Section 5 Scheduling consolidation deferred to v2.18+ §7.
+
+   These render content only — caller wraps in <Section> for title/collapse/
+   onToggle (mirrors 3.2 VendorsModule.tsx Block export pattern). Metadata
+   reads use a `typeof === 'object'` defensive guard per Drift #B-i ack —
+   ~370/371 work_orders in the dev fixture carry STRING-typed metadata
+   (encrypted blob "enc:v1:astra:...") while Workitem.metadata is typed
+   Record<string, any>. Runtime is safe (string property access on missing
+   key returns undefined); the guard explicitly documents the data-shape
+   concern in code. */
+
+// ── Block 7: View as Maintenance Tech (stub per v1 L168) ──
+export function BlockViewAsTech(_props: { item: Workitem }) {
+    return (
+        <div data-testid="wo-block-view-as-tech" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            Coming soon — Phase-N wires RBAC tech-portal perspective filter.
+        </div>
+    );
+}
+
+// ── Block 10: Withheld Amount (null-safe metadata fallback per Drift #B-i guard) ──
+export function BlockWithheldAmount({ item }: { item: Workitem }) {
+    const meta = (typeof item.metadata === 'object' && item.metadata) ? (item.metadata as Record<string, any>) : null;
+    const raw = meta?.withheldFromOwner;
+    const display = (typeof raw === 'number' && Number.isFinite(raw))
+        ? raw.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+        : '—';
+    return (
+        <div data-testid="wo-block-withheld-amount" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12 }}>
+            <span style={{ color: '#64748b', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>Owner Withholding</span>
+            <span style={{ color: '#cbd5e1', textAlign: 'right' }}>{display}</span>
+        </div>
+    );
+}
+
+// ── Block 11: Invoices (stub per v1 L168) ──
+export function BlockInvoices(_props: { item: Workitem }) {
+    return (
+        <div data-testid="wo-block-invoices" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            Coming soon — Phase-N wires invoice ledger surface.
+        </div>
+    );
+}
+
+// ── Block 12: Texts (stub per v1 L168) ──
+export function BlockTexts(_props: { item: Workitem }) {
+    return (
+        <div data-testid="wo-block-texts" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            Coming soon — Phase-N wires SMS thread surface.
+        </div>
+    );
+}
+
+// ── Block 13: Emails (stub per v1 L168) ──
+export function BlockEmails(_props: { item: Workitem }) {
+    return (
+        <div data-testid="wo-block-emails" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            Coming soon — Phase-N wires email thread surface.
+        </div>
+    );
+}
+
+// ── Block 15: Notes (3-case rendering — array / string / absent — mirrors 3.2 BlockNotes) ──
+export function BlockNotes({ item }: { item: Workitem }) {
+    const meta = (typeof item.metadata === 'object' && item.metadata) ? (item.metadata as Record<string, any>) : null;
+    const raw = meta?.notes;
+    if (Array.isArray(raw) && raw.length > 0) {
+        return (
+            <div data-testid="wo-block-notes" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {raw.map((n: any, i: number) => {
+                    const body = (n && typeof n === 'object' && (n.body ?? n.content)) || (typeof n === 'string' ? n : String(n));
+                    const metaLine = n && typeof n === 'object' ? [n.posted_by, n.ts].filter(Boolean).join(' · ') : '';
+                    return (
+                        <div key={i} style={{ fontSize: 12, color: '#94a3b8', padding: '6px 0', borderBottom: i < raw.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                            <div>{body}</div>
+                            {metaLine && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>{metaLine}</div>}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+        return (
+            <div data-testid="wo-block-notes" style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'pre-line' }}>
+                {raw}
+            </div>
+        );
+    }
+    return (
+        <div data-testid="wo-block-notes" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            No notes recorded.
+        </div>
+    );
+}
+
+/* ════════════════════════════════════════════
    MAIN COMPONENT
    ════════════════════════════════════════════ */
 
@@ -592,8 +699,27 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
     attachments: any[]; onDispatch: () => void; onSignOff: (notes?: string) => void;
     onAddAttachment: (type: string, description: string) => void;
 }) {
-    const meta = item.metadata || {};
+    // Task 3.4: defensive metadata guard per Drift #B-i ack — ~370/371 work_orders
+    // in dev fixture carry STRING-typed metadata blobs ("enc:v1:astra:...") while
+    // Workitem.metadata is typed Record<string, any>. Guard isolates the runtime
+    // safety claim explicitly. Existing `meta.trelloBoardName` reads stay correct
+    // because `({}).trelloBoardName === undefined`.
+    const meta: Record<string, any> = (typeof item.metadata === 'object' && item.metadata) ? (item.metadata as Record<string, any>) : {};
     const propName = properties.find(p => p.id === item.propertyId)?.name || meta.trelloBoardName || '—';
+    // Task 3.4: consolidated Sentry breadcrumb for the 6 NEW Block toggles below.
+    // Existing 5 Task-1.4 per-section breadcrumbs (L780/L799/L813/L827/L841 in
+    // post-edit numbering) keep their `category: 'ui.click'` shape. The new
+    // breadcrumb diverges to `'ui.block-toggle'` to mirror 3.2's precedent.
+    const blockBreadcrumb = (block: string, expanded: boolean) => {
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.block-toggle',
+                message: 'maintenance.wo.detail.block.toggled',
+                level: 'info',
+                data: { block, expanded, workitemId: item.id },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
+    };
 
     return (
         <>
@@ -633,7 +759,17 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     )}
                 </div>
 
-                {/* Property + Assignment */}
+                {/* Section 1 inline upgrade (Task 3.4) — Service Request # / Work Order ID / Received From.
+                    Field helper auto-hides empty rows; canonical 19511 surfaces metadata.appfolioServiceRequestId 19511
+                    + appfolioWorkOrderId 19523; non-canonical encrypted-blob records render absent (acceptable per L168). */}
+                <Field label="Service Request #" value={meta.appfolioServiceRequestId ?? undefined} />
+                <Field label="Work Order ID" value={meta.appfolioWorkOrderId ?? undefined} />
+                <Field label="Received From" value={meta.receivedFrom ?? item.createdBy ?? undefined} />
+
+                {/* Section 2 inline upgrade (Task 3.4) — Property / Unit / Owner / Resident / Assignment.
+                    Property + Assignment kept in their original grid positions (Task-1.4 byte-shape preserved).
+                    Unit parsed from item.tags ("Unit: ..." entry); Owner / Resident from metadata fallback.
+                    Empty values render as '—' to keep the grid balanced (Field helper auto-hides; we want fixed-shape grid). */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Building2 size={13} color="#64748b" />
@@ -642,6 +778,18 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <User size={13} color="#64748b" />
                         <span style={{ fontSize: 12, color: '#e2e8f0' }}>{item.assignedTo || 'Unassigned'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Wrench size={13} color="#64748b" />
+                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>{item.tags.find(t => t.toLowerCase().startsWith('unit:'))?.split(':').slice(1).join(':').trim() || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Landmark size={13} color="#64748b" />
+                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>{meta.owner || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Home size={13} color="#64748b" />
+                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>{meta.resident || item.tags.find(t => t.toLowerCase().startsWith('resident:'))?.split(':').slice(1).join(':').trim() || '—'}</span>
                     </div>
                 </div>
             </div>
@@ -654,6 +802,13 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     </p>
                 </Section>
             )}
+
+            {/* Section 4 inline upgrade (Task 3.4) — Job Status / Job ID / Vendor Job Link.
+                Field helper auto-hides empty rows. Job ID falls back to workOrderNumber when
+                metadata.jobId is absent (canonical 19511 surfaces "19511-1"). */}
+            <Field label="Job Status" value={meta.jobStatus ?? undefined} />
+            <Field label="Job ID" value={meta.jobId ?? item.workOrderNumber ?? undefined} />
+            <Field label="Vendor Job Link" value={meta.vendorJobLink ?? undefined} />
 
             {/* ── Dates & Details ── */}
             <Section title="Details" icon={<CalendarDays size={13} />}>
@@ -782,6 +937,68 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     ))}
                 </div>
             </Section>
+
+            {/* ════════ Task 3.4 — WO detail 15-section additive Blocks (parallel-batch #3) ════════
+                6 NEW Blocks consolidated under a single ErrorBoundary scoped wrap (mirrors 3.2
+                VendorsModule.tsx L931 pattern). Order within wrap matches v1 L170 sub-order:
+                7 View-as-Tech / 10 Withheld Amount / 11 Invoices / 12 Texts / 13 Emails / 15 Notes.
+
+                Inserted between existing Section 14 Attachments and the Action Buttons cluster.
+                Trade-off (acked at PRE0 #8 / Drift #B-i): blocks 7/10/11/12/13 visually appear
+                AFTER Section 14 Attachments (slight v1 order divergence) so all 6 NEW Blocks
+                stay contiguous under one wrap. Module ErrorBoundary count: 5 → 6.
+                Module Sentry breadcrumb count: 5 → 6 (new consolidated `ui.block-toggle`). */}
+            <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>WO detail blocks unavailable.</div>}>
+                <Section
+                    title="View as Maintenance Tech"
+                    icon={<User size={13} />}
+                    defaultOpen={false}
+                    onToggle={(next) => blockBreadcrumb('view-as-tech', next)}
+                >
+                    <BlockViewAsTech item={item} />
+                </Section>
+                <Section
+                    title="Withheld Amount"
+                    icon={<Landmark size={13} />}
+                    defaultOpen={false}
+                    onToggle={(next) => blockBreadcrumb('withheld-amount', next)}
+                >
+                    <BlockWithheldAmount item={item} />
+                </Section>
+                <Section
+                    title="Invoices"
+                    icon={<FileText size={13} />}
+                    defaultOpen={false}
+                    onToggle={(next) => blockBreadcrumb('invoices', next)}
+                >
+                    <BlockInvoices item={item} />
+                </Section>
+                <Section
+                    title="Texts"
+                    icon={<Send size={13} />}
+                    defaultOpen={false}
+                    onToggle={(next) => blockBreadcrumb('texts', next)}
+                >
+                    <BlockTexts item={item} />
+                </Section>
+                <Section
+                    title="Emails"
+                    icon={<Send size={13} />}
+                    defaultOpen={false}
+                    onToggle={(next) => blockBreadcrumb('emails', next)}
+                >
+                    <BlockEmails item={item} />
+                </Section>
+                <Section
+                    title="Notes"
+                    icon={<ClipboardCheck size={13} />}
+                    defaultOpen={false}
+                    onToggle={(next) => blockBreadcrumb('notes', next)}
+                >
+                    <BlockNotes item={item} />
+                </Section>
+            </ErrorBoundary>
+            {/* ════════ end Task 3.4 ════════ */}
 
             {/* ── Action Buttons ── */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>

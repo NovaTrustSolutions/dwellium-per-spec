@@ -36,9 +36,9 @@ interface LinkedData {
 type View = 'list' | 'detail';
 type CardView = 'grid' | 'rows' | 'table';
 type StatusFilter = 'all' | 'active' | 'inactive' | 'archived';
-type WorkspaceTab = 'overview' | 'info' | 'units' | 'work' | 'documents' | string;
+type WorkspaceTab = 'overview' | 'info' | 'units' | 'work' | 'documents' | 'budget' | 'marketing' | 'comparables' | 'showing-settings' | string;
 
-const CORE_TABS: WorkspaceTab[] = ['overview', 'info', 'units', 'work', 'documents'];
+const CORE_TABS: WorkspaceTab[] = ['overview', 'info', 'units', 'work', 'documents', 'budget', 'marketing', 'comparables', 'showing-settings'];
 
 interface ModuleRegistryEntry {
     key: string;
@@ -68,6 +68,40 @@ function IncidentsPlaceholder({ propertyId }: { propertyId: string }) {
         <div style={{ fontSize: 32, marginBottom: 8 }}>🚨</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Incidents</div>
         <div style={{ fontSize: 12 }}>Incident logs linked to this property.</div>
+    </div>;
+}
+
+/* ── Task 3.3 — AppFolio property-detail tab parity (v1 L168). Stubs only;
+ * Phase-5 wires real content. Mirror the L52-72 placeholder byte-shape
+ * line-for-line: s-glass-card / 24px 20px padding / centered / #94a3b8 text /
+ * 32px emoji / 14px title bold / 12px body. data-testid on the root div
+ * carries the per-tab content anchor used by render tests + CDP probe. ── */
+function BudgetPlaceholder({ propertyId }: { propertyId: string }) {
+    return <div className="s-glass-card" data-testid="property-tab-content-budget" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>💰</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Budget</div>
+        <div style={{ fontSize: 12 }}>Budget tab — property-level budget tracking will land in Phase 5 (P&amp;L, variance vs forecast, vendor spend rollup).</div>
+    </div>;
+}
+function MarketingPlaceholder({ propertyId }: { propertyId: string }) {
+    return <div className="s-glass-card" data-testid="property-tab-content-marketing" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>📣</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Marketing</div>
+        <div style={{ fontSize: 12 }}>Marketing tab — listing syndication, photo management, and campaign ROI will land in Phase 5.</div>
+    </div>;
+}
+function ComparablesPlaceholder({ propertyId }: { propertyId: string }) {
+    return <div className="s-glass-card" data-testid="property-tab-content-comparables" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>📊</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Comparables</div>
+        <div style={{ fontSize: 12 }}>Comparables tab — comparable property data, sales/rent comps, and market-band positioning will land in Phase 5.</div>
+    </div>;
+}
+function ShowingSettingsPlaceholder({ propertyId }: { propertyId: string }) {
+    return <div className="s-glass-card" data-testid="property-tab-content-showing-settings" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>🗓️</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Showing Settings</div>
+        <div style={{ fontSize: 12 }}>Showing Settings tab — showing schedule, agent access, and self-tour configuration will land in Phase 5.</div>
     </div>;
 }
 
@@ -913,8 +947,22 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                             return (
                                 <button
                                     key={tab}
+                                    data-testid={`property-tab-button-${tab}`}
                                     className={`s-workspace-tab${activeTab === tab ? ' active' : ''}`}
-                                    onClick={() => setActiveTab(tab)}
+                                    onClick={() => {
+                                        // Task 3.3 — GR-13 tab-switch breadcrumb. Fires uniformly
+                                        // for all 9 tabs (5 existing CORE_TABS + 4 new AppFolio
+                                        // parity stubs). Try/catch-wrapped per Task 3.7+ precedent.
+                                        try {
+                                            Sentry.addBreadcrumb({
+                                                category: 'ui.tab-switch',
+                                                message: 'properties.detail.tab.switched',
+                                                level: 'info',
+                                                data: { tab, propertyId: selected?.id },
+                                            });
+                                        } catch { /* Sentry no-op when DSN unset */ }
+                                        setActiveTab(tab);
+                                    }}
                                 >
                                     {modEntry ? `${modEntry.icon} ${modEntry.label}` : tab.charAt(0).toUpperCase() + tab.slice(1)}
                                 </button>
@@ -2135,6 +2183,15 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 </div>
                             )}
                             </>)}
+
+                            {/* Task 3.3 — AppFolio property-detail tab parity (v1 L168). Stubs
+                             * only; Phase-5 wires real content. Each branch renders the matching
+                             * Placeholder component (defined at top of file alongside Residents/
+                             * Legal/Incidents). Append-after-existing per DoR (e). */}
+                            {activeTab === 'budget' && <BudgetPlaceholder propertyId={selected.id} />}
+                            {activeTab === 'marketing' && <MarketingPlaceholder propertyId={selected.id} />}
+                            {activeTab === 'comparables' && <ComparablesPlaceholder propertyId={selected.id} />}
+                            {activeTab === 'showing-settings' && <ShowingSettingsPlaceholder propertyId={selected.id} />}
 
                             {/* ───── DYNAMIC SPACES & ENTITY LINKS (always visible) ───── */}
                             <ProfileSpaces entityType="property" entityId={selected.id} />

@@ -348,11 +348,18 @@ function LinkageIndicator({ tenantId }: { tenantId: string }) {
     useEffect(() => {
         strataGet<ResidentLinkage>(`/resident-linkage/${tenantId}`).then(setLinkage).catch(() => {});
     }, [tenantId]);
-    if (!linkage) return null;
+    // Defensive guards (Task 3.1): static-handler at strataApi.static.ts:950-959 returns
+    // {units, properties, workitems} for /resident-linkage/:tenantId, but ResidentLinkage
+    // type at packages/types/index.ts:945-948 specifies {tenantId, tenantName, health,
+    // issues, ...}. Without these guards the component crashes on .issues.length in
+    // static mode, taking out the entire ResidentsModule render. Root-cause static-handler
+    // shape drift captured §7 v2.18+ candidate.
+    if (!linkage || !linkage.health) return null;
     const Icon = linkage.health === 'valid' ? Check : linkage.health === 'warning' ? AlertCircle : XCircle;
     const color = linkage.health === 'valid' ? '#10b981' : linkage.health === 'warning' ? '#f59e0b' : '#ef4444';
+    const issues = Array.isArray(linkage.issues) ? linkage.issues : [];
     return (
-        <span title={linkage.issues.length > 0 ? linkage.issues.join('\n') : 'Fully linked'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'help' }}>
+        <span title={issues.length > 0 ? issues.join('\n') : 'Fully linked'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'help' }}>
             <Icon size={12} color={color} />
             <span style={{ fontSize: 9, color, fontWeight: 600 }}>{linkage.health}</span>
         </span>

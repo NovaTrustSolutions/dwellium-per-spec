@@ -20,7 +20,7 @@ import ProfileSpaces from './ProfileSpaces';
 import { LoadingState, ErrorState } from '../StateView';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
-import type { ResidentHistoryEvent, ResidentLinkage, CommunicationTemplate, Occupancy } from '../strataTypes';
+import type { ResidentHistoryEvent, ResidentLinkage, CommunicationTemplate, Occupancy, EntityProfile, EmergencyContact, Animal, Vehicle } from '../strataTypes';
 
 const API = API_BASE;
 
@@ -55,6 +55,252 @@ const TEMPLATES: { key: CommunicationTemplate; label: string; icon: string }[] =
     { key: 'maintenance_scheduled', label: 'Maintenance Scheduled', icon: '🔧' },
     { key: 'general', label: 'General Notice', icon: '📝' },
 ];
+
+// ─── Task 3.1: Tenant detail v1 L164 expansion (parallel-batch FINAL survivor) ───
+//
+// Adds 5 NEW exported Block components (FolioGuard upsell / Emergency Contact /
+// Upcoming Activities / Animals / Vehicles) + 1 NEW exported InsuranceStatusBadge
+// (partial-upgrade for the existing Insurance DetailSection).
+//
+// Per v1 plan L164: "Add collapsible sections for: FolioGuard-equivalent upsell card,
+// Emergency Contact, Upcoming Activities, Insurance Coverage, Animals, Vehicles.
+// Existing sections keep their current appearance." Scope intentionally narrow — the
+// other ~17 AppFolio sections from gap analysis L173 (Screening / Texts / Audit Log
+// / Attachments / Monthly Charges typed render / etc.) are gap-analysis-aspirational
+// and DEFERRED to v2.18+ §7 candidates.
+//
+// Encrypted-blob defensive guard pattern (Drift #B-i from Task 3.4 — STRING-typed
+// `enc:v1:astra:*` metadata blobs) is NOT applicable to tenants: 0/322 tenant
+// entities carry STRING-typed metadata or the encrypted prefix (PRE1-(c) verified).
+// Plain `Array.isArray()` guards suffice on the typed Task-1.1 paths (animals /
+// vehicles / emergencyContacts).
+//
+// Helpers (parseLegacyDate / fmtIsoDate / daysUntil) are LOCALLY DUPLICATED from
+// VendorsModule.tsx Task 3.2 (where parseLegacyDate / fmtIsoDate are module-private,
+// not exported). §7 follow-up: extract to shared `utils/legacyDate.ts` and rewire
+// both consumers. Local duplication preserves single-file additive scope and isolation.
+
+/** Parse a legacy MM/DD/YYYY string OR an ISO YYYY-MM-DD date into Date.
+ *  Locally duplicated from VendorsModule.tsx:44 (Task 3.2). */
+function parseLegacyDate(s: string | undefined | null): Date | null {
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const d = new Date(s.length === 10 ? `${s}T00:00:00` : s);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s.trim());
+    if (!m) return null;
+    const d = new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+    return isNaN(d.getTime()) ? null : d;
+}
+
+/** Locally duplicated from VendorsModule.tsx:56 (Task 3.2). */
+function fmtIsoDate(d: Date | null): string {
+    if (!d) return '—';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Whole days between today and target (positive = future, negative = past). */
+function daysUntil(target: Date, today: Date): number {
+    const ms = target.getTime() - today.getTime();
+    return Math.round(ms / 86400000);
+}
+
+/** Module-local label/value row helper for Block content. NOT exported. */
+function BlockRow({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }}>
+            <span style={{ color: '#64748b', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>{label}</span>
+            <span style={{ color: '#cbd5e1', textAlign: 'right', wordBreak: 'break-word', fontSize: 12 }}>{value}</span>
+        </div>
+    );
+}
+
+/** Module-local collapsible wrapper for the 5 NEW Task 3.1 blocks. NOT exported. */
+function BlockSection({
+    title, slug, expanded, onToggle, children,
+}: {
+    title: string;
+    slug: string;
+    expanded: boolean;
+    onToggle: (next: boolean) => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)', marginBottom: 10 }}>
+            <button
+                type="button"
+                onClick={() => onToggle(!expanded)}
+                aria-expanded={expanded}
+                aria-controls={`tenant-block-${slug}`}
+                style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 14px', border: 'none', background: 'none',
+                    color: '#94a3b8', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
+                    textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+            >
+                {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                <span style={{ flex: 1, textAlign: 'left' }}>{title}</span>
+            </button>
+            {expanded && <div style={{ padding: '0 14px 12px' }}>{children}</div>}
+        </div>
+    );
+}
+
+// ── Block 1 (Task 3.1): FolioGuard Smart Ensure upsell — stub per v1 L168 ──
+export function BlockFolioGuardUpsell(_props: { tenant: EntityProfile }) {
+    return (
+        <div data-testid="tenant-block-folioguard" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            FolioGuard Smart Ensure — automated insurance requirement tracking. Coming soon — Phase-5 wires the Compliance-module Insurance tab as the Strata equivalent of AppFolio's tenant-side upsell card.
+        </div>
+    );
+}
+
+// ── Block 2 (Task 3.1): Emergency Contact — typed Task-1.1 path ──
+export function BlockEmergencyContact({ tenant }: { tenant: EntityProfile }) {
+    const contacts: EmergencyContact[] = Array.isArray(tenant.emergencyContacts) ? tenant.emergencyContacts : [];
+    if (contacts.length === 0) {
+        return (
+            <div data-testid="tenant-block-emergency-contact" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+                No emergency contact on file.
+            </div>
+        );
+    }
+    return (
+        <div data-testid="tenant-block-emergency-contact" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {contacts.map((c, i) => (
+                <div key={i} style={{ paddingBottom: i < contacts.length - 1 ? 6 : 0, borderBottom: i < contacts.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <BlockRow label="Name" value={c.name || '—'} />
+                    <BlockRow label="Relationship" value={c.relationship || '—'} />
+                    <BlockRow label="Phone" value={c.phone || '—'} />
+                    <BlockRow label="Email" value={c.email ?? '—'} />
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ── Block 3 (Task 3.1): Upcoming Activities — stub per v1 L168 ──
+export function BlockUpcomingActivities(_props: { tenant: EntityProfile }) {
+    return (
+        <div data-testid="tenant-block-upcoming-activities" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            Upcoming activities not yet captured. Coming soon — Phase-5 wires per-tenant scheduled events (lease renewal, inspection, rent increase) once the activity-feed pipeline lands.
+        </div>
+    );
+}
+
+// ── Block 4 (Task 3.1): Animals — typed Task-1.1 path ──
+export function BlockAnimals({ tenant }: { tenant: EntityProfile }) {
+    const animals: Animal[] = Array.isArray(tenant.animals) ? tenant.animals : [];
+    if (animals.length === 0) {
+        return (
+            <div data-testid="tenant-block-animals" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+                No animals on file.
+            </div>
+        );
+    }
+    return (
+        <div data-testid="tenant-block-animals" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {animals.map((a, i) => (
+                <div key={a.id || i} style={{ paddingBottom: i < animals.length - 1 ? 6 : 0, borderBottom: i < animals.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <BlockRow label="Name" value={a.name || '—'} />
+                    <BlockRow label="Species" value={a.species || '—'} />
+                    <BlockRow label="Breed" value={a.breed ?? '—'} />
+                    <BlockRow label="Weight" value={a.weight != null ? `${a.weight} lb` : '—'} />
+                    <BlockRow
+                        label="Service Animal"
+                        value={a.isServiceAnimal
+                            ? <span style={{ color: '#10b981', fontWeight: 700 }}>Yes</span>
+                            : 'No'}
+                    />
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ── Block 5 (Task 3.1): Vehicles — typed Task-1.1 path ──
+export function BlockVehicles({ tenant }: { tenant: EntityProfile }) {
+    const vehicles: Vehicle[] = Array.isArray(tenant.vehicles) ? tenant.vehicles : [];
+    if (vehicles.length === 0) {
+        return (
+            <div data-testid="tenant-block-vehicles" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+                No vehicles on file.
+            </div>
+        );
+    }
+    return (
+        <div data-testid="tenant-block-vehicles" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {vehicles.map((v, i) => (
+                <div key={v.id || i} style={{ paddingBottom: i < vehicles.length - 1 ? 6 : 0, borderBottom: i < vehicles.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <BlockRow label="Year" value={v.year != null ? String(v.year) : '—'} />
+                    <BlockRow label="Make" value={v.make || '—'} />
+                    <BlockRow label="Model" value={v.model || '—'} />
+                    <BlockRow label="Color" value={v.color ?? '—'} />
+                    <BlockRow label="License Plate" value={v.licensePlate ?? '—'} />
+                    <BlockRow label="State" value={v.state ?? '—'} />
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ── Insurance status badge (Task 3.1 partial-upgrade for existing Insurance DetailSection) ──
+//
+// Reads the metadata-string `insuranceExpiration` (legacy MM/DD/YYYY) and renders a
+// tri-state pill: Active (>30d) / Expiring soon (≤30d) / Expired (past). `today` is
+// injectable for deterministic tests. Returns null when expiration absent/unparseable.
+export function InsuranceStatusBadge({
+    tenant, today = new Date(),
+}: {
+    tenant: EntityProfile;
+    today?: Date;
+}) {
+    const raw = tenant.metadata?.insuranceExpiration;
+    const exp = parseLegacyDate(raw);
+    if (!exp) return null;
+    const diff = daysUntil(exp, today);
+    let label: string;
+    let bg: string;
+    let color: string;
+    if (diff < 0) {
+        label = `Expired ${Math.abs(diff)} day${Math.abs(diff) === 1 ? '' : 's'} ago`;
+        bg = 'rgba(239,68,68,0.12)';
+        color = '#ef4444';
+    } else if (diff <= 30) {
+        label = `Expiring soon (${diff} day${diff === 1 ? '' : 's'} remaining)`;
+        bg = 'rgba(245,158,11,0.12)';
+        color = '#f59e0b';
+    } else {
+        label = `Active (${diff} days remaining)`;
+        bg = 'rgba(16,185,129,0.12)';
+        color = '#10b981';
+    }
+    return (
+        <span
+            data-testid="tenant-insurance-status-badge"
+            title={`Expires ${fmtIsoDate(exp)}`}
+            style={{
+                gridColumn: '1 / -1',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '3px 10px',
+                borderRadius: 12,
+                background: bg,
+                color,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 0.3,
+                width: 'fit-content',
+                marginTop: 4,
+            }}
+        >
+            {label}
+        </span>
+    );
+}
 
 function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
     title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; onEdit?: () => void;
@@ -315,6 +561,30 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
     const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
     const [showBulkStatus, setShowBulkStatus] = useState(false);
     const [bulkTargetStatus, setBulkTargetStatus] = useState('');
+
+    // Task 3.1: 5-block collapse state for the v1-L164 expansion blocks. Default-EXPANDED
+    // mirrors 3.2 BlockSection precedent (AppFolio parity per v1 plan L164 "matching
+    // AppFolio's visual grouping"). Existing 8 DetailSections retain their own internal
+    // open-state — these slugs are namespaced to the NEW blocks only.
+    const [tenantBlockExpanded, setTenantBlockExpanded] = useState<Record<string, boolean>>({
+        'folioguard': true,
+        'emergency-contact': true,
+        'upcoming-activities': true,
+        'animals': true,
+        'vehicles': true,
+    });
+    const toggleTenantBlock = useCallback((slug: string, next: boolean) => {
+        setTenantBlockExpanded(prev => ({ ...prev, [slug]: next }));
+        try {
+            Sentry.addBreadcrumb({
+                category: 'ui.block-toggle',
+                message: 'residents.detail.block.toggled',
+                level: 'info',
+                data: { block: slug, expanded: next, tenantId: selected?.id },
+            });
+        } catch { /* Sentry no-op when DSN unset */ }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selected?.id]);
 
     useEffect(() => {
         if (searchNavTarget && searchNavTarget.type === 'tenant' && tenants.length > 0) {
@@ -660,6 +930,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                 </DetailSection>
                                 <DetailSection title="Insurance" icon={<Shield size={12} />} defaultOpen={false}>
                                     <Field label="Provider" value={md.insuranceProvider} full /><Field label="Expiration" value={md.insuranceExpiration} /><Field label="Policy Number" value={md.insurancePolicyNumber} />
+                                    <InsuranceStatusBadge tenant={selected as unknown as EntityProfile} />
                                 </DetailSection>
                                 <DetailSection title="Other" icon={<FileText size={12} />} defaultOpen={false}>
                                     <Field label="Primary Tenant" value={md.primaryTenant} /><Field label="License Plates" value={md.licensePlates} /><Field label="Pets" value={md.pets} /><Field label="Tenant Notes" value={md.tenantNotes} full />
@@ -676,6 +947,28 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                 <DetailSection title="Spaces & Projects" icon={<Users size={12} />} defaultOpen={false}>
                                     <ProfileSpaces entityType="tenant" entityId={selected.id} />
                                 </DetailSection>
+                                {/* ─── Task 3.1: v1-L164 expansion — 5 NEW blocks scoped under one ErrorBoundary ─── */}
+                                <ErrorBoundary fallback={
+                                    <div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>
+                                        Tenant detail blocks unavailable.
+                                    </div>
+                                }>
+                                    <BlockSection title="FolioGuard Smart Ensure" slug="folioguard" expanded={tenantBlockExpanded['folioguard']} onToggle={(n) => toggleTenantBlock('folioguard', n)}>
+                                        <BlockFolioGuardUpsell tenant={selected as unknown as EntityProfile} />
+                                    </BlockSection>
+                                    <BlockSection title="Emergency Contact" slug="emergency-contact" expanded={tenantBlockExpanded['emergency-contact']} onToggle={(n) => toggleTenantBlock('emergency-contact', n)}>
+                                        <BlockEmergencyContact tenant={selected as unknown as EntityProfile} />
+                                    </BlockSection>
+                                    <BlockSection title="Upcoming Activities" slug="upcoming-activities" expanded={tenantBlockExpanded['upcoming-activities']} onToggle={(n) => toggleTenantBlock('upcoming-activities', n)}>
+                                        <BlockUpcomingActivities tenant={selected as unknown as EntityProfile} />
+                                    </BlockSection>
+                                    <BlockSection title="Animals" slug="animals" expanded={tenantBlockExpanded['animals']} onToggle={(n) => toggleTenantBlock('animals', n)}>
+                                        <BlockAnimals tenant={selected as unknown as EntityProfile} />
+                                    </BlockSection>
+                                    <BlockSection title="Vehicles" slug="vehicles" expanded={tenantBlockExpanded['vehicles']} onToggle={(n) => toggleTenantBlock('vehicles', n)}>
+                                        <BlockVehicles tenant={selected as unknown as EntityProfile} />
+                                    </BlockSection>
+                                </ErrorBoundary>
                             </>)}
                             {detailTab === 'history' && <HistoryTab tenantId={selected.id} />}
                             {detailTab === 'comm' && <CommTab tenantId={selected.id} tenantName={selected.name} />}

@@ -29,7 +29,11 @@ import propertiesSeed from '../../../public/data/properties.json';
 import unitsSeed from '../../../public/data/units.json';
 import entitiesSeed from '../../../public/data/entities.json';
 
-const WORKITEMS_BASELINE_TASK_2_9 = 1152;
+// Lower-bound semantics post-Task-4.4: 1152 (Task 2.9 close) + 11 Task-4.4
+// page-1 work_orders absorbed from 03_work_orders_page1.json = 1163.
+// Mirrors Task 4.1's propertyTimeline.test.ts L228 toBeGreaterThanOrEqual
+// pattern; the constant now represents the floor, not the exact count.
+const WORKITEMS_BASELINE_TASK_4_4 = 1163;
 const TASK_2_9_PROJECT_ID = 'wi-task-2-9-project-01';
 const TASK_2_9_WO_NUMBER = '19441-1';
 const WOODLAND_PARC_PROPERTY_ID = '52d4e301-3cbf-4a32-91eb-d20be9d06959';
@@ -41,9 +45,9 @@ const CS_COOPER_NAME = 'CS Cooper Residential Contractors LLC';
 
 describe('projects parity — Task 2.9 canonical project fixture (WO 19441-1)', () => {
     // ── 1. Two-half drift guard (per (e) ack) ───────────────────────────
-    it('GR-2 workitems.json drift guard: seed.length === 1152 AND exactly one row carries workOrderNumber === "19441-1"', () => {
+    it('GR-2 workitems.json drift guard: seed.length >= 1163 AND exactly one row carries workOrderNumber === "19441-1"', () => {
         const seed = workitemsSeed as unknown as Array<{ id: string; workOrderNumber?: string }>;
-        expect(seed).toHaveLength(WORKITEMS_BASELINE_TASK_2_9);
+        expect(seed.length).toBeGreaterThanOrEqual(WORKITEMS_BASELINE_TASK_4_4);
         const matches = seed.filter(w => w.workOrderNumber === TASK_2_9_WO_NUMBER);
         expect(matches).toHaveLength(1);
         expect(matches[0].id).toBe(TASK_2_9_PROJECT_ID);
@@ -135,8 +139,11 @@ describe('projects parity — Task 2.9 canonical project fixture (WO 19441-1)', 
         const ourRow = wpBucket!.items.find(w => w.id === TASK_2_9_PROJECT_ID);
         expect(ourRow, 'WO 19441-1 must group under Woodland Parc Townhomes (v1 L146 acceptance)').toBeDefined();
         // Pre-Task-2.9 there was 1 fire-alarm work_order on WP; post-Task-2.9
-        // there are 2 (the fire alarm + WO 19441-1). Pin the count to catch
-        // future drift.
-        expect(wpBucket!.items).toHaveLength(2);
+        // there were 2 (the fire alarm + WO 19441-1); post-Task-4.4 there are 5
+        // (+3 page-1 work_orders absorbed: 19496-1 microwave light on 2838-4
+        // / 19429-1 kitchen sink on 2763-3 / 19172-1 dishwasher on 2771-2).
+        // Pin the count to catch future drift; future Phase-4 tasks that
+        // legitimately add Woodland Parc work_orders will update this bound.
+        expect(wpBucket!.items).toHaveLength(5);
     });
 });

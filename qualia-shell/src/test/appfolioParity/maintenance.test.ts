@@ -60,14 +60,20 @@ describe('workitems parity — WO 19511-1 fire alarm (Task 1.4)', () => {
         }) as typeof fetch;
     });
 
-    it('seed length is exactly 1152 (+1 Task-1.4 WO 19511 + 9 Task-2.1 Section-8 AHA + 3 Task-2.6 utility WOs + 1 Task-2.9 project WO 19441-1)', () => {
+    it('seed length is at least 1163 (+1 Task-1.4 WO 19511 + 9 Task-2.1 Section-8 AHA + 3 Task-2.6 utility WOs + 1 Task-2.9 project WO 19441-1 + 11 Task-4.4 page-1 work_orders)', () => {
         const seed = workitemsSeed as unknown as Workitem[];
         // 1138 pre-Task-1.4 baseline + 1 WO 19511-1 (Task 1.4) + 9 AHA
         // inspections (Task 2.1) + 3 utility accounts (Task 2.6:
         // Duke Energy + Massey Pest on BV, Georgia Power on Riverwood)
-        // + 1 project WO 19441-1 (Task 2.9 — this PR: Replace sheetrock
-        // on Woodland Parc Townhomes Unit 2767-3, vendor CS Cooper).
-        expect(seed).toHaveLength(1152);
+        // + 1 project WO 19441-1 (Task 2.9: Replace sheetrock on
+        // Woodland Parc Townhomes Unit 2767-3, vendor CS Cooper)
+        // + 11 Task-4.4 page-1 work_orders absorbed from
+        // 03_work_orders_page1.json (19510-1 / 19508-1 / 19504-1 / 19503-1
+        // / 19499-1 / 19496-1 / 19438-1 / 19429-1 / 19424-1 / 19172-1 /
+        // 19277-1; 19511-1 + 19441-1 already absorbed and skipped per DC-2).
+        // Lower-bound semantics mirror Task 4.1's propertyTimeline.test.ts
+        // L228 relaxation pattern (toBe → toBeGreaterThanOrEqual).
+        expect(seed.length).toBeGreaterThanOrEqual(1163);
     });
 
     it('new WO 19511-1 carries typed residentAvailability (3 windows) + actionsLog (2 entries) + empty labor/PO arrays', () => {

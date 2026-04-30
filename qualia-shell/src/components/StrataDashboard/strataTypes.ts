@@ -1,5 +1,5 @@
 /**
- * Strata Types — Re-exports from @qualia/types (Phase 6.3)
+ * Strata Types — Re-exports from @qualia/types (Phase 6.3 retrofit + verified Phase-5 Task 5.1a 2026-04-30: shared types canonical surface confirms backend type mirror structurally complete via packages/types/ workspace package)
  *
  * @canonical All entity types are defined in `packages/types/index.ts`.
  * This file re-exports everything for backward compatibility so that

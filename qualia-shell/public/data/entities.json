@@ -16280,7 +16280,11 @@
       "trades": "",
       "firstName": "DANNY",
       "lastName": "BOURDUA",
-      "contactName": "BOURDUA DANNY"
+      "contactName": "BOURDUA DANNY",
+      "appfolioVendorId": "appfolio-v-2716",
+      "website": "www.2stroofing.com",
+      "primaryContactName": "Danny Bourdua",
+      "taxIdMasked": "XX-XX-XXXX"
     },
     "propertyIds": [],
     "status": "active",

@@ -298,5 +298,25 @@
     "lastAuditedAt": null,
     "createdAt": "2026-04-23T00:00:00.000Z",
     "updatedAt": "2026-04-23T00:00:00.000Z"
+  },
+  {
+    "id": "appfolio-comp-prop18-warranty-duke-0",
+    "entityType": "property",
+    "entityId": "appfolio-prop-18",
+    "entityName": "128 Buena Vista Dr N",
+    "itemType": "warranty",
+    "label": "Water Heater Repair & Replacement Plan",
+    "status": "expired",
+    "expirationDate": "2019-02-16",
+    "propertyId": "appfolio-prop-18",
+    "documentFileId": null,
+    "carrier": "Duke Energy",
+    "policyNumber": null,
+    "coverageLimits": null,
+    "notes": "Source: 128 BV property attachment (Phase-0 capture). Original PDF 'Duke Energy Water Heater Repair & Replacement Plan' renewal date 2019-02-16 → expired status; impoverished-source (policyNumber / coverageLimits not captured).",
+    "source": "appfolio-property-128bv-attachment",
+    "lastAuditedAt": null,
+    "createdAt": "2026-04-30T00:00:00.000Z",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
   }
 ]

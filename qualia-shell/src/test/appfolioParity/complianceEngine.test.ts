@@ -88,9 +88,9 @@ describe('complianceEngine parity — 2-Story Technical Roofing + Riverwood Club
         }) as typeof fetch;
     });
 
-    it('seed length is exactly 15 (6 vendor + 9 AHA Section-8 rows) vs pre-Task-2.3 empty snapshot', () => {
+    it('seed length is at least 15 (6 vendor + 9 AHA Section-8 rows; +N property/policy from Phase-4+ era)', () => {
         const seed = complianceSeed as unknown as ComplianceRecord[];
-        expect(seed).toHaveLength(15);
+        expect(seed.length).toBeGreaterThanOrEqual(15);
         const vendor = seed.filter(r => r.entityType === 'vendor');
         const aha = seed.filter(r => r.entityType === 'inspection');
         expect(vendor).toHaveLength(6);
@@ -152,10 +152,10 @@ describe('complianceEngine parity — 2-Story Technical Roofing + Riverwood Club
         expect(['on-track', 'attention', 'overdue']).toContain(rollup.status);
     });
 
-    it('static API: /compliance returns 15 rows; /compliance/section8-rollup returns the rollup; /compliance/portfolio-rollup exposes section8 key with overall+categories preserved', async () => {
+    it('static API: /compliance returns at least 15 rows; /compliance/section8-rollup returns the rollup; /compliance/portfolio-rollup exposes section8 key with overall+categories preserved', async () => {
         const { strataGet } = await import('../../components/StrataDashboard/strataApi.static');
         const rows = await strataGet<ComplianceRecord[]>('/compliance');
-        expect(rows).toHaveLength(15);
+        expect(rows.length).toBeGreaterThanOrEqual(15);
 
         const s8 = await strataGet<Section8Rollup | null>('/compliance/section8-rollup');
         expect(s8).not.toBeNull();

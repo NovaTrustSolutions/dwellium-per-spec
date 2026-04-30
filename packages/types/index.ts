@@ -403,7 +403,8 @@ export type ComplianceItemType =
     | 'llc_renewal'
     | 'pool_permit'
     | 'business_license'
-    | 'tax_filing';
+    | 'tax_filing'
+    | 'warranty';
 
 export type ComplianceStatus = 'valid' | 'tracked' | 'warning' | 'expired' | 'missing' | 'scheduled';
 

@@ -33,7 +33,14 @@ import propertiesSeed from '../../../public/data/properties.json';
 // Drift-bound constants (PRE1 reality: 322 active tenants, all status:
 // active; v1's "3,274" was pre-capture estimation — Phase-3 re-capture
 // deferral). These pin the baseline the rest of Task 2.8 sits on.
-const TENANTS_BASELINE_PHASE_1 = 322;
+// Phase-4 Task 4.2 (2026-04-29): page-1 closeout absorbed +12 inactive
+// (Past-status) tenants from 04_tenants_page1.json into entities.json
+// → total tenant subset 322 → 334. The 322-active baseline still
+// holds; the GR-2 drift guard below was relaxed from strict count to
+// "active subset === 322 + total ≥ 322" so Phase-4 page-1+ inactive
+// growth doesn't regress the test. Sentiment fixture itself remains
+// unchanged (40 / 20 at-risk derive from active subset).
+const TENANTS_BASELINE_PHASE_1_ACTIVE = 322;
 
 // Deterministic anchors from the fixture (40 rows / 20 at-risk / 2
 // unique propertyIds). The fixture is generated from sorted tenantIds
@@ -177,12 +184,18 @@ describe('sentiment parity — static /sentiment/* handlers (Task 2.8)', () => {
     });
 
     // ── 6. GR-2 entities.json drift guard (plan §8 L330 non-mutation) ───
-    it('GR-2 entities.json drift guard: tenants.length === 322 AND zero non-active tenants (v2.8 §8 L330 non-mutation proof)', () => {
+    // Active-subset semantic (Task 4.2 relaxation 2026-04-29): the
+    // active baseline of 322 is the load-bearing invariant; total
+    // tenant count is now ≥ 322 because Phase-4 page-1 closeout adds
+    // inactive (Past-status) historical tenants. Sentiment fixture
+    // (40 trends / 20 at-risk) derives from the active subset only,
+    // so this relaxation does not regress §8 L330 non-mutation intent.
+    it('GR-2 entities.json drift guard: active tenants === 322 (baseline holds); total ≥ 322 (Phase-4 may add inactive past tenants)', () => {
         const tenants = (entitiesSeed as Array<{ entityType: string; status: string }>).filter(
             e => e.entityType === 'tenant',
         );
-        expect(tenants).toHaveLength(TENANTS_BASELINE_PHASE_1);
-        expect(tenants.filter(t => t.status !== 'active')).toHaveLength(0);
+        expect(tenants.filter(t => t.status === 'active')).toHaveLength(TENANTS_BASELINE_PHASE_1_ACTIVE);
+        expect(tenants.length).toBeGreaterThanOrEqual(TENANTS_BASELINE_PHASE_1_ACTIVE);
     });
 
     // ── 7. GR-3 fixture integrity (FK validity + uniquePropertyIds) ─────

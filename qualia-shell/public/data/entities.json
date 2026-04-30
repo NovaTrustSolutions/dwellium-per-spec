@@ -140455,5 +140455,307 @@
     "licenseNumber": null,
     "licenseExpiry": null,
     "ein": null
+  },
+  {
+    "id": "b2a4c1e0-1042-4900-9201-0001a4020042",
+    "entityType": "tenant",
+    "name": "De dios, Marcelina",
+    "email": "",
+    "phone": "",
+    "address": null,
+    "metadata": {
+      "unit": "0909 A",
+      "propertyName": "Huntington Lane Apartments",
+      "propertyId": "c79569ef-5893-4c90-85ff-686277ff5a9c",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "c79569ef-5893-4c90-85ff-686277ff5a9c"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "c3b5d2f1-2042-4901-a302-0002b4020043",
+    "entityType": "tenant",
+    "name": "Glover, Jasmine",
+    "email": "",
+    "phone": "",
+    "address": null,
+    "metadata": {
+      "unit": "001O",
+      "propertyName": "Washington Gardens Apartments",
+      "propertyId": "483679ce-3552-4007-be93-f1e91796b6c5",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "483679ce-3552-4007-be93-f1e91796b6c5"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "d4c6e3a2-3042-4902-b403-0003c4020044",
+    "entityType": "tenant",
+    "name": "Harmon, Amiyah",
+    "email": "",
+    "phone": "",
+    "address": null,
+    "metadata": {
+      "unit": "3901",
+      "propertyName": "Summerfield Apartments",
+      "propertyId": "59f0f217-dcba-463e-b70c-93ec90e0fe2d",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "59f0f217-dcba-463e-b70c-93ec90e0fe2d"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "e5d7f4b3-4042-4903-9504-0004d4020045",
+    "entityType": "tenant",
+    "name": "NARVAEZ, ANTHONY",
+    "email": "",
+    "phone": "Mobile: (555) 555-XXXX",
+    "address": null,
+    "metadata": {
+      "unit": "9102",
+      "propertyName": "Summerfield Apartments",
+      "propertyId": "59f0f217-dcba-463e-b70c-93ec90e0fe2d",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "59f0f217-dcba-463e-b70c-93ec90e0fe2d"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "f6e8a5c4-5042-4904-a605-0005e4020046",
+    "entityType": "tenant",
+    "name": "Palmer Jr., Kenneth",
+    "email": "",
+    "phone": "",
+    "address": null,
+    "metadata": {
+      "unit": "A05",
+      "propertyName": "Riverwood Club Apartments",
+      "propertyId": "705a6f52-f4a1-403b-ae3f-b3954b2cdac1",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "705a6f52-f4a1-403b-ae3f-b3954b2cdac1"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "a7f9b6d5-6042-4905-b706-0006f4020047",
+    "entityType": "tenant",
+    "name": "POLEON, ISHBEL",
+    "email": "",
+    "phone": "Mobile: (555) 555-XXXX",
+    "address": null,
+    "metadata": {
+      "unit": "5501",
+      "propertyName": "Summerfield Apartments",
+      "propertyId": "59f0f217-dcba-463e-b70c-93ec90e0fe2d",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "59f0f217-dcba-463e-b70c-93ec90e0fe2d"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "b8a0c7e6-7042-4906-9807-00074a020048",
+    "entityType": "tenant",
+    "name": "1 brm, MODEL",
+    "email": "",
+    "phone": "",
+    "address": null,
+    "metadata": {
+      "unit": "001I",
+      "propertyName": "Washington Gardens Apartments",
+      "propertyId": "483679ce-3552-4007-be93-f1e91796b6c5",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture",
+      "modelUnit": true
+    },
+    "propertyIds": [
+      "483679ce-3552-4007-be93-f1e91796b6c5"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "c9b1d8f7-8042-4907-a908-00084a020049",
+    "entityType": "tenant",
+    "name": "2BRM, model",
+    "email": "",
+    "phone": "",
+    "address": null,
+    "metadata": {
+      "unit": "022I",
+      "propertyName": "Washington Gardens Apartments",
+      "propertyId": "483679ce-3552-4007-be93-f1e91796b6c5",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture",
+      "modelUnit": true
+    },
+    "propertyIds": [
+      "483679ce-3552-4007-be93-f1e91796b6c5"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "d0c2e9a8-9042-4908-ba09-00094a02004a",
+    "entityType": "tenant",
+    "name": "ABDELOUAHED, HAMID",
+    "email": "",
+    "phone": "Mobile: (555) 555-XXXX",
+    "address": null,
+    "metadata": {
+      "unit": "2908",
+      "propertyName": "Summerfield Apartments",
+      "propertyId": "59f0f217-dcba-463e-b70c-93ec90e0fe2d",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "59f0f217-dcba-463e-b70c-93ec90e0fe2d"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "e1d3f0b9-a042-4909-9b0a-000a4a02004b",
+    "entityType": "tenant",
+    "name": "ABDELSADEK, MOHAMED A.",
+    "email": "",
+    "phone": "",
+    "address": null,
+    "metadata": {
+      "unit": "6907",
+      "propertyName": "Summerfield Apartments",
+      "propertyId": "59f0f217-dcba-463e-b70c-93ec90e0fe2d",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "59f0f217-dcba-463e-b70c-93ec90e0fe2d"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "f2e4a1c0-b042-490a-ac0b-000b4a02004c",
+    "entityType": "tenant",
+    "name": "Abdulkarim, Nafisah G.",
+    "email": "",
+    "phone": "Mobile: (555) 555-XXXX",
+    "address": null,
+    "metadata": {
+      "unit": "2779-2",
+      "propertyName": "Woodland Parc Townhomes",
+      "propertyId": "52d4e301-3cbf-4a32-91eb-d20be9d06959",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "52d4e301-3cbf-4a32-91eb-d20be9d06959"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
+  },
+  {
+    "id": "a3f5b2d1-c042-490b-bd0c-000c4a02004d",
+    "entityType": "tenant",
+    "name": "ABREU, MARIO G.",
+    "email": "",
+    "phone": "Mobile: (555) 555-XXXX",
+    "address": null,
+    "metadata": {
+      "unit": "3905",
+      "propertyName": "Summerfield Apartments",
+      "propertyId": "59f0f217-dcba-463e-b70c-93ec90e0fe2d",
+      "tenantStatus": "Past",
+      "source": "appfolio_page1_capture"
+    },
+    "propertyIds": [
+      "59f0f217-dcba-463e-b70c-93ec90e0fe2d"
+    ],
+    "status": "inactive",
+    "createdAt": "2026-04-29 12:00:00",
+    "updatedAt": "2026-04-29 12:00:00",
+    "category": null,
+    "licenseNumber": null,
+    "licenseExpiry": null,
+    "ein": null
   }
 ]

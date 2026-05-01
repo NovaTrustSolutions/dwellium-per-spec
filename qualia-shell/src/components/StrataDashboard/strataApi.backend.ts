@@ -23,6 +23,7 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
     }
 
     const headers: Record<string, string> = {};
+    headers['X-Qualia-API'] = 'v2';
     const token = getAuthToken();
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -59,6 +60,7 @@ export function strataPost<T>(path: string, body: unknown): Promise<T> {
 // handling but keeps body untransformed.
 export async function strataUpload<T>(path: string, formData: FormData): Promise<T> {
     const headers: Record<string, string> = {};
+    headers['X-Qualia-API'] = 'v2';
     const token = getAuthToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData });

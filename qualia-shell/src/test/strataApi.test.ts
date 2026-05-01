@@ -18,6 +18,7 @@ describe('strataApi', () => {
     let strataPost: typeof import('../components/StrataDashboard/strataApi').strataPost;
     let strataPut: typeof import('../components/StrataDashboard/strataApi').strataPut;
     let strataDelete: typeof import('../components/StrataDashboard/strataApi').strataDelete;
+    let strataUpload: typeof import('../components/StrataDashboard/strataApi').strataUpload;
 
     beforeEach(async () => {
         // Reset fetch mock
@@ -28,6 +29,7 @@ describe('strataApi', () => {
         strataPost = mod.strataPost;
         strataPut = mod.strataPut;
         strataDelete = mod.strataDelete;
+        strataUpload = mod.strataUpload;
     });
 
     // ── GET ─────────────────────────────────────────────────────────────────
@@ -166,5 +168,40 @@ describe('strataApi', () => {
 
         const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
         expect(callArgs[1].headers['Authorization']).toBeUndefined();
+    });
+
+    // ── X-Qualia-API: v2 header (Task 5.1c — API version bump) ──────────────
+    //
+    // Per Plan v2 §8 L322: "Bump the API version header X-Qualia-API: v2.
+    // Old clients continue to get the v1 shape with new fields omitted.
+    // Backward-compat contract." Header is emitted UNCONDITIONALLY on every
+    // fetch (no flag-gating; spec-verbatim simplest interpretation).
+    // Mirrors Task 3.8 strataUpload<T> shape-contract precedent — header
+    // addition is transport-layer, not endpoint-logic; GR-5 spirit preserved.
+
+    it('GET sends X-Qualia-API: v2 header for backward-compat versioning', async () => {
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({}),
+        });
+
+        await strataGet('/properties');
+
+        const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(callArgs[1].headers['X-Qualia-API']).toBe('v2');
+    });
+
+    it('strataUpload sends X-Qualia-API: v2 header for backward-compat versioning', async () => {
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({}),
+        });
+
+        const formData = new FormData();
+        formData.append('file', new Blob(['test-payload'], { type: 'text/plain' }), 'test.txt');
+        await strataUpload('/upload', formData);
+
+        const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect(callArgs[1].headers['X-Qualia-API']).toBe('v2');
     });
 });

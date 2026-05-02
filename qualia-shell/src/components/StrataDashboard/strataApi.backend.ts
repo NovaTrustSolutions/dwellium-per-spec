@@ -7,6 +7,11 @@
  *
  * Shape contract MUST stay identical to strataApi.static.ts so the
  * router in strataApi.ts can swap between them transparently.
+ *
+ * Phase-5 Task 5.1d (2026-04-30): backend column-add migrations
+ * (`db/migrations/20260420_parity_fields.{up,down}.sql`) ship out-of-repo
+ * per `Docs/Phases/Phase_5_Plan.md` L100-124 + R-4 v2.26 cross-repo
+ * amendment; no consumer-side complement (SQL migrations are purely backend).
  */
 
 import { getAuthToken } from '../../context/UserContext';

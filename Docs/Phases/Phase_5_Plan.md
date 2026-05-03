@@ -160,6 +160,10 @@ E2E_TARGET=real-backend npx playwright test
 
 ---
 
+> **🚨 DEPRECATED at v2.32 (Plan v2.32 Changelog).** L160-end (Backward-compat rehearsal / Production migration dry run / Observability wiring) superseded by parent `AppFolio_Parity_Implementation_Plan_v2.md` §9 rows 5.4/5.5/5.6/5.7 per OPTION B resolution at Task 5.3 sweep + GR-14 amendment ("when phase-spec CONTRADICTS parent vs refines, parent + v1-lineage wins"). Scopes preserved below for potential Phase-6 production-readiness arc; **do NOT use as Phase-5 task scope source**. Task 5.4 (E2E WO 19511-1 round-trip) closed 2026-05-02 at squash SHA `6b468b3` per parent §9 row 5.4; Tasks 5.5 (E2E 2-Story compliance) / 5.6 (Perf Lighthouse) / 5.7 (a11y axe) per parent §9 rows 5.5/5.6/5.7 verbatim.
+
+---
+
 ### Task 5.4 — Backward-compat rehearsal
 
 **Goal.** Prove a production v1 client (pinned to a prior bundle hash) rendering a v2-server response doesn't crash.

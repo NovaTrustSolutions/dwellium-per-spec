@@ -1,0 +1,209 @@
+{
+  "capturedAt": "2026-05-04T02:50:39.708Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "Phase-5 Task 5.6 — Perf validation",
+  "target": "http://localhost:4173/",
+  "methodology": "Lighthouse navigation run on root + Playwright-driven SPA navigation + PerformanceObserver Web Vitals + @axe-core/playwright a11y audit per page",
+  "v1Thresholds": {
+    "LCP_ms": 500,
+    "CLS": 0.1,
+    "a11yScore": 95,
+    "source": "AppFolio_Parity_Implementation_Plan.md L228"
+  },
+  "root": {
+    "scores": {
+      "performance": 0.81,
+      "accessibility": 0.9,
+      "bestPractices": 1,
+      "seo": 0.83
+    },
+    "metrics": {
+      "FCP": 2252.4311,
+      "LCP": 4652.7047,
+      "TBT": 0,
+      "CLS": 0,
+      "SI": 2252.4311,
+      "TTI": 4652.7047
+    }
+  },
+  "perPage": [
+    {
+      "id": "property-128bv",
+      "label": "128 Buena Vista Dr N (property detail)",
+      "vitals": {
+        "FCP": 20,
+        "domContentLoaded": 9.200000017881393,
+        "loadEvent": 11.800000011920929,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 40,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 2,
+        "passes": 22,
+        "incomplete": 1,
+        "inapplicable": 37,
+        "scoreApprox": 90,
+        "topViolations": [
+          {
+            "id": "button-name",
+            "impact": "critical",
+            "help": "Buttons must have discernible text",
+            "nodes": 1
+          },
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "help": "Elements must meet minimum color contrast ratio thresholds",
+            "nodes": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "vendor-2story",
+      "label": "2-STORY TECHNICAL ROOFING LLC (vendor detail)",
+      "vitals": {
+        "FCP": 20,
+        "domContentLoaded": 9.200000017881393,
+        "loadEvent": 11.800000011920929,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 40,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 5,
+        "passes": 22,
+        "incomplete": 1,
+        "inapplicable": 36,
+        "scoreApprox": 75,
+        "topViolations": [
+          {
+            "id": "aria-valid-attr-value",
+            "impact": "critical",
+            "help": "ARIA attributes must conform to valid values",
+            "nodes": 10
+          },
+          {
+            "id": "button-name",
+            "impact": "critical",
+            "help": "Buttons must have discernible text",
+            "nodes": 1
+          },
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "help": "Elements must meet minimum color contrast ratio thresholds",
+            "nodes": 2
+          },
+          {
+            "id": "scrollable-region-focusable",
+            "impact": "serious",
+            "help": "Scrollable region must have keyboard access",
+            "nodes": 1
+          },
+          {
+            "id": "select-name",
+            "impact": "critical",
+            "help": "Select element must have an accessible name",
+            "nodes": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "wo-19511-1",
+      "label": "WO 19511-1 / Fire alarm needs replaced (maintenance detail)",
+      "vitals": {
+        "FCP": 20,
+        "domContentLoaded": 9.200000017881393,
+        "loadEvent": 11.800000011920929,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 40,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 3,
+        "passes": 22,
+        "incomplete": 1,
+        "inapplicable": 37,
+        "scoreApprox": 85,
+        "topViolations": [
+          {
+            "id": "button-name",
+            "impact": "critical",
+            "help": "Buttons must have discernible text",
+            "nodes": 2
+          },
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "help": "Elements must meet minimum color contrast ratio thresholds",
+            "nodes": 2
+          },
+          {
+            "id": "scrollable-region-focusable",
+            "impact": "serious",
+            "help": "Scrollable region must have keyboard access",
+            "nodes": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "tenant-brianna-jackson",
+      "label": "Brianna Jackson (tenant detail)",
+      "vitals": {
+        "FCP": 20,
+        "domContentLoaded": 9.200000017881393,
+        "loadEvent": 11.800000011920929,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 40,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 3,
+        "passes": 24,
+        "incomplete": 1,
+        "inapplicable": 34,
+        "scoreApprox": 85,
+        "topViolations": [
+          {
+            "id": "button-name",
+            "impact": "critical",
+            "help": "Buttons must have discernible text",
+            "nodes": 334
+          },
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "help": "Elements must meet minimum color contrast ratio thresholds",
+            "nodes": 2
+          },
+          {
+            "id": "select-name",
+            "impact": "critical",
+            "help": "Select element must have an accessible name",
+            "nodes": 2
+          }
+        ]
+      }
+    }
+  ]
+}

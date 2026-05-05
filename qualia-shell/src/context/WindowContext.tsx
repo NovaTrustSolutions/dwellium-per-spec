@@ -10,6 +10,20 @@ const DOCK_VERSION = 5; // Bumped: emoji icons → Lucide React SVG icon keys
 const MIN_WIDTH = 500;
 const MIN_HEIGHT = 380;
 
+// Per-component default-size overrides for apps whose layouts require more
+// real-estate than the quadrant-spawn default. The Strata dashboard uses a
+// 3-column flex (sub-sidebar + .s-list-panel 320px + .s-detail-panel 1fr);
+// at the quadrant-spawn default (~518px on a 1200px desktop) the 1fr column
+// collapses to 0px, leaving the detail panel rendered-but-zero-width.
+// Phase-6 Task 6.1: open Strata wide enough that the 3-col layout fits.
+// Width is clamped to (desktopW - 40) at use-site so windows never overflow
+// the canvas on small displays. Exported so Desktop.tsx's auto-region-snap
+// effect can opt these components out (a 1100px window snapped into a 600px
+// halves-h region would re-introduce the layout collapse).
+export const COMPONENT_DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
+    'strata-dashboard': { w: 1100, h: 800 },
+};
+
 interface WindowContextValue {
     windows: WindowState[];
     dockItems: DockItem[];
@@ -161,11 +175,21 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         const qAbsW = best.w * desktopW;
         const qAbsH = best.h * desktopH;
 
-        // Size at 88% of quadrant, centered
-        const winW = Math.round(Math.max(MIN_WIDTH, qAbsW * 0.88));
-        const winH = Math.round(Math.max(MIN_HEIGHT, qAbsH * 0.88));
-        const winX = Math.round(qAbsX + (qAbsW - winW) / 2);
-        const winY = Math.round(qAbsY + (qAbsH - winH) / 2);
+        // Size at 88% of quadrant, centered — unless the component declares
+        // an explicit default size (clamped to the canvas so it never overflows).
+        const explicit = COMPONENT_DEFAULT_SIZES[component];
+        const winW = explicit
+            ? Math.min(explicit.w, Math.max(MIN_WIDTH, desktopW - 40))
+            : Math.round(Math.max(MIN_WIDTH, qAbsW * 0.88));
+        const winH = explicit
+            ? Math.min(explicit.h, Math.max(MIN_HEIGHT, desktopH - 40))
+            : Math.round(Math.max(MIN_HEIGHT, qAbsH * 0.88));
+        const winX = explicit
+            ? Math.round((desktopW - winW) / 2)
+            : Math.round(qAbsX + (qAbsW - winW) / 2);
+        const winY = explicit
+            ? Math.round((desktopH - winH) / 2)
+            : Math.round(qAbsY + (qAbsH - winH) / 2);
 
         const newId = generateId();
         const newWindow: WindowState = {

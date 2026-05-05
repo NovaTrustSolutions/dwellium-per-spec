@@ -725,6 +725,10 @@
     flex-direction: column;
     gap: 16px;
     font-family: var(--s-font-primary);
+    /* Phase-6 Task 6.1: establish a size-query container so .s-split-view
+       can collapse to 1-col when its actual rendered width is too narrow
+       for the 320px-fixed first column (independent of viewport width). */
+    container-type: inline-size;
 }
 
 .strata-dashboard .s-module-header {
@@ -1970,11 +1974,20 @@
 }
 
 /* ── Responsive adjustments for modules ── */
-@media (max-width: 900px) {
+/* Phase-6 Task 6.1: .s-split-view collapse moved to a container query on
+   .s-module so it tracks the actual rendered width of the module — not the
+   viewport. The viewport-based @media rule was firing on viewport <900px,
+   but the bug fires when the .s-split-view itself is <~700px regardless of
+   viewport (e.g., Strata window opened narrower than ~1030px on a 1440px
+   viewport). The remaining @media rules (.s-kanban, .s-detail-stats,
+   .s-bids-grid, .s-form-row) are genuinely viewport-driven and stay. */
+@container (max-width: 700px) {
     .strata-dashboard .s-split-view {
         grid-template-columns: 1fr;
     }
+}
 
+@media (max-width: 900px) {
     .strata-dashboard .s-kanban {
         flex-direction: column;
     }

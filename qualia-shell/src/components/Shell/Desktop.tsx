@@ -1,4 +1,4 @@
-import { useWindows } from '../../context/WindowContext';
+import { useWindows, COMPONENT_DEFAULT_SIZES } from '../../context/WindowContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -606,9 +606,14 @@ export default function Desktop() {
         // Find all window IDs currently in any region
         const assignedIds = new Set(Object.values(regionAssignments).flat());
 
-        // For each window not yet assigned to a region, assign to least-occupied region
+        // For each window not yet assigned to a region, assign to least-occupied region.
+        // Phase-6 Task 6.1: components that declare an explicit default size in
+        // COMPONENT_DEFAULT_SIZES are opted out — auto-snapping a 1100×800
+        // window into a 600×900 halves-h region would re-collapse the layout
+        // the explicit size was set to avoid (e.g., Strata's 3-column grid).
         for (const win of windows) {
             if (win.minimized || assignedIds.has(win.id)) continue;
+            if (COMPONENT_DEFAULT_SIZES[win.component]) continue;
             // Find least-occupied region
             const occupancy = regions.map(r => ({
                 id: r.id,

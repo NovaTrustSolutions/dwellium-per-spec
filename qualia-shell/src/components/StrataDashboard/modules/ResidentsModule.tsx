@@ -830,7 +830,10 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                                         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = ''; }}>
                                         <td style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                            <button onClick={e => { e.stopPropagation(); toggleBulk(t.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: isBulk ? '#818cf8' : '#475569', padding: 0 }}>
+                                            <button
+                                                onClick={e => { e.stopPropagation(); toggleBulk(t.id); }}
+                                                aria-label={isBulk ? `Deselect tenant${t.name ? ` ${t.name}` : ''}` : `Select tenant${t.name ? ` ${t.name}` : ''}`}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: isBulk ? '#818cf8' : '#475569', padding: 0 }}>
                                                 {isBulk ? <CheckSquare size={14} /> : <Square size={14} />}
                                             </button>
                                         </td>

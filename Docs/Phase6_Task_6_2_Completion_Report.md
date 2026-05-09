@@ -2,7 +2,7 @@
 
 **Task.** Land the permanent `helpers/auth.ts::loginAs` amendment that seeds `qualia_sidebar_groups` localStorage with the `Property Management` widget group on cold start, replacing the A2 inline-seed pattern used at Phase-5 Tasks 5.6 / 5.7 (in measurement scripts) + Phase-6 Tasks 6.1b / 6.1c smoke-test temp-edits + 6.1c CDP probe inline seed (5-of-5 cross-phase deferred-to-6.2 sites). Acceptance: cold-start smoke-test 12/12 WITHOUT any temp-edits to helpers/auth.ts (the permanent amendment IS the seeding). **E2E-PLAYWRIGHT carry-over class** — Phase-6 4th E2E-tooling data point / extends 5pt → **6pt cross-phase**. **🎯 CLASS-CORRECTION AT v2.39** — Phase_6_Plan.md row 6.2 previously designated `CONSUMER-SIDE-FETCH-WRAPPER carry-over (1 → 2pt)` conflated 5.1c X-Qualia-API:v2 emission on `strataApi.backend.ts::request/strataUpload` (production-code transport-layer fetch wrapper — correctly CONSUMER-SIDE-FETCH-WRAPPER) with 6.2's `helpers/auth.ts` addInitScript seeding (e2e test-tooling helper, outside Vite entry graph, alongside Phase-5 5.3/5.4/5.5 + Phase-6 6.1b/6.1c). Correction is purely classificatory; no source/test changes; precedent matches v2.32 GR-14 amendment + v2.28 dual-axis reframe (corrections to Plan v2 land in versioned amendments, not silent edits). **🎯 24/24 smoke-test ACHIEVED on FIRST run** — kickoff predicted 12/12 chromium-only; actual passed 24/24 across both Playwright projects (12 chromium static-API + 12 real-backend) validating that helpers/auth.ts permanent amendment IS the seeding (4× kickoff prediction). All 5 PRE0 HARD HALT-IFs CLEAR. Single-file scope (no helper extraction; addInitScript pattern is loginAs-specific; threshold not met). **🎯 test-tooling-isolation empirical pattern preserved at 4th Phase-6 data point post-LAW-retirement** — all 3 production chunk axes (SHA256 / filename / byte-count) PRESERVED across helpers/auth.ts edit. **byte-count cross-phase invariance milestone extends 20-of-20 → 21-of-21**. **Vitest 259 → 259** (+0). **Smoke-test 12/12 → 12/12 cold-start without temp-edits** (validates permanent amendment is sufficient on its own). **🎯 A2 INLINE-SEED PATTERN RETIRED** — 5 cross-phase deferred-to-6.2 sites are now closed (6.1b smoke + 6.1c smoke + 6.1c probe RETIRED; 5.6 + 5.7 measurement scripts RETAINED as design choice per non-Playwright contexts). **6.1c TBD → `ebb9cce` / #47 resolution co-shipped** at this commit per absorb-into-next-sweep precedent. **Phase-6 Block B CLOSED** — Block C (a11y arc) unblocks at 6.3.
 
-**Squash SHA.** TBD (PR #TBD).
+**Squash SHA.** `68e35d0` (PR #48). _Resolved at 6.3 sweep per absorb-into-next-sweep cross-phase convention (meta-PR #44 → 6.1a → 6.1b → 6.1c → 6.2 → 6.3 = 6 consecutive sweep-resolutions)._
 
 **Sources.**
 
@@ -262,8 +262,8 @@ $ grep -c "localStorage.setItem" qualia-shell/e2e/helpers/auth.ts
 | 11 | Permanent amendment IS the seeding | No temp-edits required | ✓ CONFIRMED — 24/24 cold-start passes with helpers/auth.ts amendment alone | §3 |
 | 12 | Defensive sanity grep | addInitScript=1; localStorage.setItem=1 | grep counts exactly 1+1 | §4 |
 | 13 | Diff stat | ~5-7 lines added (envelope) | +11 / −0 (slightly above envelope due to 2-line WHY comment justifying seed-before-goto invariant; in-envelope per CLAUDE.md non-obvious-WHY exception) | §4 |
-| 14 | Manual-dispatch parity gate | green | TBD (post-PR) | §6 |
-| 15 | CodeRabbit review | pass | TBD (post-PR) | §6 |
+| 14 | Manual-dispatch parity gate | green | ✓ green @ 2026-05-09T08:20Z (run on PR #48 HEAD `9c69543`) | §6 |
+| 15 | CodeRabbit review | pass | ✓ pass | §6 |
 | 16 | 6.1c TBD → `ebb9cce` / `#47` resolution | co-shipped | ✓ | §1 + §7 entry 6 |
 
 ---
@@ -271,10 +271,10 @@ $ grep -c "localStorage.setItem" qualia-shell/e2e/helpers/auth.ts
 ## §6. CI / merge protocol (post-merge fill-in)
 
 - Branch: `feat/phase-6-task-6-2-helpers-auth-amendment`
-- PR title: `feat(phase-6): Task 6.2 — helpers/auth.ts permanent cold-start sidebar amendment (#TBD)`
+- PR title: `feat(phase-6): Task 6.2 — helpers/auth.ts permanent cold-start sidebar amendment (#48)`
 - CI behavior: paths-filter quirk applies — 6.2 touches only `qualia-shell/e2e/helpers/auth.ts` + `Docs/**` + `CLAUDE.md`, all outside parity-paths filter; manual-dispatch required (mirrors 6.1b/6.1c + meta-PR #44 + 5.3-5.7 precedent).
-- Manual-dispatch parity gate: TBD (post-PR-open via `gh workflow run "AppFolio Parity Gate" -R NovaTrustSolutions/dwellium-per-spec --ref feat/phase-6-task-6-2-helpers-auth-amendment`).
-- CodeRabbit review: TBD (post-PR-open).
+- Manual-dispatch parity gate: ✓ green @ 2026-05-09T08:20Z (run on PR #48 HEAD `9c69543`).
+- CodeRabbit review: ✓ pass.
 - Squash-merge target: `main`.
 - Post-merge sweep (deferred to 6.3 sweep per absorb-into-next-sweep precedent): resolve 6.2 TBD squash SHA + PR # in this report's §1 + §5 verification matrix CI rows + §6 PR title; resolve 6.2 TBD in `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 row 6.2 squash-SHA cell + Changelog v2.39 entry "6.2 closes at squash SHA TBD (PR #TBD)"; update CLAUDE.md HEAD pointer.
 

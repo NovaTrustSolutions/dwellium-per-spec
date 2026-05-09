@@ -1,6 +1,6 @@
 # Phase 6 — Production-Readiness Arc (post-Phase-5 carry-forward)
 
-**Parent plan.** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-6 sub-tracker (created at v2.36 with 10 rows: 6.1a / 6.1b / 6.2 / 6.3 / 6.4 / 6.5 / 6.6 / 6.7 / 6.8 / 6.9).
+**Parent plan.** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-6 sub-tracker (created at v2.36; expanded at v2.37 to 11 rows: 6.1a / 6.1b / **6.1c** / 6.2 / 6.3 / 6.4 / 6.5 / 6.6 / 6.7 / 6.8 / 6.9).
 **Phase status.** OPENED 2026-05-05 at squash SHA TBD (Task 6.1a — `.s-detail-panel` layout collapse fix; Phase-6 OPENER).
 **Budget.** 4–6 days end-to-end (each task ~0.25–1 day; 1 day buffer).
 **Owner.** Frontend engineer + QA.
@@ -91,9 +91,36 @@ Per task:
 - `qualia-shell/e2e/appfolio-parity-workorder.spec.ts` — pre-expand the 6 `<Section defaultOpen={false}>` blocks before the testid-visibility assertions at L102-107 (View as Maintenance Tech / Withheld Amount / Invoices / Texts / Emails / Notes). Use stable section-title text via the existing `<Section>` button. Single ~6-line `for` loop.
 - `qualia-shell/e2e/appfolio-parity-vendor-compliance.spec.ts` — narrow the Compliance tab-button locator at L114 to exclude Section accordion-header buttons via `:not([aria-controls])` (or equivalent; alternative is to add a `data-testid="vendor-tab-bar"` on the `<div>` at VendorsModule.tsx:912 — defer the source-edit option unless the spec-only fix has stability issues).
 
-**Smoke-test gate.** **12/12** — the original kickoff acceptance criterion deferred from 6.1a per task split.
+**Smoke-test gate (relaxed at v2.37 task split).** **11/12** — vendor-compliance fully fixed (1/1); workorder spec partially fixed (block-default-collapsed axis + Status-Tracking-conditional-render axis closed); time-windows-rendering axis (5th, surfaced empirically at 6.1b PRE3) deferred to **Task 6.1c** per HARD HALT-IF discipline ("cap latent-exposure chase at 2 expansions of 6.1b"). Original kickoff 12/12 target deferred to 6.1c acceptance.
 
-**Calibration class.** **E2E-PLAYWRIGHT carry-over (extends 3 → 4 cross-phase data points within Phase-5 + Phase-6).** Spec-only edit; no source change; chunk-graph isolated by construction (e2e/ outside Vite entry graph). Vitest 259 → 259 (+0). Production chunk byte-count axis preserved at 1,031,260 (extends Phase-6's 1-of-1 → 2-of-2 byte-count invariance).
+**Calibration class.** **E2E-PLAYWRIGHT carry-over (extends 3 → 4 cross-phase data points within Phase-5 + Phase-6).** Spec-only edit; no source change; chunk-graph isolated by construction (e2e/ outside Vite entry graph). Vitest 259 → 259 (+0). Production chunk byte-count axis preserved at 1,031,260 (extends Phase-6's 1-of-1 → 2-of-2 byte-count invariance; cross-phase 18-of-18 → 19-of-19).
+
+---
+
+#### Task 6.1c — appfolio-parity-workorder spec full audit (mandatory PRE0; whack-a-mole prohibited)
+
+**Goal.** Close the workorder spec's 5th surviving axis (residentAvailability time-windows-rendering at L161) AND any further latent axes by mandating a full PRE0 audit of every assertion in `appfolio-parity-workorder.spec.ts` against actual rendering contract before applying spec edits.
+
+**Why split (not amend in 6.1b).** 6.1b empirically surfaced **4 distinct contract-drift axes** inside this single spec (block-default-collapsed `<Section defaultOpen={false}>` / Status-Tracking-conditional-render `{meta.tenantStatus && ...}` / Compliance-regex-case-mismatch / time-windows-rendering deferred). The pattern is "spec authored against an idealized UI universe that production never had" — fixing it whack-a-mole-style risks endless successor axes (a 6th, 7th, etc.). Plan v2.36 HARD HALT-IF capped 6.1b at 2 expansions; 6.1c is the structurally cleaner remediation path.
+
+**Mandatory PRE0 audit.** Before ANY spec edit:
+
+1. Walk every `expect(...).toBeVisible()` / `expect(...).toContainText()` / `expect(...).toHaveText()` / `expect(...).not.toBeVisible()` assertion in the spec.
+2. For each assertion, identify the production-side render path: `<Section>` wrapper / conditional-render guard / data-dependency on the WO 19511-1 fixture / textContent-vs-visual-text mismatch potential.
+3. Cross-reference the WO 19511-1 fixture data (`qualia-shell/public/data/workitems.json`; ~370/371 records carry STRING-typed metadata per Phase-3 Drift #B-i) against the spec's data assumptions.
+4. Produce a per-assertion table: ✓ unconditional / ⚠️ data-dependent (verify fixture) / ❌ contract-drift (needs spec edit).
+5. Apply spec edits in batch; do NOT enter the 6.1c spec-edit phase until the audit table covers all assertions.
+
+**Files predicted.** 1 spec file (`appfolio-parity-workorder.spec.ts`) + possibly 1 helper file if a section-toggle utility is extracted (e.g., `e2e/helpers/sections.ts`). NO source-of-truth fixture changes (fixture envelope preserved).
+
+**Smoke-test gate.** **12/12** — the original kickoff acceptance criterion deferred from 6.1a → 6.1b → 6.1c.
+
+**Calibration class.** **E2E-PLAYWRIGHT carry-over (extends 4 → 5 cross-phase data points).** Spec-only; chunk-graph isolated.
+
+**Carry-forward from 6.1b §7 (deferred-items relevant to 6.1c):**
+
+- **Click-mechanism workaround captured at 6.1b**: Section accordion-header `<button>` clicks via Playwright's `getByRole(...).click()` are intercepted by `.s-detail-panel`'s overflow scrollbar at the right-edge click coordinate. `force: true` clicks dispatch but don't fire React's onClick state update (likely synthetic-event boundary). 6.1b workaround: `detailPanel.evaluate((panel, titles) => {...native .click()...})` direct DOM dispatch, which React's document-root delegation picks up. **6.1c hardening candidate**: add `data-testid="wo-section-{slug}"` markers to MaintenanceModule.tsx Section component (lets specs use testid-based clicking) OR investigate scrollbar overlap (`scrollbar-gutter: stable` CSS fix candidate). Decision deferred to 6.1c PRE0.
+- **Spec-vs-DOM case-mismatch finding at 6.1b**: VendorsModule tab-bar uses lowercase string-array values (`'compliance'`); CSS `textTransform: capitalize` is presentation-only and doesn't change DOM textContent. Future spec authors should prefer `data-testid` markers over visible-text matching for tab-bar buttons. **6.1c hardening candidate**: audit all tab-bar interactions across e2e specs for similar latent case-mismatches.
 
 ---
 
@@ -232,7 +259,7 @@ Per task: `git revert` of the squash-merge commit. Phase-6 has no schema / migra
 
 Phase 6 is complete when:
 
-1. All 10 tasks (6.1a / 6.1b / 6.2 / 6.3 / 6.4 / 6.5 / 6.6 / 6.7 / 6.8 / 6.9) merged to `main`.
+1. All 11 tasks (6.1a / 6.1b / **6.1c** / 6.2 / 6.3 / 6.4 / 6.5 / 6.6 / 6.7 / 6.8 / 6.9) merged to `main`.
 2. Smoke-test 4-spec set passes 12/12 cold-start.
 3. Feature specs in `playwright.baseline.config.ts::testMatch`.
 4. Post-remediation a11y violation count ≤ 0 OR documented residual rationale at `Docs/Phase6_A11y_Report.md`.
@@ -263,8 +290,9 @@ Phase 6 is complete when:
 | Task | Budget | Prereq | Can parallelize |
 |---|:-:|---|:-:|
 | 6.1a Layout fix (OPENER) | 0.5 day | Phase-5 closed | No |
-| 6.1b Spec remediation | 0.25 day | 6.1a | No |
-| 6.2 helpers/auth.ts amendment | 0.25 day | 6.1b | No |
+| 6.1b Spec remediation (partial — 2 of 3 axes; vendor-compliance 1/1) | 0.25 day | 6.1a | No |
+| 6.1c workorder spec full audit (mandatory PRE0; whack-a-mole prohibited) | 0.5 day | 6.1b | No |
+| 6.2 helpers/auth.ts amendment | 0.25 day | 6.1c | No |
 | 6.3 Tenant-row a11y (largest impact) | 0.5 day | 6.2 | Block C parallel |
 | 6.4 Targeted a11y fixes | 0.5 day | 6.2 | Block C parallel |
 | 6.5 a11y closure cleanup | 0.25 day | 6.3 + 6.4 | No |

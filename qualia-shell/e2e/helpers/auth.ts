@@ -40,6 +40,17 @@ export async function loginAs(
   page: Page,
   user: QuickUser = USERS.andy,
 ): Promise<void> {
+  // Seed before goto: cold-start Sidebar useState (Sidebar.tsx:226-232) reads this Set
+  // synchronously; without seeding, all widget groups default to collapsed.
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem(
+        'qualia_sidebar_groups',
+        '["Property Management","AI Tools","Filing Cabinet"]',
+      );
+    } catch { /* private-mode storage denial */ }
+  });
+
   // Navigate to app
   await page.goto('/');
 

@@ -95,7 +95,7 @@ function BlockSection({
                 {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 <span style={{ flex: 1 }}>{title}</span>
             </button>
-            {expanded && <div style={{ marginTop: 8 }}>{children}</div>}
+            {expanded && <div id={`vendor-block-${slug}`} style={{ marginTop: 8 }}>{children}</div>}
         </div>
     );
 }
@@ -665,7 +665,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                             <input placeholder="Search vendors, tags…" value={search} onChange={e => setSearch(e.target.value)} className="s-input s-input-sm" />
                         </div>
                     )}
-                    <button className="s-btn s-btn-ghost" onClick={fetchVendors}><RefreshCw size={14} /></button>
+                    <button className="s-btn s-btn-ghost" onClick={fetchVendors} aria-label="Refresh vendors"><RefreshCw size={14} /></button>
                     {hasPermission('strata:vendors:create') && (
                         <button className="s-btn s-btn-primary" onClick={() => setShowForm(true)}><Plus size={14} /> Add Vendor</button>
                     )}
@@ -704,7 +704,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
             {/* Compliance + Property Filters */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 12, padding: '0 4px' }}>
-                <select value={complianceFilter} onChange={e => setComplianceFilter(e.target.value as any)} style={{
+                <select aria-label="Filter vendors by compliance status" value={complianceFilter} onChange={e => setComplianceFilter(e.target.value as any)} style={{
                     padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
                     border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
                     color: '#e2e8f0', fontFamily: 'inherit',
@@ -714,7 +714,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                     <option value="expiring">⚠ Expiring</option>
                     <option value="non-compliant">❌ Non-Compliant</option>
                 </select>
-                <select value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} style={{
+                <select aria-label="Filter vendors by property" value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} style={{
                     padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
                     border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
                     color: '#e2e8f0', fontFamily: 'inherit',
@@ -726,7 +726,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
 
             <div className="s-split-view">
                 {/* Vendor List */}
-                <div className="s-list-panel">
+                <div className="s-list-panel" tabIndex={0} role="region" aria-label="Vendor list">
                     {loading ? (
                         <LoadingState message="Loading vendors…" />
                     ) : error ? (

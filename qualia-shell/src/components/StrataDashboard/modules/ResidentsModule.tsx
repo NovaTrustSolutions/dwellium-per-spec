@@ -143,7 +143,7 @@ function BlockSection({
                 {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 <span style={{ flex: 1, textAlign: 'left' }}>{title}</span>
             </button>
-            {expanded && <div style={{ padding: '0 14px 12px' }}>{children}</div>}
+            {expanded && <div id={`tenant-block-${slug}`} style={{ padding: '0 14px 12px' }}>{children}</div>}
         </div>
     );
 }
@@ -737,11 +737,11 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                     <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>{filtered.length}{filtered.length !== tenants.length ? ` of ${tenants.length}` : ''} tenants</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <select value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} style={{ padding: '7px 10px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: propertyFilter === 'all' ? '#64748b' : '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', maxWidth: 180 }}>
+                    <select aria-label="Filter residents by property" value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} style={{ padding: '7px 10px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: propertyFilter === 'all' ? '#64748b' : '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', maxWidth: 180 }}>
                         <option value="all" style={{ background: '#1e293b', color: '#94a3b8' }}>All Properties</option>
                         {uniqueProperties.map(p => <option key={p} value={p} style={{ background: '#1e293b', color: '#e2e8f0' }}>{p}</option>)}
                     </select>
-                    <select value={leaseFilter} onChange={e => setLeaseFilter(e.target.value)} style={{ padding: '7px 10px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: leaseFilter === 'all' ? '#64748b' : '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
+                    <select aria-label="Filter residents by lease expiration" value={leaseFilter} onChange={e => setLeaseFilter(e.target.value)} style={{ padding: '7px 10px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: leaseFilter === 'all' ? '#64748b' : '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
                         <option value="all" style={{ background: '#1e293b' }}>All Leases</option>
                         <option value="30d" style={{ background: '#1e293b' }}>Expiring ≤30d</option>
                         <option value="60d" style={{ background: '#1e293b' }}>Expiring ≤60d</option>

@@ -593,7 +593,8 @@
     font-weight: var(--fw-bold, 700);
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: var(--text-tertiary, #64748b);
+    /* WCAG 2 AA: bumped from --text-tertiary (#5f6570 measured / 3.03 contrast on #15181d) to #94a3b8 (4.86 contrast) per Phase-6 Task 6.4 axe-core color-contrast remediation. */
+    color: #94a3b8;
 }
 
 /* --- Draggable Split Divider (6) --- */

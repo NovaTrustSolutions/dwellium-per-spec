@@ -140,15 +140,25 @@ Per task:
 
 ### Block C — a11y remediation arc (parallel within block; gated on Block A complete)
 
-#### Task 6.3 — Tenant-row icon-button accessible-name (largest a11y impact)
+#### Task 6.3 — Tenant-row icon-button accessible-name (largest a11y impact) — **CLOSED 2026-05-09 at squash SHA TBD (PR #TBD)**
 
-**Goal.** Resolve ~334 of 362 violating nodes from `Docs/Phase5_A11y_Report.md` in a single targeted fix. The Brianna tenant page (~338 nodes / ~93% of total) carries a virtualized tenant-list with icon-only buttons missing `aria-label`. Single-pattern fix at the icon-button component or virtualized-row template should drop the count significantly.
+**Goal.** Resolve ~334 of 362 violating nodes from `Docs/Phase5_A11y_Report.md` in a single targeted fix. The Brianna tenant page (~338 nodes / ~93% of total) carries a tenant-list with icon-only buttons missing `aria-label`. Single-pattern fix at the icon-button component or row template should drop the count significantly.
 
-**Files touched.** Estimated 1-2 component files in the residents/tenants module owning the icon-button row template.
+**Files touched.** 1 source file (below 1-2 estimate): `qualia-shell/src/components/StrataDashboard/modules/ResidentsModule.tsx` (+4 / −1; single-line `aria-label` addition with multi-line reformat at L833 — `aria-label={isBulk ? \`Deselect tenant${t.name ? \` ${t.name}\` : ''}\` : \`Select tenant${t.name ? \` ${t.name}\` : ''}\`}`; defensive `t.name ?` null-safety fallback per user GO refinement; per-row context for screen-reader users e.g. "Select tenant Brianna Jackson").
 
-**Verify.** Re-run `Scripts/run_axe_phase5.mjs` (or `npx playwright test e2e/axe-baseline.spec.ts`) on the Brianna tenant page; expect violation count ≤ ~28 (362 − 334).
+**Verify (achieved).** Re-ran `Scripts/run_axe_phase5.mjs` on the build with `VITE_USE_STATIC_API=true VITE_APPFOLIO_SEEDS=true`; **button-name on Brianna tenant page: 334 → 0 (100% ELIMINATION — EXCEEDS kickoff `≤4` acceptance gate by 4 nodes)**; total Brianna page nodes 338 → 9 (-329 / -97.3%); total all-pages 362 → 33 (-329 / -91%); raw data captured at `Docs/Baselines/2026-05-09_Phase6_task_6_3_a11y_capture.json` (NEW; 11 KB; mirrors Phase-5 schema). **NEW finding** — 5 aria-valid-attr-value violations on Brianna page surfaced post-fix (`<button aria-controls="tenant-block-{slug}">` Section accordion-headers in detail-panel sections folioguard / emergency-contact / upcoming-activities / animals / vehicles); CDP probe `cdp_probe_task_6_3.cjs` (session-local NOT committed) root-caused the violations; STRUCTURALLY surfaced post-Task-6.1a layout fix (detail panel was rendered-but-zero-width pre-6.1a so axe-core didn't traverse interior; 6.1a's 434×700px detail panel made these previously-hidden elements visible); NOT caused by 6.3 edit; falls cleanly under Task 6.4 scope per §4 row 6.4 which already enumerates `aria-valid-attr-value`; 6.4 a11y target now extended to ~33 nodes (was ~28 in pre-6.3 plan).
 
-**Calibration class.** **COMPONENT-FIX 2nd data point (extends 1 → 2 within Phase-6).**
+**🎯 PRE0 mathematical-exactness signal — NEW PERMANENT process discovery at 6.3.** DC-A query 3 found 1 distinct icon-only button pattern at row template L833 × ~334 rendered tenant rows = 334 button-name violations EXACTLY (cross-referenced against `Docs/Baselines/2026-05-04_Phase5_a11y_capture.json::perPage[3].violations[0].nodeCount = 334`); single-pattern hypothesis confirmed via direct count match WITHOUT CDP probe. Audit-first methodology working at PRE0 (not just PRE1 like 6.1c — at 6.1c the audit was a per-row assertion table; at 6.3 the audit is a single counting argument; both shapes structurally validate audit-first vs whack-a-mole). PERMANENT process recommendation captured at 6.3 §7 entry 1 for GR-15 inclusion at next plan amendment.
+
+**Calibration class.** **COMPONENT-FIX carry-over (extends 1 → 2 within Phase-6; project-wide 10 cumulative classes unchanged).** 6.1a was 1st distinct in-repo COMPONENT-FIX with CSS-LAYOUT-FIX shape; 6.3 is 2nd with A11Y-COMPONENT-FIX shape. Sub-classes deferred per §11 until Phase-7+ third structurally-distinct production-chunk-edit shape surfaces.
+
+**Production chunk axes.** SHA256 BREAK predicted + observed (`81e1fdc…d1d4` → `6c17f2f…a768` — production-source edit class structurally breaks SHA256 by construction; mirrors 6.1a as 2nd Phase-6 production-source edit data point); filename hash rotated `StrataDashboard-BqghmASj.js` → `StrataDashboard-DhcqiSlI.js` (the `[name]-[hash]` filename pattern shifted at 6.1a is preserved across 6.2 + 6.3, validating it's structural-not-incidental); byte-count BREAK `1,031,260` → `1,031,359` (+99 bytes within kickoff prediction range +30-100); 21-of-21 cross-phase byte-count invariance milestone retired at this Phase-6 production-source edit; reset to 1-of-1.
+
+**Smoke-test gate (preserved post-edit).** 12/12 cold-start smoke-test PASS on chromium project (kickoff acceptance criterion met); helpers/auth.ts permanent amendment from 6.2 continues to seed `qualia_sidebar_groups` correctly across the production-source edit. Vitest 259 → 258 LOCAL only — `calendar.test.tsx:260` pre-existing environmental flake on darwin host (verified via `git stash` + re-run on clean `main` HEAD `68e35d0`); CI passed 259/259 on PR #48 at HEAD `9c69543` on 2026-05-09T08:20Z; CI is the authoritative gate.
+
+**Block C status.** **🎯 Phase-6 Block C OPENED at 6.3 closure** — Block A (6.1a + 6.1b + 6.1c) + Block B (6.2) complete; Block C (6.3 + 6.4 + 6.5 a11y arc) opens with 6.3 closure; 6.4 + 6.5 unblocked and parallelizable per §10 timeline.
+
+**Sweep co-ship.** 6.2 TBD → `68e35d0` / `#48` resolution co-shipped at 6.3 sweep per absorb-into-next-sweep cross-phase convention now established at 6 consecutive sweep-resolutions (meta-PR #44 → 6.1a → 6.1b → 6.1c → 6.2 → 6.3); pattern fully cemented.
 
 ---
 

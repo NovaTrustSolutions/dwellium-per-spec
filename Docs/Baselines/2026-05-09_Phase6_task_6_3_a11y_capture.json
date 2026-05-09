@@ -1,0 +1,365 @@
+{
+  "capturedAt": "2026-05-09T09:08:26.021Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "Phase-6 Task 6.3 — Tenant-row icon-button accessible-name fix (post-fix re-measurement; Phase-5 Task 5.7 capture-script reused without modification — see Docs/Phase6_Task_6_3_Completion_Report.md §1)",
+  "target": "http://localhost:4173/",
+  "methodology": "Playwright-driven SPA navigation + @axe-core/playwright per-page audit with WCAG 2.0 + 2.1 AA tags",
+  "v1Threshold": {
+    "wcagAaViolations": 0,
+    "source": "AppFolio_Parity_Implementation_Plan.md L230"
+  },
+  "summary": {
+    "pagesScanned": 4,
+    "pagesErrored": 0,
+    "totalDistinctViolationIds": 5,
+    "distinctViolationIds": [
+      "aria-valid-attr-value",
+      "button-name",
+      "color-contrast",
+      "scrollable-region-focusable",
+      "select-name"
+    ],
+    "totalViolations": 13,
+    "totalViolatingNodes": 33,
+    "violationsByImpactAcrossPages": {
+      "critical": 7,
+      "serious": 6
+    }
+  },
+  "perPage": [
+    {
+      "id": "property-128bv",
+      "label": "128 Buena Vista Dr N (property detail)",
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "description": "Ensure buttons have discernible text",
+          "help": "Buttons must have discernible text",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/button-name?application=playwright",
+          "tags": [
+            "cat.name-role-value",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.a",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.9.1"
+          ],
+          "nodeCount": 1
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodeCount": 2
+        }
+      ],
+      "summary": {
+        "violationCount": 2,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 37,
+        "totalViolatingNodes": 3,
+        "violationsByImpact": {
+          "critical": 1,
+          "serious": 1
+        }
+      }
+    },
+    {
+      "id": "vendor-2story",
+      "label": "2-STORY TECHNICAL ROOFING LLC (vendor detail)",
+      "violations": [
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "description": "Ensure all ARIA attributes have valid values",
+          "help": "ARIA attributes must conform to valid values",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-valid-attr-value?application=playwright",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag412",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodeCount": 10
+        },
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "description": "Ensure buttons have discernible text",
+          "help": "Buttons must have discernible text",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/button-name?application=playwright",
+          "tags": [
+            "cat.name-role-value",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.a",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.9.1"
+          ],
+          "nodeCount": 1
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodeCount": 2
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "description": "Ensure elements that have scrollable content are accessible by keyboard in Safari",
+          "help": "Scrollable region must have keyboard access",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/scrollable-region-focusable?application=playwright",
+          "tags": [
+            "cat.keyboard",
+            "wcag2a",
+            "wcag211",
+            "wcag213",
+            "TTv5",
+            "TT4.a",
+            "EN-301-549",
+            "EN-9.2.1.1",
+            "EN-9.2.1.3",
+            "RGAAv4",
+            "RGAA-7.3.2"
+          ],
+          "nodeCount": 1
+        },
+        {
+          "id": "select-name",
+          "impact": "critical",
+          "description": "Ensure select element has an accessible name",
+          "help": "Select element must have an accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/select-name?application=playwright",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodeCount": 2
+        }
+      ],
+      "summary": {
+        "violationCount": 5,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 36,
+        "totalViolatingNodes": 16,
+        "violationsByImpact": {
+          "critical": 3,
+          "serious": 2
+        }
+      }
+    },
+    {
+      "id": "wo-19511-1",
+      "label": "WO 19511-1 / Fire alarm needs replaced (maintenance detail)",
+      "violations": [
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "description": "Ensure buttons have discernible text",
+          "help": "Buttons must have discernible text",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/button-name?application=playwright",
+          "tags": [
+            "cat.name-role-value",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.a",
+            "TTv5",
+            "TT6.a",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.9.1"
+          ],
+          "nodeCount": 2
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodeCount": 2
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "description": "Ensure elements that have scrollable content are accessible by keyboard in Safari",
+          "help": "Scrollable region must have keyboard access",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/scrollable-region-focusable?application=playwright",
+          "tags": [
+            "cat.keyboard",
+            "wcag2a",
+            "wcag211",
+            "wcag213",
+            "TTv5",
+            "TT4.a",
+            "EN-301-549",
+            "EN-9.2.1.1",
+            "EN-9.2.1.3",
+            "RGAAv4",
+            "RGAA-7.3.2"
+          ],
+          "nodeCount": 1
+        }
+      ],
+      "summary": {
+        "violationCount": 3,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 37,
+        "totalViolatingNodes": 5,
+        "violationsByImpact": {
+          "critical": 1,
+          "serious": 2
+        }
+      }
+    },
+    {
+      "id": "tenant-brianna-jackson",
+      "label": "Brianna Jackson (tenant detail)",
+      "violations": [
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "description": "Ensure all ARIA attributes have valid values",
+          "help": "ARIA attributes must conform to valid values",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-valid-attr-value?application=playwright",
+          "tags": [
+            "cat.aria",
+            "wcag2a",
+            "wcag412",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "RGAAv4",
+            "RGAA-7.1.1"
+          ],
+          "nodeCount": 5
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+          "tags": [
+            "cat.color",
+            "wcag2aa",
+            "wcag143",
+            "TTv5",
+            "TT13.c",
+            "EN-301-549",
+            "EN-9.1.4.3",
+            "ACT",
+            "RGAAv4",
+            "RGAA-3.2.1"
+          ],
+          "nodeCount": 2
+        },
+        {
+          "id": "select-name",
+          "impact": "critical",
+          "description": "Ensure select element has an accessible name",
+          "help": "Select element must have an accessible name",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/select-name?application=playwright",
+          "tags": [
+            "cat.forms",
+            "wcag2a",
+            "wcag412",
+            "section508",
+            "section508.22.n",
+            "TTv5",
+            "TT5.c",
+            "EN-301-549",
+            "EN-9.4.1.2",
+            "ACT",
+            "RGAAv4",
+            "RGAA-11.1.1"
+          ],
+          "nodeCount": 2
+        }
+      ],
+      "summary": {
+        "violationCount": 3,
+        "passCount": 24,
+        "incompleteCount": 1,
+        "inapplicableCount": 34,
+        "totalViolatingNodes": 9,
+        "violationsByImpact": {
+          "critical": 2,
+          "serious": 1
+        }
+      }
+    }
+  ]
+}

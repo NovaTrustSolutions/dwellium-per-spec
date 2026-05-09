@@ -2,7 +2,7 @@
 
 **Task.** Land the spec-defect remediation that 6.1a's PRE2 HALT-IF deferred — pre-expand 6 `<Section defaultOpen={false}>` block-titles in `appfolio-parity-workorder.spec.ts:102-107` + narrow ambiguous Compliance-button locator in `appfolio-parity-vendor-compliance.spec.ts:114` via `:not([aria-controls])` filter. **E2E-PLAYWRIGHT carry-over class** — Phase-6 1st E2E-spec data point / extends Phase-5 3pt → 4pt cross-phase. **🎯 PRE3 SMOKE-TEST EMPIRICAL FALLBACK TRIGGERED 4 distinct contract-drift axes inside the workorder spec** — block-default-collapsed + Status-Tracking-conditional-render + Compliance-regex-case-mismatch + click-mechanism-scrollbar-interception (workaround applied) + time-windows-rendering-deferred. Per user HARD HALT-IF discipline ("cap latent-exposure chase at 2 expansions of 6.1b"), **Path B.split + amend later** chosen at 5th-axis surfacing: 6.1b ships 4 fixes (vendor-compliance fully closed; workorder 2-of-3 axes closed); **NEW Task 6.1c** spawned with mandatory PRE0 full-spec-audit (whack-a-mole prohibited). **🎯 vendor-compliance fully fixed at 6.1b** — clean 2-axis closure (`:not([aria-controls])` filter + case-insensitive regex `/^[Cc]ompliance$/`). **🎯 BOTH workorder workaround + case-mismatch findings captured as deferred-items** for 6.1c hardening pass. **🎯 chunk-graph isolation empirical pattern confirmed** — all 3 production chunk axes (SHA256 / filename / byte-count) PRESERVED across spec-only edits, confirming test-tooling-isolation as STILL-OBSERVABLE post-LAW-retirement (the law was retired at Phase-6 boundary as a categorical claim, but the empirical pattern continues for test-tooling-only edits). **byte-count cross-phase invariance milestone extends 18-of-18 → 19-of-19**. **Vitest 259 → 259** (+0). **Smoke-test 10/12 → 11/12** (vendor-compliance 0/1 → 1/1; workorder 0/1 unchanged but failure-locus shifted from axis-1+2 to axis-5; CDP probe regression check confirmed 8/8 phase-rows playwrightVisible — no 6.1a regression). **6.1a TBD → 20a62d0 / #45 resolution co-shipped** at this commit.
 
-**Squash SHA.** TBD (PR #TBD).
+**Squash SHA.** `718f6db` (PR [#46](https://github.com/NovaTrustSolutions/dwellium-per-spec/pull/46)). Resolved at Phase-6 Task 6.1c sweep per absorb-into-next-sweep precedent.
 
 **Sources.**
 
@@ -167,8 +167,8 @@ No High / Medium findings. Mirror Phase-5 review-style outcome verbatim.
 | Smoke-test cold-start | ≥11/12 (relaxed at task split) | ✓ 11/12 (vendor-compliance fully fixed) | §3 |
 | CDP probe regression check | 8/8 phase-rows visible (no 6.1a regression) | ✓ 8/8 | §3 |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | §2 |
-| Manual-dispatch parity gate | green | TBD (post-PR) | §6 |
-| CodeRabbit review | pass | TBD (post-PR) | §6 |
+| Manual-dispatch parity gate | green | ✓ (PR #46 squashed at `718f6db`) | §6 |
+| CodeRabbit review | pass | ✓ (PR #46) | §6 |
 | 5th-axis HARD HALT-IF triggered (DC-D-r3) | task split | ✓ 6.1c spawned per user directive | §1 + §7 entry 1 |
 | 6.1a TBD → `20a62d0` / `#45` resolution | co-shipped | ✓ | §1 + §7 entry 6 |
 | `Docs/Phase6_Task_6_1b_Completion_Report.md` | committed | ✓ this file | §8 |

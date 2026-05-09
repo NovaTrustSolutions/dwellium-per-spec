@@ -401,7 +401,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                         onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }}
                                         style={{ flex: 1, padding: '4px 8px', borderRadius: 4, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0', outline: 'none' }}
                                     />
-                                    <button onClick={handleAddNote} disabled={!newNoteText.trim()}
+                                    <button onClick={handleAddNote} disabled={!newNoteText.trim()} aria-label="Add note"
                                         style={{ padding: '4px 10px', borderRadius: 4, background: newNoteText.trim() ? '#f59e0b' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newNoteText.trim() ? 'pointer' : 'not-allowed' }}>
                                         <Send size={10} />
                                     </button>

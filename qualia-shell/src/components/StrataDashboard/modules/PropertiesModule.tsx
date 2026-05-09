@@ -519,7 +519,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 </button>
                             ))}
                         </div>
-                        <button className="s-btn s-btn-ghost" onClick={() => invalidate('properties')}><RefreshCw size={14} /></button>
+                        <button className="s-btn s-btn-ghost" onClick={() => invalidate('properties')} aria-label="Refresh properties"><RefreshCw size={14} /></button>
                         {hasPermission('strata:properties:create') && (
                             <button className="s-btn s-btn-primary" onClick={() => setShowForm(true)}><Plus size={14} /> Add Property</button>
                         )}

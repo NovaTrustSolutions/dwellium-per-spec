@@ -1,0 +1,74 @@
+{
+  "capturedAt": "2026-05-09T16:31:44.458Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "Phase-6 Task 6.4 — Targeted a11y fixes (color-contrast / select-name / aria-valid-attr-value / scrollable-region-focusable / residual button-name); v1 L230 ZERO WCAG AA violations threshold MET — full compliance achieved post-Block-C 6.3 + 6.4. Phase-5 Task 5.7 capture-script reused without modification — see Docs/Phase6_Task_6_4_Completion_Report.md §1.",
+  "target": "http://localhost:4173/",
+  "methodology": "Playwright-driven SPA navigation + @axe-core/playwright per-page audit with WCAG 2.0 + 2.1 AA tags",
+  "v1Threshold": {
+    "wcagAaViolations": 0,
+    "source": "AppFolio_Parity_Implementation_Plan.md L230"
+  },
+  "summary": {
+    "pagesScanned": 4,
+    "pagesErrored": 0,
+    "totalDistinctViolationIds": 0,
+    "distinctViolationIds": [],
+    "totalViolations": 0,
+    "totalViolatingNodes": 0,
+    "violationsByImpactAcrossPages": {}
+  },
+  "perPage": [
+    {
+      "id": "property-128bv",
+      "label": "128 Buena Vista Dr N (property detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 37,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "vendor-2story",
+      "label": "2-STORY TECHNICAL ROOFING LLC (vendor detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 24,
+        "incompleteCount": 1,
+        "inapplicableCount": 35,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "wo-19511-1",
+      "label": "WO 19511-1 / Fire alarm needs replaced (maintenance detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 37,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "tenant-brianna-jackson",
+      "label": "Brianna Jackson (tenant detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 26,
+        "incompleteCount": 1,
+        "inapplicableCount": 33,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    }
+  ]
+}

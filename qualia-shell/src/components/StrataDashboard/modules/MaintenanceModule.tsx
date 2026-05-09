@@ -510,7 +510,7 @@ export default function MaintenanceModule() {
                         <p className="s-module-subtitle">{summary.total} total · {summary.open} open · {summary.inProgress} in progress</p>
                     </div>
                     <div className="s-module-actions">
-                        <button className="s-btn s-btn-ghost" onClick={fetchItems}><RefreshCw size={14} /></button>
+                        <button className="s-btn s-btn-ghost" onClick={fetchItems} aria-label="Refresh maintenance items"><RefreshCw size={14} /></button>
                     </div>
                 </div>
 
@@ -594,7 +594,7 @@ export default function MaintenanceModule() {
                 ) : (
                     <div className="s-split-view">
                         {/* ── List Panel with Groups ── */}
-                        <div className="s-list-panel" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+                        <div className="s-list-panel" tabIndex={0} role="region" aria-label="Maintenance work-order list" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
                             {filteredItems.length === 0 ? (
                                 <div className="s-empty">No {TABS.find(t => t.id === tab)?.label.toLowerCase() || 'items'} found</div>
                             ) : (

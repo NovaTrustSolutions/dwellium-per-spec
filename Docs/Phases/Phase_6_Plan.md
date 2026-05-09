@@ -162,15 +162,29 @@ Per task:
 
 ---
 
-#### Task 6.4 — color-contrast / select-name targeted fixes
+#### Task 6.4 — color-contrast / select-name / aria-valid-attr-value / scrollable-region-focusable targeted fixes — **CLOSED 2026-05-09 at squash SHA TBD (PR #TBD)**
 
-**Goal.** Resolve the remaining ~28 nodes spread across color-contrast (8 nodes / 4 pages), select-name (4 nodes / 2 pages), aria-valid-attr-value (10 nodes / 1 page), scrollable-region-focusable (2 nodes / 2 pages).
+**Goal.** Resolve the remaining a11y violations spread across the 4 target rules (color-contrast / select-name / aria-valid-attr-value / scrollable-region-focusable) plus residual button-name nodes outside the tenant-row pattern fixed at 6.3.
 
-**Files touched.** Estimated 3-5 component files (palette tokens or component-local color overrides + label associations).
+**Files touched (achieved).** **6 source files** (above 3-5 estimate): `qualia-shell/src/components/Sidebar/Sidebar.css` (1 CSS edit; closes 8 color-contrast nodes via single rule × 2 elements × 4 pages = 8) + `qualia-shell/src/components/StrataDashboard/modules/VendorsModule.tsx` (5 edits: Section content `id` add + RefreshCw aria-label + 2 select aria-labels + list-panel triplet) + `qualia-shell/src/components/StrataDashboard/modules/ResidentsModule.tsx` (3 edits: Section content `id` add + 2 select aria-labels) + `qualia-shell/src/components/StrataDashboard/modules/MaintenanceModule.tsx` (2 edits: RefreshCw aria-label + list-panel triplet) + `qualia-shell/src/components/StrataDashboard/modules/PropertiesModule.tsx` (1 edit: RefreshCw aria-label, preventive per user GO Path 2) + `qualia-shell/src/components/StrataDashboard/modules/ProfileSpaces.tsx` (1 edit: Send icon aria-label, closes 2 nodes by construction since rendered in PropertiesModule:2197 + MaintenanceModule:677); 13 source-line edits / +14 / −13 net.
 
-**Verify.** Re-run a11y measurement; expect total violations ≤ 0 (or document residual rationale at §7).
+**Verify (achieved).** **🎯 33 → 0 violations across all 4 enriched detail pages — 100% ELIMINATION — v1 L230 ZERO WCAG AA THRESHOLD MET.** Re-ran `Scripts/run_axe_phase5.mjs` on the build with `VITE_USE_STATIC_API=true VITE_APPFOLIO_SEEDS=true`; raw data captured at `Docs/Baselines/2026-05-09_Phase6_task_6_4_a11y_capture.json` (NEW; 2 KB; mirrors Phase-5 schema; ZERO violations everywhere). Cross-phase trajectory: 362 (Phase-5 baseline 2026-05-04) → 33 (post-6.3) → **0** (post-6.4). Per-rule elimination: aria-valid-attr-value 15→0 / button-name 4→0 / color-contrast 8→0 / scrollable-region-focusable 2→0 / select-name 4→0.
 
-**Calibration class.** **COMPONENT-FIX 3rd data point.**
+**🎯 PRE0 mathematical-exactness signal — REFINEMENT at 6.4 for GR-15 PERMANENT process changes.** Per 6.3 §7 entry 1, the math `(rule-count) ÷ (per-pattern-count)` was discovered as a way to confirm single-pattern hypotheses without CDP probe. At 6.4, the math worked for **4-of-5 rules** (color-contrast 8÷4=2 / aria-valid-attr-value 15÷15=1 / select-name 4÷4=1 / scrollable-region-focusable 2÷2=1) but **failed for button-name** (4 nodes split 1+1+2 across pages → 2 distinct sub-patterns required CDP probe `cdp_probe_task_6_4.cjs` to disambiguate ProfileSpaces Send vs RefreshCw ghost). REFINEMENT: math is necessary-but-not-sufficient when per-page distribution is uneven; CDP probe still required for sub-pattern disambiguation. Recommended for GR-15 inclusion at v2.41 amendment.
+
+**🎯 Plan-v-reality drift documented.** This row originally said "~28 nodes" target but actual at 6.4 PRE0 was 33 nodes (28 baseline + 5 NEW Brianna `aria-valid-attr-value` surfaced post-Task-6.1a layout fix and confirmed at 6.3 axe re-measurement). Reconciliation: row 6.4 closure narrative cites actual = 33 → final = 0. Recurring pattern observation: phase-spec written ahead of empirical measurement may carry stale node counts; future Phase-N a11y plans should anchor scope to "all violations as of PRE0 axe measurement" rather than absolute counts.
+
+**Calibration class.** **COMPONENT-FIX carry-over Phase-6 3rd distinct data point of class** (extends 2pt → 3pt within Phase-6; project-wide 10 cumulative classes unchanged). 6.1a was 1st (CSS-LAYOUT-FIX shape); 6.3 was 2nd (A11Y-COMPONENT-FIX shape); 6.4 is 3rd (A11Y-COMPONENT-FIX-MULTI-RULE shape — same umbrella, similar sub-shape to 6.3). Sub-classes deferred per §11 until Phase-7+ third structurally-distinct production-chunk-edit shape surfaces.
+
+**Production chunk axes.** SHA256 BREAK predicted + observed (`6c17f2f…a768` → `0f9a472…ebe4` — production-source edit class structurally breaks SHA256 by construction; mirrors 6.1a + 6.3 as 3rd Phase-6 production-source edit data point); filename hash rotated `StrataDashboard-DhcqiSlI.js` → `StrataDashboard-BnaHIKND.js` (the `[name]-[hash]` filename pattern preserved across 4 cross-phase data points 6.1a + 6.2 + 6.3 + 6.4); byte-count BREAK `1,031,359` → `1,031,711` (+352 bytes; slightly above kickoff prediction range +50-200 due to 13 source-line edits + Sidebar.css multi-line WCAG-rationale comment).
+
+**Smoke-test gate (preserved post-edit).** 12/12 cold-start smoke-test PASS on chromium project (kickoff acceptance criterion met); helpers/auth.ts permanent amendment from 6.2 continues to seed `qualia_sidebar_groups` correctly across the multi-file production-source edits. Vitest 259 → 258 LOCAL persists (same `calendar.test.tsx:260` pre-existing darwin-environmental flake from 6.3 §7 entry 7); CI authoritative; expect 259/259 in CI on PR-branch parity gate run.
+
+**🎯 3-instance RefreshCw pattern closure.** Per user GO Path 2, preventive aria-label was added on PropertiesModule.tsx:522 RefreshCw button despite axe not detecting it on Property page (rendering-order coincidence — Property page rendered another button at axe scan time but source-grep confirmed identical pattern as Vendors:668 + Maintenance:513). All 3 instances are now consistently aria-labeled across all 3 modules; future module additions following this pattern should inherit the convention; captured as Conventions block update in CLAUDE.md.
+
+**Block C status.** **🎯 Phase-6 Block C 2-of-3 CLOSED at 6.4** — Block A (6.1a + 6.1b + 6.1c) + Block B (6.2) complete; Block C (6.3 ✓ + 6.4 ✓) 2-of-3; only 6.5 (a11y closure cleanup + axe-baseline.spec.ts re-enable assessment) remains in Block C. With 0 residual violations at 6.4, **6.5 may close as a near-no-op cleanup** — only remaining substantive work is the axe-baseline.spec.ts re-enable assessment (Phase-0-era informational gate; flipping from `continue-on-error: true` to blocking is now structurally viable since violations = 0).
+
+**Sweep co-ship.** 6.3 TBD → `13c6692` / `#49` resolution co-shipped at 6.4 sweep per absorb-into-next-sweep cross-phase convention now established at **7 consecutive sweep-resolutions** (meta-PR #44 → 6.1a → 6.1b → 6.1c → 6.2 → 6.3 → 6.4); pattern fully cemented as cross-phase convention.
 
 ---
 

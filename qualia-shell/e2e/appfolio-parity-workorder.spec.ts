@@ -98,13 +98,24 @@ test.describe('AppFolio parity — WO 19511-1 round-trip (Brianna Jackson)', () 
 
     // ── 15-SECTION CALIBRATION (B2 — 6 testids + 5 Section titles = 11 verifiable) ──
 
-    // 5. Six NEW Block testids (Phase-3 Task 3.4 era — Sections 7/10/11/12/13/15).
-    //    Phase-6 Task 6.1b: these blocks are wrapped in <Section defaultOpen={false}>
-    //    at MaintenanceModule.tsx:951-1000; Section conditionally renders children
-    //    (`{open && <div>{children}</div>}` at L124), so testids are absent from the
-    //    DOM when collapsed. Pre-expand each section by clicking its header button.
-    //    Anchored regex to avoid substring matches for the short titles
-    //    (Texts / Notes / Invoices / Emails).
+    // 5. Eight collapsed Sections (defaultOpen=false) needing pre-expansion:
+    //    SIX NEW Block sections (Phase-3 Task 3.4 era — Sections 7/10/11/12/13/15)
+    //    at MaintenanceModule.tsx:951-1000; PLUS Resident Availability section
+    //    at L848-855 and Actions Log section at L862-869 (Phase-6 Task 6.1c —
+    //    PRE0 audit revealed both share the same root drift class as the 6 NEW
+    //    blocks, not a 6th distinct class). Section conditionally renders
+    //    children (`{open && <div>{children}</div>}` at L124), so testids and
+    //    inner text are absent from the DOM when collapsed. Pre-expand each by
+    //    direct DOM click on its header button.
+    //
+    //    Matcher uses exact-equality OR startsWith(title + ' (') — open-paren
+    //    is the discriminator for sections that bake an entry count into the
+    //    button text (e.g. "Actions Log (2)"). The exact-equality OR-arm
+    //    handles the 7 fixed-title sections; the startsWith arm handles the
+    //    1 entry-count-suffixed section ("Actions Log") in an entry-count-
+    //    robust way (future fixture growth: "Actions Log (3)" / "(N)" still
+    //    matches without spec maintenance). Title + ' (' guard prevents
+    //    accidental substring matches.
     const sectionTitles = [
       'View as Maintenance Tech',
       'Withheld Amount',
@@ -112,6 +123,8 @@ test.describe('AppFolio parity — WO 19511-1 round-trip (Brianna Jackson)', () 
       'Texts',
       'Emails',
       'Notes',
+      'Resident Availability',
+      'Actions Log',
     ];
     // Programmatic DOM click via evaluate — Playwright's pointer-based click
     // is intercepted by `.s-detail-panel`'s overlay scrollbar at the buttons'
@@ -120,7 +133,10 @@ test.describe('AppFolio parity — WO 19511-1 round-trip (Brianna Jackson)', () 
     await detailPanel.evaluate((panel, titles) => {
       const buttons = Array.from(panel.querySelectorAll('button'));
       for (const title of titles) {
-        const btn = buttons.find(b => (b.textContent || '').trim() === title);
+        const btn = buttons.find(b => {
+          const text = (b.textContent || '').trim();
+          return text === title || text.startsWith(title + ' (');
+        });
         if (btn) (btn as HTMLButtonElement).click();
       }
     }, sectionTitles);
@@ -149,24 +165,22 @@ test.describe('AppFolio parity — WO 19511-1 round-trip (Brianna Jackson)', () 
     await expect(detailPanel.getByText(WO_NUMBER).first()).toBeVisible();
 
     // ── 3 RESIDENT-AVAILABILITY TIME WINDOWS (Monday 2026-04-20) ──
-
-    // 8. residentAvailability section may default to collapsed; expand if needed.
-    const availabilityHeader = detailPanel.locator('text=Resident Availability').first();
-    await availabilityHeader.click().catch(() => { /* already-open or non-clickable header is fine */ });
-    await page.waitForTimeout(200);
+    //
+    // Phase-6 Task 6.1c: Resident Availability + Actions Log are pre-expanded
+    // by the unified evaluate() toggle above (sectionTitles includes both).
+    // The prior `.click().catch()` fallback at this site silently swallowed
+    // the `.s-detail-panel` overlay-scrollbar pointer-event interception, so
+    // the sections stayed collapsed and the time-windows / events / actor
+    // text never reached the DOM. Now that the unified evaluate() dispatch
+    // opens both sections, time-windows render verbatim inside
+    // ResidentAvailabilityCard (`<span>{w}</span>`) and ActionsLogList entries
+    // render inside <ActionsLogList> children.
 
     for (const window of TIME_WINDOWS) {
-      // Time windows render either in the typed Section or in the Actions Log
-      // System detail line. Either visible occurrence satisfies the assertion.
       await expect(detailPanel.locator(`text=${window}`).first()).toBeVisible();
     }
 
     // ── 2 ACTIONS LOG ENTRIES (Brianna Jackson + System) ──
-
-    // 9. actionsLog section may default to collapsed; expand if needed.
-    const actionsLogHeader = detailPanel.locator('text=Actions Log').first();
-    await actionsLogHeader.click().catch(() => { /* already-open or non-clickable header is fine */ });
-    await page.waitForTimeout(200);
 
     for (const event of ACTIONS_LOG_EVENTS) {
       await expect(detailPanel.locator(`text=${event}`).first()).toBeVisible();

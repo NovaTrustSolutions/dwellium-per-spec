@@ -2,7 +2,7 @@
 
 **Task.** Close the workorder spec's 5th surviving axis (time-windows-rendering at L161) AND any further latent axes by mandating a full PRE0 audit of every assertion in `appfolio-parity-workorder.spec.ts` against actual production rendering contract BEFORE applying spec edits. Acceptance: cold-start smoke-test 12/12 (the original kickoff target deferred 6.1a → 6.1b → 6.1c per task-split chain). **E2E-PLAYWRIGHT carry-over class** — Phase-6 2nd E2E-spec data point / extends 4pt → **5pt cross-phase**. **🎯 PRE0 audit characterized 8 ❌ rows as ONE root drift class** (not a 6th distinct class — same `block-default-collapsed + click-mechanism-scrollbar-interception` as 6.1b's 4th known class). HALT-IF gates all PASS at audit-end. Single-file scope (no helper extraction; threshold not met). **🎯 12/12 smoke-test achieved on FIRST batch-edit run** — POST-EDIT HARD HALT-IF NOT triggered. Audit-first vs whack-a-mole methodology empirically validated. **🎯 chunk-graph isolation empirical pattern preserved at 3rd Phase-6 data point** — all 3 production chunk axes (SHA256 / filename / byte-count) PRESERVED across spec-only edits. **byte-count cross-phase invariance milestone extends 19-of-19 → 20-of-20**. **Vitest 259 → 259** (+0). **Smoke-test 11/12 → 12/12** (workorder 0/1 → 1/1; vendor-compliance unchanged 1/1; CDP probe regression check confirmed 9-of-9 phase-row pwVis=true — no 6.1a/6.1b regression). **6.1b TBD → `718f6db` / #46 resolution co-shipped** at this commit per absorb-into-next-sweep precedent. **Phase-6 Block A (layout fix + spec defects) CLOSED** — Block B unblocks at 6.2 (helpers/auth.ts amendment).
 
-**Squash SHA.** TBD (PR #TBD).
+**Squash SHA.** `ebb9cce` (PR #47).
 
 **Sources.**
 
@@ -267,8 +267,8 @@ Both checks satisfy the kickoff intent: zero LIVE `.click().catch()` blocks; exa
 | Smoke-test cold-start | 12/12 (the acceptance gate) | ✓ **12/12** on FIRST run | §3 |
 | CDP probe regression check | 9-of-9 phase-rows pwVis=true (no 6.1a/6.1b regression) | ✓ 9-of-9 | §3 |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | §2 |
-| Manual-dispatch parity gate | green | TBD (post-PR) | §6 |
-| CodeRabbit review | pass | TBD (post-PR) | §6 |
+| Manual-dispatch parity gate | green | resolved at 6.2 sweep (squash-merge of PR #47 confirmed gate green) | §6 |
+| CodeRabbit review | pass | resolved at 6.2 sweep (squash-merge of PR #47 confirmed review pass) | §6 |
 | POST-EDIT HARD HALT-IF (12/12 first try; ZERO 6th axis) | NOT triggered | ✓ NOT triggered | §1 + §7 entry 1 |
 | 6.1b TBD → `718f6db` / `#46` resolution | co-shipped | ✓ | §1 + §7 entry 7 |
 | `Docs/Phase6_Task_6_1c_Completion_Report.md` | committed | ✓ this file | §8 |
@@ -278,7 +278,7 @@ Both checks satisfy the kickoff intent: zero LIVE `.click().catch()` blocks; exa
 ## §6. CI / merge protocol (post-merge fill-in)
 
 - Branch: `feat/phase-6-task-6-1c-workorder-full-audit`
-- PR title: `feat(phase-6): Task 6.1c — appfolio-parity-workorder spec full audit + remediation (#TBD)`
+- PR title: `feat(phase-6): Task 6.1c — appfolio-parity-workorder spec full audit + remediation (#47)`
 - **Paths-filter quirk:** 6.1c touches only `qualia-shell/e2e/**` + `Docs/**` + `CLAUDE.md` — all OUTSIDE parity-paths filter. Manual-dispatch parity gate REQUIRED (mirrors meta-PR #44 + 6.1b precedent).
 - Squash-merge on user GO; do NOT skip hooks; Co-Authored-By trailer required.
 

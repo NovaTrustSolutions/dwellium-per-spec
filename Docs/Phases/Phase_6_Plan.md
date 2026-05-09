@@ -134,7 +134,7 @@ Per task:
 
 **Smoke-test gate.** Same 12/12 target as 6.1b — confirms helpers/auth.ts amendment doesn't regress the now-green feature-spec suite.
 
-**Calibration class.** **CONSUMER-SIDE-FETCH-WRAPPER carry-over (extends 1 → 2 data points; 5.1c was the 1st).** No source edit; e2e helper module change. Chunk-graph isolated.
+**Calibration class.** **E2E-PLAYWRIGHT carry-over (extends 5 → 6 cross-phase data points).** Class-correction landed at Plan v2.39 amendment: prior designation conflated 5.1c X-Qualia-API:v2 emission on `strataApi.backend.ts::request/strataUpload` (production-code transport-layer fetch wrapper — correctly CONSUMER-SIDE-FETCH-WRAPPER) with 6.2's `helpers/auth.ts` addInitScript seeding (e2e test-tooling helper, outside Vite entry graph, alongside Phase-5 5.3/5.4/5.5 + Phase-6 6.1b/6.1c). Correction is purely classificatory; no source/test changes. No source edit; e2e helper module change. Chunk-graph isolated by construction.
 
 ---
 

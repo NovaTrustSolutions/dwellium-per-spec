@@ -98,7 +98,34 @@ test.describe('AppFolio parity — WO 19511-1 round-trip (Brianna Jackson)', () 
 
     // ── 15-SECTION CALIBRATION (B2 — 6 testids + 5 Section titles = 11 verifiable) ──
 
-    // 5. Six NEW Block testids (Phase-3 Task 3.4 era — Sections 7/10/11/12/13/15)
+    // 5. Six NEW Block testids (Phase-3 Task 3.4 era — Sections 7/10/11/12/13/15).
+    //    Phase-6 Task 6.1b: these blocks are wrapped in <Section defaultOpen={false}>
+    //    at MaintenanceModule.tsx:951-1000; Section conditionally renders children
+    //    (`{open && <div>{children}</div>}` at L124), so testids are absent from the
+    //    DOM when collapsed. Pre-expand each section by clicking its header button.
+    //    Anchored regex to avoid substring matches for the short titles
+    //    (Texts / Notes / Invoices / Emails).
+    const sectionTitles = [
+      'View as Maintenance Tech',
+      'Withheld Amount',
+      'Invoices',
+      'Texts',
+      'Emails',
+      'Notes',
+    ];
+    // Programmatic DOM click via evaluate — Playwright's pointer-based click
+    // is intercepted by `.s-detail-panel`'s overlay scrollbar at the buttons'
+    // right edges. evaluate() dispatches a native click on the matched button
+    // element, which is sufficient to fire React's onClick toggle handler.
+    await detailPanel.evaluate((panel, titles) => {
+      const buttons = Array.from(panel.querySelectorAll('button'));
+      for (const title of titles) {
+        const btn = buttons.find(b => (b.textContent || '').trim() === title);
+        if (btn) (btn as HTMLButtonElement).click();
+      }
+    }, sectionTitles);
+    await page.waitForTimeout(100);
+
     await expect(detailPanel.locator('[data-testid="wo-block-view-as-tech"]')).toBeVisible();
     await expect(detailPanel.locator('[data-testid="wo-block-withheld-amount"]')).toBeVisible();
     await expect(detailPanel.locator('[data-testid="wo-block-invoices"]')).toBeVisible();
@@ -106,13 +133,17 @@ test.describe('AppFolio parity — WO 19511-1 round-trip (Brianna Jackson)', () 
     await expect(detailPanel.locator('[data-testid="wo-block-emails"]')).toBeVisible();
     await expect(detailPanel.locator('[data-testid="wo-block-notes"]')).toBeVisible();
 
-    // 6. Five always-rendered Section title text (selected by exact text inside detail panel)
-    //    These render unconditionally for WOs with the relevant typed fields populated.
+    // 6. Truly-unconditional Section titles only.
+    //    Phase-6 Task 6.1b: the prior comment "Five always-rendered Section title
+    //    text" mis-characterized 3 of the 5: Status Tracking (L903) is wrapped in
+    //    `{meta.tenantStatus && ...}` (fixture WO 19511-1 doesn't populate this);
+    //    Resident Availability (L846) is wrapped in `{item.residentAvailability && ...}`;
+    //    Actions Log (L860) is similarly conditional on actionsLog data. Description
+    //    and Attachments-button remain unconditional. Resident Availability and
+    //    Actions Log are still verified downstream via positive testid checks for
+    //    time-windows + actions-log events at L154-184.
     await expect(detailPanel.getByText('Description', { exact: true }).first()).toBeVisible();
-    await expect(detailPanel.getByText('Status Tracking', { exact: true }).first()).toBeVisible();
     await expect(detailPanel.locator('text=/Attachments \\(/').first()).toBeVisible();
-    await expect(detailPanel.getByText('Resident Availability', { exact: true }).first()).toBeVisible();
-    await expect(detailPanel.getByText('Actions Log', { exact: true }).first()).toBeVisible();
 
     // 7. WO identity sanity — workOrderNumber Field renders inside Work Order Info section
     await expect(detailPanel.getByText(WO_NUMBER).first()).toBeVisible();

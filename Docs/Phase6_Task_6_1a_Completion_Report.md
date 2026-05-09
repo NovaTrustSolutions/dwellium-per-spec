@@ -2,7 +2,7 @@
 
 **Task.** Fix the `.s-detail-panel` rendered-but-zero-width latent bug surfaced empirically at Phase-5 Task 5.7 PRE2 smoke-test. Land a defense-in-depth combined fix: (A.1) per-component default-size override in `WindowContext.tsx` so the Strata window opens at 1100×800 rather than the quadrant-spawn default (~518–598 px on a 1200 px desktop); (A.1 second-order) Desktop.tsx auto-region-snap effect skips components that declare an explicit default size (otherwise the 1100×800 default would be immediately overridden by the 600×900 halves-h region snap); (A.2) container-query swap in StrataDashboard.css so `.s-split-view` collapses to 1-col when its actual rendered width is too narrow for the 320 px-fixed first column, regardless of viewport. **Phase-6 OPENER.** **COMPONENT-FIX 1st distinct in-repo class** — Phase-6 1st distinct class / project-wide 10th cumulative class. **Chunk-graph isolation STRUCTURAL LAW retires at Phase-6 boundary** — was a Phase-5-specific test-tooling property (6 data points across MSW + Playwright config + 3 e2e specs + 2 measurement scripts); 6.1a is the first production-source edit and structurally distinct. **🎯 HALT-IF triggered at PRE2 — task split into 6.1a + 6.1b** per user directive: 6.1a (this task) ships source-only fix; 6.1b ships spec-defect remediation (6 `<Section defaultOpen={false}>` assertions + 1 ambiguous tab-button locator). **🎯 NEW filename-pattern-shift calibration axis surfaced** — production chunk filename shifted from hash-only (`COZxJ8Bh.js`) to `[name]-[hash]` (`StrataDashboard-BqghmASj.js`) without any vite.config edit; 4th distinct calibration axis joining SHA256 / byte-count / chunk-count; structural cause deferred to future-N investigation. **🎯 byte-count cross-phase invariance milestone** extends 17-of-17 → **18-of-18** — canonical signal preserved even through production-source edit, validating Plan v2.28 dual-axis reframe. **Vitest 259 → 259** (+0; no unit-test gap surfaced; smoke-test is the actual fix-axis gate). **Smoke-test 10/12** — failure-locus shifted from panel-visibility (Phase-5 baseline 0/2) to downstream spec-defects (Phase-6 6.1b scope); CDP probe confirms 8/8 phase-rows playwrightVisible (the actual fix-axis gate met).
 
-**Squash SHA.** TBD (PR #TBD).
+**Squash SHA.** `20a62d0` (PR #45). Closed 2026-05-05.
 
 **Sources.**
 
@@ -177,8 +177,8 @@ No High / Medium findings. Mirror Phase-5 review-style outcome verbatim.
 | Smoke-test 4-spec cold-start | ≥10/12 | ✓ 10/12 (panel-fix axis met) | §3 |
 | CDP probe re-verify on changed surface | ≥8/8 phase-rows playwrightVisible | ✓ 8/8 (was 0/8) | §3 |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ 51 files / 0 leaks | §2 |
-| Manual-dispatch parity gate | green | TBD (post-PR) | §6 |
-| CodeRabbit review | pass | TBD (post-PR) | §6 |
+| Manual-dispatch parity gate | green | ✓ run `25386819380` (workflow_dispatch ~9m) + run `25386818834` (auto-fired pull_request 9m48s) | §6 |
+| CodeRabbit review | pass | ✓ "Review completed" | §6 |
 | HALT-IF triggered (DC-C) | task split | ✓ 6.1a + 6.1b per user directive | §1 + §7 entry 7 |
 | `Docs/Phase6_Task_6_1a_Completion_Report.md` | committed | ✓ this file | §8 |
 

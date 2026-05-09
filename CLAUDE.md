@@ -8,17 +8,19 @@
 
 ---
 
-## Current State (as of 2026-05-05)
+## Current State (as of 2026-05-09)
 
-- **HEAD:** TBD — Task 6.1a squash-merged 2026-05-05 (`feat(phase-6): Task 6.1a — .s-detail-panel layout collapse fix + Phase-6 opener (#TBD)`); Phase-6 OPENED.
-- **Phase-6 OPENED 2026-05-05.** Phase plan: `Docs/Phases/Phase_6_Plan.md` (NEW; 10-task production-readiness arc; cites `Docs/Phase5_Closure_Report.md §6` as v1-lineage substitute since Phase-6 has no v1 plan source). Plan v2.36 §9 Phase-6 sub-tracker created with row 6.1a ✓ + 9 R rows pending.
+- **HEAD:** TBD — Task 6.1b squash-merged 2026-05-09 (`feat(phase-6): Task 6.1b — appfolio-parity spec-defect remediation (#TBD)`); Phase-6 row 6.1b CLOSED.
+- **Task 6.1a squash-merged 2026-05-05** at `20a62d0` (`feat(phase-6): Task 6.1a — .s-detail-panel layout collapse fix + Phase-6 opener (#45)`); Phase-6 OPENED.
+- **Phase-6 sub-tracker** (Plan v2.37): 11 rows total — 6.1a ✓ + 6.1b ✓ + 6.1c R + 6.2 R + 6.3 R + 6.4 R + 6.5 R + 6.6 R + 6.7 R + 6.8 R + 6.9 R. Phase plan: `Docs/Phases/Phase_6_Plan.md` (cites `Docs/Phase5_Closure_Report.md §6` as v1-lineage substitute since Phase-6 has no v1 plan source). NEW Task 6.1c spawned at v2.37 per Path B.split executed at 6.1b's 5th-axis HARD HALT-IF surfacing; ships 12/12 cold-start smoke-test acceptance via mandatory PRE0 full-spec-audit (whack-a-mole prohibited).
 - **Phase-5 CLOSED 2026-05-04.** Closure narrative: `Docs/Phase5_Closure_Report.md`. Plan §9 Phase-5 column header `R → ✓` across all 16 rows.
 - **Production chunk invariance state:**
-  - **Byte-count axis (canonical per Plan v2.28 dual-axis reframe):** 1,031,260 bytes — **18-of-18 cross-phase invariance milestone** (extended from Phase-5 17-of-17 even through Task 6.1a's 3-source-file production edit; minification + tree-shaking absorbed the 36-line / 10-line surgical deltas).
-  - **SHA256 axis:** `81e1fdc508b3ea6cfb4579e71224baef9f3140fa35788db323aae68c3966d1d4` (was `1ab4a9c…14ea` pre-6.1a; **broken at 6.1a** as predicted by COMPONENT-FIX class — production-source edit by construction breaks SHA256).
-  - **Filename axis (NEW at 6.1a):** `StrataDashboard-BqghmASj.js` (was `COZxJ8Bh.js`; pattern shifted from hash-only → `[name]-[hash]` without any vite.config edit; **4th distinct calibration axis surfaced**; structural cause deferred to future-N investigation).
-  - **Chunk-graph isolation STRUCTURAL LAW: retired at Phase-6 boundary** (was Phase-5-specific test-tooling property at 6 data points; 6.1a is first production-source edit and structurally distinct; the law applied to additions OUTSIDE the entry graph; production-source edits INSIDE the entry graph break SHA256 by construction; byte-count preservation is the new invariance signal).
-- **Vitest:** 259 passing (+0 at 6.1a).
+  - **Byte-count axis (canonical per Plan v2.28 dual-axis reframe):** 1,031,260 bytes — **19-of-19 cross-phase invariance milestone** (extends 18-of-18 → 19-of-19 even through Task 6.1b's spec-only edits; test-tooling-isolation empirical pattern preserves byte-count by construction since e2e/ outside Vite entry graph).
+  - **SHA256 axis:** `81e1fdc508b3ea6cfb4579e71224baef9f3140fa35788db323aae68c3966d1d4` — **PRESERVED across spec-only edits at 6.1b** (test-tooling-isolation empirical pattern still holds for test-tooling-only edits). Was broken at 6.1a (`1ab4a9c…14ea` → `81e1fdc…d1d4`) per COMPONENT-FIX class.
+  - **Filename axis (NEW at 6.1a):** `StrataDashboard-BqghmASj.js` — **PRESERVED across spec-only edits at 6.1b**. Pattern shifted at 6.1a from hash-only `COZxJ8Bh.js` → `[name]-[hash]` without any vite.config edit; **4th distinct calibration axis surfaced**; structural cause deferred to future-N investigation.
+  - **Chunk-graph isolation STRUCTURAL LAW: retired at Phase-6 boundary as categorical claim** (was Phase-5-specific test-tooling property at 6 data points; 6.1a was first production-source edit and structurally distinct; production-source edits INSIDE the entry graph break SHA256 by construction). **🎯 Empirical pattern continues to hold for test-tooling-only edits** — 6.1b's spec-only edits preserved all 3 production chunk axes; confirmed at Phase-6's 2nd data point post-LAW-retirement.
+- **Vitest:** 259 passing (+0 at 6.1a + 0 at 6.1b).
+- **Smoke-test 4-spec cold-start:** 11/12 (vendor-compliance fully fixed at 6.1b; workorder spec time-windows-rendering 5th axis deferred to NEW Task 6.1c per Path B.split + HARD HALT-IF).
 
 ### Phase summary
 
@@ -30,11 +32,11 @@
 | 3     | 2026-04-28 | `0cfb8a8` | 9  | +32 | Closure: `Docs/Phase3_Closure_Report.md` |
 | 4     | 2026-04-30 | `3a41cdf` | 7  | +0  | Closure: `Docs/Phase4_Closure_Report.md` (first phase with byte-identical chunk across all tasks) |
 | 5     | 2026-05-04 | `2acaa82` | 10 | +35 | Closure: `Docs/Phase5_Closure_Report.md` |
-| 6     | OPENED 2026-05-05 | TBD | 1 (6.1a only) | +0 | Plan: `Docs/Phases/Phase_6_Plan.md` (10-task production-readiness arc) |
+| 6     | OPENED 2026-05-05 | TBD | 2 (6.1a, 6.1b) | +0 | Plan: `Docs/Phases/Phase_6_Plan.md` (11-task production-readiness arc — expanded from 10 at v2.37 with Task 6.1c insertion per Path B.split) |
 
 ### Next task
 
-Phase-6 OPENED at Task 6.1a. **Recommended next: Task 6.1b** — appfolio-parity spec-defect remediation (carry-forward from 6.1a HALT-IF: 6 `<Section defaultOpen={false}>` block-titles to expand pre-assert in `appfolio-parity-workorder.spec.ts:102-107` + 1 ambiguous `'button', { hasText: /^Compliance$/ }` locator in `appfolio-parity-vendor-compliance.spec.ts:114` to disambiguate via `:not([aria-controls])`). Targets the original kickoff acceptance criterion 12/12 cold-start smoke-test that 6.1a deferred (6.1a relaxed gate: ≥10/12 panel-fix axis met). See `Docs/Phases/Phase_6_Plan.md §4` for the full 10-task scope.
+Phase-6 row 6.1b CLOSED. **Recommended next: Task 6.1c** — appfolio-parity-workorder spec full audit (mandatory PRE0; whack-a-mole prohibited). Spawned at 6.1b's PATH B.SPLIT per HARD HALT-IF discipline at 5th-axis surfacing. Mandatory PRE0 walks every assertion in `appfolio-parity-workorder.spec.ts` against actual production rendering contract (per-assertion ✓/⚠️/❌ table covering production render path / data dependency on WO 19511-1 fixture / textContent-vs-visual-text potential) BEFORE any spec edit. Closes the 5th axis (workorder time-windows-rendering at L161; 3 working hypotheses per `Docs/Phase6_Task_6_1b_Completion_Report.md §7 entry 1`) + carry-forward findings from 6.1b §7 entries 2+3 (click-mechanism-workaround hardening + case-mismatch tab-bar audit across all e2e specs). Ships 12/12 cold-start smoke-test acceptance — the original kickoff acceptance criterion deferred from 6.1a → 6.1b → 6.1c per task-split chain. See `Docs/Phases/Phase_6_Plan.md §4 Task 6.1c` for the full PRE0 mandate.
 
 ### Calibration classes (in-repo, project-wide)
 
@@ -42,7 +44,7 @@ Phase-6 OPENED at Task 6.1a. **Recommended next: Task 6.1b** — appfolio-parity
 
 ### Surviving deferred-items ledger
 
-~140 entries cross-phase: ~133 carried from Phase-5 closure + 7 NEW at Phase-6 6.1a §7 (filename-pattern-shift NEW calibration axis / byte-count 18-of-18 milestone / chunk-graph isolation STRUCTURAL LAW retirement / COMPONENT-FIX 1st data point / Window-default UX-shift behavioral note / Auto-snap second-order finding / 6.1a HALT-IF task split).
+~147 entries cross-phase: ~133 carried from Phase-5 closure + 7 NEW at Phase-6 6.1a §7 (filename-pattern-shift NEW calibration axis / byte-count 18-of-18 milestone / chunk-graph isolation STRUCTURAL LAW retirement / COMPONENT-FIX 1st data point / Window-default UX-shift / Auto-snap second-order finding / 6.1a HALT-IF task split) + 7 NEW at Phase-6 6.1b §7 (5th-axis-deferred-to-6.1c / click-mechanism-workaround captured / case-mismatch DOM-vs-CSS-textTransform finding / test-tooling-isolation empirical pattern post-LAW-retirement / byte-count 19-of-19 milestone / 6.1a TBD resolution co-shipped / E2E-PLAYWRIGHT carry-over 4pt cross-phase).
 
 ---
 

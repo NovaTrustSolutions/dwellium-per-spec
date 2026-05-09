@@ -106,7 +106,22 @@ test.describe('AppFolio parity — 2-STORY Technical Roofing compliance', () => 
     //    renders [overview, ledger, documents, performance, compliance,
     //    accounting, spaces] with textTransform: capitalize → visible
     //    button text "Compliance").
-    const complianceTabBtn = detailPanel.locator('button', { hasText: /^Compliance$/ });
+    // Phase-6 Task 6.1b: narrow with `:not([aria-controls])` to exclude the
+    // Section accordion-header button rendered by VendorsModule's Block component
+    // (which carries aria-controls=`vendor-block-${slug}` per VendorsModule.tsx:87).
+    // Tab-bar buttons (VendorsModule.tsx:915) have NO aria-controls attribute,
+    // so the filter cleanly disambiguates the tab-bar Compliance button from
+    // the Section header inside the Overview tab.
+    //
+    // Case-insensitive match: tab-bar button DOM text is the lowercase array
+    // value 'compliance' (VendorsModule.tsx:914 `(['overview', 'ledger', ...,
+    // 'compliance', ...]).map(tab => <button>{tab}</button>)`); the visual
+    // "Compliance" capitalization comes from CSS `textTransform: capitalize`
+    // which is presentation-only and doesn't change DOM textContent. Pre-6.1a
+    // the original `/^Compliance$/` regex matched the Block accordion-header's
+    // capital-C `title` prop; 6.1b's :not([aria-controls]) filter correctly
+    // removed that match but exposed the case mismatch with the tab-bar.
+    const complianceTabBtn = detailPanel.locator('button:not([aria-controls])', { hasText: /^[Cc]ompliance$/ });
     await complianceTabBtn.click();
     await page.waitForTimeout(300);
 

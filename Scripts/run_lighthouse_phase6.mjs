@@ -1,36 +1,41 @@
 #!/usr/bin/env node
 /**
- * Scripts/run_lighthouse_phase5.mjs
+ * Scripts/run_lighthouse_phase6.mjs
  *
- * Phase-5 Task 5.6 — Perf validation (Lighthouse + Playwright + axe-core).
+ * Phase-6 Task 6.7 — Perf optimization (Lever 1: Google Fonts deferral via
+ * preload+onload + <noscript> fallback).
  *
- * Per parent Plan v2 §9 row 5.6 + v1 plan L228 verbatim:
- *   "Run Lighthouse on the 4 enriched detail pages. Assert LCP ≤ 500ms,
- *    CLS ≤ 0.1, a11y score ≥ 95. Commit numbers to
- *    Docs/Phase5_Perf_Report.md."
+ * Per Docs/Phases/Phase_6_Plan.md §4 Task 6.7 + Phase-5 5.6 §7
+ * closure-decision-point cross-reference: targeted perf work to drop LCP
+ * from Phase-5 baseline (4,653 ms / ~9.3× over v1 L228 ≤500 ms target)
+ * toward a single-lever Phase-6 mid-target.
  *
- * SCOPE-COLLISION RESOLUTION (8th absolute / 4th in Phase-5):
- *   Lighthouse infrastructure pre-existed at Phase 0.0 Task 0.0.7 era
- *   (Scripts/run_lighthouse_baseline.mjs + lighthouse@13.1.0 devDep +
- *   chrome-launcher@1.2.1 + Docs/Baselines/2026-04-21_Phase0_perf_baseline.json).
- *   Class designation: MEASUREMENT-ONLY class FIRST formal Phase-5 data
- *   point with explicit acknowledgment of Phase-0 Task 0.0.7
- *   pre-formal-calibration era seeding.
+ * RENAMED VIA `git mv` from Scripts/run_lighthouse_phase5.mjs at Phase-6
+ * Task 6.7 (2026-05-11) per 6.6 precedent (`Scripts/run_axe_phase5.mjs` →
+ * `Scripts/run_axe_phase6.mjs`). 2 critical hardcodes patched (L403 task
+ * field + L419 artifact filename) + JSDoc rewrite to Phase-6 Task 6.7
+ * framing + internal `window.__phase6_*` globals renamed to
+ * `window.__phase6_*`. Historical Phase-5 5.6 SCOPE-COLLISION narrative
+ * preserved via `git log --follow Scripts/run_lighthouse_phase6.mjs` +
+ * `Docs/Phase5_Closure_Report.md §3` + `Docs/Phase5_Perf_Report.md`
+ * cross-reference.
+ *
+ * LEVER 1 (Google Fonts deferral) — empirical justification:
+ *   Phase-5 baseline TBT=0 indicates the LCP bottleneck is NETWORK
+ *   transfer, not main-thread JS execution. `qualia-shell/index.html`
+ *   loads 17 Google Font families in a single render-blocking
+ *   `<link rel="stylesheet">` tag. The preload+onload pattern (with
+ *   `<noscript>` fallback) removes this stylesheet from the critical
+ *   render path; `display=swap` (already in the URL) yields FOUT for
+ *   ~100-500 ms while font CSS loads in the background.
  *
  * SPA-ONLY NAVIGATION CONSTRAINT:
  *   The 4 enriched detail pages (128 BV property / 2-STORY vendor /
  *   WO 19511-1 maintenance / Brianna Jackson tenant) are NOT addressable
- *   as standalone URLs — App.tsx (225 lines) has ZERO React Router
- *   patterns. The existing Phase-0 baseline script JSDoc already
- *   forecasted this: "Strata modules are React-state-driven (not
- *   URL-addressable), so Lighthouse's standalone run model cannot
- *   traverse them. Per-module perf is captured separately via
- *   Playwright's performance.getEntries() inside axe-baseline.spec.ts /
- *   screenshot-baseline.spec.ts on the real dev box if needed."
- *
- *   This script honors that intent:
+ *   as standalone URLs — App.tsx has zero React Router patterns. This
+ *   script honors that intent:
  *     1. Lighthouse navigation run on root URL — captures root
- *        LCP/FCP/CLS/Performance/a11y for Phase-0 → Phase-5 comparison.
+ *        LCP/FCP/CLS/Performance/a11y for cross-phase comparison.
  *     2. Playwright drives per-page navigation via the same loginAs +
  *        sidebar→strata→nav-item pattern from Tasks 5.4/5.5; captures
  *        Web Vitals via PerformanceObserver + getEntriesByType('paint').
@@ -38,25 +43,33 @@
  *        WCAG AA (matches Lighthouse's a11y category which uses axe-core
  *        internally).
  *
- * v1 L228 THRESHOLD DRIFT acknowledgment:
- *   Phase-0 root baseline LCP = 4653ms vs v1 ≤ 500ms (~9.3× over).
- *   Phase-0 root a11y = 0.90 (90/100) vs v1 ≥ 95 (5pts under).
- *   Phase-5 enrichment (entities.json 3562 / workitems.json 1165) likely
- *   makes per-page metrics worse. Captured as PASS/FAIL findings in the
- *   report (NOT tuning work scope; future-Phase-N decision deferred per
- *   §7 entry 3 of Task 5.6 completion report).
+ * Phase-6 Task 6.7 two-tier LCP acceptance gate (per Cowork verdict at
+ * PRE0 close 2026-05-11):
+ *   PRIMARY:      LCP ≤ 3,800 ms (≥700 ms reduction from 4,504 ms anchor;
+ *                 ~16% improvement; defensible single-lever ROI with
+ *                 measurement-variance headroom).
+ *   ASPIRATIONAL: LCP ≤ 3,500 ms (≥1,000 ms reduction; matches point
+ *                 estimate; bragging right at close).
+ *   Secondary gates: CLS=0.000 (no layout-stability regression — HARD
+ *   HALT if drifts); Performance score ≥85 (82 → +3 minimum).
+ *
+ *   v1 L228 ≤500 ms remains structurally unattainable for any single-lever
+ *   6.7; carry-forward to Phase-7+ multi-lever arc (Lever 2 manualChunks
+ *   vendor split + Lever 3 React.lazy expansion + Lever 4 SSR shell +
+ *   Lever 5 CDN edge caching).
  *
  * Usage:
- *   cd qualia-shell && npm run build   # emit dist/
+ *   cd qualia-shell && VITE_USE_STATIC_API=true VITE_APPFOLIO_SEEDS=true \
+ *     npx vite build   # emit dist/
  *   cd ..
- *   node Scripts/run_lighthouse_phase5.mjs
+ *   node Scripts/run_lighthouse_phase6.mjs
  *
  * Output:
- *   Docs/Baselines/<YYYY-MM-DD>_Phase5_perf_capture.json (raw data)
- *   Docs/Phase5_Perf_Report.md (analyzed report; written separately)
+ *   Docs/Baselines/<YYYY-MM-DD>_Phase6_task_6_7_perf_capture.json (raw data)
+ *   Docs/Phase6_Perf_Report.md (analyzed report; written separately)
  *
  * Exit codes:
- *   0 — measurement captured (regardless of v1 L228 threshold PASS/FAIL).
+ *   0 — measurement captured (regardless of acceptance-gate PASS/FAIL).
  *   1 — measurement / chrome / playwright failure.
  *   2 — missing deps (lighthouse / chrome-launcher / playwright).
  */
@@ -227,14 +240,14 @@ async function captureWebVitals(page) {
 async function captureLcpAndCls(page) {
   // Inject observers, then wait for them to settle
   await page.evaluate(() => {
-    window.__phase5_lcp = 0;
-    window.__phase5_cls = 0;
-    window.__phase5_cls_entries = [];
+    window.__phase6_lcp = 0;
+    window.__phase6_cls = 0;
+    window.__phase6_cls_entries = [];
     try {
       new PerformanceObserver((entries) => {
         for (const entry of entries.getEntries()) {
-          if (entry.startTime > window.__phase5_lcp) {
-            window.__phase5_lcp = entry.startTime;
+          if (entry.startTime > window.__phase6_lcp) {
+            window.__phase6_lcp = entry.startTime;
           }
         }
       }).observe({ type: 'largest-contentful-paint', buffered: true });
@@ -243,8 +256,8 @@ async function captureLcpAndCls(page) {
       new PerformanceObserver((entries) => {
         for (const entry of entries.getEntries()) {
           if (!entry.hadRecentInput) {
-            window.__phase5_cls += entry.value;
-            window.__phase5_cls_entries.push({
+            window.__phase6_cls += entry.value;
+            window.__phase6_cls_entries.push({
               value: entry.value,
               startTime: entry.startTime,
             });
@@ -255,9 +268,9 @@ async function captureLcpAndCls(page) {
   });
   await page.waitForTimeout(1500);
   return await page.evaluate(() => ({
-    LCP: window.__phase5_lcp || null,
-    CLS: window.__phase5_cls || 0,
-    CLS_entries: window.__phase5_cls_entries?.length ?? 0,
+    LCP: window.__phase6_lcp || null,
+    CLS: window.__phase6_cls || 0,
+    CLS_entries: window.__phase6_cls_entries?.length ?? 0,
   }));
 }
 
@@ -323,7 +336,7 @@ async function waitForPort(url, timeoutMs = 30_000) {
 }
 
 async function main() {
-  console.log(`Phase 5 Task 5.6 — Perf validation (Lighthouse + Playwright + axe-core)`);
+  console.log(`Phase 6 Task 6.7 — Perf optimization (Lighthouse + Playwright + axe-core; Lever 1: Google Fonts deferral)`);
   console.log(`Target: ${PREVIEW_URL} + 4 SPA-internal detail pages`);
   console.log(`Runs per page: ${RUNS_PER_PAGE}`);
   console.log('');
@@ -400,7 +413,7 @@ async function main() {
     const payload = {
       capturedAt: new Date().toISOString(),
       repo: 'Dwellium-per-spec / qualia-shell',
-      task: 'Phase-5 Task 5.6 — Perf validation',
+      task: 'Phase-6 Task 6.7 — Perf optimization (Lever 1: Google Fonts deferral)',
       target: PREVIEW_URL,
       methodology: 'Lighthouse navigation run on root + Playwright-driven SPA navigation + PerformanceObserver Web Vitals + @axe-core/playwright a11y audit per page',
       v1Thresholds: {
@@ -416,7 +429,7 @@ async function main() {
     const baselinesDir = join(REPO_ROOT, 'Docs', 'Baselines');
     await mkdir(baselinesDir, { recursive: true });
     const stamp = new Date().toISOString().slice(0, 10);
-    const outPath = join(baselinesDir, `${stamp}_Phase5_perf_capture.json`);
+    const outPath = join(baselinesDir, `${stamp}_Phase6_task_6_7_perf_capture.json`);
     await writeFile(outPath, JSON.stringify(payload, null, 2));
     console.log('');
     console.log(`[OK] capture written to ${outPath}`);

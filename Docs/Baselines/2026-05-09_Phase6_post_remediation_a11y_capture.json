@@ -1,0 +1,74 @@
+{
+  "capturedAt": "2026-05-09T16:31:44.458Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "Phase-6 Task 6.5 — a11y closure cleanup (canonical Phase-6 post-remediation closure-snapshot artifact). Source data is a faithful copy of Docs/Baselines/2026-05-09_Phase6_task_6_4_a11y_capture.json (post-6.4 axe-core re-measurement; ZERO violations across all 4 enriched detail pages — v1 L230 ZERO WCAG AA threshold MET); only the `task` field is amended to identify this file as the canonical closure-snapshot per Cowork GO at Task 6.5 (physical copy not symlink for portability). Re-confirmed at 6.5 PRE0 via fresh build + preview + cdp_probe_task_6_4.cjs at HEAD fc3ce46 — 0 violation rules / 0 nodes across all 4 pages on a clean re-scan. See Docs/Phase6_Task_6_5_Completion_Report.md §3.",
+  "target": "http://localhost:4173/",
+  "methodology": "Playwright-driven SPA navigation + @axe-core/playwright per-page audit with WCAG 2.0 + 2.1 AA tags",
+  "v1Threshold": {
+    "wcagAaViolations": 0,
+    "source": "AppFolio_Parity_Implementation_Plan.md L230"
+  },
+  "summary": {
+    "pagesScanned": 4,
+    "pagesErrored": 0,
+    "totalDistinctViolationIds": 0,
+    "distinctViolationIds": [],
+    "totalViolations": 0,
+    "totalViolatingNodes": 0,
+    "violationsByImpactAcrossPages": {}
+  },
+  "perPage": [
+    {
+      "id": "property-128bv",
+      "label": "128 Buena Vista Dr N (property detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 37,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "vendor-2story",
+      "label": "2-STORY TECHNICAL ROOFING LLC (vendor detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 24,
+        "incompleteCount": 1,
+        "inapplicableCount": 35,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "wo-19511-1",
+      "label": "WO 19511-1 / Fire alarm needs replaced (maintenance detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 37,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "tenant-brianna-jackson",
+      "label": "Brianna Jackson (tenant detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 26,
+        "incompleteCount": 1,
+        "inapplicableCount": 33,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    }
+  ]
+}

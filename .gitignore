@@ -6,3 +6,18 @@ Thumbs.db
 .idea/
 /node_modules
 qualia-shell.pre-subtree-bak/
+
+# Per-project Claude Code settings (session-local)
+.claude/
+
+# User-local agent roster config (session-local; commit explicitly via -f if intended for repo)
+AGENTS.md
+
+# Per-task scratch baseline directories (session-local probes; canonical baselines are committed at top-level Docs/Baselines/)
+Docs/Baselines/phase_*_task_*/
+
+# CDP probe scripts — session-local, NOT committed (per Tasks 3.1 / 3.4 / 6.1 / 6.3 / 6.4 precedent)
+qualia-shell/cdp_probe_task_*.cjs
+
+# Alt-dist directory from external build contexts (session-local)
+qualia-shell/dist-external/

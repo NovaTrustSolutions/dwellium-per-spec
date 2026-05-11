@@ -182,7 +182,7 @@ export default function AccountingModule() {
                     <p className="s-module-subtitle">AR: ${totalAR.toLocaleString()} · AP: ${totalAP.toLocaleString()}</p>
                 </div>
                 <div className="s-module-actions">
-                    <button className="s-btn s-btn-ghost" onClick={fetchData}><RefreshCw size={14} /></button>
+                    <button className="s-btn s-btn-ghost" onClick={fetchData} aria-label="Refresh accounting data"><RefreshCw size={14} /></button>
                     <button className="s-btn s-btn-primary" onClick={() => setShowAddEntry(true)}><Plus size={14} /> New Entry</button>
                 </div>
             </div>

@@ -1,0 +1,75 @@
+{
+  "capturedAt": "2026-05-11T11:20:30.686Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "phase": "Phase 7 Task 7.1 — button-name landing-page COMPONENT-FIX post-edit verification",
+  "summary": {
+    "totalViolations": 0,
+    "pagesScanned": 8,
+    "violationsByImpact": {}
+  },
+  "preEditReference": {
+    "artifact": "Docs/Baselines/2026-05-11_Phase0_axe_baseline.json (pre-edit snapshot captured 2026-05-11T08:19:12.303Z at HEAD b99a8ac)",
+    "totalViolations": 3,
+    "violationsByImpact": { "critical": 3 },
+    "violatingSurfaces": ["leasing", "owners", "accounting"],
+    "rule": "button-name (WCAG 2.0 AA / wcag412)",
+    "shapeNote": "All 3 violations were the structurally identical RefreshCw s-btn-ghost icon-only button pattern — sister-shape to Phase-6 Task 6.4's 3-instance RefreshCw closure (Vendors+Maintenance+Properties)."
+  },
+  "postEditDelta": {
+    "leasing": "1 → 0 (critical button-name ELIMINATED via aria-label='Refresh leases' at LeasingModule.tsx:373)",
+    "owners": "1 → 0 (critical button-name ELIMINATED via aria-label='Refresh owners' at OwnersModule.tsx:107)",
+    "accounting": "1 → 0 (critical button-name ELIMINATED via aria-label='Refresh accounting data' at AccountingModule.tsx:185)",
+    "other5Surfaces": "0 → 0 (Overview / Properties / Residents / Vendors / Maintenance — no regressions; Phase-6 6.3+6.4 zero-state preserved on Residents/Vendors/Maintenance/Properties detail pages)",
+    "scopeExtension": "v1 L230 ZERO WCAG AA threshold MET — 4-enriched-detail-page scope (Phase-6 close) → 8-routable-surface scope (Phase-7 7.1 close); broader scope expansion completes the v1 L230 commitment across the full AppFolio-parity surface set."
+  },
+  "pages": [
+    {
+      "module": "overview",
+      "label": "Overview",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "properties",
+      "label": "Properties",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "leasing",
+      "label": "Leasing",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "residents",
+      "label": "Residents",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "vendors",
+      "label": "Vendors",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "owners",
+      "label": "Owners",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "accounting",
+      "label": "Accounting",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "maintenance",
+      "label": "Maintenance",
+      "url": "http://localhost:5173/",
+      "violations": []
+    }
+  ]
+}

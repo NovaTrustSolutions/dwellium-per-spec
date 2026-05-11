@@ -370,7 +370,7 @@ SIGNATURES: (Pending)
                     <p className="s-module-subtitle">{leases.length} applications · {vacantUnits.length} vacancies</p>
                 </div>
                 <div className="s-module-actions">
-                    <button className="s-btn s-btn-ghost" onClick={fetchLeases}><RefreshCw size={14} /></button>
+                    <button className="s-btn s-btn-ghost" onClick={fetchLeases} aria-label="Refresh leases"><RefreshCw size={14} /></button>
                     <button className="s-btn s-btn-primary" onClick={() => setShowAddForm(true)}><Plus size={14} /> Add Application</button>
                 </div>
             </div>

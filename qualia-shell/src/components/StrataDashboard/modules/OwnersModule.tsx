@@ -104,7 +104,7 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                     <p className="s-module-subtitle">{owners.length} property owners</p>
                 </div>
                 <div className="s-module-actions">
-                    <button className="s-btn s-btn-ghost" onClick={fetchOwners}><RefreshCw size={14} /></button>
+                    <button className="s-btn s-btn-ghost" onClick={fetchOwners} aria-label="Refresh owners"><RefreshCw size={14} /></button>
                     {hasPermission('strata:owners:create') && (
                         <button className="s-btn s-btn-primary" onClick={() => setShowAddForm(true)}><Plus size={14} /> Add Owner</button>
                     )}

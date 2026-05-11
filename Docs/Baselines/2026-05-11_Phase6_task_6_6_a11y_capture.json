@@ -1,0 +1,74 @@
+{
+  "capturedAt": "2026-05-11T04:02:52.983Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "Phase-6 Task 6.6 — Re-execute confirmation a11y measurement post-Phase-6 Block C remediation",
+  "target": "http://localhost:4173/",
+  "methodology": "Playwright-driven SPA navigation + @axe-core/playwright per-page audit with WCAG 2.0 + 2.1 AA tags",
+  "v1Threshold": {
+    "wcagAaViolations": 0,
+    "source": "AppFolio_Parity_Implementation_Plan.md L230"
+  },
+  "summary": {
+    "pagesScanned": 4,
+    "pagesErrored": 0,
+    "totalDistinctViolationIds": 0,
+    "distinctViolationIds": [],
+    "totalViolations": 0,
+    "totalViolatingNodes": 0,
+    "violationsByImpactAcrossPages": {}
+  },
+  "perPage": [
+    {
+      "id": "property-128bv",
+      "label": "128 Buena Vista Dr N (property detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 37,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "vendor-2story",
+      "label": "2-STORY TECHNICAL ROOFING LLC (vendor detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 24,
+        "incompleteCount": 1,
+        "inapplicableCount": 35,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "wo-19511-1",
+      "label": "WO 19511-1 / Fire alarm needs replaced (maintenance detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 22,
+        "incompleteCount": 1,
+        "inapplicableCount": 37,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    },
+    {
+      "id": "tenant-brianna-jackson",
+      "label": "Brianna Jackson (tenant detail)",
+      "violations": [],
+      "summary": {
+        "violationCount": 0,
+        "passCount": 26,
+        "incompleteCount": 1,
+        "inapplicableCount": 33,
+        "totalViolatingNodes": 0,
+        "violationsByImpact": {}
+      }
+    }
+  ]
+}

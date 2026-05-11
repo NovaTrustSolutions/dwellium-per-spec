@@ -18,13 +18,25 @@ import { defineConfig, devices } from '@playwright/test';
  *     the live backend. Requires ../ai-dashboard369-file-manager
  *     cloned and running on :3000.
  *
- * This config runs ONLY screenshot-baseline.spec.ts and
- * axe-baseline.spec.ts via testMatch, so it won't accidentally pick up
- * other e2e tests that depend on the backend.
+ * Phase 6 Task 6.8 (2026-05-11): extended testMatch from the original 2
+ * baseline specs (screenshot-baseline + axe-baseline) to also include
+ * the 3 AppFolio-parity feature specs that have been running cleanly
+ * under playwright.config.ts::chromium since 6.6/6.7 (8/8 PASS). Feature
+ * specs run cleanly under this config since it is functionally the
+ * static-API subset of playwright.config.ts::chromium (both use
+ * VITE_USE_STATIC_API=true + npm run dev + chromium-only + workers: 1).
+ * Note: this config retains retries: 0 vs playwright.config.ts CI default
+ * of 2 — flake-surface delta deferred to Phase-7 per 6.8 §7.
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: ['screenshot-baseline.spec.ts', 'axe-baseline.spec.ts'],
+  testMatch: [
+    'screenshot-baseline.spec.ts',
+    'axe-baseline.spec.ts',
+    'strata-nav.spec.ts',
+    'appfolio-parity-workorder.spec.ts',
+    'appfolio-parity-vendor-compliance.spec.ts',
+  ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

@@ -124,10 +124,13 @@ test.describe('axe accessibility baseline — AppFolio parity modules', () => {
         })),
       });
 
-      // Soft-assert: this is a baseline capture, not a blocker. Just log.
+      // Strict-assert: assertion-strengthened at Phase-7 Task 7.2 — fails on any WCAG AA violation.
+      // Pre-7.2 was soft-assert console.log only (Phase 0.0 Task 0.0.8 baseline capture intent);
+      // post-7.1's 8-routable-surface zero-state MET makes the hard assertion safe (sister-arc to 7.3 workflow flip).
       const count = axeResults.violations.length;
       // eslint-disable-next-line no-console
       console.log(`[axe][${mod.label}] ${count} violation rule(s) flagged`);
+      expect(axeResults.violations.length).toBe(0);
     });
   }
 

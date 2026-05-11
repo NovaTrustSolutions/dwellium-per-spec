@@ -1,8 +1,8 @@
 # Phase 7 — Task 7.1 — button-name landing-page COMPONENT-FIX on Leasing/Owners/Accounting (Phase-7 OPENER) — Completion Report
 
 **Date:** 2026-05-11
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.1 — Phase-7 OPENER; resolution at next-sweep per established 13-consecutive-cross-phase-sweep-resolutions convention extending Phase-6 12-pattern → 13-pattern at Phase-7 OPENING)
-**Green CI run:** TBD (parity-gate auto-fires on `pull_request` for production-source edit at `qualia-shell/src/components/StrataDashboard/modules/**` paths-filter; FIRST auto-trigger in 7 closes after Phase-6's 6.5/6.6/6.7/6.8/6.9 manual-dispatch sequence)
+**Commit (HEAD on `main`):** `ddf1404` (squash commit for PR #56, Task 7.1 — Phase-7 OPENER; 7.1 squash-SHA cell `ddf1404` / `#56` resolved at 7.2 sweep per 14-consecutive-cross-phase-sweep-resolutions convention extending Phase-6 12-pattern → 13-pattern at 7.1 OPENING → 14-pattern at 7.2)
+**Green CI run:** Parity Gate `25667702765` ✓ SUCCESS (15-of-15 steps; auto-fired on `pull_request` for production-source edit at `qualia-shell/src/components/StrataDashboard/modules/**` paths-filter; FIRST auto-trigger in 7 closes after Phase-6's 6.5/6.6/6.7/6.8/6.9 manual-dispatch sequence) + PII Scan `25667702888` ✓ SUCCESS + CodeRabbit clean pass (Trivial / ~3 min effort).
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-7 sub-tracker row 7.1 (created at v2.48 OPENING; Phase-7 sub-tracker 14 rows total) + `Docs/Phases/Phase_7_Plan.md §4 Block A item 7.1` (mandatory PRE-FLIGHT discipline including Process Improvement #1 absorbed — Phase-N column ADDED to §9 main matrix at OPENING task close)
 **Template mirror:** `Docs/Phase6_Task_6_4_Completion_Report.md` (Phase-6 6.4 A11Y-COMPONENT-FIX-MULTI-RULE sister-shape — 4 enriched detail pages COMPONENT-FIX-MULTI-RULE; 7.1 is the 8-routable-surface scope-extension of the same a11y arc)
 **v1-lineage substitute.** Phase-7 has no v1 plan source (post-v1 carry-forward arc). Authoritative scope source is `Docs/Phase6_Closure_Report.md §8` 16-item Phase-7 carry-forward consolidation (Block A item #1: 3 button-name violations on Leasing/Owners/Accounting module landing pages surfaced at Phase-6 Task 6.8 PRE0 Q3).
@@ -93,16 +93,16 @@ High = 0; Medium = 0. Edit is a 3-line aria-label addition to existing `<button>
 | Check | Target | Result | Evidence |
 |---|---|---|---|
 | `tsc -b` errors | 0 | ✓ | Post-edit `vite build` includes implicit tsc; no errors |
-| `vitest run` failures | ≤ 259 baseline | TBD | Run pending at Step-2.9 |
+| `vitest run` failures | ≤ 259 baseline | ✓ 259/259 PASS | Step-2.9 local darwin; clean (no `calendar.test.tsx:260` flake fired); CI authoritative |
 | `vite build` (bare) | exit 0 | ✓ | §2 paste line 5 |
-| `VITE_APPFOLIO_SEEDS=false vite build` | exit 0 | TBD | Run pending at Step-2.9 |
+| `VITE_APPFOLIO_SEEDS=false vite build` | exit 0 | ✓ | Step-2.9 local + CI `Vite build (seeds=false)` step PASS |
 | Production chunk SHA256 / filename / byte-count | BREAK (production-source edit) | ✓ | StrataDashboard `BnaHIKND` → `D_e1g9lx` / +99 B / SHA256 break; index main JS `CTl84rdZ` → `ChKXebss` / 0 B / SHA256 break; index chunk JS unchanged; index CSS unchanged |
-| Smoke-test 4-spec cold-start | 12/12 chromium | TBD | Run pending at Step-2.9 |
+| Smoke-test 4-spec cold-start | 12/12 chromium | ✓ 16/16 PASS | Step-2.9 chromium project; 8 axe-baseline + 6 strata-nav + 1 workorder + 1 vendor-compliance |
 | Axe re-scan post-edit | 3 → 0 button-name violations on Leasing/Owners/Accounting | ✓ | §2 axe spec output 8/8 passed; `Docs/Baselines/2026-05-11_Phase7_task_7_1_a11y_capture.json` artifact |
 | 8-routable-surface a11y zero-state | All 8 surfaces 0 violations | ✓ | §2 axe spec output 8/8 passed |
-| `verify_no_pii_leak.mjs` strict-scope | exit 0 | TBD | Run pending at Step-2.9 |
-| Parity gate per PR | green (auto-fire) | TBD | Production-source edit at `qualia-shell/src/components/StrataDashboard/modules/**` IS in paths filter — parity gate auto-fires |
-| CodeRabbit review per PR | pass | TBD | Run pending post-PR-open |
+| `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | 51 files scanned, 0 leaks (1330ms) |
+| Parity gate per PR | green (auto-fire) | ✓ SUCCESS | Run `25667702765` 15-of-15 PASS; auto-fired on `pull_request` (paths-filter quirk RESET — production-source edit IS in paths filter) |
+| CodeRabbit review per PR | pass | ✓ clean pass | Trivial / ~3 min effort; walkthrough accurate; no substantive concerns; review URL at PR #56 comment 4420309665 |
 | `Docs/Phase7_Task_7_1_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-7 sub-tracker row 7.1 | R → ✓ | ✓ | Plan v2.48 amendment |
 | §9 main matrix Phase-7 column | ADDED at OPENING per Process Improvement #1 | ✓ | Plan v2.48 amendment — 16 rows R initial state |
@@ -113,7 +113,7 @@ High = 0; Medium = 0. Edit is a 3-line aria-label addition to existing `<button>
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert b99a8ac` (Phase-6 6.9 close; pre-Phase-7-OPENING state). Phase-7 OPENER 7.1 squash SHA `TBD` (will be revertable independently once merged).
+Rollback target: `git revert b99a8ac` (Phase-6 6.9 close; pre-Phase-7-OPENING state) — OR `git revert ddf1404` (Phase-7 7.1 close; reversible independently). Resolved at 7.2 sweep.
 
 Rollback safety: 3-line aria-label additions are accessibility-only enhancements; no behavior change; no data dependencies; reversible without DB or fixture state implications. Phase-7 Plan + Plan v2.48 amendment + Phase-7 sub-tracker creation are doc-only and reversible.
 

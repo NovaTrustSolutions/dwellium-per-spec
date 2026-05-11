@@ -1,41 +1,33 @@
 #!/usr/bin/env node
 /**
- * Scripts/run_axe_phase5.mjs
+ * Scripts/run_axe_phase6.mjs
  *
- * Phase-5 Task 5.7 — Accessibility validation (axe-core via Playwright).
+ * Phase-6 Task 6.6 — Re-execute confirmation a11y measurement
+ * post-Phase-6 Block C remediation (6.3 + 6.4). v1 L230 ZERO WCAG AA
+ * threshold MET at 6.4 close (33 → 0); 6.6 is the closure confirmation
+ * that re-measures across all 4 enriched detail pages and produces
+ * `Docs/Phase6_A11y_Report.md` mirroring `Docs/Phase5_A11y_Report.md`
+ * byte-shape with side-by-side 362 → 0 cross-phase delta.
  *
- * Per parent Plan v2 §9 row 5.7 + v1 plan L230 verbatim:
+ * Renamed from `run_axe_phase5.mjs` at Phase-6 Task 6.6 close; original
+ * Phase-5 SCOPE-COLLISION narrative preserved in git history at HEAD
+ * `e245ebf` and prior (see `git log --follow Scripts/run_axe_phase6.mjs`
+ * + `Docs/Phase5_Closure_Report.md §3` for the cross-phase context).
+ *
+ * Per parent Plan v2 §9 row 6.6 + v1 plan L230 verbatim:
  *   "Run `axe-core` CI on the 4 detail pages. Zero WCAG AA violations."
  *
- * SCOPE: 4 enriched detail pages (mirrors Task 5.6 page set):
+ * SCOPE: 4 enriched detail pages (mirrors the Phase-5 5.6/5.7 page set):
  *   - 128 Buena Vista Dr N (property detail)
  *   - 2-STORY TECHNICAL ROOFING LLC (vendor detail)
  *   - WO 19511-1 / Fire alarm needs replaced (maintenance detail)
  *   - Brianna Jackson (tenant detail)
  *
- * SCOPE-COLLISION CARRY-FORWARD (sibling of Task 5.6 finding; per user
- * decision #4 NOT incremented as standalone catch — count preserved at
- * 8 absolute / 4 distinct in Phase-5):
- *   Phase 0.0 Task 0.0.7 (perf) + 0.0.8 (a11y) co-shipped baseline
- *   infrastructure as a SET. Task 5.6 caught 0.0.7's pre-existence;
- *   Task 5.7's catching of 0.0.8's pre-existence is the same shape —
- *   `qualia-shell/e2e/axe-baseline.spec.ts` (Phase-0 era; 8 routable
- *   surfaces, repo-wide a11y) + `Docs/Baselines/2026-04-21_Phase0_axe_baseline.json`
- *   (18 violations / 10 critical + 18 serious).
- *
- *   Task 5.7 EXPLICITLY BYPASSES axe-baseline.spec.ts per user decision
- *   #5 — different scopes / complementary data:
- *     - Phase-0 baseline: repo-wide a11y on 8 routable surfaces
- *     - Phase-5 Task 5.7: enriched-detail-pages a11y on 4 SPA-internal
- *       navigations (128 BV / 2-STORY / WO 19511-1 / Brianna)
- *   Both retained as complementary data sources.
- *
- * COLD-START SIDEBAR MITIGATION (A2 inline pattern; helpers/auth.ts
- * amendment was attempted but smoke-test surfaced downstream
- * .s-detail-panel hidden failures on appfolio-parity specs not caused
- * by amendment but exposed by it; per smoke-test fallback rule, A2
- * inline-only retained — mirrors Task 5.6 Scripts/run_lighthouse_phase5.mjs
- * pattern verbatim):
+ * COLD-START SIDEBAR MITIGATION (A2 inline pattern; the canonical e2e
+ * `helpers/auth.ts::loginAs` was permanently amended at Phase-6 Task 6.2
+ * to seed `qualia_sidebar_groups` via `page.addInitScript`, but this
+ * non-Playwright-helpers Scripts-context still inline-replicates the
+ * seed since it does not consume `helpers/auth.ts`):
  *   page.evaluate + localStorage.setItem('qualia_sidebar_groups', ...)
  *   + page.reload() before login flow → Sidebar reads seeded value at
  *   mount per Sidebar.tsx L226-232.
@@ -45,29 +37,31 @@
  *      VITE_USE_STATIC_API=true VITE_APPFOLIO_SEEDS=true beforehand).
  *   2. Launch Playwright chromium (1440×900 viewport).
  *   3. Inline-replicate loginAs flow with localStorage seeding.
- *   4. For each of 4 detail pages: navigate via Tasks 5.4/5.5 pattern
- *      (sidebar→strata→nav-item→card-click) → run @axe-core/playwright
- *      with WCAG 2.0 + 2.1 AA tags → capture violations + nodes + impact.
- *   5. Aggregate into Docs/Baselines/<YYYY-MM-DD>_Phase5_a11y_capture.json
+ *   4. For each of 4 detail pages: navigate via the Phase-5 5.4/5.5/5.6/5.7
+ *      pattern (sidebar→strata→nav-item→card-click) → run
+ *      @axe-core/playwright with WCAG 2.0 + 2.1 AA tags → capture
+ *      violations + nodes + impact.
+ *   5. Aggregate into Docs/Baselines/<YYYY-MM-DD>_Phase6_task_6_6_a11y_capture.json
  *
- * v1 L230 THRESHOLD DRIFT acknowledgment (predicted from Task 5.6
- * empirical baseline — captured as PASS/FAIL findings, NOT tuning work
- * scope; future-Phase-N decision deferred per Task 5.7 §7 entry 3
- * mirroring Task 5.6 v1 L228 pattern):
- *   Task 5.6 captured 13 distinct violations / 5 unique rules / 362
- *   nodes (button-name × 338 / color-contrast × 8 / aria-valid-attr-value
- *   × 10 / scrollable-region-focusable × 2 / select-name × 4); v1 L230
- *   ZERO target structurally unattainable without remediation.
+ * v1 L230 THRESHOLD STATE at Phase-6 Task 6.6 close:
+ *   Phase-5 Task 5.7 baseline (2026-05-04) captured 13 distinct
+ *   violations / 5 unique rules / 362 nodes (button-name × 338 /
+ *   color-contrast × 8 / aria-valid-attr-value × 10 /
+ *   scrollable-region-focusable × 2 / select-name × 4); declared
+ *   "structurally unattainable without dedicated remediation work".
+ *   Phase-6 Block C 6.3 + 6.4 IS that dedicated remediation arc;
+ *   threshold MET at 6.4 close (33 → 0). Task 6.6 confirms the
+ *   0-state holds across the 4 enriched detail pages at the new HEAD.
  *
  * Usage:
  *   cd qualia-shell && rm -rf dist && \
  *     VITE_USE_STATIC_API=true VITE_APPFOLIO_SEEDS=true npx vite build
  *   cd ..
- *   node Scripts/run_axe_phase5.mjs
+ *   node Scripts/run_axe_phase6.mjs
  *
  * Output:
- *   Docs/Baselines/<YYYY-MM-DD>_Phase5_a11y_capture.json (raw data)
- *   Docs/Phase5_A11y_Report.md (analyzed report; written separately)
+ *   Docs/Baselines/<YYYY-MM-DD>_Phase6_task_6_6_a11y_capture.json (raw data)
+ *   Docs/Phase6_A11y_Report.md (analyzed report; written separately)
  *
  * Exit codes:
  *   0 — measurement captured (regardless of v1 L230 threshold PASS/FAIL).
@@ -182,11 +176,10 @@ async function clickNavItem(page, label) {
 async function loginAs(page) {
   // Pre-seed localStorage so Sidebar's Property Management widget group
   // is expanded on first render (default is empty Set / collapsed →
-  // Strata widget hidden). Inline mirror of Task 5.6 mitigation per
-  // user decision #2 fallback to A2 (inline-only) after smoke-test
-  // surfaced downstream .s-detail-panel hidden failures on appfolio-parity
-  // specs that are NOT caused by helpers/auth.ts amendment but exposed
-  // by it. helpers/auth.ts amendment reverted; mitigation lives here only.
+  // Strata widget hidden). This Scripts/ context does not consume the
+  // canonical e2e helpers/auth.ts (permanently amended at Phase-6 Task 6.2
+  // to seed qualia_sidebar_groups via page.addInitScript), so the seed
+  // is inline-replicated here.
   await page.goto(PREVIEW_URL);
   await page.evaluate(() => {
     localStorage.setItem(
@@ -254,7 +247,7 @@ async function waitForPort(url, timeoutMs = 30_000) {
 }
 
 async function main() {
-  console.log(`Phase 5 Task 5.7 — Accessibility validation (axe-core via Playwright)`);
+  console.log(`Phase 6 Task 6.6 — Re-execute confirmation a11y measurement (axe-core via Playwright)`);
   console.log(`Target: ${PREVIEW_URL} + 4 SPA-internal detail pages`);
   console.log('');
 
@@ -327,7 +320,7 @@ async function main() {
     const payload = {
       capturedAt: new Date().toISOString(),
       repo: 'Dwellium-per-spec / qualia-shell',
-      task: 'Phase-5 Task 5.7 — Accessibility validation',
+      task: 'Phase-6 Task 6.6 — Re-execute confirmation a11y measurement post-Phase-6 Block C remediation',
       target: PREVIEW_URL,
       methodology:
         'Playwright-driven SPA navigation + @axe-core/playwright per-page audit with WCAG 2.0 + 2.1 AA tags',
@@ -350,7 +343,7 @@ async function main() {
     const baselinesDir = join(REPO_ROOT, 'Docs', 'Baselines');
     await mkdir(baselinesDir, { recursive: true });
     const stamp = new Date().toISOString().slice(0, 10);
-    const outPath = join(baselinesDir, `${stamp}_Phase5_a11y_capture.json`);
+    const outPath = join(baselinesDir, `${stamp}_Phase6_task_6_6_a11y_capture.json`);
     await writeFile(outPath, JSON.stringify(payload, null, 2));
 
     console.log('');

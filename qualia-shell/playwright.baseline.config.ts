@@ -25,8 +25,14 @@ import { defineConfig, devices } from '@playwright/test';
  * specs run cleanly under this config since it is functionally the
  * static-API subset of playwright.config.ts::chromium (both use
  * VITE_USE_STATIC_API=true + npm run dev + chromium-only + workers: 1).
- * Note: this config retains retries: 0 vs playwright.config.ts CI default
- * of 2 — flake-surface delta deferred to Phase-7 per 6.8 §7.
+ * Phase-7 Task 7.3 (2026-05-12): retries field bumped from `0` to
+ * `process.env.CI ? 2 : 0` per Cowork Option C verdict in response to
+ * Linux CI render-timing flake at axe-baseline.spec.ts:93 (Residents
+ * 30s timeout). Mirrors playwright.config.ts CI default of 2. Local
+ * darwin retains retries: 0 to preserve fast-feedback-loop. Closes
+ * Phase-7 Block C item #1 (retries-delta carry-forward) opportunistically.
+ * Class taxonomy stays CI-CONFIG-ONLY (CI-flake-tolerance-policy domain
+ * distinct from testMatch test-discovery domain).
  */
 export default defineConfig({
   testDir: './e2e',
@@ -39,7 +45,7 @@ export default defineConfig({
   ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
 

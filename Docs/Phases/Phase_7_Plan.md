@@ -215,13 +215,15 @@ Block B inherits empirically-justified lever priority from Phase-6 Task 6.7 post
 
 Block C is the longest-running block by calendar but lowest-priority by impact; can run parallel to Block A + Block B throughout Phase-7.
 
-#### Task 7.12 — `playwright.baseline.config.ts::retries` vs `playwright.config.ts::retries` flake-surface delta
+#### Task 7.12 — `playwright.baseline.config.ts::retries` vs `playwright.config.ts::retries` flake-surface delta — **✓ CLOSED at 7.3 PR-pre-merge-stabilization (2026-05-12)**
 
-**Goal.** Investigate why `playwright.baseline.config.ts` has `retries: 0` while `playwright.config.ts` has `retries: process.env.CI ? 2 : 0`; either align the two configs OR document the intentional delta as a flake-surface visibility mechanism.
+**Status.** ✓ CLOSED opportunistically at Phase-7 Task 7.3 PR-pre-merge-stabilization per Cowork Option C verdict (in response to PR #58 parity gate Linux render-timing flake at `axe-baseline.spec.ts:93` Residents 30s timeout). Resolution: `qualia-shell/playwright.baseline.config.ts::retries: 0` → `retries: process.env.CI ? 2 : 0` (1-line bump; mirrors `playwright.config.ts` CI default; preserves local darwin `retries: 0` for fast-feedback-loop). Class taxonomy stays CI-CONFIG-ONLY (retries field is CI-flake-tolerance-policy domain consumed by Playwright runner; both `.github/workflows/**` and `playwright.baseline.config.ts::retries` are CI-architecture-domain at higher abstraction).
 
-**Files touched.** 0-1 config files depending on outcome.
+**Goal (historical).** Investigate why `playwright.baseline.config.ts` has `retries: 0` while `playwright.config.ts` has `retries: process.env.CI ? 2 : 0`; either align the two configs OR document the intentional delta as a flake-surface visibility mechanism.
 
-**Calibration class.** **DOC-INVESTIGATION-ONLY** (sister to 7.7).
+**Files touched.** 1 config file (`qualia-shell/playwright.baseline.config.ts`) at 7.3 scope-expansion commit on top of 97cb73e.
+
+**Calibration class.** **CI-CONFIG-ONLY** (extended class designation per 7.3 Cowork Option C verdict; mirrors 7.3 main commit class).
 
 ---
 

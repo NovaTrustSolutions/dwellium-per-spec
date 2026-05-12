@@ -11,7 +11,9 @@
 
 ## §1. Summary
 
-**🎯 Phase-7 Block A item #3 CLOSED — axe-baseline workflow step-split + `continue-on-error: true → false` gate-flip landed.** Task 7.3 ships workflow YAML edit at `.github/workflows/appfolio-parity-gate.yml` L75-86 (+12/-4 lines) splitting the conjoined "Playwright baseline E2E (screenshot + axe)" step into 2 distinct steps:
+**🎯 Phase-7 Block A item #3 CLOSED — axe-baseline workflow step-split + `continue-on-error: true → false` gate-flip landed.** **Scope expanded at PR-pre-merge-stabilization** to include 1-line `retries: process.env.CI ? 2 : 0` bump in `qualia-shell/playwright.baseline.config.ts` per Cowork Option C verdict in response to PR #58 parity gate Linux render-timing flake at `axe-baseline.spec.ts:93` (Residents 30s timeout). **Closes Phase-7 Block C item #1 (retries-delta carry-forward) opportunistically.** Both edits stay **CI-CONFIG-ONLY class** — `.github/workflows/**` is CI-orchestration domain consumed by GitHub Actions runner; `playwright.baseline.config.ts::retries` is CI-flake-tolerance-policy domain consumed by Playwright runner; both fields govern CI retry behavior at different layers (job-level vs test-level); both are CI-architecture-domain at higher abstraction. The 6.8 v2.39 reclassification (testMatch → E2E-PLAYWRIGHT) does NOT extend to retries field; testMatch is test-discovery domain; retries is CI-flake-tolerance domain (different concerns).
+
+Task 7.3 ships workflow YAML edit at `.github/workflows/appfolio-parity-gate.yml` L75-86 (+12/-4 lines) splitting the conjoined "Playwright baseline E2E (screenshot + axe)" step into 2 distinct steps:
 
 1. **Playwright axe-baseline E2E (a11y assertion-blocking)** — `continue-on-error: false` BLOCKING; scoped to `e2e/axe-baseline.spec.ts` via file-path filter; gated on 7.2's hard assertion at `qualia-shell/e2e/axe-baseline.spec.ts:131` (`expect(axeResults.violations.length).toBe(0)`).
 2. **Playwright screenshot-baseline E2E (visual regression; sheltered pending Linux baselines)** — `continue-on-error: true` sheltered; scoped to "everything except axe" via `--grep-invert "axe accessibility baseline"` filter (matches 4 specs: screenshot-baseline + strata-nav + appfolio-parity-workorder + appfolio-parity-vendor-compliance); pending Linux baseline mechanism at Tasks 7.4-7.6.
@@ -163,9 +165,10 @@ High = 0; Medium = 0. Edit is a workflow YAML step-split + `continue-on-error` p
 | axe step continue-on-error | false (BLOCKING) | ✓ | L80 of edited YAML |
 | screenshot step continue-on-error | true (sheltered) | ✓ | L85 of edited YAML |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | Step-4 51 files scanned, 0 leaks |
-| Parity gate per PR | green (manual-dispatch) | TBD | 7.3 touches `.github/workflows/**` outside `qualia-shell/src/**` paths-filter; manual-dispatch required |
-| Structural validation (Step-7) | 2 distinguishable named steps in workflow log w/ correct continue-on-error | TBD | Run pending post-dispatch |
-| CodeRabbit review per PR | pass | TBD | Run pending post-PR-open |
+| Parity gate per PR | green (auto-fired on PR push via workflow YAML self-reference in paths-filter) | TBD post-Option-C | First run `25745601100` FAILED at Residents axe-scan due to Linux CI render-timing flake (NOT a real WCAG violation; 3 pass / 1 fail / 4 didn't run; serial mode); Cowork Option C verdict → retries-bump applied; new run pending |
+| Structural validation (Step-7) | 2 distinguishable named steps in workflow log w/ correct continue-on-error | ✓ (a)(b)(c) from run 25745601100; (d) TBD post-retries-bump | (a) 2 named steps present in workflow log ✓; (b) axe step `continue-on-error: false` BLOCKING ✓ (proven by job-failure propagation to skipped downstream steps); (c) screenshot step `continue-on-error: true` preserved ✓; (d) axe step PASSES on Linux CI — TBD post-retries-bump |
+| Linux CI axe-baseline 8/8 PASS post-retries-bump | empirical re-verification | TBD | Re-triggered parity gate run after scope expansion commit |
+| CodeRabbit review per PR | pass | TBD | Run pending post-PR-re-trigger |
 | `Docs/Phase7_Task_7_3_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-7 sub-tracker row 7.3 | R → ✓ | ✓ | Plan v2.50 amendment |
 | §9 row 7.2 squash-SHA cell | TBD → `9126cc2` | ✓ | Plan v2.50 amendment + 4 reference spots in Phase7_Task_7_2_Completion_Report.md |
@@ -193,6 +196,7 @@ Rollback safety: workflow YAML edit at `.github/workflows/appfolio-parity-gate.y
 8. **11th within-phase-cumulative + 16-of-16 cross-phase chunk-axis preservation data point at 7.3 close** — workflow YAML edit at `.github/workflows/**` is fully outside Vite entry graph; preserves all 4 chunk axes byte-for-byte. Class-hypothesis (CI-CONFIG-ONLY preserves chunk axes) empirically confirmed.
 9. **15 consecutive cross-phase sweep-resolutions cemented at 7.3 sweep** (extends 14-pattern at 7.2 → 15-pattern at 7.3). Pattern fully cemented as cross-phase convention.
 10. **PRE0 5-question gate cleared cleanly at 7.3 — no HARD HALT-IF triggered**. Q1 source-provenance / Q2 downstream artifact behavior / Q3 filter mechanism (file-path scope + --grep-invert) / Q4 class designation (Cowork pre-declared Candidate A: NEW CI-CONFIG-ONLY) / Q5 deliberate-violation-probe (Cowork pre-declared SKIP) all PASS. Phase-7 PRE-FLIGHT discipline working as intended.
+11. **Phase-7 Block C item #1 retries-delta carry-forward CLOSED opportunistically at 7.3 PR-pre-merge-stabilization** (originally Block C item per `Docs/Phase6_Closure_Report.md §8`; absorbed into 7.3 scope via Cowork Option C verdict in response to PR #58 parity gate Linux render-timing flake). Phase-7 Block C now 2 items remaining (7.13 calendar flake + 7.14 Perf Report §2 footnote). Mirrors Phase-6 measurement-report-as-completion-report convention for opportunistic carry-forward absorption.
 
 ---
 

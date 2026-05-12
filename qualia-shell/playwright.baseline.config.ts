@@ -33,6 +33,17 @@ import { defineConfig, devices } from '@playwright/test';
  * Phase-7 Block C item #1 (retries-delta carry-forward) opportunistically.
  * Class taxonomy stays CI-CONFIG-ONLY (CI-flake-tolerance-policy domain
  * distinct from testMatch test-discovery domain).
+ *
+ * Phase-7 Task 7.3 v2.50.2 (2026-05-12): timeout field added at 60_000
+ * (vs Playwright default 30_000) per Cowork Option B.2 verdict in response
+ * to PR #58 parity gate run 25746991992 empirical finding (retries-bump
+ * alone did NOT fix the Linux render-timing flake — failures hit
+ * MULTIPLE surfaces [Residents/Vendors/Overview] across retries =
+ * deterministic Linux runner slowness, not jitter). 60s = 2× Playwright
+ * default = ~12× local darwin baseline (5.15s/test average); conservative
+ * safety margin for Linux CI runner variance without masking real perf
+ * regressions on non-axe specs. Class taxonomy stays CI-CONFIG-ONLY
+ * (CI-flake-tolerance-policy sub-domain; same shape as retries field).
  */
 export default defineConfig({
   testDir: './e2e',
@@ -46,6 +57,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  timeout: 60_000,
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
 

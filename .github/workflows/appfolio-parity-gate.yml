@@ -67,15 +67,23 @@ jobs:
         working-directory: qualia-shell
         run: npx playwright install --with-deps chromium
 
-      # Phase 0.0 Task 0.0.9 captured screenshot baselines on macOS (darwin) only;
-      # CI runs on Linux where Chromium renders differ sub-pixel, so snapshot-diff
-      # is non-blocking until Linux-platform baselines are captured on a Linux
-      # dev box. Axe baseline is explicitly soft-assert (spec line 127). See
-      # Docs/Phase0.0_Environment_Report.md Task 0.0.9 for rationale.
-      - name: Playwright baseline E2E (screenshot + axe)
+      # Phase-7 Task 7.3 (2026-05-12): conjoined "Playwright baseline E2E" step split into
+      # 2 distinct steps so axe-baseline can be flipped blocking while screenshot-baseline
+      # stays sheltered pending Linux-platform baseline capture (Tasks 7.4-7.6). Completes
+      # the 2-subtask blocking-gate arc started at Task 7.2 (spec hard-assert at
+      # qualia-shell/e2e/axe-baseline.spec.ts:131 — expect(violations.length).toBe(0)).
+      # Phase 0.0 Task 0.0.9 captured screenshot baselines on macOS (darwin) only; CI runs
+      # on Linux where Chromium renders differ sub-pixel, so screenshot-diff stays
+      # non-blocking until Linux-platform baselines are captured.
+      - name: Playwright axe-baseline E2E (a11y assertion-blocking)
+        working-directory: qualia-shell
+        continue-on-error: false
+        run: npx playwright test --config playwright.baseline.config.ts --project=chromium e2e/axe-baseline.spec.ts
+
+      - name: Playwright screenshot-baseline E2E (visual regression; sheltered pending Linux baselines)
         working-directory: qualia-shell
         continue-on-error: true
-        run: npx playwright test --config playwright.baseline.config.ts
+        run: npx playwright test --config playwright.baseline.config.ts --project=chromium --grep-invert "axe accessibility baseline"
 
       - name: Vite build (seeds=true)
         working-directory: qualia-shell

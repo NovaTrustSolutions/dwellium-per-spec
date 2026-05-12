@@ -1,8 +1,8 @@
 # Phase 7 — Task 7.2 — axe-baseline.spec.ts assertion-strengthening — Completion Report
 
 **Date:** 2026-05-11
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.2 — Phase-7 Block A item #2; resolution at next-sweep per established 14-consecutive-cross-phase-sweep-resolutions convention extending 13-pattern at Phase-7 OPENING → 14-pattern at 7.2)
-**Green CI run:** TBD (manual-dispatch required per CLAUDE.md "Paths-filter quirk" section — 7.2 touches `qualia-shell/e2e/**` + `Docs/**` + root `CLAUDE.md`; outside `qualia-shell/src/**` filter scope; first manual-dispatch since 7.1's paths-filter RESET via production-source edit)
+**Commit (HEAD on `main`):** `9126cc2` (squash commit for PR #57, Task 7.2 — Phase-7 Block A item #2; 7.2 squash-SHA cell `9126cc2` / `#57` resolved at 7.3 sweep per 15-consecutive-cross-phase-sweep-resolutions convention extending 14-pattern at 7.2 → 15-pattern at 7.3)
+**Green CI run:** Parity Gate `25690307174` ✓ SUCCESS (15-of-15 steps; manual-dispatch per CLAUDE.md "Paths-filter quirk" section — 7.2 touched `qualia-shell/e2e/**` + `Docs/**` + root `CLAUDE.md` outside `qualia-shell/src/**` filter scope; first manual-dispatch since 7.1's paths-filter RESET) + PII Scan `25690301437` ✓ SUCCESS + CodeRabbit clean pass (Simple / ~12 min effort).
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-7 sub-tracker row 7.2 (closed at v2.49 amendment) + `Docs/Phases/Phase_7_Plan.md §4 Block A item 7.2` + `Docs/Phase6_Closure_Report.md §8` Block A item #2 (axe-baseline.spec.ts assertion-strengthening as the SPEC-EDIT side of the 2-subtask blocking-gate arc; Task 7.3 is the WORKFLOW-FLIP side completing the arc)
 **Template mirror:** `Docs/Phase7_Task_7_1_Completion_Report.md` (Phase-7 OPENER 8-section template; 7.2 mirrors byte-shape with E2E-PLAYWRIGHT-class adaptations vs 7.1's A11Y-COMPONENT-FIX-class)
 **v1-lineage substitute.** Phase-7 has no v1 plan source (post-v1 carry-forward arc). Authoritative scope source is `Docs/Phase6_Closure_Report.md §8` Block A item #2 + Phase-6 Task 6.8 PRE0 Q5 empirical finding (axe-baseline.spec.ts is informational-by-spec-design at L127 — `console.log` soft-assert only, no `expect()` on violation count; workflow `continue-on-error` flip alone is structurally no-op).
@@ -139,8 +139,8 @@ High = 0; Medium = 0. Edit is a 1-line `expect()` addition + 3-line comment bloc
 | Axe-baseline post-edit on darwin | 8/8 PASS with hard assertion | ✓ 8/8 PASS | Step-2.5 43.1s |
 | 8-routable-surface a11y zero-state | All 8 surfaces 0 violations | ✓ (HOLDS at 7.2 from 7.1) | PRE0 Q2 + Step-2.5 both 8/8 × 0 violations |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | Step-4 51 files scanned, 0 leaks |
-| Parity gate per PR | green (manual-dispatch) | TBD | 7.2 touches `qualia-shell/e2e/**` outside paths-filter; manual-dispatch required at PR open |
-| CodeRabbit review per PR | pass | TBD | Run pending post-PR-open |
+| Parity gate per PR | green (manual-dispatch) | ✓ SUCCESS | Run `25690307174` 15-of-15 PASS; manual-dispatched per paths-filter quirk (7.2 outside `qualia-shell/src/**` filter) |
+| CodeRabbit review per PR | pass | ✓ clean pass | Simple / ~12 min effort; walkthrough accurate; no substantive concerns; review URL at PR #57 comment 4423791400 |
 | `Docs/Phase7_Task_7_2_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-7 sub-tracker row 7.2 | R → ✓ | ✓ | Plan v2.49 amendment |
 | §9 row 7.1 squash-SHA cell | TBD → `ddf1404` | ✓ | Plan v2.49 amendment + 4 reference spots in Phase7_Task_7_1_Completion_Report.md |
@@ -149,7 +149,7 @@ High = 0; Medium = 0. Edit is a 1-line `expect()` addition + 3-line comment bloc
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert ddf1404` (Phase-7 7.1 close; reverts to Phase-6 close state at `b99a8ac`). Phase-7 7.2 squash SHA `TBD` (will be revertable independently once merged; resolution at 7.3 sweep).
+Rollback target: `git revert ddf1404` (Phase-7 7.1 close; reverts to Phase-6 close state at `b99a8ac`) — OR `git revert 9126cc2` (Phase-7 7.2 close; reverts to 7.1 state at `ddf1404`). Resolved at 7.3 sweep.
 
 Rollback safety: 1-line `expect()` addition + 3-line comment block rewrite to test spec. No production code change; test-only edit. Reversible without DB or fixture state implications; rollback would only relax the assertion strictness (return to soft-assert console.log) without affecting production behavior.
 

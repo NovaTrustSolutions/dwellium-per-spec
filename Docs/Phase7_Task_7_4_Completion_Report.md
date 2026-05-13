@@ -1,8 +1,8 @@
 # Phase 7 — Task 7.4 — Linux Playwright baseline capture mechanism — Completion Report
 
 **Date:** 2026-05-12
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.4 — Phase-7 Block A item #4; resolution at next-sweep per established 16-consecutive-cross-phase-sweep-resolutions convention extending 15-pattern at 7.3 → 16-pattern at 7.4)
-**Green CI run:** TBD (parity gate auto-fires on PR push via `.github/workflows/**` self-reference in parity-gate paths-filter at L19+L29; touching `.github/workflows/**` in general now includes the new `capture-linux-baselines.yml` file too; no manual-dispatch needed)
+**Commit (HEAD on `main`):** `cd26ce4` (squash commit for PR #59, Task 7.4 — Phase-7 Block A item #4; resolved at 7.5 sweep per 17-consecutive-cross-phase-sweep-resolutions convention extending 16-pattern at 7.4 → 17-pattern at 7.5)
+**Green CI run:** Parity Gate run [25775177388](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25775177388) ✓ 16-of-16 SUCCESS (axe-baseline BLOCKING step PASSED on first attempt under v2.51.1 `timeout: 90_000`; Vendors absorbed at 71.4s wall on Linux CI — 26% headroom in 90s budget) + PII Scan run 25775172615 ✓ + Smoke-test run [25776581675](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25776581675) ✓ post-merge dry-run (criteria c+d empirical validation; --list-only step shows 8 baseline tests discoverable)
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-7 sub-tracker row 7.4 (closed at v2.51 amendment) + `Docs/Phases/Phase_7_Plan.md §4 Block A item 7.4` + `Docs/Phase6_Closure_Report.md §8` Block A item #4 (Linux Playwright baseline capture mechanism build as INFRASTRUCTURE side of the screenshot-baseline blocking-gate arc; 7.5 = CAPTURE side; 7.6 = GATE-FLIP side)
 **Template mirror:** `Docs/Phase7_Task_7_3_Completion_Report.md` (Phase-7 7.3 CI-CONFIG-ONLY 8-section template; 7.4 mirrors byte-shape with 4th calibration data point adaptations vs 7.3's 3 in-place scope expansions)
 **v1-lineage substitute.** Phase-7 has no v1 plan source (post-v1 carry-forward arc). Authoritative scope source is `Docs/Phase6_Closure_Report.md §8` Block A item #4 + Phase-0 deferred-item (`Docs/Baselines/phase_0_0_exit_gate_report.md` "Deferred Item" section on Linux baselines).
@@ -144,10 +144,10 @@ No PII or sensitive data touched. The auto-PR body references `${{ inputs.reason
 | Parity gate per PR (main commit `b97d410`) | manual-dispatch only — paths-filter quirk | ❌ FAIL | Run [25774373725](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25774373725) — Vendors axe scan 60s timeout × 3 retries; Cowork Option B.3 v2.51.1 timeout-bump in-place scope expansion round 1 |
 | Local axe-baseline 8/8 PASS post-90s-timeout-bump | empirical re-verification | ✓ 8/8 PASS in 40.4s (darwin) | Step-B3-3 darwin sanity run; Vendors absorbed at 17.4s (5-6× median) |
 | Chunk-axis preservation (v2.51.1 patch) | 4 chunks byte-for-byte vs HEAD-post-7.3 | ✓ 4-of-4 preserved | Step-B3-3 re-verification; 18th cross-phase data point post-LAW-retirement |
-| Parity gate post-v2.51.1 (NEW commit on top of `b97d410`) | green | TBD | Re-triggered parity gate after v2.51.1 push |
-| Structural validation pre-merge (a + b) | Parity Gate 16-of-16 + NEW workflow in `gh workflow list` | TBD | Runs pending |
-| Smoke-test dispatch post-merge (c + d) | `dry_run: true` dispatch succeeds; --list-only step PASS | TBD | Deferred to post-merge |
-| CodeRabbit review per PR | pass | TBD | Run pending post-PR-open |
+| Parity gate post-v2.51.1 (NEW commit on top of `b97d410`) | green | ✓ Run 25775177388 16-of-16 SUCCESS | Vendors absorbed at 71.4s wall under 90s budget |
+| Structural validation pre-merge (a + b) | Parity Gate 16-of-16 + NEW workflow in `gh workflow list` | ✓ both validated | Parity gate ✓ + post-merge `gh workflow list` shows workflow ID 275763053 active |
+| Smoke-test dispatch post-merge (c + d) | `dry_run: true` dispatch succeeds; --list-only step PASS | ✓ Run 25776581675 SUCCESS in 57s | 8 baseline tests discoverable via --list-only; --update-snapshots step correctly SKIPPED |
+| CodeRabbit review per PR | pass | ✓ implicit pass | No CodeRabbit-blocking-comments at merge time |
 | `Docs/Phase7_Task_7_4_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-7 sub-tracker row 7.4 | R → ✓ | ✓ | Plan v2.51 amendment |
 | §9 row 7.3 squash-SHA cell | TBD → `a8f1a10` | ✓ | Plan v2.51 amendment + 4 reference spots in Phase7_Task_7_3_Completion_Report.md |
@@ -159,7 +159,7 @@ No PII or sensitive data touched. The auto-PR body references `${{ inputs.reason
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert a8f1a10` (Phase-7 7.3 close; reverts to 7.2 state at `9126cc2`). Phase-7 7.4 squash SHA `TBD` (will be revertable independently once merged; resolution at 7.5 sweep).
+Rollback target: `git revert cd26ce4` (Phase-7 7.4 close; reverts to 7.3 state at `a8f1a10`). Phase-7 7.4 squash SHA `cd26ce4` resolved at 7.5 sweep (revertable independently).
 
 Rollback safety: NEW workflow YAML file at `.github/workflows/capture-linux-baselines.yml` — CI-orchestration domain, no production code change, no test specs touched. Reversible without DB or fixture state implications; rollback would only remove the capture mechanism without affecting any existing baselines (the stray `overview-chromium-linux.png` from Phase-0 era would remain in place). The mechanism is `workflow_dispatch`-only so reverting it doesn't break any auto-triggered workflows.
 

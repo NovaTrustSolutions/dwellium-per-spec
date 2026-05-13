@@ -1,0 +1,139 @@
+name: Capture Linux Playwright Baselines (workflow_dispatch only)
+
+# Phase-7 Task 7.4 (2026-05-12): on-demand mechanism to capture Linux-platform
+# *-chromium-linux.png Playwright screenshot baselines on ubuntu-latest. Unlocks
+# Tasks 7.5 (inaugural capture for 8 surfaces) + 7.6 (screenshot-baseline gate-flip
+# `continue-on-error: true → false`). Sister-shape to 7.2 (SPEC) + 7.3 (WORKFLOW)
+# axe-baseline blocking-gate arc; both arcs converge on the same blocking-gate
+# completion pattern (SPEC + INFRASTRUCTURE + GATE-FLIP).
+#
+# Inherits playwright.baseline.config.ts (carries v2.50.2 timeout: 60_000 +
+# retries: process.env.CI ? 2 : 0 from Phase-7 Task 7.3) so capture-mode env
+# (VITE_USE_STATIC_API=true + timeouts) matches the validation-mode env exactly.
+#
+# Auto-PR back to main via peter-evans/create-pull-request@v6 (per Cowork PRE0 Q3
+# verdict). Dry-run toggle (per Cowork PRE0 Q5 verdict) defaults to true so the
+# 7.4 mechanism can be smoke-tested without producing real captures; flip to
+# false at Task 7.5 first dispatch for the inaugural real capture.
+#
+# See Docs/Phase7_Task_7_4_Completion_Report.md for the full design narrative.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why are we capturing baselines? (e.g., "Phase-7 Task 7.5 inaugural Linux baseline capture")'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry-run mode (default true at 7.4 ship; set false at 7.5 for real capture)'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: capture-linux-baselines-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  capture-baselines:
+    name: Capture Linux Playwright baselines on ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: qualia-shell
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Node (tracks qualia-shell/.nvmrc)
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: qualia-shell/.nvmrc
+          cache: npm
+          cache-dependency-path: qualia-shell/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Install Playwright browsers (chromium + Linux apt deps)
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate workflow plumbing (dry-run; lists specs without capturing)
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "🧪 DRY-RUN MODE — validating workflow plumbing without capturing baselines"
+          echo "🧪 Lists screenshot-baseline.spec.ts tests that WOULD run under --update-snapshots:"
+          npx playwright test --config=playwright.baseline.config.ts e2e/screenshot-baseline.spec.ts --project=chromium --list
+          echo "✅ Workflow plumbing validated; --update-snapshots invocation deferred to dry_run=false dispatch (Task 7.5)"
+
+      - name: Capture Linux baselines (--update-snapshots)
+        if: ${{ inputs.dry_run == false }}
+        env:
+          CI: 'true'
+        run: |
+          echo "🎯 REAL CAPTURE MODE — running Playwright with --update-snapshots on Linux runner"
+          echo "🎯 Reason: ${{ inputs.reason }}"
+          npx playwright test --config=playwright.baseline.config.ts e2e/screenshot-baseline.spec.ts --project=chromium --update-snapshots
+
+      - name: Check for captured PNGs
+        if: ${{ inputs.dry_run == false }}
+        id: check_pngs
+        working-directory: ${{ github.workspace }}
+        run: |
+          captured_count=$(find qualia-shell/e2e/screenshot-baseline.spec.ts-snapshots -name "*-chromium-linux.png" -type f 2>/dev/null | wc -l | tr -d ' ')
+          echo "captured_count=$captured_count" >> "$GITHUB_OUTPUT"
+          if [ "$captured_count" -eq 0 ]; then
+            echo "❌ No Linux baselines captured. Aborting before PR-open."
+            exit 1
+          fi
+          echo "✅ Captured $captured_count Linux baseline PNG(s)"
+          find qualia-shell/e2e/screenshot-baseline.spec.ts-snapshots -name "*-chromium-linux.png" -type f | sort
+
+      - name: Open PR with captured baselines
+        if: ${{ inputs.dry_run == false }}
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: phase-7/linux-baseline-capture-${{ github.run_id }}
+          base: main
+          title: 'chore(phase-7): Linux Playwright baseline capture (Task 7.5 inaugural)'
+          body: |
+            ## Linux Playwright baseline capture
+
+            **Reason:** ${{ inputs.reason }}
+            **Triggered by:** @${{ github.actor }}
+            **Captured count:** ${{ steps.check_pngs.outputs.captured_count }} Linux baseline PNG(s)
+            **Workflow URL:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            ## Acceptance for Task 7.5 close
+
+            - [ ] Review each captured PNG for any visual regression vs expected design
+            - [ ] Confirm all 8 surfaces have `*-chromium-linux.png` baselines
+            - [ ] Stray `overview-chromium-linux.png` from Phase-0 Task 0.0.9 era overwritten by inaugural capture (closes Phase-7 Block A item #7 opportunistically)
+            - [ ] Squash-merge to main
+            - [ ] Plan v2.X amendment for Task 7.5 closure
+
+            🤖 Auto-generated by `.github/workflows/capture-linux-baselines.yml` (Phase-7 Task 7.4 mechanism)
+          commit-message: |
+            chore(phase-7): Linux Playwright baseline capture (Task 7.5 inaugural)
+
+            Captured Linux baselines via Phase-7 Task 7.4 on-demand mechanism.
+            Run ID: ${{ github.run_id }}
+            Triggered by: ${{ github.actor }}
+            Reason: ${{ inputs.reason }}
+            Captured count: ${{ steps.check_pngs.outputs.captured_count }}
+          add-paths: |
+            qualia-shell/e2e/screenshot-baseline.spec.ts-snapshots/*-chromium-linux.png
+          delete-branch: true
+          draft: false

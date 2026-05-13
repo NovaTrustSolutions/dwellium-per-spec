@@ -44,6 +44,15 @@ import { defineConfig, devices } from '@playwright/test';
  * safety margin for Linux CI runner variance without masking real perf
  * regressions on non-axe specs. Class taxonomy stays CI-CONFIG-ONLY
  * (CI-flake-tolerance-policy sub-domain; same shape as retries field).
+ *
+ * Phase-7 Task 7.4 v2.51.1 (2026-05-12): timeout field bumped further
+ * from 60_000 to 90_000 per Cowork Option B.3 verdict in response to
+ * PR #59 parity gate run 25774373725 empirical failure (Vendors axe scan
+ * hits deterministic 60s timeout across 3 retries; CI variance drift since
+ * 7.3 close pushed Vendors from ~55s observed margin → ~60s+ wall).
+ * 90s = 3× Playwright default = ~64% headroom over 55s baseline observed
+ * at 7.3 run 25754846170. 3rd calibration data point on the timeout field
+ * sub-domain (30s default → 60s v2.50.2 → 90s v2.51.1).
  */
 export default defineConfig({
   testDir: './e2e',
@@ -57,7 +66,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  timeout: 60_000,
+  timeout: 90_000,
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
 

@@ -29,6 +29,8 @@
 
 **🎯 7.3 TBD → `a8f1a10` / `#58` resolution co-shipped at 7.4 sweep — 16 consecutive cross-phase sweep-resolutions** (meta-PR #44 → 6.1a → 6.1b → 6.1c → 6.2 → 6.3 → 6.4 → 6.5 → 6.6 → 6.7 → 6.8 → 6.9 → 7.1 → 7.2 → 7.3 → **7.4**); pattern fully cemented as cross-phase convention extending 15-pattern at 7.3 → 16-pattern at 7.4. Resolved across §9 row 7.3 squash-SHA cell + §9 row 7.12 squash-SHA cell (Block C item #1 co-ship) + Phase status line at top of `Docs/Phases/Phase_7_Plan.md` + Task 7.3 closure-narrative TBD references (4 spots in `Docs/Phase7_Task_7_3_Completion_Report.md`: §1 Commit + §1 Green CI run + §5 verification matrix Parity-gate+CodeRabbit+post-timeout-bump rows + §6 Rollback SHA) + CLAUDE.md HEAD pointer pivot.
 
+**🎯 v2.51.1 in-place scope expansion round 1 at PR-pre-merge-stabilization (2026-05-13 after run [25774373725](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25774373725) empirical failure):** scope expanded with 1-line `timeout: 60_000 → 90_000` bump in `qualia-shell/playwright.baseline.config.ts` per Cowork Option B.3 verdict. Vendors axe scan hit deterministic 60s timeout across 3 retries; CI variance drift since 7.3 close (where Vendors was observed at ~55s margin at run 25754846170) pushed Vendors past the 60s wall. Local-darwin re-run under 90s budget confirmed Vendors absorbed at 17.4s (5-6× the ~3s median for the other 7 axe scans; substantive signal that Vendors is the heavy axe target). Class taxonomy stays **CI-CONFIG-ONLY** (timeout field **3rd calibration data point**: 30s default → 60s v2.50.2 → 90s v2.51.1). Sister-shape to 7.3 v2.50.1+v2.50.2 in-place scope expansion pattern (2nd round of in-place scope-expansion within Phase-7; first time within a single task: 7.4 mirrors 7.3's escalation shape exactly). Empirical fallback path if 90s still fails: Cowork Option D verdict (per-test `setTimeout(120_000)` in `axe-baseline.spec.ts` Vendors block; would introduce E2E-PLAYWRIGHT class mixing as scope-expansion round 2).
+
 ---
 
 ## §2. Strict-gate command output paste
@@ -139,7 +141,10 @@ No PII or sensitive data touched. The auto-PR body references `${{ inputs.reason
 | Permissions block present | contents: write + pull-requests: write | ✓ | Step-2.5 structure verification |
 | `dry_run` input default | true | ✓ | Step-2.5 structure verification |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | Step-4 51 files scanned, 0 leaks |
-| Parity gate per PR | green (auto-fire via .github/workflows/** self-reference) | TBD | Auto-fire expected; manual-dispatch available as fallback |
+| Parity gate per PR (main commit `b97d410`) | manual-dispatch only — paths-filter quirk | ❌ FAIL | Run [25774373725](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25774373725) — Vendors axe scan 60s timeout × 3 retries; Cowork Option B.3 v2.51.1 timeout-bump in-place scope expansion round 1 |
+| Local axe-baseline 8/8 PASS post-90s-timeout-bump | empirical re-verification | ✓ 8/8 PASS in 40.4s (darwin) | Step-B3-3 darwin sanity run; Vendors absorbed at 17.4s (5-6× median) |
+| Chunk-axis preservation (v2.51.1 patch) | 4 chunks byte-for-byte vs HEAD-post-7.3 | ✓ 4-of-4 preserved | Step-B3-3 re-verification; 18th cross-phase data point post-LAW-retirement |
+| Parity gate post-v2.51.1 (NEW commit on top of `b97d410`) | green | TBD | Re-triggered parity gate after v2.51.1 push |
 | Structural validation pre-merge (a + b) | Parity Gate 16-of-16 + NEW workflow in `gh workflow list` | TBD | Runs pending |
 | Smoke-test dispatch post-merge (c + d) | `dry_run: true` dispatch succeeds; --list-only step PASS | TBD | Deferred to post-merge |
 | CodeRabbit review per PR | pass | TBD | Run pending post-PR-open |
@@ -148,6 +153,7 @@ No PII or sensitive data touched. The auto-PR body references `${{ inputs.reason
 | §9 row 7.3 squash-SHA cell | TBD → `a8f1a10` | ✓ | Plan v2.51 amendment + 4 reference spots in Phase7_Task_7_3_Completion_Report.md |
 | §9 row 7.12 squash-SHA cell (Block C item #1 co-ship) | TBD → `a8f1a10` | ✓ | Plan v2.51 amendment |
 | CI-CONFIG-ONLY class 4th calibration data point | docked | ✓ | Plan v2.51 amendment + CLAUDE.md Calibration classes block updated (4 field-type calibration) |
+| CI-CONFIG-ONLY timeout field 3rd calibration data point | docked (v2.51.1) | ✓ | 30s default → 60s v2.50.2 → 90s v2.51.1 |
 
 ---
 
@@ -173,6 +179,7 @@ Rollback safety: NEW workflow YAML file at `.github/workflows/capture-linux-base
 10. **PRE0 6-question gate cleared cleanly at 7.4 — no HARD HALT-IF triggered** (Q1 source-provenance + 1-of-8 stray-PNG nuance reported / Q2 NEW file / Q3 peter-evans@v6 auto-PR / Q4 inherit baseline config / Q5 dry-run toggle / Q6 post-merge smoke-test). Phase-7 PRE-FLIGHT discipline working as intended.
 11. **Workflow concurrency block added** — `concurrency.group: capture-linux-baselines-${{ github.ref }}` + `cancel-in-progress: false` ensures only one capture runs per ref + doesn't cancel in-progress captures. Necessary because real-capture mode produces auto-PRs; multiple parallel real-capture runs could create conflicting PRs.
 12. **`fetch-depth: 0` on checkout** — ensures full git history for the auto-PR branch creation by peter-evans/create-pull-request@v6 (shallow clone causes its branch detection logic to fail).
+13. **Vendors axe scan root-cause investigation deferred to Phase-7 Block C or future Phase-N task.** Empirical signal: Vendors axe scan is 5-6× slower than the other 7 axe scans on darwin (17.4s vs ~3s median; signal sustained even on the faster runtime). Suspected drivers: (a) tenant-row template volume (334 rows on Brianna page from Phase-6 6.3 epoch — though Vendors is a different page so not directly applicable; need to inspect render-tree); (b) Section component accordion complexity; (c) inline-image rendering; (d) axe rule traversal time for table semantics. If v2.51.1's 90s budget proves sufficient empirically (90s = 5.2× Vendors's darwin time = ~33% headroom over the ~60s+ Linux wall observed at run 25774373725), no further action needed at Phase-7. Block A scope is the CI-architecture frame, not perf-of-page profiling.
 
 ---
 

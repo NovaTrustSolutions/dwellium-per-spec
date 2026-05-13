@@ -1,8 +1,8 @@
 # Phase 7 — Task 7.5 — Linux Playwright baseline capture (inaugural) — Completion Report
 
 **Date:** 2026-05-13
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #60, Task 7.5 — Phase-7 Block A item #5; resolution at next-sweep per established 16-consecutive-cross-phase-sweep-resolutions convention extending 16-pattern at 7.4 → 17-pattern at 7.5)
-**Green CI run:** TBD (capture run [25779329286](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25779329286) — capture step ✓ SUCCESS 8/8 surfaces in 3.2m wallclock; PR-open step ❌ FAILURE at API boundary; Cowork Option A salvage path manually opened PR #60 via user token around the workflow-pushed branch `phase-7/linux-baseline-capture-25779329286` @ `ba5f639`; parity gate on auto-branch TBD)
+**Commit (HEAD on `main`):** `16c2ac2` (squash commit for PR #60, Task 7.5 — Phase-7 Block A item #5; resolved at 7.6 sweep per 18-consecutive-cross-phase-sweep-resolutions convention extending 17-pattern at 7.5 → 18-pattern at 7.6)
+**Green CI run:** Capture run [25779329286](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25779329286) — capture step ✓ SUCCESS 8/8 surfaces in 3.2m wallclock + check-pngs ✓ + Cowork Option A manual PR-open salvage path (workflow PR-open step ❌ at API boundary; user-token `gh pr create` opened PR #60 around the workflow-pushed branch `phase-7/linux-baseline-capture-25779329286` @ `ba5f639`); Parity Gate run [25780671522](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25780671522) on auto-branch ✓ 16-of-16 SUCCESS (axe-baseline 16 passed in 2.5m + screenshot-baseline ✓ 8 passed in 3.1m first-time green on Linux CI under previous sheltered `continue-on-error: true` shield; empirical signal primes 7.6 gate-flip) + PII Scan runs 25780389754 + 25780666104 both ✓ SUCCESS
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-7 sub-tracker row 7.5 (closed at v2.52 amendment) + `Docs/Phases/Phase_7_Plan.md §4 Block A item 7.5` + `Docs/Phase6_Closure_Report.md §8` Block A item #5 (Linux baseline capture for 8 surfaces as CAPTURE side of the screenshot-baseline blocking-gate arc; 7.4 = INFRASTRUCTURE side; 7.6 = GATE-FLIP side)
 **Template mirror:** `Docs/Phase7_Task_7_4_Completion_Report.md` (Phase-7 7.4 CI-CONFIG-ONLY 8-section template; 7.5 mirrors byte-shape with BASELINE-ARTIFACT class adaptations + Cowork Option A recovery narrative replacing standard branch-then-PR-create workflow shape)
 **v1-lineage substitute.** Phase-7 has no v1 plan source (post-v1 carry-forward arc). Authoritative scope source is `Docs/Phase6_Closure_Report.md §8` Block A item #5 + Phase-0 deferred-item (`Docs/Baselines/phase_0_0_exit_gate_report.md` "Deferred Item" section on Linux baselines — 7.5 is the inaugural Linux capture that closes that Phase-0 deferred-item end-to-end).
@@ -120,11 +120,11 @@ Captured PNG file sizes are uniform tight band (315-341 KB across 8 surfaces); n
 | Linux vs darwin PNG size signal | substantive empirical finding | ✓ Linux mean 332,677 B = 53.7% of darwin mean 620,031 B (uniform across 8 surfaces) | Step-4 size comparison |
 | Chunk-axis preservation (BASELINE-ARTIFACT hypothesis) | 4 chunks byte-for-byte vs HEAD-post-7.4 canonical | ✓ 4-of-4 preserved | Step-5 re-verification |
 | Doc sweep file count | 5 files (1 NEW completion report + 4 updates) | ✓ | Step-7 staging |
-| Doc sweep commit | NEW commit on top of ba5f639 (NO amend) | TBD | Step-7 commit |
-| Parity gate per auto-branch | manual-dispatch (paths-filter quirk; PNG + Docs/** + CLAUDE.md outside qualia-shell/src/**) | TBD | Step-8 dispatch |
-| Parity gate run conclusion | success | TBD | Step-8 watch |
-| PII Scan on auto-branch | auto-fired on PR push + sync | TBD | Step-8 |
-| CodeRabbit review | pass | TBD | Step-8 |
+| Doc sweep commit | NEW commit on top of ba5f639 (NO amend) | ✓ `db014c6` | Step-7 commit |
+| Parity gate per auto-branch | manual-dispatch (paths-filter quirk; PNG + Docs/** + CLAUDE.md outside qualia-shell/src/**) | ✓ Run 25780671522 | Step-8 dispatch |
+| Parity gate run conclusion | success | ✓ 16-of-16 SUCCESS | axe-baseline 16 passed in 2.5m + screenshot-baseline 8 passed in 3.1m first-time green |
+| PII Scan on auto-branch | auto-fired on PR push + sync | ✓ Runs 25780389754 + 25780666104 SUCCESS | Step-8 |
+| CodeRabbit review | pass | ✓ implicit pass at merge | No blocking comments |
 | `Docs/Phase7_Task_7_5_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-7 sub-tracker row 7.5 | R → ✓ | ✓ | Plan v2.52 amendment |
 | §9 Phase-7 sub-tracker row 7.7 | R → ✓ (Block A item #7 opportunistic closure) | ✓ | Plan v2.52 amendment |
@@ -135,7 +135,7 @@ Captured PNG file sizes are uniform tight band (315-341 KB across 8 surfaces); n
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert <7.5-squash-SHA>` (Phase-7 7.5 close; reverts to 7.4 state at `cd26ce4`). Phase-7 7.5 squash SHA `TBD` (will be revertable independently once merged; resolution at 7.6 sweep).
+Rollback target: `git revert 16c2ac2` (Phase-7 7.5 close; reverts to 7.4 state at `cd26ce4`). Phase-7 7.5 squash SHA `16c2ac2` resolved at 7.6 sweep (revertable independently).
 
 Rollback safety: 8 NEW PNG files + 5 doc-file updates — pure additive scope; no production source / no test specs / no CI config touched. Reversible without DB or fixture state implications; rollback would remove the 8 Linux baselines (reverting to the Phase-0 era 1-stray-PNG state) and re-open Block A item #7. Future captures would need a re-dispatch of the workflow (mechanism itself is unchanged by rollback).
 

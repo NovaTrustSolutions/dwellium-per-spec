@@ -1,8 +1,8 @@
 # Phase 7 — Task 7.6 — screenshot-baseline workflow gate-flip — Completion Report
 
 **Date:** 2026-05-13
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.6 — Phase-7 Block A item #6; resolution at next-sweep per established 17-consecutive-cross-phase-sweep-resolutions convention extending 17-pattern at 7.5 → 18-pattern at 7.6)
-**Green CI run:** TBD (parity gate auto-fires on PR push via `.github/workflows/**` self-reference in parity-gate paths-filter at L19+L29; both axe-baseline AND screenshot-baseline steps now genuinely-blocking)
+**Commit (HEAD on `main`):** `7b771ec29c90178aca0dc6639f08d634af191763` (squash commit for PR #61, Task 7.6 — Phase-7 Block A item #6; resolved at 7.8 sweep per 19-consecutive-cross-phase-sweep-resolutions convention extending 18-pattern at 7.6 → 19-pattern at 7.8)
+**Green CI run:** Parity Gate run [25787465352](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25787465352) ✓ SUCCESS 16-of-16 (axe-baseline 8 passed in 4.0m + screenshot-baseline 16 passed in 4.0m FIRST-TIME-BLOCKING on Linux CI; 13m wallclock 08:25→08:38Z 2026-05-13); PII Scan run [25787465382](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25787465382) ✓ SUCCESS; CodeRabbit ✓ CLEAN PASS at 08:26:25Z; post-merge parity gate run 25789452205 ✓ SUCCESS on main push at 09:06:21Z (both blocking-gate arcs end-to-end COMPLETE on Linux CI from main).
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-7 sub-tracker row 7.6 (closed at v2.53 amendment) + `Docs/Phases/Phase_7_Plan.md §4 Block A item 7.6` + `Docs/Phase6_Closure_Report.md §8` Block A item #6 (screenshot-baseline workflow gate-flip as the GATE-FLIP side of the screenshot-baseline blocking-gate arc; 7.5 = CAPTURE side; 7.4 = INFRASTRUCTURE side; 7.3 = WORKFLOW step-split side)
 **Template mirror:** `Docs/Phase7_Task_7_3_Completion_Report.md` (Phase-7 7.3 CI-CONFIG-ONLY 8-section template; 7.6 is the sister-shape gate-flip task — axe-baseline @ 7.3 / screenshot-baseline @ 7.6)
 **v1-lineage substitute.** Phase-7 has no v1 plan source (post-v1 carry-forward arc). Authoritative scope source is `Docs/Phase6_Closure_Report.md §8` Block A item #6.
@@ -87,7 +87,7 @@ $ node Scripts/verify_no_pii_leak.mjs         # PII scan clean — 51 files scan
 
 Per Cowork PRE0 Q5 SKIP-deliberate-violation-probe verdict (sister to 7.3 Q5 SKIP):
 
-**Criterion (a) — Parity Gate run 16-of-16 SUCCESS.** TBD at PR-open post-push; expected to pass per pre-merge structural-validation pattern.
+**Criterion (a) — Parity Gate run 16-of-16 SUCCESS.** ✓ confirmed at run [25787465352](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25787465352) — axe-baseline 8 passed in 4.0m + screenshot-baseline 16 passed in 4.0m (first parity-gate run with screenshot-baseline genuinely BLOCKING under `continue-on-error: false` from 7.6); 13m wallclock 08:25→08:38Z 2026-05-13. Post-merge parity gate run 25789452205 ✓ SUCCESS on main push.
 
 **Criterion (b) — axe-baseline step still PASSES under v2.51.1 90s timeout.** Preserved 7.3 + 7.4 state empirically validated at run 25780671522 (16 passed in 2.5m on Linux CI). 7.6 edit does NOT touch the axe-baseline step.
 
@@ -121,11 +121,11 @@ The step name update + comment block amendment is documentation-only (no runtime
 | screenshot-baseline step continue-on-error | False (FLIPPED from True at 7.6) | ✓ | Step-2.5 |
 | screenshot-baseline step name update | "visual regression; gate-flipped at Task 7.6" | ✓ | Step-2.5 |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ 51 files / 0 leaks | Step-4 |
-| Parity gate per PR | 16-of-16 SUCCESS (auto-fire via .github/workflows/** self-reference) | TBD | Step-7 |
-| Structural validation criterion (a) | parity gate 16-of-16 | TBD | Step-7 |
-| Structural validation criterion (b) | axe-baseline step PASS preserved | TBD | Step-7 |
-| Structural validation criterion (c) | screenshot-baseline step now BLOCKING + PASSES | TBD | Step-7 |
-| CodeRabbit review per PR | pass | TBD | Run pending post-PR-open |
+| Parity gate per PR | 16-of-16 SUCCESS (auto-fire via .github/workflows/** self-reference) | ✓ run 25787465352 | Step-7 |
+| Structural validation criterion (a) | parity gate 16-of-16 | ✓ confirmed run 25787465352 | Step-7 |
+| Structural validation criterion (b) | axe-baseline step PASS preserved | ✓ (8 passed in 4.0m under v2.51.1 90s timeout) | Step-7 |
+| Structural validation criterion (c) | screenshot-baseline step now BLOCKING + PASSES | ✓ (16 passed in 4.0m FIRST-TIME-BLOCKING) | Step-7 |
+| CodeRabbit review per PR | pass | ✓ CLEAN PASS at 08:26:25Z | Run pending post-PR-open |
 | `Docs/Phase7_Task_7_6_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-7 sub-tracker row 7.6 | R → ✓ | ✓ | Plan v2.53 amendment |
 | §9 row 7.5 squash-SHA cell | TBD → `16c2ac2` | ✓ | Plan v2.53 amendment + sweep across reference spots |
@@ -136,7 +136,7 @@ The step name update + comment block amendment is documentation-only (no runtime
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert <7.6-squash-SHA>` (Phase-7 7.6 close; reverts to 7.5 state at `16c2ac2`). Phase-7 7.6 squash SHA `TBD` (will be revertable independently once merged; resolution at next-task sweep).
+Rollback target: `git revert 7b771ec29c90178aca0dc6639f08d634af191763` (Phase-7 7.6 close; reverts to 7.5 state at `16c2ac2`). Phase-7 7.6 squash SHA `7b771ec` (independently revertable; resolved at 7.8 sweep per established convention).
 
 Rollback safety: 1-line workflow YAML edit + step name update + comment block amendment + 5 doc-file updates — pure CI-CONFIG-ONLY scope; no production source / no test specs / no application code touched. Reversible without DB or fixture state implications. Rollback restores the screenshot-baseline workflow shield (`continue-on-error: true`); future PRs would then have screenshot-baseline failures masked again as non-blocking. The 8 Linux baselines from 7.5 stay on main regardless of 7.6 rollback (independent commit lineage).
 

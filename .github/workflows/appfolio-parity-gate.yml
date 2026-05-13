@@ -75,14 +75,25 @@ jobs:
       # Phase 0.0 Task 0.0.9 captured screenshot baselines on macOS (darwin) only; CI runs
       # on Linux where Chromium renders differ sub-pixel, so screenshot-diff stays
       # non-blocking until Linux-platform baselines are captured.
+      #
+      # Phase-7 Task 7.6 (2026-05-13): screenshot-baseline workflow shield removed
+      # (continue-on-error: true → false) after Task 7.5 inaugural Linux baseline capture
+      # landed 8 *-chromium-linux.png artifacts on main at squash SHA 16c2ac2 (PR #60 via
+      # capture run 25779329286). Empirical signal: parity gate run 25780671522 on the 7.5
+      # auto-branch showed the screenshot-baseline step 8 passed in 3.1m on Linux CI under
+      # the current configuration (first-time green; captured baselines pixel-correct vs
+      # Linux render output). Completes the 5-step screenshot-baseline blocking-gate arc
+      # end-to-end (SPEC toHaveScreenshot hard-assert by construction + WORKFLOW step-split
+      # @ 7.3 + INFRASTRUCTURE @ 7.4 + CAPTURE @ 7.5 + GATE-FLIP @ 7.6). Both blocking-gate
+      # arcs (axe-baseline + screenshot-baseline) now genuinely blocking on Linux CI.
       - name: Playwright axe-baseline E2E (a11y assertion-blocking)
         working-directory: qualia-shell
         continue-on-error: false
         run: npx playwright test --config playwright.baseline.config.ts --project=chromium e2e/axe-baseline.spec.ts
 
-      - name: Playwright screenshot-baseline E2E (visual regression; sheltered pending Linux baselines)
+      - name: Playwright screenshot-baseline E2E (visual regression; gate-flipped at Task 7.6)
         working-directory: qualia-shell
-        continue-on-error: true
+        continue-on-error: false   # FLIPPED from true at Task 7.6; sheltered until 7.5 Linux baselines landed at 16c2ac2; 7.6 removes the shield
         run: npx playwright test --config playwright.baseline.config.ts --project=chromium --grep-invert "axe accessibility baseline"
 
       - name: Vite build (seeds=true)

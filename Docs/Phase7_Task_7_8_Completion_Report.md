@@ -3,8 +3,8 @@
 ## §1. Summary
 
 **Status.** ✓ CLOSED 2026-05-13.
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.8 — Phase-7 Block A item #8; resolution at next-task sweep per established 18-consecutive-cross-phase-sweep-resolutions convention extending 18-pattern at 7.6 → 19-pattern at 7.8).
-**Green CI run:** TBD (manual-dispatch parity gate at PR open; expected 16-of-16 SUCCESS).
+**Commit (HEAD on `main`):** `f0b01275bc87851cf39d327c4dee4032d558ff0c` (squash commit for PR #62, Task 7.8 — Phase-7 Block A item #8; resolved at 7.9 sweep per 20-consecutive-cross-phase-sweep-resolutions convention extending 19-pattern at 7.8 → 20-pattern at 7.9).
+**Green CI run:** Parity Gate run [25798266867](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25798266867) ✓ SUCCESS 16-of-16 (axe-baseline 8 passed in 4.2m + screenshot-baseline 16 passed in 4.2m; 16m 37s wallclock 12:11:21→12:27:58Z; 5th consecutive empirical compliance-row PASS); PII Scan run [25798262087](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25798262087) ✓ SUCCESS; CodeRabbit ✓ CLEAN PASS at 12:12:43Z.
 
 **Phase-7 Block A item #8 CLOSED via empirical NO-OP per Cowork Option E verdict.** PRE0 6-question empirical gate revealed that the v2.51.1 timeout-bump (60_000 → 90_000 ms on `qualia-shell/playwright.baseline.config.ts:69` at Task 7.4) **absorbed the `compliance-row-workersCompExpiration` render-timing flake as a side-effect** of the Vendors axe-scan absorption. 4 consecutive 7.x parity-gate runs (25775177388 + 25780671522 + 25787465352 + 25789452205) PASS the compliance-row test under the 90s budget, **including the 7.6 FIRST-TIME-BLOCKING parity-gate run 25787465352** where the screenshot-baseline step ran 16 tests (8 screenshot + 8 feature specs including `appfolio-parity-vendor-compliance`) under `continue-on-error: false` and the compliance-row test was inside that 16/16 PASS step.
 
@@ -134,10 +134,10 @@ These are 3 distinct meta-tasks closed via 3 distinct upstream side-effects acro
 | Step-4 vite build (SEEDS=true) | ✓ built | ✓ built in 4.04s | ✓ |
 | Step-4 vite build (SEEDS=false) | ✓ built | ✓ built in 3.94s | ✓ |
 | Step-4 PII guard | 0 leaks | 51 files scanned across 2 roots, 0 leaks (1403ms) | ✓ |
-| Step-7 Parity Gate per PR | 16-of-16 SUCCESS via manual-dispatch | TBD | Run pending post-PR-open |
-| Compliance-row test 5th consecutive empirical PASS | PASS in screenshot-baseline step | TBD | Run pending post-PR-open |
-| Step-7 PII Scan per push | success | TBD | Run pending post-PR-open |
-| Step-7 CodeRabbit review per PR | pass | TBD | Run pending post-PR-open |
+| Step-7 Parity Gate per PR | 16-of-16 SUCCESS via manual-dispatch | ✓ run 25798266867 (16m 37s; axe 8 + screenshot 16) | Step-7 |
+| Compliance-row test 5th consecutive empirical PASS | PASS in screenshot-baseline step | ✓ confirmed in 16/16 step pass | Step-7 |
+| Step-7 PII Scan per push | success | ✓ run 25798262087 | Step-7 |
+| Step-7 CodeRabbit review per PR | pass | ✓ CLEAN PASS at 12:12:43Z | Step-7 |
 | §9 row 7.6 squash-SHA cell | TBD → `7b771ec` | ✓ | Plan v2.54 amendment + sweep across reference spots |
 | §9 row 7.4 squash-SHA cell (opportunistic catch-up of v2.52 doc-sweep gap) | TBD → `cd26ce4` | ✓ | Plan v2.54 amendment |
 | §9 row 7.8 R → ✓ | ✓ | ✓ | Plan v2.54 amendment |
@@ -146,7 +146,7 @@ These are 3 distinct meta-tasks closed via 3 distinct upstream side-effects acro
 
 ## §6. Rollback
 
-Rollback target: `git revert <7.8-squash-SHA>` (Phase-7 7.8 close; reverts to 7.6 state at `7b771ec`). Trivial DOC-only revert; no source state to roll back. Phase-7 7.8 squash SHA `TBD` (will be revertable independently once merged; resolution at next-task sweep per established absorb-into-next-sweep convention).
+Rollback target: `git revert f0b01275bc87851cf39d327c4dee4032d558ff0c` (Phase-7 7.8 close; reverts to 7.6 state at `7b771ec`). Trivial DOC-only revert; no source state to roll back. Phase-7 7.8 squash SHA `f0b0127` (independently revertable; resolved at 7.9 sweep per established convention).
 
 If a future Phase-7 PR surfaces a `compliance-row-workersCompExpiration` regression, the spec-edit fallback (Fix Candidate B from 7.8 PRE0 Q5: per-locator `waitForSelector` with longer timeout) remains available as a future opportunistic edit; no scope conflict with the 7.8 DOC-only closure.
 

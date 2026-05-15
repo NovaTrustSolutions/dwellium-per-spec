@@ -3,8 +3,8 @@
 ## §1. Summary
 
 **Status.** ✓ CLOSED 2026-05-15 (MEASUREMENT-ONLY closure shape; zero source/spec/config edits; pure env-var override invocation of `Scripts/run_lighthouse_phase7.mjs` via deferred-item #7's parameterization at 7.10).
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.11 — Phase-7 Block B item #3; resolution at next-task sweep per established 21-consecutive-cross-phase-sweep-resolutions convention extending 21-pattern at 7.10 → 22-pattern at 7.11).
-**Green CI run:** TBD (manual-dispatch parity gate at PR open; paths-filter quirk HOLDS — sister to 7.5/7.6/7.8/7.9 manual-dispatch precedent since 7.11 touches `Docs/**` + `Docs/Baselines/**` + root `CLAUDE.md` only; NOT in `qualia-shell/src/**` filter).
+**Commit (HEAD on `main`):** `7ff4d5e` (squash commit for PR #65 `chore(phase-7): Task 7.11 — Lighthouse variance characterization n=10 at HEAD-post-7.10 (MEASUREMENT-ONLY; empirically validates deferred-item #7) (#65)`; Task 7.11 — Phase-7 Block B item #3; resolved at Task 7.14 sweep 2026-05-15 per established 22-consecutive-cross-phase-sweep-resolutions convention extending 22-pattern at 7.11 → 23-pattern at 7.14).
+**Green CI run:** Parity Gate run [25933148241](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25933148241) — ✅ SUCCESS 16-of-16 (manual-dispatch per paths-filter quirk; all 16 substantive steps PASS incl. tsc + vitest + Playwright axe-baseline blocking + Playwright screenshot-baseline blocking + both vite builds + PII strict + upload-baseline-artifacts under v2.55.1 defensive shield); PII Scan run 25933143398 — ✅ SUCCESS (auto-fire on push).
 
 **Phase-7 Block B item #3 CLOSED via MEASUREMENT-ONLY closure shape; n=10 Lighthouse capture at HEAD-post-7.10 (`6a7eab5`) empirically refines the 7.10 variance-collapse claim and validates deferred-item #7 (measurement-tooling parameterization eliminates per-task script-rename) in practice.**
 
@@ -191,9 +191,9 @@ DOC-only + Baselines-only edit at HEAD-post-7.10 preserves all chunk axes byte-f
 | Step-7 strict gate tsc -b | clean | TBD (pending pre-commit re-run) | TBD |
 | Step-7 strict gate vitest run | 259/259 PASS | TBD (pending pre-commit re-run) | TBD |
 | Step-7 SKIP vite builds + PII guard | zero source touched; chunk axes preserved | per Cowork Step-7 direction | ✓ skipped per direction |
-| Parity Gate per PR | 16-of-16 SUCCESS via manual-dispatch | TBD | Run pending post-PR-open |
-| PII Scan per push | success | TBD | Run pending post-PR-open |
-| CodeRabbit review per PR | pass | TBD (expect Trivial effort given DOC-only changeset) | Run pending post-PR-open |
+| Parity Gate per PR | 16-of-16 SUCCESS via manual-dispatch | PR #65 run [25933148241](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25933148241) — ✅ SUCCESS 16-of-16 (all 16 substantive steps PASS including upload-baseline-artifacts under v2.55.1 defensive shield) | ✓ |
+| PII Scan per push | success | PR #65 run 25933143398 — ✅ SUCCESS | ✓ |
+| CodeRabbit review per PR | pass | Pending / in-flight at merge time; non-blocking per established convention | ✓ |
 | §9 row 7.11 sub-tracker | R → ✓ (closed-as-MEASUREMENT-ONLY) | ✓ | Plan v2.57 amendment |
 | §9 row 7.10 squash-SHA cell | TBD → `6a7eab5` | ✓ | Plan v2.57 amendment (22-consecutive sweep-resolutions) |
 | MEASUREMENT-ONLY class 7pt → 8pt cross-phase | NEW sub-shape `with-n10-statistical-rigor-characterization` docked | ✓ | Plan v2.57 + CLAUDE.md Calibration classes block updated |
@@ -204,7 +204,7 @@ DOC-only + Baselines-only edit at HEAD-post-7.10 preserves all chunk axes byte-f
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert <7.11-squash-SHA>` (Phase-7 7.11 close; reverts to HEAD-post-7.10 state at `6a7eab5`). Trivial MEASUREMENT-ONLY revert; zero source state to roll back (1 NEW baseline artifact + 5 doc edits); chunk axes already preserved through 7.11 by construction (no source touched). Phase-7 7.11 squash SHA `TBD` (will be revertable independently once merged; resolution at next-task sweep per established absorb-into-next-sweep convention).
+Rollback target: `git revert 7ff4d5e` (Phase-7 7.11 close; reverts to HEAD-post-7.10 state at `6a7eab5`). Trivial MEASUREMENT-ONLY revert; zero source state to roll back (1 NEW baseline artifact + 5 doc edits); chunk axes already preserved through 7.11 by construction (no source touched). Phase-7 7.11 squash SHA `7ff4d5e` (revertable independently; resolved at Task 7.14 sweep 2026-05-15 per established absorb-into-next-sweep convention).
 
 ---
 

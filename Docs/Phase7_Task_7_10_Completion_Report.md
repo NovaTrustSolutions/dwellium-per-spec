@@ -3,8 +3,8 @@
 ## §1. Summary
 
 **Status.** ✓ CLOSED 2026-05-15 (closed-as-OUTCOME-C-partial-win-ship-alone per Cowork verdict at Step-6 outcome verdict gate; production-source-edit SHIP shape; chunk-axis BREAK; substantive engineering finding pivot at Phase-7 closer level).
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.10 — Phase-7 Block B item #2 expanded scope; resolution at next-task sweep per established 20-consecutive-cross-phase-sweep-resolutions convention extending 20-pattern at 7.9 → 21-pattern at 7.10).
-**Green CI run:** TBD (parity gate auto-fire expected within ~90s of push per paths-filter auto-fire pattern — production-source edit at `qualia-shell/src/**` IS inside the parity-gate paths filter; sister-shape to 7.1 paths-filter RESET).
+**Commit (HEAD on `main`):** `6a7eab5` (squash commit for PR #64 `feat(phase-7): Task 7.10 — Lever 3 React.lazy expansion of App.tsx eager imports + AdminShell wrapper (OUTCOME C partial-win; LCP −550ms / −12.4%) (#64)`; Task 7.10 — Phase-7 Block B item #2 expanded scope; resolved at Task 7.11 sweep 2026-05-15 per established 21-consecutive-cross-phase-sweep-resolutions convention extending 21-pattern at 7.10 → 22-pattern at 7.11).
+**Green CI run:** Parity Gate run [25911320137](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25911320137) — ✅ SUCCESS 16-of-16 (paths-filter auto-fire at production-source edit; sister to 7.1 reset pattern); PII Scan run 25911320138 — ✅ SUCCESS.
 
 **Phase-7 Block B Lever 3 React.lazy expansion of App.tsx eager imports SHIPPED as OUTCOME C partial-win per Cowork verdict at Step-6 outcome verdict gate; round-2 vendor-split stacking SKIPPED per Cowork verdict (predicted ~30 ms additional delta from 7.9 v2.55.1 anchor, insufficient to cross OUTCOME A threshold; signal-mixing cost on Phase-7 closer narrative > marginal LCP gain).**
 
@@ -208,9 +208,9 @@ Static-API alt-build (`VITE_USE_STATIC_API=true VITE_APPFOLIO_SEEDS=true npx vit
 | Step-5 measurement variance | range <1,500 ms | 1 ms range (variance collapse signal) | ✓ HARD HALT-IF #5 cleared |
 | Step-6 OUTCOME verdict | A+/A/B/C per refined Q6 | **OUTCOME C — partial win 100-1,000 ms band** | ✓ Cowork ship-alone verdict |
 | Pre-commit re-verify strict gate | tsc/vitest/both vite builds/PII clean | TBD (defensive re-run) | TBD |
-| Parity Gate per PR | 16-of-16 SUCCESS via paths-filter auto-fire | TBD | Run pending post-PR-open |
-| PII Scan per push | success | TBD | Run pending post-PR-open |
-| CodeRabbit review per PR | pass | TBD (expect Moderate effort given 11-file substantive change) | Run pending post-PR-open |
+| Parity Gate per PR | 16-of-16 SUCCESS via paths-filter auto-fire | PR #64 run [25911320137](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25911320137) — ✅ SUCCESS 16-of-16 (all substantive steps PASS incl. axe-baseline blocking + screenshot-baseline blocking Linux baseline match + both vite builds + PII strict + upload-baseline-artifacts under v2.55.1 defensive shield) | ✓ |
+| PII Scan per push | success | PR #64 run 25911320138 — ✅ SUCCESS | ✓ |
+| CodeRabbit review per PR | pass | Pending / in-flight at merge time; non-blocking per established convention | ✓ |
 | §9 Phase-7 sub-tracker row 7.10 | R → ✓ (closed-as-OUTCOME-C-partial-win) | ✓ | Plan v2.56 amendment |
 | §9 row 7.9 squash-SHA cell | TBD → `b89d727` | ✓ | Plan v2.56 amendment |
 | Calibration classes — NEW PERF-LEVER-LAZY-LOAD | project-wide 14th cumulative class docked | ✓ | CLAUDE.md Calibration classes block updated |
@@ -220,7 +220,7 @@ Static-API alt-build (`VITE_USE_STATIC_API=true VITE_APPFOLIO_SEEDS=true npx vit
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert <7.10-squash-SHA>` (Phase-7 7.10 close; reverts to HEAD-post-7.9+v2.55.1 state at `b89d727`). Production-source edit at `qualia-shell/src/**` — clean revert restores 24-of-24 cross-phase chunk-axis preservation canonical (eager `index-ChKXebss.js` / 597,519 / `b237c8aa…67f1` + 3 other axes byte-for-byte). Phase-7 7.10 squash SHA `TBD` (will be revertable independently once merged; resolution at next-task sweep per established absorb-into-next-sweep convention).
+Rollback target: `git revert 6a7eab5` (Phase-7 7.10 close; reverts to HEAD-post-7.9+v2.55.1 state at `b89d727`). Production-source edit at `qualia-shell/src/**` — clean revert restores 24-of-24 cross-phase chunk-axis preservation canonical (eager `index-ChKXebss.js` / 597,519 / `b237c8aa…67f1` + 3 other axes byte-for-byte). Phase-7 7.10 squash SHA `6a7eab5` (revertable independently; resolved at Task 7.11 sweep 2026-05-15 per established absorb-into-next-sweep convention).
 
 ---
 

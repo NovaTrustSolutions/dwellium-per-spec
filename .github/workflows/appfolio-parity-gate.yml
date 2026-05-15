@@ -111,8 +111,24 @@ jobs:
       - name: PII leak scan (strict)
         run: node Scripts/verify_no_pii_leak.mjs
 
+      # Phase-7 Task 7.9 v2.55.1 (2026-05-14): continue-on-error added to make
+      # GitHub Actions artifact storage quota exhaustion non-blocking at job level.
+      # Empirical signal: PR #63 parity gate run 25829682491 (2026-05-13) reported
+      # job conclusion=failure due to ONLY this step's quota error
+      # ("Failed to CreateArtifact: Artifact storage quota has been hit") despite
+      # all 12 substantive steps PASSING (axe-baseline 8/8 + screenshot-baseline
+      # 16/16 + tsc + vitest 259 + 2 vite builds + PII guard). This step is debug
+      # attachment (Playwright report + test results + vitest junit XML) under
+      # if: always() — NOT a gate-blocking verification step. Sister-shape to 7.4
+      # v2.51.1 + 7.3 v2.50.1/v2.50.2 in-place CI-flake-tolerance-policy patches;
+      # CI-CONFIG-ONLY class workflow-step continue-on-error sub-domain 3rd data
+      # point (after 7.3 axe-baseline false + 7.6 screenshot-baseline false; this
+      # is true direction making upload non-blocking). Long-term hygiene
+      # carry-forward (Plan v2.56+): consider lowering retention-days (14 → 7 or
+      # less) to reduce future quota pressure.
       - name: Upload baseline artifacts
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v5
         with:
           name: parity-gate-${{ github.run_id }}

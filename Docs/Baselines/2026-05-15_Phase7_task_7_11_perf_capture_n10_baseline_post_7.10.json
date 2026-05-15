@@ -1,0 +1,387 @@
+{
+  "capturedAt": "2026-05-15T17:47:04.894Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "phase7_task_7_11",
+  "captureSuffix": "_n10_baseline_post_7.10",
+  "rootRunCount": 10,
+  "target": "http://localhost:4173/",
+  "methodology": "Lighthouse navigation run on root (n=LH_ROOT_RUNS) + Playwright-driven SPA navigation + PerformanceObserver Web Vitals + @axe-core/playwright a11y audit per page",
+  "v1Thresholds": {
+    "LCP_ms": 500,
+    "CLS": 0.1,
+    "a11yScore": 95,
+    "source": "AppFolio_Parity_Implementation_Plan.md L228"
+  },
+  "root": {
+    "scores": {
+      "performance": 0.87,
+      "accessibility": 0.9,
+      "bestPractices": 1,
+      "seo": 0.83
+    },
+    "metrics": {
+      "FCP": 1652.44885,
+      "LCP": 3902.6671000000006,
+      "TBT": 0,
+      "CLS": 0,
+      "SI": 1652.44885,
+      "TTI": 3902.667100000001
+    }
+  },
+  "rootRuns": [
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.70075,
+        "LCP": 3902.9145,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1652.70075,
+        "TTI": 3902.9145000000003
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.4072999999999,
+        "LCP": 3902.6007999999997,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1652.4072999999999,
+        "TTI": 3902.6008
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1651.98955,
+        "LCP": 3902.2393,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1651.98955,
+        "TTI": 3902.2393
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1651.6862999999998,
+        "LCP": 3901.8797999999997,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1651.6862999999998,
+        "TTI": 3901.8798
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.6514499999998,
+        "LCP": 3902.8516999999997,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1652.6514499999998,
+        "TTI": 3902.8517
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.1972,
+        "LCP": 3902.3862,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1652.1972,
+        "TTI": 3902.3862
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1651.4091,
+        "LCP": 3901.5936,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1651.4091,
+        "TTI": 3901.5936
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.5249,
+        "LCP": 3902.7454,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1652.5249,
+        "TTI": 3902.7454
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.85,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1651.74555,
+        "LCP": 4201.9776,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1651.74555,
+        "TTI": 4216.978965
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.44885,
+        "LCP": 3902.6671000000006,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1652.44885,
+        "TTI": 3902.667100000001
+      }
+    }
+  ],
+  "rootStats": {
+    "metrics": {
+      "FCP": {
+        "n": 10,
+        "mean": 1652.1760950000003,
+        "median": 1652.30225,
+        "min": 1651.4091,
+        "max": 1652.70075,
+        "range": 1.2916499999998905,
+        "stddev": 0.4242092811631557
+      },
+      "LCP": {
+        "n": 10,
+        "mean": 3932.3856,
+        "median": 3902.6339500000004,
+        "min": 3901.5936,
+        "max": 4201.9776,
+        "range": 300.384,
+        "stddev": 89.86491137225926
+      },
+      "TBT": {
+        "n": 10,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "range": 0,
+        "stddev": 0
+      },
+      "CLS": {
+        "n": 10,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "range": 0,
+        "stddev": 0
+      },
+      "SI": {
+        "n": 10,
+        "mean": 1652.1760950000003,
+        "median": 1652.30225,
+        "min": 1651.4091,
+        "max": 1652.70075,
+        "range": 1.2916499999998905,
+        "stddev": 0.4242092811631557
+      },
+      "TTI": {
+        "n": 10,
+        "mean": 3933.8857365000003,
+        "median": 3902.6339500000004,
+        "min": 3901.5936,
+        "max": 4216.978965,
+        "range": 315.3853650000001,
+        "stddev": 94.36527740767625
+      }
+    },
+    "scores": {
+      "performance": {
+        "n": 10,
+        "mean": 0.868,
+        "median": 0.87,
+        "min": 0.85,
+        "max": 0.87,
+        "range": 0.020000000000000018,
+        "stddev": 0.0060000000000000045
+      },
+      "accessibility": {
+        "n": 10,
+        "mean": 0.9000000000000001,
+        "median": 0.9,
+        "min": 0.9,
+        "max": 0.9,
+        "range": 0,
+        "stddev": 1.1102230246251565e-16
+      },
+      "bestPractices": {
+        "n": 10,
+        "mean": 1,
+        "median": 1,
+        "min": 1,
+        "max": 1,
+        "range": 0,
+        "stddev": 0
+      },
+      "seo": {
+        "n": 10,
+        "mean": 0.8299999999999998,
+        "median": 0.83,
+        "min": 0.83,
+        "max": 0.83,
+        "range": 0,
+        "stddev": 1.1102230246251565e-16
+      }
+    }
+  },
+  "perPage": [
+    {
+      "id": "property-128bv",
+      "label": "128 Buena Vista Dr N (property detail)",
+      "vitals": {
+        "FCP": 20,
+        "domContentLoaded": 11.200000047683716,
+        "loadEvent": 13,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 44,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 0,
+        "passes": 22,
+        "incomplete": 1,
+        "inapplicable": 37,
+        "scoreApprox": 100,
+        "topViolations": []
+      }
+    },
+    {
+      "id": "vendor-2story",
+      "label": "2-STORY TECHNICAL ROOFING LLC (vendor detail)",
+      "vitals": {
+        "FCP": 20,
+        "domContentLoaded": 11.200000047683716,
+        "loadEvent": 13,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 44,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 0,
+        "passes": 24,
+        "incomplete": 1,
+        "inapplicable": 35,
+        "scoreApprox": 100,
+        "topViolations": []
+      }
+    },
+    {
+      "id": "wo-19511-1",
+      "label": "WO 19511-1 / Fire alarm needs replaced (maintenance detail)",
+      "vitals": {
+        "FCP": 20,
+        "domContentLoaded": 11.200000047683716,
+        "loadEvent": 13,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 44,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 0,
+        "passes": 22,
+        "incomplete": 1,
+        "inapplicable": 37,
+        "scoreApprox": 100,
+        "topViolations": []
+      }
+    },
+    {
+      "id": "tenant-brianna-jackson",
+      "label": "Brianna Jackson (tenant detail)",
+      "vitals": {
+        "FCP": 20,
+        "domContentLoaded": 11.200000047683716,
+        "loadEvent": 13,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 44,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 0,
+        "passes": 26,
+        "incomplete": 1,
+        "inapplicable": 33,
+        "scoreApprox": 100,
+        "topViolations": []
+      }
+    }
+  ]
+}

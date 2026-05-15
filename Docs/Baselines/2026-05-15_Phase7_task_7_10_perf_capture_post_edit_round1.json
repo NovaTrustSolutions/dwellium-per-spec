@@ -1,0 +1,275 @@
+{
+  "capturedAt": "2026-05-15T08:46:03.155Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "phase7_task_7_10",
+  "captureSuffix": "_post_edit_round1",
+  "rootRunCount": 3,
+  "target": "http://localhost:4173/",
+  "methodology": "Lighthouse navigation run on root (n=LH_ROOT_RUNS) + Playwright-driven SPA navigation + PerformanceObserver Web Vitals + @axe-core/playwright a11y audit per page",
+  "v1Thresholds": {
+    "LCP_ms": 500,
+    "CLS": 0.1,
+    "a11yScore": 95,
+    "source": "AppFolio_Parity_Implementation_Plan.md L228"
+  },
+  "root": {
+    "scores": {
+      "performance": 0.87,
+      "accessibility": 0.9,
+      "bestPractices": 1,
+      "seo": 0.83
+    },
+    "metrics": {
+      "FCP": 1652.7634000000003,
+      "LCP": 3902.9614,
+      "TBT": 5,
+      "CLS": 0,
+      "SI": 1652.7634000000003,
+      "TTI": 3902.9614
+    }
+  },
+  "rootRuns": [
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.7634000000003,
+        "LCP": 3902.9614,
+        "TBT": 5,
+        "CLS": 0,
+        "SI": 1652.7634000000003,
+        "TTI": 3902.9614
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.2172500000001,
+        "LCP": 3902.4085000000005,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1652.2172500000001,
+        "TTI": 3902.4085000000005
+      }
+    },
+    {
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.83
+      },
+      "metrics": {
+        "FCP": 1652.75995,
+        "LCP": 3902.9827000000005,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1652.75995,
+        "TTI": 3902.9827000000005
+      }
+    }
+  ],
+  "rootStats": {
+    "metrics": {
+      "FCP": {
+        "n": 3,
+        "mean": 1652.5802000000003,
+        "median": 1652.75995,
+        "min": 1652.2172500000001,
+        "max": 1652.7634000000003,
+        "range": 0.5461500000001251,
+        "stddev": 0.256648270985768
+      },
+      "LCP": {
+        "n": 3,
+        "mean": 3902.7842000000005,
+        "median": 3902.9614,
+        "min": 3902.4085000000005,
+        "max": 3902.9827000000005,
+        "range": 0.5742000000000189,
+        "stddev": 0.26580229494864194
+      },
+      "TBT": {
+        "n": 3,
+        "mean": 1.6666666666666667,
+        "median": 0,
+        "min": 0,
+        "max": 5,
+        "range": 5,
+        "stddev": 2.357022603955158
+      },
+      "CLS": {
+        "n": 3,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "range": 0,
+        "stddev": 0
+      },
+      "SI": {
+        "n": 3,
+        "mean": 1652.5802000000003,
+        "median": 1652.75995,
+        "min": 1652.2172500000001,
+        "max": 1652.7634000000003,
+        "range": 0.5461500000001251,
+        "stddev": 0.256648270985768
+      },
+      "TTI": {
+        "n": 3,
+        "mean": 3902.7842000000005,
+        "median": 3902.9614,
+        "min": 3902.4085000000005,
+        "max": 3902.9827000000005,
+        "range": 0.5742000000000189,
+        "stddev": 0.26580229494864194
+      }
+    },
+    "scores": {
+      "performance": {
+        "n": 3,
+        "mean": 0.87,
+        "median": 0.87,
+        "min": 0.87,
+        "max": 0.87,
+        "range": 0,
+        "stddev": 0
+      },
+      "accessibility": {
+        "n": 3,
+        "mean": 0.9,
+        "median": 0.9,
+        "min": 0.9,
+        "max": 0.9,
+        "range": 0,
+        "stddev": 0
+      },
+      "bestPractices": {
+        "n": 3,
+        "mean": 1,
+        "median": 1,
+        "min": 1,
+        "max": 1,
+        "range": 0,
+        "stddev": 0
+      },
+      "seo": {
+        "n": 3,
+        "mean": 0.83,
+        "median": 0.83,
+        "min": 0.83,
+        "max": 0.83,
+        "range": 0,
+        "stddev": 0
+      }
+    }
+  },
+  "perPage": [
+    {
+      "id": "property-128bv",
+      "label": "128 Buena Vista Dr N (property detail)",
+      "vitals": {
+        "FCP": 28,
+        "domContentLoaded": 6.700000047683716,
+        "loadEvent": 8.400000095367432,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 28,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 0,
+        "passes": 22,
+        "incomplete": 1,
+        "inapplicable": 37,
+        "scoreApprox": 100,
+        "topViolations": []
+      }
+    },
+    {
+      "id": "vendor-2story",
+      "label": "2-STORY TECHNICAL ROOFING LLC (vendor detail)",
+      "vitals": {
+        "FCP": 28,
+        "domContentLoaded": 6.700000047683716,
+        "loadEvent": 8.400000095367432,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 28,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 0,
+        "passes": 24,
+        "incomplete": 1,
+        "inapplicable": 35,
+        "scoreApprox": 100,
+        "topViolations": []
+      }
+    },
+    {
+      "id": "wo-19511-1",
+      "label": "WO 19511-1 / Fire alarm needs replaced (maintenance detail)",
+      "vitals": {
+        "FCP": 28,
+        "domContentLoaded": 6.700000047683716,
+        "loadEvent": 8.400000095367432,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 28,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 0,
+        "passes": 22,
+        "incomplete": 1,
+        "inapplicable": 37,
+        "scoreApprox": 100,
+        "topViolations": []
+      }
+    },
+    {
+      "id": "tenant-brianna-jackson",
+      "label": "Brianna Jackson (tenant detail)",
+      "vitals": {
+        "FCP": 28,
+        "domContentLoaded": 6.700000047683716,
+        "loadEvent": 8.400000095367432,
+        "transferSize": 300,
+        "decodedBodySize": 1456
+      },
+      "lcpCls": {
+        "LCP": 28,
+        "CLS": 0,
+        "CLS_entries": 0
+      },
+      "axe": {
+        "violations": 0,
+        "passes": 26,
+        "incomplete": 1,
+        "inapplicable": 33,
+        "scoreApprox": 100,
+        "topViolations": []
+      }
+    }
+  ]
+}

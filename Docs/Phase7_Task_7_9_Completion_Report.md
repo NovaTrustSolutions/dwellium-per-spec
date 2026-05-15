@@ -3,8 +3,8 @@
 ## §1. Summary
 
 **Status.** ✓ CLOSED 2026-05-13 (closed-as-empirical-void; clean revert; 0 source change shipped).
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.9 — Phase-7 Block B item #1; resolution at next-task sweep per established 19-consecutive-cross-phase-sweep-resolutions convention extending 19-pattern at 7.8 → 20-pattern at 7.9).
-**Green CI run:** TBD (manual-dispatch parity gate at PR open; expected 16-of-16 SUCCESS per established DOC-only revert paths-filter quirk precedent).
+**Commit (HEAD on `main`):** `b89d727` (squash commit for PR #63 `docs(phase-7): Task 7.9 — Block B Lever 2 vendor-split closed as empirical-finding-with-revert + v2.55.1 workflow patch (#63)`; Task 7.9 — Phase-7 Block B item #1; resolved at Task 7.10 sweep 2026-05-15 per established 20-consecutive-cross-phase-sweep-resolutions convention extending 20-pattern at 7.9 → 21-pattern at 7.10).
+**Green CI run:** PR #63 parity-gate run + PII scan run completed pre-v2.55.1 with step-13 quota-failure-only (run 25829682491); v2.55.1 defensive `continue-on-error: true` patch made step-13 non-blocking; subsequent merge to main authorized by Cowork per Option C verdict.
 
 **Phase-7 Block B Lever 2 manualChunks vendor-split attempted in 2 rounds; closed-as-empirical-void via clean revert per Cowork OUTCOME B verdict (kickoff brief Step-B+4).**
 
@@ -162,9 +162,9 @@ Empty `git diff` confirms clean revert. vite.config.ts at 7.9 close = vite.confi
 | vite build (SEEDS=true) | exit 0 | ✓ 3.99s | ✓ |
 | vite build (SEEDS=false) | exit 0 | ✓ 3.88s | ✓ |
 | PII guard | 0 leaks | 0 leaks (51 files scanned) | ✓ |
-| Parity Gate per PR | 16-of-16 SUCCESS via manual-dispatch | TBD | Run pending post-PR-open |
-| PII Scan per push | success | TBD | Run pending post-PR-open |
-| CodeRabbit review per PR | pass | TBD | Run pending post-PR-open |
+| Parity Gate per PR | 16-of-16 SUCCESS via manual-dispatch | PR #63 — substantive steps green at run 25829682491 (12/13 PASS pre-v2.55.1; step-13 quota-only failure resolved by v2.55.1 defensive `continue-on-error: true` patch) | ✓ Substantive |
+| PII Scan per push | success | PR #63 — PII Scan green | ✓ |
+| CodeRabbit review per PR | pass | PR #63 — CodeRabbit pass | ✓ |
 | §9 Phase-7 sub-tracker row 7.9 | R → ✓ (closed-as-empirical-void) | ✓ | Plan v2.55 amendment |
 | §9 row 7.8 squash-SHA cell | TBD → `f0b0127` | ✓ | Plan v2.55 amendment |
 | MEASUREMENT-ONLY class 5pt → 6pt cross-phase (within Phase-7 perspective) | NEW sub-shape "WITH-EMPIRICAL-FINDING-AND-REVERT-PERF-LEVER" docked | ✓ | CLAUDE.md Calibration classes block updated |
@@ -173,7 +173,7 @@ Empty `git diff` confirms clean revert. vite.config.ts at 7.9 close = vite.confi
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert <7.9-squash-SHA>` (Phase-7 7.9 close; reverts to 7.8 state at `f0b0127`). Trivial DOC-only revert; vite.config.ts already reverted to HEAD-post-7.6 canonical at Step-1 of this 7.9 task (no source state to roll back). Phase-7 7.9 squash SHA `TBD` (will be revertable independently once merged; resolution at next-task sweep per established absorb-into-next-sweep convention).
+Rollback target: `git revert b89d727` (Phase-7 7.9 close; reverts to 7.8 state at `f0b0127`). Trivial DOC-only revert; vite.config.ts already reverted to HEAD-post-7.6 canonical at Step-1 of this 7.9 task (no source state to roll back). Phase-7 7.9 squash SHA `b89d727` (revertable independently; resolved at Task 7.10 sweep 2026-05-15 per established absorb-into-next-sweep convention).
 
 ---
 

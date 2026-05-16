@@ -31,7 +31,7 @@
  * §6 L29 (Task 2.1 row) + plan v2.4 §9 tracker.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import type { Workitem, WorkitemType } from '../../components/StrataDashboard/strataTypes';
 import workitemsSeed from '../../../public/data/workitems.json';
@@ -211,17 +211,24 @@ describe('calendar parity — 9 AHA Section-8 inspection WOs for Riverwood Club 
 
     it('grid-regression RTL — CalendarModule renders 9 inspection event dots on 4 scheduled dates via data-testid="calendar-grid-event-dot" + data-type="inspection"', async () => {
         const { default: CalendarModule } = await import('../../components/StrataDashboard/modules/CalendarModule');
-        // Freeze time to 2026-04-24 so the initial month-grid view
-        // lands on April 2026 (covers the 04/27-04/30 target dates).
-        vi.useFakeTimers();
+        // Phase-7 Task 7.13: freeze time to 2026-04-24 so the initial month-grid
+        // view lands on April 2026 (covers the 04/27-04/30 target dates). Uses
+        // vi.setSystemTime alone (no vi.useFakeTimers) — fake-timer mocking of
+        // React 19 scheduler primitives (MessageChannel / microtask queue)
+        // stranded pending render commits across the useFakeTimers →
+        // useRealTimers handoff (empirical 19/20 fail at L260 sister site +
+        // empirical 5/5 pass under vi.setSystemTime-only). waitFor() handles
+        // the async fetchEvents settle deterministically with the real clock.
         vi.setSystemTime(new Date('2026-04-24T12:00:00.000Z'));
         try {
             render(React.createElement(CalendarModule));
-
-            // Wait a tick for strataGet promise + state commit.
-            await vi.advanceTimersByTimeAsync(100);
-            vi.useRealTimers();
-            await new Promise(r => setTimeout(r, 50));
+            await waitFor(() => {
+                expect(
+                    screen.getAllByTestId('calendar-grid-event-dot').filter(
+                        el => el.getAttribute('data-type') === 'inspection',
+                    ).length
+                ).toBeGreaterThanOrEqual(9);
+            }, { timeout: 2000 });
 
             const inspectionDots = screen.getAllByTestId('calendar-grid-event-dot').filter(
                 el => el.getAttribute('data-type') === 'inspection',
@@ -243,19 +250,27 @@ describe('calendar parity — 9 AHA Section-8 inspection WOs for Riverwood Club 
                 expect(allowedDates.has(d as string)).toBe(true);
             }
         } finally {
-            if (vi.isFakeTimers()) vi.useRealTimers();
+            vi.useRealTimers();
         }
     });
 
     it('upcoming-events list RTL — data-testid="calendar-inspection-event" renders exactly 9 rows, data-due-date carries the 3/3/2/1 distribution (CDP guard surrogate)', async () => {
         const { default: CalendarModule } = await import('../../components/StrataDashboard/modules/CalendarModule');
-        vi.useFakeTimers();
+        // Phase-7 Task 7.13: eliminate vi.useFakeTimers (root-cause of darwin
+        // 19/20 fail at L260 in single-file isolation). Fake-timer mocking of
+        // React 19 scheduler primitives (MessageChannel / microtask queue)
+        // stranded pending render commits for the upcoming-events list across
+        // the useFakeTimers → useRealTimers handoff. Empirical 5/5 pass under
+        // vi.setSystemTime alone. waitFor() handles the async fetchEvents
+        // settle deterministically with the real clock; toBe(9) strictness
+        // preserved per Cowork Q5 MODERATE verdict (assertion semantics
+        // unchanged; only timer-mocking shape repaired).
         vi.setSystemTime(new Date('2026-04-24T12:00:00.000Z'));
         try {
             render(React.createElement(CalendarModule));
-            await vi.advanceTimersByTimeAsync(100);
-            vi.useRealTimers();
-            await new Promise(r => setTimeout(r, 50));
+            await waitFor(() => {
+                expect(screen.getAllByTestId('calendar-inspection-event').length).toBe(9);
+            }, { timeout: 2000 });
 
             const rows = screen.getAllByTestId('calendar-inspection-event');
             // Upcoming-list slice bumped 8 -> 30 in commit 2; all 9
@@ -274,7 +289,7 @@ describe('calendar parity — 9 AHA Section-8 inspection WOs for Riverwood Club 
             expect(counts['2026-04-29']).toBe(2);
             expect(counts['2026-04-30']).toBe(1);
         } finally {
-            if (vi.isFakeTimers()) vi.useRealTimers();
+            vi.useRealTimers();
         }
     });
 

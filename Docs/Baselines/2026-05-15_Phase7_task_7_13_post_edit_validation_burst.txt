@@ -1,0 +1,69 @@
+# Phase-7 Task 7.13 — Post-edit validation burst raw data
+#
+# Capture: 20-iteration burst of `npx vitest run src/test/appfolioParity/calendar.test.tsx`
+# on darwin LOCAL at 2026-05-15 ~16:55Z (post-fix; sister to pre-edit baseline at
+# 2026-05-15 ~16:11Z which captured 20-of-20 FAIL deterministic).
+# HEAD: e657b89 (Task 7.14 squash; HEAD-post-7.14) + uncommitted Step-5d post-fix
+# edits to qualia-shell/src/test/appfolioParity/calendar.test.tsx.
+# Branch: phase-7/task-7.13-calendar-test-darwin-flake-stabilization
+# Build mode: no build needed (vitest direct on test file)
+#
+# Empirical fix-mode: vi.useFakeTimers() ELIMINATED at sister + upcoming RTL test
+# sites; replaced with vi.setSystemTime() alone (Date-only mocking; no scheduler-
+# primitive mocking) + waitFor() polling for async fetchEvents settle on real clock.
+# Both tests retain assertion strictness per Cowork Q5 MODERATE verdict (sister
+# toBeGreaterThanOrEqual(9); upcoming toBe(9)).
+#
+# Substantive empirical observation:
+# 20-of-20 DETERMINISTIC PASS = binary variance-collapse signal achieved at
+# post-edit state. Sister-shape to 7.10's variance-collapse-as-lever-effectiveness
+# signal (pre-edit n=3 LCP range 151ms / stddev 71ms → post-edit range 1ms /
+# stddev 0ms; 7.10 lever made initial-paint timing essentially deterministic).
+# 3pt cross-phase deterministic-validation pattern at 7.13 close: 7.10 (perf-lever)
+# + 7.11 (n=10 noise-floor) + 7.13 (test-infra-fix). Pre-edit/post-edit binary
+# inversion (20/20 FAIL → 20/20 PASS) is the strongest possible empirical signal
+# for structural fix at this altitude — no statistical-power ambiguity at the
+# boundary; structurally-correct fix family (Q3 candidate #4 eliminate fake
+# timers) empirically validated.
+#
+# Stabilization signal binary at this empirical state:
+#   pre-edit 20-of-20 FAIL + post-edit 20-of-20 PASS = high-confidence empirical
+#   proof of structural fix (no statistical-power ambiguity at the boundary;
+#   sister-shape to 7.10's variance-collapse signal); HARD HALT-IF #2 from
+#   kickoff brief CLEARED.
+
+Iter 1: PASS (2s)
+Iter 2: PASS (0s)
+Iter 3: PASS (1s)
+Iter 4: PASS (1s)
+Iter 5: PASS (1s)
+Iter 6: PASS (1s)
+Iter 7: PASS (0s)
+Iter 8: PASS (0s)
+Iter 9: PASS (1s)
+Iter 10: PASS (1s)
+Iter 11: PASS (1s)
+Iter 12: PASS (1s)
+Iter 13: PASS (0s)
+Iter 14: PASS (1s)
+Iter 15: PASS (1s)
+Iter 16: PASS (1s)
+Iter 17: PASS (1s)
+Iter 18: PASS (0s)
+Iter 19: PASS (1s)
+Iter 20: PASS (1s)
+
+# Summary: 20/20 PASS = 100% empirical reproduction rate of the fix in single-file
+# isolation on darwin LOCAL. Total wallclock 17s; per-iter avg 0.85s.
+#
+# Pre-edit/post-edit comparison (binary variance-collapse):
+#   Pre-edit: 20/20 FAIL (deterministic) at calendar.test.tsx:260
+#   Post-edit: 20/20 PASS (deterministic) at calendar.test.tsx:272 (waitFor wrap)
+#   Delta: 100% → 0% fail rate; 0% → 100% pass rate; binary structural inversion
+#
+# Post-fix gates (LOCAL):
+#   tsc -b: silent success (no TS errors)
+#   vitest run (full suite): 259/259 PASS across 37 test files in 2.73s
+#   First clean LOCAL 259/259 since Phase-6 Task 6.3 close (calendar.test.tsx:260
+#   darwin flake fired intermittently across 5+ task closes; structurally
+#   eliminated at 7.13 close).

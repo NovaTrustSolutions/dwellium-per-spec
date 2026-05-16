@@ -1,0 +1,45 @@
+# Phase-7 Task 7.13 — Pre-edit flake baseline raw data
+#
+# Capture: 20-iteration burst of `npx vitest run src/test/appfolioParity/calendar.test.tsx`
+# on darwin LOCAL at 2026-05-15 ~16:11Z.
+# HEAD: e657b89 (Task 7.14 squash; HEAD-post-7.14).
+# Branch: phase-7/task-7.13-calendar-test-darwin-flake-stabilization
+# Build mode: no build needed (vitest direct on test file)
+# Empirical fail-mode: `screen.getAllByTestId('calendar-inspection-event')` at L260 returns <9 elements;
+# strict equality assertion `expect(rows.length).toBe(9)` at L263 throws.
+#
+# Substantive empirical observation:
+# 20-of-20 DETERMINISTIC FAIL in single-file isolation — much higher than kickoff-brief expected
+# ~6-10 of 20 (~45% rate) calibrated to historical 5-of-11 full-suite firing.
+# Reconciliation: full-suite vitest runs at 6.3/6.4/6.5/6.6/6.8 closes had warm-up state from
+# earlier-running test files that partially masked the timing race. Single-file isolation
+# removes that buffer; flake is structurally always present, just intermittently observable
+# in full-suite execution order.
+#
+# Stabilization signal becomes binary at this empirical state:
+#   pre-edit 20-of-20 FAIL + post-edit 20-of-20 PASS = high-confidence empirical proof of structural fix
+#   (no statistical-power ambiguity at the boundary; sister-shape to 7.10's variance-collapse signal).
+
+Iter 1: FAIL
+Iter 2: FAIL
+Iter 3: FAIL
+Iter 4: FAIL
+Iter 5: FAIL
+Iter 6: FAIL
+Iter 7: FAIL
+Iter 8: FAIL
+Iter 9: FAIL
+Iter 10: FAIL
+Iter 11: FAIL
+Iter 12: FAIL
+Iter 13: FAIL
+Iter 14: FAIL
+Iter 15: FAIL
+Iter 16: FAIL
+Iter 17: FAIL
+Iter 18: FAIL
+Iter 19: FAIL
+Iter 20: FAIL
+
+# Summary: 20/20 FAIL = 100% empirical reproduction rate in single-file isolation on darwin LOCAL.
+# Fail-mode reproduced at calendar.test.tsx:260 across all iterations.

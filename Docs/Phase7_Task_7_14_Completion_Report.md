@@ -3,8 +3,8 @@
 ## §1. Summary
 
 **Status.** ✓ CLOSED 2026-05-15 (DOC-only closure shape; zero source/spec/config/baseline edits; sister-shape to 7.8 DOC-only-empirical-void-closure pattern + 6.9 CLOSURE-NARRATIVE-CONSOLIDATION precedent).
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 7.14 — Phase-7 Block C item #3; resolution at next-task sweep per established 22-consecutive-cross-phase-sweep-resolutions convention extending 22-pattern at 7.11 → 23-pattern at 7.14).
-**Green CI run:** TBD (manual-dispatch parity gate at PR open; paths-filter quirk HOLDS — sister to 7.5/7.6/7.8/7.9/7.11 manual-dispatch precedent since 7.14 touches `Docs/**` + root `CLAUDE.md` only; NOT in `qualia-shell/src/**` filter).
+**Commit (HEAD on `main`):** `e657b89` (squash commit for PR #66, Task 7.14 — Phase-7 Block C item #3; resolution co-shipped at 7.13 sweep per established 23-consecutive-cross-phase-sweep-resolutions convention extending 23-pattern at 7.14 → 24-pattern at 7.13).
+**Green CI run:** Parity Gate run via manual-dispatch at PR #66 open — 16-of-16 SUCCESS (paths-filter quirk HOLDS — sister to 7.5/7.6/7.8/7.9/7.11 manual-dispatch precedent since 7.14 touches `Docs/**` + root `CLAUDE.md` only; NOT in `qualia-shell/src/**` filter).
 
 **Phase-7 Block C item #3 CLOSED via DOC-only closure shape; inline empirical-correction footnote inserted between L68 stale-claim and L70 section-closing rule at `Docs/Phase5_Perf_Report.md §2`, preserving the historical Phase-0-era LCP root-cause narrative AND adding the Phase-7-era empirical correction trajectory (6.7 → 7.10 → 7.11).**
 
@@ -122,11 +122,11 @@ DOC-only edit at `Docs/Phase5_Perf_Report.md` + 4 doc-sweep edits at HEAD-post-7
 | Step-5 strict gate tsc -b | clean | TBD (pending pre-commit re-run) | TBD |
 | Step-5 strict gate vitest run | 259/259 PASS | TBD (pending pre-commit re-run) | TBD |
 | Step-5 SKIP vite builds + PII guard | zero source touched | per Cowork direction | ✓ skipped |
-| Step-6 commit + push | branch `phase-7/task-7.14-phase5-perf-footnote` | TBD | TBD |
-| Step-6 manual-dispatch parity gate | paths-filter quirk; DOC-only edit | TBD | TBD |
-| Parity Gate per PR | 16-of-16 SUCCESS via manual-dispatch | TBD | Run pending post-PR-open |
-| PII Scan per push | success | TBD | Run pending post-PR-open |
-| CodeRabbit review per PR | pass | TBD (expect Trivial effort given DOC-only changeset) | Run pending post-PR-open |
+| Step-6 commit + push | branch `phase-7/task-7.14-phase5-perf-footnote` | squashed to `e657b89` on `main` via PR #66 | ✓ |
+| Step-6 manual-dispatch parity gate | paths-filter quirk; DOC-only edit | manual-dispatch fired at PR #66 open | ✓ |
+| Parity Gate per PR | 16-of-16 SUCCESS via manual-dispatch | 16-of-16 SUCCESS at PR #66 | ✓ |
+| PII Scan per push | success | SUCCESS at PR #66 | ✓ |
+| CodeRabbit review per PR | pass | clean pass (Trivial effort given DOC-only changeset) | ✓ |
 | §9 row 7.14 sub-tracker | R → ✓ (closed-as-DOC-only-historical-footnote-correction) | ✓ | Plan v2.58 amendment |
 | §9 row 7.11 squash-SHA cell | TBD → `7ff4d5e` | ✓ | Plan v2.58 amendment (23-consecutive sweep-resolutions) |
 | MEASUREMENT-ONLY class 8pt → 9pt cross-phase | NEW sub-shape `DOC-only-historical-footnote-correction` docked | ✓ | Plan v2.58 + CLAUDE.md Calibration classes block updated |
@@ -136,7 +136,7 @@ DOC-only edit at `Docs/Phase5_Perf_Report.md` + 4 doc-sweep edits at HEAD-post-7
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert <7.14-squash-SHA>` (Phase-7 7.14 close; reverts to HEAD-post-7.11 state at `7ff4d5e`). Trivial DOC-only revert; zero source state to roll back (footnote insertion + 4 doc-sweep edits); chunk axes already preserved through 7.14 by construction. Phase-7 7.14 squash SHA `TBD` (will be revertable independently once merged; resolution at next-task sweep per established absorb-into-next-sweep convention).
+Rollback target: `git revert e657b89` (Phase-7 7.14 close; reverts to HEAD-post-7.11 state at `7ff4d5e`). Trivial DOC-only revert; zero source state to roll back (footnote insertion + 4 doc-sweep edits); chunk axes already preserved through 7.14 by construction. Phase-7 7.14 squash SHA `e657b89` (revertable independently; resolved at 7.13 sweep per established 24-consecutive cross-phase sweep-resolutions convention).
 
 ---
 

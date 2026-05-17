@@ -1,8 +1,8 @@
 # Phase 8+ — Task 8.4 — `qualia-shell/index.html` template refactor — Completion Report
 
 **Date:** 2026-05-17
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 8.4 — `qualia-shell/index.html` template refactor; 8.4 squash-SHA cell `TBD` resolves at 8.5 sweep per 29-consecutive-cross-phase-sweep-resolutions convention extending 28-pattern at 8.3 → 29-pattern at 8.4)
-**Green CI run:** Parity Gate `TBD` (paths-filter behavior pending Q5 empirical verification — manual-dispatch prediction per qualia-shell/-root parent-altitude pattern; sister-shape to qualia-shell/playwright.baseline.config.ts at 6.8 + qualia-shell/e2e/** at 7.2 manual-dispatch precedents) + PII Scan `TBD` ✓ SUCCESS + CodeRabbit review pass
+**Commit (HEAD on `main`):** `6742484` (squash commit for PR #72, Task 8.4 — `qualia-shell/index.html` template refactor; resolved at Task 8.5 sweep per 30-consecutive-cross-phase-sweep-resolutions milestone — round-decade convention cementation extending 29-pattern at 8.4 → 30-pattern at 8.5)
+**Green CI run:** Parity Gate `25982171313` ✓ SUCCESS (manual-dispatched per Q5 CONFIRMED prediction — qualia-shell/-root parent-altitude outside `qualia-shell/src/**` glob; sister-shape to qualia-shell/playwright.baseline.config.ts at 6.8 + qualia-shell/e2e/** at 7.2 manual-dispatch precedents; 15-task cross-phase manual-dispatch precedent extended at Task 8.4) + PII Scan `25982160360` ✓ SUCCESS + CodeRabbit review clean pass
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-8+ sub-tracker row 8.4 (created at v2.61 OPENING; row R → ✓ at v2.64 amendment) + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.4` (mandatory PRE-FLIGHT discipline including v2.60.1-v2.60.6 standing PRE-FLIGHT discipline + v2.62.1 PRE-FLIGHT scope-shape discipline + NEW v2.64.0 audit-content empirical-vs-hypothetical PRE-FLIGHT discipline cemented at this close)
 **Template mirror:** `Docs/Phase8_Task_8_2_Completion_Report.md` (Phase-8+ Task 8.2 sister-shape — both are SSR-MIGRATION-PREP class production-source edits at Phase-8+ Block A altitude; 8.2 = imperative-routing → declarative-routing at App.tsx altitude; 8.4 = framework-agnostic FOUC mitigation pattern + SSR-ready meta tags at index.html altitude; both ship 4-provider tree preservation discipline + framework-agnostic scope LOCK + structurally-distinct production-source-edit shapes).
 **v1-lineage substitute.** Phase-8+ has no v1 plan source. Authoritative scope source is `Docs/Phase8_SSR_Architectural_Scoping.md §6.4` Task 8.4 carve-out + `Docs/Phase8_Task_8_3_Provider_Tree_SSR_Audit.md §5.1` FOUC mitigation pattern selection at Q-OQ-3 + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.4` refined at this close.
@@ -135,8 +135,8 @@ No new dependencies introduced. Sister-shape to Phase-7 7.10 inline-source-edit 
 | `dist/index.html` byte-count change documentation (Finding K) | document per Q6 sub-recommendation | ✓ | 1,456 B → 2,301 B / +845 B / +58.0%; build-mode invariant |
 | Manual dev-server smoke test | deferred per build-output verification equivalent | ✓ | §3 build-output grep verification table |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | §2 paste; 51 files / 0 leaks |
-| Parity gate per PR | green (manual-dispatch per Q5 LOCK) | TBD | Run `TBD` manual-dispatched; empirical paths-filter verification at Step-7 |
-| CodeRabbit review per PR | pass | TBD | PR #TBD review |
+| Parity gate per PR | green (manual-dispatch per Q5 LOCK) | ✓ SUCCESS | Run `25982171313` manual-dispatched; Q5 prediction EMPIRICALLY CONFIRMED (qualia-shell/-root parent altitude outside `qualia-shell/src/**` glob) |
+| CodeRabbit review per PR | pass | ✓ clean pass | PR #72 review |
 | `Docs/Phase8_Task_8_4_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-8+ sub-tracker row 8.4 | R → ✓ | ✓ | Plan v2.64 amendment |
 | Task 8.3 TBD → `c44198f` / `#71` resolution | Co-shipped at 8.4 sweep | ✓ | Plan v2 §9 row 8.3 squash-SHA cell + Phase_8_Plan.md Phase status + Phase8_Task_8_3_Completion_Report.md reference spots + CLAUDE.md HEAD pointer pivot |
@@ -152,7 +152,7 @@ No new dependencies introduced. Sister-shape to Phase-7 7.10 inline-source-edit 
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert c44198f` (Phase-8+ Task 8.3 squash; pre-Task-8.4 state) — OR `git revert TBD` (Phase-8+ 8.4 close; reversible independently). Resolved at 8.5 sweep.
+Rollback target: `git revert c44198f` (Phase-8+ Task 8.3 squash; pre-Task-8.4 state) — OR `git revert 6742484` (Phase-8+ 8.4 close; reversible independently). Resolved at 8.5 sweep ✓.
 
 Rollback safety: production-source edit at `qualia-shell/index.html` is structurally reversible (no DB or fixture state implications; no schema migration; no data dependencies; no dependency-graph changes per finding K — `dist/assets/**` chunk axes preserve byte-for-byte; only `dist/index.html` byte-count reverts). FOUC IIFE removal would restore pre-Task-8.4 FOUC behavior (theme className set post-hydration via useEffect at ThemeContext.tsx L181-185; brief FOUC visible on cold-start). v2.64 Plan amendment + Phase_8_Plan.md update + Task 8.3 TBD resolution + CLAUDE.md updates + Phase8_Task_8_3_Provider_Tree_SSR_Audit.md §3.1 inline-footnote-correction + Phase8_Task_8_4_Completion_Report.md NEW are doc-only and reversible.
 

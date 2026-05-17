@@ -1,8 +1,8 @@
 # Phase 8+ — Task 8.2 — Imperative-routing → declarative-routing migration via react-router v7 library-mode + framework-selection-final-verdict — Completion Report
 
 **Date:** 2026-05-16
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 8.2; 8.2 squash-SHA cell `TBD` resolves at 8.3 sweep per 28-consecutive-cross-phase-sweep-resolutions convention extending 26-pattern at Phase-8+ Task 8.1 OPENING → 27-pattern at 8.2 → 28-pattern at 8.3)
-**Green CI run:** Parity Gate `TBD` — paths-filter quirk RESETS to auto-fire on `pull_request` (production-source edit at `qualia-shell/src/App.tsx` is INSIDE the `qualia-shell/src/**` parity-gate paths filter; sister-shape to Phase-7 7.1 + 7.10 + 7.13 production-source-edit auto-fire RESET pattern; 4th cross-phase production-source-edit auto-fire RESET data point) + PII Scan `TBD` ✓ SUCCESS + CodeRabbit review `TBD` pass
+**Commit (HEAD on `main`):** `b43c2bf` (squash commit for PR #70, Task 8.2; resolved at Task 8.3 sweep per 28-consecutive-cross-phase-sweep-resolutions convention extending 26-pattern at Phase-8+ Task 8.1 OPENING → 27-pattern at 8.2 → 28-pattern at 8.3)
+**Green CI run:** Parity Gate `25979454907` ✓ SUCCESS — paths-filter quirk RESETS to auto-fire on `pull_request` (production-source edit at `qualia-shell/src/App.tsx` is INSIDE the `qualia-shell/src/**` parity-gate paths filter; sister-shape to Phase-7 7.1 + 7.10 + 7.13 production-source-edit auto-fire RESET pattern; 4th cross-phase production-source-edit auto-fire RESET data point) + PII Scan ✓ SUCCESS + CodeRabbit review clean pass
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-8+ sub-tracker row 8.2 (created at v2.61 OPENING; Phase-8+ sub-tracker 15 rows total — 8.1 OPENER + Block A 4 items 8.2-8.5 + Block B 6 items 8.6-8.11 + Block C 4 items 8.12-8.15) + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.2` (refined at this close per Option β Cowork verdict; mandatory PRE-FLIGHT discipline including v2.60.1-v2.60.6 standing PRE-FLIGHT discipline + NEW v2.62.1 PRE-FLIGHT scope-shape discipline)
 **Template mirror:** `Docs/Phase7_Task_7_10_Completion_Report.md` (Phase-7 7.10 Lever 3 React.lazy expansion of App.tsx eager imports sister-shape — both 7.10 and 8.2 are production-source-edit at App.tsx altitude with substantive chunk-axis BREAK + Suspense boundary architecture preservation; 7.10 was perf-lever shape, 8.2 is SSR-migration-prep shape; both produce eager `<script>` JS chunk reshuffles)
 **v1-lineage substitute.** Phase-8+ has no v1 plan source (post-v1 carry-forward arc; sister to Phase-6 + Phase-7 + Phase-8+ Task 8.1 OPENER). Authoritative scope source is `Docs/Phase8_SSR_Architectural_Scoping.md §6.2` Task 8.2 explicit carve-out per Cowork Q-B LOCK + `Docs/Phase7_Closure_Report.md §8` Phase-8+ Block A item 1 + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.2` refined at this close.
@@ -126,8 +126,8 @@ High = 0; Medium = 0. Task 8.2 is production-source edit at App.tsx altitude int
 | Production chunk SHA256 / filename / byte-count | BREAK (production-source edit) | ✓ | eager `<script>` JS `index-MO01qt09.js` → `index-4jBDEScz.js` / +37,596 B / SHA256 BREAK; vendor chunk PRESERVED byte-for-byte; StrataDashboard byte-count preserved + filename hash rotates |
 | Smoke-test routing.test.tsx | 5/5 vitest+RTL smoke pass | ✓ | §3 verification table |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | §2 paste; 51 files, 0 leaks |
-| Parity gate per PR | green (auto-fire per paths-filter quirk RESET) | TBD | Run `TBD` auto-fired on `pull_request`; production-source edit at `qualia-shell/src/App.tsx` IS in paths filter |
-| CodeRabbit review per PR | pass | TBD | review URL at PR #TBD comment |
+| Parity gate per PR | green (auto-fire per paths-filter quirk RESET) | ✓ SUCCESS | Run `25979454907` auto-fired on `pull_request`; production-source edit at `qualia-shell/src/App.tsx` IS in paths filter |
+| CodeRabbit review per PR | pass | ✓ clean pass | PR #70 review |
 | `Docs/Phase8_Task_8_2_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-8+ sub-tracker row 8.2 | R → ✓ | ✓ | Plan v2.62 amendment |
 | Task 8.1 OPENER TBD → `5057dca` / `#69` resolution | Co-shipped at 8.2 sweep | ✓ | Plan v2 §9 row 8.1 squash-SHA cell + Phase_8_Plan.md Phase status + Phase8_Task_8_1_Completion_Report.md reference spots + CLAUDE.md HEAD pointer pivot |
@@ -140,7 +140,7 @@ High = 0; Medium = 0. Task 8.2 is production-source edit at App.tsx altitude int
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert 5057dca` (Phase-8+ Task 8.1 OPENER; pre-Task-8.2 state) — OR `git revert TBD` (Phase-8+ 8.2 close; reversible independently). Resolved at 8.3 sweep.
+Rollback target: `git revert 5057dca` (Phase-8+ Task 8.1 OPENER; pre-Task-8.2 state) — OR `git revert b43c2bf` (Phase-8+ 8.2 close; reversible independently). Resolved at 8.3 sweep ✓.
 
 Rollback safety: production-source edit at App.tsx is structurally reversible (no DB or fixture state implications; no schema migration; no data dependencies). `react-router` v7.15.1 dep addition is reversible via `npm uninstall react-router` post-revert; package-lock.json restoration ensures dep-graph consistency. routing.test.tsx is a NEW test file; deletion is trivial. v2.62 Plan amendment + Phase_8_Plan.md update + Task 8.1 TBD resolution + CLAUDE.md updates are doc-only and reversible.
 

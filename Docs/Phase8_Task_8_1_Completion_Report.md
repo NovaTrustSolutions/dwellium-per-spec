@@ -1,8 +1,8 @@
 # Phase 8+ — Task 8.1 — SSR-rendered shell architectural scoping (Phase-8+ OPENER) — Completion Report
 
 **Date:** 2026-05-16
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 8.1 — Phase-8+ OPENER; 8.1 squash-SHA cell `TBD` resolves at 8.2 sweep per 27-consecutive-cross-phase-sweep-resolutions convention extending Phase-7 closer 25-pattern → 26-pattern at 8.1 OPENING → 27-pattern at 8.2)
-**Green CI run:** Parity Gate `TBD` (manual-dispatch expected per paths-filter quirk — DOC-only edit touches `Docs/**` + root `CLAUDE.md` only; outside `qualia-shell/src/**` filter scope; extends 18-task cross-phase precedent) + PII Scan `TBD` ✓ SUCCESS + CodeRabbit review `TBD` pass
+**Commit (HEAD on `main`):** `5057dca` (squash commit for PR #69, Task 8.1 — Phase-8+ OPENER; resolved at Task 8.2 sweep per 27-consecutive-cross-phase-sweep-resolutions convention extending 26-pattern at 8.1 OPENING → 27-pattern at 8.2; 8.1 squash-SHA cell `TBD` resolves at 8.2 sweep per 27-consecutive-cross-phase-sweep-resolutions convention extending Phase-7 closer 25-pattern → 26-pattern at 8.1 OPENING → 27-pattern at 8.2)
+**Green CI run:** Parity Gate `25974941570` ✓ SUCCESS (manual-dispatched per paths-filter quirk; 18-task cross-phase precedent) + PII Scan `25974939253` ✓ SUCCESS + CodeRabbit review clean pass
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-8+ sub-tracker row 8.1 (created at v2.61 OPENING; Phase-8+ sub-tracker 15 rows total — 8.1 OPENER + Block A 4 items (8.2-8.5) + Block B 6 items (8.6-8.11) + Block C 4 items (8.12-8.15)) + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.1` (mandatory PRE-FLIGHT discipline including v2.60.1-v2.60.6 standing PRE-FLIGHT discipline adopted at v2.61 OPENING per Cowork Q4 LOCK)
 **Template mirror:** `Docs/Phase7_Task_7_1_Completion_Report.md` (Phase-7 7.1 OPENER sister-shape — both are Phase-N OPENER tasks introducing NEW class at OPENING; 7.1 introduced COMPONENT-FIX A11Y sub-class data point; 8.1 introduces SCOPING-ONLY class at project-wide 16th cumulative; structurally distinct — 7.1 was production-source-edit + 8.1 is DOC-only-deliverable per Cowork Q7 Option α LOCK)
 **v1-lineage substitute.** Phase-8+ has no v1 plan source (post-v1 carry-forward arc; sister to Phase-6 + Phase-7). Authoritative scope source is `Docs/Phase7_Closure_Report.md §8` 14-item Phase-8+ carry-forward consolidation (organized into 3 substantive blocks + 2 process improvements absorbed into Phase-8+ PRE-FLIGHT discipline as v2.60.1-v2.60.6).
@@ -94,8 +94,8 @@ High = 0; Medium = 0. Task 8.1 is DOC-only deliverable per Cowork Q7 Option α L
 | Production chunk SHA256 / filename / byte-count | PRESERVED (DOC-only edit; chunk-axis preservation expected by construction) | ✓ | 30-of-30 cross-phase chunk-axis preservation cumulative at 8.1 close (DOC-only edit fully outside Vite entry graph; 1-of-1 within-Phase-8+; sister-shape to Phase-6 8 + Phase-7 21 + Phase-8+ 1 = 30) |
 | Smoke-test 4-spec cold-start | not re-run per SCOPING-ONLY (zero production source) | — | helpers/auth.ts 6.2 amendment continues to seed correctly; smoke-test would PASS if re-run |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | 51 files scanned, 0 leaks |
-| Parity gate per PR | green (manual-dispatch expected per paths-filter quirk) | TBD | Run `TBD` manual-dispatch; 18-task cross-phase paths-filter-quirk precedent at 8.1 OPENER |
-| CodeRabbit review per PR | pass | TBD | review URL at PR #TBD comment |
+| Parity gate per PR | green (manual-dispatch per paths-filter quirk) | ✓ SUCCESS | Run `25974941570` manual-dispatched; 18-task cross-phase paths-filter-quirk precedent at 8.1 OPENER |
+| CodeRabbit review per PR | pass | ✓ clean pass | PR #69 review |
 | `Docs/Phase8_Task_8_1_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-8+ sub-tracker row 8.1 | R → ✓ | ✓ | Plan v2.61 amendment |
 | §9 main matrix Phase-8+ column | ADDED at OPENING per Process Improvement #1 per Q5 LOCK | ✓ | Plan v2.61 amendment — 17 rows R initial state |
@@ -110,7 +110,7 @@ High = 0; Medium = 0. Task 8.1 is DOC-only deliverable per Cowork Q7 Option α L
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert cfa9d0f` (Phase-7 closer; pre-Phase-8+-OPENING state) — OR `git revert TBD` (Phase-8+ 8.1 close; reversible independently). Resolved at 8.2 sweep.
+Rollback target: `git revert cfa9d0f` (Phase-7 closer; pre-Phase-8+-OPENING state) — OR `git revert 5057dca` (Phase-8+ 8.1 OPENER close; reversible independently). Resolved at 8.2 sweep ✓.
 
 Rollback safety: DOC-only deliverable; no production source; no behavior change; no data dependencies; reversible without DB or fixture state implications. v2.61 Plan amendment + Phase_8_Plan.md NEW + Phase8_Task_8_1_Completion_Report.md NEW + Docs/Phase8_SSR_Architectural_Scoping.md NEW are doc-only and reversible.
 

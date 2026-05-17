@@ -79,7 +79,9 @@ function AuthGate() {
 
 // Phase-8+ Task 8.2 — route component: /security (Branch 1 semantic preserved).
 // Standalone viewport-fill; no provider tree (sister to original Branch 1 shape).
-function SecurityRoute() {
+// Phase-8+ Task 8.6 — promoted from local function to named export to bridge
+// RR v7 framework-mode route registry at `qualia-shell/app/routes/security.tsx`.
+export function SecurityRoute() {
     return (
         <Suspense fallback={<AppSuspenseFallback variant="viewport" label="Loading security portal…" />}>
             <SecurityPortal />
@@ -93,7 +95,9 @@ function SecurityRoute() {
 // Popup branch retains 4-provider tree (Theme + User + Query + Permissions);
 // AuthGate default branch retains 3-provider tree (Theme + User + Query;
 // PermissionsProvider remains scoped to admin-shell sub-branch inside AuthGate).
-function DefaultRoute() {
+// Phase-8+ Task 8.6 — promoted from local function to named export to bridge
+// RR v7 framework-mode route registry at `qualia-shell/app/routes/default.tsx`.
+export function DefaultRoute() {
     const [searchParams] = useSearchParams();
     const popupParam = searchParams.get('popup');
 

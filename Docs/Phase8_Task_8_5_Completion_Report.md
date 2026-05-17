@@ -1,8 +1,8 @@
 # Phase 8+ — Task 8.5 — Static-data extraction conditional (DOC-only empirical-inventory-confirming-NO-extraction-needed) — Completion Report
 
 **Date:** 2026-05-17
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 8.5 — Static-data extraction conditional; 8.5 squash-SHA cell `TBD` resolves at 8.6 sweep per 31-consecutive-cross-phase-sweep-resolutions convention extending 30-pattern milestone at 8.5 → 31-pattern at 8.6)
-**Green CI run:** Parity Gate `TBD` (manual-dispatched per Q5 prediction — DOC-only edit at `Docs/**` + root `CLAUDE.md` outside `qualia-shell/src/**` glob; sister-shape to Task 8.1 OPENER + Task 8.3 manual-dispatch precedents; 16-task cross-phase manual-dispatch scope at Task 8.5) + PII Scan `TBD` ✓ SUCCESS + CodeRabbit review pass
+**Commit (HEAD on `main`):** `d98bd48` (squash commit for PR #73, Task 8.5 — Static-data extraction conditional; resolved at Task 8.6 OPENING sweep per 31-consecutive-cross-phase-sweep-resolutions convention extending 30-pattern milestone ROUND-DECADE CONVENTION CEMENTATION at 8.5 → 31-pattern at 8.6)
+**Green CI run:** Parity Gate `25983367798` ✓ SUCCESS (manual-dispatched per Q5 CONFIRMED prediction — DOC-only edit at `Docs/**` + root `CLAUDE.md` outside `qualia-shell/src/**` glob; sister-shape to Task 8.1 OPENER + Task 8.3 manual-dispatch precedents; 16-task cross-phase manual-dispatch scope at Task 8.5; Vendors axe-scan flaky retry but overall job exited 0 per v2.50.1+v2.51.1 retries/timeout discipline) + PII Scan `25983366236` ✓ SUCCESS + CodeRabbit review clean pass
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-8+ sub-tracker row 8.5 (created at v2.61 OPENING; row R → ✓ at v2.65 amendment) + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.5` (refined at this close per v2.64.0 audit-content empirical-vs-hypothetical-distinction PRE-FLIGHT discipline application at Phase-plan-document altitude per Cowork Verdict 3 LOCK; inline-footnote-correction shipped at L116 per Finding M cementation)
 **Template mirror:** `Docs/Phase8_Task_8_3_Completion_Report.md` (Phase-8+ Task 8.3 sister-shape — both are SCOPING-ONLY class shape; both DOC-only deliverables; both audit-substrate-only; 8.3 introduced 2pt cross-phase full calibration; **8.5 extends SCOPING-ONLY class 2pt → 3pt cross-task-shape-robustness via NEW 3rd sub-shape `empirical-inventory-confirming-NO-extraction-needed`**, sister-shape to MEASUREMENT-ONLY 7pt → 8pt → 9pt extension pattern at Phase-7 7.11 + 7.14 where class already fully calibrated + additional data points strengthen empirical record + surface NEW sub-shapes).
 **v1-lineage substitute.** Phase-8+ has no v1 plan source. Authoritative scope source is `Docs/Phase8_SSR_Architectural_Scoping.md §6.5` Task 8.5 carve-out + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.5` refined at this close + empirical inventory at HEAD `6742484` at Step-2 PRE0.
@@ -112,8 +112,8 @@ Empirical findings at §0 (Findings L + M) surface engineering-record refinement
 | Production chunk SHA256 / filename / byte-count | PRESERVED (DOC-only edit; chunk-axis preservation expected by construction) | ✓ | 33-of-33 cross-phase chunk-axis preservation cumulative at 8.5 close (DOC-only edit fully outside Vite entry graph; 1-of-1 within-Phase-8+-post-8.4-PRESERVE) |
 | Smoke-test 4-spec cold-start | not re-run per SCOPING-ONLY (zero production source) | — | helpers/auth.ts 6.2 amendment + Task 8.2 routing.test.tsx baseline continue to PASS by construction |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | §2 paste; 51 files scanned, 0 leaks |
-| Parity gate per PR | green (manual-dispatch per Q5 LOCK) | TBD | Run `TBD` manual-dispatched; 16-task cross-phase paths-filter-quirk precedent at 8.5 (DOC-only edit at `Docs/**` + root `CLAUDE.md` outside `qualia-shell/src/**` glob) |
-| CodeRabbit review per PR | pass | TBD | PR #TBD review |
+| Parity gate per PR | green (manual-dispatch per Q5 LOCK) | ✓ SUCCESS | Run `25983367798` manual-dispatched; Q5 prediction EMPIRICALLY CONFIRMED (16-task cross-phase paths-filter-quirk precedent at 8.5) |
+| CodeRabbit review per PR | pass | ✓ clean pass | PR #73 review |
 | `Docs/Phase8_Task_8_5_Completion_Report.md` | committed | ✓ | This file |
 | §9 Phase-8+ sub-tracker row 8.5 | R → ✓ | ✓ | Plan v2.65 amendment |
 | Task 8.4 TBD → `6742484` / `#72` resolution | Co-shipped at 8.5 sweep | ✓ | Plan v2 §9 row 8.4 squash-SHA cell + Phase_8_Plan.md Phase status + Phase8_Task_8_4_Completion_Report.md reference spots + CLAUDE.md HEAD pointer pivot |
@@ -131,7 +131,7 @@ Empirical findings at §0 (Findings L + M) surface engineering-record refinement
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert 6742484` (Phase-8+ Task 8.4 squash; pre-Task-8.5 state) — OR `git revert TBD` (Phase-8+ 8.5 close; reversible independently). Resolved at 8.6 sweep.
+Rollback target: `git revert 6742484` (Phase-8+ Task 8.4 squash; pre-Task-8.5 state) — OR `git revert d98bd48` (Phase-8+ 8.5 close; reversible independently). Resolved at 8.6 OPENING sweep ✓.
 
 Rollback safety: DOC-only deliverable per Cowork Q1 + Q7 LOCK; no production source; no behavior change; no data dependencies; reversible without DB or fixture state implications. v2.65 Plan amendment + Phase_8_Plan.md update (Task 8.4 TBD resolution + Task 8.5 closure + Block A 4-of-4 milestone + Plan §4 L116 inline-footnote-correction) + CLAUDE.md updates + Phase8_Task_8_4_Completion_Report.md TBD resolution + Phase8_Task_8_5_Completion_Report.md NEW are doc-only and reversible.
 

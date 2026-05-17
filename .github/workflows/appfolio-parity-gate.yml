@@ -67,6 +67,35 @@ jobs:
         working-directory: qualia-shell
         run: npx playwright install --with-deps chromium
 
+      # Phase-8+ Task 8.6 v2.66.2 in-place CI patch per Finding U empirical
+      # surface (Parity Gate run 25986642863 ✗ FAILURE at step 8 Playwright
+      # axe-baseline E2E). Empirical signature: `react-router dev` at
+      # framework-mode altitude returns RR v7 default HydrateFallback shell
+      # on initial server response; full hydration chain (virtual modules +
+      # RR runtime + app/root.tsx + route modules + LoginScreen) must
+      # complete client-side before `.login-start-overlay` mounts to DOM;
+      # on Linux CI this exceeds the 10s overlay-visible budget at
+      # helpers/auth.ts:59. Approach A canonical pattern: CI gate tests
+      # the production-build path users consume, not dev-server hydration
+      # overhead. Pre-Playwright build produces `qualia-shell/build/client/`
+      # for `npx vite preview --port 5173 --outDir build/client` consumption
+      # by Playwright webServer per playwright.baseline.config.ts v2.66.2.
+      # SEEDS=true matches webServer env convention (VITE_USE_STATIC_API=true
+      # routes strataApi calls to in-memory fixtures); seeds-true output
+      # exercises the appfolio-parity surface that axe-baseline + feature
+      # specs scan. Post-Playwright build steps preserve dual-mode
+      # SEEDS=true/false gate semantics unchanged (each rebuilds from clean
+      # state). Sister-shape to v2.66.1 in-place CI patch within Task 8.6
+      # (build-command altitude vs v2.66.2 at server-startup altitude) —
+      # 2-in-place-patches-per-task precedent at Phase-8+ Block B opener
+      # mirrors Phase-7 Task 7.3 v2.50.1+v2.50.2 escalation shape.
+      - name: react-router build (seeds=true; pre-Playwright preview)
+        working-directory: qualia-shell
+        env:
+          VITE_APPFOLIO_SEEDS: 'true'
+          VITE_USE_STATIC_API: 'true'
+        run: npx react-router build
+
       # Phase-7 Task 7.3 (2026-05-12): conjoined "Playwright baseline E2E" step split into
       # 2 distinct steps so axe-baseline can be flipped blocking while screenshot-baseline
       # stays sheltered pending Linux-platform baseline capture (Tasks 7.4-7.6). Completes
@@ -96,17 +125,26 @@ jobs:
         continue-on-error: false   # FLIPPED from true at Task 7.6; sheltered until 7.5 Linux baselines landed at 16c2ac2; 7.6 removes the shield
         run: npx playwright test --config playwright.baseline.config.ts --project=chromium --grep-invert "axe accessibility baseline"
 
-      - name: Vite build (seeds=true)
+      # Phase-8+ Task 8.6 v2.66.1 in-place CI patch — `npx vite build` → `npx react-router build`
+      # per Finding T empirical surface (`npx vite build` is SILENT NO-OP exit=0 with zero
+      # artifacts when `@react-router/dev/vite::reactRouter()` plugin is wired at HEAD-post-8.6).
+      # Sister-shape to v2.55.1 + v2.51.1 in-place CI patch precedents at Phase-7 Tasks 7.9 + 7.4
+      # (established convention: in-place v2.X.1 amendments within a single task to remediate
+      # empirical CI compat issues surfaced at implementation are structurally acceptable).
+      # Build output graph also transforms `dist/` → `build/client/` at HEAD-post-8.6;
+      # HALT-IF #1 grep at Task 8.6 close confirmed zero downstream `dist/` references in
+      # this workflow, so patch scope is minimal 2-line edit (no downstream path updates).
+      - name: react-router build (seeds=true)
         working-directory: qualia-shell
         env:
           VITE_APPFOLIO_SEEDS: 'true'
-        run: npx vite build
+        run: npx react-router build
 
-      - name: Vite build (seeds=false)
+      - name: react-router build (seeds=false)
         working-directory: qualia-shell
         env:
           VITE_APPFOLIO_SEEDS: 'false'
-        run: npx vite build
+        run: npx react-router build
 
       - name: PII leak scan (strict)
         run: node Scripts/verify_no_pii_leak.mjs

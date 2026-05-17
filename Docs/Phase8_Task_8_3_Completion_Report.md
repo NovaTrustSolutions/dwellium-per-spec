@@ -1,8 +1,8 @@
 # Phase 8+ — Task 8.3 — Provider-tree SSR-safety audit — Completion Report
 
 **Date:** 2026-05-17
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 8.3 — Provider-tree SSR-safety audit; 8.3 squash-SHA cell `TBD` resolves at 8.4 sweep per 28-consecutive-cross-phase-sweep-resolutions convention extending 27-pattern at Phase-8+ Task 8.2 → 28-pattern at 8.3)
-**Green CI run:** Parity Gate `TBD` (manual-dispatched per paths-filter quirk; 19-task cross-phase precedent — DOC-only edit at `Docs/**` + root `CLAUDE.md` outside `qualia-shell/src/**` glob; sister-shape to Task 8.1 OPENER manual-dispatch) + PII Scan `TBD` ✓ SUCCESS + CodeRabbit review pass
+**Commit (HEAD on `main`):** `c44198f` (squash commit for PR #71, Task 8.3 — Provider-tree SSR-safety audit; resolved at Task 8.4 sweep per 28-consecutive-cross-phase-sweep-resolutions convention extending 27-pattern at Phase-8+ Task 8.2 → 28-pattern at 8.3)
+**Green CI run:** Parity Gate `25981046719` ✓ SUCCESS (manual-dispatched per paths-filter quirk; 19-task cross-phase precedent — DOC-only edit at `Docs/**` + root `CLAUDE.md` outside `qualia-shell/src/**` glob; sister-shape to Task 8.1 OPENER manual-dispatch) + PII Scan `25981045642` ✓ SUCCESS + CodeRabbit review clean pass
 **Plan reference:** `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 Phase-8+ sub-tracker row 8.3 (created at v2.61 OPENING; row R → ✓ at v2.63 amendment) + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.3` (mandatory PRE-FLIGHT discipline including v2.60.1-v2.60.6 standing PRE-FLIGHT discipline + v2.62.1 PRE-FLIGHT scope-shape discipline adopted at Task 8.2 close per 4-pattern anchor-bias-mitigation cluster)
 **Template mirror:** `Docs/Phase8_Task_8_1_Completion_Report.md` (Phase-8+ Task 8.1 OPENER sister-shape — both are SCOPING-ONLY class shape; both DOC-only deliverables; both audit-substrate-only; 8.1 introduced SCOPING-ONLY class at project-wide 16th cumulative as 1pt data point; **8.3 completes SCOPING-ONLY class to 2pt cross-phase full calibration**, sister-shape to CLOSURE-NARRATIVE-CONSOLIDATION class full calibration at Phase-6 6.9 + Phase-7 closer 2pt cross-phase pattern).
 **v1-lineage substitute.** Phase-8+ has no v1 plan source (post-v1 carry-forward arc; sister to Phase-6 + Phase-7 + Phase-8+ Task 8.1 + Task 8.2). Authoritative scope source is `Docs/Phase8_SSR_Architectural_Scoping.md §1.5 + §6.3` Task 8.3 carve-out + `Docs/Phase7_Closure_Report.md §8` Phase-8+ Block A item 2 + `Docs/Phases/Phase_8_Plan.md §4 Block A item 8.3` refined at this close.
@@ -103,8 +103,8 @@ Audit findings at §3-§6 surface SSR-incompatibility surfaces in EXISTING sourc
 | Production chunk SHA256 / filename / byte-count | PRESERVED (DOC-only edit; chunk-axis preservation expected by construction) | ✓ | 31-of-31 cross-phase chunk-axis preservation cumulative at 8.3 close (DOC-only edit fully outside Vite entry graph; 1-of-1 within-Phase-8+-post-8.2-BREAK; sister-shape to 30-of-30 chain at Task 8.1 OPENER) |
 | Smoke-test 4-spec cold-start | not re-run per SCOPING-ONLY (zero production source) | — | helpers/auth.ts 6.2 amendment + Task 8.2 routing.test.tsx baseline continue to PASS by construction; smoke-test would PASS if re-run |
 | `verify_no_pii_leak.mjs` strict-scope | exit 0 | ✓ | §2 paste; 51 files scanned, 0 leaks |
-| Parity gate per PR | green (manual-dispatch per paths-filter quirk) | TBD | Run `TBD` manual-dispatched; 19-task cross-phase paths-filter-quirk precedent at 8.3 (DOC-only edit at `Docs/**` + root `CLAUDE.md` outside `qualia-shell/src/**` glob) |
-| CodeRabbit review per PR | pass | TBD | PR #TBD review URL at PR comment |
+| Parity gate per PR | green (manual-dispatch per paths-filter quirk) | ✓ SUCCESS | Run `25981046719` manual-dispatched; 19-task cross-phase paths-filter-quirk precedent at 8.3 (DOC-only edit at `Docs/**` + root `CLAUDE.md` outside `qualia-shell/src/**` glob) |
+| CodeRabbit review per PR | pass | ✓ clean pass | PR #71 review |
 | `Docs/Phase8_Task_8_3_Completion_Report.md` | committed | ✓ | This file |
 | `Docs/Phase8_Task_8_3_Provider_Tree_SSR_Audit.md` | committed (530 lines / 36,278 bytes) | ✓ | NEW audit substrate; 8-section template |
 | §9 Phase-8+ sub-tracker row 8.3 | R → ✓ | ✓ | Plan v2.63 amendment |
@@ -119,7 +119,7 @@ Audit findings at §3-§6 surface SSR-incompatibility surfaces in EXISTING sourc
 
 ## §6. Rollback SHA
 
-Rollback target: `git revert b43c2bf` (Phase-8+ Task 8.2 squash; pre-Task-8.3 state) — OR `git revert TBD` (Phase-8+ 8.3 close; reversible independently). Resolved at 8.4 sweep.
+Rollback target: `git revert b43c2bf` (Phase-8+ Task 8.2 squash; pre-Task-8.3 state) — OR `git revert c44198f` (Phase-8+ 8.3 close; reversible independently). Resolved at 8.4 sweep ✓.
 
 Rollback safety: DOC-only deliverable per Cowork Q1 + Q2 + Q7 LOCK; no production source; no behavior change; no data dependencies; reversible without DB or fixture state implications. v2.63 Plan amendment + Phase_8_Plan.md update + Task 8.2 TBD resolution + CLAUDE.md updates + Phase8_Task_8_3_Provider_Tree_SSR_Audit.md NEW + Phase8_Task_8_3_Completion_Report.md NEW are doc-only and reversible.
 

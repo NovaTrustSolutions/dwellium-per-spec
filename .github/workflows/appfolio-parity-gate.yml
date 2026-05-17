@@ -96,17 +96,26 @@ jobs:
         continue-on-error: false   # FLIPPED from true at Task 7.6; sheltered until 7.5 Linux baselines landed at 16c2ac2; 7.6 removes the shield
         run: npx playwright test --config playwright.baseline.config.ts --project=chromium --grep-invert "axe accessibility baseline"
 
-      - name: Vite build (seeds=true)
+      # Phase-8+ Task 8.6 v2.66.1 in-place CI patch — `npx vite build` → `npx react-router build`
+      # per Finding T empirical surface (`npx vite build` is SILENT NO-OP exit=0 with zero
+      # artifacts when `@react-router/dev/vite::reactRouter()` plugin is wired at HEAD-post-8.6).
+      # Sister-shape to v2.55.1 + v2.51.1 in-place CI patch precedents at Phase-7 Tasks 7.9 + 7.4
+      # (established convention: in-place v2.X.1 amendments within a single task to remediate
+      # empirical CI compat issues surfaced at implementation are structurally acceptable).
+      # Build output graph also transforms `dist/` → `build/client/` at HEAD-post-8.6;
+      # HALT-IF #1 grep at Task 8.6 close confirmed zero downstream `dist/` references in
+      # this workflow, so patch scope is minimal 2-line edit (no downstream path updates).
+      - name: react-router build (seeds=true)
         working-directory: qualia-shell
         env:
           VITE_APPFOLIO_SEEDS: 'true'
-        run: npx vite build
+        run: npx react-router build
 
-      - name: Vite build (seeds=false)
+      - name: react-router build (seeds=false)
         working-directory: qualia-shell
         env:
           VITE_APPFOLIO_SEEDS: 'false'
-        run: npx vite build
+        run: npx react-router build
 
       - name: PII leak scan (strict)
         run: node Scripts/verify_no_pii_leak.mjs

@@ -1,4 +1,5 @@
 import { Suspense, useState } from 'react';
+import { BrowserRouter, Routes, Route, useSearchParams } from 'react-router';
 import { ThemeProvider } from './context/ThemeContext';
 import { UserProvider, useUser } from './context/UserContext';
 import { PermissionsProvider } from './context/PermissionsContext';
@@ -15,6 +16,9 @@ import './App.css';
 // + Verdict #5 (AdminShell wrapper consolidates admin-only providers +
 // shell components). LoginScreen stays eager — it's the initial-paint
 // default at `/` and lazy-loading it would defeat the LCP-reduction lever.
+// Phase-8+ Task 8.2 preserves all 6 lazyWithReload imports unchanged
+// (library-mode RR v7 migration; Option β LOCK; framework-mode adoption
+// deferred to Task 8.6).
 const AdminShell = lazyWithReload(() => import('./components/Shell/AdminShell'));
 const TenantLoginScreen = lazyWithReload(() => import('./components/Auth/TenantLoginScreen'));
 const TenantPortal = lazyWithReload(() => import('./components/TenantPortal/TenantPortal'));
@@ -50,7 +54,7 @@ function AuthGate() {
         );
     }
 
-    // Branch 3 — AuthGate-internal Suspense per Cowork Verdict #2.
+    // Branch 3 — AuthGate-internal Suspense per Phase-7 Task 7.10 Cowork Verdict #2.
     // Wraps the lazy children (TenantLoginScreen / TenantPortal / AdminShell);
     // eager LoginScreen renders pass-through without showing the fallback.
     return (
@@ -73,20 +77,28 @@ function AuthGate() {
     );
 }
 
-export default function App() {
-    // Branch 1 — security-portal: standalone /security route per Cowork
-    // Verdict #2. SecurityPortal fills the entire viewport (no shell).
-    if (window.location.pathname === '/security') {
-        return (
-            <Suspense fallback={<AppSuspenseFallback variant="viewport" label="Loading security portal…" />}>
-                <SecurityPortal />
-            </Suspense>
-        );
-    }
+// Phase-8+ Task 8.2 — route component: /security (Branch 1 semantic preserved).
+// Standalone viewport-fill; no provider tree (sister to original Branch 1 shape).
+function SecurityRoute() {
+    return (
+        <Suspense fallback={<AppSuspenseFallback variant="viewport" label="Loading security portal…" />}>
+            <SecurityPortal />
+        </Suspense>
+    );
+}
 
-    // Branch 2 — popup mode: /?popup=ComponentName — render just that widget,
-    // no sidebar/desktop. Compact popup-fill fallback per Cowork Verdict #2.
-    const popupParam = new URLSearchParams(window.location.search).get('popup');
+// Phase-8+ Task 8.2 — route component: default (Branches 2 + 3 semantic preserved).
+// Uses useSearchParams() hook to read ?popup= query param declaratively
+// (replaces imperative URLSearchParams(window.location.search) at original L89).
+// Popup branch retains 4-provider tree (Theme + User + Query + Permissions);
+// AuthGate default branch retains 3-provider tree (Theme + User + Query;
+// PermissionsProvider remains scoped to admin-shell sub-branch inside AuthGate).
+function DefaultRoute() {
+    const [searchParams] = useSearchParams();
+    const popupParam = searchParams.get('popup');
+
+    // Branch 2 — popup mode: /?popup=ComponentName render just that widget,
+    // no sidebar/desktop. Compact popup-fill fallback.
     if (popupParam) {
         return (
             <ThemeProvider>
@@ -103,8 +115,8 @@ export default function App() {
         );
     }
 
-    // Default branch — AuthGate wraps the lazy admin-shell / tenant-portal
-    // / tenant-login-screen children inside Branch 3 Suspense.
+    // Branch 3 — default: AuthGate wraps the lazy admin-shell / tenant-portal
+    // / tenant-login-screen children inside its internal Suspense.
     return (
         <ThemeProvider>
             <UserProvider>
@@ -113,5 +125,26 @@ export default function App() {
                 </QueryProvider>
             </UserProvider>
         </ThemeProvider>
+    );
+}
+
+// Phase-8+ Task 8.2 — declarative routing migration via react-router v7 library-mode.
+// Replaces original imperative routing at L79 (window.location.pathname) + L89
+// (URLSearchParams(window.location.search)) with <BrowserRouter> + <Routes> +
+// <Route> declarative shape. 3-branch routing semantics preserved byte-for-byte:
+//   - /security        → SecurityRoute (Branch 1; viewport-fill; no providers)
+//   - /?popup=key      → DefaultRoute → popup conditional (Branch 2; 4 providers)
+//   - / (default + any other path via splat) → DefaultRoute → AuthGate (Branch 3; 3 providers)
+// Option β Cowork verdict (Q-α-vs-β LOCKED at PRE0): library-mode RR v7 at Task 8.2;
+// framework-mode adoption (@react-router/dev plugin + app/ directory + entry.client.tsx)
+// deferred to Task 8.6 per original Phase_8_Plan §4 Block A/B partition.
+export default function App() {
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/security" element={<SecurityRoute />} />
+                <Route path="*" element={<DefaultRoute />} />
+            </Routes>
+        </BrowserRouter>
     );
 }

@@ -53,6 +53,29 @@ import { defineConfig, devices } from '@playwright/test';
  * 90s = 3× Playwright default = ~64% headroom over 55s baseline observed
  * at 7.3 run 25754846170. 3rd calibration data point on the timeout field
  * sub-domain (30s default → 60s v2.50.2 → 90s v2.51.1).
+ *
+ * Phase-8+ Task 8.6 v2.66.2 (2026-05-17): webServer command swapped from
+ * `npm run dev` → `npx vite preview --port 5173 --outDir build/client` per
+ * Cowork Verdict 1 Approach A LOCK in response to Parity Gate run
+ * 25986642863 ✗ FAILURE at step 8 (Playwright axe-baseline E2E) per
+ * Finding U empirical-CI-runtime-altitude. Empirical signature: `react-router
+ * dev` at framework-mode altitude (HEAD-post-8.6) returns RR v7 default
+ * HydrateFallback shell ("💿 Hey developer 👋" developer-console message)
+ * on initial server response; full hydration chain (virtual modules + RR
+ * runtime + app/root.tsx Root() + route modules + LoginScreen) must
+ * complete client-side before `.login-start-overlay` mounts to DOM; on
+ * Linux CI this exceeds expect(overlay).toBeVisible({ timeout: 10_000 })
+ * budget at helpers/auth.ts:59. Approach A canonical pattern: CI gate
+ * tests the production-build path users consume, not dev-server hydration
+ * overhead. Sister-shape to v2.66.1 in-place CI patch within Task 8.6
+ * (build-command altitude vs v2.66.2 at server-startup altitude) —
+ * establishes 2-in-place-patches-per-task precedent at Phase-8+ Block B
+ * opener mirroring Phase-7 Task 7.3 v2.50.1+v2.50.2 escalation shape.
+ * Pre-Playwright `npx react-router build` step inserted at
+ * .github/workflows/appfolio-parity-gate.yml (Deliverable A1) produces
+ * `qualia-shell/build/client/` for `vite preview` consumption by this
+ * webServer. Post-Playwright build steps preserved unchanged (preserve
+ * dual-mode SEEDS=true/false gate semantics).
  */
 export default defineConfig({
   testDir: './e2e',
@@ -88,8 +111,13 @@ export default defineConfig({
 
   // Only the frontend — VITE_USE_STATIC_API=true routes strataApi calls
   // to the in-memory fixtures, so no sibling backend dependency.
+  // Phase-8+ Task 8.6 v2.66.2: serves the production build at
+  // `build/client/` (Approach A LOCK per Finding U). Pre-Playwright
+  // `npx react-router build` step in appfolio-parity-gate.yml produces
+  // the bundle BEFORE this server starts; reuseExistingServer flag
+  // preserves local dev-loop ergonomics.
   webServer: {
-    command: 'npm run dev',
+    command: 'npx vite preview --port 5173 --outDir build/client',
     port: 5173,
     timeout: 30_000,
     reuseExistingServer: !process.env.CI,

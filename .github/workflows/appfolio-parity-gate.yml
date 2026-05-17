@@ -67,6 +67,35 @@ jobs:
         working-directory: qualia-shell
         run: npx playwright install --with-deps chromium
 
+      # Phase-8+ Task 8.6 v2.66.2 in-place CI patch per Finding U empirical
+      # surface (Parity Gate run 25986642863 ✗ FAILURE at step 8 Playwright
+      # axe-baseline E2E). Empirical signature: `react-router dev` at
+      # framework-mode altitude returns RR v7 default HydrateFallback shell
+      # on initial server response; full hydration chain (virtual modules +
+      # RR runtime + app/root.tsx + route modules + LoginScreen) must
+      # complete client-side before `.login-start-overlay` mounts to DOM;
+      # on Linux CI this exceeds the 10s overlay-visible budget at
+      # helpers/auth.ts:59. Approach A canonical pattern: CI gate tests
+      # the production-build path users consume, not dev-server hydration
+      # overhead. Pre-Playwright build produces `qualia-shell/build/client/`
+      # for `npx vite preview --port 5173 --outDir build/client` consumption
+      # by Playwright webServer per playwright.baseline.config.ts v2.66.2.
+      # SEEDS=true matches webServer env convention (VITE_USE_STATIC_API=true
+      # routes strataApi calls to in-memory fixtures); seeds-true output
+      # exercises the appfolio-parity surface that axe-baseline + feature
+      # specs scan. Post-Playwright build steps preserve dual-mode
+      # SEEDS=true/false gate semantics unchanged (each rebuilds from clean
+      # state). Sister-shape to v2.66.1 in-place CI patch within Task 8.6
+      # (build-command altitude vs v2.66.2 at server-startup altitude) —
+      # 2-in-place-patches-per-task precedent at Phase-8+ Block B opener
+      # mirrors Phase-7 Task 7.3 v2.50.1+v2.50.2 escalation shape.
+      - name: react-router build (seeds=true; pre-Playwright preview)
+        working-directory: qualia-shell
+        env:
+          VITE_APPFOLIO_SEEDS: 'true'
+          VITE_USE_STATIC_API: 'true'
+        run: npx react-router build
+
       # Phase-7 Task 7.3 (2026-05-12): conjoined "Playwright baseline E2E" step split into
       # 2 distinct steps so axe-baseline can be flipped blocking while screenshot-baseline
       # stays sheltered pending Linux-platform baseline capture (Tasks 7.4-7.6). Completes

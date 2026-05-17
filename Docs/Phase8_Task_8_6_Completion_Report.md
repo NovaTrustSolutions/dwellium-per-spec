@@ -102,6 +102,84 @@ Empirical signature: **exit code 0 + zero stdout + zero build artifacts produced
 
 Remediation per Cowork Verdict Q3 LOCK: **in-place v2.66.1 workflow patch at `.github/workflows/appfolio-parity-gate.yml::L103+L109`** (`npx vite build` → `npx react-router build`). Sister-shape to v2.55.1 in-place CI patch precedent at Phase-7 Task 7.9 (workflow-step continue-on-error TRUE direction making baseline-artifact-upload non-blocking) + v2.51.1 in-place patch at Phase-7 Task 7.4 (timeout 60s → 90s round-3). Established convention: in-place v2.X.1 amendments within a single task to remediate empirical CI compat issues surfaced at implementation are structurally acceptable + recommended. HALT-IF #1 grep verification at v2.66.1 patch scope confirmed zero `dist/` matches in parity gate workflow → 2-line edit minimal-scope patch (no downstream path updates required).
 
+### (U) Finding U — RR v7 framework-mode `route('*', ...)` splat does NOT match root path `/` at SPA Mode runtime; routing-config altitude (REVISED per Cowork Verdict 7 LOCK)
+
+**Cemented per Cowork Verdict 7 LOCK at Step-4-bis remediation cycle (REVISED from originally-proposed empirical-CI-runtime-altitude after empirical refutation at recursive-validation cycle).** Step-7 first-push of Task 8.6 surfaced Parity Gate run [25986642863](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25986642863) ✗ FAILURE at step 8 (Playwright axe-baseline E2E; BLOCKING gate from Phase-7 Task 7.3). Empirical signature:
+
+```
+Error: expect(locator).toBeVisible() failed
+Locator: locator('.login-start-overlay')
+Expected: visible
+Timeout: 10000ms
+Error: element(s) not found
+  at helpers/auth.ts:59  (page.goto('/') → wait for splash overlay)
+```
+
+**Initial hypothesis (empirical-CI-runtime-altitude):** dev-mode hydration overhead at framework-mode altitude exceeds 10s timeout budget on Linux CI; Cowork Verdict 1 LOCKED Approach A (CI gate switches to production build + `vite preview --outDir build/client`). Deliverables A1 (workflow YAML pre-Playwright build step) + A2 (playwright.baseline.config.ts webServer reshape) applied per v2.66.2 in-place CI patch.
+
+**Step-4-bis empirical refutation of initial hypothesis.** Local re-verification of Approach A patches against `vite preview --outDir build/client` output FAILED — `.login-start-overlay` still not visible within 10s on local darwin. Chromium-headless probe of `build/client/index.html` at HEAD-post-Approach-A:
+
+| Diagnostic | Empirical signature |
+|---|---|
+| HTTP response | 200 / 2,020 bytes |
+| `<title>` | "AstraStrata — Property Management" (from `app/root.tsx::Root()` head — DOES render post-hydration) |
+| `.login-start-overlay` in DOM | **NOT present** |
+| `LoginScreen` in DOM | **NOT present** |
+| `<div id="root">` | NOT present (no React mount point) |
+| `<html className="theme-...">` | NOT applied (FOUC IIFE script-element React-rendered post-hydration, not HTML-shipped) |
+| Console errors | **0** |
+| Page errors | **0** |
+| Body post-hydration | only RR streamController scripts (no `<Outlet />` content) |
+
+Hydration completes cleanly — the `<Outlet />` just renders nothing because no route declaration matches `/` at SPA Mode runtime.
+
+**Recasted root cause (routing-config altitude).** RR v7 framework-mode `route('*', 'file')` splat semantic at SPA Mode runtime does NOT include root path `/` — structural API divergence from RR v6 library-mode where `<Route path="*">` matched `/`. Pre-Task-8.6 baseline at Task 8.2 library-mode `<BrowserRouter><Routes><Route path="*" element={<DefaultRoute />}>` empirically matched root in RR v6 library-mode shape; framework-mode declarative `route('*', ...)` does NOT. Pre-Task-8.6 Cowork Verdict 1 LOCK at Task 8.6 PRE0 anticipated `/security` + `*` splat would preserve 3-branch routing semantic byte-for-byte — empirically refuted at Step-4-bis chromium-headless probe.
+
+**Canonical RR v7 framework-mode pattern requires `index('file')` route helper for root-path matching.** Remediation per Cowork Z1 LOCK: ADD `index('routes/default.tsx')` to `app/routes.ts` BEFORE the splat catch-all (3-line edit + import additive).
+
+**Recursively-surfaced sub-finding at Z1.A patch cycle: route-ID-derivation collision (8th v2.60.1 cluster altitude).** First Z1.A patch attempt:
+
+```typescript
+export default [
+  route('/security', 'routes/security.tsx'),
+  index('routes/default.tsx'),
+  route('*', 'routes/default.tsx'),     // ← collides
+] satisfies RouteConfig;
+```
+
+Build attempt at Step-4-bis Z1.B verification surfaced empirical refutation:
+
+```
+Error: Route config in "routes.ts" is invalid.
+Error: Unable to define routes with duplicate route id: "routes/default"
+```
+
+RR v7 framework-mode derives default route IDs from file paths; two routes pointing to the same file (`routes/default.tsx`) collide on default ID `routes/default`. Explicit `id` parameter disambiguates per RR v7 `RouteConfig` options. Final Z1.A shape:
+
+```typescript
+export default [
+    route('/security', 'routes/security.tsx'),
+    index('routes/default.tsx'),
+    route('*', 'routes/default.tsx', { id: 'splat' }),
+] satisfies RouteConfig;
+```
+
+Sub-finding is recursively-surfaced within Z1.A patch cycle itself (8th altitude of v2.60.1 cluster: route-id-derivation altitude as sub-shape under routing-config altitude). Post-fix Step-4-bis Z1.B re-verification: **8/8 PASS** on local darwin (52.2s wallclock; 0 violations across all 8 surfaces; `.login-start-overlay` visible within 10s budget on every surface). Build success + vitest 264/264 + SEEDS=false build + PII guard all clean (zero regression vs HEAD-pre-Z1.A).
+
+**Sister-shape constellation: 3-in-place-patches-per-task at Phase-8+ Block B opener** — Task 8.6 closes with v2.66.1 (build-command altitude) + v2.66.2 (server-startup altitude) + v2.66.3 (routing-config altitude) = 3 in-place v2.X.X patches within a single task. Extends Phase-7 Task 7.3 v2.50.1+v2.50.2 escalation shape (2 in-place patches) by +1 cluster level. Empirical observation: framework-installation tasks at OPENER altitude of a chosen-framework adoption arc are empirically prone to clustering 3+ in-place patches as PRE0 anchor-bias-mitigation cluster surfaces new altitudes at implementation + verification cycles.
+
+**Recursive-validation discipline pattern empirically vindicated at substantive scale.** The standing PRE-FLIGHT discipline cluster's HARD HALT-IF #1 (Step-4-bis local re-verification post-A-patch) caught the wrong-hypothesis LOCK (empirical-CI-runtime altitude) exactly as designed BEFORE Step-7 push of Approach-A-alone shape. Cowork Verdict 1 (Approach A LOCK) itself was empirically falsifiable — and was empirically falsified at recursive-self-validation altitude. Approach A patches preserved per Verdict 6 Z1 LOCK as structurally-correct CI-hygiene engineering deliverable INDEPENDENT of the routing-config-altitude bug (CI gates test production-build path users consume, regardless of which framework runtime bug underlies any specific failure axis).
+
+**v2.60.1 cluster now applied across 7 distinct empirical-verification altitudes:**
+
+1. Hypothesis-content altitude — Phase-7 7.13 origin
+2. Implementation-shipping altitude — Phase-7 7.13 close
+3. Audit-shipping altitude — Phase-8+ Task 8.4 finding J close
+4. Scope-existence altitude — Phase-8+ Task 8.5 finding L close
+5. Install-shipping altitude — Phase-8+ Task 8.6 finding S close
+6. Empirical-CI-runtime altitude — Phase-8+ Task 8.6 finding U origin (REFUTED at Step-4-bis recursive-self-validation)
+7. **Routing-config altitude — Phase-8+ Task 8.6 finding U REVISED close (NEW canonical altitude)** + nested sub-altitude (route-id-derivation 8th cluster altitude as sub-shape within Z1.A patch cycle)
+
 ---
 
 ## §1 — Empirical evidence
@@ -132,6 +210,19 @@ Remediation per Cowork Verdict Q3 LOCK: **in-place v2.66.1 workflow patch at `.g
 **Build-output-graph empirical transformation (Step-4-bis Finding T cementation):** `dist/` → `build/client/`; SPA Mode (`ssr: false` per `react-router.config.ts` LOCK) emits `build/client/index.html` + `Removing the server build in build/server due to ssr:false` confirmation log. HALT-IF #1 grep verification: zero `dist/` matches in `.github/workflows/appfolio-parity-gate.yml` post-v2.66.1 patch — no downstream path references in CI workflow.
 
 **Routing test sweep (Task 8.2 5/5 PASS preservation verification at Step-2.5 pre-Step-3 baseline):** `routing.test.tsx` 5/5 PASS isolated (481ms wallclock; jsdom environment 292ms); MemoryRouter import shape `import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router';` sourced from `react-router` core v7.15.1 (NOT `react-router-dom`; NOT `react-router/testing`). Framework-mode compat-by-construction: `@react-router/dev` + `@react-router/node` are PEER packages that ADD framework infrastructure without shadowing core package exports.
+
+**Step-4-bis Z1.B local re-verification (post-Finding-U-revised remediation; per Cowork Verdict 6 Z1 LOCK):**
+
+| Gate | HEAD-pre-Z1 (Approach-A-only post-A1+A2) | HEAD-post-Z1.A (`index('routes/default.tsx')` + `route('*', ..., { id: 'splat' })`) | Δ |
+|---|---|---|---|
+| `npx react-router build` (SEEDS=true) | ✓ SPA Mode emit | ✓ SPA Mode emit | preserved |
+| `npx playwright test axe-baseline.spec.ts` | ✗ 1 failed / 7 did not run (Overview overlay timeout) | **✓ 8/8 PASS** (52.2s wallclock; 0 violations across all 8 surfaces) | **binary inversion** |
+| `npx tsc -b` | ✓ Zero errors | ✓ Zero errors | preserved |
+| `npx vitest run` | 264/264 | **264/264** | +0 |
+| `npx react-router build` (SEEDS=false) | ✓ SPA Mode emit | ✓ SPA Mode emit | preserved |
+| `node Scripts/verify_no_pii_leak.mjs` | ✓ 51 files / 0 leaks | ✓ 51 files / 0 leaks | preserved |
+
+**Binary-inversion deterministic-validation signal at Z1.A patch cycle:** 8/8 FAIL pre-Z1.A (CI Parity Gate run 25986642863 + local re-verification of Approach-A-only) → **8/8 PASS post-Z1.A** on local darwin against `vite preview --outDir build/client`. Sister-shape to Phase-7 7.13's binary-inversion test-infra-fix validation signal (sister-shape constellation of deterministic-validation patterns expanding from MEASUREMENT-ONLY class altitude to FRAMEWORK-INSTALLATION class altitude).
 
 ---
 
@@ -175,7 +266,11 @@ Remediation per Cowork Verdict Q3 LOCK: **in-place v2.66.1 workflow patch at `.g
 - Phase-8+ Block B OPENER (Task 8.6): **1 NEW class (18th FRAMEWORK-INSTALLATION)**
 - Phase-8+ cumulative NEW classes at HEAD-post-8.6: **3** (16th + 17th + 18th)
 
-**Cumulative Phase-8+ engineering-finding catalog at Task 8.6 close: 20 findings** (was 13 at 8.5 close → +7 at 8.6 = 20). Per-task cadence at Phase-8+: 4 + 2 + 3 + 2 + 2 + 7 = 20 cumulative at 6 tasks; Block B opener +7 cadence acceleration vs Block A's ~2-3 cadence per task (sister-shape to Phase-7 closer's compounding cadence pattern from per-task ~1-2 to closer-altitude ~2-3+ as discipline cluster extends).
+**Cumulative Phase-8+ engineering-finding catalog at Task 8.6 close: 21 findings** (was 13 at 8.5 close → +7 PRE0+implementation cementation cycle = 20 → +1 Step-4-bis remediation cycle Finding U = **21 cumulative**). Per-task cadence at Phase-8+: 4 + 2 + 3 + 2 + 2 + 8 = **21 cumulative at 6 tasks**; Block B opener **+8 cadence acceleration** vs Block A's ~2-3 cadence per task (sister-shape to Phase-7 closer's compounding cadence pattern from per-task ~1-2 to closer-altitude ~2-3+ as discipline cluster extends; 10.5× scaling factor vs Phase-7 closer's 2-finding catalog at single-task altitude).
+
+**NEW v2.67.0 PRE-FLIGHT discipline candidate at routing-config altitude per Cowork Verdict 8 LOCK** (REVISED from originally-proposed empirical-CI-runtime altitude after Step-4-bis empirical refutation of initial Finding U hypothesis). v2.67.0 framing: *"v2.60.1 falsified-hypothesis empirical-verification PRE-FLIGHT discipline applies at routing-config altitude — at every framework-adoption task PRE0 OR routing-related production-source-edit PRE0, verify framework-canonical route-declaration semantics against framework-author canonical guides AND empirical end-to-end navigation testing of root path + all branch paths BEFORE locking routing-config shape. Pre-locked hypothesis adopting library-mode sister-shape semantics may empirically refute at framework-mode runtime. RR v7 framework-mode: `index('file')` matches root path `/`; `route('path', 'file')` matches path; `route('*', 'file')` matches catch-all NON-root paths. Sister-shape constellation: RR v6 library-mode `<Route path="*">` matched root + non-root (empirically false at RR v7 framework-mode)."*
+
+**8-pattern anchor-bias-mitigation cluster recognition extension** at Task 8.6 close (post-Verdict-7-recasting): cluster patterns span hypothesis-content + class-count + closer-scope + scope-shape + audit-content + Phase-plan-document-audit-content + install-shipping + routing-config = **8 distinct empirical-verification altitudes** (v2.60.1 + v2.60.4 + v2.60.6 + v2.62.1 + v2.64.0 + v2.65.0 + v2.66.0 + v2.67.0). v2.60.1 falsified-hypothesis empirical-verification PRE-FLIGHT discipline now applied across **6 distinct empirical-verification altitudes** for v2.60.1 cluster alone at Task 8.6 close (hypothesis-content + implementation-shipping + audit-shipping + scope-existence + install-shipping + routing-config) + nested 7th sub-altitude (route-id-derivation as sub-shape under routing-config).
 
 ---
 
@@ -193,6 +288,12 @@ Remediation per Cowork Verdict Q3 LOCK: **in-place v2.66.1 workflow patch at `.g
 | Implementation Q2 — Finding T | CEMENT | Empirical signature exit=0 / zero artifacts cemented | §0 Finding T |
 | Implementation Q3 — v2.66.1 workflow patch | GO in-place sister to v2.55.1 + v2.51.1 | Workflow L103+L109 patched; HALT-IF #1 grep confirmed zero downstream dist/ references | `.github/workflows/appfolio-parity-gate.yml::L103+L109` |
 | Implementation Q4 — Catalog growth | 13 → 20 cumulative | 7-finding cadence acceleration empirically cemented | §3 |
+| Step-7-failure-remediation Q1 — Approach A vs B vs C LOCK | A LOCKED (production build + vite preview); B + C REJECTED | v2.66.2 in-place CI patch shipped (workflow pre-Playwright build + playwright.baseline.config.ts webServer reshape) | §0 Finding U; A1 + A2 |
+| Step-4-bis-remediation Q2 — Z1 vs Z2 LOCK | Z1 LOCKED (KEEP Approach A patches + ADD `index('routes/default.tsx')`) | v2.66.3 in-place routing-config patch shipped at `app/routes.ts` (3-deliverable scope Z1.A + Z1.B + Z1.C) | §0 Finding U revised; Z1.A |
+| Step-4-bis-remediation Q3 — Finding U REVISED framing LOCK | Routing-config altitude (NOT empirical-CI-runtime) | §0 Finding U cementation revised to routing-config altitude at 7th v2.60.1 cluster altitude | §0 Finding U revised |
+| Step-4-bis-remediation Q4 — v2.67.0 PRE-FLIGHT altitude SHIFT | Routing-config altitude (NOT empirical-CI-runtime) | §3 v2.67.0 cementation at routing-config altitude; 8-pattern cluster recognition | §3 |
+| Step-4-bis-remediation Q5 — Finding V (FOUC IIFE observation) | DEFER as Finding V candidate to Task 8.7 PRE0 | Task 8.6 §7 carry-forward item; do NOT expand Task 8.6 scope | §7 below |
+| Step-4-bis-remediation Q6 — Catalog growth at Verdict-7 recasting | 20 → 21 cumulative (Finding U recast; +1 net) | 3-in-place-patches-per-task at Block B opener (v2.66.1 + v2.66.2 + v2.66.3) | §0; §3 |
 
 ---
 
@@ -209,8 +310,11 @@ Remediation per Cowork Verdict Q3 LOCK: **in-place v2.66.1 workflow patch at `.g
 | Chunk-axis preservation taxonomy | structurally distinct shape | ✓ dist/ → build/client/ build-output-directory transformation | §1 |
 | Phase-7 7.10 LCP lever preservation | eager-chunk ≤ Phase-7 baseline | ✓ −26.0% further compression at framework-mode altitude | §1 |
 | HALT-IF #1 grep dist/ in workflow | zero matches | ✓ exit=1 (zero matches); v2.66.1 patch 2-line minimal-scope | Step-5 pre-patch |
-| Parity Gate run | ✓ SUCCESS | TBD at Step-7 | TBD |
-| Manual paths-filter at parity gate dispatch | auto-fire expected via `qualia-shell/src/**` glob (App.tsx named-export promotion) OR root-parent altitude | TBD at Step-7 | Q6 LOCK |
+| Step-7 first-push Parity Gate | ✓ SUCCESS | ✗ FAILURE at run [25986642863](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25986642863) step 8 Playwright axe-baseline E2E (HARD HALT-IF #2 triggered → Cowork Verdict 1 LOCK Approach A) | §0 Finding U |
+| Step-4-bis Approach A local re-verification (post-v2.66.1+A1+A2) | 8/8 PASS | ✗ STILL FAIL (chromium-headless probe surfaced revised Finding U at routing-config altitude; HARD HALT-IF #1 triggered → Cowork Verdict 7 LOCK Z1 path) | §0 Finding U revised |
+| Step-4-bis Z1.B re-verification (post-v2.66.3 `index('routes/default.tsx')` add) | 8/8 PASS within 10s overlay-visible budget | **✓ 8/8 PASS (52.2s wallclock; 0 violations across all 8 surfaces)** | §1 binary-inversion table |
+| Step-7 fresh-push Parity Gate (post-Z1.C) | ✓ SUCCESS | TBD at Step-7-bis fresh-push | TBD |
+| Manual paths-filter at parity gate dispatch | auto-fire expected via `qualia-shell/src/**` glob (App.tsx named-export promotion) OR root-parent altitude | TBD at Step-7-bis | Q6 LOCK |
 | CodeRabbit review per PR | pass | TBD | TBD |
 | 31-pattern milestone cross-phase sweep-resolutions cementation | Task 8.5 TBD → `d98bd48` / `#73` resolution co-shipped | Already resolved at Step-1 sweep at Task 8.6 OPENING (sister-shape to 30-pattern at Task 8.5 sweep ROUND-DECADE CONVENTION CEMENTATION) | §6 below |
 
@@ -226,15 +330,16 @@ Build-output-graph rollback note: rollback restores `dist/` shape; no in-flight 
 
 ---
 
-## §7 — Phase-7 deferred-items carry-forward (Phase-8+ Task 8.6 contributions; 7 NEW items)
+## §7 — Phase-7 deferred-items carry-forward (Phase-8+ Task 8.6 contributions; 8 NEW items)
 
 1. **Task 8.7 entry boundary creation scope inheritance** — `entry.server.tsx` + `entry.client.tsx` deferred from Task 8.6 per Cowork Verdict 2 LOCK + Finding O Task-partition refinement; canonical app/root.tsx delivered at Task 8.6; Task 8.7 scope retains entry boundary override + framework-canonical entry-point creation.
 2. **Scripts/run_lighthouse_phase{5,6,7}.mjs JSDoc dist/ comments** (per Cowork Q3 verdict at Step-3+Step-4 checkpoint) — JSDoc comments at Scripts/run_lighthouse_baseline.mjs:22 + Scripts/run_lighthouse_phase7.mjs:100 reference `emit dist/` at JSDoc altitude. Defer to **Phase-8+ Task 8.12 OPENING sweep** per absorb-into-next-sweep convention; sister-shape to per-phase Lighthouse script-rename pattern at Phase-6 6.6 + Phase-7 7.4. Task 8.6 scope NOT expanded to include historical Scripts/ JSDoc comments per Cowork verdict.
-3. **Plan v2.66+ amendment candidate: 5th altitude of v2.60.1 cluster cementation** (Finding S install-shipping altitude) — formalize v2.66.0 PRE-FLIGHT discipline at install-shipping altitude as standing PRE-FLIGHT discipline for downstream Phase-8+ Block B Tasks 8.7-8.11 framework-mode tasks + Phase-9+ onboarding.
-4. **7-pattern anchor-bias-mitigation cluster recognition extension** — v2.60.1 + v2.60.4 + v2.60.6 + v2.62.1 + v2.64.0 + v2.65.0 + **v2.66.0 (install-shipping altitude)** = 7-pattern at HEAD-post-8.6. Sister-shape to 6-pattern recognition at Task 8.5 close; recursive-validation discipline pattern continues at scale.
+3. **Plan v2.66+ amendment candidate: 5th + 7th altitudes of v2.60.1 cluster cementation** (Finding S install-shipping altitude + Finding U routing-config altitude) — formalize v2.66.0 + v2.67.0 PRE-FLIGHT discipline at install-shipping + routing-config altitudes as standing PRE-FLIGHT discipline for downstream Phase-8+ Block B Tasks 8.7-8.11 framework-mode tasks + Phase-9+ onboarding.
+4. **8-pattern anchor-bias-mitigation cluster recognition extension** — v2.60.1 + v2.60.4 + v2.60.6 + v2.62.1 + v2.64.0 + v2.65.0 + v2.66.0 (install-shipping altitude) + **v2.67.0 (routing-config altitude; REVISED from empirical-CI-runtime per Step-4-bis recursive-validation refutation cycle)** = 8-pattern at HEAD-post-8.6. Sister-shape to 7-pattern recognition at v2.66.0 cementation (intra-Task-8.6 sub-cycle); recursive-validation discipline pattern continues at scale + extends nested sub-altitude precedent (route-id-derivation as 8th cluster altitude as sub-shape under routing-config altitude within Z1.A patch cycle).
 5. **Build-output-graph chunk-axis-preservation taxonomy refinement** — NEW Conventions block entry: at framework-mode altitude, build-output directory transforms (e.g., `dist/` → `build/client/` at RR v7 framework-mode); chunk-axis preservation tracking shifts to `build/client/assets/**` glob; sister-shape extension to Task 8.4 parent-altitude taxonomy at build-output-shape-change variant.
 6. **Phase-7 7.10 LCP-reduction lever framework-mode-amplification empirical record** — substantive Phase-8+ Block C carry-forward deliverable: lazy-load lever (Phase-7 7.10 origin) + React.lazy expansion preserved + further −26.0% eager-chunk compression at framework-mode altitude; combined with Block C's planned LCP n=10 re-measurement at Task 8.12 generates empirical signal for v1 L228 reachability verdict.
 7. **react-router-serve preview script gap** — Task 8.6 set `package.json::scripts::preview` to `vite preview --outDir build/client` as SPA-mode workaround (per `ssr: false` LOCK at react-router.config.ts; react-router-serve only serves SSR builds). Once SSR enablement at Task 8.8 (ssr:false → true flip), preview script needs update to `react-router-serve build/server/index.js`. Defer to Task 8.8 OPENING sweep per absorb-into-next-sweep convention.
+8. **Finding V candidate — FOUC IIFE HTML-shipping-altitude gap at framework-mode** (per Cowork Verdict 9 DEFERRAL at Step-4-bis remediation cycle). Empirical observation surfaced at Step-4-bis chromium-headless probe: `<html className="theme-...">` is NOT applied on HTML-shipped fallback shell at HEAD-post-Approach-A (because RR v7 SPA Mode's HydrateFallback ships only `<html lang="en">` without className; FOUC IIFE script-element is React-rendered post-hydration via `app/root.tsx::Root()` not HTML-shipped pre-hydration). Pre-Task-8.6 baseline: `index.html` FOUC IIFE shipped at HTML-altitude pre-hydration per Task 8.4 v1 L230 FOUC mitigation engineering record (Finding β className pattern at ThemeContext.tsx L70-L75 useEffect altitude). Post-Task-8.6: FOUC IIFE rendered post-hydration via React tree (React-managed `<html>` may not respect that DOM mutation timing). Task 8.4 SSR-MIGRATION-PREP class engineering record carry-forward at framework-mode altitude requires Task 8.7 + 8.8 boundary remediation. Cement as Finding V framing at **Task 8.7 PRE0 inheritance** per v2.65.0 Phase-plan-document audit-content cross-altitude-applicability PRE-FLIGHT discipline; remediation candidate: relocate FOUC IIFE to `entry.server.tsx` altitude OR React-element altitude at `Root()` head (sister-shape investigation per v2.60.1 discipline applied at HTML-shipping-altitude). Do NOT expand Task 8.6 scope.
 
 ---
 
@@ -244,7 +349,9 @@ Build-output-graph rollback note: rollback restores `dist/` shape; no in-flight 
 
 **Block B 1-of-6 milestone at this close.** Block B 6-task arc opens (8.6 ✓ + 8.7 R + 8.8 R + 8.9 R + 8.10 R + 8.11 R). Task 8.7 next: entry boundary creation (`entry.server.tsx` + `entry.client.tsx`; production-source-edit at app/ altitude; calibration class candidate per Plan §4 L144 — PRODUCTION-SOURCE-EDIT with sub-shape SSR-ENTRY-BOUNDARY 1st data point). Cowork verdict at Task 8.7 PRE0.
 
-**Cumulative Phase-8+ engineering-finding catalog at 20 findings post-Task-8.6 close** (sister-shape to Phase-7 closer §2 2-finding catalog depth applied at 10× scaling factor + cadence acceleration empirically cemented at Block B opener +7-finding-per-task altitude). Phase-8+ closer projection refines upward to 24-26+ findings at full closure if Block B Tasks 8.7-8.11 + Block C 8.12-8.14 sustain per-task ~2-3 findings cadence on top of 20 cumulative at 8.6 close.
+**Cumulative Phase-8+ engineering-finding catalog at 21 findings post-Task-8.6 close** (sister-shape to Phase-7 closer §2 2-finding catalog depth applied at 10.5× scaling factor + cadence acceleration empirically cemented at Block B opener +8-finding-per-task altitude via PRE0 5 + implementation-checkpoint 2 + Step-4-bis-remediation 1). Phase-8+ closer projection refines further upward to **25-27+ findings at full closure** if Block B Tasks 8.7-8.11 + Block C 8.12-8.14 sustain per-task ~2-3 findings cadence on top of 21 cumulative at 8.6 close + Finding V cementation at 8.7 PRE0 inheritance.
+
+**3-in-place-patches-per-task precedent at Phase-8+ Block B opener cemented:** Task 8.6 ships **3 in-place v2.X.X patches** within a single task — v2.66.1 build-command altitude (workflow `npx vite build` → `npx react-router build` per Finding T) + v2.66.2 server-startup altitude (workflow pre-Playwright build step + playwright.baseline.config.ts webServer reshape per Finding U initial hypothesis) + v2.66.3 routing-config altitude (`app/routes.ts` `index()` + `{ id: 'splat' }` per Finding U revised at Step-4-bis remediation cycle). Extends Phase-7 Task 7.3 v2.50.1+v2.50.2 escalation shape (2 in-place patches) by +1 cluster level. Empirical observation cemented: framework-installation tasks at OPENER altitude of a chosen-framework adoption arc are empirically prone to clustering 3+ in-place patches as PRE0 anchor-bias-mitigation cluster surfaces new altitudes at implementation + verification + recursive-self-validation cycles.
 
 ---
 
@@ -255,8 +362,10 @@ Build-output-graph rollback note: rollback restores `dist/` shape; no in-flight 
 - `Docs/Phase8_Task_8_3_Provider_Tree_SSR_Audit.md §5.2` (Cowork Q3 SSR-safety remediation roadmap referenced from Task 8.6 PRE0)
 - `Docs/Phase8_Task_8_4_Completion_Report.md` (Finding J audit-content empirical-vs-hypothetical distinction at 3rd altitude precedent + FOUC IIFE pattern ported to Task 8.6 app/root.tsx altitude)
 - `Docs/Phase8_Task_8_5_Completion_Report.md` (Finding L scope-existence-empirical-refutation + Finding M Phase-plan-document audit-content cross-altitude-applicability + 6-pattern anchor-bias-mitigation cluster precedent extending to 7-pattern at Task 8.6 v2.66.0)
-- `qualia-shell/react-router.config.ts` + `qualia-shell/app/root.tsx` + `qualia-shell/app/routes.ts` + `qualia-shell/app/routes/{security,default}.tsx` NEW at Step-3
+- `qualia-shell/react-router.config.ts` + `qualia-shell/app/root.tsx` + `qualia-shell/app/routes.ts` (v2.66.3 routing-config patch at Step-4-bis remediation cycle per Cowork Verdict 6 Z1 LOCK + Verdict 7 Finding U REVISED) + `qualia-shell/app/routes/{security,default}.tsx` NEW at Step-3
 - `qualia-shell/vite.config.ts` + `qualia-shell/vitest.config.ts` SPLIT per Verdict 3 LOCK at PRE0
 - `qualia-shell/package.json` deps + scripts post-RR-v7-framework-mode-install
-- `.github/workflows/appfolio-parity-gate.yml::L99-L122` v2.66.1 in-place patch per Finding T + Verdict Q3 LOCK
-- HEAD `d98bd48` post-Task-8.5 baseline + HEAD-post-8.6 framework-mode chunk-axis empirical capture
+- `.github/workflows/appfolio-parity-gate.yml::L99-L122` v2.66.1 in-place patch per Finding T + Verdict Q3 LOCK + L92-L122 pre-Playwright build step (v2.66.2 in-place patch per Finding U initial hypothesis + Verdict 1 Approach A LOCK)
+- `qualia-shell/playwright.baseline.config.ts::webServer` v2.66.2 reshape per Verdict 1 Approach A LOCK
+- Parity Gate run [25986642863](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/25986642863) ✗ FAILURE at step 8 (Playwright axe-baseline E2E) — Finding U empirical origin signature
+- HEAD `d98bd48` post-Task-8.5 baseline + HEAD-post-8.6 framework-mode chunk-axis empirical capture + HEAD-post-Z1.A routing-config remediation

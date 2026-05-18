@@ -5,7 +5,20 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
  *
  * Ports `qualia-shell/index.html` HTML shell template (5 SSR-ready meta tags
  * + FOUC IIFE theme application + Google Fonts preconnect/preload) into
- * RR v7 framework-mode `app/root.tsx` altitude per Cowork Verdict 2 LOCK.
+ * RR v7 framework-mode `app/root.tsx` altitude per Cowork Verdict 2 LOCK
+ * (Task 8.6 close).
+ *
+ * Phase-8+ Task 8.7 — REFACTORED to canonical RR v7 framework-mode
+ * Layout/Root/HydrateFallback 3-export pattern per Cowork Verdict 15 LOCK
+ * (Finding V cementation; FOUC IIFE HTML-shipping at build-time altitude).
+ * Empirical signature at HEAD-post-8.6: `grep -c "dwellium-theme" build/client/index.html` = 0
+ * (FOUC IIFE not HTML-shipped because RR v7 default HydrateFallback placeholder
+ * rendered instead of our Root()). REVISED pattern: `Layout` wraps the document
+ * shell (5 meta tags + FOUC IIFE + Google Fonts in `<head>`); `Root` renders
+ * `<Outlet />` for matched routes; `HydrateFallback` renders the build-time
+ * SPA Mode shell body (per Finding W cementation: entry.server.tsx IS invoked
+ * at build time even at ssr: false). Layout wraps both Root AND HydrateFallback
+ * per RR v7 framework-mode canonical convention.
  *
  * Empirical equivalence to index.html shell at HEAD-post-8.4 (6742484):
  *
@@ -32,7 +45,7 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
  * state per `react-router.config.ts` — full SSR enablement requires
  * provider-tree SSR-safety remediation at Task 8.9 (findings G/H/I).
  */
-export default function Root() {
+export function Layout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en">
             <head>
@@ -77,10 +90,76 @@ export default function Root() {
                 <Links />
             </head>
             <body>
-                <Outlet />
+                {children}
                 <ScrollRestoration />
                 <Scripts />
             </body>
         </html>
+    );
+}
+
+/**
+ * Root — renders matched route content via `<Outlet />`.
+ * Wrapped by `Layout` per RR v7 framework-mode canonical 3-export pattern.
+ */
+export default function Root() {
+    return <Outlet />;
+}
+
+/**
+ * HydrateFallback — Phase-8+ Task 8.7 Finding V remediation per Cowork Verdict 15 LOCK.
+ *
+ * Rendered at build time in SPA Mode (`ssr: false`) per Finding W empirical signature:
+ * RR v7 default `entry.server.node.tsx` is structurally invoked at build time with
+ * `routerContext.isSpaMode: true` branch → `onAllReady` callback → static
+ * `build/client/index.html` shell emission. Without this named export, RR v7 falls
+ * back to its default placeholder (with "💿 Hey developer 👋" dev-console message)
+ * and our `Layout` head content (FOUC IIFE + 5 meta tags + Google Fonts) is NOT
+ * HTML-shipped — Task 8.4's HTML-altitude FOUC mitigation regresses at framework-mode
+ * altitude.
+ *
+ * By exporting HydrateFallback, RR v7 framework-mode wraps it in our `Layout`
+ * component at build time and ships the resulting document shell at HTML-altitude.
+ * The empirical verification at Step-4-bis HALT-IF #2 (per Verdict 15 LOCK):
+ * `grep -c "dwellium-theme" build/client/index.html` MUST return non-zero
+ * post-Task-8.7-edit (sister-shape to empirical pre-edit signature = 0 that revealed
+ * Finding V).
+ *
+ * Content shape: minimal splash placeholder (no DOM-spec'd script execution; React
+ * runtime hydration takes over once entry.client.tsx mounts). The `<script>` element
+ * with FOUC IIFE in `Layout` head is rendered to HTML by React's
+ * dangerouslySetInnerHTML at build time + executes inline at first parse on the
+ * client (per HTML spec inline script execution rules).
+ */
+export function HydrateFallback() {
+    return (
+        <div
+            style={{
+                position: 'fixed',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#0a0e1a',
+                color: '#64748b',
+                fontFamily: 'Inter, -apple-system, sans-serif',
+                fontSize: 14,
+            }}
+        >
+            <div style={{ textAlign: 'center' }}>
+                <div
+                    style={{
+                        width: 24,
+                        height: 24,
+                        margin: '0 auto 12px',
+                        border: '2px solid rgba(99,102,241,0.3)',
+                        borderTopColor: '#6366f1',
+                        borderRadius: '50%',
+                        animation: 'spin 0.6s linear infinite',
+                    }}
+                />
+                Loading…
+            </div>
+        </div>
     );
 }

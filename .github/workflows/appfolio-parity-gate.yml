@@ -4,6 +4,24 @@ name: AppFolio Parity Gate
 # Triggered on pushes to main and PRs touching canonical types, the Strata
 # frontend, seed data, or the appfolioParity test suite.
 # See Docs/AppFolio_Parity_Implementation_Plan_v2.md §13.
+#
+# Phase-8+ Task 8.8 v2.68.1 in-place patch (2026-05-18) per Cowork Verdict 20
+# LOCK on Finding X paths-filter taxonomy refinement: `qualia-shell/app/**`
+# glob added to BOTH push.paths AND pull_request.paths arrays to cover RR v7
+# framework-mode canonical app/ directory at HEAD-post-Task-8.7. Empirical
+# refutation at Task 8.7 Step-7 surfaced Finding X — production-source-edits
+# at qualia-shell/app/** ALONE (without simultaneous qualia-shell/src/**
+# edits) did NOT trigger parity-gate auto-fire; only PII Scan auto-fired.
+# Sister-shape constellation to v2.66.1 (npx vite build → npx react-router
+# build per Finding T) + v2.66.2 (server-startup webServer reshape per
+# Approach A LOCK Verdict 1) + v2.66.3 (app/routes.ts index() + splat per
+# Finding U-REVISED Verdict 6 Z1 LOCK) — establishes 4-in-place-patches-
+# cumulative-at-Phase-8+-Block-B-opener-trio precedent (3 patches at Task
+# 8.6 + 1 patch at Task 8.8). HALT-IF #1 grep verification confirmed zero
+# `qualia-shell/app/` matches pre-patch → 2-line edit minimal-scope patch
+# (one line added to each paths array; sister-shape minimal-scope to v2.66.1
+# 2-line edit precedent). NEW v2.69.0 PRE-FLIGHT discipline candidate
+# docked at paths-filter-scope altitude per Cowork Verdict 22 LOCK.
 
 on:
   push:
@@ -11,6 +29,7 @@ on:
     paths:
       - 'packages/types/**'
       - 'qualia-shell/src/**'
+      - 'qualia-shell/app/**'
       - 'qualia-shell/public/data/**'
       - 'qualia-shell/src/test/appfolioParity/**'
       - 'qualia-shell/src/components/StrataDashboard/fixtures/appfolioDerived/**'
@@ -21,6 +40,7 @@ on:
     paths:
       - 'packages/types/**'
       - 'qualia-shell/src/**'
+      - 'qualia-shell/app/**'
       - 'qualia-shell/public/data/**'
       - 'qualia-shell/src/test/appfolioParity/**'
       - 'qualia-shell/src/components/StrataDashboard/fixtures/appfolioDerived/**'

@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { UserProvider, useUser } from '../context/UserContext';
+import { UserProvider, useUser, tokenStore } from '../context/UserContext';
 import type { ReactNode } from 'react';
 
 // Mock the config module that UserContext imports
@@ -38,6 +38,10 @@ describe('UserContext', () => {
     beforeEach(() => {
         globalThis.fetch = vi.fn();
         localStorage.clear();
+        // Phase-8+ Task 8.9 — reset module-level tokenStore cache so each
+        // test gets fresh state (matches pre-Task-8.9 per-mount useState
+        // lazy-init behavior byte-for-byte).
+        tokenStore.reset();
     });
 
     // ── Login ───────────────────────────────────────────────────────────────

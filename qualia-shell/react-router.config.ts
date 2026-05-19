@@ -42,7 +42,26 @@ import type { Config } from '@react-router/dev/config';
  *   flip + smoke-test bundle DEFERRED to **Task 8.11** per Verdict 1
  *   LOCK (Sidebar + AdminShell 3-provider tree remediation DEFERRED to
  *   Task 8.10 per Finding DD; Block B 8.9 = provider-remediation-only).
+ *
+ * ³ Phase-8+ Task 8.11 ssr-flip enablement (PR #80 / squash-SHA TBD):
+ *   `ssr: false → true` flip cemented at this commit per Cowork Q1 LOCK
+ *   Option D HYBRID (PROVIDER-SSR-REMEDIATION 2pt → 3pt
+ *   CROSS-TASK-SHAPE-ROBUSTNESS extension + FRAMEWORK-INSTALLATION 2pt
+ *   → 3pt CROSS-TASK-SHAPE-ROBUSTNESS extension co-shipping). Smoke-test
+ *   verification at NEW `Scripts/smoke_test_ssr_phase8.mjs` validates
+ *   14 cumulative `createLocalStorageStore`-factory-produced stores
+ *   under true SSR runtime (zero `ReferenceError` + zero hydration
+ *   mismatch warnings). Finding EE AuthGate hydration-flash empirically
+ *   resolved per Q2 LOCK Option α — flash exists at BOTH `ssr:false`
+ *   AND `ssr:true`; `ssr:true` empirically IMPROVES UX (1 transition
+ *   spinner → final-view vs 2 transitions HydrateFallback → spinner →
+ *   final-view at `ssr:false`). `@react-router/serve@7.15.1` installed
+ *   as production dep per Q5 LOCK + Finding S production-deps placement
+ *   convention. Block B 6-of-6 closer + 4-of-4 Phase-8+-introduced
+ *   classes EXTENDED PAST FULL CALIBRATION milestone at this close.
+ *   See `Docs/Phase8_Task_8_11_Completion_Report.md` for full closure
+ *   narrative.
  */
 export default {
-    ssr: false,
+    ssr: true,
 } satisfies Config;

@@ -116,6 +116,24 @@ jobs:
           VITE_USE_STATIC_API: 'true'
         run: npx react-router build
 
+      # Phase-8+ Task 8.11 SSR smoke-test (BLOCKING per Cowork Q4 LOCK).
+      # Verifies the 14 cumulative createLocalStorageStore-factory-produced
+      # stores (5 Task 8.9 + 9 Task 8.10) work correctly under true SSR
+      # runtime (ssr:true at react-router.config.ts post-Task-8.11 flip).
+      # HARD-blocking assertions: zero ReferenceError + zero React hydration
+      # mismatch warnings. Sister-shape to Phase-7 Task 7.11 measurement-
+      # script CI integration pattern; runs BEFORE Playwright baseline E2E
+      # so hydration regressions block downstream specs (which assume
+      # working hydration). Uses SMOKE_TEST_SKIP_BUILD=true to consume the
+      # build/server/ artifacts produced by the pre-Playwright build step
+      # above (idempotent; avoids rebuild duplication).
+      - name: SSR smoke-test (Phase-8+ Task 8.11 hydration verification)
+        env:
+          SMOKE_TEST_SKIP_BUILD: 'true'
+          SMOKE_TEST_PORT: '3000'
+        continue-on-error: false
+        run: node Scripts/smoke_test_ssr_phase8.mjs
+
       # Phase-7 Task 7.3 (2026-05-12): conjoined "Playwright baseline E2E" step split into
       # 2 distinct steps so axe-baseline can be flipped blocking while screenshot-baseline
       # stays sheltered pending Linux-platform baseline capture (Tasks 7.4-7.6). Completes

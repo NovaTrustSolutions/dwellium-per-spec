@@ -116,12 +116,26 @@ export default defineConfig({
   // `npx react-router build` step in appfolio-parity-gate.yml produces
   // the bundle BEFORE this server starts; reuseExistingServer flag
   // preserves local dev-loop ergonomics.
+  // Phase-8+ Task 8.11 v2.73.1 in-place webServer patch (sister-shape to
+  // v2.66.2 server-startup altitude patch at Task 8.6 close):
+  // `vite preview` → `react-router-serve` at ssr:true mode. At ssr:false
+  // (pre-Task-8.11), `vite preview --outDir build/client` served static
+  // client assets only — sufficient because SPA Mode emitted a static
+  // build/client/index.html shell. At ssr:true (post-Task-8.11 flip),
+  // server bundle MUST handle per-request server-side rendering;
+  // `react-router-serve build/server/index.js` is the canonical RR v7
+  // production server runtime (peer to @react-router/node + @react-router/
+  // dev installed at Task 8.6 + @react-router/serve installed at Task 8.11
+  // per Q5 LOCK). Default port for react-router-serve is 3000; override
+  // here to 5173 to preserve existing Playwright config + e2e/helpers
+  // assumptions byte-for-byte (Approach A LOCK preservation).
   webServer: {
-    command: 'npx vite preview --port 5173 --outDir build/client',
+    command: 'npx react-router-serve build/server/index.js',
     port: 5173,
     timeout: 30_000,
     reuseExistingServer: !process.env.CI,
     env: {
+      PORT: '5173',
       VITE_USE_STATIC_API: 'true',
     },
   },

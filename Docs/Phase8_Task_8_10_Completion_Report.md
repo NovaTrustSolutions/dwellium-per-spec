@@ -33,10 +33,10 @@
 
 ## §1 — Commit + Green CI references
 
-**Commit.** TBD → squash-SHA at Task 8.11 OPENING sweep per established Task N TBD → squash-SHA at Task N+1 sweep pattern (sister-shape to Task 8.9 TBD → `a0975f7` resolved at Task 8.10 OPENING sweep across 8 reference spots).
-**PR.** #79 (sister-shape to PR #78 close pattern).
-**Branch.** `feat/phase-8-task-8.10-adminshell-ssr-remediation`.
-**Green CI.** TBD → Parity Gate run ID + state + PII Scan run ID + state resolved at Task 8.11 OPENING sweep.
+**Commit.** `784fa6d` (squash commit for PR #79, Task 8.10 — AdminShell-tree SSR remediation; merged 2026-05-19T07:55:32Z; resolved at Task 8.11 OPENING sweep — 36-pattern milestone cross-phase sweep-resolutions cemented at this Task 8.11 PRE0 sweep across 9-11 reference spots).
+**PR.** [#79](https://github.com/NovaTrustSolutions/dwellium-per-spec/pull/79) (sister-shape to PR #78 close pattern).
+**Branch.** `feat/phase-8-task-8.10-adminshell-ssr-remediation` (rebased to `73c79c8` post-Q-Δ3-LOCK pre-squash to resolve mergeStateStatus=DIRTY/mergeable=CONFLICTING via branch-base discipline; original commit `af0a927` pre-rebase preserved in reflog).
+**Green CI.** AppFolio Parity Gate — [run 26083267532](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26083267532) ✓ SUCCESS (auto-fired on force-push of rebased branch via `qualia-shell/src/**` paths-filter glob — **3rd consecutive Parity Gate auto-fire validation since Task 8.8** at 2nd-PR-push event altitude per Q-Δ3 LOCK convention extension). PII Scan — [run 26083267463](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26083267463) ✓ SUCCESS. CodeRabbit Review — ✓ SUCCESS (no blocking comments; sister-shape to PR #78 close pattern). **Step-D rebase event note:** workflow_dispatch runs against pre-rebase `af0a927` ([Parity Gate 26082772480](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26082772480) ✓ + [PII Scan 26082773727](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26082773727) ✓) preserved as engineering record of the manual-dispatch fallback path under push-trigger-flake convention.
 
 ---
 
@@ -78,9 +78,9 @@
 
 **Documentation (4 files):**
 
-7. `Docs/AppFolio_Parity_Implementation_Plan_v2.md` — NEW v2.72 amendment at top (Task 8.10 close narrative); v2.71 demoted to historical blockquote; §9 row 8.10 R → ✓ + `TBD` (#79).
+7. `Docs/AppFolio_Parity_Implementation_Plan_v2.md` — NEW v2.72 amendment at top (Task 8.10 close narrative); v2.71 demoted to historical blockquote; §9 row 8.10 R → ✓ + `784fa6d` (#79) (resolved at Task 8.11 OPENING sweep).
 8. `Docs/Phases/Phase_8_Plan.md` — Task 8.10 close note appended to Phase status line (sister-shape to prior task closures).
-9. `CLAUDE.md` — HEAD pointer pivot to TBD-8.10; Phase summary row 8+ updated (9 of 15 ✓ → 10 of 15 ✓; +10 → +19 vitest; Task 8.10 details); Next task pivoted to Task 8.11; Calibration classes updated (PROVIDER-SSR-REMEDIATION 1pt → 2pt FULLY CALIBRATED; 4-of-4 milestone; 30 → 33 findings); 8 NEW Conventions block entries (PROVIDER-SSR-REMEDIATION FULLY CALIBRATED definition + createLocalStorageStore factory dual-signature + factory .reset() v2.72.1 standing convention + v2.72.0 leaf-component-altitude + v2.73.0 Step-7-entry whole-file-read + v2.74.0 dynamic-key-classification + 6-consecutive cross-altitude refutation pattern + Per-provider-SSR-safety taxonomy post-Task-8.10 state update); Q6 LOCK in-place demotion applied (Phase-7 row 7 + Phase-6 row 6 + Per-provider-SSR-safety taxonomy + Paths-filter quirk compression to stay under 40,000 B threshold).
+9. `CLAUDE.md` — HEAD pointer pivot to `784fa6d` (resolved from `TBD-8.10` at Task 8.11 OPENING sweep); Phase summary row 8+ updated (9 of 15 ✓ → 10 of 15 ✓; +10 → +19 vitest; Task 8.10 details); Next task pivoted to Task 8.11; Calibration classes updated (PROVIDER-SSR-REMEDIATION 1pt → 2pt FULLY CALIBRATED; 4-of-4 milestone; 30 → 33 findings); 8 NEW Conventions block entries (PROVIDER-SSR-REMEDIATION FULLY CALIBRATED definition + createLocalStorageStore factory dual-signature + factory .reset() v2.72.1 standing convention + v2.72.0 leaf-component-altitude + v2.73.0 Step-7-entry whole-file-read + v2.74.0 dynamic-key-classification + 6-consecutive cross-altitude refutation pattern + Per-provider-SSR-safety taxonomy post-Task-8.10 state update); Q6 LOCK in-place demotion applied (Phase-7 row 7 + Phase-6 row 6 + Per-provider-SSR-safety taxonomy + Paths-filter quirk compression to stay under 40,000 B threshold).
 10. `Docs/Phase8_Task_8_10_Completion_Report.md` — NEW (this file).
 
 ---
@@ -113,8 +113,9 @@
 | Persistence semantics preserved across all 9 stores | useEffect persistence preserved where applicable (LayoutContext debounced + HierarchyContext every-change + WindowContext composite + WindowContext savedLayouts every-change); Sidebar consolidated into store.set persistToStorage callbacks | ✓ |
 | Public API of all 4 Providers + Sidebar component preserved byte-for-byte | TypeScript types unchanged; consumer call sites unchanged | ✓ |
 | ssr stays `false` at HEAD-post-8.10 | `react-router.config.ts` unchanged | ✓ |
-| Parity Gate (Green CI) | TBD — auto-fire expected via `qualia-shell/src/**` paths-filter | TBD at Task 8.11 OPENING sweep |
-| CodeRabbit review | TBD on PR #79 open | TBD |
+| Parity Gate (Green CI) | [run 26083267532](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26083267532) auto-fire on force-push of rebased `73c79c8` via `qualia-shell/src/**` paths-filter glob | ✓ SUCCESS |
+| PII Scan | [run 26083267463](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26083267463) auto-fire on same force-push | ✓ SUCCESS (verify_no_pii_leak.mjs strict-scope clean) |
+| CodeRabbit review | Automatic on PR #79 open (CodeRabbit GitHub App) | ✓ SUCCESS (no blocking comments) |
 
 ---
 
@@ -179,4 +180,4 @@
 
 **🎯 Block B 5-of-6 milestone at Task 8.10 close** — 8.6 + 8.7 + 8.8 + 8.9 + 8.10 ✓; 8.11 R. Block B FULL CLOSE projected at Task 8.11 ssr-flip enablement (1-task remaining).
 
-**TBD sweep convention preserved at Task 8.10 close:** Task 8.10 TBD references at CLAUDE.md HEAD + Plan v2 §9 row 8.10 + Phase_8_Plan §status + this Completion Report §1 + §5 + §6 (5+ reference spots projected) will resolve to actual squash-SHA at Task 8.11 OPENING sweep per established Task N TBD → Task N+1 sweep pattern (sister-shape to Task 8.9 TBD → `a0975f7` resolved at Task 8.10 OPENING sweep across 8 spots).
+**TBD sweep convention applied at Task 8.11 OPENING:** Task 8.10 TBD references at CLAUDE.md HEAD + Plan v2 §9 row 8.10 + Phase_8_Plan §status + this Completion Report §1 + §5 + §6 (9-11 reference spots) RESOLVED to squash-SHA `784fa6d` at Task 8.11 OPENING sweep per established Task N TBD → Task N+1 sweep pattern (sister-shape to Task 8.9 TBD → `a0975f7` resolved at Task 8.10 OPENING sweep across 8 spots; extends 35-pattern → **36-pattern cross-phase sweep-resolutions milestone** cemented at Task 8.11 OPENING).

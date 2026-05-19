@@ -10,9 +10,9 @@
 3. Task 8.5 (3pt CROSS-TASK-SHAPE-ROBUSTNESS) — `empirical-inventory-confirming-NO-extraction-needed`
 4. **Task 8.8 (4pt CROSS-TASK-SHAPE-ROBUSTNESS NEW) — `empirical-inventory-confirming-per-route-SSR-opt-out-INFEASIBLE`**
 
-**Commit (HEAD on `main`):** `TBD` (squash commit for PR #TBD, Task 8.8 — Per-route SSR opt-in SCOPING-ONLY 4pt extension + v2.68.1 paths-filter patch; resolved at Task 8.9 OPENING sweep per 34-consecutive-cross-phase-sweep-resolutions convention extending 33-pattern at 8.8 → 34-pattern at 8.9).
+**Commit (HEAD on `main`):** `387abfa` (squash commit for PR #76, Task 8.8 — Per-route SSR opt-in SCOPING-ONLY 4pt extension + v2.68.1 paths-filter patch; resolved at Task 8.9 OPENING sweep — 34-consecutive cross-phase sweep-resolutions milestone cemented at Task 8.9 PRE0; CLAUDE.md cleanup PR #77 / `0a3c83f` intervened as repo-hygiene step between Task 8.8 close and Task 8.9 OPENING, not counted in sweep chain).
 
-**Green CI run.** AppFolio Parity Gate — TBD (Parity Gate **AUTO-FIRES** per v2.68.1 paths-filter glob amendment + `.github/workflows/**` self-reference in paths-filter — sister-shape to Finding X paths-filter taxonomy refinement remediation at this Task 8.8 close). PII Scan run — TBD. CodeRabbit Review — TBD.
+**Green CI run.** AppFolio Parity Gate — [run 26037807745](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26037807745) ✓ SUCCESS (Parity Gate **AUTO-FIRED** per v2.68.1 paths-filter glob amendment + `.github/workflows/**` self-reference in paths-filter — empirically confirmed Finding X paths-filter taxonomy refinement remediation effectiveness at this Task 8.8 close). PII Scan — [run 26037807544](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26037807544) ✓ SUCCESS. CodeRabbit Review — ✓ SUCCESS.
 
 **Vitest delta.** 264 → 264 (+0). SCOPING-ONLY 4pt class shape preserves zero-production-source semantic at vitest+RTL+jsdom altitude. `routing.test.tsx` Task 8.2 5/5 PASS preserved byte-for-byte (no source touched).
 
@@ -223,9 +223,9 @@ interface RouteConfigEntry {
 | HALT-IF #1 grep `qualia-shell/app/` in workflow | zero matches pre-patch | ✓ exit 1 (zero matches; minimal-scope confirmed) | Step-3 pre-patch |
 | v2.68.1 patch verification | `qualia-shell/app/**` in both push.paths + pull_request.paths | ✓ 2-line edit applied; both arrays updated | §0 Finding X remediation |
 | 33-pattern milestone cross-phase sweep-resolutions cementation | Task 8.7 TBD → `79f0ced` / `#75` resolution co-shipped at Task 8.8 OPENING sweep | ✓ Resolved at Step-1 sweep at Task 8.8 OPENING (5 reference spots) | §6 below |
-| Step-7 fresh-push Parity Gate | ✓ SUCCESS | TBD at Step-7 push | TBD |
-| Parity Gate AUTO-FIRE on push | empirically validated post-v2.68.1 | TBD at Step-7 push (paths-filter glob amendment + `.github/workflows/**` self-reference) | Cascading paths-filter coverage |
-| CodeRabbit review per PR | pass | TBD | TBD |
+| Step-7 fresh-push Parity Gate | ✓ SUCCESS | run [26037807745](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26037807745) | PII Scan run [26037807544](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26037807544) ✓ SUCCESS |
+| Parity Gate AUTO-FIRE on push | empirically validated post-v2.68.1 | ✓ AUTO-FIRED at Step-7 push (paths-filter glob amendment + `.github/workflows/**` self-reference) | Cascading paths-filter coverage empirically confirmed |
+| CodeRabbit review per PR | pass | ✓ SUCCESS | (no blocking comments) |
 
 ---
 
@@ -292,4 +292,4 @@ Per Cowork Verdict 23 reaffirmation (Task 8.3 Verdict 9 LOCK + Task 8.8 PRE0 Q5 
 - `node_modules/@react-router/dev/dist/routes-CZR-bKRt.d.ts` — `RouteConfigEntry` type empirical signature (no ssr field; CreateRouteOptions = id/index/caseSensitive only)
 - `.github/workflows/appfolio-parity-gate.yml::paths-filter` v2.68.1 in-place patch per Verdict 20 LOCK (`qualia-shell/app/**` glob added to both `push.paths` + `pull_request.paths` arrays)
 - HEAD `79f0ced` post-Task-8.7 baseline + HEAD-post-8.8 SCOPING-ONLY 4pt + CI-CONFIG-ONLY hybrid co-shipping
-- Parity Gate run TBD at Step-7 push (anticipated AUTO-FIRE per v2.68.1 paths-filter coverage extension)
+- Parity Gate run [26037807745](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26037807745) ✓ SUCCESS at Step-7 push (AUTO-FIRED per v2.68.1 paths-filter coverage extension; empirically confirmed)

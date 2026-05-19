@@ -7,13 +7,34 @@
  * Auto-validates on mount via GET /api/auth/me.
  */
 
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, useSyncExternalStore, ReactNode } from 'react';
 import { API_BASE } from '../config';
+import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 
 // API_BASE imported from config
 const TOKEN_KEY = 'dwellium-auth-token';
 const REFRESH_TOKEN_KEY = 'dwellium-refresh-token';
 const EXPIRES_AT_KEY = 'dwellium-token-expires';
+
+// ============================================
+// SSR-SAFE EXTERNAL STORE (Phase-8+ Task 8.9 PROVIDER-SSR-REMEDIATION)
+// ============================================
+// Migrated from useState lazy initializer at L52 (fired during render and
+// threw ReferenceError on SSR) to useSyncExternalStore + getServerSnapshot
+// per Cowork Verdict 3 LOCK. getServerSnapshot returns null — server renders
+// auth-token=null → AuthGate renders SecurityRoute (login screen) → client
+// hydrates → if real token present, useSyncExternalStore triggers re-render
+// to DefaultRoute. This produces a HYDRATION FLASH for authenticated users
+// at SSR-enabled altitudes (Finding EE cemented at Task 8.9 §0 for Task 8.11
+// architectural decision: ClientOnly wrap of AuthGate OR Suspense boundary
+// OR accept flash). At ssr: false (HEAD-post-8.9) the flash is absent
+// because SPA Mode does not server-render.
+// Exported for unit test access at src/test/appfolioParity/.
+
+export const tokenStore = createLocalStorageStore<string | null>(
+    () => localStorage.getItem(TOKEN_KEY),
+    null,
+);
 
 export interface DwelliumUser {
     id: string;
@@ -49,7 +70,7 @@ const UserContext = createContext<UserContextValue | null>(null);
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<DwelliumUser | null>(null);
     const [permissions, setPermissions] = useState<PermissionsMap>({});
-    const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+    const token = useSyncExternalStore(tokenStore.subscribe, tokenStore.getSnapshot, tokenStore.getServerSnapshot);
     const [isLoading, setIsLoading] = useState(true);
     const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isRefreshingRef = useRef(false);
@@ -61,8 +82,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         expiresAt?: string;
         refreshToken?: string;
     }) => {
-        setToken(data.token);
-        localStorage.setItem(TOKEN_KEY, data.token);
+        tokenStore.set(data.token, () => localStorage.setItem(TOKEN_KEY, data.token));
         if (data.refreshToken) {
             localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
         }
@@ -72,10 +92,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const clearTokens = useCallback(() => {
-        setToken(null);
+        tokenStore.set(null, () => localStorage.removeItem(TOKEN_KEY));
         setUser(null);
         setPermissions({});
-        localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(REFRESH_TOKEN_KEY);
         localStorage.removeItem(EXPIRES_AT_KEY);
         localStorage.removeItem('dwellium-user');
@@ -230,10 +249,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
                             createdAt: foundUser.created_at || new Date().toISOString(),
                             updatedAt: foundUser.updated_at || new Date().toISOString(),
                         };
-                        setToken(staticToken);
+                        tokenStore.set(staticToken, () => localStorage.setItem(TOKEN_KEY, staticToken));
                         setUser(userData);
                         setPermissions({});
-                        localStorage.setItem(TOKEN_KEY, staticToken);
                         localStorage.setItem('dwellium-user', JSON.stringify(userData));
                         return { success: true };
                     }

@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useSyncExternalStore, ReactNode } from 'react';
 import { Theme, FontPairing } from '../data/types';
+import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 
 // ============================================
 // FONT PAIRING DEFINITIONS
@@ -121,60 +122,77 @@ const ANIMATIONS_STORAGE_KEY = 'dwellium-animations';
 const LEGACY_ACCENT_STORAGE_KEY = 'qualia-accent-color';
 const LEGACY_THEME_STORAGE_KEY = 'qualia-theme';
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>(() => {
-        return (
-            (localStorage.getItem(THEME_STORAGE_KEY) as Theme) ||
-            (localStorage.getItem(LEGACY_THEME_STORAGE_KEY) as Theme) ||
-            'dark'
-        );
-    });
+// ============================================
+// SSR-SAFE EXTERNAL STORES (Phase-8+ Task 8.9 PROVIDER-SSR-REMEDIATION)
+// ============================================
+// Migrated from useState lazy initializers (fired during render and threw
+// ReferenceError on SSR) to useSyncExternalStore + getServerSnapshot per
+// Cowork Verdict 3 LOCK at Task 8.9 PRE0. getServerSnapshot returns each
+// store's default value; the app/root.tsx::Layout FOUC IIFE sets
+// <html className="theme-{value}"> BEFORE hydration so server-rendered
+// HTML matches IIFE-set className by construction (no hydration mismatch).
+// Exported for unit test access at src/test/appfolioParity/.
 
-    const [fontPairing, setFontPairingState] = useState<FontPairing>(() => {
-        return (localStorage.getItem(FONT_STORAGE_KEY) as FontPairing) || 'default';
-    });
+export const themeStore = createLocalStorageStore<Theme>(
+    () => (
+        (localStorage.getItem(THEME_STORAGE_KEY) as Theme) ||
+        (localStorage.getItem(LEGACY_THEME_STORAGE_KEY) as Theme) ||
+        'dark'
+    ),
+    'dark',
+);
 
-    const [accentColor, setAccentColorState] = useState(() => {
-        return localStorage.getItem(ACCENT_STORAGE_KEY) ||
-            localStorage.getItem(LEGACY_ACCENT_STORAGE_KEY) ||
-            '#0088cc';
-    });
+export const fontPairingStore = createLocalStorageStore<FontPairing>(
+    () => (localStorage.getItem(FONT_STORAGE_KEY) as FontPairing) || 'default',
+    'default',
+);
 
-    const [animationsEnabled, setAnimationsEnabledState] = useState(() => {
+export const accentColorStore = createLocalStorageStore<string>(
+    () => (
+        localStorage.getItem(ACCENT_STORAGE_KEY) ||
+        localStorage.getItem(LEGACY_ACCENT_STORAGE_KEY) ||
+        '#0088cc'
+    ),
+    '#0088cc',
+);
+
+export const animationsEnabledStore = createLocalStorageStore<boolean>(
+    () => {
         const stored = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
         return stored !== null ? stored === 'true' : true;
-    });
+    },
+    true,
+);
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+    const theme = useSyncExternalStore(themeStore.subscribe, themeStore.getSnapshot, themeStore.getServerSnapshot);
+    const fontPairing = useSyncExternalStore(fontPairingStore.subscribe, fontPairingStore.getSnapshot, fontPairingStore.getServerSnapshot);
+    const accentColor = useSyncExternalStore(accentColorStore.subscribe, accentColorStore.getSnapshot, accentColorStore.getServerSnapshot);
+    const animationsEnabled = useSyncExternalStore(animationsEnabledStore.subscribe, animationsEnabledStore.getSnapshot, animationsEnabledStore.getServerSnapshot);
 
     const toggleTheme = useCallback(() => {
         document.body.classList.add('transitioning');
-        setThemeState(prev => {
-            const next = prev === 'dark' ? 'light' : 'dark';
-            localStorage.setItem(THEME_STORAGE_KEY, next);
-            return next;
-        });
+        const next: Theme = themeStore.getSnapshot() === 'dark' ? 'light' : 'dark';
+        themeStore.set(next, () => localStorage.setItem(THEME_STORAGE_KEY, next));
         setTimeout(() => document.body.classList.remove('transitioning'), 500);
     }, []);
 
     const setTheme = useCallback((newTheme: Theme) => {
         document.body.classList.add('transitioning');
-        setThemeState(newTheme);
-        localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+        themeStore.set(newTheme, () => localStorage.setItem(THEME_STORAGE_KEY, newTheme));
         setTimeout(() => document.body.classList.remove('transitioning'), 500);
     }, []);
 
     const setFontPairing = useCallback((fp: FontPairing) => {
-        setFontPairingState(fp);
-        localStorage.setItem(FONT_STORAGE_KEY, fp);
+        fontPairingStore.set(fp, () => localStorage.setItem(FONT_STORAGE_KEY, fp));
     }, []);
 
     const setAccentColor = useCallback((color: string) => {
-        setAccentColorState(color);
-        localStorage.setItem(ACCENT_STORAGE_KEY, color);
+        accentColorStore.set(color, () => localStorage.setItem(ACCENT_STORAGE_KEY, color));
     }, []);
 
     const setAnimationsEnabled = useCallback((enabled: boolean) => {
-        setAnimationsEnabledState(enabled);
-        localStorage.setItem(ANIMATIONS_STORAGE_KEY, String(enabled));
+        animationsEnabledStore.set(enabled, () => localStorage.setItem(ANIMATIONS_STORAGE_KEY, String(enabled)));
     }, []);
 
     // Apply theme class + accent color

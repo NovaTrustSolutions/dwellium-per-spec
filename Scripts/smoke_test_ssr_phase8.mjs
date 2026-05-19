@@ -107,6 +107,15 @@ async function cleanup() {
     }
     if (serverProc && serverProc.pid && !serverProc.killed) {
         try {
+            // Destroy stdio pipes BEFORE killing the process — otherwise
+            // Node.js keeps the parent alive due to open pipe handles to
+            // the child's stdout/stderr (empirically observed at Linux CI
+            // Parity Gate run 26094673300 — script reached `✓ PASS` at
+            // 11:40:33 but step did not terminate until 30-min workflow
+            // timeout at 12:08:09; LOCAL macOS exits promptly due to OS-
+            // level pipe cleanup divergence).
+            try { serverProc.stdout?.destroy(); } catch { /* swallow */ }
+            try { serverProc.stderr?.destroy(); } catch { /* swallow */ }
             process.kill(serverProc.pid, 'SIGTERM');
             // Allow graceful shutdown; force kill after 2s
             await sleep(2000);
@@ -321,6 +330,10 @@ async function main() {
     } finally {
         await phaseECleanup(probe, passed);
     }
+    // Force exit — Node.js event loop may keep parent alive due to lingering
+    // handles from spawned react-router-serve child even after cleanup (Linux
+    // CI empirical signature at run 26094673300; 30-min step timeout).
+    process.exit(passed && !process.exitCode ? 0 : (process.exitCode || 1));
 }
 
 main().catch((err) => {

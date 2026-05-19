@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect, useMemo, DragEvent } from 'react';
+import { useRef, useCallback, useState, useEffect, useMemo, useSyncExternalStore, DragEvent } from 'react';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useWindows } from '../../context/WindowContext';
 import { useUser } from '../../context/UserContext';
@@ -6,6 +6,7 @@ import { usePermissions } from '../../context/PermissionsContext';
 import { HierarchyItem } from '../../data/types';
 import { rankWidgetSearchResults, WidgetSearchMatch } from './widgetSearch';
 import { getIcon, isLucideKey } from './iconMap';
+import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import './Sidebar.css';
 import React from 'react';
 
@@ -26,6 +27,76 @@ const MIN_WIDTH = 200;
 const MAX_WIDTH = 420;
 const STORAGE_KEY = 'dwellium-sidebar-width';
 const SPLIT_STORAGE_KEY = 'dwellium-sidebar-split';
+const DOMAINS_COLLAPSED_KEY = 'qualia_domains_collapsed';
+const ICON_ONLY_KEY = 'qualia_sidebar_icon_only';
+const SIDEBAR_GROUPS_KEY = 'qualia_sidebar_groups';
+
+const DEFAULT_WIDTH = 240;
+const DEFAULT_SPLIT_RATIO = 0.5;
+
+// ============================================
+// SSR-SAFE EXTERNAL STORES (Phase-8+ Task 8.10 PROVIDER-SSR-REMEDIATION)
+// ============================================
+// Migrated from 5 useState lazy initializers reading localStorage (fired
+// during render; L264 + L285 threw ReferenceError on SSR before HARD-CRASH
+// → SOFT-DEGRADED try/catch uplift) to useSyncExternalStore +
+// getServerSnapshot per Cowork Q1 LOCK Option A at Task 8.10 PRE0.
+// Per Q1 LOCK: HARD-CRASH sites L264 (sidebarSplitStore) + L285
+// (sidebarWidthStore) receive explicit try/catch wrap in deserializer
+// alongside the factory's built-in try/catch (defense-in-depth +
+// HARD-CRASH → SOFT-DEGRADED uplift visible at call site).
+// Exported for unit test access at src/test/appfolioParity/.
+
+export const domainsCollapsedStore = createLocalStorageStore<boolean>(
+    () => {
+        try {
+            const saved = localStorage.getItem(DOMAINS_COLLAPSED_KEY);
+            if (saved !== null) return saved === 'true';
+        } catch { /* ignore */ }
+        return true; // collapsed by default
+    },
+    true,
+);
+
+export const iconOnlyStore = createLocalStorageStore<boolean>(
+    () => {
+        try {
+            return localStorage.getItem(ICON_ONLY_KEY) === 'true';
+        } catch { return false; }
+    },
+    false,
+);
+
+export const sidebarGroupsStore = createLocalStorageStore<Set<string>>(
+    () => {
+        try {
+            const saved = localStorage.getItem(SIDEBAR_GROUPS_KEY);
+            if (saved) return new Set(JSON.parse(saved));
+        } catch { /* ignore */ }
+        return new Set<string>(); // all collapsed by default
+    },
+    new Set<string>(),
+);
+
+export const sidebarSplitStore = createLocalStorageStore<number>(
+    () => {
+        try {
+            const saved = localStorage.getItem(SPLIT_STORAGE_KEY);
+            return saved ? Math.max(0.2, Math.min(0.8, parseFloat(saved))) : DEFAULT_SPLIT_RATIO;
+        } catch { return DEFAULT_SPLIT_RATIO; }
+    },
+    DEFAULT_SPLIT_RATIO,
+);
+
+export const sidebarWidthStore = createLocalStorageStore<number>(
+    () => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            return saved ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, parseInt(saved))) : DEFAULT_WIDTH;
+        } catch { return DEFAULT_WIDTH; }
+    },
+    DEFAULT_WIDTH,
+);
 
 /* ── child type map ──────────────────────────────── */
 const CHILD_TYPE: Record<string, 'node' | 'project' | null> = {
@@ -188,29 +259,27 @@ export default function Sidebar() {
     const [saveName, setSaveName] = useState('');
     const [showLoadDropdown, setShowLoadDropdown] = useState(false);
     // Domains panel — collapsed by default for clean initial view
-    const [domainsCollapsed, setDomainsCollapsed] = useState(() => {
-        try {
-            const saved = localStorage.getItem('qualia_domains_collapsed');
-            if (saved !== null) return saved === 'true';
-        } catch { /* ignore */ }
-        return true; // collapsed by default
-    });
+    const domainsCollapsed = useSyncExternalStore(
+        domainsCollapsedStore.subscribe,
+        domainsCollapsedStore.getSnapshot,
+        domainsCollapsedStore.getServerSnapshot,
+    );
+    const setDomainsCollapsed = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+        const next = typeof value === 'function' ? value(domainsCollapsedStore.getSnapshot()) : value;
+        domainsCollapsedStore.set(next, () => localStorage.setItem(DOMAINS_COLLAPSED_KEY, String(next)));
+    }, []);
     const [showOptions, setShowOptions] = useState(false);
 
-    // Persist domains collapsed preference
-    useEffect(() => {
-        localStorage.setItem('qualia_domains_collapsed', String(domainsCollapsed));
-    }, [domainsCollapsed]);
-
     // Icon-only collapsed mode
-    const [iconOnly, setIconOnly] = useState(() => {
-        try {
-            return localStorage.getItem('qualia_sidebar_icon_only') === 'true';
-        } catch { return false; }
-    });
-    useEffect(() => {
-        localStorage.setItem('qualia_sidebar_icon_only', String(iconOnly));
-    }, [iconOnly]);
+    const iconOnly = useSyncExternalStore(
+        iconOnlyStore.subscribe,
+        iconOnlyStore.getSnapshot,
+        iconOnlyStore.getServerSnapshot,
+    );
+    const setIconOnly = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+        const next = typeof value === 'function' ? value(iconOnlyStore.getSnapshot()) : value;
+        iconOnlyStore.set(next, () => localStorage.setItem(ICON_ONLY_KEY, String(next)));
+    }, []);
     const breadcrumb = getBreadcrumb();
     const sidebarRef = useRef<HTMLElement>(null);
     const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -223,19 +292,17 @@ export default function Sidebar() {
     const domainInputRef = useRef<HTMLInputElement>(null);
 
     // Widget Hierarchy State — collapsed by default for clean initial view
-    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-        try {
-            const saved = localStorage.getItem('qualia_sidebar_groups');
-            if (saved) return new Set(JSON.parse(saved));
-        } catch (e) { }
-        return new Set<string>(); // all collapsed by default
-    });
+    const expandedGroups = useSyncExternalStore(
+        sidebarGroupsStore.subscribe,
+        sidebarGroupsStore.getSnapshot,
+        sidebarGroupsStore.getServerSnapshot,
+    );
+    const setExpandedGroups = useCallback((value: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+        const next = typeof value === 'function' ? value(sidebarGroupsStore.getSnapshot()) : value;
+        sidebarGroupsStore.set(next, () => localStorage.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify(Array.from(next))));
+    }, []);
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        localStorage.setItem('qualia_sidebar_groups', JSON.stringify(Array.from(expandedGroups)));
-    }, [expandedGroups]);
 
     // Keyboard shortcuts (local widget filter only; global Cmd/Ctrl+K is handled by Command Palette)
     useEffect(() => {
@@ -261,14 +328,15 @@ export default function Sidebar() {
     }, []);
 
     // Split ratio (0..1, fraction of space for top panel)
-    const [splitRatio, setSplitRatio] = useState(() => {
-        const saved = localStorage.getItem(SPLIT_STORAGE_KEY);
-        return saved ? Math.max(0.2, Math.min(0.8, parseFloat(saved))) : 0.5;
-    });
-
-    useEffect(() => {
-        localStorage.setItem(SPLIT_STORAGE_KEY, String(splitRatio));
-    }, [splitRatio]);
+    const splitRatio = useSyncExternalStore(
+        sidebarSplitStore.subscribe,
+        sidebarSplitStore.getSnapshot,
+        sidebarSplitStore.getServerSnapshot,
+    );
+    const setSplitRatio = useCallback((value: number | ((prev: number) => number)) => {
+        const next = typeof value === 'function' ? value(sidebarSplitStore.getSnapshot()) : value;
+        sidebarSplitStore.set(next, () => localStorage.setItem(SPLIT_STORAGE_KEY, String(next)));
+    }, []);
 
     useEffect(() => {
         if (isAddingDomain && domainInputRef.current) domainInputRef.current.focus();
@@ -282,14 +350,15 @@ export default function Sidebar() {
     };
 
     // --- Dynamic width ---
-    const [width, setWidth] = useState(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, parseInt(saved))) : 240;
-    });
-
-    useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, String(width));
-    }, [width]);
+    const width = useSyncExternalStore(
+        sidebarWidthStore.subscribe,
+        sidebarWidthStore.getSnapshot,
+        sidebarWidthStore.getServerSnapshot,
+    );
+    const setWidth = useCallback((value: number | ((prev: number) => number)) => {
+        const next = typeof value === 'function' ? value(sidebarWidthStore.getSnapshot()) : value;
+        sidebarWidthStore.set(next, () => localStorage.setItem(STORAGE_KEY, String(next)));
+    }, []);
 
     const onResizeStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();

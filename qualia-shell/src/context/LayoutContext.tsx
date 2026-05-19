@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, useSyncExternalStore, ReactNode } from 'react';
 import { LayoutSettings, SnapGuide, WindowState, RegionLayout, RegionRect } from '../data/types';
+import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 
 const STORAGE_KEY = 'dwellium-layout-settings';
 
@@ -26,6 +27,30 @@ const DEFAULT_SETTINGS: LayoutSettings = {
     regionsEnabled: true,
     regionLayout: 'halves-h',
 };
+
+// ============================================
+// SSR-SAFE EXTERNAL STORE (Phase-8+ Task 8.10 PROVIDER-SSR-REMEDIATION)
+// ============================================
+// Migrated from useState lazy initializer at LayoutProvider L98 (fired
+// during render; threw ReferenceError on SSR) to useSyncExternalStore +
+// getServerSnapshot per Cowork Q1 LOCK Option A at Task 8.10 PRE0.
+// Deserializer merges saved partial settings over DEFAULT_SETTINGS to
+// preserve schema-evolution forward-compatibility (matches pre-Task-8.10
+// useState lazy-init behavior byte-for-byte).
+// Exported for unit test access at src/test/appfolioParity/.
+
+export const layoutSettingsStore = createLocalStorageStore<LayoutSettings>(
+    () => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+            }
+        } catch { /* ignore */ }
+        return DEFAULT_SETTINGS;
+    },
+    DEFAULT_SETTINGS,
+);
 
 /** Compute region rectangles for a given layout and desktop dimensions */
 export function getRegionRects(layout: RegionLayout, dw: number, dh: number, gap = 4): RegionRect[] {
@@ -95,15 +120,16 @@ interface LayoutContextValue {
 const LayoutContext = createContext<LayoutContextValue | null>(null);
 
 export function LayoutProvider({ children }: { children: ReactNode }) {
-    const [settings, setSettings] = useState<LayoutSettings>(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
-            }
-        } catch { /* ignore */ }
-        return DEFAULT_SETTINGS;
-    });
+    const settings = useSyncExternalStore(
+        layoutSettingsStore.subscribe,
+        layoutSettingsStore.getSnapshot,
+        layoutSettingsStore.getServerSnapshot,
+    );
+    const setSettings = useCallback((value: LayoutSettings | ((prev: LayoutSettings) => LayoutSettings)) => {
+        const next = typeof value === 'function' ? value(layoutSettingsStore.getSnapshot()) : value;
+        // Persistence is debounced via useEffect below; pass no-op here.
+        layoutSettingsStore.set(next, () => { /* persistence debounced in useEffect */ });
+    }, []);
 
     const [activeGuides, setActiveGuides] = useState<SnapGuide[]>([]);
     const [regionAssignments, setRegionAssignments] = useState<Record<string, string[]>>({});
@@ -111,7 +137,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
     const settingsRef = useRef(settings);
     settingsRef.current = settings;
 
-    // Persist on change
+    // Persist on change (300ms debounced; preserves pre-Task-8.10 behavior)
     useEffect(() => {
         const timer = setTimeout(() => {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));

@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useSyncExternalStore, ReactNode } from 'react';
 import { HierarchyItem } from '../data/types';
 import { defaultHierarchy } from '../data/hierarchy';
 import { API_BASE } from '../config';
+import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 
 const STORAGE_KEY = 'dwellium-hierarchy';
 const IMPORTED_DOMAIN_ID = 'imported-files-domain';
@@ -163,6 +164,23 @@ function saveHierarchy(items: HierarchyItem[]) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
+// ============================================
+// SSR-SAFE EXTERNAL STORE (Phase-8+ Task 8.10 PROVIDER-SSR-REMEDIATION)
+// ============================================
+// Migrated from useState<HierarchyItem[]>(loadHierarchy) at L186 (fired
+// during render; loadHierarchy() at L153 calls localStorage.getItem and
+// threw ReferenceError on SSR) to useSyncExternalStore + getServerSnapshot
+// per Cowork Q1 LOCK Option A at Task 8.10 PRE0. loadHierarchy() reused
+// as the store deserializer; getServerSnapshot returns a fresh deepClone
+// of defaultHierarchy (matches the pre-Task-8.10 fallback path of
+// loadHierarchy()'s catch branch). Exported for unit test access at
+// src/test/appfolioParity/.
+
+export const hierarchyStore = createLocalStorageStore<HierarchyItem[]>(
+    loadHierarchy,
+    deepClone(defaultHierarchy),
+);
+
 /* ── context ───────────────────────────────────── */
 
 interface HierarchyContextValue {
@@ -183,7 +201,16 @@ interface HierarchyContextValue {
 const HierarchyContext = createContext<HierarchyContextValue | null>(null);
 
 export function HierarchyProvider({ children }: { children: ReactNode }) {
-    const [hierarchy, setHierarchy] = useState<HierarchyItem[]>(loadHierarchy);
+    const hierarchy = useSyncExternalStore(
+        hierarchyStore.subscribe,
+        hierarchyStore.getSnapshot,
+        hierarchyStore.getServerSnapshot,
+    );
+    const setHierarchy = useCallback((value: HierarchyItem[] | ((prev: HierarchyItem[]) => HierarchyItem[])) => {
+        const next = typeof value === 'function' ? value(hierarchyStore.getSnapshot()) : value;
+        // Persistence happens in useEffect below (preserves pre-Task-8.10 every-change semantic).
+        hierarchyStore.set(next, () => { /* persistence in useEffect */ });
+    }, []);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 

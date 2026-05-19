@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, useSyncExternalStore, ReactNode } from 'react';
 import { WindowState, DockItem, LayoutState, SavedLayout } from '../data/types';
 import { useUser } from './UserContext';
 import { defaultDockItems } from '../data/hierarchy';
+import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 
 const LAYOUT_STORAGE_KEY = 'dwellium-layout';
 const LEGACY_LAYOUT_STORAGE_KEY = 'qualia-layout';
@@ -9,6 +10,84 @@ const DOCK_VERSION_KEY = 'dwellium-dock-version';
 const DOCK_VERSION = 5; // Bumped: emoji icons → Lucide React SVG icon keys
 const MIN_WIDTH = 500;
 const MIN_HEIGHT = 380;
+
+// ============================================
+// SSR-SAFE EXTERNAL STORES (Phase-8+ Task 8.10 PROVIDER-SSR-REMEDIATION)
+// ============================================
+// Migrated from 2 useState lazy initializers reading localStorage (fired
+// during render; threw ReferenceError on SSR) to useSyncExternalStore +
+// getServerSnapshot per Cowork Q1 LOCK Option A at Task 8.10 PRE0.
+//
+// dockItemsStore (L60-89 in pre-Task-8.10) — static composite deserializer
+// reading DOCK_VERSION_KEY + LAYOUT_STORAGE_KEY + LEGACY_LAYOUT_STORAGE_KEY
+// + writing DOCK_VERSION_KEY on version mismatch (side effect preserved
+// byte-for-byte from useState lazy init; runs once per client mount).
+//
+// savedLayoutsStore (L98 in pre-Task-8.10) — DYNAMIC key via factory
+// Option β extension. Key resolver reads `savedLayoutsUserIdHolder.current`
+// which WindowProvider updates during render (BEFORE useSyncExternalStore
+// invocation) so getSnapshot sees fresh key. Cache invalidation on key
+// change handled automatically by the factory.
+//
+// Exported for unit test access at src/test/appfolioParity/.
+
+export const dockItemsStore = createLocalStorageStore<DockItem[]>(
+    () => {
+        try {
+            const storedVersion = localStorage.getItem(DOCK_VERSION_KEY);
+            if (storedVersion && parseInt(storedVersion) === DOCK_VERSION) {
+                const saved = localStorage.getItem(LAYOUT_STORAGE_KEY) || localStorage.getItem(LEGACY_LAYOUT_STORAGE_KEY);
+                if (saved) {
+                    const layout: LayoutState = JSON.parse(saved);
+                    const savedItems = layout.dockItems || [];
+                    // Prune: remove stale items that no longer exist in defaults
+                    const validComponents = new Set(defaultDockItems.map(d => d.component));
+                    const prunedItems = savedItems.filter((i: DockItem) => validComponents.has(i.component));
+                    // Merge: keep saved order but add any new defaults not yet in the layout
+                    const savedIds = new Set(prunedItems.map((i: DockItem) => i.id));
+                    const newItems = defaultDockItems.filter(d => !savedIds.has(d.id));
+                    if (newItems.length > 0) {
+                        return [...prunedItems, ...newItems];
+                    }
+                    return prunedItems;
+                }
+            } else {
+                // Version mismatch — reset to defaults and update version
+                localStorage.removeItem(LAYOUT_STORAGE_KEY);
+                localStorage.removeItem(LEGACY_LAYOUT_STORAGE_KEY);
+                localStorage.setItem(DOCK_VERSION_KEY, String(DOCK_VERSION));
+            }
+        } catch { /* ignore */ }
+        localStorage.setItem(DOCK_VERSION_KEY, String(DOCK_VERSION));
+        return defaultDockItems;
+    },
+    defaultDockItems,
+);
+
+/**
+ * Module-level holder for the current user.id, updated by WindowProvider
+ * during render. Powers savedLayoutsStore's dynamic key resolver. Exposed
+ * for test access (e.g., `savedLayoutsUserIdHolder.current = 'test-user-id'`
+ * before invoking savedLayoutsStore.getSnapshot()).
+ */
+export const savedLayoutsUserIdHolder: { current: string | null } = { current: null };
+
+function resolveSavedLayoutsKey(): string {
+    return savedLayoutsUserIdHolder.current
+        ? `qualia_saved_layouts_${savedLayoutsUserIdHolder.current}`
+        : 'qualia_saved_layouts_guest';
+}
+
+export const savedLayoutsStore = createLocalStorageStore<SavedLayout[]>({
+    key: resolveSavedLayoutsKey,
+    deserializer: (raw) => {
+        try {
+            if (raw) return JSON.parse(raw);
+        } catch { /* ignore */ }
+        return [];
+    },
+    defaultValue: [],
+});
 
 // Per-component default-size overrides for apps whose layouts require more
 // real-estate than the quadrant-spawn default. The Strata dashboard uses a
@@ -56,62 +135,43 @@ function generateId() {
 
 export function WindowProvider({ children }: { children: ReactNode }) {
     const { user } = useUser();
+
+    // Update savedLayouts key holder DURING render (before useSyncExternalStore
+    // call) so getSnapshot resolves the fresh key. Factory cache invalidates
+    // automatically on key change → useSyncExternalStore returns the new
+    // per-user-id value without a separate re-init effect.
+    savedLayoutsUserIdHolder.current = user?.id ?? null;
+
     const [windows, setWindows] = useState<WindowState[]>([]);
-    const [dockItems, setDockItems] = useState<DockItem[]>(() => {
-        try {
-            // Check if dock version has changed — if so, reset to new defaults
-            const storedVersion = localStorage.getItem(DOCK_VERSION_KEY);
-            if (storedVersion && parseInt(storedVersion) === DOCK_VERSION) {
-                const saved = localStorage.getItem(LAYOUT_STORAGE_KEY) || localStorage.getItem(LEGACY_LAYOUT_STORAGE_KEY);
-                if (saved) {
-                    const layout: LayoutState = JSON.parse(saved);
-                    const savedItems = layout.dockItems || [];
-                    // Prune: remove stale items that no longer exist in defaults
-                    const validComponents = new Set(defaultDockItems.map(d => d.component));
-                    const prunedItems = savedItems.filter((i: DockItem) => validComponents.has(i.component));
-                    // Merge: keep saved order but add any new defaults not yet in the layout
-                    const savedIds = new Set(prunedItems.map((i: DockItem) => i.id));
-                    const newItems = defaultDockItems.filter(d => !savedIds.has(d.id));
-                    if (newItems.length > 0) {
-                        return [...prunedItems, ...newItems];
-                    }
-                    return prunedItems;
-                }
-            } else {
-                // Version mismatch — reset to defaults and update version
-                localStorage.removeItem(LAYOUT_STORAGE_KEY);
-                localStorage.removeItem(LEGACY_LAYOUT_STORAGE_KEY);
-                localStorage.setItem(DOCK_VERSION_KEY, String(DOCK_VERSION));
-            }
-        } catch { /* ignore */ }
-        localStorage.setItem(DOCK_VERSION_KEY, String(DOCK_VERSION));
-        return defaultDockItems;
-    });
+    const dockItems = useSyncExternalStore(
+        dockItemsStore.subscribe,
+        dockItemsStore.getSnapshot,
+        dockItemsStore.getServerSnapshot,
+    );
+    const setDockItems = useCallback((value: DockItem[] | ((prev: DockItem[]) => DockItem[])) => {
+        const next = typeof value === 'function' ? value(dockItemsStore.getSnapshot()) : value;
+        // Persistence is the composite LAYOUT_STORAGE_KEY useEffect below;
+        // pass no-op here.
+        dockItemsStore.set(next, () => { /* composite persistence in useEffect */ });
+    }, []);
 
     const windowsRef = useRef(windows);
     windowsRef.current = windows;
     const dockItemsRef = useRef(dockItems);
     dockItemsRef.current = dockItems;
 
-    // Named Layouts State
+    // Named Layouts State — dynamic per-user.id key via factory Option β
     const savedLayoutsKey = user ? `qualia_saved_layouts_${user.id}` : 'qualia_saved_layouts_guest';
-    const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>(() => {
-        try {
-            const saved = localStorage.getItem(savedLayoutsKey);
-            if (saved) return JSON.parse(saved);
-        } catch { /* ignore */ }
-        return [];
-    });
-
-    useEffect(() => {
-        setSavedLayouts(() => {
-            try {
-                const saved = localStorage.getItem(savedLayoutsKey);
-                if (saved) return JSON.parse(saved);
-            } catch { /* ignore */ }
-            return [];
-        });
-    }, [savedLayoutsKey]);
+    const savedLayouts = useSyncExternalStore(
+        savedLayoutsStore.subscribe,
+        savedLayoutsStore.getSnapshot,
+        savedLayoutsStore.getServerSnapshot,
+    );
+    const setSavedLayouts = useCallback((value: SavedLayout[] | ((prev: SavedLayout[]) => SavedLayout[])) => {
+        const next = typeof value === 'function' ? value(savedLayoutsStore.getSnapshot()) : value;
+        // Persistence in useEffect below (preserves pre-Task-8.10 behavior).
+        savedLayoutsStore.set(next, () => { /* persistence in useEffect */ });
+    }, []);
 
     useEffect(() => {
         localStorage.setItem(savedLayoutsKey, JSON.stringify(savedLayouts));

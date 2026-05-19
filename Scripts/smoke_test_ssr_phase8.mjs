@@ -50,13 +50,22 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { existsSync } from 'node:fs';
-import { resolve as pathResolve } from 'node:path';
+import { resolve as pathResolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
-import { chromium } from 'playwright';
+import { createRequire } from 'node:module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const QUALIA_SHELL_DIR = pathResolve(__dirname, '..', 'qualia-shell');
+
+// Phase-8+ Task 8.11 — load playwright from qualia-shell/node_modules
+// (NOT from repo-root cwd) per Phase-7 Scripts/run_lighthouse_phase7.mjs
+// createRequire precedent. Linux CI fails with ERR_MODULE_NOT_FOUND
+// without this — there is no root-level package.json, so Node ESM
+// resolution walking up from /Scripts/ never reaches a node_modules/
+// containing playwright. Resolving from qualia-shell/package.json
+// anchors the lookup at qualia-shell/node_modules/.
+const qualiaShellRequire = createRequire(join(QUALIA_SHELL_DIR, 'package.json'));
+const { chromium } = qualiaShellRequire('playwright');
 const PORT = parseInt(process.env.SMOKE_TEST_PORT ?? '3000', 10);
 const TIMEOUT_MS = parseInt(process.env.SMOKE_TEST_TIMEOUT_MS ?? '30000', 10);
 const SKIP_BUILD = process.env.SMOKE_TEST_SKIP_BUILD === 'true';

@@ -33,10 +33,10 @@ Options β (Suspense at AuthGate altitude) + γ (pre-hydration cookie infrastruc
 
 ## §1 — Commit + Green CI references
 
-**Commit.** TBD → squash-SHA at Task 8.12 OPENING sweep per established Task N TBD → squash-SHA at Task N+1 sweep pattern + v2.74.1 branch-base discipline (sister-shape to Task 8.10 TBD → `784fa6d` resolved at Task 8.11 OPENING sweep across 9-11 reference spots).
-**PR.** #80 (sister-shape to PR #79 close pattern).
-**Branch.** `feat/phase-8-task-8.11-ssr-flip-smoke-test` (branched from `origin/main` HEAD = `784fa6d` per v2.74.1 branch-base discipline VERIFIED pre-branch — no rebase required at merge time).
-**Green CI.** TBD → Parity Gate run ID + state + PII Scan run ID + state + CodeRabbit + smoke-test step state resolved at Task 8.12 OPENING sweep.
+**Commit.** `eae7c88` (squash commit for PR #80, Task 8.11 — Block B 6-of-6 closer; merged 2026-05-19T12:23:40Z; resolved at Task 8.12 OPENING sweep — 37-pattern milestone cross-phase sweep-resolutions cemented at this Task 8.12 PRE0 sweep across 9-11 reference spots).
+**PR.** [#80](https://github.com/NovaTrustSolutions/dwellium-per-spec/pull/80) (sister-shape to PR #79 close pattern).
+**Branch.** `feat/phase-8-task-8.11-ssr-flip-smoke-test` (branched from `origin/main` HEAD = `784fa6d` per v2.74.1 branch-base discipline VERIFIED pre-branch — **EMPIRICALLY VINDICATED at merge time: NO rebase required**, mergeable=CLEAN at 1st squash attempt — first task close to leverage v2.74.1 branch-base discipline post-cementation).
+**Green CI.** AppFolio Parity Gate — [run 26096260353](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26096260353) ✓ SUCCESS (~12 min wallclock; 1 flaky axe-baseline Vendors test passed on retry — non-blocking per existing Playwright auto-retry convention; NEW BLOCKING smoke-test step PASSED at chromium-headless probe). PII Scan — [run 26096260360](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26096260360) ✓ SUCCESS. CodeRabbit Review — ✓ SUCCESS (no blocking comments; sister-shape to PR #78 + #79). **NEW Finding JJ cementation via Step-A cancelled-run lineage** (Step-7-implementation-passes-locally-but-fails-in-clean-Linux-CI pattern with OS-level behavioral divergence): [run 26090991698](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26090991698) ✗ FAILURE — `ERR_MODULE_NOT_FOUND: 'playwright'` → v2.73.2 in-place patch (`createRequire(qualia-shell/package.json)` per Phase-7 lighthouse precedent); [run 26094673300](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26094673300) ✗ CANCELLED (30-min workflow timeout) — Node process hung post-PASS due to lingering pipe handles to spawned react-router-serve child → v2.73.3 in-place patch (explicit `process.exit()` + `stdio.destroy()` cleanup). Both patches at v2.60.1 cluster 13th altitude candidate; sister-shape to Finding T npx vite build SILENT NO-OP empirical CI surface; cement at Task 8.12 OPENING per Cowork Q2/Q3 verdict.
 
 ---
 
@@ -80,9 +80,9 @@ Options β (Suspense at AuthGate altitude) + γ (pre-hydration cookie infrastruc
 
 **Documentation (4 files):**
 
-7. `Docs/AppFolio_Parity_Implementation_Plan_v2.md` — NEW v2.73 amendment at top + v2.72 demoted to historical blockquote + §9 row 8.11 R → ✓ + `TBD` (#80) squash-SHA cell.
+7. `Docs/AppFolio_Parity_Implementation_Plan_v2.md` — NEW v2.73 amendment at top + v2.72 demoted to historical blockquote + §9 row 8.11 R → ✓ + `eae7c88` (#80) squash-SHA cell (resolved at Task 8.12 OPENING sweep).
 8. `Docs/Phases/Phase_8_Plan.md` — Task 8.11 close note appended to Phase status line (sister-shape to prior task closures).
-9. `CLAUDE.md` — HEAD pointer pivot to `TBD-8.11`; Phase summary row 8+ updated (10 of 15 ✓ → 11 of 15 ✓; +19 vitest unchanged); Next-task pivoted to Task 8.12 (LCP n=10 re-measurement / Block C OPENER); Calibration classes EXTENDED PAST FULL CALIBRATION milestone; Strict-gate command updated to include `npx react-router build` (Task 8.6 already applied) + smoke-test step; 10 NEW Conventions block entries CONSOLIDATED per Q8 LOCK demotion (FRAMEWORK-INSTALLATION 3pt + PROVIDER-SSR-REMEDIATION 3pt + factory dual-signature + RR v7 framework-mode primitives + npx vite build NO-OP + in-place v2.X.X patch cluster + per-provider-SSR-safety taxonomy update + AuthGate hydration-flash empirical resolution + smoke-test bundle discipline + 16-pattern anchor-bias-mitigation cluster consolidated + 6-consecutive refutation pattern).
+9. `CLAUDE.md` — HEAD pointer pivot to `eae7c88` (resolved at Task 8.12 OPENING sweep); Phase summary row 8+ updated (10 of 15 ✓ → 11 of 15 ✓; +19 vitest unchanged); Next-task pivoted to Task 8.12 (LCP n=10 re-measurement / Block C OPENER); Calibration classes EXTENDED PAST FULL CALIBRATION milestone; Strict-gate command updated to include `npx react-router build` (Task 8.6 already applied) + smoke-test step; 10 NEW Conventions block entries CONSOLIDATED per Q8 LOCK demotion (FRAMEWORK-INSTALLATION 3pt + PROVIDER-SSR-REMEDIATION 3pt + factory dual-signature + RR v7 framework-mode primitives + npx vite build NO-OP + in-place v2.X.X patch cluster + per-provider-SSR-safety taxonomy update + AuthGate hydration-flash empirical resolution + smoke-test bundle discipline + 16-pattern anchor-bias-mitigation cluster consolidated + 6-consecutive refutation pattern).
 10. `Docs/Phase8_Task_8_10_Completion_Report.md` — TBD sweep continued at Task 8.11 OPENING (already resolved at Step 1).
 11. `Docs/Phase8_Task_8_11_Completion_Report.md` — NEW (this file).
 
@@ -118,9 +118,10 @@ Options β (Suspense at AuthGate altitude) + γ (pre-hydration cookie infrastruc
 | Playwright webServer v2.73.1 in-place patch | `npx react-router-serve build/server/index.js` at port 5173 | ✓ |
 | Finding EE Q2 LOCK Option α empirical confirmation | Zero hydration mismatch warnings at chromium-headless probe | ✓ |
 | 14 cumulative factory-produced stores SSR-safe | Smoke-test pre-hydration HTML 5,949 bytes / HTTP 200 | ✓ |
-| Parity Gate (Green CI) | TBD — auto-fire expected via `qualia-shell/src/**` paths-filter | TBD at Task 8.12 OPENING sweep |
-| PII Scan | TBD on PR #80 open | TBD |
-| CodeRabbit review | Automatic on PR #80 open | TBD |
+| Parity Gate (Green CI) | [run 26096260353](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26096260353) auto-fire on v2.73.3 push via `qualia-shell/src/**` paths-filter; NEW BLOCKING smoke-test step PASS at chromium-headless probe | ✓ SUCCESS (~12 min) |
+| PII Scan | [run 26096260360](https://github.com/NovaTrustSolutions/dwellium-per-spec/actions/runs/26096260360) auto-fire on same push | ✓ SUCCESS |
+| CodeRabbit review | Automatic on PR #80 open | ✓ SUCCESS (no blocking comments) |
+| Finding JJ cancelled-run lineage | Runs 26090991698 (FAILURE — ERR_MODULE_NOT_FOUND) + 26094673300 (CANCELLED — 30-min timeout); v2.73.2 + v2.73.3 in-place patches resolved | ✓ RESOLVED at run 26096260353 |
 
 ---
 

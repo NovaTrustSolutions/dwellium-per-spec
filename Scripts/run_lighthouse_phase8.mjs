@@ -1,121 +1,123 @@
 #!/usr/bin/env node
 /**
- * Scripts/run_lighthouse_phase7.mjs
+ * Scripts/run_lighthouse_phase8.mjs
  *
- * Phase-7 Task 7.10 — Perf optimization (Lever 3: React.lazy expansion of
- * App.tsx eager imports + AdminShell wrapper consolidation).
+ * Phase-8+ Task 8.12 — LCP n=10 re-measurement post-SSR-architectural-migration
+ * (Block C OPENER + Phase-8+ measurement-arc kickoff).
  *
- * Per Docs/Phases/Phase_7_Plan.md §4 Block B Task 7.10 (expanded scope
- * post-7.9 strategic pivot; absorbs Lever 2 vendor-split as conditional
- * secondary lever only if empirically motivated at round-2). Pre-Phase-7
- * anchor LCP = 4,204 ms n=5 mean (Phase-6 6.7 close) / 4,602.3 ms n=3
- * mean (Phase-7 7.9 pre-edit baseline). v1 L228 ≤500 ms remains
- * structurally unattainable single-lever; Phase-7 Block B PRIMARY gate
- * ≤3,000 ms (~30% reduction) / ASPIRATIONAL ≤2,000 ms (~50%).
+ * Per Docs/Phases/Phase_8_Plan.md §4 Block C Task 8.12 + Cowork PRE0 Q1-Q8
+ * LOCK 2026-05-19: MEASUREMENT-ONLY 9pt → 10pt CROSS-PHASE-SHAPE-ROBUSTNESS
+ * extension (NEW 10th sub-shape `n10-statistical-rigor-re-measurement-post-
+ * architectural-migration-at-different-phase-altitude`). First project-wide
+ * class to cross 10pt threshold + first cross-phase Phase-7 → Phase-8+
+ * extension at MEASUREMENT-ONLY class altitude (calibration lineage: 7pt @
+ * 7.10 + 8pt @ 7.11 + 9pt @ 7.14 + 10pt @ 8.12).
  *
- * RENAMED VIA `git mv` from Scripts/run_lighthouse_phase6.mjs at Phase-7
- * Task 7.10 (2026-05-15) per 6.6/6.7 precedent (`Scripts/run_axe_phase5.mjs`
- * → `run_axe_phase6.mjs`; `run_lighthouse_phase5.mjs` →
- * `run_lighthouse_phase6.mjs`). Phase-6 Task 6.7 hardcodes patched + JSDoc
- * rewrite to Phase-7 Task 7.10 framing + internal `window.__phase7_*`
- * globals renamed to `window.__phase7_*` + NEW env-var parameterization
- * (LH_TASK_FIELD / LH_CAPTURE_SUFFIX / LH_ROOT_RUNS) for n=3 looping +
- * pre-edit/post-edit suffix support + future Task 7.10.1/7.11 reuse without
- * re-editing. Historical Phase-5/Phase-6 narrative preserved via
- * `git log --follow Scripts/run_lighthouse_phase7.mjs` +
- * `Docs/Phase5_Closure_Report.md §3` + `Docs/Phase5_Perf_Report.md` +
- * `Docs/Phase6_Closure_Report.md §3` + `Docs/Phase6_Perf_Report.md`
- * cross-reference.
+ * Phase-7 7.11 baseline reference (HEAD-post-7.10 `6a7eab5`; ssr:false
+ * library-mode SPA build):
+ *   LCP n=10 median 3,903 ms / mean 3,932 ms / CV 2.29% (~6× variance
+ *   reduction vs n=3 cadence; first non-degenerate noise-floor metric).
+ *   4-of-6 metrics deterministic at n=10 (FCP/TBT/CLS/SI deterministic;
+ *   LCP+TTI bimodal with bounded outlier).
+ *   Baseline artifact:
+ *   Docs/Baselines/2026-05-15_Phase7_task_7_11_perf_capture_n10_baseline_post_7.10.json
  *
- * LEVER 3 (React.lazy expansion of App.tsx eager imports) — empirical
- * justification per Phase-6 6.7 + Phase-7 7.9 cross-phase 2pt perf-lever
- * underperformance pattern:
- *   6.7 Lever 1 (Google Fonts deferral): −148 ms / −3.4% → REVERT
- *   7.9 Lever 2 (manualChunks vendor split via vite.config.ts; v2.55.1
- *     expanded shape ['react','react-dom','react-dom/client','scheduler']
- *     + 'icons-vendor': ['lucide-react']): STRUCTURAL chunk-axis BREAK
- *     SUCCESS (index eager-chunk shrunk −218 KB / −36.5%; +2 vendor
- *     chunks 264 KB aggregate) but empirical LCP delta −24.6 ms / −0.5%
- *     → REVERT.
- *   Substantive engineering finding: LCP bottleneck at React 19 + Vite 6
- *   + 4,500 ms baseline is JS EXECUTION + PARSE + RENDER on initial paint,
- *   NOT critical-path bytes-downloaded. Vendor extraction moves bytes but
- *   parallel HTTP/2 streams save marginal time when browser wasn't
- *   bottlenecked on serial download. Lever 3 addresses this directly by
- *   reducing what the browser parses + executes on initial paint:
- *   ~6,598 LoC of App.tsx eager-imported components (Sidebar 949 +
- *   Desktop 1048 + CommandPalette 1011 + OpenJarvisWidget 1089 + 3
- *   admin-shell providers 1104 = AdminShell wrapper 5201; TenantPortal 636;
- *   TenantLoginScreen 341; SecurityPortal 277; PopupShell 143) move from
- *   eager index-ChKXebss.js (597,519 B baseline) into lazy chunks behind
- *   3 branch-local <Suspense> boundaries at the App.tsx 3-branch inline
- *   conditional routing structure (/security → SecurityPortal; ?popup= →
- *   PopupShell; default → AuthGate → LoginScreen[eager]|TenantLoginScreen|
- *   TenantPortal|AdminShell).
+ * Task 8.12 target — n=10 re-measurement at HEAD-post-Task-8.11 `eae7c88`
+ * (ssr:true framework-mode; Block B 6-of-6 closer; SSR architectural
+ * migration arc COMPLETE) — characterize Phase-8+ noise-floor vs Phase-7
+ * 7.11 baseline (architectural-axis change: ssr:false library-mode →
+ * ssr:true framework-mode).
  *
- * SPA-ONLY NAVIGATION CONSTRAINT (unchanged from 6.7 / 7.9):
- *   App.tsx has zero React Router patterns; 4 enriched detail pages
- *   accessed via Playwright-driven sidebar→strata→nav-item pattern.
- *   Root Lighthouse run on `/` captures root LCP/FCP/CLS/Performance/a11y
- *   for cross-phase comparison. Per-page Playwright + axe + Web Vitals
- *   capture supplementary data per existing 6.7 methodology.
+ * RENAMED VIA `git mv` from Scripts/run_lighthouse_phase7.mjs at Phase-8+
+ * Task 8.12 (2026-05-19) per Q4 LOCK plus-script-rename precedent (6.6/6.7
+ * + 7.11 cross-phase sister-shape constellation:
+ * `Scripts/run_axe_phase5.mjs` → `run_axe_phase6.mjs`;
+ * `run_lighthouse_phase5.mjs` → `run_lighthouse_phase6.mjs` → `_phase7.mjs`
+ * → `_phase8.mjs`). Preserves git history per plus-script-rename precedent
+ * (NOT fork-copy which orphans history). Historical Phase-5/6/7 narrative
+ * preserved via `git log --follow Scripts/run_lighthouse_phase8.mjs` +
+ * `Docs/Phase{5,6,7}_Closure_Report.md §3` cross-reference +
+ * `Docs/Phase7_Task_7_11_Completion_Report.md` n=10 statistical-rigor
+ * protocol precedent.
  *
- * Phase-7 Task 7.10 LCP acceptance gate (per Cowork verdict at PRE0
- * close 2026-05-15):
- *   OUTCOME A+: LCP reduction ≥1,500 ms AND post-edit LCP ≤3,000 ms
- *               (Block B PRIMARY gate; "lazy-load = structurally-correct
- *               lever" thesis CONFIRMED).
- *   OUTCOME A:  LCP reduction ≥1,000 ms AND post-edit LCP ≤3,500 ms
- *               (substantive win short of A+; Block B PRIMARY not met but
- *               materially closer).
- *   OUTCOME B:  LCP reduction <100 ms (NO-OP per measurement noise band
- *               ~225 ms at n=3) → REVERT; 3pt cross-phase perf-lever
- *               underperformance pattern cements SSR pivot recommendation.
- *   OUTCOME C:  LCP reduction 100-1,000 ms (partial; ambiguous) → round-2
- *               PRE0 on vendor-split (7.9 v2.55.1 manualChunks shape)
- *               stacking on top.
+ * v2.75.1 in-place spawn-target patch at L425-434 (sister-shape to Task
+ * 8.11 v2.73.1 webServer patch at playwright.baseline.config.ts):
+ *   Phase-7 7.10/7.11 spawned `npx vite preview --port 4173 --strictPort`
+ *   for measurement server-startup — INCOMPATIBLE with ssr:true mode at
+ *   HEAD-post-Task-8.11 (vite preview serves static client assets only;
+ *   ssr:true requires per-request server-side rendering). Swapped to
+ *   `npx react-router-serve build/server/index.js` (canonical RR v7
+ *   production server runtime; `@react-router/serve@7.15.1` installed as
+ *   production dep at Task 8.11 Q5 LOCK). PORT env var override preserves
+ *   port 4173 + LH_TASK_FIELD convention byte-for-byte (sister-shape to
+ *   v2.73.1 PORT='5173' override pattern at Task 8.11). 9th cumulative
+ *   Phase-8+ in-place v2.X.X patch (v2.66.1+v2.66.2+v2.66.3+v2.68.1+v2.72.1
+ *   +v2.73.1+v2.73.2+v2.73.3+v2.75.1).
  *
- * Env-var parameterization (NEW at 7.10 for future Task 7.10.1/7.11 reuse):
+ * v2.75.0 PRE-FLIGHT discipline (cemented at Task 8.12 PRE0 anchor-bias-
+ * mitigation cluster 17-pattern milestone; rule: "At any measurement task
+ * PRE0, verify process.spawn() targets in measurement scripts against
+ * current HEAD's server-runtime shape [react-router-serve vs vite preview
+ * vs vite dev] BEFORE executing measurement"; sister-shape to v2.64.0
+ * production-source-config-file empirical-verification discipline).
+ *
+ * SPA-ONLY NAVIGATION CONSTRAINT (preserved from 6.7 / 7.9 / 7.10 / 7.11
+ * methodology byte-for-byte at Phase-8+ measurement altitude):
+ *   App.tsx has zero React Router DOM v6 patterns at HEAD-post-Task-8.11;
+ *   RR v7 framework-mode adopted with declarative route config at
+ *   `qualia-shell/app/routes.ts` (single catch-all index route + splat).
+ *   4 enriched detail pages accessed via Playwright-driven sidebar→strata→
+ *   nav-item pattern. Root Lighthouse run on `/` captures root LCP/FCP/CLS
+ *   /Performance/a11y for cross-phase comparison.
+ *
+ * Phase-8+ Task 8.12 LCP HALT-IF #3 threshold (Q5 LOCK Option II Moderate
+ * 2026-05-19): Phase-8 LCP n=10 median > 4,294 ms (3,903 ms × 1.10 = 10%
+ * regression threshold) → cement empirical signal in baseline JSON +
+ * Completion Report §0; HALT for Cowork verdict on Block C 8.13 perf-lever
+ * investigation OR rollback consideration. Sub-thresholds for Cowork
+ * awareness (reported all even if non-triggering):
+ *   - Median delta vs 3,903 ms baseline (absolute + %)
+ *   - CV delta vs 2.29% baseline (noise-floor preservation check)
+ *   - p50/p90/p99 deltas
+ *   - Per-metric determinism count (Phase-7 baseline: 4-of-6 deterministic)
+ *
+ * Env-var parameterization (carries forward from 7.10/7.11; Phase-8+ default):
  *   LH_TASK_FIELD       — slug embedded in JSON output `task` field AND
  *                         filename base (PascalCase-derived; e.g.
- *                         `phase7_task_7_10` → `Phase7_task_7_10`).
- *                         Default: `phase7_task_7_10`.
+ *                         `phase8_task_8_12` → `Phase8_task_8_12`).
+ *                         Default: `phase8_task_8_12`.
  *   LH_CAPTURE_SUFFIX   — suffix appended to filename before `.json`.
- *                         Default: empty string. Brief usage at 7.10:
- *                         `_pre_edit` for Step-2 baseline; `_post_edit_round1`
- *                         for Step-5 post-edit capture.
+ *                         Default: empty string. Brief usage at 8.12:
+ *                         `_n10_baseline_post_8.11` per Q6 LOCK byte-for-byte
+ *                         Phase-7 7.11 LH_CAPTURE_SUFFIX naming convention.
  *   LH_ROOT_RUNS        — number of root Lighthouse captures to loop;
  *                         all captures + computed mean/median/range/stddev
  *                         persisted to single JSON output. Default: 1
- *                         (backward-compat with 6.7 single-capture mode).
- *                         Brief usage at 7.10: 3 (matches 7.9 n=3 cadence;
- *                         escalate to 10 if Step-5 round-1 lands in
- *                         100-1,000 ms ambiguous OUTCOME C band).
+ *                         (backward-compat). Brief usage at 8.12: 10 (matches
+ *                         7.11 n=10 cadence per Q1 LOCK MEASUREMENT-ONLY
+ *                         10pt cross-phase shape extension).
  *   LH_RUNS             — per-page Playwright run count (vestigial from 6.7;
  *                         not consumed in the per-page loop; preserved for
  *                         backward-compat; defaults to 1).
  *
  * Usage:
  *   cd qualia-shell && VITE_USE_STATIC_API=true VITE_APPFOLIO_SEEDS=true \
- *     npx vite build   # emit dist/
+ *     npx react-router build   # emit build/client/ + build/server/
  *   cd ..
- *   # Step-2 pre-edit baseline (n=3):
- *   LH_CAPTURE_SUFFIX=_pre_edit LH_ROOT_RUNS=3 \
- *     node Scripts/run_lighthouse_phase7.mjs
- *   # Step-5 post-edit round-1 (n=3):
- *   LH_CAPTURE_SUFFIX=_post_edit_round1 LH_ROOT_RUNS=3 \
- *     node Scripts/run_lighthouse_phase7.mjs
+ *   # Task 8.12 n=10 baseline (Phase-8+ noise-floor characterization at
+ *   # ssr:true HEAD-post-Task-8.11):
+ *   LH_TASK_FIELD=phase8_task_8_12 LH_CAPTURE_SUFFIX=_n10_baseline_post_8.11 \
+ *     LH_ROOT_RUNS=10 node Scripts/run_lighthouse_phase8.mjs
  *
  * Output:
  *   Docs/Baselines/<YYYY-MM-DD>_<PascalCaseTaskField>_perf_capture<SUFFIX>.json
- *   e.g. 2026-05-15_Phase7_task_7_10_perf_capture_pre_edit.json
- *   Docs/Phase7_Perf_Report.md (analyzed report; written separately at 7.10
- *   close)
+ *   e.g. 2026-05-19_Phase8_task_8_12_perf_capture_n10_baseline_post_8.11.json
  *
  * Exit codes:
- *   0 — measurement captured (regardless of acceptance-gate PASS/FAIL).
- *   1 — measurement / chrome / playwright failure.
- *   2 — missing deps (lighthouse / chrome-launcher / playwright).
+ *   0 — measurement captured (regardless of HALT-IF #3 trigger status).
+ *   1 — measurement / chrome / playwright / react-router-serve failure.
+ *   2 — missing deps (lighthouse / chrome-launcher / playwright /
+ *       @react-router/serve).
  */
 
 import { spawn } from 'node:child_process';
@@ -131,11 +133,12 @@ const PREVIEW_PORT = 4173;
 const PREVIEW_URL = `http://localhost:${PREVIEW_PORT}/`;
 const RUNS_PER_PAGE = parseInt(process.env.LH_RUNS || '1', 10);
 
-// Phase-7 Task 7.10 env-var parameterization (NEW). See JSDoc above.
-const TASK_FIELD = process.env.LH_TASK_FIELD || 'phase7_task_7_10';
+// Phase-8+ Task 8.12 env-var parameterization (carried forward from 7.10/7.11).
+// See JSDoc above.
+const TASK_FIELD = process.env.LH_TASK_FIELD || 'phase8_task_8_12';
 const CAPTURE_SUFFIX = process.env.LH_CAPTURE_SUFFIX || '';
 const ROOT_RUNS = parseInt(process.env.LH_ROOT_RUNS || '1', 10);
-// PascalCase the slug for filename base: 'phase7_task_7_10' → 'Phase7_task_7_10'.
+// PascalCase the slug for filename base: 'phase8_task_8_12' → 'Phase8_task_8_12'.
 const FILENAME_BASE = TASK_FIELD.charAt(0).toUpperCase() + TASK_FIELD.slice(1);
 
 const requireFromQualia = createRequire(join(REPO_ROOT, 'qualia-shell/package.json'));
@@ -416,30 +419,33 @@ async function waitForPort(url, timeoutMs = 30_000) {
 }
 
 async function main() {
-  console.log(`Phase 7 Task 7.10 — Perf optimization (Lighthouse + Playwright + axe-core; Lever 3: React.lazy expansion of App.tsx eager imports)`);
+  console.log(`Phase 8+ Task 8.12 — LCP n=10 re-measurement post-SSR-architectural-migration (Lighthouse + Playwright + axe-core; ssr:true framework-mode at HEAD-post-Task-8.11 eae7c88)`);
   console.log(`Target: ${PREVIEW_URL} + 4 SPA-internal detail pages`);
   console.log(`Root Lighthouse runs (n): ${ROOT_RUNS}`);
   console.log(`Per-page Playwright runs: ${RUNS_PER_PAGE}`);
   console.log(`Task field: ${TASK_FIELD} | Capture suffix: '${CAPTURE_SUFFIX}'`);
   console.log('');
 
-  const vite = spawn(
+  // v2.75.1 in-place spawn-target patch — react-router-serve (NOT vite preview)
+  // at ssr:true mode. See JSDoc above + Task 8.11 v2.73.1 webServer patch
+  // precedent at qualia-shell/playwright.baseline.config.ts.
+  const server = spawn(
     'npx',
-    ['vite', 'preview', '--port', String(PREVIEW_PORT), '--strictPort'],
+    ['react-router-serve', 'build/server/index.js'],
     {
       cwd: join(REPO_ROOT, 'qualia-shell'),
-      env: { ...process.env, BROWSER: 'none' },
+      env: { ...process.env, PORT: String(PREVIEW_PORT), BROWSER: 'none' },
       stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
-  vite.stdout.on('data', (d) => process.stdout.write(`[vite] ${d}`));
-  vite.stderr.on('data', (d) => process.stderr.write(`[vite-err] ${d}`));
+  server.stdout.on('data', (d) => process.stdout.write(`[server] ${d}`));
+  server.stderr.on('data', (d) => process.stderr.write(`[server-err] ${d}`));
 
   let chrome;
   let browser;
   try {
     await waitForPort(PREVIEW_URL);
-    console.log('[OK] vite preview ready');
+    console.log('[OK] react-router-serve ready');
 
     // 1. Root Lighthouse run(s) — independent chrome per run via
     //    chrome-launcher (fresh chrome state per run; matches Phase-0
@@ -578,8 +584,21 @@ async function main() {
   } finally {
     if (browser) await browser.close().catch(() => {});
     if (chrome) await chrome.kill().catch(() => {});
-    vite.kill('SIGTERM');
+    // v2.60.1 cluster 14th altitude discipline (Finding JJ sister-shape):
+    // destroy stdio pipes BEFORE SIGTERM to prevent Node process hanging on
+    // lingering pipe handles to spawned child (smoke-test v2.73.3 precedent).
+    try { server.stdout?.destroy(); } catch {}
+    try { server.stderr?.destroy(); } catch {}
+    server.kill('SIGTERM');
   }
 }
 
-main();
+main().then(() => {
+  // v2.60.1 cluster 14th altitude discipline (Finding JJ sister-shape):
+  // explicit process.exit() to prevent Node hanging on lingering handles
+  // after main() resolves (smoke-test v2.73.3 precedent).
+  process.exit(process.exitCode || 0);
+}).catch((err) => {
+  console.error(`[FATAL] ${err.stack || err.message}`);
+  process.exit(1);
+});

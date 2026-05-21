@@ -1,6 +1,6 @@
 # Phase 9+ Plan — Kickoff Brief
 
-**Status.** **R OPEN** — Phase-9+ Task 9.1 OPENER active at branch `feat/phase-9-task-9.1-opener-kickoff-brief`; this doc IS the Task 9.1 OPENER deliverable per Cowork Q4 LOCK Option (γ) (expand-stub-in-place; locality-correct sister-shape to `Docs/Phases/Phase_<0-8>_Plan.md` files).
+**Status.** **Phase-9+ Task 9.1 OPENER MERGED via PR #85 at `d70f18d` 2026-05-21**; Cowork OQ-1 through OQ-5 LOCKED at Phase-9+ Task 9.2 OPENING (this commit). Phase-9+ R OPEN at Task 9.2 (B-α CDN-edge SCOPING-ONLY active at branch `feat/phase-9-task-9.2-cdn-edge-scoping`).
 **Created.** 2026-05-21 (stub) — Phase-8+ Task 8.15 publishing handoff per Cowork Q3 LOCK Option (i).
 **Expanded.** 2026-05-21 (full brief) — Phase-9+ Task 9.1 OPENER per Cowork Q1-Q4 LOCK at PRE0 ledger.
 **Phase-9+ disposition.** **RATIFIED (b) PARTIAL-MET** per Ilya-lock 2026-05-21 (Q1 LOCK; see §2). v1 L228 ≤500 ms LCP STAYS LIVE as Phase-9+ objective; ~41.5% cumulative gap-closure ratified as substantive progress worth continuing. Phase-9+ pursues architectural-axis exploration to keep driving LCP downward.
@@ -17,7 +17,7 @@ Per Cowork Q2 LOCK at Phase-9+ kickoff verdict-lock. Empirically-verified item-c
 | # | Item | Source | Phase-9+ disposition |
 |--:|:--|:--|:--|
 | A1 | **Finding II widget-altitude SSR audit** — `TranscriptionHub.tsx:376` `useState(() => window.SpeechRecognition)` + sweep for sibling widget-altitude init-time-UNSAFE patterns gated behind AuthGate Branch 1 | Closer §7 Block A 1; Task 8.11 Q6 LOCK INFORMATIONAL deferred | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
-| A2 | **Finding EE Option β** — Suspense at AuthGate altitude (hydration-flash polish) | Closer §7 Block A 2; Task 8.11 Q2 LOCK Finding EE Option α cemented as PERMANENT baseline | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
+| A2 | **Finding EE Option β** — Suspense at AuthGate altitude (hydration-flash polish) | Closer §7 Block A 2; Task 8.11 Q2 LOCK Finding EE Option α cemented as PERMANENT baseline | Phase-9+ task candidate; **STAYS in Block A polish per OQ-2 LOCK** (FLAGGED B-γ-adjacent — re-evaluate when island-hydration scoped; island-hydration may subsume the Suspense-at-AuthGate work); see §3 |
 | A3 | **Finding EE Option γ** — pre-hydration cookie infrastructure (sister to Option β; cookie-based instead of Suspense) | Closer §7 Block A 3 | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
 | A4 | **Finding KK** — LCP bimodal-at-server-vs-client-rendered-paint investigation (Cluster A FCP-coincident ~1,953 ms × 2 runs + Cluster B post-hydration ~2,255-2,802 ms × 8 runs at Task 8.12 n=10 capture) | Closer §7 Block A 4; Task 8.12 Finding KK | Phase-9+ measurement-investigation candidate (informational; could resolve structurally via Option β) |
 
@@ -25,7 +25,7 @@ Per Cowork Q2 LOCK at Phase-9+ kickoff verdict-lock. Empirically-verified item-c
 
 | # | Item | Source | Phase-9+ disposition |
 |--:|:--|:--|:--|
-| B1 | **v1 L228 ≤500 ms LCP objective** — RATIFIED (b) PARTIAL-MET per Q1 LOCK; STAYS LIVE; architectural-axis exploration is the Phase-9+ PRIMARY spine | Closer §6.2 + §7 Block B 1; Ilya-lock at Task 8.14 PRE0; RATIFIED at Phase-9+ kickoff Q1 LOCK | **Primary Phase-9+ workstream**; see §4 |
+| B1 | **v1 L228 ≤500 ms LCP objective** — RATIFIED (b) PARTIAL-MET per Q1 LOCK; STAYS LIVE; architectural-axis exploration is the Phase-9+ PRIMARY spine | Closer §6.2 + §7 Block B 1; Ilya-lock at Task 8.14 PRE0; RATIFIED at Phase-9+ kickoff Q1 LOCK | **Primary Phase-9+ workstream**; **🎯 B-α CDN-edge SCOPED FIRST per OQ-1 LOCK** (Task 9.2); see §4 |
 | B2 | **Perf-lever-exhaustion-confirmed baseline at React 19 + Vite 6 + RR v7 architecture** — Task 8.13 cemented 0-of-3 in-architecture candidates (SSR already-applied + per-route Vike-mode N/A-by-construction + asset-preload structurally-insufficient); any new lever requires architectural-axis shift | Closer §2 Signal (5) + §7 Block B 2; Task 8.13 Finding LL | **Substrate for §4 architectural-axis exploration**; see §4 |
 
 ### Block C — Project-wide housekeeping (3 items; pre-existing)
@@ -118,6 +118,8 @@ Block A is **carry-forward continuation** of Phase-8+ provider SSR remediation a
 
 **Estimated task altitude.** Production-source edit at `qualia-shell/src/components/AuthGate.tsx` + `app/root.tsx` Layout integration; vitest delta ~+2-3 (Suspense behavior); smoke-test re-validation BLOCKING.
 
+**🎯 Taxonomy note per OQ-2 LOCK (Phase-9+ Task 9.2 OPENING).** A2 STAYS in Block A polish framing — Suspense at AuthGate does NOT shift the architecture axis; it's hydration-flash polish WITHIN the existing ssr:true RR-v7 framework. Block A = current-architecture polish; Block B = architectural-axis shifts. A2 is **FLAGGED B-γ-adjacent** (re-evaluate when island-hydration is scoped at Task 9.X — island hydration may subsume the Suspense-at-AuthGate work since island-hydration eliminates whole-app hydration cascade by construction). A2 does NOT migrate to Block B.
+
 ### A3 — Finding EE Option γ: pre-hydration cookie infrastructure
 
 **Scope.** Alternative to Option β: read auth state from server-side cookie BEFORE React hydrates; eliminate hydration-flash by server-rendering the post-auth view directly. Sister-shape to FOUC IIFE pre-hydration theme attribute (already cemented at Task 8.7 v2.66.3 in-place patch).
@@ -146,7 +148,7 @@ Block A is **carry-forward continuation** of Phase-8+ provider SSR remediation a
 
 **Standing PRE-FLIGHT discipline at Block B altitude (P1 cemented).** Each architectural-axis-shift lever MUST be scoped against (i) v1 L228 ≤500 ms gate-of-record + (ii) Phase-8+ 8.12 2,724 ms empirical baseline + (iii) feasibility verdict empirically grounded (NOT projection-only). Sister-shape to Phase-8+ Task 8.1 SCOPING-ONLY OPENER (architectural inventory + framework decision tree) + Phase-8+ Task 8.13 SCOPING-ONLY perf-lever-exhaustion refutation (empirical scope-existence verification).
 
-### Lever B-α — CDN edge rendering / origin-shielding
+### Lever B-α — CDN edge rendering / origin-shielding **🎯 SCOPED FIRST per OQ-1 LOCK (Task 9.2 active)**
 
 **Hypothesis.** CDN-edge delivery (Cloudflare Workers / Vercel Edge Functions / AWS Lambda@Edge) co-located with users could reduce first-byte latency 200-500 ms; if origin-shielding caches the `react-router-serve` SSR output regionally, repeat LCP could drop into sub-1,000 ms range.
 
@@ -208,7 +210,9 @@ Per Phase-8+ Task 8.13 SCOPING-ONLY 5pt cementation — perf-lever scoping disci
 
 ---
 
-## §5. Block C scope — Project-wide housekeeping
+## §5. Block C scope — Project-wide housekeeping (**PARALLEL / OPPORTUNISTIC, non-gating per OQ-3 LOCK**)
+
+**🎯 OQ-3 LOCK at Phase-9+ Task 9.2 OPENING (Ilya verdict 2026-05-21).** Block C items run PARALLEL / OPPORTUNISTIC; **none of C1+C2 gates Block B** (the B-α scoping spine). C3 already RESOLVED at 9.1 OPENER `5043587`. Block C items can interleave with Block A polish or Block B architectural-axis exploration; ordering is opportunistic-based-on-availability (not phase-architecture-based).
 
 ### C1 — Linux Playwright baselines (8 *-chromium-linux.png)
 
@@ -283,39 +287,27 @@ Per SCOPING-ONLY class definition (CLAUDE.md Conventions block): "No production 
 
 ## §7. Risks / open questions / Cowork decision gates for Task 9.1
 
-### OQ-1: Block B lever prioritization (Cowork verdict-pending per execution-order HALT)
+### OQ-1: Block B lever prioritization — **🎯 LOCKED 2026-05-21 → B-α CDN-EDGE SCOPED FIRST (Task 9.2)**
 
-**Question.** Which of the 3 Block B levers (CDN-edge α / HTTP-3 β / island-hydration γ) should be scoped FIRST at Phase-9+ Task 9.2 SCOPING-ONLY shape? Lever stacking projection suggests B-α + B-γ as most-likely gate-crossing combination, but each individual lever-scoping is a substantial deliverable.
+**Ilya verdict 2026-05-21.** Rationale: largest standalone LCP-reduction potential + the lever most likely to actually cross ≤500 ms on a cache HIT (server-rendered AuthGate Branch 1 spinner IS edge-cacheable for unauth'd users; edge-cache could reduce the ~1,953 ms FCP component toward ~300-500 ms). Task 9.2 = B-α CDN-edge SCOPING-ONLY deliverable.
 
-**Candidate orderings.**
-- (i) B-α first (CDN-edge): largest standalone LCP-reduction potential; partial-architecture-shift risk; deploy-platform-coupling
-- (ii) B-γ first (island-hydration): most architecturally-substantive; reveals island-hydration-compatibility before deciding on deploy-platform
-- (iii) B-β first (HTTP/3 + Early Hints): smallest architectural delta; quickest empirical-data-point; non-gate-crossing alone but composable
-- (iv) Parallel SCOPING (all 3 in same phase): potentially infeasible at solo-dev velocity; risks scope-bloat
+**Historical-record (question at OPENER PRE0).** Candidate orderings considered: (i) B-α first / (ii) B-γ first / (iii) B-β first / (iv) parallel scoping. Ilya chose (i) per the standalone-cross-rate hypothesis.
 
-### OQ-2: Block A interleave timing
+### OQ-2: Block A interleave timing — **🎯 LOCKED 2026-05-21 → A2 STAYS IN BLOCK A POLISH (B-γ-adjacent FLAG)**
 
-**Question.** Does Block A (widget+provider polish; 4 items) run interleaved with Block B (LCP architectural exploration; primary)? Or sequential post-Block-B?
+**Verdict.** A2 (Suspense at AuthGate) STAYS in Block A polish framing; does NOT migrate to Block B. Block A = current-architecture polish; Block B = architectural-axis shifts. A2 is FLAGGED B-γ-adjacent — re-evaluate when island-hydration is scoped (island-hydration may subsume Suspense-at-AuthGate work by construction). Taxonomy note recorded in §3 A2 row + A2 detailed section.
 
-**Considerations.** A4 (LCP bimodal investigation) is informational-coupled-to-A2 (Suspense at AuthGate). A2 + A4 could surface BEFORE Block B levers as a "current-architecture polish exhausted" milestone, OR DURING Block B as one of the candidate levers (A2 Suspense IS an architectural-axis-shift lever at hydration altitude). Cowork verdict needed on whether A2 belongs to Block A (polish framing) or Block B (architectural-axis-shift framing).
+### OQ-3: Block C ordering — **🎯 LOCKED 2026-05-21 → PARALLEL / OPPORTUNISTIC, non-gating**
 
-### OQ-3: Block C ordering and Block A/B parallelism
+**Verdict.** Block C runs PARALLEL / OPPORTUNISTIC; none of C1+C2 gates Block B (B-α scoping spine). C3 already RESOLVED at 9.1 OPENER `5043587`. Block C items can interleave with Block A polish or Block B architectural-axis exploration; ordering is opportunistic-based-on-availability. Recorded in §5 heading.
 
-**Question.** Do Block C items run in parallel with Block A + Block B, or as a closer-phase housekeeping pass?
+### OQ-4: Phase-9+ duration projection — **🎯 LOCKED 2026-05-21 → INFORMATIONAL ONLY (no hard lock)**
 
-**Considerations.** Block C C1 (Linux Playwright baselines) unblocks screenshot-baseline CI step blocking-flip — pre-requisite for any visual-regression-blocking ambition at Phase-9+. C2 (nebula-bg.mp4 LFS) is independent. C3 already resolved.
+**Verdict.** No hard duration lock per v2.60.1 anchor-bias discipline (pre-committing durations at OPENER altitude is structurally fragile). Phase-9+ duration becomes empirical post-hoc at Phase-9+ closer altitude.
 
-### OQ-4: Phase-9+ duration projection
+### OQ-5: Phase-9+ closer LCP baseline target — **🎯 LOCKED 2026-05-21 → DEFERRED to Phase-9+ closer (informational only)**
 
-**Question.** Phase-8+ duration: 5-6 calendar days / 15 PRs / 13 tasks + closer + publishing. Phase-7 duration: ~10 calendar days / 14 PRs / 14 tasks. What Phase-9+ duration estimate is reasonable?
-
-**Considerations.** Block B architectural-axis-shift exploration is more substantive than any prior Phase block. Phase-9+ duration could be longer than Phase-8+ if all 3 Block B levers go through full SCOPING + IMPLEMENTATION arcs. Phase-9+ duration could be similar to Phase-8+ if Block B scopes to SCOPING-ONLY-shapes (forward roadmaps without implementation), deferring implementation to Phase-10+.
-
-### OQ-5: Phase-9+ closer LCP baseline target
-
-**Question.** What LCP measurement at Phase-9+ closer would constitute (a) gate-crossing (≤500 ms achieved) vs (b) substantive-progress-but-not-gate-crossing (~1,000-2,000 ms) vs (c) plateaued (similar to 2,724 ms; minority-position Framing (a) becomes default)?
-
-**Considerations.** Framing (a) STRUCTURALLY UNATTAINABLE becomes the empirical default verdict if Phase-9+ closer LCP stays close to 2,724 ms after architectural-axis exploration. Pre-committing measurement-targets at OPENER altitude is structurally fragile (anchor-bias risk) — Cowork verdict NOT REQUIRED at this OPENER; deferred to Phase-9+ closer.
+**Verdict.** Pre-committing measurement-targets at OPENER altitude is structurally fragile (anchor-bias risk). Deferred to Phase-9+ closer terminal-task altitude where empirical baselines inform the verdict directly.
 
 ### Risk register entry (Framing (a) minority position)
 

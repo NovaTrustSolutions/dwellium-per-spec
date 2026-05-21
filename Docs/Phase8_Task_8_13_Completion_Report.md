@@ -34,7 +34,7 @@ Two defensible framings for Task 8.14 closer synthesis (Cowork Verdict 3 LOCK 3r
 
 ## §1 — Commit + Green CI references
 
-**Commit.** `TBD-8.13` (squash commit for PR #82, Task 8.13 — Block C item 2 perf-lever-scope-refutation; resolved at Task 8.14 OPENING sweep per established Task N TBD → Task N+1 sweep pattern + v2.74.1 branch-base discipline).
+**Commit.** `fe3643d` (squash commit for PR #82, Task 8.13 — Block C item 2 perf-lever-scope-refutation; merged 2026-05-21T01:37:49Z; resolved at Task 8.14 OPENING sweep 2026-05-21 — 39-pattern cross-phase sweep-resolutions milestone CEMENTED at this Task 8.14 PRE0 sweep across 9 reference spots).
 **PR.** [#82](https://github.com/NovaTrustSolutions/dwellium-per-spec/pull/82) (sister-shape to PR #81 close pattern; SCOPING-ONLY shape = doc-only close cycle sister-shape to PR #69 + #71 + #73 + #76 close cycles).
 **Branch.** `feat/phase-8-task-8.13-perf-lever-scope-refutation` (branched from `origin/main` HEAD = `264c5c0` per v2.74.1 branch-base discipline — **3rd-consecutive empirical vindication** post-cementation extending Task 8.11 + 8.12 close pattern).
 **Green CI.** Manual dispatch EXPECTED per HALT-IF #3 EXPECTED-ABSENT pattern (Task 8.13 touches ONLY `Docs/**` + `CLAUDE.md` — outside parity-gate paths filter; sister-shape constellation to Tasks 8.1/8.3/8.5/8.8/8.12 doc-only close cycles). PII Scan runs on every push regardless. Step-8 ledger reports.
@@ -46,8 +46,8 @@ Two defensible framings for Task 8.14 closer synthesis (Cowork Verdict 3 LOCK 3r
 **5-deliverable Task 8.13 ship per Cowork Q1-Q6 LOCK at PRE0 (ZERO production source touched — measurement-only/SCOPING-only class shape per Q1 LOCK):**
 
 1. **NEW `Docs/Phase8_Task_8_13_Completion_Report.md`** — this file. 8-section template; SCOPING-ONLY 5pt shape per Q1 LOCK; Finding LL structured §0 cementation per Q2 LOCK; v2.60.1 cluster 15th altitude + NEW v2.76.0 PRE-FLIGHT discipline per Q3 LOCK; v1 L228 dual-framing NARRATIVE NOTE (NOT formal verdict) per Q4 LOCK; per-lever 3-candidate exhaustion inventory.
-2. `CLAUDE.md` — HEAD pivot to `TBD-8.13`; Phase summary row 8+ updated (12 of 15 ✓ → 13 of 15 ✓); §Next-task pivoted to **Task 8.14 (Phase-8+ closer; v1 L228 verdict synthesis altitude)**; Calibration classes SCOPING-ONLY 4pt → 5pt extension; Anchor-bias-mitigation cluster 17 → 18 patterns (NEW v2.76.0); v2.60.1 cluster 14 → 15 altitudes (NEW 15th); cumulative catalog 35 → 36; Q6 LOCK demotion-on-close applied IF projection exceeds 40,000 B.
-3. `Docs/AppFolio_Parity_Implementation_Plan_v2.md` — NEW v2.75 amendment at top + v2.74 demoted to historical blockquote + §9 row 8.13 R → ✓ + `TBD-8.13` (#82) squash-SHA cell (resolved at Task 8.14 OPENING sweep).
+2. `CLAUDE.md` — HEAD pivot to `fe3643d`; Phase summary row 8+ updated (12 of 15 ✓ → 13 of 15 ✓); §Next-task pivoted to **Task 8.14 (Phase-8+ closer; v1 L228 verdict synthesis altitude)**; Calibration classes SCOPING-ONLY 4pt → 5pt extension; Anchor-bias-mitigation cluster 17 → 18 patterns (NEW v2.76.0); v2.60.1 cluster 14 → 15 altitudes (NEW 15th); cumulative catalog 35 → 36; Q6 LOCK demotion-on-close applied IF projection exceeds 40,000 B.
+3. `Docs/AppFolio_Parity_Implementation_Plan_v2.md` — NEW v2.75 amendment at top + v2.74 demoted to historical blockquote + §9 row 8.13 R → ✓ + `fe3643d` (#82) squash-SHA cell (resolved at Task 8.14 OPENING sweep).
 4. `Docs/Phases/Phase_8_Plan.md` — Task 8.13 close note appended to Phase status line (sister-shape to prior task closures).
 5. **Task 8.12 OPENING sweep doc updates** carried forward at branch base (CLAUDE.md HEAD pointer + Plan v2 + Phase_8_Plan + Task 8.12 CR TBD-8.12 → `264c5c0` resolution across 9 reference spots; 38-pattern cross-phase sweep-resolutions milestone CEMENTED at Task 8.13 OPENING; 5-consecutive TBD → squash-SHA task-cadence 8.9+8.10+8.11+8.12+8.13).
 
@@ -176,7 +176,7 @@ Per Plan v2 §9 8.13 row literal text: "lever candidates: SSR + React.lazy stack
 5. **6 untracked baseline JSON artifacts** at `Docs/Baselines/2026-05-{11,12,13,17,18}_Phase0_axe_baseline.json` + `2026-05-13_Phase6_task_6_7_perf_capture.json` — residue from dispatched workflow runs; commit-as-historical-baselines at Task 8.14 closer OR Task 8.15 publishing per `Docs/Phase8_SSR_Architectural_Scoping.md §7.3` recommendation.
 
 **Task 8.14 OPENING PRE0 candidates:**
-1. **TBD sweep** — Task 8.13 TBD → squash-SHA at Task 8.14 OPENING sweep (39-pattern cross-phase sweep-resolutions milestone candidate; extending 38-pattern at Task 8.13 OPENING; 6-consecutive TBD → squash-SHA task-cadence 8.9+8.10+8.11+8.12+8.13+8.14).
+1. **TBD sweep** — Task 8.13 TBD → `fe3643d` resolved at Task 8.14 OPENING sweep 2026-05-21 (39-pattern cross-phase sweep-resolutions milestone CEMENTED at Task 8.14 OPENING across 9 reference spots; extending 38-pattern at Task 8.13 OPENING; 6-consecutive TBD → squash-SHA task-cadence 8.9+8.10+8.11+8.12+8.13+8.14).
 2. **Q1 closer shape verdict** — CLOSURE-NARRATIVE-CONSOLIDATION 2pt → 3pt cross-phase shape per Plan v2 8.14 row; sister-shape to Phase-6 closer + Phase-7 closer.
 3. **v1 L228 formal verdict synthesis** — Outcome (B) STRUCTURALLY-UNATTAINABLE vs partial-MET dual-framing resolution at canonical altitude per Q4 LOCK Task 8.13 deferral.
 4. **Phase-8+ engineering-finding catalog cementation** — 36-finding catalog (A-Y + Z + AA + CC + DD + EE + FF + GG + HH + II + JJ + KK + LL) consolidated at closer.
@@ -207,4 +207,4 @@ Per Plan v2 §9 8.13 row literal text: "lever candidates: SSR + React.lazy stack
 - 14 cumulative factory-produced stores (unchanged; no provider remediation at 8.13)
 - **Block C 2-of-4 ✓** (8.12 OPENER + 8.13 SCOPING-ONLY scope-refutation); Block C 8.14-8.15 R
 
-**TBD sweep convention applied at Task 8.14 OPENING (projected):** Task 8.13 TBD references at CLAUDE.md HEAD + Plan v2 §9 row 8.13 + Phase_8_Plan §status + this Completion Report §1 + §2 + §6 (~9-11 reference spots projected) will resolve to actual squash-SHA at Task 8.14 OPENING sweep per established Task N TBD → Task N+1 sweep pattern + v2.74.1 branch-base discipline (sister-shape constellation extending 38-pattern → **39-pattern cross-phase sweep-resolutions milestone candidate** at Task 8.14 OPENING).
+**TBD sweep convention APPLIED at Task 8.14 OPENING 2026-05-21:** Task 8.13 TBD references at CLAUDE.md HEAD (3) + Plan v2 §9 row 8.13 (2) + Phase_8_Plan §status (1) + this Completion Report §1 + §2 + §6 (3) — **9 reference spots RESOLVED** to actual squash-SHA `fe3643d` at Task 8.14 OPENING sweep per established Task N TBD → Task N+1 sweep pattern + v2.74.1 branch-base discipline (sister-shape constellation extending 38-pattern → **39-pattern cross-phase sweep-resolutions milestone CEMENTED** at Task 8.14 OPENING).

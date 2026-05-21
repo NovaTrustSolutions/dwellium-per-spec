@@ -1,0 +1,60 @@
+{
+  "capturedAt": "2026-05-11T18:57:06.575Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "phase": "Phase 0.0 Task 0.0.8 — axe baseline",
+  "summary": {
+    "totalViolations": 0,
+    "pagesScanned": 8,
+    "violationsByImpact": {}
+  },
+  "pages": [
+    {
+      "module": "overview",
+      "label": "Overview",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "properties",
+      "label": "Properties",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "leasing",
+      "label": "Leasing",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "residents",
+      "label": "Residents",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "vendors",
+      "label": "Vendors",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "owners",
+      "label": "Owners",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "accounting",
+      "label": "Accounting",
+      "url": "http://localhost:5173/",
+      "violations": []
+    },
+    {
+      "module": "maintenance",
+      "label": "Maintenance",
+      "url": "http://localhost:5173/",
+      "violations": []
+    }
+  ]
+}

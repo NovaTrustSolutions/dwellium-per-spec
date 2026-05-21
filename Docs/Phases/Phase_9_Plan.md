@@ -1,56 +1,57 @@
-# Phase 9+ Plan — Kickoff Pointer Stub
+# Phase 9+ Plan — Kickoff Brief
 
-**Status.** **R OPEN** at Phase-9+ kickoff-pointer cementation (Phase-8+ Task 8.15 publishing-handoff; sister-shape to existing `Docs/Phases/Phase_<0-8>_Plan.md` files at OPENING-stub depth per Cowork Q2 LOCK Option α minimal-pointer scope).
-**Created.** 2026-05-21 at Phase-8+ Task 8.15 (closer publishing) per Cowork Q3 LOCK Option (i) location verdict — canonical at `Docs/Phases/` per project file-organization convention.
-**Phase-9+ scope.** **STAKEHOLDER-DECISION-PENDING** per v1 L228 ≤500 ms LCP DUAL-FRAMING verdict at Phase-8+ closer §6.2 (Ilya-level decision LOCKED at Task 8.14 PRE0). Phase-9+ task-scoping deferred to the dedicated Phase-9+ kickoff brief (post-publishing-merge deliverable).
-**Phase-8+ closure cross-reference.** Full Phase-8+ closure narrative at `Docs/Phase8_Closure_Report.md` (488 lines / 88,075 B / ~86 KB; 3rd cross-phase CLOSURE-NARRATIVE-CONSOLIDATION data point). Phase-8+ FULLY CLOSED at Task 8.15 publishing-handoff (15 of 15 ✓; PRs #69-#76 + #78-#84; 2026-05-16 → 2026-05-21).
+**Status.** **R OPEN** — Phase-9+ Task 9.1 OPENER active at branch `feat/phase-9-task-9.1-opener-kickoff-brief`; this doc IS the Task 9.1 OPENER deliverable per Cowork Q4 LOCK Option (γ) (expand-stub-in-place; locality-correct sister-shape to `Docs/Phases/Phase_<0-8>_Plan.md` files).
+**Created.** 2026-05-21 (stub) — Phase-8+ Task 8.15 publishing handoff per Cowork Q3 LOCK Option (i).
+**Expanded.** 2026-05-21 (full brief) — Phase-9+ Task 9.1 OPENER per Cowork Q1-Q4 LOCK at PRE0 ledger.
+**Phase-9+ disposition.** **RATIFIED (b) PARTIAL-MET** per Ilya-lock 2026-05-21 (Q1 LOCK; see §2). v1 L228 ≤500 ms LCP STAYS LIVE as Phase-9+ objective; ~41.5% cumulative gap-closure ratified as substantive progress worth continuing. Phase-9+ pursues architectural-axis exploration to keep driving LCP downward.
+**Phase-8+ closure cross-reference.** Full Phase-8+ closure narrative at `Docs/Phase8_Closure_Report.md` (488 lines / 88,075 B / ~86 KB; 3rd cross-phase CLOSURE-NARRATIVE-CONSOLIDATION data point). Phase-8+ FULLY CLOSED at Task 8.15 publishing-handoff (15 of 15 ✓; PRs #69-#76 + #78-#84; HEAD on main = `1f4b9c0`; 2026-05-16 → 2026-05-21).
 
 ---
 
-## §1. Phase-8+ → Phase-9+ carry-forward — ~11 items in 3 substantive blocks + 2 process improvements
+## §1. Phase-8+ → Phase-9+ carry-forward — 11 items in 3 blocks + 2 process improvements
 
-Per Cowork Q4 LOCK at Task 8.14 PRE0 (closer carry-forward consolidation). Full per-item detail at `Docs/Phase8_Closure_Report.md §7`. Pointer enumeration at stub depth:
+Per Cowork Q2 LOCK at Phase-9+ kickoff verdict-lock. Empirically-verified item-count matches closer §8 enumeration (Block A 4 + Block B 2 + Block C 3 + Process improvements 2 = 11). Block B elevated from disposition-stub to PRIMARY workstream by Q1=(b) ratification.
 
-### Block A — Widget + provider polish (4 items)
+### Block A — Widget + provider SSR polish (4 items; carry-forward continues)
 
-| # | Item | Source |
-|--:|:--|:--|
-| 1 | Finding II widget-altitude SSR-safety audit (TranscriptionHub.tsx:376 + sister widget patterns) | Closer §7 Block A item 1; Task 8.11 Q6 LOCK Finding II INFORMATIONAL |
-| 2 | Finding EE Option β — Suspense at AuthGate altitude | Closer §7 Block A item 2; Task 8.11 Q2 LOCK Finding EE polish enhancement |
-| 3 | Finding EE Option γ — pre-hydration cookie infrastructure | Closer §7 Block A item 3 |
-| 4 | Finding KK LCP bimodal-at-server-vs-client-rendered-paint investigation | Closer §7 Block A item 4; Task 8.12 Finding KK |
+| # | Item | Source | Phase-9+ disposition |
+|--:|:--|:--|:--|
+| A1 | **Finding II widget-altitude SSR audit** — `TranscriptionHub.tsx:376` `useState(() => window.SpeechRecognition)` + sweep for sibling widget-altitude init-time-UNSAFE patterns gated behind AuthGate Branch 1 | Closer §7 Block A 1; Task 8.11 Q6 LOCK INFORMATIONAL deferred | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
+| A2 | **Finding EE Option β** — Suspense at AuthGate altitude (hydration-flash polish) | Closer §7 Block A 2; Task 8.11 Q2 LOCK Finding EE Option α cemented as PERMANENT baseline | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
+| A3 | **Finding EE Option γ** — pre-hydration cookie infrastructure (sister to Option β; cookie-based instead of Suspense) | Closer §7 Block A 3 | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
+| A4 | **Finding KK** — LCP bimodal-at-server-vs-client-rendered-paint investigation (Cluster A FCP-coincident ~1,953 ms × 2 runs + Cluster B post-hydration ~2,255-2,802 ms × 8 runs at Task 8.12 n=10 capture) | Closer §7 Block A 4; Task 8.12 Finding KK | Phase-9+ measurement-investigation candidate (informational; could resolve structurally via Option β) |
 
-### Block B — LCP-objective disposition (STAKEHOLDER-DECISION-PENDING; 2 items)
+### Block B — LCP architectural exploration (PRIMARY; 2 items elevated by Q1=(b))
 
-| # | Item | Source |
-|--:|:--|:--|
-| 1 | v1 L228 LCP-objective disposition per DUAL-FRAMING (Phase-9+ kickoff-brief PRE0 Q1 candidate) | Closer §6.2 + §7 Block B item 1; Ilya-lock at Task 8.14 PRE0 |
-| 2 | Perf-lever-exhaustion-confirmed baseline at React 19 + Vite 6 + RR v7 architecture (substrate for Phase-9+ scope kickoff IF objective continued) | Closer §2 Signal (5) + §7 Block B item 2; Task 8.13 Finding LL + perf-lever 3-candidate exhaustion |
+| # | Item | Source | Phase-9+ disposition |
+|--:|:--|:--|:--|
+| B1 | **v1 L228 ≤500 ms LCP objective** — RATIFIED (b) PARTIAL-MET per Q1 LOCK; STAYS LIVE; architectural-axis exploration is the Phase-9+ PRIMARY spine | Closer §6.2 + §7 Block B 1; Ilya-lock at Task 8.14 PRE0; RATIFIED at Phase-9+ kickoff Q1 LOCK | **Primary Phase-9+ workstream**; see §4 |
+| B2 | **Perf-lever-exhaustion-confirmed baseline at React 19 + Vite 6 + RR v7 architecture** — Task 8.13 cemented 0-of-3 in-architecture candidates (SSR already-applied + per-route Vike-mode N/A-by-construction + asset-preload structurally-insufficient); any new lever requires architectural-axis shift | Closer §2 Signal (5) + §7 Block B 2; Task 8.13 Finding LL | **Substrate for §4 architectural-axis exploration**; see §4 |
 
 ### Block C — Project-wide housekeeping (3 items; pre-existing)
 
-| # | Item | Source |
-|--:|:--|:--|
-| 1 | Linux Playwright baselines (re-capture after darwin-vs-Linux render-equivalence convention) | Closer §7 Block C item 1; Phase-7 closure §8 Block A item #3 carry-forward |
-| 2 | `nebula-bg.mp4` 70.96 MB asset LFS migration | Closer §7 Block C item 2; pre-existing carry-forward at CLAUDE.md |
-| 3 | ~7 untracked baseline JSON artifacts (commit-as-historical-baselines candidate) | Closer §7 Block C item 3; `Docs/Phase8_SSR_Architectural_Scoping.md §7.3` recommendation |
+| # | Item | Source | Phase-9+ disposition |
+|--:|:--|:--|:--|
+| C1 | **Linux Playwright baselines** — 8 `*-chromium-linux.png` capture + commit + flip screenshot-baseline CI step `continue-on-error: false` BLOCKING; infrastructure laid at Phase-7 Task 7.4 (`capture-linux-baselines.yml` workflow_dispatch) | Closer §7 Block C 1; Phase-0 Exit Gate carry-forward via Phase-7 7.4/7.5/7.6 | Phase-9+ CI-architecture task candidate; see §5 |
+| C2 | **`nebula-bg.mp4` 70.96 MB asset** — over GitHub's 100 MB soft limit; future push needs Git LFS, CDN, or smaller replacement | Closer §7 Block C 2; pre-existing CLAUDE.md carry-forward | Phase-9+ project-infrastructure task candidate; see §5 |
+| C3 | **~7 untracked baseline JSON artifacts** — Phase-0 axe-baselines + Phase-6 6.7 perf capture | Closer §7 Block C 3; `Docs/Phase8_SSR_Architectural_Scoping.md §7.3` commit-recommendation | **🎯 RESOLVED at Phase-9+ Task 9.1 OPENER commit `5043587`**: 6 baseline JSONs (1 fewer than projected ~7) committed as historical baselines; total 8,572 B. Empirical-vs-projection drift candidate (sister to v2.60.1 cluster). |
 
 ### Process improvements for Phase-9+ PRE-FLIGHT discipline (2 items)
 
-| # | Item | Source |
-|--:|:--|:--|
-| 1 | v2.76.0 Cowork-directive-gate-citation-verification PRE-FLIGHT discipline (promote as standing convention for Phase-9+) | Closer §7 process item 1; Task 8.13 close NEW v2.76.0 |
-| 2 | Recursive-validation discipline as project's most substantive engineering-record pattern (cement as Phase-8+ ↔ Phase-9+ cross-phase standing convention) | Closer §2 Signal (3) + §7 process item 2 |
+| # | Item | Source | Phase-9+ disposition |
+|--:|:--|:--|:--|
+| P1 | **v2.76.0 Cowork-directive-gate-citation-verification PRE-FLIGHT discipline** — rule: "At every task PRE0, empirically verify the Cowork directive's gate-citation against (i) Plan-row literal text + (ii) project-spec gate-of-record. Category errors at task-directive altitude are sister-shape to audit-content errors at v2.64.0 cluster altitude." | Closer §7 process item 1; Task 8.13 close NEW v2.76.0 | **PROMOTED as Phase-9+ standing PRE-FLIGHT discipline** at this 9.1 OPENER per Q2 LOCK process-improvements adoption; GR-15 amendment candidate v2.77.0 |
+| P2 | **Recursive-validation discipline as cross-phase standing convention** — treat audit citations + Plan-row text + Cowork-directive gate-claims as STARTING-POINT-HYPOTHESES requiring empirical verification | Closer §2 Signal (3) + §7 process item 2 | **CEMENTED as Phase-8+ ↔ Phase-9+ cross-phase standing convention** at this 9.1 OPENER per Q2 LOCK |
 
 ---
 
-## §2. v1 L228 ≤500 ms LCP verdict-trajectory-outcome-record (consolidated per Q4 LOCK)
+## §2. v1 L228 ≤500 ms LCP verdict-record — **RATIFIED (b) PARTIAL-MET per Ilya-lock 2026-05-21**
 
-Per Cowork Q4 LOCK Option (i) at Task 8.15 PRE0: consolidate v1 L228 verdict-trajectory-outcome-record WITHIN this Phase_9_Plan.md stub (avoids doc-proliferation). This satisfies Plan v2 §9 8.15 row "locks v1 L228 verdict outcome trajectory" mandate without a separate standing-record doc.
+**Status flip:** STAKEHOLDER-DECISION-PENDING → **RATIFIED (b) PARTIAL-MET** per Cowork Q1 LOCK at Phase-9+ kickoff (Ilya-level decision 2026-05-21).
 
-**v1 L228 ≤500 ms LCP DUAL-FRAMING verdict per Ilya-level decision** — LOCKED at Phase-8+ Task 8.14 PRE0; cemented at `Docs/Phase8_Closure_Report.md §6.2` (488L / 88,075 B / ~86 KB closer doc; shipped on main at PR #83 squash `99b41ac` 2026-05-21T05:57:46Z). NOT a new verdict at this publishing — a permanent record of the DUAL-FRAMING + STAKEHOLDER-DECISION-PENDING disposition.
+Per canonical DUAL-FRAMING narrative at `Docs/Phase8_Closure_Report.md §6.2` (frozen retrospective) + this Phase-9+ Task 9.1 OPENER verdict-lock: cumulative −41.5% gap-closure trajectory (4,653 ms → 3,903 ms → 2,724 ms) RATIFIED as **substantive engineering progress worth continuing**. The ≤500 ms target STAYS OPEN as a live Phase-9+ objective (NOT closed as structurally-unattainable).
 
-### Cross-phase LCP trajectory
+### Cross-phase LCP trajectory (frozen empirical record)
 
 | Phase | HEAD | LCP measurement | Cumulative gap-closure |
 |:-:|:--|:--|:-:|
@@ -58,92 +59,318 @@ Per Cowork Q4 LOCK Option (i) at Task 8.15 PRE0: consolidate v1 L228 verdict-tra
 | Phase-7 7.10/7.11 close | `6a7eab5` (n=10 noise-floor; `Docs/Baselines/2026-05-15_Phase7_task_7_11_perf_capture_n10_baseline_post_7.10.json`) | **3,903 ms** median | **−16.1%** vs Ph-6 |
 | Phase-8+ 8.12 close | `264c5c0` (n=10 ssr:true; `Docs/Baselines/2026-05-19_Phase8_task_8_12_perf_capture_n10_baseline_post_8.11.json`) | **2,724 ms** median | **−41.5%** cumulative vs Ph-6 |
 
-Each architectural arc closed ~30-40% of remaining gap to ≤500 ms target. None crossed 500 ms threshold.
+Each architectural arc closed ~30-40% of remaining gap to ≤500 ms target. None crossed 500 ms threshold. **Phase-9+ goal: continue closing the gap via architectural-axis-shift exploration.**
 
-### Framing (a) — STRUCTURALLY-UNATTAINABLE-even-with-SSR-migration
+### Framing (b) — **PRIMARY / RATIFIED**
 
-Phase-8+ 8.12 LCP median 2,724 ms = **5.45× over v1 L228 ≤500 ms target**. Three architectural arcs across Phase-6 → 7 → 8+ each closed ~30-40% of remaining gap but none crossed 500 ms threshold:
+Cumulative −1,929 ms / ~41% cumulative gap-closure across three architectural arcs is real, measurable, monotonic progress at every architectural step. Per Cowork Verdict 3 LOCK 3rd-outcome stance (originally cemented at Phase-6 close): progress is engineering-substantive even where target not crossed. Phase-8+ MEASUREMENT-ONLY 10pt cross-phase milestone empirically validates this framing — first project-wide class to cross 10pt threshold; the measurement infrastructure itself is a publishable deliverable independent of v1 L228 reachability binary.
 
+**Ilya-lock rationale (2026-05-21):** trajectory shape (monotonic gap-closure with each architectural arc) is itself evidence that further architectural exploration can continue the trajectory. CDN-edge delivery / HTTP/3 / island-hydration evaluations have not been scoped against this architecture; declaring STRUCTURALLY UNATTAINABLE before exploring those axes would be premature anchor-bias to the React 19 + Vite 6 + RR v7 framework-mode foundation. Phase-9+ Block B (§4 below) scopes each lever empirically with feasibility verdicts.
+
+### Framing (a) — **MINORITY-POSITION FOOTNOTE (retained for architectural risk register)**
+
+Phase-8+ 8.12 LCP median 2,724 ms = 5.45× over v1 L228 ≤500 ms target. Three architectural arcs each closed ~30-40% but none crossed 500 ms threshold:
 - Phase-6: STRUCTURALLY UNATTAINABLE single-lever (font-deferral REVERT)
-- Phase-7: STRUCTURALLY UNATTAINABLE multi-lever within React 19 + Vite 6 SPA architecture (1 SHIP lazy-load + 2 REVERT font-deferral + vendor-split)
-- **Phase-8+ (NEW):** STRUCTURALLY UNATTAINABLE multi-lever + SSR-migration within React 19 + Vite 6 + RR v7 framework-mode architecture
+- Phase-7: STRUCTURALLY UNATTAINABLE multi-lever within React 19 + Vite 6 SPA architecture
+- Phase-8+: STRUCTURALLY UNATTAINABLE multi-lever + SSR-migration within React 19 + Vite 6 + RR v7 framework-mode architecture
 
-Categorically out of reach at React 19 + Vite 6 + RR v7 framework-mode architecture. Matches `Docs/Phase8_SSR_Architectural_Scoping.md §6.6` **Outcome (B)** trajectory definition: "NEW empirical refinement to 'STRUCTURALLY UNATTAINABLE even with SSR migration at React 19 + chosen-framework architecture.'" Phase-9+ priority recommendation candidates: infrastructure-level optimization (CDN edge rendering / HTTP/3 / aggressive caching); fundamental architecture pivot (server-side templating + island hydration architecture per Astro/Fresh patterns).
+Matches `Docs/Phase8_SSR_Architectural_Scoping.md §6.6` Outcome (B). **Retained as documented minority position** to inform Phase-9+ architectural risk register: IF Phase-9+ Block B levers (CDN edge / HTTP/3 / island hydration) collectively fail to materially advance the trajectory, Framing (a) becomes the empirical default verdict at Phase-9+ closer and may force a fundamental architecture pivot decision (server-side templating + island hydration per Astro/Fresh patterns, etc.). NOT erased; informs the risk register.
 
-### Framing (b) — PARTIAL-MET
+### Framing (c) — **RESOLVED at this Q1 LOCK**
 
-Phase-6 4,653 ms → Phase-7 3,903 ms → Phase-8+ 2,724 ms = cumulative **−1,929 ms / ~41% cumulative gap-closure** across three architectural arcs. Real, measurable, monotonic progress at every architectural step. Gate not met but materially advanced. Per Cowork Verdict 3 LOCK 3rd-outcome stance: progress is engineering-substantive even where target not crossed.
-
-### Framing (c) — NO single forced verdict; STAKEHOLDER-DECISION-PENDING
-
-Both framings ship with equivalent rigor per `Docs/Phase8_SSR_Architectural_Scoping.md §6.6` "all outcomes are publishable deliverables" stance. The empirical evidence supports BOTH framings simultaneously. The choice between framings is a **stakeholder decision** about Phase-9+ scope:
-
-- IF stakeholders judge v1 L228 ≤500 ms LCP as binding closure criterion → Framing (a) supports formal closure as STRUCTURALLY UNATTAINABLE; Phase-9+ may pivot to alternative gate definitions OR alternative architecture exploration
-- IF stakeholders judge ~41% cumulative gap-closure as substantive engineering progress worth continuing → Framing (b) supports continued architectural exploration in Phase-9+ (CDN edge / HTTP/3 / island hydration / etc.)
-
-**Phase-9+ kickoff-brief PRE0 Q1 candidate**: stakeholder decision on v1 L228 LCP-objective disposition. Until resolved, Phase-9+ scope is bounded by the carry-forward §1 above + the stakeholder verdict.
+STAKEHOLDER-DECISION-PENDING disposition is no longer pending; Q1 LOCK chose (b). Framing (c) "defer decision" is no longer applicable. Recorded for completeness.
 
 ### Cross-reference index
 
-- Canonical DUAL-FRAMING narrative: `Docs/Phase8_Closure_Report.md §6.2`
-- §6.6 Outcome (B) trajectory definition: `Docs/Phase8_SSR_Architectural_Scoping.md §6.6`
-- Cross-phase trajectory empirical data: `Docs/Baselines/2026-05-11_Phase6_task_6_7_perf_capture.json` + `2026-05-15_Phase7_task_7_11_perf_capture_n10_baseline_post_7.10.json` + `2026-05-19_Phase8_task_8_12_perf_capture_n10_baseline_post_8.11.json`
-- v1 spec citation: project-spec v1 L228 ≤500 ms LCP
-- Phase-9+ kickoff-brief PRE0 Q1 cross-reference: this §2 (when authored)
+- Canonical DUAL-FRAMING narrative: `Docs/Phase8_Closure_Report.md §6.2` (frozen retrospective)
+- Phase-8+ scoping recommendation: `Docs/Phase8_SSR_Architectural_Scoping.md §6.6` Outcome (B) definition
+- Cross-phase empirical baselines: `Docs/Baselines/2026-05-11_Phase6_task_6_7_perf_capture.json` (committed at Phase-9+ 9.1 OPENER `5043587`) + `Docs/Baselines/2026-05-15_Phase7_task_7_11_perf_capture_n10_baseline_post_7.10.json` (Phase-7) + `Docs/Baselines/2026-05-19_Phase8_task_8_12_perf_capture_n10_baseline_post_8.11.json` (Phase-8+ ssr:true)
+- v1 spec citation: project-spec v1 L228 ≤500 ms LCP (gate-of-record; STAYS LIVE per Q1 LOCK)
+- Phase-9+ architectural-axis exploration scope: §4 below
 
 ---
 
-## §3. Phase-9+ entry-state at HEAD-post-Task-8.15
+## §3. Block A scope — Widget + provider SSR polish
 
-Architectural state at HEAD-post-Phase-8+ closure:
+Block A is **carry-forward continuation** of Phase-8+ provider SSR remediation arc (PROVIDER-SSR-REMEDIATION class 3pt at Phase-8+) extending to widget-altitude (Finding II) and hydration-flash polish (Finding EE Options β + γ). Sister-shape to Phase-8+ Tasks 8.9 + 8.10 + 8.11 (provider-tree + leaf-component + smoke-test-validation arc).
 
-| Domain | State |
-|--------|-------|
-| **SSR mode** | `ssr: true` at `qualia-shell/react-router.config.ts` (Task 8.11 close) |
-| **Framework-mode** | React Router v7.15.1 framework-mode adopted at Task 8.6 (RR v7 + `@react-router/dev` + `@react-router/node` + `@react-router/serve`) |
-| **Build output** | `build/client/` + `build/server/` (NOT `dist/`); Phase-7 7.10 lazy-load lever preserved byte-for-byte at lazy-loading-pattern altitude |
-| **Provider tree** | All 4 audit-scoped providers + Sidebar.tsx leaf-component migrated to `useSyncExternalStore` + `createLocalStorageStore` factory (Theme + User + Layout + Hierarchy + Window) |
-| **Factory-produced stores** | 14 cumulative (5 at Task 8.9 + 9 at Task 8.10) under true SSR runtime (smoke-test EMPIRICALLY VALIDATED at Task 8.11) |
-| **a11y state** | v1 L230 ZERO WCAG AA SUSTAINED across 8-routable-surface scope through Phase-8+ (per-page a11y 100/100 / 0 violations at Task 8.12 measurement) |
-| **LCP state** | n=10 median 2,724 ms / mean 2,499 ms / CV 13.49% bimodal at ssr:true (Task 8.12 measurement; Finding KK bimodal-at-server-vs-client-rendered-paint) |
-| **vitest** | 278/278 (+19 cumulative across Phase-8+; +5 at 8.2 + +5 at 8.9 + +9 at 8.10) |
-| **Engineering findings** | 36 active + 1 INFORMATIONAL (II deferred-to-Phase-9+-widget-SSR-audit) |
-| **Project-wide classes** | 19 (4 Phase-8+-introduced; 2 cross-phase extensions: MEASUREMENT-ONLY 10pt + CLOSURE-NARRATIVE-CONSOLIDATION 3pt) |
-| **Anchor-bias-mitigation cluster** | 19 patterns (Phase-7 founding 4 + Phase-8+ 15 NEW; retroactive-correction-in-place at closer §5) |
-| **In-place v2.X.X patches** | 9 cumulative (v2.66.1/2/3 + v2.68.1 + v2.72.1 + v2.73.1/2/3 + v2.75.1) |
-| **Standing conventions** | v2.72.1 `.reset()` factory escape-hatch (PERMANENT); v2.74.1 branch-base discipline (4-consecutive empirical vindication at 8.11-8.14); v2.76.0 Cowork-directive-gate-citation-verification (NEW at 8.13) |
+### A1 — Finding II widget-altitude SSR audit
+
+**Scope.** Audit all widget-altitude `useState(() => browser-global)` patterns gated behind AuthGate Branch 1. Known site: `TranscriptionHub.tsx:376` `useState(() => window.SpeechRecognition)`. Sweep candidates: any widget under `qualia-shell/src/widgets/**` + `qualia-shell/src/components/**/widgets/**` with init-time browser-global access.
+
+**Why operationally unreachable at HEAD-post-8.11 ssr:true.** AuthGate Branch 1 server-renders a spinner gate BEFORE widget tree mounts → widget-altitude init-time-UNSAFE patterns never fire on server-side render attempts (Finding II reachability analysis cemented at Task 8.11 Q6 LOCK; smoke-test EMPIRICALLY confirmed zero `ReferenceError` at chromium-headless probe).
+
+**Audit deliverable shape (candidate task).** Whole-widget-tree grep at `useState(() => ` altitude + classification per 3-altitude taxonomy (init-time UNSAFE / effect-time SAFE / event-handler-time SAFE) per the standing PROVIDER-SSR-REMEDIATION class convention. Output: structured audit document at `Docs/Phase9_Widget_SSR_Audit.md` (sister-shape to `Docs/Phase8_Task_8_3_Provider_Tree_SSR_Audit.md`).
+
+**Remediation candidate (post-audit).** IF any widget surfaces a reachability-positive init-time UNSAFE pattern → `useSyncExternalStore` + `createLocalStorageStore` factory migration (extends existing 14 factory-produced stores). IF all reachability-negative (AuthGate-gated) → cement INFORMATIONAL-only catalog entries with reachability proof.
+
+**Estimated task altitude.** PROVIDER-SSR-REMEDIATION extension (4th sub-shape `widget-altitude-SSR-audit-and-conditional-remediation`) OR SCOPING-ONLY (if audit concludes NO remediation needed).
+
+### A2 — Finding EE Option β: Suspense at AuthGate altitude
+
+**Scope.** Replace AuthGate Branch 1 spinner-during-auth-check with React `<Suspense>` boundary delivering server-rendered hydratable content. Goal: reduce hydration-flash transitions from 1 (spinner → final-view at ssr:true) to 0 (server-rendered final-view directly).
+
+**Current AuthGate hydration-flash baseline (Finding EE Option α cemented PERMANENT at Task 8.11 Q2 LOCK).** Flash exists at BOTH `ssr:false` AND `ssr:true` (NOT a `ssr:true` regression); `ssr:true` empirically REDUCES transitions (1 spinner → final-view vs 2 HydrateFallback → spinner → final-view at `ssr:false`). Option β goal: 0 transitions at ssr:true.
+
+**Implementation candidate.** Wrap `<AuthGate>` children in `<Suspense fallback={<AuthGateSpinner />}>`; use `use(authPromise)` or `useSuspenseQuery` for the auth-check resolution. Coexists with FOUC IIFE at root.tsx Layout altitude (NO conflict; FOUC handles theme attribute pre-hydration while Suspense handles auth-check resolution).
+
+**Risks.** (1) Suspense at AuthGate altitude could regress LCP if server-side auth-check resolution adds latency. (2) Edge cases with `react-router-serve` Suspense streaming need empirical validation. (3) Finding KK bimodal LCP could RESOLVE structurally if Suspense eliminates the client-render-path bimodality cluster.
+
+**Estimated task altitude.** Production-source edit at `qualia-shell/src/components/AuthGate.tsx` + `app/root.tsx` Layout integration; vitest delta ~+2-3 (Suspense behavior); smoke-test re-validation BLOCKING.
+
+### A3 — Finding EE Option γ: pre-hydration cookie infrastructure
+
+**Scope.** Alternative to Option β: read auth state from server-side cookie BEFORE React hydrates; eliminate hydration-flash by server-rendering the post-auth view directly. Sister-shape to FOUC IIFE pre-hydration theme attribute (already cemented at Task 8.7 v2.66.3 in-place patch).
+
+**Implementation candidate.** Server-side `loader()` at `app/root.tsx` reads `auth-token` cookie via RR v7 `request.headers.get('cookie')` → injects auth state into hydration data → AuthGate reads pre-hydrated state synchronously on first render. Coexists with FOUC IIFE pattern at Layout altitude.
+
+**Trade-off vs Option β.** Option γ requires cookie-handling infrastructure (auth token in cookie vs localStorage); larger architectural delta. Option β stays within React's Suspense primitive. Phase-9+ scope decision: pick ONE (Option β OR Option γ), not both.
+
+**Estimated task altitude.** Production-source edits across `app/root.tsx` + auth flow + cookie-handling middleware; vitest delta ~+5-8 (cookie-based auth state); smoke-test re-validation BLOCKING.
+
+### A4 — Finding KK LCP bimodal investigation
+
+**Scope.** Empirical investigation of LCP bimodal-at-server-vs-client-rendered-paint distribution at ssr:true (Task 8.12 Finding KK). Cluster A FCP-coincident ~1,953 ms × 2 runs (server-rendered paint) + Cluster B post-hydration ~2,255-2,802 ms × 8 runs (client-rendered paint).
+
+**Hypothesis (informational).** Bimodality is structurally tied to AuthGate Branch 1 hydration-flash: when AuthGate-spinner server-renders as final-paint candidate vs when post-AuthGate-resolution view becomes final-paint candidate. IF Option β cementation occurs (A2), bimodality may RESOLVE structurally (single cluster at server-rendered post-AuthGate paint).
+
+**Block A interdependency.** A4 is informational-only at Phase-9+ scope; SHOULD interleave with A2 measurement post-Option-β-cementation. NOT standalone-scoped at this 9.1 OPENER.
+
+**Estimated task altitude.** MEASUREMENT-ONLY shape (extends existing 10pt class to 11pt CROSS-PHASE-SHAPE-ROBUSTNESS if executed at Phase-9+); n=10 re-measurement post-A2 implementation; vitest delta +0.
 
 ---
 
-## §4. Phase-9+ kickoff-brief preview
+## §4. Block B scope — LCP architectural exploration (PRIMARY Phase-9+ spine)
 
-Phase-9+ kickoff-brief is the next deliverable post-Task-8.15-publishing-merge (NOT scoped at this publishing; Cowork Q2 LOCK Option α minimal-pointer discipline). Preview-only at this stub:
+**Block B is the PRIMARY Phase-9+ workstream** per Q1=(b) ratification + Q2 LOCK elevation. Goal: continue the cumulative trajectory (4,653 → 3,903 → 2,724 ms) via architectural-axis shifts beyond the React 19 + Vite 6 + RR v7 framework-mode foundation.
 
-- **PRE0 Q1 candidate**: v1 L228 LCP-objective disposition resolution per DUAL-FRAMING (per §2 above; STAKEHOLDER-DECISION-PENDING):
-  - (a) Ratify Framing (a) STRUCTURALLY UNATTAINABLE as formal closure → Phase-9+ pivot to alternative gate definitions OR alternative architecture
-  - (b) Ratify Framing (b) PARTIAL-MET as substantive progress worth continuing → Phase-9+ architectural exploration (CDN edge / HTTP/3 / island hydration)
-  - (c) Defer decision → Phase-9+ kickoff-brief surfaces choice explicitly to stakeholders
-- **PRE0 Q2-Qn candidates**: deferred to dedicated kickoff brief; bounded by §1 carry-forward + §3 entry-state above
-- **Phase-9+ standing PRE-FLIGHT discipline adoption candidates**: v2.76.0 Cowork-directive-gate-citation-verification (promote to standing per process improvement 1) + recursive-validation discipline (cement as cross-phase standing convention per process improvement 2)
+**Standing PRE-FLIGHT discipline at Block B altitude (P1 cemented).** Each architectural-axis-shift lever MUST be scoped against (i) v1 L228 ≤500 ms gate-of-record + (ii) Phase-8+ 8.12 2,724 ms empirical baseline + (iii) feasibility verdict empirically grounded (NOT projection-only). Sister-shape to Phase-8+ Task 8.1 SCOPING-ONLY OPENER (architectural inventory + framework decision tree) + Phase-8+ Task 8.13 SCOPING-ONLY perf-lever-exhaustion refutation (empirical scope-existence verification).
+
+### Lever B-α — CDN edge rendering / origin-shielding
+
+**Hypothesis.** CDN-edge delivery (Cloudflare Workers / Vercel Edge Functions / AWS Lambda@Edge) co-located with users could reduce first-byte latency 200-500 ms; if origin-shielding caches the `react-router-serve` SSR output regionally, repeat LCP could drop into sub-1,000 ms range.
+
+**Feasibility considerations (NON-EMPIRICAL at this OPENER; empirical verification deferred to Block B α scoping task).**
+- RR v7 framework-mode with `react-router-serve` is a Node.js HTTP server — runs OK at Vercel/Netlify/Cloudflare Workers compatibility layers
+- ssr:true means dynamic per-request rendering; edge caching requires cache-key discipline (auth state via cookie ⇒ varies-by-cookie cache rules)
+- Phase-8+ AuthGate Branch 1 server-renders spinner (NOT user-specific content) at first paint → server-rendered paint IS edge-cacheable for unauth'd users
+- Current LCP baseline 2,724 ms includes ~1,953 ms FCP (network + initial render) + ~770-850 ms hydration-cascade-to-LCP → edge-cache could primarily reduce the 1,953 ms FCP component
+- Theoretical floor: if FCP drops from 1,953 ms to ~300 ms (edge-cache HIT) and LCP stays paint-coincident at server-rendered cluster A → LCP could drop to ~300-500 ms range = **POTENTIALLY GATE-CROSSING**
+
+**Risks.** (1) Edge platform lock-in. (2) Cache invalidation discipline at every deploy. (3) Cookie-handling at edge needs care for auth state. (4) Authenticated user paths cannot edge-cache user-specific content; need split cache strategies.
+
+**Sister-shape precedent at NULL.** No prior Phase touched CDN-edge architecture. Phase-9+ B-α scoping would be FIRST cross-phase data point at this altitude.
+
+### Lever B-β — HTTP/3 + early hints + resource prioritization
+
+**Hypothesis.** HTTP/3 (QUIC) reduces connection-establishment latency 1-RTT vs HTTP/2 3-RTT; `103 Early Hints` allows server to push critical CSS/JS preload links before HTML response. Combined: ~100-300 ms LCP reduction on cold-cache loads.
+
+**Feasibility considerations.**
+- HTTP/3 requires server + CDN + browser support; Chrome ≥87 + Safari 14+ + Firefox 88+ all support
+- Vercel + Cloudflare + AWS CloudFront all support HTTP/3
+- `react-router-serve` runs over HTTP/1.1 in dev; production deployment determines transport
+- Early Hints require server-side capability to emit `103` response before main response
+- Theoretical LCP delta: ~100-300 ms reduction; would bring 2,724 ms → ~2,400-2,600 ms = **NON-GATE-CROSSING alone** but **COMPOSABLE with B-α** (compound reduction)
+
+**Risks.** (1) Early Hints emission requires `react-router-serve` or middleware support; may need custom server wrapper. (2) HTTP/3 requires production-deployment-platform support; not testable locally with default tooling.
+
+**Sister-shape precedent at Phase-7 Task 7.10.** Phase-7 lazy-load lever WAS network-latency-adjacent (vendor-split reduces critical bundle size). B-β is sister-shape to network-latency-adjacent lever family but at transport-protocol altitude.
+
+### Lever B-γ — Island hydration architecture (Astro/Fresh-style)
+
+**Hypothesis.** Replace whole-app hydration with island-hydration: ship interactive components hydrated server-rendered + interactive-only-where-needed. Eliminates ~770-850 ms hydration-cascade-to-LCP delta observed at Phase-8+ 8.12; brings LCP coincident with server-rendered paint (~1,953 ms target).
+
+**Feasibility considerations.**
+- RR v7 framework-mode SUPPORTS partial hydration via `clientLoader` / `clientAction` boundaries + `useSyncExternalStore` server-snapshot primitives (Phase-8+ 8.9/8.10 cemented this pattern)
+- Phase-8+ 14 factory-produced stores ARE island-hydration-compatible by construction (server-snapshot + client-hydrate dual-signature)
+- Architectural delta: requires identifying which routes/components NEED hydration (interactive) vs CAN stay static (display-only); StrataDashboard widget tree is the primary candidate inventory
+- Theoretical LCP delta: ~500-800 ms reduction if hydration-cascade eliminated; brings 2,724 ms → ~1,950-2,200 ms = **NON-GATE-CROSSING alone** but materially advances trajectory
+- Bimodal cluster A vs B (Finding KK) RESOLVES structurally — all paint becomes server-rendered paint
+- **Most architecturally-substantive lever** — requires per-route-component-tree audit + selective hydration markers
+
+**Risks.** (1) Per-route hydration markers require careful classification (interactive vs display-only); regression risk if interactive component classified static. (2) Compatibility with current widget-registry pattern + AuthGate Branch 1 + StrataDashboard sub-routing needs empirical verification. (3) Phase-8+ Finding U-REVISED RR v7 framework-mode primitives — must verify `clientLoader` boundary semantics for island hydration usage.
+
+**Sister-shape precedent.** Astro/Fresh ecosystem pattern; first-time application within React + RR v7 framework-mode context at this project.
+
+### Lever stacking + interaction effects
+
+Levers B-α + B-β + B-γ are **architecturally orthogonal** (network/transport/hydration axes); composable. Theoretical compound projection (NOT empirical):
+- B-α alone: LCP 2,724 → ~300-500 ms (edge-cache HIT) = potentially gate-crossing
+- B-β alone: LCP 2,724 → ~2,400-2,600 ms = non-gate-crossing
+- B-γ alone: LCP 2,724 → ~1,950-2,200 ms = non-gate-crossing
+- B-α + B-γ stacked: LCP could drop into sub-500 ms range = **MOST LIKELY GATE-CROSSING PATH** if both ship as scoped
+
+**This OPENER does NOT prioritize levers.** Block B lever prioritization is the Cowork verdict-pending HALT per execution-order Step 6. §7 below surfaces the OQs.
+
+### Block B scoping discipline (PROCESS NOTE)
+
+Per Phase-8+ Task 8.13 SCOPING-ONLY 5pt cementation — perf-lever scoping discipline: each lever MUST be scoped against (a) v1 L228 gate (≤500 ms; gate-of-record) + (b) empirical baseline (2,724 ms; Phase-8+ 8.12) + (c) feasibility verdict (SCOPING discipline: NO production source touched; output = architectural inventory + qualitative projections + risks/OQs + Cowork decision gate). Each lever-scoping task = SCOPING-ONLY shape extension OR PROVIDER-SSR-REMEDIATION extension OR NEW class (depending on lever shape).
 
 ---
 
-## §5. Closure-completion-FUNCTION sister-shape precedent clarification
+## §5. Block C scope — Project-wide housekeeping
 
-Per Cowork Q1 LOCK at Task 8.15 PRE0 — sister-shape narrative clarification (NOT a new cataloged finding; catalog FROZEN at 36 active per Phase-8+ closer cementation):
+### C1 — Linux Playwright baselines (8 *-chromium-linux.png)
+
+**Scope.** Dispatch `capture-linux-baselines.yml` workflow_dispatch with `dry_run=false` to capture 8 `*-chromium-linux.png` baselines on Ubuntu CI; commit + flip parity-gate screenshot-baseline step `continue-on-error: false` BLOCKING.
+
+**Infrastructure state at HEAD-post-Phase-8+.** Workflow exists at `.github/workflows/capture-linux-baselines.yml` (laid at Phase-7 Task 7.4); axe-baseline E2E step already BLOCKING per Phase-7 Task 7.3 split; screenshot-baseline step remains sheltered with `continue-on-error: true`.
+
+**Dispatch command.** `gh workflow run "Capture Linux Playwright Baselines (workflow_dispatch only)" --ref main -f reason="<reason>" -f dry_run=false` (per CLAUDE.md Useful commands).
+
+**Estimated task altitude.** CI-CONFIG-ONLY class (12th cumulative; cemented at Phase-7 Task 7.3) — workflow run + baseline commit + step-flip; vitest delta +0.
+
+### C2 — `nebula-bg.mp4` 70.96 MB LFS migration decision
+
+**Scope.** Decide LFS migration / CDN externalization / smaller-asset replacement for the 70.96 MB nebula-bg.mp4 asset; pre-existing CLAUDE.md carry-forward. Strict constraint: do NOT `git lfs migrate` on `main` without explicit instruction (history rewrite is out-of-scope).
+
+**Decision tree.**
+- Option (i): Git LFS adoption — requires repo-wide LFS config + history-rewrite OR shipping new LFS-tracked replacement asset alongside the existing file
+- Option (ii): CDN externalization — host nebula-bg.mp4 on Cloudflare/S3/equivalent + reference via URL; eliminates repo asset
+- Option (iii): Smaller replacement — re-encode at lower bitrate/resolution to fit under GitHub's 100 MB soft limit (currently 70.96 MB so still within; pre-emptive)
+
+**Estimated task altitude.** SCOPING-ONLY shape (decision-tree task; no asset replacement until decision verdict).
+
+### C3 — Untracked baseline JSONs — **RESOLVED at this Phase-9+ 9.1 OPENER**
+
+**RESOLVED via commit `5043587`** (Phase-9+ Task 9.1 OPENER): 6 baseline JSONs (5 Phase-0 axe + 1 Phase-6 6.7 perf) committed as historical baselines. Total: 8,572 B.
+
+**Empirical-vs-projection drift candidate (v2.60.1 cluster 16th altitude candidate).** Closer projection: "~7 untracked baseline JSON artifacts". Empirical reality: 6 baseline JSONs (1 fewer than projected). Surfaces for Cowork-verdict consideration whether to cement as v2.60.1 cluster 16th altitude (sister to "audit-undercount BREADTH drift" patterns at v2.60.1 11th-12th altitudes) OR informational-only.
+
+---
+
+## §6. Phase-9+ Task 9.1 OPENER designation + SCOPING-ONLY 6pt class
+
+**Task 9.1 = THIS Phase-9+ Task 9.1 OPENER deliverable** (kickoff brief) per Cowork Q4 LOCK Option (γ) expand-stub-in-place.
+
+### Class designation: SCOPING-ONLY 5pt → 6pt CROSS-PHASE-BOUNDARY extension
+
+**🎯 First cross-phase-BOUNDARY data point for SCOPING-ONLY class** per Cowork Q3 LOCK. Class trajectory:
+
+| Calibration point | Task | Phase | Sub-shape |
+|:--|:--|:--|:--|
+| 1pt (introduction) | Phase-8+ 8.1 | Phase-8+ Block A OPENER | forward-scoping-roadmap |
+| 2pt CROSS-TASK-SHAPE | Phase-8+ 8.3 | Phase-8+ Block A | provider-tree-audit |
+| 3pt CROSS-TASK-SHAPE-ROBUSTNESS | Phase-8+ 8.5 | Phase-8+ Block A closer | empirical-inventory-confirming-NO-extraction-needed |
+| 4pt | Phase-8+ 8.8 | Phase-8+ Block B mid | per-route-SSR-opt-out-INFEASIBLE |
+| 5pt | Phase-8+ 8.13 | Phase-8+ Block C item 2 | perf-lever-stacking-EXHAUSTED |
+| **6pt CROSS-PHASE-BOUNDARY** | **Phase-9+ 9.1** | **Phase-9+ Block A OPENER (kickoff brief)** | **cross-phase-boundary-kickoff-with-stakeholder-decision-resolution** |
+
+**🎯 SCOPING-ONLY now the highest-calibrated class in the project** at 6pt (cross-phase Phase-8+ + Phase-9+ at HEAD-post-9.1-OPENER). Previously: MEASUREMENT-ONLY 10pt cross-phase (Phase-7 + Phase-8+) — note MEASUREMENT-ONLY is higher absolute count BUT SCOPING-ONLY 6pt is now the highest cross-phase-distributed class (Phase-8+ 5pt + Phase-9+ 1pt with cross-phase-BOUNDARY shape ROBUSTNESS).
+
+**Sub-shape definition for cross-phase-boundary-kickoff-with-stakeholder-decision-resolution.** Kickoff brief shape at phase-BOUNDARY altitude that ALSO resolves a stakeholder-decision-pending verdict carried forward from prior phase closure. Composite deliverable: (i) carry-forward synthesis + (ii) stakeholder-verdict RATIFICATION (Q1 LOCK flip from PENDING) + (iii) forward-scoping inventory across multiple blocks + (iv) class designation + risk-register cementation. Sister-shape candidate at Phase-10+ 10.1 OPENER IF Phase-9+ produces a similar stakeholder-decision-pending carry-forward.
+
+### Task 9.1 OPENER deliverable scope (THIS doc)
+
+- ✓ TBD-8.15 → 1f4b9c0 cross-phase-BOUNDARY sweep (committed `b86ecde`; 41-pattern milestone)
+- ✓ Phase-9+ kickoff PRE0 ledger (in prior conversation turn)
+- ✓ Cowork Q1-Q4 verdict-lock cementation (this doc §1-§7)
+- ✓ Block C item 3 resolution (baseline JSONs committed `5043587`)
+- ✓ Phase_9_Plan.md stub → full kickoff brief expansion (Q4 LOCK Option γ; this doc)
+- ✓ CLAUDE.md SCOPING-ONLY 5pt → 6pt cementation + Phase-9+ pivot (Cowork execution-order Step 5)
+- ✓ Process improvements P1 (v2.76.0 promotion) + P2 (recursive-validation cross-phase standing) cementation
+
+### Pre-PROMOTION state record
+
+Pre-Phase-9+ 9.1 OPENER state: SCOPING-ONLY 5pt at HEAD-post-Task-8.13. Highest-calibrated cross-phase class: MEASUREMENT-ONLY 10pt cross-phase (Phase-7 7.10/7.11/7.14 + Phase-8+ 8.12).
+Post-Phase-9+ 9.1 OPENER state: SCOPING-ONLY 6pt cross-phase-BOUNDARY (highest cross-phase-distributed class). MEASUREMENT-ONLY remains 10pt (unchanged at this OPENER).
+
+### ZERO production source touched at this OPENER
+
+Per SCOPING-ONLY class definition (CLAUDE.md Conventions block): "No production source touched; no measurement; no closure narrative." This Phase-9+ Task 9.1 OPENER touches ONLY: CLAUDE.md (Phase-9+ pivot + class extension) + Docs/AppFolio_Parity_Implementation_Plan_v2.md (sweep) + Docs/Phases/Phase_9_Plan.md (this expansion) + Docs/Baselines/*.json (Block C item 3 historical commits). Zero `qualia-shell/src/**` + `qualia-shell/app/**` + `Scripts/**` touches.
+
+---
+
+## §7. Risks / open questions / Cowork decision gates for Task 9.1
+
+### OQ-1: Block B lever prioritization (Cowork verdict-pending per execution-order HALT)
+
+**Question.** Which of the 3 Block B levers (CDN-edge α / HTTP-3 β / island-hydration γ) should be scoped FIRST at Phase-9+ Task 9.2 SCOPING-ONLY shape? Lever stacking projection suggests B-α + B-γ as most-likely gate-crossing combination, but each individual lever-scoping is a substantial deliverable.
+
+**Candidate orderings.**
+- (i) B-α first (CDN-edge): largest standalone LCP-reduction potential; partial-architecture-shift risk; deploy-platform-coupling
+- (ii) B-γ first (island-hydration): most architecturally-substantive; reveals island-hydration-compatibility before deciding on deploy-platform
+- (iii) B-β first (HTTP/3 + Early Hints): smallest architectural delta; quickest empirical-data-point; non-gate-crossing alone but composable
+- (iv) Parallel SCOPING (all 3 in same phase): potentially infeasible at solo-dev velocity; risks scope-bloat
+
+### OQ-2: Block A interleave timing
+
+**Question.** Does Block A (widget+provider polish; 4 items) run interleaved with Block B (LCP architectural exploration; primary)? Or sequential post-Block-B?
+
+**Considerations.** A4 (LCP bimodal investigation) is informational-coupled-to-A2 (Suspense at AuthGate). A2 + A4 could surface BEFORE Block B levers as a "current-architecture polish exhausted" milestone, OR DURING Block B as one of the candidate levers (A2 Suspense IS an architectural-axis-shift lever at hydration altitude). Cowork verdict needed on whether A2 belongs to Block A (polish framing) or Block B (architectural-axis-shift framing).
+
+### OQ-3: Block C ordering and Block A/B parallelism
+
+**Question.** Do Block C items run in parallel with Block A + Block B, or as a closer-phase housekeeping pass?
+
+**Considerations.** Block C C1 (Linux Playwright baselines) unblocks screenshot-baseline CI step blocking-flip — pre-requisite for any visual-regression-blocking ambition at Phase-9+. C2 (nebula-bg.mp4 LFS) is independent. C3 already resolved.
+
+### OQ-4: Phase-9+ duration projection
+
+**Question.** Phase-8+ duration: 5-6 calendar days / 15 PRs / 13 tasks + closer + publishing. Phase-7 duration: ~10 calendar days / 14 PRs / 14 tasks. What Phase-9+ duration estimate is reasonable?
+
+**Considerations.** Block B architectural-axis-shift exploration is more substantive than any prior Phase block. Phase-9+ duration could be longer than Phase-8+ if all 3 Block B levers go through full SCOPING + IMPLEMENTATION arcs. Phase-9+ duration could be similar to Phase-8+ if Block B scopes to SCOPING-ONLY-shapes (forward roadmaps without implementation), deferring implementation to Phase-10+.
+
+### OQ-5: Phase-9+ closer LCP baseline target
+
+**Question.** What LCP measurement at Phase-9+ closer would constitute (a) gate-crossing (≤500 ms achieved) vs (b) substantive-progress-but-not-gate-crossing (~1,000-2,000 ms) vs (c) plateaued (similar to 2,724 ms; minority-position Framing (a) becomes default)?
+
+**Considerations.** Framing (a) STRUCTURALLY UNATTAINABLE becomes the empirical default verdict if Phase-9+ closer LCP stays close to 2,724 ms after architectural-axis exploration. Pre-committing measurement-targets at OPENER altitude is structurally fragile (anchor-bias risk) — Cowork verdict NOT REQUIRED at this OPENER; deferred to Phase-9+ closer.
+
+### Risk register entry (Framing (a) minority position)
+
+Per §2 above, Framing (a) STRUCTURALLY UNATTAINABLE retained as documented minority position. **Phase-9+ closer obligation:** at terminal task, empirically re-evaluate Framing (a) vs Framing (b) trajectory. IF Phase-9+ Block B levers collectively fail to materially advance the cumulative trajectory (e.g., final Phase-9+ LCP ≥ 2,400 ms with ALL B-α + B-β + B-γ scoped), Framing (a) becomes the empirical default verdict at Phase-9+ closer + forces a fundamental architecture pivot decision.
+
+### Cowork verdict-pending HALT per execution-order Step 6
+
+This OPENER HALTS at the end of execution-order Step 6 for Cowork verdict on:
+- **Block B lever prioritization** (OQ-1; primary substantive question)
+- **Block A interleave timing** (OQ-2)
+- **Block C ordering** (OQ-3)
+- **Phase-9+ duration projection** (OQ-4; informational)
+- **Phase-9+ Task 9.2 OPENING** (depends on OQ-1 + OQ-2 verdict)
+
+---
+
+## §8. Phase-9+ entry-state at HEAD-post-Task-8.15 → post-Phase-9+ 9.1 OPENER
+
+Architectural state at HEAD-on-`main` (`1f4b9c0`) + working state at HEAD-on-feat-branch post-9.1 OPENER:
+
+| Domain | State at HEAD-on-`main` (`1f4b9c0`) | State at HEAD-on-feat-branch post-9.1 OPENER |
+|--------|-------|-------|
+| **SSR mode** | `ssr: true` at `qualia-shell/react-router.config.ts` (Task 8.11 close) | unchanged |
+| **Framework-mode** | RR v7.15.1 framework-mode adopted at Task 8.6 | unchanged |
+| **Build output** | `build/client/` + `build/server/` (NOT `dist/`) | unchanged |
+| **Provider tree** | 4 audit-scoped providers + Sidebar leaf-component migrated to `useSyncExternalStore` + factory | unchanged |
+| **Factory-produced stores** | 14 cumulative under true SSR runtime | unchanged |
+| **a11y state** | v1 L230 ZERO WCAG AA SUSTAINED across 8-routable-surface scope | unchanged |
+| **LCP state** | n=10 median 2,724 ms / mean 2,499 ms / CV 13.49% bimodal at ssr:true | unchanged |
+| **vitest** | 278/278 | unchanged (+0 at SCOPING-ONLY 9.1 OPENER) |
+| **Engineering findings** | 36 active + 1 INFORMATIONAL | unchanged |
+| **Project-wide classes** | 19 cumulative | unchanged (Phase-9+ class additions deferred to substantive tasks) |
+| **Anchor-bias cluster** | 19 patterns | candidate 20th altitude (empirical-vs-projection drift; baseline JSONs ~7 → 6 + sweep spots ~8-10 → 5) |
+| **v2.X.X patches** | 9 cumulative in-place | unchanged |
+| **Sweep-resolutions** | 40-pattern at Task 8.15 OPENING | **41-pattern cemented at this Phase-9+ 9.1 OPENER** (cross-phase-BOUNDARY) |
+| **Calibration class extension** | SCOPING-ONLY 5pt highest in-phase Phase-8+ | **SCOPING-ONLY 6pt cross-phase-BOUNDARY** (highest cross-phase-distributed class) |
+| **Standing conventions** | v2.72.1 `.reset()` + v2.74.1 branch-base + v2.76.0 directive-gate-citation | + **P1 v2.76.0 PROMOTED to Phase-9+ standing PRE-FLIGHT** + **P2 recursive-validation CEMENTED as cross-phase standing convention** at this 9.1 OPENER |
+| **v1 L228 disposition** | STAKEHOLDER-DECISION-PENDING per Closer §6.2 | **RATIFIED (b) PARTIAL-MET** per Ilya-lock 2026-05-21 (Q1 LOCK at this 9.1 OPENER) |
+
+---
+
+## §9. Closure-completion-FUNCTION sister-shape precedent clarification (preserved from stub)
+
+Per Cowork Q1 LOCK at Task 8.15 PRE0 (preserved verbatim from stub state):
 
 > "Plan v2 §9 8.15 row 'sister-shape to Phase-7 7.14 + Phase-6 6.9 publishing' is accurate at closure-completion-FUNCTION altitude (both Phase-6 6.9 and Phase-7 closer cemented closure-completion ⊂ publishing-equivalent function: closure-narrative + Phase-N+1 kickoff pointer + v1 verdict-record + §9 column flip). Phase-8+'s 2-step closer(8.14)/publishing(8.15) separation is structurally NOVEL at task-decomposition altitude — first publishing-task instance in project history. CLOSURE-NARRATIVE-CONSOLIDATION class stays 3pt cross-phase with NEW sub-shape `closer-publishing-handoff` added at Task 8.15 (sister-shape to existing `single-task-closure-per-phase` sub-shape @ Phase-6 6.9 + Phase-7 closer)."
 
-This clarification is also reflected in `Docs/AppFolio_Parity_Implementation_Plan_v2.md` §9 row 8.15 close cell + CLAUDE.md Calibration classes section.
+---
+
+## §10. Phase-9+ → Phase-10+ transition signal projection (preserved from stub)
+
+Phase-9+ transition signal will be empirically-grounded per Phase-9+ closer (terminal task TBD) cementation. Per Q1 LOCK ratification + risk register entry at §7: IF Phase-9+ Block B levers materially advance the trajectory (Framing (b) continues empirically), Phase-10+ continues architectural exploration. IF levers collectively plateau (Framing (a) becomes empirical default), Phase-10+ pivots to fundamental architecture or to alternative gate definitions.
 
 ---
 
-## §6. Phase-9+ → Phase-10+ transition signal projection (pre-empt at stub depth)
-
-Phase-9+ transition signal will be empirically-grounded per stakeholder verdict on v1 L228 disposition (per §2 Framing (c) above). At stub depth: Phase-9+ closer (terminal task TBD) will cement Phase-9+ → Phase-10+ transition signal per established Phase-N closer convention.
-
----
-
-**Phase-9+ kickoff pointer cemented at Task 8.15 publishing.** Phase-8+ FULLY CLOSED; Phase-9+ R OPEN at this pointer; Phase-9+ kickoff brief = next deliverable.
+**Phase-9+ Task 9.1 OPENER deliverable LOCKED at this doc.** Phase-9+ R OPEN; substantive task scoping awaits Cowork verdict on OQ-1 through OQ-4 above.
 
 🎯

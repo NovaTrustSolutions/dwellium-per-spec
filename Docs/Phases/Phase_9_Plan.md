@@ -6,6 +6,8 @@
 **Phase-9+ disposition.** **RATIFIED (b) PARTIAL-MET** per Ilya-lock 2026-05-21 (Q1 LOCK; see §2). v1 L228 ≤500 ms LCP STAYS LIVE as Phase-9+ objective; ~41.5% cumulative gap-closure ratified as substantive progress worth continuing. Phase-9+ pursues architectural-axis exploration to keep driving LCP downward.
 **Phase-8+ closure cross-reference.** Full Phase-8+ closure narrative at `Docs/Phase8_Closure_Report.md` (488 lines / 88,075 B / ~86 KB; 3rd cross-phase CLOSURE-NARRATIVE-CONSOLIDATION data point). Phase-8+ FULLY CLOSED at Task 8.15 publishing-handoff (15 of 15 ✓; PRs #69-#76 + #78-#84; HEAD on main = `1f4b9c0`; 2026-05-16 → 2026-05-21).
 
+> **🎯 Doc-wide terminology correction (Task 9.2 PRE0 per recursive-validation discipline P2 standing).** All references to "AuthGate (Branch 3)" in this doc are corrected to "AuthGate (Branch 3)". Prior "Branch 1" label was a category error per Phase-9+ Task 9.2 source-provenance verification — **Branch 1 is `/security` (SecurityRoute component; standalone viewport-fill; NO providers)**, NOT a sub-branch of AuthGate. **AuthGate is Branch 3** (default route; 3-provider tree Theme + User + Query). Code reference: `qualia-shell/src/App.tsx:80-90` SecurityRoute (Branch 1) + `qualia-shell/src/App.tsx:33-78` AuthGate function (Branch 3) + `qualia-shell/src/App.tsx:139-141` branch-routing comment block. The edge-cacheable claim is preserved in spirit (AuthGate non-user-specific spinner IS edge-cacheable) but applied to Branch 3, not Branch 1.
+
 ---
 
 ## §1. Phase-8+ → Phase-9+ carry-forward — 11 items in 3 blocks + 2 process improvements
@@ -16,7 +18,7 @@ Per Cowork Q2 LOCK at Phase-9+ kickoff verdict-lock. Empirically-verified item-c
 
 | # | Item | Source | Phase-9+ disposition |
 |--:|:--|:--|:--|
-| A1 | **Finding II widget-altitude SSR audit** — `TranscriptionHub.tsx:376` `useState(() => window.SpeechRecognition)` + sweep for sibling widget-altitude init-time-UNSAFE patterns gated behind AuthGate Branch 1 | Closer §7 Block A 1; Task 8.11 Q6 LOCK INFORMATIONAL deferred | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
+| A1 | **Finding II widget-altitude SSR audit** — `TranscriptionHub.tsx:376` `useState(() => window.SpeechRecognition)` + sweep for sibling widget-altitude init-time-UNSAFE patterns gated behind AuthGate (Branch 3) | Closer §7 Block A 1; Task 8.11 Q6 LOCK INFORMATIONAL deferred | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
 | A2 | **Finding EE Option β** — Suspense at AuthGate altitude (hydration-flash polish) | Closer §7 Block A 2; Task 8.11 Q2 LOCK Finding EE Option α cemented as PERMANENT baseline | Phase-9+ task candidate; **STAYS in Block A polish per OQ-2 LOCK** (FLAGGED B-γ-adjacent — re-evaluate when island-hydration scoped; island-hydration may subsume the Suspense-at-AuthGate work); see §3 |
 | A3 | **Finding EE Option γ** — pre-hydration cookie infrastructure (sister to Option β; cookie-based instead of Suspense) | Closer §7 Block A 3 | Phase-9+ task candidate (post-9.1 OPENER); see §3 |
 | A4 | **Finding KK** — LCP bimodal-at-server-vs-client-rendered-paint investigation (Cluster A FCP-coincident ~1,953 ms × 2 runs + Cluster B post-hydration ~2,255-2,802 ms × 8 runs at Task 8.12 n=10 capture) | Closer §7 Block A 4; Task 8.12 Finding KK | Phase-9+ measurement-investigation candidate (informational; could resolve structurally via Option β) |
@@ -96,9 +98,9 @@ Block A is **carry-forward continuation** of Phase-8+ provider SSR remediation a
 
 ### A1 — Finding II widget-altitude SSR audit
 
-**Scope.** Audit all widget-altitude `useState(() => browser-global)` patterns gated behind AuthGate Branch 1. Known site: `TranscriptionHub.tsx:376` `useState(() => window.SpeechRecognition)`. Sweep candidates: any widget under `qualia-shell/src/widgets/**` + `qualia-shell/src/components/**/widgets/**` with init-time browser-global access.
+**Scope.** Audit all widget-altitude `useState(() => browser-global)` patterns gated behind AuthGate (Branch 3). Known site: `TranscriptionHub.tsx:376` `useState(() => window.SpeechRecognition)`. Sweep candidates: any widget under `qualia-shell/src/widgets/**` + `qualia-shell/src/components/**/widgets/**` with init-time browser-global access.
 
-**Why operationally unreachable at HEAD-post-8.11 ssr:true.** AuthGate Branch 1 server-renders a spinner gate BEFORE widget tree mounts → widget-altitude init-time-UNSAFE patterns never fire on server-side render attempts (Finding II reachability analysis cemented at Task 8.11 Q6 LOCK; smoke-test EMPIRICALLY confirmed zero `ReferenceError` at chromium-headless probe).
+**Why operationally unreachable at HEAD-post-8.11 ssr:true.** AuthGate (Branch 3) server-renders a spinner gate BEFORE widget tree mounts → widget-altitude init-time-UNSAFE patterns never fire on server-side render attempts (Finding II reachability analysis cemented at Task 8.11 Q6 LOCK; smoke-test EMPIRICALLY confirmed zero `ReferenceError` at chromium-headless probe).
 
 **Audit deliverable shape (candidate task).** Whole-widget-tree grep at `useState(() => ` altitude + classification per 3-altitude taxonomy (init-time UNSAFE / effect-time SAFE / event-handler-time SAFE) per the standing PROVIDER-SSR-REMEDIATION class convention. Output: structured audit document at `Docs/Phase9_Widget_SSR_Audit.md` (sister-shape to `Docs/Phase8_Task_8_3_Provider_Tree_SSR_Audit.md`).
 
@@ -108,7 +110,7 @@ Block A is **carry-forward continuation** of Phase-8+ provider SSR remediation a
 
 ### A2 — Finding EE Option β: Suspense at AuthGate altitude
 
-**Scope.** Replace AuthGate Branch 1 spinner-during-auth-check with React `<Suspense>` boundary delivering server-rendered hydratable content. Goal: reduce hydration-flash transitions from 1 (spinner → final-view at ssr:true) to 0 (server-rendered final-view directly).
+**Scope.** Replace AuthGate (Branch 3) spinner-during-auth-check with React `<Suspense>` boundary delivering server-rendered hydratable content. Goal: reduce hydration-flash transitions from 1 (spinner → final-view at ssr:true) to 0 (server-rendered final-view directly).
 
 **Current AuthGate hydration-flash baseline (Finding EE Option α cemented PERMANENT at Task 8.11 Q2 LOCK).** Flash exists at BOTH `ssr:false` AND `ssr:true` (NOT a `ssr:true` regression); `ssr:true` empirically REDUCES transitions (1 spinner → final-view vs 2 HydrateFallback → spinner → final-view at `ssr:false`). Option β goal: 0 transitions at ssr:true.
 
@@ -134,7 +136,7 @@ Block A is **carry-forward continuation** of Phase-8+ provider SSR remediation a
 
 **Scope.** Empirical investigation of LCP bimodal-at-server-vs-client-rendered-paint distribution at ssr:true (Task 8.12 Finding KK). Cluster A FCP-coincident ~1,953 ms × 2 runs (server-rendered paint) + Cluster B post-hydration ~2,255-2,802 ms × 8 runs (client-rendered paint).
 
-**Hypothesis (informational).** Bimodality is structurally tied to AuthGate Branch 1 hydration-flash: when AuthGate-spinner server-renders as final-paint candidate vs when post-AuthGate-resolution view becomes final-paint candidate. IF Option β cementation occurs (A2), bimodality may RESOLVE structurally (single cluster at server-rendered post-AuthGate paint).
+**Hypothesis (informational).** Bimodality is structurally tied to AuthGate (Branch 3) hydration-flash: when AuthGate-spinner server-renders as final-paint candidate vs when post-AuthGate-resolution view becomes final-paint candidate. IF Option β cementation occurs (A2), bimodality may RESOLVE structurally (single cluster at server-rendered post-AuthGate paint).
 
 **Block A interdependency.** A4 is informational-only at Phase-9+ scope; SHOULD interleave with A2 measurement post-Option-β-cementation. NOT standalone-scoped at this 9.1 OPENER.
 
@@ -155,7 +157,7 @@ Block A is **carry-forward continuation** of Phase-8+ provider SSR remediation a
 **Feasibility considerations (NON-EMPIRICAL at this OPENER; empirical verification deferred to Block B α scoping task).**
 - RR v7 framework-mode with `react-router-serve` is a Node.js HTTP server — runs OK at Vercel/Netlify/Cloudflare Workers compatibility layers
 - ssr:true means dynamic per-request rendering; edge caching requires cache-key discipline (auth state via cookie ⇒ varies-by-cookie cache rules)
-- Phase-8+ AuthGate Branch 1 server-renders spinner (NOT user-specific content) at first paint → server-rendered paint IS edge-cacheable for unauth'd users
+- Phase-8+ AuthGate (Branch 3, the default route) renders a hardcoded non-user-specific "Validating session…" spinner during `isLoading=true`; UserContext `getServerSnapshot` returns null → `isLoading=true` at SSR initial render → server-rendered HTML is the spinner shell (smoke-test pre-hydration HTML = 5,949 B at Task 8.11 chromium-headless probe), which is edge-cacheable by construction. Branch 1 = `/security` route (SecurityRoute; standalone viewport-fill; NO providers); distinct surface from the AuthGate spinner
 - Current LCP baseline 2,724 ms includes ~1,953 ms FCP (network + initial render) + ~770-850 ms hydration-cascade-to-LCP → edge-cache could primarily reduce the 1,953 ms FCP component
 - Theoretical floor: if FCP drops from 1,953 ms to ~300 ms (edge-cache HIT) and LCP stays paint-coincident at server-rendered cluster A → LCP could drop to ~300-500 ms range = **POTENTIALLY GATE-CROSSING**
 
@@ -190,7 +192,7 @@ Block A is **carry-forward continuation** of Phase-8+ provider SSR remediation a
 - Bimodal cluster A vs B (Finding KK) RESOLVES structurally — all paint becomes server-rendered paint
 - **Most architecturally-substantive lever** — requires per-route-component-tree audit + selective hydration markers
 
-**Risks.** (1) Per-route hydration markers require careful classification (interactive vs display-only); regression risk if interactive component classified static. (2) Compatibility with current widget-registry pattern + AuthGate Branch 1 + StrataDashboard sub-routing needs empirical verification. (3) Phase-8+ Finding U-REVISED RR v7 framework-mode primitives — must verify `clientLoader` boundary semantics for island hydration usage.
+**Risks.** (1) Per-route hydration markers require careful classification (interactive vs display-only); regression risk if interactive component classified static. (2) Compatibility with current widget-registry pattern + AuthGate (Branch 3) + StrataDashboard sub-routing needs empirical verification. (3) Phase-8+ Finding U-REVISED RR v7 framework-mode primitives — must verify `clientLoader` boundary semantics for island hydration usage.
 
 **Sister-shape precedent.** Astro/Fresh ecosystem pattern; first-time application within React + RR v7 framework-mode context at this project.
 
@@ -289,7 +291,7 @@ Per SCOPING-ONLY class definition (CLAUDE.md Conventions block): "No production 
 
 ### OQ-1: Block B lever prioritization — **🎯 LOCKED 2026-05-21 → B-α CDN-EDGE SCOPED FIRST (Task 9.2)**
 
-**Ilya verdict 2026-05-21.** Rationale: largest standalone LCP-reduction potential + the lever most likely to actually cross ≤500 ms on a cache HIT (server-rendered AuthGate Branch 1 spinner IS edge-cacheable for unauth'd users; edge-cache could reduce the ~1,953 ms FCP component toward ~300-500 ms). Task 9.2 = B-α CDN-edge SCOPING-ONLY deliverable.
+**Ilya verdict 2026-05-21.** Rationale: largest standalone LCP-reduction potential + the lever most likely to actually cross ≤500 ms on a cache HIT (server-rendered AuthGate (Branch 3) spinner IS edge-cacheable for unauth'd users; edge-cache could reduce the ~1,953 ms FCP component toward ~300-500 ms). Task 9.2 = B-α CDN-edge SCOPING-ONLY deliverable.
 
 **Historical-record (question at OPENER PRE0).** Candidate orderings considered: (i) B-α first / (ii) B-γ first / (iii) B-β first / (iv) parallel scoping. Ilya chose (i) per the standalone-cross-rate hypothesis.
 

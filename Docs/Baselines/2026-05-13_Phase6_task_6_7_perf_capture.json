@@ -1,0 +1,51 @@
+{
+  "capturedAt": "2026-05-13T21:52:07.635Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "Phase-6 Task 6.7 — Perf optimization (Lever 1: Google Fonts deferral)",
+  "target": "http://localhost:4173/",
+  "methodology": "Lighthouse navigation run on root + Playwright-driven SPA navigation + PerformanceObserver Web Vitals + @axe-core/playwright a11y audit per page",
+  "v1Thresholds": {
+    "LCP_ms": 500,
+    "CLS": 0.1,
+    "a11yScore": 95,
+    "source": "AppFolio_Parity_Implementation_Plan.md L228"
+  },
+  "root": {
+    "scores": {
+      "performance": 0.81,
+      "accessibility": 0.9,
+      "bestPractices": 1,
+      "seo": 0.83
+    },
+    "metrics": {
+      "FCP": 2402.1211999999996,
+      "LCP": 4502.308099999999,
+      "TBT": 0,
+      "CLS": 0,
+      "SI": 2402.1211999999996,
+      "TTI": 4502.308099999999
+    }
+  },
+  "perPage": [
+    {
+      "id": "property-128bv",
+      "label": "128 Buena Vista Dr N (property detail)",
+      "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=128 Buena Vista Dr N').first() to be visible\u001b[22m\n"
+    },
+    {
+      "id": "vendor-2story",
+      "label": "2-STORY TECHNICAL ROOFING LLC (vendor detail)",
+      "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.s-list-item').filter({ has: locator('.s-list-item-title').filter({ hasText: '2-STORY TECHNICAL ROOFING LLC' }) }) to be visible\u001b[22m\n"
+    },
+    {
+      "id": "wo-19511-1",
+      "label": "WO 19511-1 / Fire alarm needs replaced (maintenance detail)",
+      "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Fire alarm needs replaced').first() to be visible\u001b[22m\n"
+    },
+    {
+      "id": "tenant-brianna-jackson",
+      "label": "Brianna Jackson (tenant detail)",
+      "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Brianna Jackson').first() to be visible\u001b[22m\n"
+    }
+  ]
+}

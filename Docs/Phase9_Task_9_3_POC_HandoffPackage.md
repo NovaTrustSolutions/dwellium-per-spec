@@ -125,75 +125,213 @@
 
 **Risk:** AuthGate's hardcoded styles + spinner content are FROZEN at edge-cache TTL window. If the spinner copy/color/animation changes between deploys, stale-while-revalidate covers the gap. Invalidation on deploy is still needed (Vercel handles this automatically via build-output content hashing).
 
+**Cowork-flagged stale comment (KNOWN; no action needed in this round):** `qualia-shell/src/context/UserContext.tsx:25` contains a comment saying "AuthGate renders SecurityRoute (login screen)" — this is the SAME Branch-1/Branch-3 terminology slip that was corrected in `Docs/Phases/Phase_9_Plan.md` at Phase-9+ Task 9.2 PRE0 (commit `bc4e4c8`). The comment describes the post-resolution auth model (what AuthGate renders for unauthenticated users at the default route — actually LoginScreen, NOT SecurityRoute which is the `/security` route Branch 1), NOT the SSR byte output. **No action needed in this round** per Cowork; future cleanup candidate. Documented here for traceability.
+
 ---
 
-## §2. Candidate `vercel.json` artifact (PRE0; NOT DEPLOYED)
+## §1.6 🎯 Config-reconciliation round — empirical findings (Cowork PART D)
 
-**🔴 This is a PROPOSED artifact for Ilya's review.** Claude Code did NOT deploy this. Ilya will need to (a) create a Vercel account if Scenario D + no existing account, (b) install Vercel CLI locally, (c) authenticate (`vercel login`), (d) link a new POC project (`vercel link`), (e) commit a vercel.json file at repo root (or qualia-shell/vercel.json depending on Vercel's project-root resolution), (f) run `vercel` to deploy. Claude Code is **FORBIDDEN** from steps (a)-(f).
+Per Cowork's focused-round on the corrected SSR vercel.json artifact, this PRE0 was extended with a config-reconciliation pass on the **official Vercel React Router preset** (`@vercel/react-router/vite`) — verifying against current Vercel docs (`https://vercel.com/docs/frameworks/frontend/react-router`), then applying the preset + running the full strict gate, then deciding per the PASS/PERTURBED rule.
 
-### §2.1 Candidate `vercel.json` (place at repo root OR `qualia-shell/`)
+### §1.6.1 react-router.config.ts current state (pre-config-reconciliation; baseline)
 
-```json
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
-  "buildCommand": "cd qualia-shell && npm run build",
-  "outputDirectory": "qualia-shell/build/client",
-  "framework": null,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
-        }
-      ]
-    }
-  ]
-}
-```
+| Field | Value |
+|---|---|
+| `ssr` | **`true`** (cemented Phase-8+ Task 8.11; verified pre-this-round at react-router.config.ts:67) |
+| `presets` | **NOT PRESENT** (empty / default-undefined pre-this-round) |
+| `prerender` | **NOT PRESENT** |
+| Other config keys | (none beyond `ssr`) |
 
-**HYPOTHESIS labels applied (recursive-validation discipline):**
+### §1.6.2 build/ output inventory at baseline `ssr: true`
 
-| Field | Label | Notes |
+| Path | Status |
+|---|---|
+| `build/server/index.js` | **EXISTS** (~539 B) — consumed by `react-router-serve` (smoke-test + playwright webServer + CI) |
+| `build/server/assets/` | EXISTS (CSS/JS chunks for server runtime) |
+| `build/client/index.html` | **NOT FOUND** — confirms full-SSR mode (NOT static); HTML is rendered at request-time by the SSR function, not pre-rendered as static |
+| `build/client/assets/` | EXISTS (client-side chunks for hydration) |
+| `build/client/data/` | EXISTS (static seed data) |
+
+**Empirical confirmation: `ssr: true` produces full-SSR build output — NO `build/client/index.html` ever generated.** Resolves the static-vs-SSR question definitively.
+
+### §1.6.3 Official Vercel React Router preset (verified at official docs)
+
+Per WebFetch of `https://vercel.com/docs/frameworks/frontend/react-router` (last_updated 2026-02-26):
+
+| Element | Verified value |
+|---|---|
+| Package | **`@vercel/react-router`** (install: `npm i @vercel/react-router`) |
+| Import path | **`import { vercelPreset } from '@vercel/react-router/vite'`** |
+| Config pattern | **`presets: [vercelPreset()]`** in `react-router.config.ts` |
+| Version installed (verified at install) | `1.3.0` (latest at 2026-05-21) |
+| Dependency type | **devDependency** (preset is build-time only; not bundled into server runtime unless custom entry.server.tsx uses `@vercel/react-router/entry.server`) |
+| vercel.json needed | **🎯 NO — "deploy ... to Vercel with zero configuration" per Vercel docs verbatim** |
+
+### §1.6.4 Preset gate-test result: 🔴 PERTURBED — gate would have failed
+
+**Per Cowork's PASS/PERTURBED rule:** applied the preset wiring (1-line import + 1-line presets array) + ran the full strict gate. **First 4 steps PASSED:**
+
+| Gate step | Result | Detail |
+|---|:-:|---|
+| Step 1: `tsc -b` | ✅ PASS | 0 errors |
+| Step 2: `vitest run` | ✅ PASS | 278/278 tests passed (39 test files); duration 2.86s |
+| Step 3: `react-router build` (SEEDS=default) | ✅ PASS | built in 660ms |
+| Step 4: `VITE_APPFOLIO_SEEDS=false react-router build` | ✅ PASS | built in 670ms |
+
+**BUT the build output structure CHANGED structurally** with the preset:
+
+| Path | Pre-preset (baseline) | Post-preset (with preset wired) |
 |---|---|---|
-| `version: 2` | **STANDARD** (Vercel v2 platform) | Default for modern Vercel projects |
-| `buildCommand` | **HYPOTHESIS** | Repo has `qualia-shell/package.json` build script `tsc -b && react-router build`; the `cd qualia-shell &&` prefix assumes repo-root deploy with subdirectory app — needs verification at deploy time |
-| `outputDirectory` | **HYPOTHESIS** | `qualia-shell/build/client` is the RR v7 framework-mode output per Phase-8+ Task 8.6 cementation; Vercel may need this OR may auto-detect from RR adapter |
-| `framework: null` | **HYPOTHESIS** | Vercel has framework presets (`remix`, `react-router`, etc.); setting `null` disables auto-detection; if Vercel's `react-router` preset exists for RR v7 framework-mode, that may be preferable. Needs verification. |
-| `headers[].Cache-Control` | **HYPOTHESIS** | `public, max-age=0, s-maxage=300, stale-while-revalidate=600` is the standard pattern — `max-age=0` ensures browser doesn't cache stale (re-validates each navigation); `s-maxage=300` (5 min) gives edge cache 5-minute TTL; `stale-while-revalidate=600` (10 min) extends grace period for background revalidation |
+| Server runtime bundle | `build/server/index.js` | **`build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js`** (Vercel-encoded runtime config in directory name) |
+| Server assets | `build/server/assets/` | `build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/assets/` |
 
-**Cache header rationale (s-maxage=300):** 5-minute fresh window balances (a) avoiding stale-spinner serving for too long after deploys + (b) maximizing cache HIT rate for traffic spikes. Tunable per POC empirical data.
+**Why this is PERTURBED for our gate:** the smoke-test (`Scripts/smoke_test_ssr_phase8.mjs:165-168`) spawns `['react-router-serve', 'build/server/index.js']`. With the preset, that file no longer exists at that path. **Step 6 smoke-test WOULD FAIL** due to FileNotFound on the server runtime bundle.
 
-### §2.2 Alternative: Vercel-native framework preset (if RR v7 supported)
+**Sister impact (not directly tested but structurally CONFIRMED via path-reference inspection):**
+- `qualia-shell/playwright.baseline.config.ts` webServer command (per Phase-8+ v2.73.1 patch) references `build/server/index.js` via `react-router-serve` — would also fail
+- `.github/workflows/appfolio-parity-gate.yml` smoke-test step (Task 8.11 v2.73.x in-place patch) — would also fail in CI
 
-```json
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
-  "framework": "react-router",
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
-        }
-      ]
-    }
-  ]
+### §1.6.5 Revert decision per Cowork PERTURBED → DOCUMENT-ONLY rule
+
+**Action taken (in this round):**
+
+1. ✅ Reverted `react-router.config.ts` to baseline (no preset wiring) via `git checkout -- qualia-shell/react-router.config.ts`
+2. ✅ Uninstalled `@vercel/react-router` via `npm uninstall @vercel/react-router` (also reverts package.json + package-lock.json)
+3. ✅ Re-ran `npx react-router build` → confirmed `build/server/index.js` restored at expected path
+4. ✅ Re-ran PII scan (clean: 51 files / 0 leaks)
+5. ✅ Re-ran smoke-test → PASS (HTTP 200, 5949 B pre-hydration HTML, 0 console errors / 0 warnings / 0 page errors)
+
+**Baseline state fully restored.** Preset wiring becomes DOCUMENT-ONLY in §2 below.
+
+### §1.6.6 What this means for B-α POC architecturally
+
+**The B-α POC architectural delta is LARGER than the original Task 9.2 scoping doc proposed.** Per §1.6.4 PERTURBED finding, adopting the Vercel preset requires a co-shipping migration of:
+
+| Item | Migration cost |
+|---|---|
+| `Scripts/smoke_test_ssr_phase8.mjs` spawn-target | Update from `react-router-serve build/server/index.js` → `react-router-serve build/server/nodejs_*/index.js` (with glob OR env-var resolution) OR migrate smoke-test to use Vercel's local-dev tooling |
+| `qualia-shell/playwright.baseline.config.ts` webServer | Same path migration |
+| `.github/workflows/appfolio-parity-gate.yml` smoke-test step | Same path migration in CI |
+| Documentation updates | CLAUDE.md "Useful commands" strict-gate path references; multiple Phase-8+ closer references to `build/server/index.js` |
+
+**This is NOT just a 1-line config edit — it's a multi-file dev/test infrastructure migration.** Cowork's PERTURBED rule preserves the project's local-dev + CI smoke-test infrastructure intact in this round; the preset migration is deferred for Ilya's deploy-step decision (see §3 decision tree).
+
+---
+
+## §2. Corrected SSR-targeted deploy mechanism (DOCUMENT-ONLY — preset wiring un-applied)
+
+🔴 **Critical correction from prior §2 draft.** The prior §2.1/§2.2 candidate vercel.json forms (with static `outputDirectory: "qualia-shell/build/client"` + `framework: null` OR `framework: "react-router"`) were **REJECTED by Cowork** — they implement a STATIC deploy which contradicts `ssr: true` HEAD. Per §1.6.2 empirical confirmation: `build/client/index.html` is **NEVER GENERATED** at `ssr: true`, so a static-outputDirectory vercel.json would silently disable SSR (no HTML to serve).
+
+**Corrected approach (per official Vercel docs at `https://vercel.com/docs/frameworks/frontend/react-router`):** use the **`@vercel/react-router` preset** in `react-router.config.ts` + **NO vercel.json** ("deploy ... to Vercel with zero configuration" per Vercel docs verbatim). However, per §1.6.4 PERTURBED gate-test, the preset wiring stays **DOCUMENT-ONLY** in this round (un-applied to the repo); Ilya decides whether to apply it at deploy time + whether to co-ship the dev/test infrastructure migration per §2.5.
+
+### §2.1 DOCUMENT-ONLY: Vercel React Router preset wiring (UN-APPLIED in this branch)
+
+**Exact diff to `qualia-shell/react-router.config.ts`:**
+
+```diff
+ import type { Config } from '@react-router/dev/config';
++import { vercelPreset } from '@vercel/react-router/vite';
+
+ /**
+  * Phase-8+ Task 8.6 — React Router v7 framework-mode config
+  * ... [existing JSDoc unchanged] ...
+  */
+ export default {
+     ssr: true,
++    presets: [vercelPreset()],
+ } satisfies Config;
+```
+
+**Install command (run from `qualia-shell/` working directory):**
+
+```bash
+cd qualia-shell && npm install --save-dev @vercel/react-router
+```
+
+**Version verified at install (2026-05-21):** `1.3.0`. Dependency type = **devDependency** (build-time only).
+
+### §2.2 vercel.json: 🎯 NOT NEEDED with preset
+
+Per Vercel docs verbatim ("React Router on Vercel" page, 2026-02-26 update):
+
+> "With Vercel, you can deploy React Router applications with server-rendering or static site generation (using SPA mode) to Vercel with **zero configuration**."
+
+**The preset replaces ALL vercel.json deploy config.** No `buildCommand`, `outputDirectory`, `framework`, or `functions` directives needed — the preset auto-configures all of these from the React Router framework-mode build output.
+
+**Sole exception:** if SSR-response Cache-Control headers are needed (which they ARE for B-α edge-cache), they're set via `headers()` export on RR routes (§2.3 below), NOT via vercel.json `headers` field. The `headers()` export is the canonical RR v7 mechanism per Vercel docs verbatim.
+
+### §2.3 ⚠️ SSR-response Cache-Control mechanism via `headers()` export (HYPOTHESIS per Cowork)
+
+🔴 **Highest-risk-of-being-wrong piece per Cowork PART D step 5.** Per official Vercel docs verbatim:
+
+> "Vercel does NOT edge-cache SSR function responses by default — the function response must emit `Cache-Control: public, s-maxage=300, stale-while-revalidate=600`."
+
+(Paraphrased from Cowork; verbatim Vercel docs say:)
+
+> "React Router supports defining response headers by exporting a `headers` function within a route."
+
+**Canonical pattern per Vercel docs:**
+
+```tsx
+// In a route file (e.g. app/routes/home.tsx OR app/root.tsx for default-applies-to-all):
+import { Route } from './+types/some-route';
+
+export function headers(_: Route.HeadersArgs) {
+  return {
+    'Cache-Control': 's-maxage=1, stale-while-revalidate=59',
+  };
 }
 ```
 
-Use this if Vercel's `react-router` framework preset supports RR v7 framework-mode natively. Saves the explicit buildCommand/outputDirectory. Needs empirical verification.
+**Proposed (UN-APPLIED in this branch) change for B-α — add `headers()` export to `qualia-shell/app/root.tsx`:**
 
-### §2.3 Why no `build-output` directive or `runtime` config
+```tsx
+// At app/root.tsx, alongside the existing Layout / App / HydrateFallback exports:
+import type { Route } from './+types/root';  // VERIFY path against actual route-id
 
-- B-α POC stays on **Node.js runtime** (CONDITIONAL on §3.0 Scenario A/D verification; Decision-#1 LOCK rationale: `@react-router/serve` Node-runtime drop-in compatibility)
-- NO `runtime: "edge"` setting — that would force Edge Runtime which has V8-isolate constraints + likely incompatible with `@react-router/serve` (sister-shape: §3.2 Cloudflare Workers compatibility refutation in scoping doc)
-- NO `functions` array — Vercel's RR v7 adapter handles SSR routing automatically
+export function headers(_: Route.HeadersArgs) {
+  return {
+    'Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=600',
+  };
+}
+```
+
+**HYPOTHESIS labels per recursive-validation discipline:**
+
+| Element | Label | Notes |
+|---|---|---|
+| `headers()` export pattern | ✅ **VERIFIED at Vercel docs** | Direct verbatim quote: "React Router supports defining response headers by exporting a `headers` function within a route." |
+| `app/root.tsx` altitude (default-applies-to-all-routes) | **HYPOTHESIS** | Vercel docs example is per-route (`app/routes/example.tsx`); whether `app/root.tsx` headers inherit to child routes needs empirical verification at POC altitude |
+| `Cache-Control: public, max-age=0, s-maxage=300, stale-while-revalidate=600` | **HYPOTHESIS (values; not mechanism)** | The mechanism IS verified; the specific TTL values are projections — `s-maxage=300` (5 min) balances cache HIT rate vs deploy-staleness; tunable post-POC empirical data |
+| `_: Route.HeadersArgs` typing | **HYPOTHESIS** | Type path `./+types/root` is the RR v7 framework-mode convention; needs verification IF `app/root.tsx` has a generated `+types` companion |
+
+**Alternative mechanism considered (per Cowork PART D step 5):** "setting the header in entry.server.tsx onAllReady response". This works but requires modifying the custom `app/entry.server.tsx` that already exists for Phase-8+ FOUC IIFE delivery. The `headers()` export is the canonical RR v7 pattern + LESS INVASIVE — recommended. The entry.server.tsx altitude is fallback if `headers()` export doesn't yield expected edge-cache behavior at POC-3.
+
+**Do NOT apply this `headers()` export in this round** per Cowork. It's prepared as the deploy-step change for Ilya's POC-2.
+
+### §2.4 Build-output structure migration required IF preset adopted
+
+Per §1.6.4 empirical finding: the preset CHANGES build output from `build/server/index.js` → `build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js`. **If Ilya adopts the preset, the following co-shipping migrations are required:**
+
+| File | Required change |
+|---|---|
+| `Scripts/smoke_test_ssr_phase8.mjs:165-168` | Update spawn-target from `['react-router-serve', 'build/server/index.js']` → resolve `build/server/nodejs_*/index.js` via glob OR env-var indirection |
+| `qualia-shell/playwright.baseline.config.ts` webServer | Same path migration |
+| `.github/workflows/appfolio-parity-gate.yml` smoke-test step | Same path migration (CI sister-shape) |
+| `CLAUDE.md` "Useful commands" strict-gate block | Update strict-gate command path-references |
+| Multiple Phase-8+ closer/handoff narrative refs | `build/server/index.js` → conditional preset/non-preset path |
+
+**Migration scope estimate:** ~5 files; production-source touch at smoke-test + playwright.baseline.config.ts altitude; CI workflow touch; doc touches. This is **a Phase-9+ Task 9.X scope** (architectural integration with deploy infrastructure), NOT a B-α POC inline change.
+
+### §2.5 🎯 Deploy-time decision tree (Ilya's call at POC-2)
+
+| Path | Description | Cost | Outcome |
+|---|---|---|---|
+| **(a) Adopt preset + co-ship migration** | Apply §2.1 wiring + execute §2.4 migration in same PR | Multi-file change (~5 files); requires re-running full strict gate post-migration; touches CI/test infra | Cleanest long-term; Vercel-native deploy with zero vercel.json; preserves local-dev smoke-test post-migration |
+| **(b) Adopt preset WITHOUT migration (preset-only branch for POC)** | Apply §2.1 wiring on a temporary preset-only branch JUST for the Vercel deploy; do NOT merge to main; do NOT update smoke-test (local dev stays at non-preset) | 1-line config change + 1 npm install; isolated to a temporary branch; main stays untouched | POC-fast; deploy works on Vercel; but local-dev smoke-test diverges from deployed-state and POC-only branch goes stale |
+| **(c) Skip preset; use Vercel WITHOUT preset** | Skip §2.1 entirely; rely on Vercel's auto-detection of RR v7 framework-mode without preset (per Vercel docs "with zero configuration" — but preset is "highly recommended") | 0 file changes | UNCERTAIN: docs say preset is "highly recommended" but doesn't say auto-detect fails without it. EMPIRICAL verification needed at POC-2. If Vercel auto-handles RR v7 framework-mode build without preset, this is simplest. If not, fallback to (a) or (b). |
+
+**Recommended path for B-α POC scope:** **Path (b) preset-only temporary branch.** Rationale: (i) POC purpose is empirical edge-cache measurement, NOT full migration; (ii) Path (a) co-shipping migration is a non-trivial multi-file change that risks scope-bloat; (iii) Path (c) is speculative without empirical verification. Path (b) isolates the deploy-time change AND validates the preset works on Vercel BEFORE committing the migration.
 
 ---
 
@@ -203,34 +341,60 @@ Use this if Vercel's `react-router` framework preset supports RR v7 framework-mo
 
 ### §3.1 Prerequisites Ilya verifies/sets up (out-of-repo)
 
-1. **Vercel account:** confirm Ilya has a Vercel account OR creates one at https://vercel.com (free hobby tier sufficient for POC)
+1. **Vercel account:** create a Vercel account at https://vercel.com (free hobby tier sufficient for POC) — **§3.0 LOCKED Scenario D** per Cowork at this round (greenfield Vercel POC; throwaway project; does NOT touch any existing production host)
 2. **Vercel CLI:** `npm i -g vercel` (or use Vercel's web dashboard for direct GitHub-import deploy)
-3. **GitHub access:** confirm the repo `NovaTrustSolutions/dwellium-per-spec` is accessible from the Vercel account
-4. **Decision on scenario:** Ilya confirms whether there's an existing production deploy (Scenario A/B/C) OR this is greenfield (Scenario D)
+3. **GitHub access:** confirm the repo `NovaTrustSolutions/dwellium-per-spec` is accessible from the new Vercel account
 
-### §3.2 POC-2: deploy the candidate vercel.json to a fresh POC project
+### §3.2 POC-2: GREENFIELD Vercel POC project — apply preset + deploy
 
-**Option A — Vercel CLI (local laptop):**
+**Step 0 (one-time choice per §2.5 deploy-time decision tree):** Ilya picks path (a) / (b) / (c) per §2.5. **Recommended: (b) preset-only temporary branch.**
+
+**Path (b) — preset-only temporary deploy branch (RECOMMENDED for POC scope):**
 
 ```bash
 # Ilya's local laptop, NOT Claude Code:
 cd /Users/ilyaklipinitser/Downloads/Dwellium\ -Per\ Spec
-vercel login                  # authenticate browser-prompt
-vercel link                   # link to a NEW project (don't link to production)
-                              # name suggestion: "dwellium-perf-poc"
-# Commit vercel.json from §2.1 to the 9.3 branch first, then:
-vercel                        # deploys preview
-vercel --prod                 # promotes to production URL within POC project
+
+# 1. Create a deploy-only sub-branch off the 9.3 branch (preserves local-dev smoke-test on main 9.3 branch):
+git checkout feat/phase-9-task-9.3-cdn-edge-poc
+git checkout -b feat/phase-9-task-9.3-vercel-deploy-only
+
+# 2. Apply §2.1 preset wiring on this sub-branch (BUT NOT on the parent 9.3 branch):
+cd qualia-shell && npm install --save-dev @vercel/react-router && cd ..
+# Then edit qualia-shell/react-router.config.ts per §2.1 diff (add import + presets array)
+
+# 3. Apply §2.3 headers() export on app/root.tsx (the SSR-response Cache-Control mechanism)
+# Edit qualia-shell/app/root.tsx — add the headers() export per §2.3
+
+# 4. Commit the preset wiring on the deploy-only branch:
+git add qualia-shell/react-router.config.ts qualia-shell/package.json qualia-shell/package-lock.json qualia-shell/app/root.tsx
+git commit -m "wip(poc-2): preset wiring + Cache-Control header for Vercel POC (deploy-only branch)"
+
+# 5. Deploy to a GREENFIELD Vercel project:
+vercel login                  # authenticate (browser-prompt)
+vercel link                   # link to a NEW project; project name suggestion: "dwellium-perf-poc"
+                              # CRITICAL: do NOT link to any existing production project
+vercel                        # deploy preview
+vercel --prod                 # promote to production URL within the POC project
 ```
 
-**Option B — Vercel web dashboard:**
+**Path (a) — full migration (only if Ilya wants to also co-ship the smoke-test/playwright/CI migration in B-α scope):**
 
-1. Push the 9.3 branch (with vercel.json committed) to GitHub
+Skip the deploy-only branch creation; apply preset wiring + §2.4 migration items directly on the 9.3 branch. Re-run the full strict gate post-migration to confirm everything passes. This is a multi-file change and adds significant scope to B-α POC — recommend deferring to a separate Phase-9+ Task 9.X after B-α POC empirical verdict.
+
+**Path (c) — no preset (relies on Vercel auto-detection without preset):**
+
+Skip §2.1 install + wiring entirely. Just deploy current 9.3 branch as-is via Vercel CLI / web dashboard. Empirically verify if Vercel handles RR v7 framework-mode auto-detection without the preset. Per Vercel docs, the preset is "highly recommended" — auto-detection without preset MAY work (zero-config claim) but is empirically unverified at this scoping.
+
+**Option (Vercel web dashboard alternative to CLI for any path):**
+
+1. Push the deploy-only branch (path b) OR the modified 9.3 branch (path a) OR the unmodified 9.3 branch (path c) to GitHub
 2. Visit https://vercel.com/new
 3. Import the `dwellium-per-spec` repo
 4. Set project name = `dwellium-perf-poc` (or similar; do NOT link to production)
-5. Set production branch = `feat/phase-9-task-9.3-cdn-edge-poc` (so the POC URL deploys from this branch only)
-6. Click "Deploy"
+5. Set "Production Branch" = the branch chosen above (so POC URL deploys from that branch only)
+6. (Path c only) Vercel may auto-detect RR v7 framework-mode and pre-fill build settings — accept the auto-detected defaults
+7. Click "Deploy"
 
 ### §3.3 POC-3: verify edge-cache HIT behavior
 

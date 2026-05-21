@@ -441,6 +441,20 @@ In NO projected case does B-α alone empirically validate Framing (a) STRUCTURAL
 
 ## §7. Cowork decision gate
 
+### §7.0 🎯 Cowork ratification (2026-05-21) — Decision points LOCKED
+
+This scoping doc was ratified by Cowork at 2026-05-21 with the following 5 LOCKS:
+
+| # | Decision | LOCK |
+|---|---|---|
+| **#1** | §3.5 + §7.1 platform recommendation | **Vercel (Node Runtime path) RATIFIED** — CONDITIONAL on §3.0 deploy-target verification (A/B/C/D scenario resolves at Task 9.3 PRE0) |
+| **#2** | §7.2 cache-key strategy | **Cookie-presence split-cache RATIFIED** — unauth'd → full edge cache; auth'd → bypass |
+| **#3** | §7.3 POC scope | **POC-1 through POC-6 RATIFIED** |
+| **#4** | §7.5 B-α + B-γ stacking | **B-α POC FIRST (Ilya verdict)** — empirical edge-cache data BEFORE B-γ scoping; reassess B-γ stacking at POC-6 decision gate; **B-γ scoping DEFERRED to post-POC-empirical-data** (NOT scoped now) |
+| **#5** | §7.4 Task 9.3 OPENING class designation | **DEFERRED to Task 9.3 PRE0** per anchor-bias discipline — deliverable shape isn't determined until §3.0 + POC-1 resolve at Task 9.3 PRE0 |
+
+**Phase-9+ scope cementation at this ratification:** Task 9.2 ships the B-α scoping doc + ratified locks. Task 9.3 = B-α POC (per §7.3); class designation deferred to Task 9.3 PRE0. **B-α POC is the next substantive Phase-9+ workstream; B-γ island-hydration HOLDS at scope-pending pending POC-6 empirical verdict.**
+
 ### §7.1 Recommended platform (CONDITIONAL on §3.0 verification)
 
 **🎯 RECOMMENDED PLATFORM: Vercel (Node Runtime path)** — CONDITIONAL on §3.0 deploy-target verification.

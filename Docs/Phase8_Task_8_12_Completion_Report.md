@@ -33,7 +33,7 @@ Catalog 33 → **34** (Finding JJ; cemented at Task 8.11 close 2026-05-19; struc
 
 ## §1 — Commit + Green CI references
 
-**Commit.** `TBD-8.12` (squash commit for PR #81, Task 8.12 — Block C OPENER; resolved at Task 8.13 OPENING TBD sweep).
+**Commit.** `264c5c0` (squash commit for PR #81, Task 8.12 — Block C OPENER; merged 2026-05-20T20:35:56Z; resolved at Task 8.13 OPENING sweep 2026-05-20 — 38-pattern cross-phase sweep-resolutions milestone cemented at this Task 8.13 PRE0 sweep across 9 reference spots).
 **PR.** [#81](https://github.com/NovaTrustSolutions/dwellium-per-spec/pull/81) (sister-shape to PR #80 close pattern).
 **Branch.** `feat/phase-8-task-8.12-lcp-n10-remeasurement` (branched from `origin/main` HEAD = `eae7c88` per v2.74.1 branch-base discipline VERIFIED pre-branch — 2nd task close to leverage v2.74.1 branch-base discipline post-cementation; sister-shape to Task 8.11 close pattern).
 **Green CI.** Manual dispatch expected per HALT-IF #5 EXPECTED-ABSENT pattern (Task 8.12 touches ONLY `Scripts/**` + `Docs/**` + `Docs/Baselines/**` + `CLAUDE.md` — ALL outside parity-gate paths filter; sister-shape to Tasks 8.1/8.3/8.5/8.8 doc-only/scoping-only close cycles). PII Scan runs on every push regardless. Step-8 ledger reports.
@@ -50,9 +50,9 @@ Catalog 33 → **34** (Finding JJ; cemented at Task 8.11 close 2026-05-19; struc
 
 **Documentation (4 files):**
 
-4. `Docs/AppFolio_Parity_Implementation_Plan_v2.md` — NEW v2.74 amendment at top + v2.73 demoted to historical blockquote + §9 row 8.12 R → ✓ + `TBD` (#81) squash-SHA cell (resolved at Task 8.13 OPENING sweep).
+4. `Docs/AppFolio_Parity_Implementation_Plan_v2.md` — NEW v2.74 amendment at top + v2.73 demoted to historical blockquote + §9 row 8.12 R → ✓ + `264c5c0` (#81) squash-SHA cell (resolved at Task 8.13 OPENING sweep).
 5. `Docs/Phases/Phase_8_Plan.md` — Task 8.12 close note appended to Phase status line (sister-shape to prior task closures).
-6. `CLAUDE.md` — HEAD pointer pivot to `TBD-8.12`; Phase summary row 8+ updated (11 of 15 ✓ → 12 of 15 ✓; +19 vitest unchanged); Next-task pivoted to Task 8.13 (perf-lever stacking CONDITIONAL on 8.12 empirical signal — net-positive signal at -30.2% LCP improvement empirically GREEN-LIGHTS proceeding without additional perf-lever investigation; Block C 8.13-8.15 R); Calibration classes MEASUREMENT-ONLY 9pt → 10pt extension; Q8 LOCK demotion-on-close applied per Option I.
+6. `CLAUDE.md` — HEAD pointer pivot to `264c5c0`; Phase summary row 8+ updated (11 of 15 ✓ → 12 of 15 ✓; +19 vitest unchanged); Next-task pivoted to Task 8.13 (perf-lever stacking CONDITIONAL on 8.12 empirical signal — net-positive signal at -30.2% LCP improvement empirically GREEN-LIGHTS proceeding without additional perf-lever investigation; Block C 8.13-8.15 R); Calibration classes MEASUREMENT-ONLY 9pt → 10pt extension; Q8 LOCK demotion-on-close applied per Option I.
 7. `Docs/Phase8_Task_8_11_Completion_Report.md` — TBD → `eae7c88` sweep completed at Task 8.12 OPENING (already resolved at Step 1).
 
 **No production source touched at Task 8.12** — measurement-arc task per Q1 LOCK MEASUREMENT-ONLY class shape (script rename + measurement script env-var-driven invocation only; sister-shape to Phase-7 7.11 measurement-script-rename pattern).
@@ -169,7 +169,7 @@ ssr:true architectural-migration EMPIRICALLY POSITIVE at n=10 noise-floor scale.
 3. **Finding KK bimodal-at-server-vs-client-rendered-paint** — informational empirical signal at Phase-8+ measurement altitude; does NOT block Block C continuation; Phase-9+ potential investigation if Suspense-at-AuthGate (Option β) cementation occurs.
 
 **Task 8.13 OPENING PRE0 candidates:**
-1. **TBD sweep** — Task 8.12 TBD → squash-SHA at Task 8.13 OPENING sweep (38-pattern cross-phase sweep-resolutions milestone candidate; extending 37-pattern at Task 8.12 OPENING).
+1. **TBD sweep** — Task 8.12 TBD → `264c5c0` resolved at Task 8.13 OPENING sweep 2026-05-20 (38-pattern cross-phase sweep-resolutions milestone CEMENTED at Task 8.13 OPENING across 9 reference spots; extending 37-pattern at Task 8.12 OPENING; 5-consecutive TBD → squash-SHA task-cadence 8.9+8.10+8.11+8.12+8.13).
 2. **Q1 verdict** — Block C 8.13 scope decision: continue measurement-arc OR pivot to closure-narrative consolidation (perf-lever stacking absorbed by ssr:true architectural-migration).
 3. **Q2 verdict** — Finding KK structured cementation altitude (Task 8.12 §0 retroactive vs Task 8.13 OPENING §0 sister-shape to Q2 LOCK Option γ hybrid precedent at Task 8.12).
 
@@ -192,4 +192,4 @@ ssr:true architectural-migration EMPIRICALLY POSITIVE at n=10 noise-floor scale.
 
 **Cumulative state at HEAD-post-Task-8.12:** 35 findings + 14 v2.60.1 cluster altitudes + 8 v2.64.0 cross-altitude application altitudes (unchanged) + 17-pattern anchor-bias-mitigation cluster + 9 cumulative in-place v2.X.X patches + 19 project-wide classes (MEASUREMENT-ONLY now 10pt at cross-phase milestone) + vitest 278 unchanged + 14 cumulative factory-produced stores (unchanged; no provider remediation at 8.12) + 10th cross-phase production-source-edit chunk-axis BREAK data point N/A (no production source touched at 8.12 per Q1 LOCK MEASUREMENT-ONLY class).
 
-**TBD sweep convention applied at Task 8.13 OPENING (projected):** Task 8.12 TBD references at CLAUDE.md HEAD + Plan v2 §9 row 8.12 + Phase_8_Plan §status + this Completion Report §1 + §5 + §6 (~9-11 reference spots projected) will resolve to actual squash-SHA at Task 8.13 OPENING sweep per established Task N TBD → Task N+1 sweep pattern + v2.74.1 branch-base discipline (sister-shape constellation extending 37-pattern → **38-pattern cross-phase sweep-resolutions milestone candidate** at Task 8.13 OPENING).
+**TBD sweep convention APPLIED at Task 8.13 OPENING 2026-05-20:** Task 8.12 TBD references at CLAUDE.md HEAD (3) + Plan v2 §9 row 8.12 (2) + Phase_8_Plan §status (1) + this Completion Report §1 + §5 + §6 (3) — **9 reference spots RESOLVED** to actual squash-SHA `264c5c0` at Task 8.13 OPENING sweep per established Task N TBD → Task N+1 sweep pattern + v2.74.1 branch-base discipline (sister-shape constellation extending 37-pattern → **38-pattern cross-phase sweep-resolutions milestone CEMENTED** at Task 8.13 OPENING).

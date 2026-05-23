@@ -482,4 +482,115 @@ Claude Code can analyze the resulting capture JSON (sister-shape to Task 8.12 `2
 | ZERO deploy commands run | ✓ |
 | ZERO accounts created | ✓ |
 
+---
+
+## §4. POC-4 EMPIRICAL FINDINGS (post-Ilya-deploy + Claude Code n=10 measurement)
+
+### §4.1 PART A — Diagnosis: WHY custom Cache-Control didn't appear in POC-3 curl
+
+**🎯 H2 CONFIRMED with multiple independent evidence streams** (NOT H1 static-prerender).
+
+Evidence inspected on `feat/phase-9-task-9.3-vercel-deploy-only` post-rebuild:
+
+| Evidence stream | Finding |
+|---|---|
+| `build/client/` HTML files | Only `eta-timer.html` (unrelated static asset); **NO `index.html` for "/"** |
+| `.vercel/react-router-build-result.json` `routeIdToServerBundleId` | All routes (`routes/security`, `routes/default`, `splat`) → `nodejs_eyJydW50aW1lIjoibm9kZWpzIn0` server bundle; **NO `prerender` config anywhere** |
+| Route configs in build manifest | Each route has `config.runtime: "nodejs"` — runs as SSR Function, NOT prerendered static |
+| POC-3 curl response | `cache-control: public, max-age=0` (Vercel default) + `x-vercel-cache: MISS→HIT` (Vercel's internal edge-cache of public Function responses, ~5-second age TTL) |
+
+**Verdict:** "/" is served by an SSR Function (not prerendered). Vercel's MISS→HIT pattern comes from its **default edge-caching behavior of public Function responses** — NOT from our `headers()` export, which is **NEVER INVOKED** because RR v7 framework-mode only calls `headers()` when the route OR an ancestor has a loader/action (and `app/routes/default.tsx` is loaderless re-export bridge).
+
+**Fix-warranted analysis (informational; Ilya's gate-decision):** trivial 3-line fix — add a no-op `loader` to `app/routes/default.tsx`:
+```tsx
+export function loader() { return null; }
+```
+This triggers RR v7 to invoke the route's `headers()` export, applying `Cache-Control: public, max-age=0, s-maxage=300, stale-while-revalidate=600` to the response (vs current Vercel-default `public, max-age=0`). **However, see §4.4 below — this fix is materially MOOT for the gate-crossing question because LCP is dominated by post-hydration cascade, NOT by edge-cache TTL extension.**
+
+### §4.2 PART B — n=10 LCP/FCP/TTFB measurement results
+
+Per `Docs/Baselines/2026-05-23_Phase9_task_9_3_poc_b_alpha_perf_capture_n10_vercel_edge.json` (full raw data + per-run breakdown).
+
+**Cohort statistics (median + CV per metric, SEPARATELY):**
+
+| Metric | Cold-MISS median | Cold-MISS CV | Warm-HIT median | Warm-HIT CV |
+|---|---|---|---|---|
+| **LCP** | **4,775 ms** | **2.7%** | **4,705 ms** | **18.7%** (bimodal) |
+| **FCP** | **2,811 ms** | **2.7%** | **2,728 ms** | **10.8%** |
+| **TTFB** | **42 ms** | **21.1%** | **39 ms** | **50.6%** |
+
+**🎯 Empirical observation — warm-HIT cohort is BIMODAL despite cache HITs.** Within the 10 warm-HIT runs (9 HIT + 1 STALE), two runs (#3 + #4) showed dramatically lower LCP (~2,710 ms / ~2,107 ms FCP) — approximating the Task 8.12 localhost baseline. The other 8 warm-HIT runs clustered around LCP ~4,600-4,800 ms. This NEW bimodality is at a different absolute range than Task 8.12 (which had Cluster A LCP≈FCP≈1,953 ms vs Cluster B LCP 2,254-2,802 ms) — at Vercel-edge, the "fast subset" approximates Task 8.12 Cluster B mid-range, NOT Cluster A. Cluster A (server-paint LCP ≈ FCP within 50 ms) appears in **ZERO runs** in either cohort.
+
+**Cluster A vs B split (LCP - FCP ≤ 50 ms threshold = Cluster A):**
+- Cold-MISS: A=**0**, B=**10** (A=**0%**) — collapsed from Task 8.12's 20% Cluster A localhost
+- Warm-HIT: A=**0**, B=**10** (A=**0%**) — collapsed from Task 8.12's 20% Cluster A localhost
+
+**PRIMARY edge-benefit signal (warm-HIT median vs cold-MISS median, same-platform):**
+
+| Metric | Δ (warm vs cold) | % delta |
+|---|---|---|
+| LCP | **↓ 70 ms** | **−1.5%** |
+| FCP | ↓ 84 ms | −3.0% |
+| TTFB | ↓ 4 ms | −8.3% |
+
+**🎯 Edge benefit is MARGINAL: ~1.5% LCP improvement on cache HIT vs MISS.** Far below the §5 scoping projection (which hypothesized ~30-40% improvement assuming FCP would drop from 1,953 ms to ~300 ms on cache HIT). **Empirical reality refutes the projection** by ~96% (1.5% actual vs 30-40% projected).
+
+**SECONDARY (CAVEATED apples-to-oranges) — warm-HIT vs Task 8.12 localhost baseline:**
+
+| Metric | Task 8.12 baseline (localhost) | Vercel warm-HIT median | Δ |
+|---|---|---|---|
+| LCP | 2,724 ms | **4,705 ms** | **↑ 1,981 ms (+72.7%)** |
+| FCP | 1,954 ms | 2,728 ms | ↑ 774 ms (+39.6%) |
+
+**Caveat:** localhost = 0 RTT; Vercel = real client→edge RTT not controlled. Vercel-edge is materially SLOWER than localhost SSR for this workload (network latency + Vercel Function cold-start overhead dominate).
+
+**v1 L228 ≤500 ms LCP gate-crossing per-run rate:**
+
+| Cohort | Gate-crossing | % crossing |
+|---|---|---|
+| Cold-MISS | 0/10 | **0%** |
+| Warm-HIT | 0/10 | **0%** |
+
+**Per-run x-vercel-cache attribution (pre-probe curl HEAD):**
+
+| Cohort | MISS | HIT | OTHER (STALE) |
+|---|---|---|---|
+| Cold-MISS | 10/10 | 0/10 | 0/10 |
+| Warm-HIT | 0/10 | 9/10 | **1/10 (STALE; run 1 age=344s — pre-existing cache from prior testing exceeded TTL)** |
+
+Cache states behaved as constructed: unique `?cb=` URLs guaranteed MISS in cold cohort; fixed URL converted to HIT for runs 2-10 of warm cohort (run 1 STALE = previously cached but past TTL).
+
+### §4.3 POC-6 recommendation — B-α verdict + B-γ stacking + headers() fix
+
+| Question | Verdict | Evidence |
+|---|---|---|
+| Does B-α cross v1 L228 ≤500 ms LCP gate? | **🔴 NO** | 0/10 gate-crossing in BOTH cohorts; warm-HIT median 4,705 ms = 9.4× over gate |
+| Does B-α meaningfully approach the gate? | **🔴 NO** | Edge benefit only −1.5% LCP improvement (cold→warm); does not narrow the gap meaningfully |
+| Is the headers() fix (add loader to default.tsx) warranted? | **⚠️ MATERIALLY MOOT for B-α gate-crossing** | LCP is dominated by post-hydration cascade (LCP - FCP ≈ 2,000 ms on Vercel slow-subset; ~600 ms on Vercel fast-subset). Extending edge-cache TTL via custom Cache-Control affects only FCP/TTFB (which are already in 30-2,800 ms range). LCP doesn't improve because hydration cascade dominates regardless of TTL. Fix is a hygiene improvement but NOT a gate-crossing lever. |
+| Is B-γ (island-hydration) stacking warranted on this evidence? | **🎯 STRONGLY WARRANTED** | The post-hydration cascade is the dominant LCP contributor (LCP − FCP ≈ 2,000 ms on slow-subset; cluster A entirely collapsed at Vercel). B-γ island-hydration eliminates the cascade by construction (no hydration = LCP coincides with server paint). This is the ONLY remaining lever family that addresses the actual LCP bottleneck. |
+
+**🎯 POC-6 final recommendation:**
+1. **B-α alone is NOT a viable path to v1 L228 gate-crossing** on the empirical evidence. Marginal 1.5% improvement; 0% per-run crossing; localhost-vs-Vercel comparison shows Vercel network overhead adds 1,981 ms to LCP that edge-cache cannot recover.
+2. **headers() fix (add loader) is NOT warranted for B-α gate-crossing** but is a 3-line hygiene improvement Ilya can apply at his discretion (extends edge cache TTL from Vercel-default ~5s to our s-maxage=300; marginal LCP impact).
+3. **B-γ (island-hydration) is the strongly-warranted next lever** per Cowork Decision-#4 LOCK reassessment criterion. The empirical post-hydration cascade dominance on Vercel REFUTES the original §5 scoping projection that B-α alone could approach the gate; only B-γ structurally eliminates the dominant LCP contributor.
+4. **Phase-9+ scope implication:** Block B B-α scoping doc was based on a projection that empirical POC-4 has REFUTED. B-α POC produces useful negative-result data + perf-lever-stacking calibration but does NOT advance the gate-crossing arc. **B-γ scoping should be opened next** with B-α empirical data as the substrate (NOT B-α implementation).
+
+### §4.4 v1 L228 disposition implications
+
+Per the v1 L228 DUAL-FRAMING verdict at `Docs/Phase8_Closure_Report.md §6.2` ratified-as-(b) PARTIAL-MET at Phase-9+ Task 9.1 OPENER:
+- B-α empirical refutation is **substantively-progress-negative** vs the (b) PARTIAL-MET trajectory hypothesis. Vercel-edge alone does NOT continue the 4,653 → 3,903 → 2,724 ms LCP-reduction trajectory; instead it produces 4,705 ms warm-HIT median (i.e., WORSE than Task 8.12 localhost baseline due to network overhead).
+- This is **a new empirical data point that informs Framing (a) STRUCTURALLY UNATTAINABLE** as the now-empirically-supported verdict if B-γ also fails to materially advance the trajectory.
+- **Recommendation:** sustain Framing (b) PARTIAL-MET as the live disposition (do NOT pre-flip to Framing (a) on B-α alone) — B-γ scoping is the next empirical test. IF B-γ also fails to materially advance the trajectory at empirical altitude, Framing (a) becomes the empirical default at the eventual Phase-9+ closer.
+
+### §4.5 POC step status
+
+| POC step | Owner | Status |
+|---|---|---|
+| POC-1 cookie-vs-localStorage source-provenance | Claude Code | ✓ COMPLETE — REFUTED (localStorage-only) |
+| POC-2 Vercel deploy | Ilya | ✓ COMPLETE — live at `https://dwellium-per-spec.vercel.app/` (deployed from throwaway branch `feat/phase-9-task-9.3-vercel-deploy-only` commit `7e822a2`) |
+| POC-3 cache HIT/MISS verification | Ilya | ✓ COMPLETE — MISS→HIT confirmed; custom Cache-Control NOT applied (H2 confirmed at PART A) |
+| POC-4 n=10 Lighthouse measurement | Claude Code | ✓ COMPLETE — see §4.2 |
+| POC-5 cluster A/B comparison vs Task 8.12 baseline | Claude Code | ✓ COMPLETE — see §4.2 (Cluster A collapsed to 0% at Vercel) |
+| POC-6 decision gate (Cowork + Ilya) | Cowork verdict-pending | **AWAITING** — see §4.3 recommendation |
+
 🧪

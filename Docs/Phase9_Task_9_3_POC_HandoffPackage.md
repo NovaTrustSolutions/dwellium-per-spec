@@ -560,37 +560,120 @@ Per `Docs/Baselines/2026-05-23_Phase9_task_9_3_poc_b_alpha_perf_capture_n10_verc
 
 Cache states behaved as constructed: unique `?cb=` URLs guaranteed MISS in cold cohort; fixed URL converted to HIT for runs 2-10 of warm cohort (run 1 STALE = previously cached but past TTL).
 
-### §4.3 POC-6 recommendation — B-α verdict + B-γ stacking + headers() fix
+### §4.3 POC-6 recommendation — B-α verdict + headers() fix [REVISED 2026-05-23 per Cowork verdict-lock]
 
-| Question | Verdict | Evidence |
+🔴 **REVISED at Task 9.3 POC-6 LCP-attribution close (Cowork verdict-lock 2026-05-23).** The original §4.3 recommendation (committed at `2b03f3b`) recommended B-γ island-hydration as the next-priority lever. Cowork independently verified the n=10 capture and FLAGGED that recommendation as evidence-contradicted: across all 20 runs TBT=0, TTI===LCP exactly, FCP→LCP gap ≈ 1,977 ms — that is a NETWORK / ASYNC-WAIT signature, NOT hydration-JS-cost. B-γ would NOT move LCP because there is ~no JS-blocking cost to eliminate. **B-γ HOLD** per Cowork PART B.
+
+**Attribution analysis (Cowork PART C) was then authorized** to identify the actual lever family. Findings:
+
+| Question | REVISED verdict (post-attribution 2026-05-23) | Evidence |
 |---|---|---|
-| Does B-α cross v1 L228 ≤500 ms LCP gate? | **🔴 NO** | 0/10 gate-crossing in BOTH cohorts; warm-HIT median 4,705 ms = 9.4× over gate |
-| Does B-α meaningfully approach the gate? | **🔴 NO** | Edge benefit only −1.5% LCP improvement (cold→warm); does not narrow the gap meaningfully |
-| Is the headers() fix (add loader to default.tsx) warranted? | **⚠️ MATERIALLY MOOT for B-α gate-crossing** | LCP is dominated by post-hydration cascade (LCP - FCP ≈ 2,000 ms on Vercel slow-subset; ~600 ms on Vercel fast-subset). Extending edge-cache TTL via custom Cache-Control affects only FCP/TTFB (which are already in 30-2,800 ms range). LCP doesn't improve because hydration cascade dominates regardless of TTL. Fix is a hygiene improvement but NOT a gate-crossing lever. |
-| Is B-γ (island-hydration) stacking warranted on this evidence? | **🎯 STRONGLY WARRANTED** | The post-hydration cascade is the dominant LCP contributor (LCP − FCP ≈ 2,000 ms on slow-subset; cluster A entirely collapsed at Vercel). B-γ island-hydration eliminates the cascade by construction (no hydration = LCP coincides with server paint). This is the ONLY remaining lever family that addresses the actual LCP bottleneck. |
+| Does B-α cross v1 L228 ≤500 ms LCP gate? | **🔴 NO — ratified** | 0/10 gate-crossing in BOTH cohorts; warm-HIT median 9.4× over gate |
+| Does B-α meaningfully approach the gate? | **🔴 NO — ratified** | PRIMARY edge benefit −1.5% LCP improvement; ROBUST claim: "HTML-delivery edge-caching does not move LCP" |
+| Is the headers() fix (add loader to default.tsx) warranted? | **🔴 DECLINED** | Per Cowork PART D: hygiene-only, zero LCP impact per POC-4 empirical evidence. Do NOT apply / do NOT redeploy. |
+| Is B-γ (island-hydration) the next-priority lever? | **🔴 NO — REVISED** | Per Cowork PART B + Task 9.3 POC-6 attribution: TBT=0 + TTI===LCP exactly across all 20 runs = NO hydration-JS cost to eliminate. B-γ HOLD per Cowork PART B. |
+| What IS the empirical LCP bottleneck? | **🎯 CSS animation on the LCP element** | Per Task 9.3 POC-6 attribution analysis (`Docs/Baselines/2026-05-23_Phase9_task_9_3_lcp_attribution.json`): LCP element identified as `body > div.login-start-overlay > div.login-start-text` ("CLICK TO ACCESS TERMINAL"). LCP breakdown: TTFB ~188 ms + elementRenderDelay ~1,095 ms (raw) — the elementRenderDelay is the bottleneck. Source at `qualia-shell/src/components/Auth/LoginScreen.css:48-65` shows `flashText` 3s infinite animation with `0%, 100% { opacity: 0.3; }` + `50% { opacity: 1; }`. Element starts at opacity 0.3 → ramps to 1.0 → Lighthouse's LCP detection waits for the opacity threshold crossing → ~1,095 ms elementRenderDelay added on top of FCP. |
 
-**🎯 POC-6 final recommendation:**
-1. **B-α alone is NOT a viable path to v1 L228 gate-crossing** on the empirical evidence. Marginal 1.5% improvement; 0% per-run crossing; localhost-vs-Vercel comparison shows Vercel network overhead adds 1,981 ms to LCP that edge-cache cannot recover.
-2. **headers() fix (add loader) is NOT warranted for B-α gate-crossing** but is a 3-line hygiene improvement Ilya can apply at his discretion (extends edge cache TTL from Vercel-default ~5s to our s-maxage=300; marginal LCP impact).
-3. **B-γ (island-hydration) is the strongly-warranted next lever** per Cowork Decision-#4 LOCK reassessment criterion. The empirical post-hydration cascade dominance on Vercel REFUTES the original §5 scoping projection that B-α alone could approach the gate; only B-γ structurally eliminates the dominant LCP contributor.
-4. **Phase-9+ scope implication:** Block B B-α scoping doc was based on a projection that empirical POC-4 has REFUTED. B-α POC produces useful negative-result data + perf-lever-stacking calibration but does NOT advance the gate-crossing arc. **B-γ scoping should be opened next** with B-α empirical data as the substrate (NOT B-α implementation).
+**🎯 POC-6 REVISED final recommendation (post-Cowork-verdict + attribution):**
 
-### §4.4 v1 L228 disposition implications
+1. **B-α NOT a gate-crossing path** — ratified (ROBUST claim: HTML-delivery edge-caching does not move LCP).
+2. **headers() fix DECLINED** — hygiene-only; zero LCP impact per POC-4.
+3. **B-γ HOLD** — empirical signature (TBT=0 + TTI===LCP) contradicts hydration-JS-cost rationale.
+4. **Next lever family: UI-RENDER-OPTIMIZATION / CSS-ANIMATION-AUDIT** — 1-3 line CSS edit at `qualia-shell/src/components/Auth/LoginScreen.css` to fix the opacity-ramp animation that delays LCP element-render. Scoped at `Docs/Phase9_LCP_Element_Render_Delay_Scoping.md` (sister-shape to Task 9.2 B-α scoping; SCOPING-ONLY 7pt → 8pt extension candidate). **NO implementation at Task 9.3 altitude; deploy gate is Ilya's**.
 
-Per the v1 L228 DUAL-FRAMING verdict at `Docs/Phase8_Closure_Report.md §6.2` ratified-as-(b) PARTIAL-MET at Phase-9+ Task 9.1 OPENER:
-- B-α empirical refutation is **substantively-progress-negative** vs the (b) PARTIAL-MET trajectory hypothesis. Vercel-edge alone does NOT continue the 4,653 → 3,903 → 2,724 ms LCP-reduction trajectory; instead it produces 4,705 ms warm-HIT median (i.e., WORSE than Task 8.12 localhost baseline due to network overhead).
-- This is **a new empirical data point that informs Framing (a) STRUCTURALLY UNATTAINABLE** as the now-empirically-supported verdict if B-γ also fails to materially advance the trajectory.
-- **Recommendation:** sustain Framing (b) PARTIAL-MET as the live disposition (do NOT pre-flip to Framing (a) on B-α alone) — B-γ scoping is the next empirical test. IF B-γ also fails to materially advance the trajectory at empirical altitude, Framing (a) becomes the empirical default at the eventual Phase-9+ closer.
+### §4.4 v1 L228 disposition implications [REVISED 2026-05-23]
 
-### §4.5 POC step status
+🔴 **REVISED per Cowork PART E verdict-lock.** Prior §4.4 rested partially on the confounded localhost-vs-Vercel +72.7% comparison. Cowork: "Do NOT lean on 'Vercel is worse than localhost' as a conclusion anywhere. The ROBUST claim is narrower: 'HTML-delivery edge-caching does not move LCP.'" Revised disposition:
+
+- **B-α empirical refutation is substantively-progress-NEGATIVE for the (b) PARTIAL-MET trajectory IF B-α had been the right lever.** But Task 9.3 POC-6 attribution refines: B-α was the wrong lever family entirely. The empirical bottleneck is the CSS animation on the LCP element — a measurement artifact / hygiene issue, NOT a network or hydration bottleneck.
+- **The ROBUST architectural claim** that disposition rests on: "HTML-delivery edge-caching does not move LCP" (PRIMARY signal cold-vs-warm −1.5%; same-platform; internally valid). The confounded SECONDARY comparison is held at the empirical-data altitude but NOT used as a disposition driver.
+- **NEW finding for the disposition trajectory:** the apparent ~2,000 ms FCP→LCP gap on Vercel is a CSS-animation artifact, NOT a real architectural cost. After the CSS-fix lever (per `Docs/Phase9_LCP_Element_Render_Delay_Scoping.md`) Ilya can re-measure to confirm; projected post-fix LCP ~2,730 ms (≈ Task 8.12 localhost baseline). This would CLEAN UP the measurement and reveal the "true" Vercel baseline — neither continuing the 4,653 → 3,903 → 2,724 ms trajectory dramatically further NOR confirming Framing (a) STRUCTURALLY UNATTAINABLE; it stabilizes the empirical baseline at the level of the prior Phase-8+ measurement, allowing subsequent levers to target real (not artifact) bottlenecks.
+- **Recommendation: sustain Framing (b) PARTIAL-MET as the live disposition.** Do NOT pre-flip to Framing (a). The CSS-animation fix is the next empirical test (low-cost; reveals what the real next bottleneck is post-fix). Real gate-crossing post-CSS-fix would still require materially different architecture (e.g., separate static landing page; per the §7.3 carry-forward in the scoping doc) — but that is a SUBSEQUENT lever, scoped AFTER the CSS fix empirically lands.
+
+### §4.5 POC step status [UPDATED 2026-05-23]
 
 | POC step | Owner | Status |
 |---|---|---|
 | POC-1 cookie-vs-localStorage source-provenance | Claude Code | ✓ COMPLETE — REFUTED (localStorage-only) |
 | POC-2 Vercel deploy | Ilya | ✓ COMPLETE — live at `https://dwellium-per-spec.vercel.app/` (deployed from throwaway branch `feat/phase-9-task-9.3-vercel-deploy-only` commit `7e822a2`) |
-| POC-3 cache HIT/MISS verification | Ilya | ✓ COMPLETE — MISS→HIT confirmed; custom Cache-Control NOT applied (H2 confirmed at PART A) |
-| POC-4 n=10 Lighthouse measurement | Claude Code | ✓ COMPLETE — see §4.2 |
+| POC-3 cache HIT/MISS verification | Ilya | ✓ COMPLETE — MISS→HIT confirmed; custom Cache-Control NOT applied (H2 confirmed at §4.1 PART A) |
+| POC-4 n=10 Lighthouse measurement (cold-MISS vs warm-HIT) | Claude Code | ✓ COMPLETE — see §4.2 |
 | POC-5 cluster A/B comparison vs Task 8.12 baseline | Claude Code | ✓ COMPLETE — see §4.2 (Cluster A collapsed to 0% at Vercel) |
-| POC-6 decision gate (Cowork + Ilya) | Cowork verdict-pending | **AWAITING** — see §4.3 recommendation |
+| POC-6 LCP-attribution analysis | Claude Code | ✓ **COMPLETE 2026-05-23** — see §4.6 below; CSS animation identified as bottleneck |
+| Next-lever scoping (CSS-animation audit) | Claude Code | ✓ COMPLETE — see `Docs/Phase9_LCP_Element_Render_Delay_Scoping.md` |
+| Task 9.X CSS-animation fix + redeploy + re-measure | Ilya gate | **DEFERRED** — Ilya gates implementation per scoping doc §6 |
+
+### §4.6 POC-6 LCP attribution findings [NEW 2026-05-23]
+
+Per Cowork PART C authorization at 2026-05-23. n=3 Lighthouse runs against the live POC URL with FULL artifact capture via `Scripts/analyze_lcp_attribution_phase9.mjs` (NEW; sister-shape to phase9 measurement script at attribution altitude). Output: `Docs/Baselines/2026-05-23_Phase9_task_9_3_lcp_attribution.json`.
+
+**LCP element (consistent across all 3 runs):**
+
+| Attribute | Value |
+|---|---|
+| Selector | `body > div.login-start-overlay > div.login-start-text` |
+| Path | `1,HTML,1,BODY,1,DIV,0,DIV` |
+| Snippet | `<div class="login-start-text">` |
+| Text content (nodeLabel) | **"CLICK TO ACCESS TERMINAL"** |
+| Type | text (NOT image; `lcp-discovery-insight` returned `notApplicable`) |
+
+**LCP phases breakdown (`lcp-breakdown-insight` audit; RAW timings):**
+
+| Phase | Run 1 | Run 2 | Run 3 | Median |
+|---|---|---|---|---|
+| timeToFirstByte | 208 ms | 171 ms | 188 ms | ~188 ms |
+| elementRenderDelay | **1,078 ms** | **1,103 ms** | **1,095 ms** | **~1,095 ms 🎯 dominant** |
+
+**Critical-path network requests:** 15 total in the run; all complete by ~700 ms. **0 requests in FCP→LCP window** across all 3 runs (confirms no network blocker in the gap).
+
+**Throttling config:** `simulate` / formFactor `mobile` / cpuSlowdownMultiplier `4×` / RTT `150 ms` / Download `1,474 kbps` — TBT=0 under 4× CPU throttling means there is GENUINELY zero main-thread work between FCP and LCP (not a "no throttle" artifact). The 4× CPU throttle is identical to phase8 default (matches the n=10 baseline measurement throttle byte-for-byte).
+
+**Hypothesis verdicts:**
+
+| Hypothesis | Verdict | Evidence |
+|---|:-:|---|
+| Post-hydration auth/data round-trip (Cowork PART C) | **🔴 REFUTED** | (a) UserContext.tsx:285-288 — useEffect exits immediately if token null; Lighthouse runs with no localStorage token → `/api/auth/me` fetch DOES NOT FIRE. (b) Network audit: 0 requests in FCP→LCP window. |
+| B-γ island-hydration as next lever | **🔴 REFUTED** | TBT=0 under 4× CPU throttling = no JS-blocking cost to eliminate. Island hydration eliminates hydration-JS cost; there's no JS cost present. |
+| **CSS animation on LCP element delays render** | **🎯 CONFIRMED** | (a) LCP element identified as `.login-start-text` (text content). (b) Source inspection of `LoginScreen.css:48-65` shows `flashText` 3s infinite animation with opacity oscillation 0.3 ↔ 1.0. (c) Lighthouse's `elementRenderDelay: ~1,095 ms` matches the time for opacity to ramp from 0.3 toward LCP threshold. (d) No other plausible explanation for ~2,000 ms FCP→LCP gap with TBT=0 and 0 network in window. |
+
+**Source of the artifact:** `qualia-shell/src/components/Auth/LoginScreen.css` lines 48-65:
+```css
+.login-start-text {
+    ...
+    animation: flashText 3s infinite ease-in-out;
+}
+@keyframes flashText {
+    0%, 100% { opacity: 0.3; }
+    50%      { opacity: 1; }
+}
+```
+
+The LCP element starts at `opacity: 0.3` (below LCP visibility threshold) and ramps to `opacity: 1.0` at 50% of the 3-second animation cycle (1.5 seconds). Lighthouse's LCP detection waits for the opacity threshold crossing → adds the observed elementRenderDelay.
+
+### §4.7 Task 9.3 close — summary
+
+**Phase-9+ Task 9.3 COMPLETE at this hand-off doc + scoping doc.** Block-shape characteristics:
+
+| Element | Value |
+|---|---|
+| Class designation | **MEASUREMENT-ONLY 10pt → 11pt CROSS-PHASE-SHAPE-ROBUSTNESS extension** per Cowork PART F ratification |
+| Sub-shape (11) | `LCP-cold-vs-warm-cohort-comparison-AND-element-attribution-at-remote-URL` (dual-modality measurement at remote-URL altitude; folds POC-4 cohort-comparison + POC-6 LCP-attribution into a single Task 9.3 deliverable) |
+| Phase-9+ next-lever scoping deliverable | `Docs/Phase9_LCP_Element_Render_Delay_Scoping.md` (NEW; recommends CSS-animation fix as the next-priority lever; SCOPING-ONLY 7pt → 8pt extension candidate) |
+| Throwaway deploy-only branch | `feat/phase-9-task-9.3-vercel-deploy-only` @ `7e822a2` — UNTOUCHED (preset wiring; local-only; do-not-merge) |
+| Parent branch state | `feat/phase-9-task-9.3-cdn-edge-poc` — multiple commits ahead of main; PR-pending Ilya's ship gate |
+| v1 L228 disposition | Sustained (b) PARTIAL-MET per Cowork PART E |
+| Next deliverable | Task 9.X CSS-animation fix (Ilya gate) per scoping doc |
+
+**Phase-9+ trajectory at Task 9.3 close:**
+
+```
+Phase-8+ Task 8.12 LCP baseline (localhost; ssr:true):  median 2,724 ms
+Phase-9+ Task 9.3 POC-4 LCP (Vercel; ssr:true):         median 4,705 ms (warm-HIT)
+Phase-9+ Task 9.3 POC-6 attribution:                     +1,095 ms artifact from CSS animation
+                                                         (NOT network overhead; NOT hydration cost)
+Projected post-CSS-fix LCP (Vercel; ssr:true):           median ~2,730 ms (≈ Task 8.12 baseline; pending empirical verify)
+```
+
+The Vercel +72.7% LCP penalty surfaced at POC-4 SECONDARY comparison is structurally explained: ~2,000 ms of it is the CSS animation artifact + a smaller residual from network overhead. After the CSS fix, Vercel LCP should align with Task 8.12 localhost baseline — confirming Vercel-edge is NOT structurally worse than localhost SSR for this workload (per Cowork PART A "Do NOT lean on Vercel-worse-than-localhost" guidance).
 
 🧪

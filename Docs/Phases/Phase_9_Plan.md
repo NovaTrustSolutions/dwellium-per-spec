@@ -3,7 +3,7 @@
 **Status.** **Phase-9+ Task 9.1 OPENER MERGED via PR #85 at `d70f18d` 2026-05-21**; Cowork OQ-1 through OQ-5 LOCKED at Phase-9+ Task 9.2 OPENING (this commit). Phase-9+ R OPEN at Task 9.2 (B-α CDN-edge SCOPING-ONLY active at branch `feat/phase-9-task-9.2-cdn-edge-scoping`).
 **Created.** 2026-05-21 (stub) — Phase-8+ Task 8.15 publishing handoff per Cowork Q3 LOCK Option (i).
 **Expanded.** 2026-05-21 (full brief) — Phase-9+ Task 9.1 OPENER per Cowork Q1-Q4 LOCK at PRE0 ledger.
-**Phase-9+ disposition.** **RATIFIED (b) PARTIAL-MET** per Ilya-lock 2026-05-21 (Q1 LOCK; see §2). v1 L228 ≤500 ms LCP STAYS LIVE as Phase-9+ objective; ~41.5% cumulative gap-closure ratified as substantive progress worth continuing. Phase-9+ pursues architectural-axis exploration to keep driving LCP downward.
+**Phase-9+ disposition.** **🔴 RE-RATIFIED (a) STRUCTURALLY UNATTAINABLE per Ilya-lock 2026-05-23** (Task 9.3 close; supersedes 2026-05-21 (b) PARTIAL-MET lock; see §2). Engineering-judgment disposition (NOT mathematical impossibility-proof): best LCP ~2,724 ms at Phase-8+ Task 8.12 = 5.4× over the 500 ms gate; Phase-9+ Block-B levers B-α + B-γ empirically refuted (Task 9.3 POC + attribution); residual LCP = FCP-dominant + Lighthouse CSS-animation artifact. Crossing ≤500 ms would require fundamental re-architecture (separate static/SSR landing replacing SPA shell), OUT OF v1 SCOPE. (b) PARTIAL-MET RETAINED as progress-record (4,653 → 2,724 ms, −41% cumulative). **Phase-9+ Block-B LCP-architectural-exploration arc CONCLUDED as documented negative result.** Remaining Phase-9+ scope = Block A (widget/provider polish) + Block C (housekeeping). No further LCP-gate-crossing levers pursued under v1.
 **Phase-8+ closure cross-reference.** Full Phase-8+ closure narrative at `Docs/Phase8_Closure_Report.md` (488 lines / 88,075 B / ~86 KB; 3rd cross-phase CLOSURE-NARRATIVE-CONSOLIDATION data point). Phase-8+ FULLY CLOSED at Task 8.15 publishing-handoff (15 of 15 ✓; PRs #69-#76 + #78-#84; HEAD on main = `1f4b9c0`; 2026-05-16 → 2026-05-21).
 
 > **🎯 Doc-wide terminology correction (Task 9.2 PRE0 per recursive-validation discipline P2 standing).** All references to "AuthGate (Branch 3)" in this doc are corrected to "AuthGate (Branch 3)". Prior "Branch 1" label was a category error per Phase-9+ Task 9.2 source-provenance verification — **Branch 1 is `/security` (SecurityRoute component; standalone viewport-fill; NO providers)**, NOT a sub-branch of AuthGate. **AuthGate is Branch 3** (default route; 3-provider tree Theme + User + Query). Code reference: `qualia-shell/src/App.tsx:80-90` SecurityRoute (Branch 1) + `qualia-shell/src/App.tsx:33-78` AuthGate function (Branch 3) + `qualia-shell/src/App.tsx:139-141` branch-routing comment block. The edge-cacheable claim is preserved in spirit (AuthGate non-user-specific spinner IS edge-cacheable) but applied to Branch 3, not Branch 1.
@@ -27,7 +27,7 @@ Per Cowork Q2 LOCK at Phase-9+ kickoff verdict-lock. Empirically-verified item-c
 
 | # | Item | Source | Phase-9+ disposition |
 |--:|:--|:--|:--|
-| B1 | **v1 L228 ≤500 ms LCP objective** — RATIFIED (b) PARTIAL-MET per Q1 LOCK; STAYS LIVE; architectural-axis exploration is the Phase-9+ PRIMARY spine | Closer §6.2 + §7 Block B 1; Ilya-lock at Task 8.14 PRE0; RATIFIED at Phase-9+ kickoff Q1 LOCK | **Primary Phase-9+ workstream**; **🎯 B-α CDN-edge SCOPED FIRST per OQ-1 LOCK** (Task 9.2); see §4 |
+| B1 | **v1 L228 ≤500 ms LCP objective** — **🔴 RE-RATIFIED (a) STRUCTURALLY UNATTAINABLE per Ilya-lock 2026-05-23 at Task 9.3 close** (supersedes 2026-05-21 (b) PARTIAL-MET lock); Block-B architectural-exploration arc CONCLUDED as documented negative result; B-α + B-γ empirically refuted | Closer §6.2 + §7 Block B 1; original (b) Q1 LOCK at 2026-05-21; flipped to (a) at 2026-05-23 Ilya stakeholder decision per §2 | **CONCLUDED**; no further LCP-gate-crossing levers under v1 |
 | B2 | **Perf-lever-exhaustion-confirmed baseline at React 19 + Vite 6 + RR v7 architecture** — Task 8.13 cemented 0-of-3 in-architecture candidates (SSR already-applied + per-route Vike-mode N/A-by-construction + asset-preload structurally-insufficient); any new lever requires architectural-axis shift | Closer §2 Signal (5) + §7 Block B 2; Task 8.13 Finding LL | **Substrate for §4 architectural-axis exploration**; see §4 |
 
 ### Block C — Project-wide housekeeping (3 items; pre-existing)
@@ -47,11 +47,19 @@ Per Cowork Q2 LOCK at Phase-9+ kickoff verdict-lock. Empirically-verified item-c
 
 ---
 
-## §2. v1 L228 ≤500 ms LCP verdict-record — **RATIFIED (b) PARTIAL-MET per Ilya-lock 2026-05-21**
+## §2. v1 L228 ≤500 ms LCP verdict-record — **🔴 RE-RATIFIED (a) STRUCTURALLY UNATTAINABLE per Ilya-lock 2026-05-23** (supersedes 2026-05-21 (b)-lock)
 
-**Status flip:** STAKEHOLDER-DECISION-PENDING → **RATIFIED (b) PARTIAL-MET** per Cowork Q1 LOCK at Phase-9+ kickoff (Ilya-level decision 2026-05-21).
+**Status flip 2 (LATEST):** RATIFIED (b) PARTIAL-MET (2026-05-21) → **RE-RATIFIED (a) STRUCTURALLY UNATTAINABLE (2026-05-23 at Task 9.3 close)** per Ilya stakeholder decision. Supersedes the prior (b)-PARTIAL-MET primary disposition.
 
-Per canonical DUAL-FRAMING narrative at `Docs/Phase8_Closure_Report.md §6.2` (frozen retrospective) + this Phase-9+ Task 9.1 OPENER verdict-lock: cumulative −41.5% gap-closure trajectory (4,653 ms → 3,903 ms → 2,724 ms) RATIFIED as **substantive engineering progress worth continuing**. The ≤500 ms target STAYS OPEN as a live Phase-9+ objective (NOT closed as structurally-unattainable).
+**Precise framing (verbatim per Cowork ship verdict-lock 2026-05-23):**
+
+> "v1 L228 ≤500 ms LCP is STRUCTURALLY UNATTAINABLE within the current React 19 SPA-shell architecture. Empirical basis: best measured LCP ~2,724 ms (Phase-8 Task 8.12 localhost; −41% from the Phase-6 4,653 ms baseline) — still 5.4× over the 500 ms gate. Phase-9 Block-B architectural exploration empirically refuted the remaining candidate levers: B-α CDN-edge (−1.5% LCP; Task 9.3 POC) and B-γ island-hydration (TBT=0 → no JS-blocking cost to remove; Task 9.3 attribution). Residual LCP is dominated by FCP (JS bundle download/parse + first paint; Phase-7 lazy-load already exhausted) plus a Lighthouse CSS-animation artifact. Crossing ≤500 ms would require fundamental re-architecture (e.g. a separate truly-static / server-rendered real-content landing replacing the SPA shell at `/`), OUT OF v1 SCOPE. (b) PARTIAL-MET is retained as the record of progress achieved (4,653 → 2,724 ms, −41%); (a) is now the ratified primary disposition."
+
+**Engineering-judgment disposition, NOT a mathematical impossibility-proof.** "Structurally unattainable" here means: NOT achievable within the current React 19 SPA-shell architecture + v1 scope + remaining empirically-falsified lever candidates. A different architecture (separate landing; Astro/Fresh-style islands; server-side templating) could theoretically cross the gate — but is OUT OF v1 SCOPE per Ilya 2026-05-23.
+
+**Consequence:** Phase-9+ Block-B LCP-architectural-exploration arc is CONCLUDED as a documented negative result. Remaining Phase-9+ scope = Block A (widget/provider polish) + Block C (housekeeping). No further LCP-gate-crossing levers will be pursued under v1.
+
+Per canonical DUAL-FRAMING narrative at `Docs/Phase8_Closure_Report.md §6.2` (frozen retrospective) + Phase-9+ Task 9.3 empirical evidence cemented at `Docs/Phase9_Task_9_3_POC_HandoffPackage.md §4`: cumulative −41% gap-closure trajectory (4,653 ms → 3,903 ms → 2,724 ms) RETAINED as substantive engineering progress (per (b) progress-record framing). The ≤500 ms target is no longer a live Phase-9+ objective; it is documented as structurally unattainable at v1 scope.
 
 ### Cross-phase LCP trajectory (frozen empirical record)
 
@@ -63,20 +71,21 @@ Per canonical DUAL-FRAMING narrative at `Docs/Phase8_Closure_Report.md §6.2` (f
 
 Each architectural arc closed ~30-40% of remaining gap to ≤500 ms target. None crossed 500 ms threshold. **Phase-9+ goal: continue closing the gap via architectural-axis-shift exploration.**
 
-### Framing (b) — **PRIMARY / RATIFIED**
+### Framing (a) — **🔴 PRIMARY / RE-RATIFIED 2026-05-23 (supersedes the prior (b)-PRIMARY lock of 2026-05-21)**
 
-Cumulative −1,929 ms / ~41% cumulative gap-closure across three architectural arcs is real, measurable, monotonic progress at every architectural step. Per Cowork Verdict 3 LOCK 3rd-outcome stance (originally cemented at Phase-6 close): progress is engineering-substantive even where target not crossed. Phase-8+ MEASUREMENT-ONLY 10pt cross-phase milestone empirically validates this framing — first project-wide class to cross 10pt threshold; the measurement infrastructure itself is a publishable deliverable independent of v1 L228 reachability binary.
-
-**Ilya-lock rationale (2026-05-21):** trajectory shape (monotonic gap-closure with each architectural arc) is itself evidence that further architectural exploration can continue the trajectory. CDN-edge delivery / HTTP/3 / island-hydration evaluations have not been scoped against this architecture; declaring STRUCTURALLY UNATTAINABLE before exploring those axes would be premature anchor-bias to the React 19 + Vite 6 + RR v7 framework-mode foundation. Phase-9+ Block B (§4 below) scopes each lever empirically with feasibility verdicts.
-
-### Framing (a) — **MINORITY-POSITION FOOTNOTE (retained for architectural risk register)**
-
-Phase-8+ 8.12 LCP median 2,724 ms = 5.45× over v1 L228 ≤500 ms target. Three architectural arcs each closed ~30-40% but none crossed 500 ms threshold:
+Phase-8+ 8.12 LCP median 2,724 ms = 5.45× over v1 L228 ≤500 ms target. Three architectural arcs each closed ~30-40% of remaining gap but none crossed 500 ms threshold:
 - Phase-6: STRUCTURALLY UNATTAINABLE single-lever (font-deferral REVERT)
 - Phase-7: STRUCTURALLY UNATTAINABLE multi-lever within React 19 + Vite 6 SPA architecture
 - Phase-8+: STRUCTURALLY UNATTAINABLE multi-lever + SSR-migration within React 19 + Vite 6 + RR v7 framework-mode architecture
+- **Phase-9+ (NEW empirical evidence):** Block-B architectural-axis exploration RAN + REFUTED. B-α CDN-edge POC (Task 9.3) yielded −1.5% LCP (warm-HIT vs cold-MISS; same-platform PRIMARY signal; ROBUST claim "HTML-delivery edge-caching does not move LCP"). B-γ island-hydration was REFUTED at Task 9.3 attribution altitude — TBT=0 + TTI===LCP exactly across all 20 runs = NO hydration-JS cost to eliminate. Residual LCP is dominated by FCP (JS bundle download/parse + first paint; Phase-7 lazy-load lever already exhausted at HEAD-post-7.10) plus a Lighthouse CSS-animation artifact (Task 9.3 POC-6 attribution; LCP element = `.login-start-text`; metric-hygiene-only, NOT user-perceived delay).
 
-Matches `Docs/Phase8_SSR_Architectural_Scoping.md §6.6` Outcome (B). **Retained as documented minority position** to inform Phase-9+ architectural risk register: IF Phase-9+ Block B levers (CDN edge / HTTP/3 / island hydration) collectively fail to materially advance the trajectory, Framing (a) becomes the empirical default verdict at Phase-9+ closer and may force a fundamental architecture pivot decision (server-side templating + island hydration per Astro/Fresh patterns, etc.). NOT erased; informs the risk register.
+Matches `Docs/Phase8_SSR_Architectural_Scoping.md §6.6` Outcome (B). **Re-ratified as PRIMARY disposition** per Ilya stakeholder decision 2026-05-23 at Task 9.3 close. Crossing ≤500 ms would require fundamental re-architecture (e.g., separate truly-static / server-rendered real-content landing replacing the SPA shell at `/`; Astro/Fresh-style island hydration architecture; or alternative gate definition for v2). **OUT OF v1 SCOPE.** v1 disposition cemented at (a) STRUCTURALLY UNATTAINABLE; Phase-9+ Block-B arc CONCLUDED.
+
+### Framing (b) — **DEMOTED to progress-record (retained as record of −41% cumulative gap-closure)**
+
+Cumulative −1,929 ms / ~41% cumulative gap-closure across three architectural arcs is real, measurable, monotonic progress at every architectural step. Per Cowork Verdict 3 LOCK 3rd-outcome stance (originally cemented at Phase-6 close): progress is engineering-substantive even where target not crossed. Phase-8+ MEASUREMENT-ONLY 10pt → 11pt cross-phase milestone (extended at Phase-9+ Task 9.3 POC-4 + POC-6) empirically validates this framing — the measurement infrastructure itself is a publishable deliverable independent of v1 L228 reachability binary.
+
+**Prior Ilya-lock rationale (2026-05-21; superseded but retained for cross-phase history):** trajectory shape (monotonic gap-closure with each architectural arc) was taken as evidence that further architectural exploration could continue the trajectory. Phase-9+ Block-B was scoped under this hypothesis. Empirical Task 9.3 evidence (cold-vs-warm −1.5%; TBT=0 attribution; CSS-animation artifact as remaining contributor) REFUTED the hypothesis — the trajectory has plateaued at this architecture; Framing (a) becomes the empirical-default verdict. Ilya re-ratified (a) on 2026-05-23 per supersession of the 2026-05-21 (b)-lock.
 
 ### Framing (c) — **RESOLVED at this Q1 LOCK**
 
@@ -311,9 +320,9 @@ Per SCOPING-ONLY class definition (CLAUDE.md Conventions block): "No production 
 
 **Verdict.** Pre-committing measurement-targets at OPENER altitude is structurally fragile (anchor-bias risk). Deferred to Phase-9+ closer terminal-task altitude where empirical baselines inform the verdict directly.
 
-### Risk register entry (Framing (a) minority position)
+### Risk register entry — Framing (a) PROMOTED to ratified primary 2026-05-23 (was minority)
 
-Per §2 above, Framing (a) STRUCTURALLY UNATTAINABLE retained as documented minority position. **Phase-9+ closer obligation:** at terminal task, empirically re-evaluate Framing (a) vs Framing (b) trajectory. IF Phase-9+ Block B levers collectively fail to materially advance the cumulative trajectory (e.g., final Phase-9+ LCP ≥ 2,400 ms with ALL B-α + B-β + B-γ scoped), Framing (a) becomes the empirical default verdict at Phase-9+ closer + forces a fundamental architecture pivot decision.
+🔴 **PROMOTED from minority footnote → ratified PRIMARY disposition** per Ilya-lock 2026-05-23. Phase-9+ Block-B levers were empirically scoped + REFUTED at Task 9.3 (B-α CDN-edge POC −1.5% LCP + B-γ island-hydration REFUTED at attribution altitude TBT=0). Per §2 RE-RATIFIED narrative above, the prior closer-obligation language ("IF Block B levers fail → Framing (a) becomes empirical default") has now FIRED — the empirical refutation is documented; Framing (a) is the empirical-default verdict; Ilya ratified it on 2026-05-23. The "may force a fundamental architecture pivot decision" branch is OUT OF v1 SCOPE per Ilya 2026-05-23 (separate landing / Astro/Fresh / etc. reserved for v2 consideration). No further LCP-gate-crossing levers pursued under v1.
 
 ### Cowork verdict-pending HALT per execution-order Step 6
 
@@ -347,7 +356,7 @@ Architectural state at HEAD-on-`main` (`1f4b9c0`) + working state at HEAD-on-fea
 | **Sweep-resolutions** | 40-pattern at Task 8.15 OPENING | **41-pattern cemented at this Phase-9+ 9.1 OPENER** (cross-phase-BOUNDARY) |
 | **Calibration class extension** | SCOPING-ONLY 5pt highest in-phase Phase-8+ | **SCOPING-ONLY 6pt cross-phase-BOUNDARY** (highest cross-phase-distributed class) |
 | **Standing conventions** | v2.72.1 `.reset()` + v2.74.1 branch-base + v2.76.0 directive-gate-citation | + **P1 v2.76.0 PROMOTED to Phase-9+ standing PRE-FLIGHT** + **P2 recursive-validation CEMENTED as cross-phase standing convention** at this 9.1 OPENER |
-| **v1 L228 disposition** | STAKEHOLDER-DECISION-PENDING per Closer §6.2 | **RATIFIED (b) PARTIAL-MET** per Ilya-lock 2026-05-21 (Q1 LOCK at this 9.1 OPENER) |
+| **v1 L228 disposition** | STAKEHOLDER-DECISION-PENDING per Closer §6.2 | **🔴 RE-RATIFIED (a) STRUCTURALLY UNATTAINABLE per Ilya-lock 2026-05-23 at Task 9.3 close** (supersedes 2026-05-21 (b)-lock; (b) retained as progress-record) |
 
 ---
 
@@ -361,7 +370,7 @@ Per Cowork Q1 LOCK at Task 8.15 PRE0 (preserved verbatim from stub state):
 
 ## §10. Phase-9+ → Phase-10+ transition signal projection (preserved from stub)
 
-Phase-9+ transition signal will be empirically-grounded per Phase-9+ closer (terminal task TBD) cementation. Per Q1 LOCK ratification + risk register entry at §7: IF Phase-9+ Block B levers materially advance the trajectory (Framing (b) continues empirically), Phase-10+ continues architectural exploration. IF levers collectively plateau (Framing (a) becomes empirical default), Phase-10+ pivots to fundamental architecture or to alternative gate definitions.
+Phase-9+ transition signal will be empirically-grounded per Phase-9+ closer (terminal task TBD) cementation. **Updated 2026-05-23 per Ilya v1 L228 disposition flip:** the conditional projection above has been resolved empirically. Framing (a) became the empirical default at Task 9.3 close; Ilya ratified (a) as PRIMARY disposition. Phase-10+ direction (if Phase-10+ is undertaken) would target fundamental architecture (separate landing / Astro/Fresh / server-side templating) OR alternative gate definitions — but those are v2-scope decisions out of v1.
 
 ---
 

@@ -1,6 +1,6 @@
 # Phase-9+ Next-Lever Scoping — LCP Element Render Delay (CSS-animation audit)
 
-**Status.** Sister-shape next-lever scoping doc to `Docs/Phase9_Task_9_2_CDN_Edge_Scoping.md` at Phase-9+ Task 9.3 POC-6 close. **Drafted at Task 9.3 close per Cowork PART C empirical attribution finding** + Cowork autonomy authorization. **DOC-only deliverable — NOT yet scoped as a Phase-9+ Task; awaiting Cowork verdict on prioritization + task numbering.**
+**Status.** Sister-shape next-lever scoping doc to `Docs/Phase9_Task_9_2_CDN_Edge_Scoping.md` at Phase-9+ Task 9.3 POC-6 close. **Drafted at Task 9.3 close per Cowork PART C empirical attribution finding** + Cowork autonomy authorization. **🔴 DEFERRED — NOT authorized per Cowork verdict-lock 2026-05-23.** Reason: per Cowork ship-decision, this lever is **metric-hygiene-only** (still ~5.5× over the v1 L228 ≤500 ms gate; alters a deliberate design effect; text is human-visible at opacity 0.3 throughout so users do NOT perceive the artifact delay). This doc remains as a **documented future option** — Ilya may revisit if/when LCP-metric hygiene becomes load-bearing for some downstream consideration. **Do NOT implement; do NOT touch `LoginScreen.css` on this evidence alone.**
 **Class candidate.** SCOPING-ONLY 7pt → 8pt CROSS-PHASE-SHAPE-ROBUSTNESS extension (sister to Task 9.2 sub-shape `architectural-axis-shift-scoping-CDN-edge-...`; this is `LCP-element-render-delay-CSS-animation-audit-scoping` sub-shape — NEW; smaller architectural axis than CDN migration; same SCOPING-ONLY shape per Cowork-ratified rationale at Task 9.2 LOCK).
 **Authored.** 2026-05-23 (Phase-9+ Task 9.3 POC-6 LCP-attribution close).
 **Cross-references.**
@@ -40,7 +40,11 @@ Per `Docs/Baselines/2026-05-23_Phase9_task_9_3_lcp_attribution.json` (n=3 Lighth
 | Phase | Run 1 | Run 2 | Run 3 | Notes |
 |---|---|---|---|---|
 | timeToFirstByte | 208 ms | 171 ms | 188 ms | Network + server (Vercel edge) |
-| elementRenderDelay | **1,078 ms** | **1,103 ms** | **1,095 ms** | **🎯 dominant** |
+| elementRenderDelay | **1,078 ms** | **1,103 ms** | **1,095 ms** | **directional indicator (raw-trace timebase)** |
+
+🔴 **Timebase reconciliation caveat (Cowork PART E LOCK 2026-05-23):** the breakdown values are RAW observed-trace timings (TTFB 188 + ERD 1,095 = ~1,283 ms) and **DO NOT cleanly reconcile** with the throttled-simulated LCP metric (~4,750 ms median). The elementRenderDelay is also only ~half of the throttled FCP→LCP gap (~2,000 ms). Treat the breakdown as **directional attribution** identifying the LCP element + naming the dominant raw phase; do NOT project exact throttled-LCP recovery from it. Precise post-fix LCP requires empirical re-measurement.
+
+🔴 **Lighthouse-artifact vs user-perception caveat:** the LCP detection waits for opacity threshold crossing on the animated text, but real users SEE the text at opacity 0.3 throughout — it is human-visible from first paint. This is a **Lighthouse measurement artifact**, NOT a user-experience delay. The CSS-fix lever is **metric-hygiene-only**: it improves the Lighthouse-LCP number but does NOT improve user-perceived time-to-content. This shifts the lever's value-proposition from "user-experience improvement" to "measurement-baseline-cleanup for subsequent lever work".
 | resourceLoadDelay / Duration | (not applicable for text LCP) |
 
 ### §1.3 LCP element identification (VERIFIED across all 3 runs)
@@ -82,10 +86,11 @@ The element's opacity oscillates between `0.3` (frames 0% and 100%) and `1.0` (f
 
 **Fix scope:** 1-3 line CSS change to `LoginScreen.css`. NO production-source touches to `src/**` or `app/**` beyond CSS. NO architectural-axis shift. NO new dependencies. NO migration cost.
 
-**Estimated LCP impact (HYPOTHESIS; needs empirical verification post-fix):**
-- Eliminating the elementRenderDelay → LCP drops to ~FCP value (~2,730 ms throttled / matches Task 8.12 localhost baseline ~2,724 ms)
-- Recovered LCP delta: ~2,000 ms (throttled) / ~1,095 ms (raw breakdown)
-- **Still does NOT cross the v1 L228 ≤500 ms gate**, but removes a SPURIOUS measurement artifact and reveals what the "true" LCP baseline is on Vercel.
+**Estimated LCP impact — DIRECTIONAL ONLY; precise post-fix LCP requires empirical re-measurement:**
+- Eliminating the elementRenderDelay artifact MAY drop LCP toward ~FCP value (~2,730 ms throttled / aligning with Task 8.12 localhost baseline ~2,724 ms)
+- Raw-vs-throttled timebase reconciliation gap (see §1.4 caveat) means the exact post-fix LCP cannot be projected from breakdown data alone
+- **Lever value-prop is METRIC-HYGIENE** (cleaner Lighthouse number), NOT user-experience improvement — the text is human-visible at opacity 0.3 throughout, so users never perceive the artifact delay
+- **Even at the optimistic projection (~2,730 ms), the v1 L228 ≤500 ms gate is NOT crossed** (5.5× over)
 
 ---
 
@@ -201,23 +206,25 @@ Replace opacity-based animation with text-shadow-based (animates GLOW instead of
 
 ## §4. LCP projection model (post-fix; empirical-verification required)
 
-### §4.1 Projected LCP distribution post-fix
+### §4.1 Projected LCP distribution post-fix — DIRECTIONAL ONLY
 
-**HYPOTHESIS (requires empirical verification post-deploy):** removing the elementRenderDelay caused by the animation drops LCP to ~FCP value.
+**HYPOTHESIS (DIRECTIONAL ONLY; requires empirical re-measurement post-deploy):** removing the elementRenderDelay artifact MAY drop LCP toward ~FCP value. The raw-vs-throttled timebase reconciliation gap (see §1.4) means **projections from breakdown data alone are unreliable** — the back-of-envelope estimates below are intended to set expectation direction, not precision.
 
-| Cohort | Pre-fix LCP median (Task 9.3 POC-4) | Post-fix LCP projection | Recovered |
+| Cohort | Pre-fix LCP median (Task 9.3 POC-4) | Post-fix LCP (directional estimate) | (Hypothetical) recovery |
 |---|---|---|---|
-| Cold-MISS | ~4,775 ms | **~2,810 ms** (= FCP median) | ~1,965 ms (41% reduction) |
-| Warm-HIT | ~4,705 ms | **~2,730 ms** (= FCP median) | ~1,975 ms (42% reduction) |
+| Cold-MISS | ~4,775 ms | **~2,810 ms (= FCP median; back-of-envelope)** | ~1,965 ms (41%) |
+| Warm-HIT | ~4,705 ms | **~2,730 ms (= FCP median; back-of-envelope)** | ~1,975 ms (42%) |
+
+🔴 Precise post-fix LCP **cannot be reliably projected from breakdown data** because of the timebase reconciliation gap. Empirical re-measurement is the only way to determine actual recovery.
 
 ### §4.2 Gate-crossing analysis
 
-**Post-fix LCP median ~2,730 ms is still 5.5× over the v1 L228 ≤500 ms gate.** This fix does NOT cross the gate. But:
-- It removes a SPURIOUS measurement artifact (~2,000 ms LCP penalty from CSS animation)
-- It aligns Vercel LCP with the Task 8.12 localhost baseline (~2,724 ms) — eliminating the apparent "Vercel network overhead" that was actually a CSS artifact + network overhead conflated
-- It reveals the TRUE post-FCP baseline on Vercel, exposing what REAL architectural levers would need to address
+**Even in the optimistic projection (~2,730 ms), LCP remains ~5.5× over the v1 L228 ≤500 ms gate.** This fix does NOT cross the gate. Value-prop framing:
+- Removes a Lighthouse-measurement artifact (the opacity-ramp animation triggers LCP-detection threshold-wait); **does NOT improve user-perceived time-to-content** (text is human-visible at opacity 0.3 from first paint)
+- Aligns Vercel Lighthouse-LCP with Task 8.12 localhost baseline (≈ 2,724 ms) — eliminating an apparent "Vercel network overhead" that was actually a CSS-animation artifact in the LCP metric, conflated with some smaller residual network overhead
+- Reveals the TRUE post-FCP Lighthouse-LCP baseline on Vercel, exposing what real architectural levers would target
 
-**Per-run gate-crossing post-fix (projection):** 0/n — same 0% as pre-fix; the fix doesn't approach the gate.
+**Per-run gate-crossing post-fix (directional projection):** 0/n — same 0% as pre-fix; the fix does not approach the gate.
 
 ### §4.3 What the fix REVEALS about subsequent lever options
 
@@ -273,33 +280,36 @@ The `flashText` animation is one occurrence. Are there sister-shape animations i
 
 ---
 
-## §6. Cowork decision gate
+## §6. Cowork decision gate — RESOLVED 2026-05-23
 
-### §6.1 Verdict-pending items
+🔴 **Cowork verdict-lock 2026-05-23: CSS-animation fix DEFERRED, not authorized at this time.** Reason: metric-hygiene-only (Lighthouse-LCP artifact, NOT user-experience delay); still ~5.5× over the v1 L228 ≤500 ms gate even at optimistic projection; alters a deliberate design effect (the flashing pulsation is intentional UX). This doc stays as a **documented future option**.
 
-1. **Fix Option selection** — A / B / C / D (recommended: **A**)
-2. **UX team consultation** — required for A/B/D (subtle UX shift); REQUIRED for C (UX regression)
-3. **Task numbering** — recommend naming the implementation task as the next Phase-9+ Task 9.X; class designation candidate **SCOPING-ONLY 7pt → 8pt extension** for THIS scoping doc + **EDGE-CACHE-POC** or **CSS-FIX** class candidate for the implementation task itself
-4. **Deploy gate** — Ilya's gate per Phase-9+ SAFETY discipline (NO CSS source-touches without explicit authorization)
-5. **POC-empirical-verification scope** — re-run `Scripts/analyze_lcp_attribution_phase9.mjs` against post-fix POC URL; sister-shape to Task 9.3 POC-4 + POC-6 empirical pattern
+### §6.1 Decision-state (post-Cowork-verdict)
 
-### §6.2 If Cowork ratifies
+| Decision | Outcome |
+|---|---|
+| Fix Option selection (A/B/C/D) | **DEFERRED — none selected** |
+| UX team consultation | NOT triggered (no fix authorized) |
+| Task numbering for implementation | NOT assigned (no implementation task scoped) |
+| Deploy gate | N/A (no deploy authorized; this doc is the entire deliverable) |
+| Class designation for THIS scoping doc | SCOPING-ONLY 7pt → 8pt extension CANDIDATE (see §8.2); cementation deferred — Cowork has not authorized further calibration extensions on this lever alone |
 
-**Task 9.4 (proposed name; Cowork can re-number):** "B-δ CSS LCP Render Delay Fix" — single-CSS-file fix + re-deploy + empirical re-measurement. Sister-shape to Task 9.3 POC pattern. Class: **CONFIG-ONLY** (sister to CI-CONFIG-ONLY 12th; only 1 CSS file touched).
+### §6.2 Conditions under which this lever might be revisited
 
-**Estimated Task 9.4 deliverables:**
-- 1-3 line CSS edit at `qualia-shell/src/components/Auth/LoginScreen.css`
-- Ilya redeploys to existing greenfield Vercel POC (or new throwaway branch + redeploy)
-- Claude Code re-runs `Scripts/analyze_lcp_attribution_phase9.mjs` (n=3 or n=10) against post-fix URL
-- Empirical post-fix LCP capture committed at `Docs/Baselines/<date>_Phase9_task_9_4_css_fix_lcp_attribution.json`
-- Decision gate: did the fix recover ~2,000 ms LCP as projected?
+This doc remains usable IF Cowork or Ilya later determines that Lighthouse-LCP metric hygiene becomes load-bearing — e.g.:
+- A subsequent lever is scoped that REQUIRES a clean Lighthouse-LCP baseline to attribute its impact (the current ~1,000 ms artifact would obscure the lever's effect)
+- An external stakeholder/marketing constraint requires Lighthouse-LCP improvement specifically (vs user-perceived performance)
+- The flashing pulsation UX is retired for a separate UX reason, naturally removing the artifact
 
-### §6.3 What this scoping doc does NOT authorize
+Otherwise this lever should stay deferred — fixing a Lighthouse-only artifact provides no user-experience value, and the v1 L228 gate is not approached either way.
 
-- **NO production-source edit at this scoping altitude** (SCOPING-ONLY discipline; this doc only RECOMMENDS the fix; Task 9.4 implements)
-- **NO redeploy at this scoping altitude**
-- **NO PR-open**
-- The recommendation is a doc deliverable; Ilya gates the implementation + deploy
+### §6.3 What this scoping doc does NOT do (cemented at Cowork DEFERRED verdict)
+
+- **NO production-source edit** (DEFERRED; `LoginScreen.css` UNTOUCHED)
+- **NO redeploy** (DEFERRED; throwaway branch stays at `7e822a2`)
+- **NO PR for implementation** (no implementation task scoped)
+- **NO assumption** that future levers depend on this fix landing first
+- **NO ratification** of the fix UX-trade-offs (UX team not consulted; not needed for DEFERRED state)
 
 ---
 
@@ -315,7 +325,7 @@ B-γ (island-hydration) was rejected at Task 9.3 POC-6 attribution (TBT=0 contra
 
 ### §7.3 Post-fix lever recommendations (informational)
 
-After the CSS fix, the empirical LCP baseline will be ~2,730 ms (per §4.1 projection). To progress further toward the v1 L228 ≤500 ms gate, candidate lever families:
+After the CSS fix (IF authorized + landed), the empirical LCP baseline would directionally fall toward ~2,730 ms (per §4.1 directional estimate; precise number requires empirical re-measurement). To progress further toward the v1 L228 ≤500 ms gate, candidate lever families:
 - **FCP reduction:** bundle-size reduction (Phase-7 7.10 lazy-load lever was directionally correct but exhausted; revisit other code-splitting opportunities), critical-CSS inlining
 - **Initial-paint minimization:** smaller initial DOM tree; defer non-critical components to post-paint
 - **Architectural pivot:** separate static-landing-page architecture (e.g., a `/` route that's truly static, separate from the React app) — out-of-scope for Phase-9+ without explicit authorization

@@ -579,7 +579,7 @@ Cache states behaved as constructed: unique `?cb=` URLs guaranteed MISS in cold 
 1. **B-α NOT a gate-crossing path** — ratified (ROBUST claim: HTML-delivery edge-caching does not move LCP).
 2. **headers() fix DECLINED** — hygiene-only; zero LCP impact per POC-4.
 3. **B-γ HOLD** — empirical signature (TBT=0 + TTI===LCP) contradicts hydration-JS-cost rationale.
-4. **Next lever family: UI-RENDER-OPTIMIZATION / CSS-ANIMATION-AUDIT** — 1-3 line CSS edit at `qualia-shell/src/components/Auth/LoginScreen.css` to fix the opacity-ramp animation that delays LCP element-render. Scoped at `Docs/Phase9_LCP_Element_Render_Delay_Scoping.md` (sister-shape to Task 9.2 B-α scoping; SCOPING-ONLY 7pt → 8pt extension candidate). **NO implementation at Task 9.3 altitude; deploy gate is Ilya's**.
+4. **Next lever family identified: UI-RENDER-OPTIMIZATION / CSS-ANIMATION-AUDIT** — 1-3 line CSS edit at `qualia-shell/src/components/Auth/LoginScreen.css` would address the opacity-ramp animation that delays Lighthouse LCP-element-render. Scoped at `Docs/Phase9_LCP_Element_Render_Delay_Scoping.md` (sister-shape to Task 9.2 B-α scoping; SCOPING-ONLY 7pt → 8pt extension candidate). **🔴 DEFERRED per Cowork verdict-lock 2026-05-23** — this lever is metric-hygiene-only (Lighthouse-LCP artifact, NOT user-perceived delay; text human-visible at opacity 0.3 throughout) and does NOT approach the v1 L228 ≤500 ms gate. Doc remains as a documented future option; NOT authorized for implementation at Task 9.3 close. Do NOT touch `LoginScreen.css`.
 
 ### §4.4 v1 L228 disposition implications [REVISED 2026-05-23]
 
@@ -587,7 +587,7 @@ Cache states behaved as constructed: unique `?cb=` URLs guaranteed MISS in cold 
 
 - **B-α empirical refutation is substantively-progress-NEGATIVE for the (b) PARTIAL-MET trajectory IF B-α had been the right lever.** But Task 9.3 POC-6 attribution refines: B-α was the wrong lever family entirely. The empirical bottleneck is the CSS animation on the LCP element — a measurement artifact / hygiene issue, NOT a network or hydration bottleneck.
 - **The ROBUST architectural claim** that disposition rests on: "HTML-delivery edge-caching does not move LCP" (PRIMARY signal cold-vs-warm −1.5%; same-platform; internally valid). The confounded SECONDARY comparison is held at the empirical-data altitude but NOT used as a disposition driver.
-- **NEW finding for the disposition trajectory:** the apparent ~2,000 ms FCP→LCP gap on Vercel is a CSS-animation artifact, NOT a real architectural cost. After the CSS-fix lever (per `Docs/Phase9_LCP_Element_Render_Delay_Scoping.md`) Ilya can re-measure to confirm; projected post-fix LCP ~2,730 ms (≈ Task 8.12 localhost baseline). This would CLEAN UP the measurement and reveal the "true" Vercel baseline — neither continuing the 4,653 → 3,903 → 2,724 ms trajectory dramatically further NOR confirming Framing (a) STRUCTURALLY UNATTAINABLE; it stabilizes the empirical baseline at the level of the prior Phase-8+ measurement, allowing subsequent levers to target real (not artifact) bottlenecks.
+- **NEW finding for the disposition trajectory:** the apparent ~2,000 ms FCP→LCP gap on Vercel is attributable to a CSS-animation artifact at the Lighthouse-LCP-detection altitude (per Task 9.3 POC-6 attribution), NOT a real architectural cost — and importantly, NOT a real user-perceived delay (the text IS visible at opacity 0.3 throughout). Post-CSS-fix LCP is **directional only** — a back-of-envelope estimate (~2,730 ms aligning with Task 8.12 baseline) but raw-vs-throttled timebase reconciliation (see §4.6 caveat) means precise post-fix LCP **requires empirical re-measurement**, not projection from breakdown data. If the CSS fix lands + empirical re-measurement aligns Vercel LCP with Task 8.12 baseline, this stabilizes the empirical Vercel baseline near prior Phase-8+ measurement — allowing subsequent levers (if any pursued) to target real bottlenecks at that altitude.
 - **Recommendation: sustain Framing (b) PARTIAL-MET as the live disposition.** Do NOT pre-flip to Framing (a). The CSS-animation fix is the next empirical test (low-cost; reveals what the real next bottleneck is post-fix). Real gate-crossing post-CSS-fix would still require materially different architecture (e.g., separate static landing page; per the §7.3 carry-forward in the scoping doc) — but that is a SUBSEQUENT lever, scoped AFTER the CSS fix empirically lands.
 
 ### §4.5 POC step status [UPDATED 2026-05-23]
@@ -622,7 +622,17 @@ Per Cowork PART C authorization at 2026-05-23. n=3 Lighthouse runs against the l
 | Phase | Run 1 | Run 2 | Run 3 | Median |
 |---|---|---|---|---|
 | timeToFirstByte | 208 ms | 171 ms | 188 ms | ~188 ms |
-| elementRenderDelay | **1,078 ms** | **1,103 ms** | **1,095 ms** | **~1,095 ms 🎯 dominant** |
+| elementRenderDelay | **1,078 ms** | **1,103 ms** | **1,095 ms** | **~1,095 ms** (directional indicator) |
+
+🔴 **Timebase reconciliation caveat (cemented at Cowork PART E LOCK 2026-05-23).** The `lcp-breakdown-insight` audit reports RAW observed-trace timings. These do NOT cleanly reconcile with the throttled-simulated LCP metric:
+- TTFB 188 ms + elementRenderDelay 1,095 ms = ~1,283 ms total (raw breakdown)
+- LCP metric (throttled-simulated) = ~4,750 ms median
+- Reconciliation gap: ~3,467 ms unexplained at the throttled altitude
+- elementRenderDelay 1,095 ms is also only ~half of the throttled FCP→LCP gap (~2,000 ms)
+
+The breakdown identifies the LCP element + names the dominant raw phase, but does NOT predict the exact magnitude of throttled-LCP recovery post-fix. Treat as **directional attribution** for lever-family identification; precise post-fix LCP requires empirical re-measurement.
+
+**Lighthouse-LCP-artifact-vs-user-perception caveat:** the LCP-detection threshold-crossing at opacity 0.3→1.0 ramp is a **Lighthouse measurement artifact**, NOT a real user-perceived delay. Real users SEE the "CLICK TO ACCESS TERMINAL" text at opacity 0.3 throughout the animation — the text is human-visible from first paint (FCP). Fixing the CSS animation improves the Lighthouse-LCP metric but does NOT improve user-perceived time-to-content. This makes the CSS-fix lever **metric-hygiene-only** — useful for clean Lighthouse reporting, NOT for actual user-experience improvement.
 
 **Critical-path network requests:** 15 total in the run; all complete by ~700 ms. **0 requests in FCP→LCP window** across all 3 runs (confirms no network blocker in the gap).
 
@@ -671,7 +681,15 @@ Phase-8+ Task 8.12 LCP baseline (localhost; ssr:true):  median 2,724 ms
 Phase-9+ Task 9.3 POC-4 LCP (Vercel; ssr:true):         median 4,705 ms (warm-HIT)
 Phase-9+ Task 9.3 POC-6 attribution:                     +1,095 ms artifact from CSS animation
                                                          (NOT network overhead; NOT hydration cost)
-Projected post-CSS-fix LCP (Vercel; ssr:true):           median ~2,730 ms (≈ Task 8.12 baseline; pending empirical verify)
+Projected post-CSS-fix LCP (Vercel; ssr:true):           DIRECTIONAL only — precise post-fix
+                                                         LCP requires empirical re-measurement
+                                                         (~2,730 ms is a back-of-envelope
+                                                          estimate aligning with Task 8.12
+                                                          baseline; raw-vs-throttled timebase
+                                                          reconciliation gap makes the exact
+                                                          number unverifiable from breakdown
+                                                          data alone — see timebase caveat
+                                                          at §4.6 LCP phases table)
 ```
 
 The Vercel +72.7% LCP penalty surfaced at POC-4 SECONDARY comparison is structurally explained: ~2,000 ms of it is the CSS animation artifact + a smaller residual from network overhead. After the CSS fix, Vercel LCP should align with Task 8.12 localhost baseline — confirming Vercel-edge is NOT structurally worse than localhost SSR for this workload (per Cowork PART A "Do NOT lean on Vercel-worse-than-localhost" guidance).

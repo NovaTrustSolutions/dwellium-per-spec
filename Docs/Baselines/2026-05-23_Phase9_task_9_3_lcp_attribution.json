@@ -1,0 +1,526 @@
+{
+  "capturedAt": "2026-05-23T17:25:10.590Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "phase9_task_9_3_lcp_attribution",
+  "target": "https://dwellium-per-spec.vercel.app/",
+  "runCount": 3,
+  "methodology": "Lighthouse n=N against live URL; full artifact capture; LCP element + network FCP→LCP window + critical chains + throttling config + main-thread-idle assessment",
+  "cowork_partC_authorization": "Phase-9+ Task 9.3 POC-6 LCP-attribution analysis per Cowork verdict-lock 2026-05-23",
+  "sourceProvenanceNotes": {
+    "UserContext_post_hydration_fetch": "UserContext.tsx:285-288 — useEffect exits IMMEDIATELY if token is null (setIsLoading(false) + return). Lighthouse runs with fresh state (no localStorage token) → /api/auth/me fetch DOES NOT FIRE in Lighthouse runs. Original hypothesis NEEDS empirical REFINEMENT.",
+    "LoginScreen_data_fetching": "qualia-shell/src/components/Auth/LoginScreen.tsx — pure render component; NO useEffect, NO fetch on mount.",
+    "LoginScreen_lazy_loaded": "App.tsx wraps AuthGate children in <Suspense fallback={spinner}>; LoginScreen is imported via lazyWithReload pattern. After hydration, Suspense renders → chunk fetch over network → potential FCP→LCP gap contributor."
+  },
+  "runs": [
+    {
+      "runIndex": 1,
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "metrics": {
+        "FCP": 2732.5100000000007,
+        "LCP": 4794.393,
+        "TBT": 0,
+        "TTI": 4794.393,
+        "SI": 2988.5620142459875,
+        "TTFB": 33
+      },
+      "fcpToLcpGap": 2061.8829999999994,
+      "lcpElement": {
+        "nodeLabel": "CLICK TO ACCESS TERMINAL",
+        "selector": "body > div.login-start-overlay > div.login-start-text",
+        "snippet": "<div class=\"login-start-text\">",
+        "path": "1,HTML,1,BODY,1,DIV,0,DIV",
+        "boundingRect": {
+          "top": 403,
+          "bottom": 420,
+          "left": 58,
+          "right": 354,
+          "width": 297,
+          "height": 17
+        }
+      },
+      "lcpPhases": [
+        {
+          "subpart": "timeToFirstByte",
+          "label": "Time to first byte",
+          "durationMs": 207.904
+        },
+        {
+          "subpart": "elementRenderDelay",
+          "label": "Element render delay",
+          "durationMs": 1078.49
+        }
+      ],
+      "lcpDiscoveryStatus": "notApplicable",
+      "requestsInFcpLcpWindow": [],
+      "topLatestRequests": [
+        {
+          "url": "https://dwellium-per-spec.vercel.app/vite.svg",
+          "startTimeMs": 629.2590000629425,
+          "endTimeMs": 702.9820001125336,
+          "durationMs": 73.72300004959106,
+          "transferSize": 2921,
+          "resourceSize": 7570,
+          "resourceType": "Other",
+          "statusCode": 200,
+          "mimeType": "text/html"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/strata-astra-logo.png",
+          "startTimeMs": 629.4049999713898,
+          "endTimeMs": 702.6979999542236,
+          "durationMs": 73.29299998283386,
+          "transferSize": 376595,
+          "resourceSize": 376207,
+          "resourceType": "Other",
+          "statusCode": 200,
+          "mimeType": "image/png"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/astra-strata-logo.png",
+          "startTimeMs": 391.58200001716614,
+          "endTimeMs": 627.7030000686646,
+          "durationMs": 236.1210000514984,
+          "transferSize": 31553,
+          "resourceSize": 31393,
+          "resourceType": "Image",
+          "statusCode": 200,
+          "mimeType": "image/png"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/nebula-bg.mp4",
+          "startTimeMs": 392.1950001716614,
+          "endTimeMs": 563.7710001468658,
+          "durationMs": 171.57599997520447,
+          "transferSize": 10970225,
+          "resourceSize": 10485760,
+          "resourceType": "Media",
+          "statusCode": 206,
+          "mimeType": "video/mp4"
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+          "startTimeMs": 369.37400007247925,
+          "endTimeMs": 408.6210000514984,
+          "durationMs": 39.246999979019165,
+          "transferSize": 48464,
+          "resourceSize": 48432,
+          "resourceType": "Font",
+          "statusCode": 200,
+          "mimeType": "font/woff2"
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Montserrat:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;600;700&family=Poppins:wght@400;500;600;700;800&family=Open+Sans:wght@300;400;600;700&family=Nunito:wght@400;600;700;800&family=Lato:wght@300;400;700;900&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;600;700&family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap",
+          "startTimeMs": 237.0090000629425,
+          "endTimeMs": 362.9249999523163,
+          "durationMs": 125.91599988937378,
+          "transferSize": 6168,
+          "resourceSize": 176561,
+          "resourceType": "Stylesheet",
+          "statusCode": 200,
+          "mimeType": "text/css"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/manifest.json",
+          "startTimeMs": 237.53700017929077,
+          "endTimeMs": 353.7890000343323,
+          "durationMs": 116.2519998550415,
+          "transferSize": 918,
+          "resourceSize": 620,
+          "resourceType": "Manifest",
+          "statusCode": 200,
+          "mimeType": "application/json"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/entry.client-PwuHOHUl.js",
+          "startTimeMs": 236.01400017738342,
+          "endTimeMs": 321.0220000743866,
+          "durationMs": 85.00799989700317,
+          "transferSize": 61147,
+          "resourceSize": 187619,
+          "resourceType": "Script",
+          "statusCode": 200,
+          "mimeType": "application/javascript"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/default-DQ_9coq3.js",
+          "startTimeMs": 236.73200011253357,
+          "endTimeMs": 299.739000082016,
+          "durationMs": 63.00699996948242,
+          "transferSize": 237,
+          "resourceSize": 101,
+          "resourceType": "Script",
+          "statusCode": 200,
+          "mimeType": "application/javascript"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/index-DSYtz-1x.js",
+          "startTimeMs": 236.45600008964539,
+          "endTimeMs": 289.88700008392334,
+          "durationMs": 53.430999994277954,
+          "transferSize": 1824,
+          "resourceSize": 3918,
+          "resourceType": "Script",
+          "statusCode": 200,
+          "mimeType": "application/javascript"
+        }
+      ],
+      "criticalChains": null,
+      "longestChainDurationMs": null,
+      "throttling": {
+        "method": "simulate",
+        "formFactor": "mobile",
+        "cpuSlowdownMultiplier": 4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "rttMs": 150
+      },
+      "additional": {
+        "totalByteWeight": 11577819,
+        "mainThreadTasksMs": 344.7840000000011,
+        "renderBlockingResourceCount": 0,
+        "renderBlockingTopFive": []
+      }
+    },
+    {
+      "runIndex": 2,
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "metrics": {
+        "FCP": 2727.9710000000005,
+        "LCP": 4728.505000000001,
+        "TBT": 0,
+        "TTI": 4728.505000000001,
+        "SI": 3025.648885910893,
+        "TTFB": 34
+      },
+      "fcpToLcpGap": 2000.5340000000006,
+      "lcpElement": {
+        "nodeLabel": "CLICK TO ACCESS TERMINAL",
+        "selector": "body > div.login-start-overlay > div.login-start-text",
+        "snippet": "<div class=\"login-start-text\">",
+        "path": "1,HTML,1,BODY,1,DIV,0,DIV",
+        "boundingRect": {
+          "top": 403,
+          "bottom": 420,
+          "left": 58,
+          "right": 354,
+          "width": 297,
+          "height": 17
+        }
+      },
+      "lcpPhases": [
+        {
+          "subpart": "timeToFirstByte",
+          "label": "Time to first byte",
+          "durationMs": 170.813
+        },
+        {
+          "subpart": "elementRenderDelay",
+          "label": "Element render delay",
+          "durationMs": 1103.032
+        }
+      ],
+      "lcpDiscoveryStatus": "notApplicable",
+      "requestsInFcpLcpWindow": [],
+      "topLatestRequests": [
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/strata-astra-logo.png",
+          "startTimeMs": 528.6350002288818,
+          "endTimeMs": 652.8550002574921,
+          "durationMs": 124.22000002861023,
+          "transferSize": 376557,
+          "resourceSize": 376207,
+          "resourceType": "Other",
+          "statusCode": 200,
+          "mimeType": "image/png"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/vite.svg",
+          "startTimeMs": 528.275000333786,
+          "endTimeMs": 652.2160000801086,
+          "durationMs": 123.94099974632263,
+          "transferSize": 2834,
+          "resourceSize": 7570,
+          "resourceType": "Other",
+          "statusCode": 200,
+          "mimeType": "text/html"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/nebula-bg.mp4",
+          "startTimeMs": 327.14400029182434,
+          "endTimeMs": 499.45100021362305,
+          "durationMs": 172.3069999217987,
+          "transferSize": 11023566,
+          "resourceSize": 10485760,
+          "resourceType": "Media",
+          "statusCode": 206,
+          "mimeType": "video/mp4"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/astra-strata-logo.png",
+          "startTimeMs": 326.4920001029968,
+          "endTimeMs": 499.32200026512146,
+          "durationMs": 172.83000016212463,
+          "transferSize": 31553,
+          "resourceSize": 31393,
+          "resourceType": "Image",
+          "statusCode": 200,
+          "mimeType": "image/png"
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+          "startTimeMs": 303.11500000953674,
+          "endTimeMs": 465.1230001449585,
+          "durationMs": 162.00800013542175,
+          "transferSize": 48464,
+          "resourceSize": 48432,
+          "resourceType": "Font",
+          "statusCode": 200,
+          "mimeType": "font/woff2"
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Montserrat:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;600;700&family=Poppins:wght@400;500;600;700;800&family=Open+Sans:wght@300;400;600;700&family=Nunito:wght@400;600;700;800&family=Lato:wght@300;400;700;900&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;600;700&family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap",
+          "startTimeMs": 195.73100018501282,
+          "endTimeMs": 297.342000246048,
+          "durationMs": 101.61100006103516,
+          "transferSize": 6168,
+          "resourceSize": 176561,
+          "resourceType": "Stylesheet",
+          "statusCode": 200,
+          "mimeType": "text/css"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/manifest.json",
+          "startTimeMs": 196.18700003623962,
+          "endTimeMs": 294.5120003223419,
+          "durationMs": 98.3250002861023,
+          "transferSize": 918,
+          "resourceSize": 620,
+          "resourceType": "Manifest",
+          "statusCode": 200,
+          "mimeType": "application/json"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/chunk-4N6VE7H7-bjxrEy6E.js",
+          "startTimeMs": 195.13500022888184,
+          "endTimeMs": 274.40900015830994,
+          "durationMs": 79.2739999294281,
+          "transferSize": 45358,
+          "resourceSize": 130204,
+          "resourceType": "Script",
+          "statusCode": 200,
+          "mimeType": "application/javascript"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/default-BebuHEVu.css",
+          "startTimeMs": 196.08300018310547,
+          "endTimeMs": 255.0750002861023,
+          "durationMs": 58.992000102996826,
+          "transferSize": 9533,
+          "resourceSize": 49312,
+          "resourceType": "Stylesheet",
+          "statusCode": 200,
+          "mimeType": "text/css"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/default-CYAPqHRm.js",
+          "startTimeMs": 195.6360001564026,
+          "endTimeMs": 254.83400011062622,
+          "durationMs": 59.19799995422363,
+          "transferSize": 18338,
+          "resourceSize": 55965,
+          "resourceType": "Script",
+          "statusCode": 200,
+          "mimeType": "application/javascript"
+        }
+      ],
+      "criticalChains": null,
+      "longestChainDurationMs": null,
+      "throttling": {
+        "method": "simulate",
+        "formFactor": "mobile",
+        "cpuSlowdownMultiplier": 4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "rttMs": 150
+      },
+      "additional": {
+        "totalByteWeight": 11631026,
+        "mainThreadTasksMs": 369.6680000000019,
+        "renderBlockingResourceCount": 0,
+        "renderBlockingTopFive": []
+      }
+    },
+    {
+      "runIndex": 3,
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "metrics": {
+        "FCP": 2745.506,
+        "LCP": 4748.913999999999,
+        "TBT": 0,
+        "TTI": 4748.913999999999,
+        "SI": 3061.463700120831,
+        "TTFB": 32
+      },
+      "fcpToLcpGap": 2003.407999999999,
+      "lcpElement": {
+        "nodeLabel": "CLICK TO ACCESS TERMINAL",
+        "selector": "body > div.login-start-overlay > div.login-start-text",
+        "snippet": "<div class=\"login-start-text\">",
+        "path": "1,HTML,1,BODY,1,DIV,0,DIV",
+        "boundingRect": {
+          "top": 403,
+          "bottom": 420,
+          "left": 58,
+          "right": 354,
+          "width": 297,
+          "height": 17
+        }
+      },
+      "lcpPhases": [
+        {
+          "subpart": "timeToFirstByte",
+          "label": "Time to first byte",
+          "durationMs": 188.17700024414063
+        },
+        {
+          "subpart": "elementRenderDelay",
+          "label": "Element render delay",
+          "durationMs": 1095.4559997558595
+        }
+      ],
+      "lcpDiscoveryStatus": "notApplicable",
+      "requestsInFcpLcpWindow": [],
+      "topLatestRequests": [
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/strata-astra-logo.png",
+          "startTimeMs": 522.5190000534058,
+          "endTimeMs": 629.6599998474121,
+          "durationMs": 107.14099979400635,
+          "transferSize": 376584,
+          "resourceSize": 376207,
+          "resourceType": "Other",
+          "statusCode": 200,
+          "mimeType": "image/png"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/vite.svg",
+          "startTimeMs": 522.2640001773834,
+          "endTimeMs": 629.3340001106262,
+          "durationMs": 107.0699999332428,
+          "transferSize": 2837,
+          "resourceSize": 7570,
+          "resourceType": "Other",
+          "statusCode": 200,
+          "mimeType": "text/html"
+        },
+        {
+          "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+          "startTimeMs": 316.3270001411438,
+          "endTimeMs": 493.4260001182556,
+          "durationMs": 177.09899997711182,
+          "transferSize": 48464,
+          "resourceSize": 48432,
+          "resourceType": "Font",
+          "statusCode": 200,
+          "mimeType": "font/woff2"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/nebula-bg.mp4",
+          "startTimeMs": 338.5279998779297,
+          "endTimeMs": 493.19399976730347,
+          "durationMs": 154.66599988937378,
+          "transferSize": 10966947,
+          "resourceSize": 10485760,
+          "resourceType": "Media",
+          "statusCode": 206,
+          "mimeType": "video/mp4"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/astra-strata-logo.png",
+          "startTimeMs": 337.9300000667572,
+          "endTimeMs": 493.0590000152588,
+          "durationMs": 155.1289999485016,
+          "transferSize": 31553,
+          "resourceSize": 31393,
+          "resourceType": "Image",
+          "statusCode": 200,
+          "mimeType": "image/png"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/manifest.json",
+          "startTimeMs": 204.60800004005432,
+          "endTimeMs": 319.1060001850128,
+          "durationMs": 114.4980001449585,
+          "transferSize": 918,
+          "resourceSize": 620,
+          "resourceType": "Manifest",
+          "statusCode": 200,
+          "mimeType": "application/json"
+        },
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Montserrat:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;600;700&family=Poppins:wght@400;500;600;700;800&family=Open+Sans:wght@300;400;600;700&family=Nunito:wght@400;600;700;800&family=Lato:wght@300;400;700;900&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;600;700&family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap",
+          "startTimeMs": 204.1529998779297,
+          "endTimeMs": 310.4979999065399,
+          "durationMs": 106.34500002861023,
+          "transferSize": 6168,
+          "resourceSize": 176561,
+          "resourceType": "Stylesheet",
+          "statusCode": 200,
+          "mimeType": "text/css"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/default-CYAPqHRm.js",
+          "startTimeMs": 204.03099989891052,
+          "endTimeMs": 279.92400002479553,
+          "durationMs": 75.89300012588501,
+          "transferSize": 18338,
+          "resourceSize": 55965,
+          "resourceType": "Script",
+          "statusCode": 200,
+          "mimeType": "application/javascript"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/default-DQ_9coq3.js",
+          "startTimeMs": 203.9340000152588,
+          "endTimeMs": 279.8430001735687,
+          "durationMs": 75.90900015830994,
+          "transferSize": 237,
+          "resourceSize": 101,
+          "resourceType": "Script",
+          "statusCode": 200,
+          "mimeType": "application/javascript"
+        },
+        {
+          "url": "https://dwellium-per-spec.vercel.app/assets/default-BebuHEVu.css",
+          "startTimeMs": 204.50600004196167,
+          "endTimeMs": 279.6630001068115,
+          "durationMs": 75.15700006484985,
+          "transferSize": 9533,
+          "resourceSize": 49312,
+          "resourceType": "Stylesheet",
+          "statusCode": 200,
+          "mimeType": "text/css"
+        }
+      ],
+      "criticalChains": null,
+      "longestChainDurationMs": null,
+      "throttling": {
+        "method": "simulate",
+        "formFactor": "mobile",
+        "cpuSlowdownMultiplier": 4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "rttMs": 150
+      },
+      "additional": {
+        "totalByteWeight": 11574435,
+        "mainThreadTasksMs": 333.9600000000019,
+        "renderBlockingResourceCount": 0,
+        "renderBlockingTopFive": []
+      }
+    }
+  ]
+}

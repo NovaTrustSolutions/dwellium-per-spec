@@ -21,3 +21,4 @@ qualia-shell/cdp_probe_task_*.cjs
 
 # Alt-dist directory from external build contexts (session-local)
 qualia-shell/dist-external/
+.vercel

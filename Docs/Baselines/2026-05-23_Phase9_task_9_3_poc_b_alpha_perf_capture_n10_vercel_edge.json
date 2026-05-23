@@ -1,0 +1,844 @@
+{
+  "capturedAt": "2026-05-23T01:06:57.823Z",
+  "repo": "Dwellium-per-spec / qualia-shell",
+  "task": "phase9_task_9_3_poc_b_alpha",
+  "captureSuffix": "_n10_vercel_edge",
+  "rootRunCount": 10,
+  "target": "https://dwellium-per-spec.vercel.app/",
+  "methodology": "Cold-MISS (unique ?cb=<id> per run; guaranteed fresh cache key) vs Warm-HIT (fixed URL; expected edge cache HIT after first warm) cohorts; n=LH_ROOT_RUNS each; Lighthouse navigation against the live URL with default simulated throttling (matches Task 8.12 method byte-for-byte); PRIMARY delta = warm-HIT median vs cold-MISS median per metric; SECONDARY delta = warm-HIT median vs Task 8.12 localhost baseline (CAVEATED apples-to-oranges)",
+  "v1Thresholds": {
+    "LCP_ms": 500,
+    "CLS": 0.1,
+    "a11yScore": 95,
+    "source": "AppFolio_Parity_Implementation_Plan.md L228"
+  },
+  "pocContext": {
+    "pocDeployUrl": "https://dwellium-per-spec.vercel.app/",
+    "pocDeployBranch": "feat/phase-9-task-9.3-vercel-deploy-only",
+    "pocDeployCommit": "7e822a2",
+    "partAFinding": "H2 — RR v7 framework-mode only invokes route headers() when loader/action present; loaderless default.tsx → custom Cache-Control NOT applied. Vercel MISS→HIT pattern at default-edge behavior (public, max-age=0). POC-4 measures default-edge-cache impact, NOT custom-Cache-Control impact."
+  },
+  "coldMissRuns": [
+    {
+      "runIndex": 1,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498250455_1_n8onf9xw",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.79,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2761.7880000000005,
+        "LCP": 4535.051,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3013.317083857729,
+        "TTI": 4535.051,
+        "TTFB": 31
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 2,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498259339_2_nnzqivh3",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.77,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2868.1329999999994,
+        "LCP": 4836.0289999999995,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3222.1738377210613,
+        "TTI": 4836.029,
+        "TTFB": 47
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 3,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498267790_3_h0ez2t0u",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.77,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2886.6180000000004,
+        "LCP": 4782.118,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3121.903428007318,
+        "TTI": 4782.118,
+        "TTFB": 49
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 4,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498276146_4_llawnvaz",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2753.123,
+        "LCP": 4826.710999999999,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3105.837198034951,
+        "TTI": 4826.710999999999,
+        "TTFB": 56
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 5,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498284471_5_5o1jt9c1",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.77,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2919.506,
+        "LCP": 4891.597000000002,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3280.3351018308645,
+        "TTI": 4891.597000000002,
+        "TTFB": 46
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 6,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498292984_6_4iikgueu",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.76,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2962.8509999999997,
+        "LCP": 4980.694999999999,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3122.668733877087,
+        "TTI": 4980.695,
+        "TTFB": 48
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 7,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498301347_7_ph2k21kr",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.79,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2780.417,
+        "LCP": 4558.524,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3124.942432136345,
+        "TTI": 4558.524000000001,
+        "TTFB": 38
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 8,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498309625_8_intyneg4",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2815.2639999999997,
+        "LCP": 4716.192,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3115.7466519990926,
+        "TTI": 4716.192,
+        "TTFB": 37
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 9,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498317902_9_7m6vecni",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2806.957,
+        "LCP": 4745.802,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3089.603250142861,
+        "TTI": 4745.802,
+        "TTFB": 28
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 10,
+      "label": "COLD-MISS",
+      "url": "https://dwellium-per-spec.vercel.app/?cb=1779498326193_10_djahga17",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "MISS",
+        "age": "0",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2711.229,
+        "LCP": 4767.467999999999,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3029.304750022029,
+        "TTI": 4767.467999999999,
+        "TTFB": 33
+      },
+      "cluster": "B"
+    }
+  ],
+  "warmHitRuns": [
+    {
+      "runIndex": 1,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "STALE",
+        "age": "344",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.77,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2746.6580000000004,
+        "LCP": 4857.955,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3018.8845940100673,
+        "TTI": 4857.955,
+        "TTFB": 105
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 2,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "8",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2734.572,
+        "LCP": 4730.494,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3042.6432621400836,
+        "TTI": 4730.494000000001,
+        "TTFB": 39
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 3,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "16",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.94,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2107.087,
+        "LCP": 2712.3839999999996,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 2107.087,
+        "TTI": 2712.384,
+        "TTFB": 95
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 4,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "25",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.95,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 1996.3909999999998,
+        "LCP": 2707.214,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 1996.3909999999998,
+        "TTI": 2707.214,
+        "TTFB": 35
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 5,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "32",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2720.546,
+        "LCP": 4784.857,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3029.2120140704155,
+        "TTI": 4784.857,
+        "TTFB": 35
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 6,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "40",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2760.3110000000006,
+        "LCP": 4686.1,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3060.8435279358855,
+        "TTI": 4686.1,
+        "TTFB": 33
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 7,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "49",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2719.99,
+        "LCP": 4683.093,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3040.31240822935,
+        "TTI": 4683.093000000001,
+        "TTFB": 40
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 8,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "57",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2708.4649999999992,
+        "LCP": 4774.36,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3037.3415280446998,
+        "TTI": 4774.360000000001,
+        "TTFB": 41
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 9,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "65",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2748.1259999999997,
+        "LCP": 4723.725,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3019.1053441409103,
+        "TTI": 4723.725,
+        "TTFB": 38
+      },
+      "cluster": "B"
+    },
+    {
+      "runIndex": 10,
+      "label": "WARM-HIT",
+      "url": "https://dwellium-per-spec.vercel.app/",
+      "preProbeHeaders": {
+        "status": 200,
+        "xVercelCache": "HIT",
+        "age": "73",
+        "cacheControl": "public, max-age=0",
+        "server": "Vercel",
+        "rawError": null
+      },
+      "scores": {
+        "performance": 0.78,
+        "accessibility": 0.9,
+        "bestPractices": 1,
+        "seo": 0.92
+      },
+      "metrics": {
+        "FCP": 2833.897,
+        "LCP": 4608.501,
+        "TBT": 0,
+        "CLS": 0,
+        "SI": 3091.839837983418,
+        "TTI": 4608.501,
+        "TTFB": 38
+      },
+      "cluster": "B"
+    }
+  ],
+  "coldMissStats": {
+    "FCP": {
+      "n": 10,
+      "mean": 2826.5885999999996,
+      "median": 2811.1105,
+      "min": 2711.229,
+      "max": 2962.8509999999997,
+      "range": 251.62199999999984,
+      "stddev": 76.21034266974522,
+      "cv": 2.6961950766285985
+    },
+    "LCP": {
+      "n": 10,
+      "mean": 4764.0187,
+      "median": 4774.793,
+      "min": 4535.051,
+      "max": 4980.694999999999,
+      "range": 445.6439999999984,
+      "stddev": 130.36627343454265,
+      "cv": 2.736476946124134
+    },
+    "TBT": {
+      "n": 10,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "range": 0,
+      "stddev": 0,
+      "cv": null
+    },
+    "CLS": {
+      "n": 10,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "range": 0,
+      "stddev": 0,
+      "cv": null
+    },
+    "SI": {
+      "n": 10,
+      "mean": 3122.5832467629334,
+      "median": 3118.8250400032052,
+      "min": 3013.317083857729,
+      "max": 3280.3351018308645,
+      "range": 267.01801797313556,
+      "stddev": 75.4087464855838,
+      "cv": 2.414947513849543
+    },
+    "TTI": {
+      "n": 10,
+      "mean": 4764.0187,
+      "median": 4774.793,
+      "min": 4535.051,
+      "max": 4980.695,
+      "range": 445.6439999999993,
+      "stddev": 130.3662734345427,
+      "cv": 2.736476946124135
+    },
+    "TTFB": {
+      "n": 10,
+      "mean": 41.3,
+      "median": 42,
+      "min": 28,
+      "max": 56,
+      "range": 28,
+      "stddev": 8.69540108333135,
+      "cv": 21.054239911213923
+    }
+  },
+  "warmHitStats": {
+    "FCP": {
+      "n": 10,
+      "mean": 2607.6043,
+      "median": 2727.559,
+      "min": 1996.3909999999998,
+      "max": 2833.897,
+      "range": 837.5060000000001,
+      "stddev": 280.96073007808405,
+      "cv": 10.774668920360503
+    },
+    "LCP": {
+      "n": 10,
+      "mean": 4326.8683,
+      "median": 4704.9125,
+      "min": 2707.214,
+      "max": 4857.955,
+      "range": 2150.741,
+      "stddev": 811.0218576085418,
+      "cv": 18.74385355358613
+    },
+    "TBT": {
+      "n": 10,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "range": 0,
+      "stddev": 0,
+      "cv": null
+    },
+    "CLS": {
+      "n": 10,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "range": 0,
+      "stddev": 0,
+      "cv": null
+    },
+    "SI": {
+      "n": 10,
+      "mean": 2844.366051655483,
+      "median": 3033.2767710575577,
+      "min": 1996.3909999999998,
+      "max": 3091.839837983418,
+      "range": 1095.4488379834181,
+      "stddev": 397.59964713529314,
+      "cv": 13.978497841509588
+    },
+    "TTI": {
+      "n": 10,
+      "mean": 4326.8683,
+      "median": 4704.9125,
+      "min": 2707.214,
+      "max": 4857.955,
+      "range": 2150.741,
+      "stddev": 811.021857608542,
+      "cv": 18.743853553586135
+    },
+    "TTFB": {
+      "n": 10,
+      "mean": 49.9,
+      "median": 38.5,
+      "min": 33,
+      "max": 105,
+      "range": 72,
+      "stddev": 25.256484315913806,
+      "cv": 50.61419702587937
+    }
+  },
+  "clusterDistribution": {
+    "coldMiss": {
+      "clusterA": 0,
+      "clusterB": 10,
+      "total": 10
+    },
+    "warmHit": {
+      "clusterA": 0,
+      "clusterB": 10,
+      "total": 10
+    }
+  },
+  "cacheAttribution": {
+    "coldMiss": {
+      "runsWithMiss": 10,
+      "runsWithHit": 0,
+      "runsWithOther": 0
+    },
+    "warmHit": {
+      "runsWithMiss": 0,
+      "runsWithHit": 9,
+      "runsWithOther": 1
+    }
+  },
+  "primaryDelta_warmHit_vs_coldMiss": {
+    "FCP": {
+      "coldMedian": 2811.1105,
+      "warmMedian": 2727.559,
+      "deltaAbs": -83.55149999999958,
+      "deltaPct": -2.97218839316347
+    },
+    "LCP": {
+      "coldMedian": 4774.793,
+      "warmMedian": 4704.9125,
+      "deltaAbs": -69.8804999999993,
+      "deltaPct": -1.463529413735827
+    },
+    "TBT": {
+      "coldMedian": 0,
+      "warmMedian": 0,
+      "deltaAbs": 0,
+      "deltaPct": null
+    },
+    "CLS": {
+      "coldMedian": 0,
+      "warmMedian": 0,
+      "deltaAbs": 0,
+      "deltaPct": null
+    },
+    "SI": {
+      "coldMedian": 3118.8250400032052,
+      "warmMedian": 3033.2767710575577,
+      "deltaAbs": -85.54826894564758,
+      "deltaPct": -2.7429646693345666
+    },
+    "TTI": {
+      "coldMedian": 4774.793,
+      "warmMedian": 4704.9125,
+      "deltaAbs": -69.8804999999993,
+      "deltaPct": -1.463529413735827
+    },
+    "TTFB": {
+      "coldMedian": 42,
+      "warmMedian": 38.5,
+      "deltaAbs": -3.5,
+      "deltaPct": -8.333333333333332
+    }
+  },
+  "secondaryDelta_warmHit_vs_task8_12_localhost_baseline": {
+    "LCP": {
+      "baseline": 2723.65,
+      "warmMedian": 4704.9125,
+      "deltaAbs": 1981.2625000000003,
+      "deltaPct": 72.74291851008758
+    },
+    "FCP": {
+      "baseline": 1953.66,
+      "warmMedian": 2727.559,
+      "deltaAbs": 773.8990000000001,
+      "deltaPct": 39.61277806783166
+    },
+    "TTFB": {
+      "baseline": null,
+      "warmMedian": 38.5,
+      "deltaAbs": null,
+      "deltaPct": null
+    }
+  },
+  "gateCrossingPerRun": {
+    "threshold_ms": 500,
+    "coldMissCrossingCount": 0,
+    "coldMissCrossingPct": 0,
+    "warmHitCrossingCount": 0,
+    "warmHitCrossingPct": 0
+  }
+}

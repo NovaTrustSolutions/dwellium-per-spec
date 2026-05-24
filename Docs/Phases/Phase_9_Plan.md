@@ -221,36 +221,31 @@ Per Phase-8+ Task 8.13 SCOPING-ONLY 5pt cementation — perf-lever scoping disci
 
 ---
 
-## §5. Block C scope — Project-wide housekeeping (**PARALLEL / OPPORTUNISTIC, non-gating per OQ-3 LOCK**)
+## §5. Block C scope — Project-wide housekeeping (**🎯 FULLY CLOSED at Phase-9+ Task 9.5 — DOC-CORRECTION-ONLY**)
 
-**🎯 OQ-3 LOCK at Phase-9+ Task 9.2 OPENING (Ilya verdict 2026-05-21).** Block C items run PARALLEL / OPPORTUNISTIC; **none of C1+C2 gates Block B** (the B-α scoping spine). C3 already RESOLVED at 9.1 OPENER `5043587`. Block C items can interleave with Block A polish or Block B architectural-axis exploration; ordering is opportunistic-based-on-availability (not phase-architecture-based).
+**🎯 Block C FULLY CLOSED at Phase-9+ Task 9.5 close (2026-05-23) per Ilya stakeholder verdict-lock.** All 3 Block C items resolved: C1 RESOLVED at Phase-7 (pre-Phase-9+ baseline); C2 ACCEPTED+MONITORED per Ilya 2026-05-23; C3 RESOLVED at 9.1 OPENER. Task 9.5 DOC-CORRECTION-ONLY: refutes the stale C1 CLAUDE.md entry + reframes C2 disposition + cements C3 resolution. ZERO production source touched; +0 vitest; +0 new classes.
 
-### C1 — Linux Playwright baselines (8 *-chromium-linux.png)
+### C1 — Linux Playwright baselines (8 *-chromium-linux.png) — **🎯 RESOLVED at Phase-7 Tasks 7.5 + 7.6 (`16c2ac2` PR #60 2026-05-13)**
 
-**Scope.** Dispatch `capture-linux-baselines.yml` workflow_dispatch with `dry_run=false` to capture 8 `*-chromium-linux.png` baselines on Ubuntu CI; commit + flip parity-gate screenshot-baseline step `continue-on-error: false` BLOCKING.
+**🎯 RESOLVED PRE-PHASE-9+.** Empirically verified at Phase-9+ Task 9.5 PRE0:
+- 8 `*-chromium-linux.png` baselines committed at `qualia-shell/e2e/screenshot-baseline.spec.ts-snapshots/` (accounting + leasing + maintenance + overview + owners + properties + residents + vendors)
+- Squash-SHA `16c2ac2` via PR #60 at Phase-7 Task 7.5 capture cycle (capture run 25779329286 on `phase-7/linux-baseline-capture-25779329286` auto-branch)
+- Phase-7 Task 7.6 (`continue-on-error: true → false` GATE-FLIP) completed the 5-step screenshot-baseline blocking-gate arc (SPEC `toHaveScreenshot` hard-assert by construction + WORKFLOW step-split @ 7.3 + INFRASTRUCTURE @ 7.4 + CAPTURE @ 7.5 + GATE-FLIP @ 7.6); empirical signal parity gate run 25780671522 PASSED 3.1m on Linux CI under flipped config
+- Both blocking-gate arcs (axe-baseline + screenshot-baseline) now genuinely blocking on Linux CI per `.github/workflows/appfolio-parity-gate.yml:158` + `:165` `continue-on-error: false`
 
-**Infrastructure state at HEAD-post-Phase-8+.** Workflow exists at `.github/workflows/capture-linux-baselines.yml` (laid at Phase-7 Task 7.4); axe-baseline E2E step already BLOCKING per Phase-7 Task 7.3 split; screenshot-baseline step remains sheltered with `continue-on-error: true`.
+**C1 stale-deferred-item refutation cemented at `Docs/CLAUDE_history.md`** as v2.60.1 cluster 17th-altitude candidate (sub-shape: `cited-deferred-item-DOES-NOT-MATCH-repo-state-empirical-refutation`; cited "Linux baselines open" REFUTED by 8 committed PNGs + blocking CI step + PR #60 squash-SHA verifiable). Sister-altitude to Task 9.4 PRE0 17th-altitude candidate `cited-directory-paths-DO-NOT-EXIST` (both surface as PRE0 empirical-vs-cited refutations at Phase-9+ task-PRE0-discipline altitude). Final v2.60.1 17th-altitude cementation at Cowork verdict-altitude (deferred to closer / next opener).
 
-**Dispatch command.** `gh workflow run "Capture Linux Playwright Baselines (workflow_dispatch only)" --ref main -f reason="<reason>" -f dry_run=false` (per CLAUDE.md Useful commands).
+### C2 — `nebula-bg.mp4` 74,409,677 B asset — **🎯 ACCEPTED + MONITORED per Ilya 2026-05-23**
 
-**Estimated task altitude.** CI-CONFIG-ONLY class (12th cumulative; cemented at Phase-7 Task 7.3) — workflow run + baseline commit + step-flip; vitest delta +0.
+**🎯 ACCEPTED + MONITORED disposition per Ilya stakeholder verdict-lock 2026-05-23 (Phase-9+ Task 9.5 close).** 74,409,677 B / 70.96 MiB asset committed in git at `qualia-shell/public/assets/nebula-bg.mp4`; under GitHub's 100 MB hard limit (only over 50 MB soft-warning). No action required at this Phase-9+ closure altitude. **LFS-migrate guardrail REMAINS in force** — `git lfs migrate` is OUT OF SCOPE on `main` without explicit instruction (history rewrite); revisit only if a future push approaches the 100 MB hard limit or asset count grows. Original decision tree (Option (i) LFS / Option (ii) CDN / Option (iii) smaller replacement) preserved at history altitude but NOT executed at v1.
 
-### C2 — `nebula-bg.mp4` 70.96 MB LFS migration decision
+**Reframed from "needs LFS/CDN/replacement"** to ACCEPTED + MONITORED disposition; preserves cross-phase traceability while reflecting empirical state (under hard limit; sustainable as-is at v1).
 
-**Scope.** Decide LFS migration / CDN externalization / smaller-asset replacement for the 70.96 MB nebula-bg.mp4 asset; pre-existing CLAUDE.md carry-forward. Strict constraint: do NOT `git lfs migrate` on `main` without explicit instruction (history rewrite is out-of-scope).
-
-**Decision tree.**
-- Option (i): Git LFS adoption — requires repo-wide LFS config + history-rewrite OR shipping new LFS-tracked replacement asset alongside the existing file
-- Option (ii): CDN externalization — host nebula-bg.mp4 on Cloudflare/S3/equivalent + reference via URL; eliminates repo asset
-- Option (iii): Smaller replacement — re-encode at lower bitrate/resolution to fit under GitHub's 100 MB soft limit (currently 70.96 MB so still within; pre-emptive)
-
-**Estimated task altitude.** SCOPING-ONLY shape (decision-tree task; no asset replacement until decision verdict).
-
-### C3 — Untracked baseline JSONs — **RESOLVED at this Phase-9+ 9.1 OPENER**
+### C3 — Untracked baseline JSONs — **🎯 RESOLVED at Phase-9+ Task 9.1 OPENER `5043587`**
 
 **RESOLVED via commit `5043587`** (Phase-9+ Task 9.1 OPENER): 6 baseline JSONs (5 Phase-0 axe + 1 Phase-6 6.7 perf) committed as historical baselines. Total: 8,572 B.
 
-**Empirical-vs-projection drift candidate (v2.60.1 cluster 16th altitude candidate).** Closer projection: "~7 untracked baseline JSON artifacts". Empirical reality: 6 baseline JSONs (1 fewer than projected). Surfaces for Cowork-verdict consideration whether to cement as v2.60.1 cluster 16th altitude (sister to "audit-undercount BREADTH drift" patterns at v2.60.1 11th-12th altitudes) OR informational-only.
+**Empirical-vs-projection drift CEMENTED as v2.60.1 cluster 16th altitude** (cross-phase-AND-task-BOUNDARY-projection-over-estimate-drift; closer projection ~7, empirical 6 = 86% accuracy; see Conventions block). Cluster 16th altitude already cemented in `CLAUDE.md` Conventions at 9.2 PRE0 (BROADENED scope from cross-phase-BOUNDARY-only to cross-task-BOUNDARY + cross-phase-BOUNDARY).
 
 ---
 

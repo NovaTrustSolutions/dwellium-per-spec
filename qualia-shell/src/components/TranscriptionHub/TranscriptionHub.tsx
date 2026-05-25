@@ -373,7 +373,13 @@ export default function TranscriptionHub() {
     const [liveTranscript, setLiveTranscript] = useState('');
     const [liveFinalParts, setLiveFinalParts] = useState<string[]>([]);
     const [isLiveEnabled, setIsLiveEnabled] = useState(true);
-    const [liveSupported] = useState(() => !!(window.SpeechRecognition || window.webkitSpeechRecognition));
+    // SSR guard: SpeechRecognition only exists in browser. Default to
+    // "unsupported" server-side; client hydration with the same default is
+    // fine — capability detection is then accurate on first user interaction.
+    const [liveSupported] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    });
 
     // --- Cloud STT state (Leon-powered Google Cloud Speech) ---
     const [cloudSTTEnabled, setCloudSTTEnabled] = useState(false);

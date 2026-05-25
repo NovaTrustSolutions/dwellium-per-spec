@@ -11,15 +11,32 @@
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { PDFDocument } from 'pdf-lib';
-import * as pdfjsLib from 'pdfjs-dist';
 import './PDFGear.css';
 import { API_BASE } from '../../config';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.mjs',
-    import.meta.url
-).toString();
+// SSR guard: pdfjs-dist references DOMMatrix at module-init time, which
+// throws "DOMMatrix is not defined" during server-side render. The widget
+// is only exercised in event handlers / effects (never during render), so
+// a lazy + cached client-only loader keeps render() SSR-safe and matches
+// the framework-agnostic browser-global guard pattern from CLAUDE.md
+// Phase-9+ widget-altitude SSR-safety taxonomy.
+type PdfjsLib = typeof import('pdfjs-dist');
+let pdfjsLibPromise: Promise<PdfjsLib> | null = null;
+function loadPdfjs(): Promise<PdfjsLib> {
+    if (typeof window === 'undefined') {
+        return Promise.reject(new Error('pdfjs-dist is browser-only'));
+    }
+    if (!pdfjsLibPromise) {
+        pdfjsLibPromise = import('pdfjs-dist').then(lib => {
+            lib.GlobalWorkerOptions.workerSrc = new URL(
+                'pdfjs-dist/build/pdf.worker.mjs',
+                import.meta.url
+            ).toString();
+            return lib;
+        });
+    }
+    return pdfjsLibPromise;
+}
 
 // ---- Types ----
 interface RecentFile {
@@ -124,6 +141,7 @@ export default function PDFGear() {
         setSelectedFile(file);
         try {
             const arrayBuffer = await file.arrayBuffer();
+            const pdfjsLib = await loadPdfjs();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             setTotalPages(pdf.numPages);
             setCurrentPage(1);
@@ -184,6 +202,7 @@ export default function PDFGear() {
         try {
             const res = await fetch(pdfUrl);
             const buf = await res.arrayBuffer();
+            const pdfjsLib = await loadPdfjs();
             const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
             await renderPage(pdf, pageNum, zoomLevel);
         } catch {
@@ -262,6 +281,7 @@ export default function PDFGear() {
         switch (targetFormat) {
             case 'txt': {
                 // PDF to TXT using pdf.js
+                const pdfjsLib = await loadPdfjs();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 let fullText = '';
                 for (let i = 1; i <= pdf.numPages; i++) {
@@ -279,6 +299,7 @@ export default function PDFGear() {
             case 'jpeg':
             case 'jpg': {
                 // PDF page to image using canvas
+                const pdfjsLib = await loadPdfjs();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 const page = await pdf.getPage(1);
                 const viewport = page.getViewport({ scale: 2.0 });
@@ -296,6 +317,7 @@ export default function PDFGear() {
             }
             case 'html': {
                 // PDF to basic HTML
+                const pdfjsLib = await loadPdfjs();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 let html = '<!DOCTYPE html>\n<html>\n<head><meta charset="utf-8"><title>Converted PDF</title>\n<style>body{font-family:sans-serif;padding:40px;max-width:800px;margin:0 auto;}.page{margin-bottom:40px;padding-bottom:20px;border-bottom:1px solid #ddd;}.page-num{color:#999;font-size:12px;}</style>\n</head>\n<body>\n';
                 for (let i = 1; i <= pdf.numPages; i++) {

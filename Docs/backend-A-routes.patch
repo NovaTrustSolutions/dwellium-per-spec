@@ -243,3 +243,96 @@ index 0000000..c640ead
 +}
 +
 +export default router;
+diff --git a/ai-dashboard369-file-manager/src/services/factCheckService.ts b/ai-dashboard369-file-manager/src/services/factCheckService.ts
+index bb49117..23552c5 100644
+--- a/ai-dashboard369-file-manager/src/services/factCheckService.ts
++++ b/ai-dashboard369-file-manager/src/services/factCheckService.ts
+@@ -112,7 +112,23 @@ const getOpenAIClient = (): OpenAI | null => {
+ /**
+  * Verify a batch of claims using OpenAI.
+  */
+-export async function verifyClaimBatch(claims: string[]): Promise<FactCheckBatchResult> {
++/**
++ * Pull the human-readable text out of whatever shape the caller sent.
++ * The route handler at /api/transcribe/fact-check forwards req.body.claims
++ * verbatim, and the frontend sends `[{id, text}]` objects — without this
++ * normalization the prompt below saw "[object Object]" as the claim text
++ * and the model dutifully returned "unverifiable: not a coherent statement"
++ * for every input. Accept string | { text } | anything-stringifiable.
++ */
++function extractClaimText(c: unknown): string {
++    if (typeof c === 'string') return c;
++    if (c && typeof c === 'object' && typeof (c as any).text === 'string') {
++        return (c as any).text;
++    }
++    return String(c);
++}
++
++export async function verifyClaimBatch(claims: any[]): Promise<FactCheckBatchResult> {
+     if (claims.length === 0) {
+         return { results: [], processedAt: Date.now(), totalClaims: 0 };
+     }
+@@ -135,7 +151,8 @@ export async function verifyClaimBatch(claims: string[]): Promise<FactCheckBatch
+     }
+ 
+     // Batch claims into a single prompt for efficiency
+-    const claimList = claims.map((c, i) => `${i + 1}. "${c}"`).join('\n');
++    const claimTexts = claims.map(extractClaimText);
++    const claimList = claimTexts.map((c, i) => `${i + 1}. ${c}`).join('\n');
+ 
+     try {
+         const response = await client.chat.completions.create({
+@@ -143,22 +160,44 @@ export async function verifyClaimBatch(claims: string[]): Promise<FactCheckBatch
+             messages: [
+                 {
+                     role: 'system',
+-                    content: `You are a fact-checking assistant. For each claim, determine its accuracy.
+-
+-Respond ONLY with valid JSON in this exact format:
++                    content: `You are a fact-checker. Assign exactly one verdict per numbered claim.
++
++VERDICT TAXONOMY
++  - "verified": well-established factual claim that aligns with scientific
++    consensus, basic physics/chemistry/biology, mathematical truth, established
++    geography, or widely-documented history. Use confidence 0.85-1.0.
++  - "disputed": claim that directly contradicts well-established facts as
++    above. Use confidence 0.85-1.0.
++  - "partially_true": contains both accurate and inaccurate elements, OR is
++    technically true but materially misleading. Confidence 0.5-0.8.
++  - "unverifiable": genuinely uncertain — requires real-time / private data
++    you don't have (current statistics, breaking news), subjective claims,
++    predictions about the future, or claims about specific unverified
++    individuals/events. Confidence 0.0-0.3.
++
++DECISIVENESS RULES
++  Be willing to call "verified" or "disputed" on unambiguous claims. Do NOT
++  default to "unverifiable" out of caution when the claim is clearly true or
++  clearly false under established knowledge. Examples of claims you CAN
++  verify with confidence: "Water boils at 100°C at sea level" (verified),
++  "The Earth is flat" (disputed), "Paris is the capital of France"
++  (verified), "Humans have 12 chromosomes" (disputed — humans have 46).
++  Examples of "unverifiable": "Crime is up 47% this year" (no time-bound
++  source), "Senator X said Y yesterday" (recent event you can't check),
++  "Y is the best restaurant in town" (subjective).
++
++Respond ONLY with valid JSON, no prose, in this exact shape:
+ {
+   "results": [
+     {
+       "index": 1,
+-      "verdict": "verified" | "disputed" | "unverifiable" | "partially_true",
++      "verdict": "verified" | "disputed" | "partially_true" | "unverifiable",
+       "confidence": 0.0-1.0,
+-      "explanation": "Brief explanation of why this verdict was reached",
+-      "sources": ["URL or reference if known"]
++      "explanation": "One sentence stating the reason for the verdict.",
++      "sources": []
+     }
+   ]
+-}
+-
+-Be precise and conservative. If you cannot verify a claim with confidence, mark it "unverifiable".`
++}`
+                 },
+                 {
+                     role: 'user',

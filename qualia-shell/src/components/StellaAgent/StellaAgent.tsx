@@ -268,6 +268,11 @@ export default function StellaAgent() {
     const [showAddHonchoMemory, setShowAddHonchoMemory] = useState(false);
     const [newHonchoMemory, setNewHonchoMemory] = useState({ content: '', memoryType: 'fact', importance: 0.5 });
     const [honchoLearnActive, setHonchoLearnActive] = useState(() => {
+        // SSR guard: useState lazy initializer fires during render(), which
+        // runs server-side in dev/SSR mode. localStorage doesn't exist there.
+        // CSR fallback rehydrates with the same default; client effect would
+        // re-sync if we needed to mirror real storage on hydration.
+        if (typeof window === 'undefined') return false;
         return localStorage.getItem('honcho-learn-active') === 'true';
     });
     const honchoLearnRef = useRef<ReturnType<typeof setInterval> | null>(null);

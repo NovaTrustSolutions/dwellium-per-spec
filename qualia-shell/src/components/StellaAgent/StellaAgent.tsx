@@ -1116,10 +1116,13 @@ export default function StellaAgent() {
                 {pid && <span className="stella__pid">PID {pid}</span>}
             </div>
 
-            {/* Offline Banner */}
+            {/* Offline Banner — wording calls out the missing service so the
+                operator knows this isn't a transient hiccup but a setup gap.
+                Stella's chat path needs the sibling Python agent (+ Honcho/
+                Hermes) running; backend A doesn't ship it. */}
             {status === 'offline' && (
                 <div className="stella__offline-banner">
-                    ⚠️ Stella is not running.
+                    ⚠️ Stella agent is offline — requires the Stella Python agent service.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry</button>
                     <button className="stella__retry-btn" onClick={async () => {
                         setInitLoading(true);

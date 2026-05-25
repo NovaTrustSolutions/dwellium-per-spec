@@ -49,6 +49,19 @@ export default function NotebookLMContext() {
             const res = await fetch(`${API_BASE}/api/v1/notebooklm/notebooks`, {
                 headers: authHeaders(),
             });
+            // 404 / non-JSON means backend A doesn't mount /api/v1/notebooklm.
+            // The pre-M3 catch said "Backend unreachable — is the server
+            // running?" which is misleading: the server IS up, this widget's
+            // bridge service just isn't connected.
+            if (res.status === 404) {
+                setError('NotebookLM not connected — requires the NotebookLM bridge service mounted at /api/v1/notebooklm.');
+                return;
+            }
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                setError('NotebookLM not connected — requires the NotebookLM bridge service mounted at /api/v1/notebooklm.');
+                return;
+            }
             const json = await res.json();
             if (json.success) {
                 setNotebooks(json.data || []);
@@ -56,7 +69,7 @@ export default function NotebookLMContext() {
                 setError(json.error || 'Failed to load notebooks');
             }
         } catch (e: any) {
-            setError('Backend unreachable — is the server running?');
+            setError('NotebookLM not connected — requires the NotebookLM bridge service.');
         } finally {
             setLoading(false);
         }

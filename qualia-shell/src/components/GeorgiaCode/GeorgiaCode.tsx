@@ -60,16 +60,26 @@ export default function GeorgiaCode() {
     const [hasSearched, setHasSearched] = useState(false);
     const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
     const [bookmarked, setBookmarked] = useState<Set<number>>(new Set());
+    const [backendUnavailable, setBackendUnavailable] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch status on mount
+    // Fetch status on mount. Backend A has no /api/georgia-code mount → the
+    // status endpoint 404s with HTML, which makes r.json() throw. The pre-M3
+    // catch silently swallowed that; we now flip a flag so the UI can
+    // surface an honest "index not loaded" diagnostic alongside the
+    // existing OFFLINE badge.
     useEffect(() => {
         fetch(`${API_BASE}/api/georgia-code/status`)
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) setStatus(d.data);
+            .then(async r => {
+                if (r.status === 404) { setBackendUnavailable(true); return null; }
+                const ct = r.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) { setBackendUnavailable(true); return null; }
+                return r.json();
             })
-            .catch(() => { });
+            .then(d => {
+                if (d && d.success) setStatus(d.data);
+            })
+            .catch(() => { setBackendUnavailable(true); });
     }, []);
 
     // Auto-focus search
@@ -189,6 +199,30 @@ export default function GeorgiaCode() {
                     </div>
                 </div>
             </div>
+            {/* Honest-unavailable banner lives OUTSIDE .gc-header because that
+                container sets overflow:hidden (decorative gradient clip), which
+                would otherwise eat the banner. Sibling to the header keeps it
+                visible above the search row. */}
+            {backendUnavailable && (
+                <div
+                    role="status"
+                    style={{
+                        margin: '12px 28px 0',
+                        padding: '10px 14px',
+                        borderRadius: 8,
+                        background: 'rgba(245, 158, 11, 0.12)',
+                        border: '1px solid rgba(245, 158, 11, 0.35)',
+                        color: '#fbbf24',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                    }}
+                >
+                    ⚠️ Georgia Code index is not loaded — requires the
+                    georgia-code service mounted at <code>/api/georgia-code</code>
+                    (OCGA vector index + embeddings backend). Search is disabled
+                    until the index service is connected.
+                </div>
+            )}
 
             {/* SEARCH */}
             <div className="gc-search-container">

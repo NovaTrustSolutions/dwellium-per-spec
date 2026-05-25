@@ -140,6 +140,7 @@ export default function HydraAI() {
     const [formData, setFormData] = useState<Omit<HydraHead, 'id'> & { id?: string }>(BLANK_HEAD);
     const [modalError, setModalError] = useState('');
     const [modalSaving, setModalSaving] = useState(false);
+    const [backendUnavailable, setBackendUnavailable] = useState(false);
 
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -149,8 +150,20 @@ export default function HydraAI() {
     const fetchHeads = useCallback(async () => {
         try {
             const r = await authFetch(`${API_BASE}/heads`);
+            // 404 / non-JSON means backend A doesn't have an /api/hydra mount.
+            // Surface that to the empty state so the widget isn't a silent blank.
+            if (r.status === 404) {
+                setBackendUnavailable(true);
+                return;
+            }
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                setBackendUnavailable(true);
+                return;
+            }
             const data = await r.json();
             if (data.success) {
+                setBackendUnavailable(false);
                 setHeads(data.data);
                 // If no heads selected yet, auto-select first 2 enabled
                 setSelectedHeads(prev => {
@@ -161,6 +174,7 @@ export default function HydraAI() {
             }
         } catch (err) {
             console.error('Failed to fetch heads:', err);
+            setBackendUnavailable(true);
         }
     }, [authFetch]);
 
@@ -577,7 +591,17 @@ export default function HydraAI() {
 
             {/* Content Area */}
             <div className="hydra-content" ref={contentRef}>
-                {queries.length === 0 && !isLoading ? (
+                {backendUnavailable ? (
+                    <div className="hydra-empty-state">
+                        <div className="hydra-empty-icon">⚠️</div>
+                        <div className="hydra-empty-title">Hydra multi-model is not configured</div>
+                        <div className="hydra-empty-desc">
+                            Requires a Hydra service mounted at <code>/api/hydra</code>
+                            (heads registry + per-provider keys: OpenAI, Anthropic,
+                            Gemini, Mistral, Local). Backend A doesn't ship it.
+                        </div>
+                    </div>
+                ) : queries.length === 0 && !isLoading ? (
                     <div className="hydra-empty-state">
                         <div className="hydra-empty-icon">🐍</div>
                         <div className="hydra-empty-title">Hydra-AI Reasoning</div>

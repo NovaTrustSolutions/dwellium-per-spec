@@ -91,6 +91,21 @@ interface Activity {
     };
 }
 
+// Surface a clear "not configured" message when the backend signals a
+// missing/invalid Trello credential. Without this, users see Trello's
+// raw "invalid token" string and assume their account is broken, when
+// in fact the backend just hasn't been wired with TRELLO_API_KEY +
+// TRELLO_TOKEN. Pattern-match is intentionally loose.
+function humanizeTrelloError(msg: string | undefined | null): string {
+    const raw = (msg || '').toLowerCase();
+    if (!raw) return 'Failed to load Trello boards.';
+    if (raw.includes('invalid token') || raw.includes('invalid key') ||
+        raw.includes('unauthorized') || raw.includes('missing trello')) {
+        return 'Trello not configured — set TRELLO_API_KEY and TRELLO_TOKEN on the backend to enable this widget.';
+    }
+    return msg || 'Failed to load Trello boards.';
+}
+
 // ── Color map for Trello label colors ──────────────
 
 const LABEL_COLORS: Record<string, string> = {
@@ -145,10 +160,10 @@ export default function TrelloBoard() {
                         setSelectedBoard(res.data[0].id);
                     }
                 } else {
-                    setError(res.error || 'Failed to load boards');
+                    setError(humanizeTrelloError(res.error || 'Failed to load boards'));
                 }
             })
-            .catch(err => setError(err.message))
+            .catch(err => setError(humanizeTrelloError(err?.message)))
             .finally(() => setLoading(false));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -1,5 +1,8 @@
 import { Suspense, useEffect, useState } from 'react';
 import { WINDOW_COMPONENTS } from '../Shell/Desktop';
+import { LayoutProvider } from '../../context/LayoutContext';
+import { HierarchyProvider } from '../../context/HierarchyContext';
+import { WindowProvider } from '../../context/WindowContext';
 import '../../styles/global.css';
 import '../../styles/skins.css';
 
@@ -125,7 +128,12 @@ export function PopupShell({ component }: { component: string }) {
                 </button>
             </div>
 
-            {/* ── Widget Content ── */}
+            {/* ── Widget Content ──
+                Popup mode bypasses AdminShell, so widgets that call
+                useHierarchy / useWindows / useLayout (ara-console, file-manager,
+                notepad, control-panel, etc.) would throw "must be used within
+                Provider" without these wrappers. AdminShell.tsx stacks the
+                same three providers around <Sidebar /> + <Desktop />. */}
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <Suspense fallback={
                     <div style={{
@@ -135,7 +143,13 @@ export function PopupShell({ component }: { component: string }) {
                         Loading widget…
                     </div>
                 }>
-                    <Component />
+                    <LayoutProvider>
+                        <HierarchyProvider>
+                            <WindowProvider>
+                                <Component />
+                            </WindowProvider>
+                        </HierarchyProvider>
+                    </LayoutProvider>
                 </Suspense>
             </div>
         </div>

@@ -169,6 +169,16 @@ export default function Terminal() {
 
         try {
             const capsRes = await authFetch(`${API_TERMINAL}/capabilities`);
+            // Detect the "backend not wired" case BEFORE attempting JSON parse:
+            // Vite's dev proxy hands back index.html for unknown /api/ paths in
+            // some configs, which yields an uninterpretable JSON parse error.
+            if (capsRes.status === 404) {
+                throw new Error('Terminal backend not available — no /api/terminal route configured on the backend.');
+            }
+            const ct = capsRes.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                throw new Error('Terminal backend not available — capabilities endpoint did not return JSON.');
+            }
             const capsJson = await capsRes.json();
             if (!capsRes.ok || !capsJson?.success) {
                 throw new Error(capsJson?.error || `Failed to load terminal capabilities (${capsRes.status})`);

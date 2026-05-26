@@ -3,6 +3,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
+import LlmIntegrationsSection from './LlmIntegrationsSection';
 import './ControlPanel.css';
 
 const ACCENT_PRESETS = [
@@ -421,8 +422,11 @@ export default function ControlPanel() {
                 </div>
             </section>
 
+            {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
+            <LlmIntegrationsSection />
+
             <section className="cp-section">
-                <h3 className="cp-section__title">Integrations</h3>
+                <h3 className="cp-section__title">Integrations (Backend)</h3>
 
                 <div className="cp-integration-card">
                     <div className="cp-integration-card__header">

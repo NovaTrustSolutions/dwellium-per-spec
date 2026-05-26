@@ -1,0 +1,54 @@
+/**
+ * useIntegrations — hook to read + update the active user's integrations
+ * bundle from any widget. Updates the dynamic-key holder DURING render so
+ * useSyncExternalStore resolves the per-user namespace on the same pass.
+ *
+ * 2026-05-26 created. Pattern matches WindowContext's savedLayoutsStore /
+ * savedLayoutsUserIdHolder (Phase-8+ Task 8.10 Option β).
+ */
+
+import { useCallback, useSyncExternalStore } from 'react';
+import { useUser } from '../context/UserContext';
+import {
+    integrationsStore,
+    integrationsUserIdHolder,
+    saveIntegrations,
+    clearIntegrations,
+} from '../utils/integrationsStore';
+import type { IntegrationsBundle } from '../types/integrations';
+
+export function useIntegrations() {
+    const { user } = useUser();
+
+    // Update holder DURING render BEFORE useSyncExternalStore reads.
+    // Factory cache invalidates automatically on key change → returns the
+    // fresh per-user-id value without a separate re-init effect.
+    integrationsUserIdHolder.current = user?.id ?? null;
+
+    const bundle = useSyncExternalStore(
+        integrationsStore.subscribe,
+        integrationsStore.getSnapshot,
+        integrationsStore.getServerSnapshot,
+    );
+
+    /**
+     * Apply an updater function to the current bundle and persist. Use:
+     *   update(b => ({ ...b, llm: { ...b.llm, active: 'openai' } }))
+     */
+    const update = useCallback((updater: (current: IntegrationsBundle) => IntegrationsBundle) => {
+        const next = updater(bundle);
+        saveIntegrations(next);
+    }, [bundle]);
+
+    /** Replace the bundle wholesale (used by import-from-JSON UI later). */
+    const replace = useCallback((next: IntegrationsBundle) => {
+        saveIntegrations(next);
+    }, []);
+
+    /** Clear the active user's integrations entirely. */
+    const clear = useCallback(() => {
+        clearIntegrations();
+    }, []);
+
+    return { integrations: bundle, update, replace, clear };
+}

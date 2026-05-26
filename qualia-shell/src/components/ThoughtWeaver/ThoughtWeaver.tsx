@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { API_BASE } from '../../config';
+import { useIntegrations } from '../../hooks/useIntegrations';
+import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import './ThoughtWeaver.css';
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -108,6 +110,7 @@ function bucketIcon(bucket: string): string {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function ThoughtWeaver() {
+    const { integrations } = useIntegrations();
     const [activeTab, setActiveTab] = useState<TabId>('capture');
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
@@ -175,11 +178,55 @@ export default function ThoughtWeaver() {
 
     const handleCapture = async () => {
         if (!text.trim() || loading) return;
+        const thoughtText = text.trim();
         setLoading(true);
+
+        // ── 1) Try user-configured LLM first ──
+        // 2026-05-26: when the user has a personal LLM key in Settings → API Keys,
+        // route the categorization through that provider directly. Falls back to
+        // backend if no LLM is configured OR if the LLM call/parse fails.
+        if (hasActiveLlm(integrations.llm)) {
+            try {
+                const llmRes = await callLlm({
+                    systemPrompt: `You are a thought-categorization assistant. Classify the user's text into exactly one bucket and respond with JSON only.
+Buckets:
+  - "people": mentions of meeting/talking-to/about a specific person
+  - "projects": project status, milestones, deliverables, deadlines
+  - "ideas": speculative thoughts, "what if", new concepts to explore
+  - "admin": tasks, todos, things that need to be done
+  - "needs_review": ambiguous text that doesn't clearly fit a bucket
+Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confidence": number 0-1, "destination_name": "short descriptive label for this thought (3-6 words)" }`,
+                    prompt: thoughtText,
+                    responseFormat: 'json',
+                    maxTokens: 256,
+                    temperature: 0.2,
+                }, integrations.llm);
+                if (llmRes) {
+                    const parsed = JSON.parse(llmRes.text);
+                    setLastResult({
+                        filed_to: parsed.filed_to || 'needs_review',
+                        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+                        destination_name: parsed.destination_name || null,
+                    });
+                    setText('');
+                    setLoading(false);
+                    // Best-effort: also POST to backend so other consumers stay in sync.
+                    fetch(`${API}/capture`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: thoughtText }),
+                    }).then(() => { fetchCaptures(); fetchStats(); }).catch(() => { /* backend down — OK */ });
+                    return;
+                }
+            } catch {
+                // LLM call/parse failed — fall through to backend
+            }
+        }
+
+        // ── 2) Fall back to backend ──
         try {
             const res = await fetch(`${API}/capture`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text.trim() }),
+                body: JSON.stringify({ text: thoughtText }),
             });
             const json = await res.json();
             if (json.success) {
@@ -188,7 +235,7 @@ export default function ThoughtWeaver() {
                 fetchCaptures();
                 fetchStats();
             }
-        } catch { /* silent */ }
+        } catch { /* silent — backend offline and no LLM configured */ }
         setLoading(false);
     };
 

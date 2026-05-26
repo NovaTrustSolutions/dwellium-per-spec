@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import './FactCheckLog.css';
 import { API_BASE } from '../../config';
+import { useIntegrations } from '../../hooks/useIntegrations';
+import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 
 // ============================================
 // TYPES
@@ -33,6 +35,7 @@ const VERDICT_CONFIG: Record<string, { label: string; icon: string; color: strin
 // ============================================
 
 export default function FactCheckLog() {
+    const { integrations } = useIntegrations();
     const [entries, setEntries] = useState<FactCheckEntry[]>([]);
     const [filter, setFilter] = useState<VerdictFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -64,14 +67,49 @@ export default function FactCheckLog() {
     }, [fetchLog]);
 
     // ---- MANUAL FACT-CHECK ----
+    // 2026-05-26: prefer the user's configured LLM (Anthropic/OpenAI/Gemini/Local/Custom).
+    // Falls back to backend if no LLM is configured OR if the LLM call fails.
     const submitManualCheck = async () => {
         if (!manualClaim.trim()) return;
+        const claimText = manualClaim.trim();
         setChecking(true);
+
+        // ── 1) Try user-configured LLM first ──
+        if (hasActiveLlm(integrations.llm)) {
+            try {
+                const llmRes = await callLlm({
+                    systemPrompt: `You are a fact-checking assistant. Evaluate the user's claim and respond with JSON only. Schema: { "verdict": "verified"|"disputed"|"unverifiable"|"partially_true", "confidence": number between 0 and 1, "explanation": "1-3 sentence reasoning", "sources": [array of URL strings, may be empty] }. Be decisive: only mark unverifiable when the claim cannot be evaluated from general knowledge. Mark partially_true when the claim is partly accurate but misleading.`,
+                    prompt: claimText,
+                    responseFormat: 'json',
+                    maxTokens: 512,
+                    temperature: 0.1,
+                }, integrations.llm);
+                if (llmRes) {
+                    const parsed = JSON.parse(llmRes.text);
+                    setEntries(prev => [{
+                        id: crypto.randomUUID(),
+                        claim: claimText,
+                        verdict: parsed.verdict || 'unverifiable',
+                        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+                        explanation: parsed.explanation || '',
+                        sources: Array.isArray(parsed.sources) ? parsed.sources : [],
+                        timestamp: Date.now(),
+                    }, ...prev]);
+                    setManualClaim('');
+                    setChecking(false);
+                    return;
+                }
+            } catch {
+                // LLM call failed — fall through to backend
+            }
+        }
+
+        // ── 2) Fall back to backend ──
         try {
             const res = await fetch(API_FACT_CHECK, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ claims: [manualClaim.trim()] }),
+                body: JSON.stringify({ claims: [claimText] }),
             });
             const json = await res.json();
             if (json.success && json.data?.results) {
@@ -88,13 +126,13 @@ export default function FactCheckLog() {
                 setManualClaim('');
             }
         } catch {
-            // Add offline placeholder
+            // Both LLM and backend offline — show placeholder
             setEntries(prev => [{
                 id: crypto.randomUUID(),
-                claim: manualClaim.trim(),
+                claim: claimText,
                 verdict: 'unverifiable',
                 confidence: 0,
-                explanation: 'Backend offline — fact-check unavailable',
+                explanation: 'No LLM configured and backend offline. Configure an LLM provider in Settings → API Keys to enable fact-checking.',
                 sources: [],
                 timestamp: Date.now(),
             }, ...prev]);

@@ -39,7 +39,7 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
                     <span key={tag} style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'rgba(99,102,241,0.15)', color: '#a5b4fc',
+                        background: 'rgba(214,254,81,0.15)', color: '#D6FE51',
                     }}>
                         {tag}
                         <span onClick={() => onRemove(tag)} style={{ cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>×</span>
@@ -72,7 +72,7 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
                                 padding: '8px 12px', fontSize: 12, color: '#cbd5e1',
                                 cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)',
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.1)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(214,254,81,0.1)'}
                             onMouseLeave={e => e.currentTarget.style.background = ''}
                         >{s}</div>
                     ))}
@@ -281,9 +281,9 @@ export default function LegalModule() {
                         onClick={() => setStatusFilter(s)}
                         style={{
                             padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                            border: statusFilter === s ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                            background: statusFilter === s ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)',
-                            color: statusFilter === s ? '#a5b4fc' : '#64748b',
+                            border: statusFilter === s ? '1px solid rgba(214,254,81,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                            background: statusFilter === s ? 'rgba(214,254,81,0.15)' : 'rgba(255,255,255,0.03)',
+                            color: statusFilter === s ? '#D6FE51' : '#64748b',
                             cursor: 'pointer', textTransform: 'capitalize',
                         }}
                     >{s.replace('_', ' ')}</button>
@@ -337,10 +337,10 @@ export default function LegalModule() {
                                                         fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 600,
                                                         background: tag.startsWith('Property:') ? 'rgba(59,130,246,0.12)' :
                                                             tag.startsWith('Tenant:') ? 'rgba(16,185,129,0.12)' :
-                                                                'rgba(99,102,241,0.12)',
+                                                                'rgba(214,254,81,0.12)',
                                                         color: tag.startsWith('Property:') ? '#60a5fa' :
                                                             tag.startsWith('Tenant:') ? '#34d399' :
-                                                                '#a5b4fc',
+                                                                '#D6FE51',
                                                     }}>
                                                         {tag.startsWith('Property:') ? <Building2 size={9} style={{ verticalAlign: -1, marginRight: 3 }} /> :
                                                             tag.startsWith('Tenant:') ? <Users size={9} style={{ verticalAlign: -1, marginRight: 3 }} /> :
@@ -370,7 +370,7 @@ export default function LegalModule() {
                                                 { key: 'links', icon: <Link2 size={11} />, label: 'Links' },
                                             ].map(t => (
                                                 <button key={t.key} onClick={() => { setActiveTab(t.key); if (t.key !== 'details') loadMatterData(wi.id); }}
-                                                    style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: 'none', background: activeTab === t.key ? 'rgba(99,102,241,0.15)' : 'transparent', color: activeTab === t.key ? '#a5b4fc' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: 'none', background: activeTab === t.key ? 'rgba(214,254,81,0.15)' : 'transparent', color: activeTab === t.key ? '#D6FE51' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     {t.icon} {t.label}
                                                 </button>
                                             ))}
@@ -397,7 +397,7 @@ export default function LegalModule() {
                                                 <span style={{ fontSize: 10, color: '#64748b', lineHeight: '24px' }}>Status:</span>
                                                 {['open', 'in_progress', 'review', 'completed'].map(s => (
                                                     <button key={s} onClick={() => handleStatusChange(wi.id, s)} disabled={wi.status === s}
-                                                        style={{ padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: wi.status === s ? '#6366f1' : '#94a3b8', cursor: wi.status === s ? 'default' : 'pointer', textTransform: 'capitalize', opacity: wi.status === s ? 0.6 : 1 }}
+                                                        style={{ padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: wi.status === s ? '#D6FE51' : '#94a3b8', cursor: wi.status === s ? 'default' : 'pointer', textTransform: 'capitalize', opacity: wi.status === s ? 0.6 : 1 }}
                                                     >{s.replace('_', ' ')}</button>
                                                 ))}
                                             </div>
@@ -426,7 +426,7 @@ export default function LegalModule() {
                                                     <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#f59e0b', cursor: 'pointer' }}>
                                                         <input type="checkbox" checked={isPrivileged} onChange={e => setIsPrivileged(e.target.checked)} style={{ width: 12, height: 12 }} /> Privileged
                                                     </label>
-                                                    <button onClick={() => handleAddComment(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}><Send size={10} /> Send</button>
+                                                    <button onClick={() => handleAddComment(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.2)', color: '#D6FE51', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}><Send size={10} /> Send</button>
                                                 </div>
                                             </div>
                                         )}
@@ -436,7 +436,7 @@ export default function LegalModule() {
                                             <div>
                                                 {(matterLinks?.evidence || []).length === 0 ? <p style={{ fontSize: 12, color: '#475569' }}>No evidence attached</p> : (matterLinks.evidence as any[]).map((ev: any) => (
                                                     <div key={ev.id} style={{ padding: '6px 10px', borderRadius: 6, marginBottom: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
-                                                        <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'rgba(99,102,241,0.12)', color: '#818cf8', textTransform: 'uppercase' }}>{ev.type}</span>
+                                                        <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', textTransform: 'uppercase' }}>{ev.type}</span>
                                                         <span style={{ flex: 1, color: '#cbd5e1' }}>{ev.description}</span>
                                                         <span style={{ color: '#475569', fontSize: 10 }}>{new Date(ev.created_at).toLocaleDateString()}</span>
                                                     </div>
@@ -459,7 +459,7 @@ export default function LegalModule() {
                                                 <h5 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '8px 0 6px' }}>Audit Trail</h5>
                                                 {(matterLinks?.auditTrail || []).length === 0 ? <p style={{ fontSize: 12, color: '#475569' }}>No audit entries</p> : (matterLinks.auditTrail as any[]).map((a: any, i: number) => (
                                                     <div key={i} style={{ padding: '4px 10px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.02)', fontSize: 10, color: '#94a3b8', display: 'flex', gap: 8 }}>
-                                                        <span style={{ fontWeight: 600, color: '#818cf8' }}>{a.action}</span>
+                                                        <span style={{ fontWeight: 600, color: '#D6FE51' }}>{a.action}</span>
                                                         <span style={{ flex: 1 }}>{a.userId}</span>
                                                         <span style={{ color: '#475569' }}>{new Date(a.createdAt).toLocaleString()}</span>
                                                     </div>

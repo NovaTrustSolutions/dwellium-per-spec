@@ -11,7 +11,7 @@ const UTILITY_TYPES = [
     { key: 'electric', label: 'Electric', icon: Zap, color: '#f59e0b' },
     { key: 'gas', label: 'Gas', icon: Flame, color: '#ef4444' },
     { key: 'water', label: 'Water', icon: Droplets, color: '#3b82f6' },
-    { key: 'internet', label: 'Internet', icon: Wifi, color: '#8b5cf6' },
+    { key: 'internet', label: 'Internet', icon: Wifi, color: '#D6FE51' },
     { key: 'trash', label: 'Trash', icon: Trash2, color: '#22c55e' },
 ] as const;
 

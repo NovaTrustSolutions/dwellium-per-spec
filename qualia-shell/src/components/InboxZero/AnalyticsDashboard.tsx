@@ -70,10 +70,10 @@ const styles: Record<string, React.CSSProperties> = {
     container: { padding: '20px', fontFamily: 'Inter, system-ui, sans-serif', color: '#e1e1e6', maxHeight: '100%', overflowY: 'auto' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
     title: { fontSize: '20px', fontWeight: 700, color: '#f0f0f5' },
-    refreshBtn: { padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.15)', color: '#a78bfa', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s' },
+    refreshBtn: { padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(214,254,81,0.3)', background: 'rgba(214,254,81,0.15)', color: '#D6FE51', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s' },
     tabs: { display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' as const },
     tab: { padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#8b8b9e', cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' },
-    tabActive: { background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.4)', color: '#a78bfa' },
+    tabActive: { background: 'rgba(214,254,81,0.2)', border: '1px solid rgba(214,254,81,0.4)', color: '#D6FE51' },
     gridRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' },
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px' },
     cardTitle: { fontSize: '11px', fontWeight: 600, color: '#6b6b80', textTransform: 'uppercase' as const, letterSpacing: '0.5px', marginBottom: '6px' },
@@ -103,7 +103,7 @@ function trendPill(trend: string): React.CSSProperties {
 }
 
 function methodColor(method: string): string {
-    if (method === 'rule') return '#8b5cf6';
+    if (method === 'rule') return '#D6FE51';
     if (method === 'llm' || method === 'ai') return '#06b6d4';
     return '#6b6b80';
 }
@@ -111,10 +111,10 @@ function methodColor(method: string): string {
 function heatColor(count: number, max: number): string {
     if (count === 0) return 'rgba(255,255,255,0.03)';
     const intensity = Math.min(count / Math.max(max, 1), 1);
-    if (intensity > 0.7) return 'rgba(139,92,246,0.7)';
-    if (intensity > 0.4) return 'rgba(139,92,246,0.4)';
-    if (intensity > 0.15) return 'rgba(139,92,246,0.2)';
-    return 'rgba(139,92,246,0.08)';
+    if (intensity > 0.7) return 'rgba(214,254,81,0.7)';
+    if (intensity > 0.4) return 'rgba(214,254,81,0.4)';
+    if (intensity > 0.15) return 'rgba(214,254,81,0.2)';
+    return 'rgba(214,254,81,0.08)';
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -263,7 +263,7 @@ const OverviewView: React.FC<{ data: OverviewData }> = ({ data }) => {
                 </div>
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Actions Taken</div>
-                    <div style={{ ...styles.cardValue, color: '#a78bfa' }}>{actions.totalActions}</div>
+                    <div style={{ ...styles.cardValue, color: '#D6FE51' }}>{actions.totalActions}</div>
                     <div style={styles.cardSub}>{actions.last24h} today</div>
                 </div>
             </div>
@@ -321,7 +321,7 @@ const OverviewView: React.FC<{ data: OverviewData }> = ({ data }) => {
                                             <td style={{ ...styles.td, textAlign: 'right' }}>{p.count}</td>
                                             <td style={styles.td}>
                                                 <div style={{ ...styles.barContainer, height: '10px', width: '120px', display: 'inline-flex' }}>
-                                                    <div style={{ width: `${share}%`, background: '#8b5cf6', height: '100%', borderRadius: '10px' }} />
+                                                    <div style={{ width: `${share}%`, background: '#D6FE51', height: '100%', borderRadius: '10px' }} />
                                                 </div>
                                                 <span style={{ marginLeft: '8px', fontSize: '11px', color: '#8b8b9e' }}>{share.toFixed(1)}%</span>
                                             </td>
@@ -462,7 +462,7 @@ const HeatmapView: React.FC<{ data: HeatmapData }> = ({ data }) => {
                 <div style={{ display: 'flex', gap: '12px', marginTop: '12px', fontSize: '11px', color: '#6b6b80' }}>
                     <span>Less</span>
                     {[0.08, 0.2, 0.4, 0.7].map((v, i) => (
-                        <div key={i} style={{ ...styles.heatCell, background: `rgba(139,92,246,${v})`, width: '18px', height: '14px' }} />
+                        <div key={i} style={{ ...styles.heatCell, background: `rgba(214,254,81,${v})`, width: '18px', height: '14px' }} />
                     ))}
                     <span>More</span>
                 </div>
@@ -513,7 +513,7 @@ const TrendsView: React.FC<{ data: RuleTrend[] }> = ({ data }) => {
                                             {rule.daily.slice(-14).map((d, i) => (
                                                 <div
                                                     key={i}
-                                                    style={{ ...styles.sparkBar, height: `${Math.max((d.count / maxDaily) * 28, 2)}px`, background: '#8b5cf6' }}
+                                                    style={{ ...styles.sparkBar, height: `${Math.max((d.count / maxDaily) * 28, 2)}px`, background: '#D6FE51' }}
                                                     title={`${d.day}: ${d.count}`}
                                                 />
                                             ))}
@@ -553,7 +553,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Method Share</div>
                     <div style={{ ...styles.barContainer, height: '28px', marginTop: '8px' }}>
-                        <div style={{ width: `${ruleShare}%`, background: '#8b5cf6', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff' }}>
+                        <div style={{ width: `${ruleShare}%`, background: '#D6FE51', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff' }}>
                             {ruleShare > 15 ? `Rule ${ruleShare}%` : ''}
                         </div>
                         <div style={{ width: `${llmShare}%`, background: '#06b6d4', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff' }}>
@@ -569,7 +569,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                     <thead>
                         <tr>
                             <th style={styles.th}>Metric</th>
-                            <th style={{ ...styles.th, textAlign: 'right', color: '#8b5cf6' }}>Rule</th>
+                            <th style={{ ...styles.th, textAlign: 'right', color: '#D6FE51' }}>Rule</th>
                             <th style={{ ...styles.th, textAlign: 'right', color: '#06b6d4' }}>LLM</th>
                             <th style={styles.th}>Winner</th>
                         </tr>
@@ -580,7 +580,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                             <td style={{ ...styles.td, textAlign: 'right' }}>{(rule.avgConfidence * 100).toFixed(1)}%</td>
                             <td style={{ ...styles.td, textAlign: 'right' }}>{(llm.avgConfidence * 100).toFixed(1)}%</td>
                             <td style={styles.td}>
-                                <span style={{ ...styles.pill, background: rule.avgConfidence >= llm.avgConfidence ? 'rgba(139,92,246,0.2)' : 'rgba(6,182,212,0.2)', color: rule.avgConfidence >= llm.avgConfidence ? '#a78bfa' : '#22d3ee' }}>
+                                <span style={{ ...styles.pill, background: rule.avgConfidence >= llm.avgConfidence ? 'rgba(214,254,81,0.2)' : 'rgba(6,182,212,0.2)', color: rule.avgConfidence >= llm.avgConfidence ? '#D6FE51' : '#22d3ee' }}>
                                     {rule.avgConfidence >= llm.avgConfidence ? '📐 Rule' : '🤖 LLM'}
                                 </span>
                             </td>
@@ -590,7 +590,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                             <td style={{ ...styles.td, textAlign: 'right' }}>{rule.avgTimeMs}ms</td>
                             <td style={{ ...styles.td, textAlign: 'right' }}>{llm.avgTimeMs}ms</td>
                             <td style={styles.td}>
-                                <span style={{ ...styles.pill, background: rule.avgTimeMs <= llm.avgTimeMs ? 'rgba(139,92,246,0.2)' : 'rgba(6,182,212,0.2)', color: rule.avgTimeMs <= llm.avgTimeMs ? '#a78bfa' : '#22d3ee' }}>
+                                <span style={{ ...styles.pill, background: rule.avgTimeMs <= llm.avgTimeMs ? 'rgba(214,254,81,0.2)' : 'rgba(6,182,212,0.2)', color: rule.avgTimeMs <= llm.avgTimeMs ? '#D6FE51' : '#22d3ee' }}>
                                     {rule.avgTimeMs <= llm.avgTimeMs ? '📐 Rule' : '🤖 LLM'}
                                 </span>
                             </td>
@@ -607,7 +607,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                 </table>
             </div>
 
-            <div style={{ ...styles.card, marginTop: '12px', border: '1px solid rgba(139,92,246,0.2)' }}>
+            <div style={{ ...styles.card, marginTop: '12px', border: '1px solid rgba(214,254,81,0.2)' }}>
                 <div style={styles.cardTitle}>💡 Recommendation</div>
                 <div style={{ fontSize: '14px', color: '#d0d0da', lineHeight: 1.6 }}>{recommendation}</div>
             </div>
@@ -651,7 +651,7 @@ const FallbackView: React.FC<{ data: FallbackData }> = ({ data }) => {
                                         <div style={{ fontSize: '9px', color: '#8b8b9e', marginBottom: '2px' }}>{d.fallbackRate}%</div>
                                         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1px' }}>
                                             <div style={{ width: '100%', height: `${barH * llmPct}px`, background: '#06b6d4', borderRadius: '3px 3px 0 0' }} />
-                                            <div style={{ width: '100%', height: `${barH * (1 - llmPct)}px`, background: '#8b5cf6', borderRadius: '0 0 3px 3px' }} />
+                                            <div style={{ width: '100%', height: `${barH * (1 - llmPct)}px`, background: '#D6FE51', borderRadius: '0 0 3px 3px' }} />
                                         </div>
                                         <div style={{ fontSize: '8px', color: '#6b6b80', marginTop: '4px', transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>
                                             {d.day.slice(5)}
@@ -661,7 +661,7 @@ const FallbackView: React.FC<{ data: FallbackData }> = ({ data }) => {
                             })}
                         </div>
                         <div style={{ display: 'flex', gap: '16px', marginTop: '12px', fontSize: '11px' }}>
-                            <span style={{ color: '#8b5cf6' }}>● Rule</span>
+                            <span style={{ color: '#D6FE51' }}>● Rule</span>
                             <span style={{ color: '#06b6d4' }}>● LLM/AI Fallback</span>
                         </div>
                     </div>

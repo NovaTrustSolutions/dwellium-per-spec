@@ -474,8 +474,8 @@ export default function ComplianceEngine() {
             {portfolioRollup && (
                 <div style={{
                     display: 'flex', gap: 12, marginBottom: 14, padding: '10px 16px', borderRadius: 10,
-                    background: 'linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(16,185,129,0.06) 100%)',
-                    border: '1px solid rgba(99,102,241,0.12)', alignItems: 'center', flexWrap: 'wrap',
+                    background: 'linear-gradient(135deg, rgba(214,254,81,0.06) 0%, rgba(16,185,129,0.06) 100%)',
+                    border: '1px solid rgba(214,254,81,0.12)', alignItems: 'center', flexWrap: 'wrap',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Shield size={18} style={{ color: portfolioRollup.overallScore >= 80 ? '#10b981' : portfolioRollup.overallScore >= 50 ? '#f59e0b' : '#ef4444' }} />
@@ -572,7 +572,7 @@ export default function ComplianceEngine() {
                                         <tr key={`${entity.type}:${entity.id}`}
                                             style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                             <td style={{ padding: '8px 10px', color: '#cbd5e1', fontWeight: 600 }}>
-                                                <span style={{ marginRight: 6, color: entity.type === 'property' ? '#6366f1' : '#f59e0b' }}>
+                                                <span style={{ marginRight: 6, color: entity.type === 'property' ? '#D6FE51' : '#f59e0b' }}>
                                                     {entity.type === 'property' ? <Building2 size={11} /> : <Truck size={11} />}
                                                 </span>
                                                 {entity.name}
@@ -617,7 +617,7 @@ export default function ComplianceEngine() {
                                         <div style={{ color: '#94a3b8', fontSize: 12 }}>
                                             <AlertTriangle size={14} style={{ verticalAlign: -2, marginRight: 4, color: '#ef4444' }} />
                                             No {ITEM_TYPE_LABELS[selectedCell.itemType]} on file for {selectedCell.entityName}.
-                                            <button className="s-btn s-btn-ghost" style={{ marginLeft: 8, fontSize: 10, color: '#818cf8' }}
+                                            <button className="s-btn s-btn-ghost" style={{ marginLeft: 8, fontSize: 10, color: '#D6FE51' }}
                                                 onClick={() => setShowAddItem(true)}>
                                                 <Plus size={10} /> Add Now
                                             </button>
@@ -692,7 +692,7 @@ export default function ComplianceEngine() {
                                         return (
                                             <line key={`${node.id}-${connId}`}
                                                 x1={node.x} y1={node.y} x2={target.x} y2={target.y}
-                                                stroke={node.status ? `${STATUS_COLORS[node.status]}60` : 'rgba(99,102,241,0.15)'}
+                                                stroke={node.status ? `${STATUS_COLORS[node.status]}60` : 'rgba(214,254,81,0.15)'}
                                                 strokeWidth={1.5} strokeDasharray={node.status === 'expired' ? '4,4' : undefined} />
                                         );
                                     })
@@ -700,7 +700,7 @@ export default function ComplianceEngine() {
                                 {/* Nodes */}
                                 {mindMapNodes.map(node => {
                                     const color = node.status ? STATUS_COLORS[node.status] :
-                                        node.type === 'carrier' ? '#6366f1' :
+                                        node.type === 'carrier' ? '#D6FE51' :
                                             node.type === 'property' ? '#3b82f6' :
                                                 node.type === 'vendor' ? '#f59e0b' : '#64748b';
                                     const r = node.connections.length === 0 ? 35 : 24;
@@ -768,7 +768,7 @@ export default function ComplianceEngine() {
                                                         e.preventDefault();
                                                         window.open(`/api/files/${(relatedItem as any).documentId}`, '_blank');
                                                     }} style={{
-                                                        marginTop: 4, color: '#818cf8', fontSize: 10, fontWeight: 600,
+                                                        marginTop: 4, color: '#D6FE51', fontSize: 10, fontWeight: 600,
                                                         textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
                                                     }}>
                                                         📄 View Source Document →
@@ -783,8 +783,8 @@ export default function ComplianceEngine() {
                                                         window.dispatchEvent(event);
                                                     }
                                                 }} style={{
-                                                    marginTop: 2, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)',
-                                                    borderRadius: 4, padding: '3px 8px', color: '#a5b4fc', fontSize: 10,
+                                                    marginTop: 2, background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.2)',
+                                                    borderRadius: 4, padding: '3px 8px', color: '#D6FE51', fontSize: 10,
                                                     fontWeight: 600, cursor: 'pointer',
                                                 }}>
                                                     View Entity Profile →
@@ -977,8 +977,8 @@ export default function ComplianceEngine() {
                                 className="s-glass-card"
                                 style={{
                                     padding: '14px 16px', marginBottom: 12,
-                                    border: '1px solid rgba(99,102,241,0.25)',
-                                    background: 'rgba(99,102,241,0.04)',
+                                    border: '1px solid rgba(214,254,81,0.25)',
+                                    background: 'rgba(214,254,81,0.04)',
                                 }}
                                 onClick={() => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: 'compliance.section8Rollup.inspect', level: 'info', data: { propertyId: section8Rollup.propertyId } }); } catch { /* no-op */ } }}
                             >

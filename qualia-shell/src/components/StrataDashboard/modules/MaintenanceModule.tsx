@@ -68,7 +68,7 @@ const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Building2 }[] = [
 function statusColor(s: string): string {
     switch (s) {
         case 'completed': case 'resolved': return '#10b981';
-        case 'in_progress': return '#6366f1';
+        case 'in_progress': return '#D6FE51';
         case 'open': return '#f59e0b';
         case 'pending': return '#f97316';
         case 'cancelled': return '#6b7280';
@@ -84,7 +84,7 @@ function priorityColor(p: string): string {
     switch (p) {
         case 'critical': return '#ef4444';
         case 'high': return '#f59e0b';
-        case 'medium': return '#6366f1';
+        case 'medium': return '#D6FE51';
         case 'low': return '#10b981';
         default: return '#94a3b8';
     }
@@ -116,7 +116,7 @@ function Section({ title, icon, children, defaultOpen = true, onToggle }: {
             <button onClick={() => setOpen(o => { const next = !o; onToggle?.(next); return next; })} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 14px', border: 'none', background: 'none',
-                color: '#a5b4fc', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                color: '#D6FE51', cursor: 'pointer', fontSize: 12, fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: 0.5,
             }}>
                 {icon} {title}
@@ -163,8 +163,8 @@ function ItemCard({ item, selected, onClick }: { item: Workitem; selected: boole
             onClick={onClick}
             style={{
                 padding: '10px 12px', cursor: 'pointer', borderRadius: 8,
-                background: selected ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.02)',
-                border: selected ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(255,255,255,0.04)',
+                background: selected ? 'rgba(214,254,81,0.12)' : 'rgba(255,255,255,0.02)',
+                border: selected ? '1px solid rgba(214,254,81,0.3)' : '1px solid rgba(255,255,255,0.04)',
                 marginBottom: 4, transition: 'all 0.15s',
             }}
         >
@@ -444,7 +444,7 @@ export default function MaintenanceModule() {
                     const propName = meta.trelloBoardName || properties.find(p => p.id === item.propertyId)?.name || 'Unassigned';
                     key = propName;
                     label = propName;
-                    color = '#818cf8';
+                    color = '#D6FE51';
                     sortKey = 0;
                     break;
                 }
@@ -473,12 +473,12 @@ export default function MaintenanceModule() {
 
                     if (item.dueDate && diffDays < 0) { key = 'Overdue'; label = `⚠️ Overdue`; color = '#ef4444'; sortKey = 0; }
                     else if (item.dueDate && diffDays <= 7) { key = 'Due This Week'; label = 'Due This Week'; color = '#f59e0b'; sortKey = 1; }
-                    else if (item.dueDate && diffDays <= 30) { key = 'Due This Month'; label = 'Due This Month'; color = '#6366f1'; sortKey = 2; }
+                    else if (item.dueDate && diffDays <= 30) { key = 'Due This Month'; label = 'Due This Month'; color = '#D6FE51'; sortKey = 2; }
                     else if (item.dueDate) { key = 'Due Later'; label = 'Due Later'; color = '#10b981'; sortKey = 3; }
                     // For items without due date, group by last activity
                     else if (pastDays <= 7) { key = 'Active This Week'; label = 'Active This Week'; color = '#10b981'; sortKey = 4; }
                     else if (pastDays <= 30) { key = 'Active This Month'; label = 'Active This Month'; color = '#3b82f6'; sortKey = 5; }
-                    else if (pastDays <= 90) { key = 'Active Last 3 Months'; label = 'Active Last 3 Months'; color = '#818cf8'; sortKey = 6; }
+                    else if (pastDays <= 90) { key = 'Active Last 3 Months'; label = 'Active Last 3 Months'; color = '#D6FE51'; sortKey = 6; }
                     else { key = 'Older'; label = 'Older'; color = '#475569'; sortKey = 7; }
                     break;
                 }
@@ -526,8 +526,8 @@ export default function MaintenanceModule() {
                                 onClick={() => { setTab(t.id); setSelected(null); }}
                                 style={{
                                     padding: '6px 12px', border: 'none', borderRadius: 6,
-                                    background: tab === t.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                                    color: tab === t.id ? '#818cf8' : '#94a3b8',
+                                    background: tab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                    color: tab === t.id ? '#D6FE51' : '#94a3b8',
                                     cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
                                     display: 'flex', alignItems: 'center', gap: 4,
                                 }}
@@ -551,8 +551,8 @@ export default function MaintenanceModule() {
                                 onClick={() => setViewMode(v.id)}
                                 style={{
                                     padding: '5px 10px', border: 'none', borderRadius: 6,
-                                    background: viewMode === v.id ? 'rgba(99,102,241,0.25)' : 'transparent',
-                                    color: viewMode === v.id ? '#a5b4fc' : '#64748b',
+                                    background: viewMode === v.id ? 'rgba(214,254,81,0.25)' : 'transparent',
+                                    color: viewMode === v.id ? '#D6FE51' : '#64748b',
                                     cursor: 'pointer', fontSize: 11, fontWeight: 600, transition: 'all 0.15s',
                                     display: 'flex', alignItems: 'center', gap: 4,
                                 }}
@@ -567,13 +567,13 @@ export default function MaintenanceModule() {
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${slaMetrics ? 7 : 4}, 1fr)`, gap: 10, marginBottom: 16 }}>
                     {[
                         { label: 'Open', value: summary.open, color: '#f59e0b', icon: <AlertTriangle size={16} /> },
-                        { label: 'In Progress', value: summary.inProgress, color: '#6366f1', icon: <Clock size={16} /> },
+                        { label: 'In Progress', value: summary.inProgress, color: '#D6FE51', icon: <Clock size={16} /> },
                         { label: 'Completed', value: summary.completed, color: '#10b981', icon: <CheckCircle size={16} /> },
                         { label: 'Total', value: summary.total, color: '#94a3b8', icon: <Wrench size={16} /> },
                         ...(slaMetrics ? [
                             { label: 'Overdue', value: slaMetrics.overdueCount, color: '#ef4444', icon: <AlertTriangle size={16} /> },
                             { label: 'SLA %', value: `${slaMetrics.slaCompliance}%`, color: slaMetrics.slaCompliance >= 80 ? '#10b981' : '#ef4444', icon: <Shield size={16} /> },
-                            { label: 'Avg Resolve', value: `${slaMetrics.avgResolutionHours}h`, color: '#818cf8', icon: <Clock size={16} /> },
+                            { label: 'Avg Resolve', value: `${slaMetrics.avgResolutionHours}h`, color: '#D6FE51', icon: <Clock size={16} /> },
                         ] : []),
                     ].map(k => (
                         <div key={k.label} style={{
@@ -664,7 +664,7 @@ export default function MaintenanceModule() {
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(h.status)}15`, color: statusColor(h.status), fontWeight: 700 }}>{statusLabel(h.status)}</span>
                                         <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{h.title}</span>
                                         {h.technicianName && <span style={{ fontSize: 10, color: '#94a3b8' }}><User size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{h.technicianName}</span>}
-                                        {h.resolutionHours !== null && h.resolutionHours !== undefined && <span style={{ fontSize: 10, color: '#818cf8' }}>{h.resolutionHours}h</span>}
+                                        {h.resolutionHours !== null && h.resolutionHours !== undefined && <span style={{ fontSize: 10, color: '#D6FE51' }}>{h.resolutionHours}h</span>}
                                         <span style={{ fontSize: 10, color: '#475569' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 ))}
@@ -779,7 +779,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         {item.propertyId ? (
                             <button className="s-property-link" style={{ fontSize: 12, fontWeight: 600 }} onClick={() => navigateToProperty(item.propertyId!)}>{propName}</button>
                         ) : (
-                            <span style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 600 }}>{propName}</span>
+                            <span style={{ fontSize: 12, color: '#D6FE51', fontWeight: 600 }}>{propName}</span>
                         )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -926,7 +926,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {attachments.map((a: any) => (
                             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600 }}>{a.type?.replace(/_/g, ' ')}</span>
+                                <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600 }}>{a.type?.replace(/_/g, ' ')}</span>
                                 <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{a.description || a.metadata?.fileName || 'Unnamed'}</span>
                                 <span style={{ fontSize: 10, color: '#475569' }}>{a.metadata?.uploadedAt ? new Date(a.metadata.uploadedAt).toLocaleDateString() : ''}</span>
                             </div>
@@ -937,7 +937,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     {['before_photo', 'after_photo', 'vendor_quote', 'receipt'].map(type => (
                         <button key={type} onClick={() => onAddAttachment(type, '')} style={{
                             padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4,
-                            background: 'rgba(255,255,255,0.04)', color: '#818cf8', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                            background: 'rgba(255,255,255,0.04)', color: '#D6FE51', cursor: 'pointer', fontSize: 10, fontWeight: 600,
                         }}>
                             <Upload size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{type.replace(/_/g, ' ')}
                         </button>
@@ -1010,7 +1010,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
             {/* ── Action Buttons ── */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                 {(item.status === 'open' || item.status === 'pending') && (
-                    <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(214,254,81,0.2)', color: '#D6FE51', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Send size={12} /> Dispatch
                     </button>
                 )}
@@ -1031,7 +1031,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         {item.tags.map(tag => (
                             <span key={tag} style={{
                                 fontSize: 11, padding: '3px 10px', borderRadius: 6,
-                                background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 500,
+                                background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 500,
                             }}>{tag}</span>
                         ))}
                     </div>
@@ -1052,10 +1052,10 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                                 rel="noopener noreferrer"
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 5,
-                                    fontSize: 12, color: '#818cf8', textDecoration: 'none',
+                                    fontSize: 12, color: '#D6FE51', textDecoration: 'none',
                                     padding: '4px 10px', borderRadius: 6,
-                                    background: 'rgba(99,102,241,0.1)',
-                                    border: '1px solid rgba(99,102,241,0.2)',
+                                    background: 'rgba(214,254,81,0.1)',
+                                    border: '1px solid rgba(214,254,81,0.2)',
                                 }}
                             >
                                 <ExternalLink size={11} /> Open in Trello
@@ -1066,8 +1066,8 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         onClick={onExpand}
                         style={{
                             width: '100%', marginTop: 8, padding: '8px 12px',
-                            borderRadius: 6, border: '1px solid rgba(99,102,241,0.2)',
-                            background: 'rgba(99,102,241,0.08)', color: '#818cf8',
+                            borderRadius: 6, border: '1px solid rgba(214,254,81,0.2)',
+                            background: 'rgba(214,254,81,0.08)', color: '#D6FE51',
                             cursor: 'pointer', fontSize: 12, fontWeight: 600,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         }}
@@ -1093,7 +1093,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                 <Section title="Checklists" icon={<ClipboardCheck size={13} />} defaultOpen={false}>
                     {meta.checklists.map((cl: any, i: number) => (
                         <div key={i} style={{ marginBottom: 10 }}>
-                            <div style={{ color: '#a5b4fc', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{cl.name}</div>
+                            <div style={{ color: '#D6FE51', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{cl.name}</div>
                             {cl.checkItems?.map((ci: any, j: number) => (
                                 <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
                                     <span style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${ci.state === 'complete' ? '#10b981' : '#475569'}`, background: ci.state === 'complete' ? '#10b98120' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1141,7 +1141,7 @@ function DispatchModal({ onSubmit, onClose }: {
                     <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Dispatch notes (optional)" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
                     <button onClick={() => { if (name) onSubmit({ technicianName: name, technicianPhone: phone, scheduledDate: date || undefined, scheduledTime: time || undefined, notes }); }}
                         disabled={!name}
-                        style={{ padding: '8px 16px', border: 'none', borderRadius: 6, background: name ? '#6366f1' : '#334155', color: '#fff', cursor: name ? 'pointer' : 'default', fontWeight: 600 }}>
+                        style={{ padding: '8px 16px', border: 'none', borderRadius: 6, background: name ? '#D6FE51' : '#334155', color: '#fff', cursor: name ? 'pointer' : 'default', fontWeight: 600 }}>
                         <Send size={13} style={{ verticalAlign: -2, marginRight: 4 }} /> Dispatch
                     </button>
                 </div>
@@ -1190,7 +1190,7 @@ function RecurringForm({ properties, onSubmit, onCancel }: {
             <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" rows={2} style={{ ...inputStyle, width: '100%', marginBottom: 8, resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => { if (title) onSubmit({ title, description: desc, propertyId: prop || undefined, priority: pri, frequencyLabel: freq }); }}
-                    disabled={!title} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: title ? '#6366f1' : '#334155', color: '#fff', cursor: title ? 'pointer' : 'default', fontWeight: 600, fontSize: 12 }}>
+                    disabled={!title} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: title ? '#D6FE51' : '#334155', color: '#fff', cursor: title ? 'pointer' : 'default', fontWeight: 600, fontSize: 12 }}>
                     <Plus size={12} style={{ verticalAlign: -2, marginRight: 3 }} /> Create
                 </button>
                 <button onClick={onCancel} style={{ padding: '6px 14px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, background: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}>Cancel</button>

@@ -103,7 +103,7 @@ function typeColor(t: string) {
 }
 
 function diagColor(t: string) {
-    switch (t) { case 'success': return '#10b981'; case 'warning': return '#f59e0b'; case 'info': return '#6366f1'; default: return '#94a3b8'; }
+    switch (t) { case 'success': return '#10b981'; case 'warning': return '#f59e0b'; case 'info': return '#D6FE51'; default: return '#94a3b8'; }
 }
 
 export default function AccountingModule() {
@@ -195,8 +195,8 @@ export default function AccountingModule() {
                         <button key={t.id} onClick={() => { setTab(t.id); setSearch(''); }}
                             style={{
                                 padding: '6px 12px', border: 'none', borderRadius: 6,
-                                background: tab === t.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                                color: tab === t.id ? '#818cf8' : '#94a3b8',
+                                background: tab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                color: tab === t.id ? '#D6FE51' : '#94a3b8',
                                 cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
                                 display: 'flex', alignItems: 'center', gap: 4,
                             }}>
@@ -217,7 +217,7 @@ export default function AccountingModule() {
                         { label: 'Net Position', value: `$${(totalAR - totalAP).toLocaleString()}`, color: totalAR > totalAP ? '#10b981' : '#ef4444', icon: <TrendingUp size={18} /> },
                         { label: 'Overdue AR', value: `${overdueAR.length} ($${overdueAR.reduce((s, i) => s + i.amount, 0).toLocaleString()})`, color: '#f59e0b', icon: <Clock size={18} /> },
                         { label: 'Overdue AP', value: `${overdueAP.length} ($${overdueAP.reduce((s, i) => s + i.amount, 0).toLocaleString()})`, color: '#ef4444', icon: <AlertTriangle size={18} /> },
-                        { label: 'Bank Balance', value: `$${MOCK_BANK_ACCOUNTS.reduce((s, b) => s + b.balance, 0).toLocaleString()}`, color: '#6366f1', icon: <Landmark size={18} /> },
+                        { label: 'Bank Balance', value: `$${MOCK_BANK_ACCOUNTS.reduce((s, b) => s + b.balance, 0).toLocaleString()}`, color: '#D6FE51', icon: <Landmark size={18} /> },
                     ].map(m => (
                         <div key={m.label} className="s-glass-card" style={{ padding: '16px 20px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -321,7 +321,7 @@ export default function AccountingModule() {
                                     <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{ba.bank}</td>
                                     <td style={{ padding: '8px 12px', color: '#64748b', fontFamily: 'monospace' }}>{ba.number}</td>
                                     <td style={{ padding: '8px 12px' }}>
-                                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600 }}>{ba.type}</span>
+                                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600 }}>{ba.type}</span>
                                     </td>
                                     <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 700, fontSize: 14 }}>${ba.balance.toLocaleString()}</td>
                                 </tr>
@@ -349,7 +349,7 @@ export default function AccountingModule() {
                             {MOCK_JOURNAL_ENTRIES.map(je => (
                                 <tr key={je.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                     <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{je.date}</td>
-                                    <td style={{ padding: '8px 12px', color: '#a5b4fc', fontFamily: 'monospace', fontWeight: 600 }}>{je.reference}</td>
+                                    <td style={{ padding: '8px 12px', color: '#D6FE51', fontFamily: 'monospace', fontWeight: 600 }}>{je.reference}</td>
                                     <td style={{ padding: '8px 12px', color: '#e2e8f0' }}>{je.description}</td>
                                     <td style={{ padding: '8px 12px', color: '#10b981', fontWeight: 600 }}>${je.debit.toLocaleString()}</td>
                                     <td style={{ padding: '8px 12px', color: '#ef4444', fontWeight: 600 }}>${je.credit.toLocaleString()}</td>
@@ -376,7 +376,7 @@ export default function AccountingModule() {
                             </span>
                         ))}
                     </div>
-                    <button style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                    <button style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(214,254,81,0.3)', background: 'rgba(214,254,81,0.12)', color: '#D6FE51', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                         <ArrowLeftRight size={14} style={{ verticalAlign: -2, marginRight: 4 }} /> New Transfer
                     </button>
                 </div>
@@ -399,7 +399,7 @@ export default function AccountingModule() {
                         <tbody>
                             {MOCK_GL_ACCOUNTS.map(gl => (
                                 <tr key={gl.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '8px 12px', color: '#a5b4fc', fontFamily: 'monospace', fontWeight: 600 }}>{gl.number}</td>
+                                    <td style={{ padding: '8px 12px', color: '#D6FE51', fontFamily: 'monospace', fontWeight: 600 }}>{gl.number}</td>
                                     <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 500 }}>{gl.name}</td>
                                     <td style={{ padding: '8px 12px' }}>
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${typeColor(gl.type)}15`, color: typeColor(gl.type), fontWeight: 600 }}>{gl.type}</span>

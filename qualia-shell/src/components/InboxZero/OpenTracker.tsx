@@ -92,7 +92,7 @@ export default function OpenTracker() {
         title: { fontSize: 16, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 } as React.CSSProperties,
         form: { display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' as const } as React.CSSProperties,
         input: { flex: '1 1 200px', padding: '8px 12px', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', fontSize: 12, fontFamily: 'inherit' } as React.CSSProperties,
-        btn: { padding: '8px 16px', borderRadius: 6, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' } as React.CSSProperties,
+        btn: { padding: '8px 16px', borderRadius: 6, border: 'none', background: '#D6FE51', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' } as React.CSSProperties,
         card: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 12, marginBottom: 8 } as React.CSSProperties,
         badge: (count: number) => ({
             display: 'inline-flex', alignItems: 'center', gap: 4,

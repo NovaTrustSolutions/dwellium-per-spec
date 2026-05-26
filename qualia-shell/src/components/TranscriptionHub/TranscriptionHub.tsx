@@ -99,7 +99,7 @@ const STORAGE_KEY = 'dwellium-transcription-log';
 const MEETING_SCRIPT_KEY = 'dwellium-meeting-script';
 
 const SPEAKER_COLORS: Record<string, { bg: string; text: string; ring: string }> = {
-    'User': { bg: 'rgba(99, 102, 241, 0.15)', text: '#818cf8', ring: '#6366f1' },
+    'User': { bg: 'rgba(214, 254, 81, 0.15)', text: '#D6FE51', ring: '#D6FE51' },
     'Speaker B': { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', ring: '#10b981' },
     'Speaker C': { bg: 'rgba(251, 146, 60, 0.15)', text: '#fb923c', ring: '#f97316' },
     'Speaker D': { bg: 'rgba(236, 72, 153, 0.15)', text: '#f472b6', ring: '#ec4899' },
@@ -776,13 +776,13 @@ export default function TranscriptionHub() {
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-            gradient.addColorStop(0, '#6366f1');
-            gradient.addColorStop(0.5, '#818cf8');
-            gradient.addColorStop(1, '#a78bfa');
+            gradient.addColorStop(0, '#D6FE51');
+            gradient.addColorStop(0.5, '#D6FE51');
+            gradient.addColorStop(1, '#D6FE51');
 
             ctx.lineWidth = 2.5;
             ctx.strokeStyle = gradient;
-            ctx.shadowColor = '#818cf8';
+            ctx.shadowColor = '#D6FE51';
             ctx.shadowBlur = 8;
             ctx.beginPath();
 

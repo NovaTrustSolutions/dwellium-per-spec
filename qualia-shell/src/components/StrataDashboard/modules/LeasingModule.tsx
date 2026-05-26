@@ -49,8 +49,8 @@ function docStatusColor(s: string) {
         case 'pending_review': return '#f59e0b';
         case 'approved': return '#10b981';
         case 'sent': return '#0ea5e9';
-        case 'signed': return '#6366f1';
-        case 'countersigned': return '#a78bfa';
+        case 'signed': return '#D6FE51';
+        case 'countersigned': return '#D6FE51';
         default: return '#94a3b8';
     }
 }
@@ -141,7 +141,7 @@ function gcStatusColor(s: string) {
     switch (s) {
         case 'new': return '#0ea5e9';
         case 'contacted': return '#f59e0b';
-        case 'toured': return '#6366f1';
+        case 'toured': return '#D6FE51';
         case 'applied': return '#10b981';
         case 'waitlisted': return '#94a3b8';
         case 'inactive': return '#475569';
@@ -153,8 +153,8 @@ function renewalStatusColor(s: string) {
     switch (s) {
         case 'eligible': return '#0ea5e9';
         case 'pending': return '#f59e0b';
-        case 'countersign': return '#6366f1';
-        case 'sent': return '#a78bfa';
+        case 'countersign': return '#D6FE51';
+        case 'sent': return '#D6FE51';
         case 'accepted': return '#10b981';
         case 'declined': return '#ef4444';
         default: return '#94a3b8';
@@ -387,8 +387,8 @@ SIGNATURES: (Pending)
                             onClick={() => { setTab(t.id); setSelectedLease(null); }}
                             style={{
                                 padding: '6px 12px', border: 'none', borderRadius: 6,
-                                background: tab === t.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                                color: tab === t.id ? '#818cf8' : '#94a3b8',
+                                background: tab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                color: tab === t.id ? '#D6FE51' : '#94a3b8',
                                 cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
                                 display: 'flex', alignItems: 'center', gap: 4,
                             }}
@@ -484,7 +484,7 @@ SIGNATURES: (Pending)
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                             {sourceBreakdown.map(s => (
                                 <div key={s.source} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.source === 'Website' ? '#0ea5e9' : s.source === 'Zumper' ? '#10b981' : s.source === 'a friend' ? '#f59e0b' : '#6366f1' }} />
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.source === 'Website' ? '#0ea5e9' : s.source === 'Zumper' ? '#10b981' : s.source === 'a friend' ? '#f59e0b' : '#D6FE51' }} />
                                     <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>{s.source}</span>
                                     <span style={{ fontSize: 11, color: '#64748b' }}>{s.count} ({s.pct}%)</span>
                                 </div>
@@ -502,7 +502,7 @@ SIGNATURES: (Pending)
                             </div>
                             {selectedGCs.size > 0 && (
                                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: 11, color: '#a5b4fc', fontWeight: 600, marginRight: 4 }}>{selectedGCs.size} selected:</span>
+                                    <span style={{ fontSize: 11, color: '#D6FE51', fontWeight: 600, marginRight: 4 }}>{selectedGCs.size} selected:</span>
                                     {[
                                         { label: 'Mark Active', icon: <Eye size={10} /> },
                                         { label: 'Mark Inactive', icon: <UserCheck size={10} /> },
@@ -538,7 +538,7 @@ SIGNATURES: (Pending)
                                     <th style={{ padding: '8px 12px', width: 30 }}>
                                         <input type="checkbox" checked={selectedGCs.size === MOCK_GUEST_CARDS.length}
                                             onChange={() => setSelectedGCs(prev => prev.size === MOCK_GUEST_CARDS.length ? new Set() : new Set(MOCK_GUEST_CARDS.map(gc => gc.id)))}
-                                            style={{ accentColor: '#6366f1' }} />
+                                            style={{ accentColor: '#D6FE51' }} />
                                     </th>
                                     {['Name', 'Interested In', 'Latest Interest', 'Most Recent Activity', 'Source', 'Status'].map(h => (
                                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
@@ -547,13 +547,13 @@ SIGNATURES: (Pending)
                             </thead>
                             <tbody>
                                 {MOCK_GUEST_CARDS.map(gc => (
-                                    <tr key={gc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: selectedGCs.has(gc.id) ? 'rgba(99,102,241,0.06)' : 'transparent' }}>
+                                    <tr key={gc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: selectedGCs.has(gc.id) ? 'rgba(214,254,81,0.06)' : 'transparent' }}>
                                         <td style={{ padding: '8px 12px' }}>
                                             <input type="checkbox" checked={selectedGCs.has(gc.id)}
                                                 onChange={() => setSelectedGCs(prev => { const n = new Set(prev); n.has(gc.id) ? n.delete(gc.id) : n.add(gc.id); return n; })}
-                                                style={{ accentColor: '#6366f1' }} />
+                                                style={{ accentColor: '#D6FE51' }} />
                                         </td>
-                                        <td style={{ padding: '8px 12px', color: '#818cf8', fontWeight: 600, cursor: 'pointer' }}>{gc.name}</td>
+                                        <td style={{ padding: '8px 12px', color: '#D6FE51', fontWeight: 600, cursor: 'pointer' }}>{gc.name}</td>
                                         <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{gc.interestedIn}</td>
                                         <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{gc.date}</td>
                                         <td style={{ padding: '8px 12px' }}>
@@ -561,7 +561,7 @@ SIGNATURES: (Pending)
                                             <div style={{ fontSize: 10, color: '#64748b' }}>{gc.activityDate}</div>
                                         </td>
                                         <td style={{ padding: '8px 12px' }}>
-                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: gc.source === 'Website' ? 'rgba(14,165,233,0.12)' : gc.source === 'Zumper' ? 'rgba(16,185,129,0.12)' : 'rgba(99,102,241,0.12)', color: gc.source === 'Website' ? '#0ea5e9' : gc.source === 'Zumper' ? '#10b981' : '#a5b4fc', fontWeight: 600 }}>{gc.source}</span>
+                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: gc.source === 'Website' ? 'rgba(14,165,233,0.12)' : gc.source === 'Zumper' ? 'rgba(16,185,129,0.12)' : 'rgba(214,254,81,0.12)', color: gc.source === 'Website' ? '#0ea5e9' : gc.source === 'Zumper' ? '#10b981' : '#D6FE51', fontWeight: 600 }}>{gc.source}</span>
                                         </td>
                                         <td style={{ padding: '8px 12px' }}>
                                             <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${gcStatusColor(gc.status)}15`, color: gcStatusColor(gc.status), fontWeight: 600, textTransform: 'capitalize' }}>{gc.status}</span>
@@ -593,7 +593,7 @@ SIGNATURES: (Pending)
                             <tbody>
                                 {MOCK_APPLICATIONS.map(app => (
                                     <tr key={app.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                        <td style={{ padding: '8px 12px', color: '#818cf8', fontWeight: 600 }}>{app.applicant}</td>
+                                        <td style={{ padding: '8px 12px', color: '#D6FE51', fontWeight: 600 }}>{app.applicant}</td>
                                         <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{app.unit}</td>
                                         <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>${app.marketRent.toLocaleString()}</td>
                                         <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{app.desiredMoveIn}</td>
@@ -701,7 +701,7 @@ SIGNATURES: (Pending)
                                 { id: 'printed' as LeaseFilter, label: 'Printed' },
                             ].map(f => (
                                 <button key={f.id} onClick={() => setLeaseFilter(f.id)}
-                                    style={{ padding: '4px 10px', border: 'none', borderRadius: 4, background: leaseFilter === f.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)', color: leaseFilter === f.id ? '#818cf8' : '#64748b', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
+                                    style={{ padding: '4px 10px', border: 'none', borderRadius: 4, background: leaseFilter === f.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)', color: leaseFilter === f.id ? '#D6FE51' : '#64748b', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>
                                     {f.label}
                                 </button>
                             ))}
@@ -739,7 +739,7 @@ SIGNATURES: (Pending)
                                                     fetchLeases();
                                                 } catch { showToast('Failed to countersign lease', 'error'); }
                                             }}
-                                                style={{ padding: '3px 10px', border: 'none', borderRadius: 4, background: 'rgba(99,102,241,0.15)', color: '#818cf8', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+                                                style={{ padding: '3px 10px', border: 'none', borderRadius: 4, background: 'rgba(214,254,81,0.15)', color: '#D6FE51', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
                                                 <PenTool size={10} style={{ verticalAlign: -1, marginRight: 3 }} />Countersign
                                             </button>
                                         </td>
@@ -762,7 +762,7 @@ SIGNATURES: (Pending)
                             </span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 11, color: '#94a3b8' }}>
-                                    <input type="checkbox" checked={includeM2M} onChange={() => setIncludeM2M(!includeM2M)} style={{ accentColor: '#6366f1' }} />
+                                    <input type="checkbox" checked={includeM2M} onChange={() => setIncludeM2M(!includeM2M)} style={{ accentColor: '#D6FE51' }} />
                                     Include M2M
                                 </label>
                             </div>
@@ -775,7 +775,7 @@ SIGNATURES: (Pending)
                             </div>
                             {(['all', 'eligible', 'countersign'] as RenewalStatus[]).map(f => (
                                 <button key={f} onClick={() => setRenewalFilter(f)}
-                                    style={{ padding: '5px 10px', border: 'none', borderRadius: 4, background: renewalFilter === f ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)', color: renewalFilter === f ? '#818cf8' : '#64748b', cursor: 'pointer', fontSize: 11, fontWeight: 500, textTransform: 'capitalize' }}>
+                                    style={{ padding: '5px 10px', border: 'none', borderRadius: 4, background: renewalFilter === f ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)', color: renewalFilter === f ? '#D6FE51' : '#64748b', cursor: 'pointer', fontSize: 11, fontWeight: 500, textTransform: 'capitalize' }}>
                                     {f === 'all' ? 'All' : f}
                                 </button>
                             ))}
@@ -837,7 +837,7 @@ SIGNATURES: (Pending)
                                                         } catch { showToast('Failed to countersign', 'error'); }
                                                     } else { showToast('No matching lease workitem found', 'error'); }
                                                 }}
-                                                    style={{ padding: '3px 8px', border: 'none', borderRadius: 4, background: 'rgba(99,102,241,0.15)', color: '#818cf8', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
+                                                    style={{ padding: '3px 8px', border: 'none', borderRadius: 4, background: 'rgba(214,254,81,0.15)', color: '#D6FE51', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
                                                     <PenTool size={9} style={{ verticalAlign: -1, marginRight: 2 }} />Countersign
                                                 </button>
                                             )}
@@ -862,7 +862,7 @@ SIGNATURES: (Pending)
                             { id: 'agent-performance' as MetricView, label: 'Agent Performance', icon: <UserCheck size={12} /> },
                         ]).map(v => (
                             <button key={v.id} onClick={() => setMetricView(v.id)}
-                                style={{ padding: '5px 12px', border: 'none', borderRadius: 6, background: metricView === v.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)', color: metricView === v.id ? '#818cf8' : '#94a3b8', cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                style={{ padding: '5px 12px', border: 'none', borderRadius: 6, background: metricView === v.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)', color: metricView === v.id ? '#D6FE51' : '#94a3b8', cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {v.icon} {v.label}
                             </button>
                         ))}
@@ -872,11 +872,11 @@ SIGNATURES: (Pending)
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                             {[
                                 { label: 'Occupancy Rate', value: units.length > 0 ? `${Math.round((1 - vacantUnits.length / units.length) * 100)}%` : '—', color: '#10b981', icon: <Building2 size={18} /> },
-                                { label: 'Avg. Days to Lease', value: '23', color: '#6366f1', icon: <Clock size={18} /> },
+                                { label: 'Avg. Days to Lease', value: '23', color: '#D6FE51', icon: <Clock size={18} /> },
                                 { label: 'Active Applications', value: `${MOCK_APPLICATIONS.length}`, color: '#f59e0b', icon: <FileText size={18} /> },
                                 { label: 'Leases Signed (MTD)', value: `${leases.filter(l => getStage(l) === 'lease_signed').length}`, color: '#0ea5e9', icon: <FileKey2 size={18} /> },
-                                { label: 'Pending Renewals', value: `${MOCK_RENEWALS.filter(r => r.status === 'eligible').length}`, color: '#a78bfa', icon: <RotateCw size={18} /> },
-                                { label: 'Avg. Rent', value: leases.length > 0 ? `$${Math.round(leases.reduce((s, l) => s + (l.metadata?.monthlyRent || 0), 0) / leases.length).toLocaleString()}` : '—', color: '#818cf8', icon: <TrendingUp size={18} /> },
+                                { label: 'Pending Renewals', value: `${MOCK_RENEWALS.filter(r => r.status === 'eligible').length}`, color: '#D6FE51', icon: <RotateCw size={18} /> },
+                                { label: 'Avg. Rent', value: leases.length > 0 ? `$${Math.round(leases.reduce((s, l) => s + (l.metadata?.monthlyRent || 0), 0) / leases.length).toLocaleString()}` : '—', color: '#D6FE51', icon: <TrendingUp size={18} /> },
                                 { label: 'Online Payments', value: '60%', color: '#10b981', icon: <Percent size={18} /> },
                                 { label: 'Portal Adoption', value: '51%', color: '#0ea5e9', icon: <Globe size={18} /> },
                             ].map(m => (
@@ -896,10 +896,10 @@ SIGNATURES: (Pending)
                             <h3 style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Leasing Funnel — This Month</h3>
                             {[
                                 { stage: 'Guest Cards', count: MOCK_GUEST_CARDS.length, color: '#0ea5e9', width: 100 },
-                                { stage: 'Tours/Showings', count: MOCK_GUEST_CARDS.filter(gc => gc.status === 'toured').length, color: '#6366f1', width: 75 },
+                                { stage: 'Tours/Showings', count: MOCK_GUEST_CARDS.filter(gc => gc.status === 'toured').length, color: '#D6FE51', width: 75 },
                                 { stage: 'Applications', count: MOCK_APPLICATIONS.length, color: '#f59e0b', width: 50 },
                                 { stage: 'Approved', count: MOCK_APPLICATIONS.filter(a => a.status === 'approved').length + MOCK_APPLICATIONS.filter(a => a.status === 'converting').length, color: '#10b981', width: 35 },
-                                { stage: 'Leases Signed', count: leases.filter(l => getStage(l) === 'lease_signed').length, color: '#a78bfa', width: 20 },
+                                { stage: 'Leases Signed', count: leases.filter(l => getStage(l) === 'lease_signed').length, color: '#D6FE51', width: 20 },
                             ].map((f, i, arr) => (
                                 <div key={f.stage} style={{ marginBottom: 12 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -1009,17 +1009,17 @@ SIGNATURES: (Pending)
                         {leasingAlerts.map(a => (
                             <div key={a.id} style={{
                                 padding: '10px 14px', borderRadius: 8,
-                                background: a.severity === 'high' ? 'rgba(239,68,68,0.06)' : a.severity === 'medium' ? 'rgba(245,158,11,0.06)' : 'rgba(99,102,241,0.06)',
-                                border: `1px solid ${a.severity === 'high' ? 'rgba(239,68,68,0.15)' : a.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)'}`,
+                                background: a.severity === 'high' ? 'rgba(239,68,68,0.06)' : a.severity === 'medium' ? 'rgba(245,158,11,0.06)' : 'rgba(214,254,81,0.06)',
+                                border: `1px solid ${a.severity === 'high' ? 'rgba(239,68,68,0.15)' : a.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(214,254,81,0.15)'}`,
                                 display: 'flex', alignItems: 'center', gap: 10,
                             }}>
-                                <AlertTriangle size={14} style={{ color: a.severity === 'high' ? '#ef4444' : a.severity === 'medium' ? '#f59e0b' : '#6366f1', flexShrink: 0 }} />
+                                <AlertTriangle size={14} style={{ color: a.severity === 'high' ? '#ef4444' : a.severity === 'medium' ? '#f59e0b' : '#D6FE51', flexShrink: 0 }} />
                                 <span style={{ fontSize: 13, color: '#e2e8f0', flex: 1 }}>{a.message}</span>
                                 <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', flexShrink: 0 }}>{a.type.replace(/_/g, ' ')}</span>
                                 <span style={{
                                     fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600, textTransform: 'uppercase',
-                                    background: a.severity === 'high' ? 'rgba(239,68,68,0.15)' : a.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)',
-                                    color: a.severity === 'high' ? '#ef4444' : a.severity === 'medium' ? '#f59e0b' : '#6366f1',
+                                    background: a.severity === 'high' ? 'rgba(239,68,68,0.15)' : a.severity === 'medium' ? 'rgba(245,158,11,0.15)' : 'rgba(214,254,81,0.15)',
+                                    color: a.severity === 'high' ? '#ef4444' : a.severity === 'medium' ? '#f59e0b' : '#D6FE51',
                                 }}>{a.severity}</span>
                                 {a.deadline && <span style={{ fontSize: 10, color: '#94a3b8' }}>{a.deadline}</span>}
                                 <button onClick={() => {
@@ -1027,7 +1027,7 @@ SIGNATURES: (Pending)
                                     else if (a.type.includes('stalled')) setTab('applications');
                                     else if (a.type.includes('expir') || a.type.includes('notice')) setTab('renewals');
                                     else setTab('leases');
-                                }} style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: '#818cf8', cursor: 'pointer', fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
+                                }} style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: '#D6FE51', cursor: 'pointer', fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
                                     <ArrowRight size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{a.action}
                                 </button>
                             </div>
@@ -1062,7 +1062,7 @@ SIGNATURES: (Pending)
                             </span>
                             {(DOC_NEXT_STATUS[selectedLease.metadata.docStatus as string] || []).map((next: { label: string; target: DocStatus }) => (
                                 <button key={next.target} onClick={() => updateDocStatus(selectedLease, next.target)}
-                                    style={{ padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: '#818cf8', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
+                                    style={{ padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: '#D6FE51', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
                                     {next.label}
                                 </button>
                             ))}
@@ -1114,7 +1114,7 @@ SIGNATURES: (Pending)
 
                     {/* Utility Transfer Checklist */}
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', marginTop: '8px' }}>
-                        <h4 style={{ color: '#a5b4fc', fontSize: '13px', fontWeight: 600, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <h4 style={{ color: '#D6FE51', fontSize: '13px', fontWeight: 600, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Zap size={14} /> Utility Transfers
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1172,7 +1172,7 @@ SIGNATURES: (Pending)
                                     );
                                 })}
                             </div>
-                            <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(99,102,241,0.06)', borderRadius: '6px', fontSize: '11px', color: '#64748b' }}>
+                            <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(214,254,81,0.06)', borderRadius: '6px', fontSize: '11px', color: '#64748b' }}>
                                 {MOVEIN_CHECKLIST.filter(i => selectedLease.metadata?.[`movein_${i.key}`]).length} / {MOVEIN_CHECKLIST.length} completed
                             </div>
                         </div>

@@ -128,7 +128,7 @@ function OccupancyTooltip({ active, payload }: OccupancyTooltipProps) {
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>{data.payload.name}</p>
-            <p style={{ color: '#6366f1', fontSize: '0.8125rem', fontWeight: 600 }}>{data.value}% occupied</p>
+            <p style={{ color: '#D6FE51', fontSize: '0.8125rem', fontWeight: 600 }}>{data.value}% occupied</p>
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>{data.payload.units} total units</p>
         </div>
     );
@@ -136,7 +136,7 @@ function OccupancyTooltip({ active, payload }: OccupancyTooltipProps) {
 
 const getBarColor = (occupancy: number) => {
     if (occupancy >= 95) return '#10b981';
-    if (occupancy >= 90) return '#6366f1';
+    if (occupancy >= 90) return '#D6FE51';
     return '#f59e0b';
 };
 
@@ -193,7 +193,7 @@ interface CommEntry {
 }
 
 const channelIconMap: Record<string, { icon: typeof DollarSign; color: string; bg: string }> = {
-    email: { icon: Mail, color: '#6366f1', bg: 'rgba(99, 102, 241, 0.12)' },
+    email: { icon: Mail, color: '#D6FE51', bg: 'rgba(214, 254, 81, 0.12)' },
     phone: { icon: Phone, color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
     sms: { icon: MessageSquare, color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
     internal: { icon: Bell, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
@@ -294,12 +294,12 @@ function UpcomingEvents({ events }: { events: CalEvent[] }) {
    ======================================== */
 
 const quickActions = [
-    { id: 1, label: 'New Lease', sublabel: 'Start application', icon: FileKey2, color: '#6366f1', bg: 'rgba(99, 102, 241, 0.12)' },
+    { id: 1, label: 'New Lease', sublabel: 'Start application', icon: FileKey2, color: '#D6FE51', bg: 'rgba(214, 254, 81, 0.12)' },
     { id: 2, label: 'Work Order', sublabel: 'Create request', icon: Wrench, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
     { id: 3, label: 'Record Payment', sublabel: 'Manual entry', icon: DollarSign, color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
     { id: 4, label: 'Send Notice', sublabel: 'Broadcast', icon: Bell, color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
     { id: 5, label: 'Run Report', sublabel: 'Financials', icon: BarChart3, color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' },
-    { id: 6, label: 'Ask Aria', sublabel: 'AI assistant', icon: Sparkles, color: '#a78bfa', bg: 'rgba(167, 139, 250, 0.12)' },
+    { id: 6, label: 'Ask Aria', sublabel: 'AI assistant', icon: Sparkles, color: '#D6FE51', bg: 'rgba(214, 254, 81, 0.12)' },
 ];
 
 function QuickActions() {
@@ -476,8 +476,8 @@ function OverviewContent() {
                     { label: 'Rent Collected', value: '87%', sub: '$127,450 of $146,500', color: '#10b981', icon: <DollarSign size={16} /> },
                     { label: 'Outstanding', value: '13%', sub: '$19,050 past due', color: '#f59e0b', icon: <AlertTriangle size={16} /> },
                     { label: 'Online Payments', value: '60%', sub: '$76,470 auto-pay', color: '#0ea5e9', icon: <CreditCard size={16} /> },
-                    { label: 'Portal Adoption', value: '51%', sub: '139 of 272 tenants', color: '#6366f1', icon: <Globe size={16} /> },
-                    { label: 'Leases Expiring', value: '7', sub: 'Next 90 days', color: '#a78bfa', icon: <FileKey2 size={16} /> },
+                    { label: 'Portal Adoption', value: '51%', sub: '139 of 272 tenants', color: '#D6FE51', icon: <Globe size={16} /> },
+                    { label: 'Leases Expiring', value: '7', sub: 'Next 90 days', color: '#D6FE51', icon: <FileKey2 size={16} /> },
                     { label: 'Delinquency Rate', value: '4.2%', sub: '12 tenants', color: '#ef4444', icon: <AlertTriangle size={16} /> },
                 ].map(m => (
                     <div key={m.label} className="s-glass-card" style={{ padding: '12px 16px' }}>
@@ -654,7 +654,7 @@ const INTEGRATION_CARDS: IntegrationCard[] = [
         id: 'dayflow',
         name: 'DayFlow',
         icon: <Clock size={24} />,
-        color: '#6366f1',
+        color: '#D6FE51',
         description: 'Productivity logs — track daily activities, summaries, and batch imports.',
         features: ['Activity Logging', 'Daily Summaries', 'Batch Import', 'User Analytics'],
         endpoint: '/api/integrations/dayflow',
@@ -738,7 +738,7 @@ function IntegrationsModule() {
 
     const sectionCardStyle = {
         background: 'rgba(30,33,48,0.9)',
-        border: '1px solid rgba(99,102,241,0.12)',
+        border: '1px solid rgba(214,254,81,0.12)',
         borderRadius: '12px',
         padding: '18px 20px',
     } as const;
@@ -1149,8 +1149,8 @@ function IntegrationsModule() {
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {card.features.map(f => (
                                     <span key={f} style={{
-                                        background: 'rgba(99,102,241,0.12)',
-                                        color: '#a5b4fc',
+                                        background: 'rgba(214,254,81,0.12)',
+                                        color: '#D6FE51',
                                         padding: '3px 8px',
                                         borderRadius: '6px',
                                         fontSize: '11px',
@@ -1173,9 +1173,9 @@ function IntegrationsModule() {
                                     disabled={status?.loading}
                                     style={{
                                         flex: 1, padding: '8px 12px', borderRadius: '8px',
-                                        border: '1px solid rgba(99,102,241,0.3)',
-                                        background: 'rgba(99,102,241,0.1)',
-                                        color: '#a5b4fc', cursor: 'pointer',
+                                        border: '1px solid rgba(214,254,81,0.3)',
+                                        background: 'rgba(214,254,81,0.1)',
+                                        color: '#D6FE51', cursor: 'pointer',
                                         fontSize: '12px', fontWeight: 600,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                                     }}
@@ -1536,7 +1536,7 @@ function IntegrationsModule() {
             {/* ── Trello → Strata Sync ── */}
             <div style={{
                 background: 'rgba(30,33,48,0.9)',
-                border: '1px solid rgba(99,102,241,0.2)',
+                border: '1px solid rgba(214,254,81,0.2)',
                 borderRadius: '12px',
                 padding: '20px',
                 marginBottom: '16px',
@@ -1545,7 +1545,7 @@ function IntegrationsModule() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
                             width: 44, height: 44, borderRadius: '10px',
-                            background: 'rgba(99,102,241,0.15)', color: '#818cf8',
+                            background: 'rgba(214,254,81,0.15)', color: '#D6FE51',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                             <RefreshCw size={20} />
@@ -1561,7 +1561,7 @@ function IntegrationsModule() {
                         style={{
                             padding: '10px 20px', borderRadius: '8px',
                             border: 'none',
-                            background: trelloSync.syncing ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.8)',
+                            background: trelloSync.syncing ? 'rgba(214,254,81,0.2)' : 'rgba(214,254,81,0.8)',
                             color: '#fff', cursor: trelloSync.syncing ? 'not-allowed' : 'pointer',
                             fontSize: '13px', fontWeight: 700,
                             display: 'flex', alignItems: 'center', gap: '8px',
@@ -1585,7 +1585,7 @@ function IntegrationsModule() {
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
                                 {[
-                                    { label: 'Boards Synced', value: trelloSync.result.boardsSynced, color: '#818cf8' },
+                                    { label: 'Boards Synced', value: trelloSync.result.boardsSynced, color: '#D6FE51' },
                                     { label: 'Workitems Created', value: trelloSync.result.workitemsCreated, color: '#10b981' },
                                     { label: 'Workitems Updated', value: trelloSync.result.workitemsUpdated, color: '#3b82f6' },
                                     { label: 'Vendors Created', value: trelloSync.result.vendorsCreated, color: '#f59e0b' },
@@ -1651,8 +1651,8 @@ function IntegrationsModule() {
                     ].map(ep => (
                         <div key={ep.path} style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '12px' }}>
                             <span style={{
-                                background: ep.method === 'GET' ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)',
-                                color: ep.method === 'GET' ? '#10b981' : '#a5b4fc',
+                                background: ep.method === 'GET' ? 'rgba(16,185,129,0.15)' : 'rgba(214,254,81,0.15)',
+                                color: ep.method === 'GET' ? '#10b981' : '#D6FE51',
                                 padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace',
                                 fontWeight: 700, fontSize: '10px', minWidth: '36px', textAlign: 'center' as const,
                             }}>{ep.method}</span>

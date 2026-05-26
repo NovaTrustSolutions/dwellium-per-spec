@@ -48,7 +48,7 @@ const TYPE_ICONS: Record<string, string> = {
 };
 const TYPE_COLORS: Record<string, string> = {
     fact: '#3b82f6', preference: '#f59e0b', decision: '#ef4444',
-    observation: '#8b5cf6', insight: '#10b981', manual: '#6366f1',
+    observation: '#D6FE51', insight: '#10b981', manual: '#D6FE51',
 };
 const IMPORTANCE_LABELS = ['Low', 'Medium', 'High', 'Critical'];
 
@@ -368,7 +368,7 @@ export default function HonchoHermesPanel() {
                         ) : (
                             filteredMemories.map(m => (
                                 <div key={m.id} className="hhp__memory-card"
-                                    style={{ '--accent': TYPE_COLORS[m.memoryType] || '#6366f1' } as React.CSSProperties}>
+                                    style={{ '--accent': TYPE_COLORS[m.memoryType] || '#D6FE51' } as React.CSSProperties}>
                                     <div className="hhp__memory-top">
                                         <span className="hhp__memory-type">
                                             {TYPE_ICONS[m.memoryType] || '📋'} {m.memoryType}
@@ -550,7 +550,7 @@ export default function HonchoHermesPanel() {
                                         <line key={i}
                                             x1={50 + Math.cos(aS) * (rS / 4)} y1={50 + Math.sin(aS) * (rS / 4)}
                                             x2={50 + Math.cos(aT) * (rT / 4)} y2={50 + Math.sin(aT) * (rT / 4)}
-                                            stroke="rgba(99,102,241,0.15)" strokeWidth="0.3" />
+                                            stroke="rgba(214,254,81,0.15)" strokeWidth="0.3" />
                                     );
                                 })}
                             </svg>

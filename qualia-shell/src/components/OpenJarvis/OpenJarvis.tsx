@@ -940,7 +940,7 @@ export default function OpenJarvisWidget() {
                 <button
                   onClick={() => { setEngine('gemini'); localStorage.setItem(AG_ENGINE_KEY, 'gemini'); }}
                   className={`oj-panel-btn ${engine === 'gemini' ? 'oj-engine-active' : ''}`}
-                  style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: engine === 'gemini' ? 'rgba(130,100,255,0.3)' : 'transparent', color: engine === 'gemini' ? '#c4b5fd' : 'inherit' }}
+                  style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: engine === 'gemini' ? 'rgba(130,100,255,0.3)' : 'transparent', color: engine === 'gemini' ? '#E8FF7A' : 'inherit' }}
                   title="Gemini (Google DeepMind)"
                 >✦ Gemini</button>
                 <button

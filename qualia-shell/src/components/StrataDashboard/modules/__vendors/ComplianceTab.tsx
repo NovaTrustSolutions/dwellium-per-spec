@@ -125,9 +125,9 @@ export default function ComplianceTab({ vendor, now }: ComplianceTabProps) {
                         borderRadius: 8,
                         fontSize: 12,
                         fontWeight: 600,
-                        background: 'rgba(99,102,241,0.15)',
-                        border: '1px solid rgba(99,102,241,0.3)',
-                        color: '#a5b4fc',
+                        background: 'rgba(214,254,81,0.15)',
+                        border: '1px solid rgba(214,254,81,0.3)',
+                        color: '#D6FE51',
                         cursor: 'pointer',
                         fontFamily: 'inherit',
                     }}

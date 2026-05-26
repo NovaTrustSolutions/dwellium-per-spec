@@ -58,7 +58,7 @@ const BLANK_HEAD: Omit<HydraHead, 'id'> = {
     provider: 'openai',
     model: '',
     icon: '🤖',
-    color: '#6366f1',
+    color: '#D6FE51',
     colorRgb: '99, 102, 241',
     enabled: true,
     endpoint: '',
@@ -403,7 +403,7 @@ export default function HydraAI() {
 
     // ── Render a single response panel ──
     const renderPanel = (headId: string, resp: 'loading' | HydraResponse | undefined, head: HydraHead | undefined) => {
-        const color = head?.color || '#6366f1';
+        const color = head?.color || '#D6FE51';
         const colorRgb = head?.colorRgb || '99,102,241';
 
         return (

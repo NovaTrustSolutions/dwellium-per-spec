@@ -23,7 +23,7 @@ const WidgetLoader = () => (
     }}>
         <div style={{
             width: 20, height: 20, marginRight: 8,
-            border: '2px solid rgba(99,102,241,0.2)', borderTopColor: '#6366f1',
+            border: '2px solid rgba(214,254,81,0.2)', borderTopColor: '#D6FE51',
             borderRadius: '50%', animation: 'spin 0.6s linear infinite',
         }} />
         Loading…
@@ -68,7 +68,7 @@ class WidgetErrorBoundary extends React.Component<
                         onClick={() => this.setState({ hasError: false, error: null })}
                         style={{
                             marginTop: 8, padding: '6px 18px', fontSize: 12, fontWeight: 500,
-                            background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)',
+                            background: 'rgba(214,254,81,0.15)', color: '#D6FE51', border: '1px solid rgba(214,254,81,0.3)',
                             borderRadius: 6, cursor: 'pointer', transition: 'all 0.15s',
                         }}
                     >
@@ -852,7 +852,7 @@ export default function Desktop() {
                         onDragOver={e => {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'move';
-                            (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.15)';
+                            (e.currentTarget as HTMLElement).style.background = 'rgba(214,254,81,0.15)';
                         }}
                         onDragLeave={e => {
                             (e.currentTarget as HTMLElement).style.background = 'rgba(15,17,23,0.92)';
@@ -918,7 +918,7 @@ export default function Desktop() {
                                     style={{
                                         flex: '0 1 auto', maxWidth: 160, padding: '4px 10px 4px 14px', fontSize: 11,
                                         fontWeight: isActive ? 600 : 400, cursor: 'grab',
-                                        background: isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
+                                        background: isActive ? 'rgba(214,254,81,0.12)' : 'transparent',
                                         border: 'none', borderBottom: isActive ? '2px solid #818cf8' : '2px solid transparent',
                                         color: isActive ? '#e2e8f0' : '#64748b',
                                         display: 'flex', alignItems: 'center', gap: 5,

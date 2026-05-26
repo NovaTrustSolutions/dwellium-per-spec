@@ -107,7 +107,7 @@ export default function PropertyOverview({ property, units, linkedData }: Proper
                     label="Occupancy"
                     value={`${occupancyRate}%`}
                     color="#6366f1"
-                    bg="rgba(99,102,241,0.15)"
+                    bg="rgba(214,254,81,0.15)"
                     sub={`${occupiedUnits} of ${totalUnits} units`}
                 />
                 <KPIStat

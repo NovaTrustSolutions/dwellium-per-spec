@@ -320,7 +320,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
                     {onEdit && (
                         <span
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'rgba(99,102,241,0.1)', color: '#818cf8', cursor: 'pointer', transition: 'all 0.15s' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'rgba(214,254,81,0.1)', color: '#D6FE51', cursor: 'pointer', transition: 'all 0.15s' }}
                             title={`Edit ${title}`}
                         >
                             <Settings2 size={11} />
@@ -378,7 +378,7 @@ function HistoryTab({ tenantId }: { tenantId: string }) {
         switch (t) { case 'communication': return <Mail size={12} />; case 'workitem': return <FileText size={12} />; case 'lease': return <Calendar size={12} />; default: return <Clock size={12} />; }
     };
     const typeColor = (t: string) => {
-        switch (t) { case 'communication': return '#06b6d4'; case 'workitem': return '#818cf8'; case 'lease': return '#10b981'; default: return '#64748b'; }
+        switch (t) { case 'communication': return '#06b6d4'; case 'workitem': return '#D6FE51'; case 'lease': return '#10b981'; default: return '#64748b'; }
     };
     if (loading) return <div style={{ padding: 20, textAlign: 'center', color: '#475569', fontSize: 12 }}>Loading history…</div>;
     if (events.length === 0) return <div style={{ padding: 20, textAlign: 'center', color: '#475569', fontSize: 12 }}>No history recorded yet.</div>;
@@ -419,9 +419,9 @@ function CommTab({ tenantId, tenantName }: { tenantId: string; tenantName: strin
                 {TEMPLATES.map(t => (
                     <button key={t.key} onClick={() => setSelectedTemplate(t.key)} style={{
                         padding: '4px 10px', borderRadius: 8, border: '1px solid',
-                        borderColor: selectedTemplate === t.key ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)',
-                        background: selectedTemplate === t.key ? 'rgba(99,102,241,0.15)' : 'transparent',
-                        color: selectedTemplate === t.key ? '#a5b4fc' : '#64748b',
+                        borderColor: selectedTemplate === t.key ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)',
+                        background: selectedTemplate === t.key ? 'rgba(214,254,81,0.15)' : 'transparent',
+                        color: selectedTemplate === t.key ? '#D6FE51' : '#64748b',
                         fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                     }}>{t.icon} {t.label}</button>
                 ))}
@@ -516,7 +516,7 @@ function OtherOccupantsSection({ tenant, allTenants }: { tenant: Tenant; allTena
                 }}
             >
                 <Users size={12} /> Other Occupants
-                <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 10, background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', fontSize: 10, fontWeight: 700 }}>
+                <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 10, background: 'rgba(214,254,81,0.15)', color: '#D6FE51', fontSize: 10, fontWeight: 700 }}>
                     {loading ? '…' : others.length}
                 </span>
                 <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -766,7 +766,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
             {/* Status filter pills */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexShrink: 0, flexWrap: 'wrap' }}>
-                <button onClick={() => setStatusFilter('all')} style={{ padding: '3px 10px', borderRadius: 12, border: '1px solid', borderColor: statusFilter === 'all' ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)', background: statusFilter === 'all' ? 'rgba(99,102,241,0.15)' : 'transparent', color: statusFilter === 'all' ? '#a5b4fc' : '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>All ({tenants.length})</button>
+                <button onClick={() => setStatusFilter('all')} style={{ padding: '3px 10px', borderRadius: 12, border: '1px solid', borderColor: statusFilter === 'all' ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)', background: statusFilter === 'all' ? 'rgba(214,254,81,0.15)' : 'transparent', color: statusFilter === 'all' ? '#D6FE51' : '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>All ({tenants.length})</button>
                 {RESIDENT_STATUSES.map(s => {
                     const count = tenants.filter(t => t.status === s).length;
                     return (
@@ -779,9 +779,9 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
             {/* Bulk action bar */}
             {bulkSelected.size > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 8, borderRadius: 10, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#a5b4fc' }}>{bulkSelected.size} selected</span>
-                    <button onClick={() => setShowBulkStatus(true)} style={{ padding: '4px 12px', borderRadius: 8, border: 'none', background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Change Status</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 8, borderRadius: 10, background: 'rgba(214,254,81,0.08)', border: '1px solid rgba(214,254,81,0.2)', flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#D6FE51' }}>{bulkSelected.size} selected</span>
+                    <button onClick={() => setShowBulkStatus(true)} style={{ padding: '4px 12px', borderRadius: 8, border: 'none', background: 'rgba(214,254,81,0.2)', color: '#D6FE51', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Change Status</button>
                     <button onClick={() => setBulkSelected(new Set())} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#64748b', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
                 </div>
             )}
@@ -789,7 +789,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
             {/* Bulk status modal */}
             {showBulkStatus && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowBulkStatus(false)}>
-                    <div style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(99,102,241,0.2)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(214,254,81,0.2)' }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Bulk Status Change</h3>
                         <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>Change status for {bulkSelected.size} selected tenants:</p>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -828,14 +828,14 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                 const isActive = selected?.id === t.id;
                                 const isBulk = bulkSelected.has(t.id);
                                 return (
-                                    <tr key={t.id} onClick={() => setSelected(t)} style={{ cursor: 'pointer', background: isActive ? 'rgba(99,102,241,0.08)' : undefined, borderLeft: isActive ? '3px solid #6366f1' : '3px solid transparent' }}
+                                    <tr key={t.id} onClick={() => setSelected(t)} style={{ cursor: 'pointer', background: isActive ? 'rgba(214,254,81,0.08)' : undefined, borderLeft: isActive ? '3px solid #6366f1' : '3px solid transparent' }}
                                         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                                         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = ''; }}>
                                         <td style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             <button
                                                 onClick={e => { e.stopPropagation(); toggleBulk(t.id); }}
                                                 aria-label={isBulk ? `Deselect tenant${t.name ? ` ${t.name}` : ''}` : `Select tenant${t.name ? ` ${t.name}` : ''}`}
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: isBulk ? '#818cf8' : '#475569', padding: 0 }}>
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: isBulk ? '#D6FE51' : '#475569', padding: 0 }}>
                                                 {isBulk ? <CheckSquare size={14} /> : <Square size={14} />}
                                             </button>
                                         </td>
@@ -871,7 +871,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                     <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#e2e8f0' }}>{selected.name}</h3>
                                     <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                                         <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: sc(selected.status).bg, color: sc(selected.status).color, textTransform: 'uppercase' }}>{selected.status}</span>
-                                        {md.tenantType && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(99,102,241,0.12)', color: '#818cf8' }}>{md.tenantType}</span>}
+                                        {md.tenantType && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(214,254,81,0.12)', color: '#D6FE51' }}>{md.tenantType}</span>}
                                         {md.primaryTenant === 'Yes' && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>PRIMARY</span>}
                                         <LinkageIndicator tenantId={selected.id} />
                                     </div>
@@ -900,7 +900,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                             </div>
 
                             <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                                <button onClick={() => openEditForm(selected)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#a5b4fc', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <button onClick={() => openEditForm(selected)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(214,254,81,0.08)', border: '1px solid rgba(214,254,81,0.2)', color: '#D6FE51', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     <Settings2 size={12} /> Edit Tenant
                                 </button>
                                 <button onClick={() => setConfirmDelete(selected.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -912,8 +912,8 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                             <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                 {([['details', 'Details', <FileText size={12} key="d" />], ['history', 'History', <History size={12} key="h" />], ['comm', 'Communication', <MessageSquare size={12} key="c" />]] as const).map(([key, label, icon]) => (
                                     <button key={key} onClick={() => setDetailTab(key as any)} style={{
-                                        flex: 1, padding: '8px 0', border: 'none', borderBottom: `2px solid ${detailTab === key ? '#6366f1' : 'transparent'}`,
-                                        background: 'none', color: detailTab === key ? '#a5b4fc' : '#64748b',
+                                        flex: 1, padding: '8px 0', border: 'none', borderBottom: `2px solid ${detailTab === key ? '#D6FE51' : 'transparent'}`,
+                                        background: 'none', color: detailTab === key ? '#D6FE51' : '#64748b',
                                         fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                                     }}>{icon} {label}</button>
@@ -1003,7 +1003,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
             {/* Create Tenant Modal */}
             {showForm && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowForm(false)}>
-                    <div style={{ width: 480, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(99,102,241,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ width: 480, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(214,254,81,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Add New Tenant</h3>
                             <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
@@ -1038,18 +1038,18 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
             {/* Edit Tenant Modal */}
             {showEditForm && selected && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
-                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid rgba(99,102,241,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid rgba(214,254,81,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Edit Tenant</h3>
                             <button onClick={() => setShowEditForm(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
                         </div>
                         <form onSubmit={handleEditSave} style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
-                            <div style={{ padding: '10px 14px', background: 'rgba(99,102,241,0.08)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)', marginBottom: 16 }}>
+                            <div style={{ padding: '10px 14px', background: 'rgba(214,254,81,0.08)', borderRadius: 8, border: '1px solid rgba(214,254,81,0.2)', marginBottom: 16 }}>
                                 <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>Editing: {selected.name}</div>
                                 <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Update tenant details, lease info, and entity tags.</div>
                             </div>
 
-                            <h4 style={{ fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
+                            <h4 style={{ fontSize: 11, color: '#D6FE51', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
                                 <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Full Name</label><input className="s-input" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /></div>
                                 <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input className="s-input" type="email" value={editFormData.email || ''} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>

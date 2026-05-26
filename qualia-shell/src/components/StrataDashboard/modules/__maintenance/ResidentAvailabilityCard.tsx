@@ -44,7 +44,7 @@ export default function ResidentAvailabilityCard({ availability }: Props) {
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 6,
                                     padding: '3px 10px', borderRadius: 10, fontSize: 11,
-                                    background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)',
+                                    background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.25)',
                                     color: '#c7d2fe', width: 'fit-content',
                                 }}
                             >

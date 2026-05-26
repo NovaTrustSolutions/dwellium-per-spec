@@ -102,10 +102,10 @@ const PERSONA_THEMES: Record<string, { accent: string; accentRgb: string; gradie
         bgTint: 'rgba(245, 158, 11, 0.04)',
     },
     'diplomat': {
-        accent: '#8b5cf6',
+        accent: '#D6FE51',
         accentRgb: '139, 92, 246',
         gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-        bgTint: 'rgba(139, 92, 246, 0.04)',
+        bgTint: 'rgba(214, 254, 81, 0.04)',
     },
     'devils-advocate': {
         accent: '#ef4444',
@@ -1696,7 +1696,7 @@ export default function ARAConsole() {
 
                     {/* Provider Status */}
                     <div className="ara-voice-provider">
-                        <span className="ara-voice-provider-dot" style={{ background: voiceStatus?.tts?.provider === 'openai-tts' ? '#8b5cf6' : voiceStatus?.tts?.provider === 'chatterbox' ? '#22c55e' : voiceStatus?.tts?.provider === 'google-cloud' ? '#3b82f6' : '#f59e0b' }} />
+                        <span className="ara-voice-provider-dot" style={{ background: voiceStatus?.tts?.provider === 'openai-tts' ? '#D6FE51' : voiceStatus?.tts?.provider === 'chatterbox' ? '#22c55e' : voiceStatus?.tts?.provider === 'google-cloud' ? '#3b82f6' : '#f59e0b' }} />
                         <span className="ara-voice-provider-label">
                             {voiceStatus?.tts?.provider === 'openai-tts' ? 'OpenAI TTS (Primary)'
                                 : voiceStatus?.tts?.provider === 'chatterbox' ? 'Chatterbox TTS (Fallback)'

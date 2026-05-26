@@ -259,8 +259,8 @@ Generated: ${new Date().toLocaleString()}
                                     onClick={() => setSelected(inc)}
                                     style={{
                                         padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                                        background: selected?.id === inc.id ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.02)',
-                                        border: `1px solid ${selected?.id === inc.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)'}`,
+                                        background: selected?.id === inc.id ? 'rgba(214,254,81,0.08)' : 'rgba(255,255,255,0.02)',
+                                        border: `1px solid ${selected?.id === inc.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)'}`,
                                         borderLeft: `3px solid ${SEVERITY_COLORS[inc.severity] || '#64748b'}`,
                                         transition: 'all 0.15s',
                                     }}
@@ -405,7 +405,7 @@ Generated: ${new Date().toLocaleString()}
                                     </button>
                                 )}
                                 <button className="s-btn s-btn-ghost" onClick={() => generateReport(selected)}
-                                    style={{ borderColor: 'rgba(99,102,241,0.3)', color: '#818cf8' }}>
+                                    style={{ borderColor: 'rgba(214,254,81,0.3)', color: '#D6FE51' }}>
                                     <ClipboardCopy size={11} /> Copy Formal Report
                                 </button>
                             </div>

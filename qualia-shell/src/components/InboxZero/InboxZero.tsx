@@ -777,9 +777,9 @@ export default function InboxZero() {
                                     style={{
                                         padding: '2px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer',
                                         fontFamily: 'inherit', fontWeight: sortField === s.id ? 600 : 400,
-                                        background: sortField === s.id ? 'rgba(99,102,241,0.15)' : 'transparent',
-                                        color: sortField === s.id ? '#818cf8' : '#64748b',
-                                        border: sortField === s.id ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent',
+                                        background: sortField === s.id ? 'rgba(214,254,81,0.15)' : 'transparent',
+                                        color: sortField === s.id ? '#D6FE51' : '#64748b',
+                                        border: sortField === s.id ? '1px solid rgba(214,254,81,0.3)' : '1px solid transparent',
                                         transition: 'all 0.12s ease',
                                     }}
                                 >
@@ -870,7 +870,7 @@ export default function InboxZero() {
                             {/* Batch Route */}
                             <button
                                 className="iz-batch__btn"
-                                style={{ background: 'rgba(99,102,241,0.15)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)' }}
+                                style={{ background: 'rgba(214,254,81,0.15)', color: '#D6FE51', border: '1px solid rgba(214,254,81,0.3)' }}
                                 onClick={() => {
                                     const ids = Array.from(selectedIds).join(', ');
                                     navigator.clipboard?.writeText(ids).catch(() => {});
@@ -943,7 +943,7 @@ export default function InboxZero() {
                             }}>
                                 <span style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>Primary</span>
                                 <span style={{
-                                    fontSize: 11, fontWeight: 700, color: '#818cf8',
+                                    fontSize: 11, fontWeight: 700, color: '#D6FE51',
                                     background: 'rgba(129,140,248,0.15)', padding: '1px 8px',
                                     borderRadius: 10,
                                 }}>{pendingItems.length}</span>
@@ -1196,7 +1196,7 @@ export default function InboxZero() {
                                                 {/* Link to Strata (Phase 0.1.4) */}
                                                 <button
                                                     className="iz-action iz-action--link"
-                                                    style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }}
+                                                    style={{ background: 'rgba(214,254,81,0.12)', color: '#D6FE51' }}
                                                     onClick={() => {
                                                         setLinkModalFor(linkModalFor === item.id ? null : item.id);
                                                         setLinkForm({ linkType: 'workitem', targetId: '', targetName: '' });
@@ -1210,9 +1210,9 @@ export default function InboxZero() {
                                             {linkModalFor === item.id && (
                                                 <div style={{
                                                     marginTop: 10, padding: 16, borderRadius: 10,
-                                                    background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)',
+                                                    background: 'rgba(214,254,81,0.06)', border: '1px solid rgba(214,254,81,0.2)',
                                                 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#a78bfa', marginBottom: 10 }}>🔗 Link to Strata</div>
+                                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#D6FE51', marginBottom: 10 }}>🔗 Link to Strata</div>
 
                                                     {/* Row 1: Category selector */}
                                                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -1232,9 +1232,9 @@ export default function InboxZero() {
                                                                 style={{
                                                                     padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
                                                                     cursor: 'pointer', fontFamily: 'inherit',
-                                                                    background: linkForm.linkType === opt.value ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.04)',
-                                                                    color: linkForm.linkType === opt.value ? '#a78bfa' : '#94a3b8',
-                                                                    border: linkForm.linkType === opt.value ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                                                                    background: linkForm.linkType === opt.value ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                                                    color: linkForm.linkType === opt.value ? '#D6FE51' : '#94a3b8',
+                                                                    border: linkForm.linkType === opt.value ? '1px solid rgba(214,254,81,0.4)' : '1px solid rgba(255,255,255,0.08)',
                                                                 }}
                                                                 onClick={() => setLinkForm(f => ({ ...f, linkType: opt.value }))}
                                                             >
@@ -1276,7 +1276,7 @@ export default function InboxZero() {
                                                         <button
                                                             style={{
                                                                 padding: '6px 16px', borderRadius: 6,
-                                                                background: '#8b5cf6', color: '#fff', border: 'none',
+                                                                background: '#D6FE51', color: '#fff', border: 'none',
                                                                 cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
                                                             }}
                                                             onClick={async () => {
@@ -1308,7 +1308,7 @@ export default function InboxZero() {
                                                             onClick={() => setLinkModalFor(null)}
                                                         >Cancel</button>
                                                         <span style={{ fontSize: 10, color: '#4b5563', flex: 1, textAlign: 'right' }}>
-                                                            Linking as: <strong style={{ color: '#a78bfa' }}>{linkForm.linkType}</strong>
+                                                            Linking as: <strong style={{ color: '#D6FE51' }}>{linkForm.linkType}</strong>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -1341,7 +1341,7 @@ export default function InboxZero() {
                                                                 {new Date(entry.created_at || entry.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                             </span>
                                                             <span style={{ fontSize: '11px', opacity: 0.7, flex: 1 }}>
-                                                                <strong style={{ color: entry.action === 'approved' ? '#22c55e' : entry.action === 'archived' ? '#f59e0b' : entry.action === 'deleted' ? '#ef4444' : '#8b5cf6' }}>
+                                                                <strong style={{ color: entry.action === 'approved' ? '#22c55e' : entry.action === 'archived' ? '#f59e0b' : entry.action === 'deleted' ? '#ef4444' : '#D6FE51' }}>
                                                                     {entry.action}
                                                                 </strong>
                                                                 {entry.actor && <span> by {entry.actor}</span>}
@@ -1358,7 +1358,7 @@ export default function InboxZero() {
                                                     <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px' }}>🔗 LINKED ITEMS</p>
                                                     {linksCache[item.id].map((link: any, idx: number) => (
                                                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '3px 0' }}>
-                                                            <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>
+                                                            <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'rgba(214,254,81,0.15)', color: '#D6FE51' }}>
                                                                 {link.link_type || link.type || 'related'}
                                                             </span>
                                                             <span style={{ fontSize: '11px', opacity: 0.7, flex: 1 }}>
@@ -1380,7 +1380,7 @@ export default function InboxZero() {
                         <div style={{ textAlign: 'center', padding: '16px 0' }}>
                             <button
                                 className="iz-action"
-                                style={{ padding: '8px 24px', fontSize: '13px', background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', cursor: 'pointer' }}
+                                style={{ padding: '8px 24px', fontSize: '13px', background: 'rgba(214,254,81,0.12)', color: '#D6FE51', border: '1px solid rgba(214,254,81,0.3)', borderRadius: '8px', cursor: 'pointer' }}
                                 onClick={() => { setCurrentOffset(prev => prev + ITEMS_PER_PAGE); invalidateInbox(); }}
                             >
                                 Load More
@@ -1429,7 +1429,7 @@ export default function InboxZero() {
                                             </span>
                                         )}
                                         {viewerEmail.routedToProject && (
-                                            <span className="iz-viewer__badge" style={{ background: 'rgba(139,92,246,0.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }}>
+                                            <span className="iz-viewer__badge" style={{ background: 'rgba(214,254,81,0.12)', color: '#D6FE51', border: '1px solid rgba(214,254,81,0.3)' }}>
                                                 ➜ {PROJECT_NAMES[viewerEmail.routedToProject] || viewerEmail.routedToProject}
                                                 {viewerEmail.routingConfidence ? ` (${Math.round(viewerEmail.routingConfidence * 100)}%)` : ''}
                                             </span>

@@ -93,9 +93,9 @@ const toggleStyle: React.CSSProperties = {
     gap: '6px',
     padding: '4px 10px',
     borderRadius: '6px',
-    border: '1px solid rgba(99,102,241,0.25)',
-    background: 'rgba(99,102,241,0.08)',
-    color: '#a5b4fc',
+    border: '1px solid rgba(214,254,81,0.25)',
+    background: 'rgba(214,254,81,0.08)',
+    color: '#D6FE51',
     cursor: 'pointer',
     fontSize: '11px',
     fontWeight: 600,
@@ -265,8 +265,8 @@ export default function StrataAdminSettings() {
                                     style={{
                                         padding: '12px',
                                         borderRadius: '8px',
-                                        background: selectedUserId === u.id ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.03)',
-                                        border: `1px solid ${selectedUserId === u.id ? 'rgba(99, 102, 241, 0.4)' : 'transparent'}`,
+                                        background: selectedUserId === u.id ? 'rgba(214, 254, 81, 0.15)' : 'rgba(255,255,255,0.03)',
+                                        border: `1px solid ${selectedUserId === u.id ? 'rgba(214, 254, 81, 0.4)' : 'transparent'}`,
                                         textAlign: 'left',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
@@ -421,11 +421,11 @@ export default function StrataAdminSettings() {
                                             onClick={() => toggleGroupExpanded(group.label)}
                                             style={{
                                                 ...accordionHeaderStyle,
-                                                borderColor: isExpanded ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)',
+                                                borderColor: isExpanded ? 'rgba(214,254,81,0.3)' : 'rgba(255,255,255,0.06)',
                                             }}
                                         >
                                             {isExpanded
-                                                ? <ChevronDown size={16} style={{ color: '#818cf8', flexShrink: 0 }} />
+                                                ? <ChevronDown size={16} style={{ color: '#D6FE51', flexShrink: 0 }} />
                                                 : <ChevronRight size={16} style={{ color: '#64748b', flexShrink: 0 }} />
                                             }
                                             <span style={{ flex: 1 }}>{group.label}</span>
@@ -446,7 +446,7 @@ export default function StrataAdminSettings() {
                                                 padding: '12px 16px 16px',
                                                 background: 'rgba(15,23,42,0.4)',
                                                 borderRadius: '0 0 10px 10px',
-                                                border: '1px solid rgba(99,102,241,0.15)',
+                                                border: '1px solid rgba(214,254,81,0.15)',
                                                 borderTop: 'none',
                                                 marginTop: '-4px',
                                             }}>
@@ -483,10 +483,10 @@ export default function StrataAdminSettings() {
                                                             alignItems: 'center',
                                                             gap: '10px',
                                                             padding: '10px 12px',
-                                                            background: permissions[key] ? 'rgba(99,102,241,0.08)' : 'rgba(0,0,0,0.2)',
+                                                            background: permissions[key] ? 'rgba(214,254,81,0.08)' : 'rgba(0,0,0,0.2)',
                                                             borderRadius: '8px',
                                                             cursor: 'pointer',
-                                                            border: permissions[key] ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent',
+                                                            border: permissions[key] ? '1px solid rgba(214,254,81,0.25)' : '1px solid transparent',
                                                             transition: 'all 0.15s ease',
                                                         }}>
                                                             <input

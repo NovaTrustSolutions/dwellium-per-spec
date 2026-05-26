@@ -107,7 +107,7 @@ export default function DesignStudio() {
                 </div>
                 <div className="s-module-actions" style={{ gap: 6 }}>
                     <button className="s-btn s-btn-ghost" onClick={() => setShowHistory(!showHistory)}
-                        style={{ fontSize: 10, gap: 4, color: showHistory ? '#6366f1' : undefined }}>
+                        style={{ fontSize: 10, gap: 4, color: showHistory ? '#D6FE51' : undefined }}>
                         <Clock size={12} /> History ({history.length})
                     </button>
                 </div>
@@ -127,9 +127,9 @@ export default function DesignStudio() {
                                     onClick={() => setDesignType(dt.id)}
                                     style={{
                                         padding: '8px 10px', borderRadius: 6, cursor: 'pointer',
-                                        background: designType === dt.id ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.03)',
-                                        border: `1px solid ${designType === dt.id ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                                        color: designType === dt.id ? '#a5b4fc' : '#94a3b8',
+                                        background: designType === dt.id ? 'rgba(214,254,81,0.12)' : 'rgba(255,255,255,0.03)',
+                                        border: `1px solid ${designType === dt.id ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                        color: designType === dt.id ? '#D6FE51' : '#94a3b8',
                                         fontSize: 11, fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
                                     }}>
                                     <span>{dt.icon}</span> {dt.label}
@@ -265,8 +265,8 @@ export default function DesignStudio() {
                                     onClick={() => { setCurrentDesign(item); setZoom(1); }}
                                     style={{
                                         padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-                                        background: currentDesign?.id === item.id ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.02)',
-                                        border: `1px solid ${currentDesign?.id === item.id ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                                        background: currentDesign?.id === item.id ? 'rgba(214,254,81,0.1)' : 'rgba(255,255,255,0.02)',
+                                        border: `1px solid ${currentDesign?.id === item.id ? 'rgba(214,254,81,0.3)' : 'rgba(255,255,255,0.06)'}`,
                                         fontFamily: 'inherit', color: '#e2e8f0',
                                     }}
                                 >

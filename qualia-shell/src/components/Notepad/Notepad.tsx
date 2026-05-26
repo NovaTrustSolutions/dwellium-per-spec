@@ -327,7 +327,7 @@ export default function Notepad() {
                         <div className="np-editor__toolbar-divider" />
                         <button className="np-editor__toolbar-btn" title="Toggle Preview"
                             onClick={() => setShowPreview(!showPreview)}
-                            style={{ color: showPreview ? '#818cf8' : undefined }}>
+                            style={{ color: showPreview ? '#D6FE51' : undefined }}>
                             👁
                         </button>
                     </div>

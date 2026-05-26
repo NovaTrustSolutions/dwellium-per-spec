@@ -30,7 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 const STATUS_COLORS_MAP: Record<string, string> = {
     open: '#3b82f6', dispatched: '#a855f7', in_progress: '#f59e0b',
-    review: '#06b6d4', tenant_signoff: '#8b5cf6', completed: '#10b981',
+    review: '#06b6d4', tenant_signoff: '#D6FE51', completed: '#10b981',
 };
 const PRIORITY_COLORS: Record<string, string> = {
     critical: 'var(--s-danger)', high: '#f59e0b', medium: 'var(--s-info)', low: 'var(--s-text-tertiary)',
@@ -468,7 +468,7 @@ export default function WorkOrdersModule() {
                             {/* ═══ TENANT SIGN-OFF ═══ */}
                             <div className="s-wo-section" style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 12 }}>
                                 <h4 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <UserCheck size={13} style={{ color: '#8b5cf6' }} /> Tenant Sign-off
+                                    <UserCheck size={13} style={{ color: '#D6FE51' }} /> Tenant Sign-off
                                 </h4>
                                 {md.tenantSignoff?.signed ? (
                                     <div style={{
@@ -486,7 +486,7 @@ export default function WorkOrdersModule() {
                                         <button className="s-btn s-btn-primary" style={{ fontSize: 10 }} onClick={completeTenantSignoff}>
                                             <UserCheck size={10} /> Record Sign-off (In Person)
                                         </button>
-                                        <button className="s-btn s-btn-ghost" style={{ fontSize: 10, color: '#8b5cf6', borderColor: 'rgba(139,92,246,0.3)' }}
+                                        <button className="s-btn s-btn-ghost" style={{ fontSize: 10, color: '#D6FE51', borderColor: 'rgba(214,254,81,0.3)' }}
                                             onClick={generateSignoffLink}>
                                             <Link size={10} /> Copy Remote Sign-off Link
                                         </button>

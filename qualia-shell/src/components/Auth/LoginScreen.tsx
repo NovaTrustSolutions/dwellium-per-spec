@@ -11,13 +11,13 @@ import { LogIn, AlertCircle, Shield, Eye, EyeOff } from 'lucide-react';
 import './LoginScreen.css';
 
 const QUICK_USERS = [
-    { email: 'andy@dwellium.com', name: 'Andy', role: 'god', color: '#6366f1', initials: 'A', pw: 'admin123' },
+    { email: 'andy@dwellium.com', name: 'Andy', role: 'god', color: '#D6FE51', initials: 'A', pw: 'admin123' },
     { email: 'lisa@zpgroup.io', name: 'Lisa', role: 'corporate', color: '#3b82f6', initials: 'L', pw: 'corp123' },
     { email: 'wendy@dwellium.com', name: 'Wendy', role: 'management', color: '#10b981', initials: 'W', pw: 'mgmt123' },
     { email: 'candace@dwellium.com', name: 'Candace', role: 'management', color: '#f59e0b', initials: 'C', pw: 'mgmt123' },
-    { email: 'grieve@dwellium.com', name: 'Grieve', role: 'advisor', color: '#8b5cf6', initials: 'G', pw: 'adv123' },
+    { email: 'grieve@dwellium.com', name: 'Grieve', role: 'advisor', color: '#D6FE51', initials: 'G', pw: 'adv123' },
     { email: 'baldwin@dwellium.com', name: 'Baldwin', role: 'advisor', color: '#a855f7', initials: 'B', pw: 'adv123' },
-    { email: 'leo@dwellium.com', name: 'Leo', role: 'advisor', color: '#7c3aed', initials: 'Lo', pw: 'adv123' },
+    { email: 'leo@dwellium.com', name: 'Leo', role: 'advisor', color: '#D6FE51', initials: 'Lo', pw: 'adv123' },
     { email: 'lee@dwellium.com', name: 'Lee', role: 'maintenance', color: '#ef4444', initials: 'Le', pw: 'maint123' },
     { email: 'jose@dwellium.com', name: 'Jose', role: 'maintenance', color: '#f97316', initials: 'J', pw: 'maint123' },
 ];
@@ -143,7 +143,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                             }}>
                                 <form onSubmit={handleGateSubmit} style={{
                                     background: 'linear-gradient(145deg, rgba(15,15,30,0.95), rgba(20,20,40,0.95))',
-                                    border: '1px solid rgba(99,102,241,0.25)', borderRadius: 20,
+                                    border: '1px solid rgba(214,254,81,0.25)', borderRadius: 20,
                                     padding: '36px 32px', width: 380, maxWidth: '90vw',
                                     boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
                                 }}>
@@ -179,7 +179,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                         autoFocus
                                         style={{
                                             width: '100%', padding: '12px 16px', borderRadius: 12,
-                                            border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(0,0,0,0.3)',
+                                            border: '1px solid rgba(214,254,81,0.3)', background: 'rgba(0,0,0,0.3)',
                                             color: '#e2e8f0', fontSize: 14, outline: 'none',
                                             fontFamily: 'Inter, -apple-system, sans-serif',
                                             boxSizing: 'border-box',
@@ -306,7 +306,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     marginTop: 16,
                                     padding: '10px 0',
                                     background: 'none',
-                                    border: '1px solid rgba(99,102,241,0.15)',
+                                    border: '1px solid rgba(214,254,81,0.15)',
                                     borderRadius: 12,
                                     color: '#94a3b8',
                                     fontSize: 13,
@@ -319,7 +319,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     (e.currentTarget as HTMLElement).style.color = '#5dade2';
                                 }}
                                 onMouseLeave={e => {
-                                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(99,102,241,0.15)';
+                                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(214,254,81,0.15)';
                                     (e.currentTarget as HTMLElement).style.color = '#94a3b8';
                                 }}
                             >

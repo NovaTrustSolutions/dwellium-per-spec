@@ -325,7 +325,7 @@ export default function GeorgiaCode() {
                                             onClick={(e) => { e.stopPropagation(); toggleBookmark(idx); }}
                                             style={{ display: 'flex', alignItems: 'center', gap: 3 }}
                                         >
-                                            <Bookmark size={11} fill={bookmarked.has(idx) ? '#6366f1' : 'none'} />
+                                            <Bookmark size={11} fill={bookmarked.has(idx) ? '#D6FE51' : 'none'} />
                                             {bookmarked.has(idx) ? 'Saved' : 'Save'}
                                         </span>
                                     </span>

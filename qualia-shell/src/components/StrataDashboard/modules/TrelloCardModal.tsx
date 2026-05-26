@@ -160,7 +160,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 4,
                                         padding: '6px 12px', borderRadius: 6,
-                                        background: 'rgba(99,102,241,0.12)', color: '#818cf8',
+                                        background: 'rgba(214,254,81,0.12)', color: '#D6FE51',
                                         fontSize: 11, fontWeight: 600, textDecoration: 'none',
                                     }}
                                 >
@@ -197,8 +197,8 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                             <span key={i} style={{
                                                 display: 'flex', alignItems: 'center', gap: 4,
                                                 padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                                                background: label.color ? `${label.color === 'green' ? '#22c55e' : label.color === 'red' ? '#ef4444' : label.color === 'blue' ? '#3b82f6' : label.color === 'yellow' ? '#f59e0b' : label.color === 'orange' ? '#f97316' : label.color === 'purple' ? '#8b5cf6' : '#6b7280'}20` : 'rgba(255,255,255,0.06)',
-                                                color: label.color === 'green' ? '#22c55e' : label.color === 'red' ? '#ef4444' : label.color === 'blue' ? '#3b82f6' : label.color === 'yellow' ? '#f59e0b' : label.color === 'orange' ? '#f97316' : label.color === 'purple' ? '#8b5cf6' : '#94a3b8',
+                                                background: label.color ? `${label.color === 'green' ? '#22c55e' : label.color === 'red' ? '#ef4444' : label.color === 'blue' ? '#3b82f6' : label.color === 'yellow' ? '#f59e0b' : label.color === 'orange' ? '#f97316' : label.color === 'purple' ? '#D6FE51' : '#6b7280'}20` : 'rgba(255,255,255,0.06)',
+                                                color: label.color === 'green' ? '#22c55e' : label.color === 'red' ? '#ef4444' : label.color === 'blue' ? '#3b82f6' : label.color === 'yellow' ? '#f59e0b' : label.color === 'orange' ? '#f97316' : label.color === 'purple' ? '#D6FE51' : '#94a3b8',
                                             }}>
                                                 <Tag size={10} />
                                                 {label.name || label}
@@ -280,7 +280,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                                         display: 'flex', alignItems: 'center', gap: 8,
                                                         padding: '8px 12px', borderRadius: 8,
                                                         background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                                                        color: '#818cf8', fontSize: 12, textDecoration: 'none',
+                                                        color: '#D6FE51', fontSize: 12, textDecoration: 'none',
                                                     }}
                                                 >
                                                     <Paperclip size={12} />
@@ -309,7 +309,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                                         height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)',
                                                         marginBottom: 8, overflow: 'hidden',
                                                     }}>
-                                                        <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#6366f1', borderRadius: 2, transition: 'width 0.3s' }} />
+                                                        <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#D6FE51', borderRadius: 2, transition: 'width 0.3s' }} />
                                                     </div>
                                                     {cl.checkItems.map(item => (
                                                         <div key={item.id} style={{
@@ -339,7 +339,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                             {workitem.tags.map((tag, i) => (
                                                 <span key={i} style={{
                                                     padding: '3px 10px', borderRadius: 6, fontSize: 11,
-                                                    background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 500,
+                                                    background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 500,
                                                 }}>{tag}</span>
                                             ))}
                                         </div>

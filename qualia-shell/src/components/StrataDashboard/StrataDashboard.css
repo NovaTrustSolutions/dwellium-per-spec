@@ -45,7 +45,7 @@
     /* -- Text (fey.com: pure white primary, muted slate secondary) -- */
     --s-text-primary: var(--text-primary, #ffffff);
     --s-text-secondary: var(--text-secondary, #868F97);
-    --s-text-tertiary: var(--text-tertiary, #777777);
+    --s-text-tertiary: var(--text-tertiary, #808080);
     --s-text-accent: var(--accent-text, #D6FE51);
 
     /* -- Typography (fey.com: Hanken Grotesk + JetBrains Mono) -- */

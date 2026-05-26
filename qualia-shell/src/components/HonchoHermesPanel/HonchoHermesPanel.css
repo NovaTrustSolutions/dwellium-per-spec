@@ -6,7 +6,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     color: var(--text-primary, #e2e8f0);
     background: var(--bg-surface, rgba(15, 17, 23, 0.6));
     overflow: hidden;
@@ -94,8 +94,8 @@
 }
 
 .hhp__tab.active {
-    color: #818cf8;
-    border-bottom-color: #818cf8;
+    color: #D6FE51;
+    border-bottom-color: #D6FE51;
     font-weight: 600;
 }
 
@@ -128,21 +128,21 @@
     flex-direction: column;
     align-items: center;
     padding: 12px 8px;
-    background: rgba(99, 102, 241, 0.06);
-    border: 1px solid rgba(99, 102, 241, 0.12);
+    background: rgba(214, 254, 81, 0.06);
+    border: 1px solid rgba(214, 254, 81, 0.12);
     border-radius: 8px;
     transition: all 0.15s;
 }
 
 .hhp__stat:hover {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.2);
+    background: rgba(214, 254, 81, 0.1);
+    border-color: rgba(214, 254, 81, 0.2);
 }
 
 .hhp__stat-value {
     font-size: 22px;
     font-weight: 700;
-    color: #818cf8;
+    color: #D6FE51;
     line-height: 1;
 }
 
@@ -174,7 +174,7 @@
 }
 
 .hhp__search:focus {
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: rgba(214, 254, 81, 0.4);
 }
 
 .hhp__search::placeholder {
@@ -195,9 +195,9 @@
     padding: 8px 16px;
     font-size: 12px;
     font-weight: 600;
-    background: rgba(99, 102, 241, 0.15);
-    color: #818cf8;
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(214, 254, 81, 0.15);
+    color: #D6FE51;
+    border: 1px solid rgba(214, 254, 81, 0.3);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s;
@@ -205,13 +205,13 @@
 }
 
 .hhp__add-btn:hover {
-    background: rgba(99, 102, 241, 0.25);
+    background: rgba(214, 254, 81, 0.25);
 }
 
 /* ── Add Form ── */
 .hhp__add-form {
-    background: rgba(99, 102, 241, 0.05);
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    background: rgba(214, 254, 81, 0.05);
+    border: 1px solid rgba(214, 254, 81, 0.15);
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 12px;
@@ -257,14 +257,14 @@
 
 .hhp__add-imp-label input[type="range"] {
     flex: 1;
-    accent-color: #818cf8;
+    accent-color: #D6FE51;
 }
 
 .hhp__add-submit {
     padding: 8px 18px;
     font-size: 12px;
     font-weight: 600;
-    background: linear-gradient(135deg, #6366f1, #818cf8);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
     color: white;
     border: none;
     border-radius: 6px;
@@ -287,7 +287,7 @@
 .hhp__memory-card {
     background: rgba(0, 0, 0, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-left: 3px solid var(--accent, #6366f1);
+    border-left: 3px solid var(--accent, #D6FE51);
     border-radius: 8px;
     padding: 12px 14px;
     transition: all 0.15s;
@@ -310,7 +310,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--accent, #818cf8);
+    color: var(--accent, #D6FE51);
 }
 
 .hhp__memory-badges {
@@ -329,7 +329,7 @@
 }
 
 .imp-low { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
-.imp-medium { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.imp-medium { background: rgba(59, 130, 246, 0.2); color: #E8FF7A; }
 .imp-high { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
 .imp-critical { background: rgba(239, 68, 68, 0.2); color: #f87171; }
 
@@ -441,14 +441,14 @@
 }
 
 .hhp__tool-card:hover {
-    border-color: rgba(99, 102, 241, 0.2);
-    background: rgba(99, 102, 241, 0.04);
+    border-color: rgba(214, 254, 81, 0.2);
+    background: rgba(214, 254, 81, 0.04);
 }
 
 .hhp__tool-name {
     font-size: 12px;
     font-weight: 600;
-    color: #818cf8;
+    color: #D6FE51;
     font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
@@ -483,7 +483,7 @@
 }
 
 .hhp__delegate-input:focus {
-    border-color: rgba(99, 102, 241, 0.5);
+    border-color: rgba(214, 254, 81, 0.5);
 }
 
 .hhp__delegate-input::placeholder {
@@ -494,7 +494,7 @@
     padding: 10px 22px;
     font-size: 13px;
     font-weight: 600;
-    background: linear-gradient(135deg, #6366f1, #818cf8);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
     color: white;
     border: none;
     border-radius: 8px;
@@ -510,7 +510,7 @@
 
 .hhp__delegate-btn:not(:disabled):hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.35);
 }
 
 /* ── ReAct Steps Trace ── */
@@ -538,7 +538,7 @@
     background: rgba(255, 255, 255, 0.03);
 }
 
-.hhp__step--thought { border-left: 2px solid #a78bfa; }
+.hhp__step--thought { border-left: 2px solid #D6FE51; }
 .hhp__step--action { border-left: 2px solid #f59e0b; }
 .hhp__step--observation { border-left: 2px solid #10b981; }
 .hhp__step--final_answer { border-left: 2px solid #3b82f6; }
@@ -729,8 +729,8 @@
     justify-content: center;
     font-size: 10px;
     border-radius: 50%;
-    background: rgba(99, 102, 241, 0.15);
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(214, 254, 81, 0.15);
+    border: 1px solid rgba(214, 254, 81, 0.3);
     cursor: pointer;
     transition: all 0.2s;
     transform: translate(-50%, -50%);
@@ -739,13 +739,13 @@
 .hhp__graph-node:hover {
     transform: translate(-50%, -50%) scale(1.6);
     z-index: 10;
-    background: rgba(99, 102, 241, 0.3);
+    background: rgba(214, 254, 81, 0.3);
 }
 
 .hhp__graph-node--fact { border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.1); }
 .hhp__graph-node--preference { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.1); }
 .hhp__graph-node--decision { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.1); }
-.hhp__graph-node--observation { border-color: rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.1); }
+.hhp__graph-node--observation { border-color: rgba(214, 254, 81, 0.4); background: rgba(214, 254, 81, 0.1); }
 .hhp__graph-node--insight { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); }
 
 .hhp__graph-svg {

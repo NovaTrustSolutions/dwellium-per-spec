@@ -8,7 +8,7 @@
     height: 100%;
     background: linear-gradient(135deg, #0f1117 0%, #1a1d28 100%);
     color: #e2e8f0;
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     overflow: hidden;
 }
 
@@ -687,7 +687,7 @@
 .huai-inspect__analysis h4 {
     margin: 0 0 6px;
     font-size: 0.78rem;
-    color: #60a5fa;
+    color: #E8FF7A;
 }
 
 .huai-inspect__analysis p {
@@ -747,7 +747,7 @@
 
 .huai-inspection-card__ai {
     font-size: 0.68rem;
-    color: #60a5fa;
+    color: #E8FF7A;
     margin-top: 4px;
     padding: 6px 8px;
     background: rgba(59, 130, 246, 0.06);
@@ -832,9 +832,9 @@
 }
 
 .huai-btn--analyze {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
-    color: #818cf8;
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(214, 254, 81, 0.15));
+    color: #D6FE51;
+    border: 1px solid rgba(214, 254, 81, 0.2);
 }
 
 .huai-btn--analyze:hover:not(:disabled) {
@@ -852,7 +852,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    backdrop-filter: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1000,7 +1000,7 @@
 .hu-task-card:hover, .upkeep-card:hover, .hu-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
-    border-color: rgba(99, 102, 241, 0.15);
+    border-color: rgba(214, 254, 81, 0.15);
 }
 
 /* [P2] Schedule timeline gradient */
@@ -1014,7 +1014,7 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background: linear-gradient(180deg, var(--accent, #6366f1), rgba(99, 102, 241, 0.1));
+    background: linear-gradient(180deg, var(--accent, #D6FE51), rgba(214, 254, 81, 0.1));
     border-radius: 1px;
 }
 
@@ -1024,7 +1024,7 @@
 }
 .hu-category-pill:hover, .upkeep-filter:hover {
     transform: scale(1.06);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.15);
 }
 
 /* [P4] Completion checkmark pop */

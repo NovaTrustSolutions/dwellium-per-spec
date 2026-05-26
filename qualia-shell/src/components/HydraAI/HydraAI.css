@@ -9,7 +9,7 @@
     height: 100%;
     background: rgba(10, 14, 26, 0.95);
     color: #e2e8f0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     font-size: 13px;
     overflow: hidden;
 }
@@ -22,7 +22,7 @@
     gap: 8px;
     padding: 10px 14px;
     background: rgba(15, 23, 42, 0.8);
-    border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+    border-bottom: 1px solid rgba(214, 254, 81, 0.15);
     flex-shrink: 0;
     flex-wrap: wrap;
 }
@@ -34,7 +34,7 @@
     font-weight: 700;
     font-size: 14px;
     letter-spacing: 0.5px;
-    background: linear-gradient(135deg, #a855f7, #6366f1, #22d3ee);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51, #22d3ee);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -75,7 +75,7 @@
 
 .hydra-head-pill.active {
     color: #fff;
-    border-color: var(--head-color, #6366f1);
+    border-color: var(--head-color, #D6FE51);
     background: rgba(var(--head-color-rgb, '99,102,241'), 0.2);
     box-shadow: 0 0 8px rgba(var(--head-color-rgb, '99,102,241'), 0.2);
 }
@@ -126,7 +126,7 @@
     gap: 8px;
     padding: 10px 14px;
     background: rgba(15, 23, 42, 0.5);
-    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+    border-bottom: 1px solid rgba(214, 254, 81, 0.1);
     flex-shrink: 0;
 }
 
@@ -146,7 +146,7 @@
 }
 
 .hydra-input:focus {
-    border-color: rgba(99, 102, 241, 0.5);
+    border-color: rgba(214, 254, 81, 0.5);
 }
 
 .hydra-input::placeholder {
@@ -157,7 +157,7 @@
     padding: 8px 16px;
     border-radius: 8px;
     border: none;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
     color: #fff;
     font-weight: 600;
     font-size: 13px;
@@ -168,7 +168,7 @@
 
 .hydra-send-btn:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.4);
 }
 
 .hydra-send-btn:disabled {
@@ -236,7 +236,7 @@
     padding: 8px 12px;
     background: rgba(30, 41, 59, 0.4);
     border-radius: 8px;
-    border-left: 3px solid #6366f1;
+    border-left: 3px solid #D6FE51;
     font-size: 12.5px;
     color: #94a3b8;
 }
@@ -289,7 +289,7 @@
     border-radius: 10px;
     border: 1px solid rgba(100, 116, 139, 0.15);
     background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     overflow: hidden;
     min-height: 160px;
     transition: border-color 0.3s;
@@ -315,7 +315,7 @@
 .hydra-panel-name {
     font-weight: 600;
     font-size: 12px;
-    color: var(--panel-color, #6366f1);
+    color: var(--panel-color, #D6FE51);
 }
 
 .hydra-panel-badges {
@@ -373,8 +373,8 @@
 .hydra-panel-body code {
     padding: 1px 5px;
     border-radius: 4px;
-    background: rgba(99, 102, 241, 0.1);
-    color: #a5b4fc;
+    background: rgba(214, 254, 81, 0.1);
+    color: #D6FE51;
     font-size: 11.5px;
 }
 
@@ -386,12 +386,12 @@
 }
 
 .hydra-panel-body .hydra-bullet {
-    color: var(--panel-color, #6366f1);
+    color: var(--panel-color, #D6FE51);
     margin-right: 4px;
 }
 
 .hydra-panel-body .hydra-num {
-    color: var(--panel-color, #6366f1);
+    color: var(--panel-color, #D6FE51);
     font-weight: 600;
     margin-right: 4px;
 }
@@ -475,7 +475,7 @@
     border-radius: 10px;
     border: 1px solid rgba(34, 211, 238, 0.2);
     background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     overflow: hidden;
 }
 
@@ -497,7 +497,7 @@
 .hydra-synthesis-title {
     font-weight: 600;
     font-size: 13px;
-    background: linear-gradient(135deg, #22d3ee, #a855f7);
+    background: linear-gradient(135deg, #22d3ee, #D6FE51);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -608,7 +608,7 @@
     border-radius: 8px;
     border: 1px solid rgba(100, 116, 139, 0.2);
     background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(16px);
+    backdrop-filter: none;
     z-index: 100;
     display: flex;
     flex-direction: column;
@@ -631,13 +631,13 @@
 }
 
 .hydra-layout-option:hover {
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(214, 254, 81, 0.1);
     color: #e2e8f0;
 }
 
 .hydra-layout-option.active {
-    color: #a5b4fc;
-    background: rgba(99, 102, 241, 0.15);
+    color: #D6FE51;
+    background: rgba(214, 254, 81, 0.15);
 }
 
 .hydra-layout-option-icon {
@@ -677,9 +677,9 @@
 }
 
 .hydra-head-gear:hover {
-    background: rgba(99, 102, 241, 0.15);
-    color: var(--head-color, #a5b4fc);
-    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(214, 254, 81, 0.15);
+    color: var(--head-color, #D6FE51);
+    border-color: rgba(214, 254, 81, 0.3);
     transform: rotate(90deg);
 }
 
@@ -691,9 +691,9 @@
     gap: 3px;
     padding: 4px 10px;
     border-radius: 20px;
-    border: 1px dashed rgba(99, 102, 241, 0.35);
+    border: 1px dashed rgba(214, 254, 81, 0.35);
     background: transparent;
-    color: #6366f1;
+    color: #D6FE51;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
@@ -702,9 +702,9 @@
 }
 
 .hydra-add-head-btn:hover {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+    background: rgba(214, 254, 81, 0.1);
+    border-color: rgba(214, 254, 81, 0.5);
+    box-shadow: 0 0 12px rgba(214, 254, 81, 0.15);
 }
 
 /* ── Regrow Modal ── */
@@ -717,7 +717,7 @@
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(6px);
+    backdrop-filter: none;
     animation: hydra-fade-in 0.2s ease;
 }
 
@@ -738,10 +738,10 @@
     display: flex;
     flex-direction: column;
     border-radius: 16px;
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(214, 254, 81, 0.2);
     background: rgba(10, 14, 26, 0.97);
-    backdrop-filter: blur(24px);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 40px rgba(99, 102, 241, 0.1);
+    backdrop-filter: none;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 40px rgba(214, 254, 81, 0.1);
     animation: hydra-modal-in 0.25s ease;
     overflow: hidden;
 }
@@ -763,7 +763,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid rgba(99, 102, 241, 0.12);
+    border-bottom: 1px solid rgba(214, 254, 81, 0.12);
     background: rgba(15, 23, 42, 0.5);
 }
 
@@ -781,7 +781,7 @@
     margin: 0;
     font-size: 15px;
     font-weight: 700;
-    background: linear-gradient(135deg, #a855f7, #6366f1, #22d3ee);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51, #22d3ee);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -844,7 +844,7 @@
 
 .hydra-modal-val {
     font-weight: 700;
-    color: #a5b4fc;
+    color: #D6FE51;
     text-transform: none;
 }
 
@@ -863,7 +863,7 @@
 
 .hydra-modal-field input[type="text"]:focus,
 .hydra-modal-field select:focus {
-    border-color: rgba(99, 102, 241, 0.5);
+    border-color: rgba(214, 254, 81, 0.5);
 }
 
 .hydra-modal-field input::placeholder {
@@ -904,10 +904,10 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
     border: 2px solid rgba(10, 14, 26, 0.8);
     cursor: pointer;
-    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 8px rgba(214, 254, 81, 0.3);
     transition: transform 0.15s;
 }
 
@@ -1014,7 +1014,7 @@
     border-radius: 10px;
     border: 1px solid rgba(100, 116, 139, 0.2);
     background: rgba(15, 23, 42, 0.97);
-    backdrop-filter: blur(16px);
+    backdrop-filter: none;
     z-index: 10;
     display: none;
     grid-template-columns: repeat(4, 1fr);
@@ -1042,13 +1042,13 @@
 }
 
 .hydra-emoji-opt:hover {
-    background: rgba(99, 102, 241, 0.15);
+    background: rgba(214, 254, 81, 0.15);
     transform: scale(1.15);
 }
 
 .hydra-emoji-opt.active {
-    background: rgba(99, 102, 241, 0.25);
-    box-shadow: 0 0 6px rgba(99, 102, 241, 0.3);
+    background: rgba(214, 254, 81, 0.25);
+    box-shadow: 0 0 6px rgba(214, 254, 81, 0.3);
 }
 
 /* ── Modal Error ── */
@@ -1069,7 +1069,7 @@
     align-items: center;
     gap: 8px;
     padding: 12px 20px;
-    border-top: 1px solid rgba(99, 102, 241, 0.12);
+    border-top: 1px solid rgba(214, 254, 81, 0.12);
     background: rgba(15, 23, 42, 0.3);
 }
 
@@ -1094,7 +1094,7 @@
     padding: 7px 18px;
     border-radius: 8px;
     border: none;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
     color: #fff;
     font-size: 12px;
     font-weight: 600;
@@ -1104,7 +1104,7 @@
 
 .hydra-modal-save-btn:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 4px 16px rgba(214, 254, 81, 0.4);
 }
 
 .hydra-modal-save-btn:disabled {
@@ -1153,7 +1153,7 @@
 
 /* [P1] Response panel gradient headers */
 .hydra-panel-header, .hydra-head-header {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(139, 92, 246, 0.03), transparent) !important;
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.06), rgba(214, 254, 81, 0.03), transparent) !important;
     position: relative;
 }
 .hydra-panel-header::after, .hydra-head-header::after {
@@ -1163,7 +1163,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(214, 254, 81, 0.2), transparent);
 }
 
 /* [P2] Model selector accent ring */
@@ -1171,8 +1171,8 @@
     transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 .hydra-model-select:focus, .hydra-head-select:focus {
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 0 16px rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.4) !important;
+    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.2), 0 0 16px rgba(214, 254, 81, 0.1);
+    border-color: rgba(214, 254, 81, 0.4) !important;
 }
 
 /* [P3] Comparison diff highlight */
@@ -1193,6 +1193,6 @@
     transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 .hydra-resize-handle:hover, .hydra-divider:hover {
-    background: rgba(99, 102, 241, 0.15) !important;
-    box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+    background: rgba(214, 254, 81, 0.15) !important;
+    box-shadow: 0 0 8px rgba(214, 254, 81, 0.2);
 }

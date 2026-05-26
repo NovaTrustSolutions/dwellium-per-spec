@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { API_BASE } from '../../config';
 import './ThoughtWeaver.css';
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ const TEMPLATES = [
     { icon: '📋', label: 'Task', template: 'Need to: [action]. Due: [date/timeframe]. Notes: [context].' },
 ];
 
-const API = '/api/thought-weaver';
+const API = `${API_BASE}/api/thought-weaver`;
 
 // ── Helpers ──────────────────────────────────────────────────────────
 

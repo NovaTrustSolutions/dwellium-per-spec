@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════ */
 
 :root {
-    --tp-bg: #0a0e1a;
+    --tp-bg: #000000;
     --tp-surface: rgba(20, 24, 40, 0.95);
     --tp-surface-hover: rgba(28, 33, 52, 0.95);
     --tp-glass: rgba(30, 35, 55, 0.7);
@@ -27,7 +27,7 @@
     inset: 0;
     display: flex;
     background: var(--tp-bg);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     color: var(--tp-text);
     overflow: hidden;
 }
@@ -174,7 +174,7 @@
     border: 1px solid var(--tp-glass-border);
     border-radius: var(--tp-radius);
     padding: 20px;
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     transition: border-color 0.2s ease;
 }
 
@@ -237,8 +237,8 @@
 }
 
 .tp-stat-icon.indigo {
-    background: rgba(99, 102, 241, 0.12);
-    color: #6366f1;
+    background: rgba(214, 254, 81, 0.12);
+    color: #D6FE51;
 }
 
 .tp-stat-value {
@@ -595,8 +595,8 @@
 }
 
 .tp-message-direction.outbound {
-    background: rgba(99, 102, 241, 0.12);
-    color: #a5b4fc;
+    background: rgba(214, 254, 81, 0.12);
+    color: #D6FE51;
 }
 
 /* ── Empty States ────────────────────────── */
@@ -682,7 +682,7 @@
     gap: 8px;
     z-index: 999;
     animation: tp-fade-in 0.3s ease forwards;
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
 }
 
 /* ── Responsive ──────────────────────────── */
@@ -729,7 +729,7 @@
 .tp-card:hover, .tp-rent-card:hover, .tenant-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
-    border-color: rgba(99, 102, 241, 0.2);
+    border-color: rgba(214, 254, 81, 0.2);
 }
 
 /* [P2] Payment history row hover animation */
@@ -737,9 +737,9 @@
     transition: background 0.2s ease, transform 0.15s ease;
 }
 .tp-payment-row:hover, .tp-history-item:hover, .tenant-payment:hover {
-    background: rgba(99, 102, 241, 0.04);
+    background: rgba(214, 254, 81, 0.04);
     transform: translateX(3px);
-    box-shadow: inset 3px 0 0 rgba(99, 102, 241, 0.5);
+    box-shadow: inset 3px 0 0 rgba(214, 254, 81, 0.5);
 }
 
 /* [P3] Maintenance request priority colors */
@@ -752,13 +752,13 @@
     transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 .tp-action-btn:hover, .tp-quick-action:hover, .tenant-action:hover {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2), 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 0 20px rgba(214, 254, 81, 0.2), 0 4px 12px rgba(0,0,0,0.15);
     transform: translateY(-2px) scale(1.02);
 }
 
 /* [P5] Portal header ambient gradient */
 .tp-header, .tenant-header {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(139, 92, 246, 0.03), transparent) !important;
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.06), rgba(214, 254, 81, 0.03), transparent) !important;
     position: relative;
 }
 .tp-header::after, .tenant-header::after {
@@ -768,5 +768,5 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.15), transparent);
+    background: linear-gradient(90deg, transparent, rgba(214, 254, 81, 0.15), transparent);
 }

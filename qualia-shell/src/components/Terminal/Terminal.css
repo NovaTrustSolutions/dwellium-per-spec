@@ -55,7 +55,7 @@
 .qualia-terminal__quick-btn,
 .qualia-terminal__send,
 .qualia-terminal__signal {
-    border: 1px solid rgba(96, 165, 250, 0.25);
+    border: 1px solid rgba(214, 254, 81, 0.25);
     background: rgba(30, 41, 59, 0.72);
     color: #dbeafe;
     border-radius: 9px;
@@ -72,7 +72,7 @@
 .qualia-terminal__signal:hover {
     transform: translateY(-1px);
     background: rgba(37, 99, 235, 0.18);
-    border-color: rgba(96, 165, 250, 0.4);
+    border-color: rgba(214, 254, 81, 0.4);
 }
 
 .qualia-terminal__action:disabled,
@@ -162,8 +162,8 @@
 }
 
 .qualia-terminal__command-input:focus {
-    outline: 1px solid rgba(96, 165, 250, 0.6);
-    border-color: rgba(96, 165, 250, 0.45);
+    outline: 1px solid rgba(214, 254, 81, 0.6);
+    border-color: rgba(214, 254, 81, 0.45);
 }
 
 .qualia-terminal__cursor {

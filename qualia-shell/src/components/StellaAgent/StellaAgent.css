@@ -154,8 +154,13 @@
 .stella__msg--user {
     align-self: flex-end;
     background: linear-gradient(135deg, #D6FE51, #D6FE51);
-    color: #fff;
+    /* 2026-05-26: black text + black-tinted timestamp for WCAG AA contrast on acid lime (#D6FE51 / 5.02:1+) */
+    color: #000;
     border-bottom-right-radius: 4px;
+}
+
+.stella__msg--user .stella__msg-time {
+    color: rgba(0, 0, 0, 0.55);
 }
 
 .stella__msg--assistant {

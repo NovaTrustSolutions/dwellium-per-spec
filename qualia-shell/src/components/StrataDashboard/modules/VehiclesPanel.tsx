@@ -91,7 +91,7 @@ export default function VehiclesPanel({ tenantId, propertyId }: Props) {
             {showForm && (
                 <form onSubmit={handleSubmit} style={{
                     padding: 12, borderRadius: 8, marginBottom: 12,
-                    background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)',
+                    background: 'rgba(214,254,81,0.04)', border: '1px solid rgba(214,254,81,0.15)',
                 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 8, marginBottom: 8 }}>
                         <input name="make" placeholder="Make" defaultValue={editing?.make || ''} required className="s-input" style={{ fontSize: 11 }} />
@@ -122,7 +122,7 @@ export default function VehiclesPanel({ tenantId, propertyId }: Props) {
                             display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                             borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
                         }}>
-                            <Car size={16} style={{ color: '#818cf8', flexShrink: 0 }} />
+                            <Car size={16} style={{ color: '#D6FE51', flexShrink: 0 }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
                                     {v.year ? v.year + ' ' : ''}{v.make} {v.model}

@@ -101,7 +101,7 @@ export default function ColdEmailBlocker() {
         tabs: { display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '3px' } as React.CSSProperties,
         tab: (active: boolean) => ({
             padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none',
-            background: active ? 'rgba(139,92,246,0.2)' : 'transparent', color: active ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+            background: active ? 'rgba(214,254,81,0.2)' : 'transparent', color: active ? '#D6FE51' : 'rgba(255,255,255,0.5)',
             transition: 'all 0.15s',
         }) as React.CSSProperties,
         statGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' } as React.CSSProperties,
@@ -119,13 +119,13 @@ export default function ColdEmailBlocker() {
             color: score >= 0.8 ? '#ef4444' : score >= 0.6 ? '#f59e0b' : '#22c55e',
         }) as React.CSSProperties,
         toggle: { display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '12px' } as React.CSSProperties,
-        slider: { marginTop: '8px', width: '100%', accentColor: '#a78bfa' } as React.CSSProperties,
+        slider: { marginTop: '8px', width: '100%', accentColor: '#D6FE51' } as React.CSSProperties,
         input: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px 12px', color: 'inherit', fontSize: '12px', width: '100%' } as React.CSSProperties,
         btn: (variant: 'primary' | 'ghost') => ({
             padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
             border: variant === 'ghost' ? '1px solid rgba(255,255,255,0.1)' : 'none',
-            background: variant === 'primary' ? 'rgba(139,92,246,0.2)' : 'transparent',
-            color: variant === 'primary' ? '#a78bfa' : 'rgba(255,255,255,0.6)',
+            background: variant === 'primary' ? 'rgba(214,254,81,0.2)' : 'transparent',
+            color: variant === 'primary' ? '#D6FE51' : 'rgba(255,255,255,0.6)',
         }) as React.CSSProperties,
         empty: { textAlign: 'center' as const, padding: '40px', opacity: 0.4, fontSize: '13px' } as React.CSSProperties,
     };
@@ -148,7 +148,7 @@ export default function ColdEmailBlocker() {
                 <>
                     <div style={s.statGrid}>
                         <div style={s.statCard}>
-                            <div style={{ ...s.statValue, color: '#a78bfa' }}>{stats.totalScanned}</div>
+                            <div style={{ ...s.statValue, color: '#D6FE51' }}>{stats.totalScanned}</div>
                             <div style={s.statLabel}>EMAILS SCANNED</div>
                         </div>
                         <div style={s.statCard}>
@@ -252,7 +252,7 @@ export default function ColdEmailBlocker() {
                                             <td style={s.td}>
                                                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                                     {signals.slice(0, 3).map((sig: any, si: number) => (
-                                                        <span key={si} style={{ padding: '1px 6px', borderRadius: '3px', background: 'rgba(139,92,246,0.1)', color: '#a78bfa', fontSize: '10px' }}>
+                                                        <span key={si} style={{ padding: '1px 6px', borderRadius: '3px', background: 'rgba(214,254,81,0.1)', color: '#D6FE51', fontSize: '10px' }}>
                                                             {sig.signal}
                                                         </span>
                                                     ))}
@@ -318,7 +318,7 @@ export default function ColdEmailBlocker() {
                                 <div style={{ fontWeight: 700, fontSize: '13px' }}>🎯 Detection Threshold</div>
                                 <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>Higher = fewer false positives, lower = catch more cold emails</div>
                             </div>
-                            <div style={{ fontSize: '20px', fontWeight: 800, color: '#a78bfa' }}>{config.threshold.toFixed(2)}</div>
+                            <div style={{ fontSize: '20px', fontWeight: 800, color: '#D6FE51' }}>{config.threshold.toFixed(2)}</div>
                         </div>
                         <input
                             type="range"

@@ -79,7 +79,7 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
         deleted: '#ef4444',
         snoozed: '#f59e0b',
         read: '#60a5fa',
-        linked: '#8b5cf6',
+        linked: '#D6FE51',
         unsubscribed: '#ec4899',
         retry: '#f97316',
     };

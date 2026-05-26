@@ -232,7 +232,7 @@ function CorporateReviewInner() {
                         style={{
                             padding: '6px 16px', borderRadius: 20, border: 'none', cursor: 'pointer',
                             fontSize: 13, fontWeight: 600,
-                            background: filter === s ? (s === 'all' ? '#6366f1' : STATUS_COLORS[s]) : 'rgba(255,255,255,0.06)',
+                            background: filter === s ? (s === 'all' ? '#D6FE51' : STATUS_COLORS[s]) : 'rgba(255,255,255,0.06)',
                             color: filter === s ? '#fff' : '#aaa',
                         }}
                     >
@@ -244,7 +244,7 @@ function CorporateReviewInner() {
                     data-testid="corporate-review-upload-btn"
                     onClick={() => setShowUpload(true)}
                     style={{
-                        padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1',
+                        padding: '6px 16px', borderRadius: 8, border: 'none', background: '#D6FE51',
                         color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
                     }}
                 >
@@ -284,12 +284,12 @@ function CorporateReviewInner() {
                         onClick={() => setSelected(selected?.id === doc.id ? null : doc)}
                         style={{
                             ...cardStyle, cursor: 'pointer',
-                            borderColor: selected?.id === doc.id ? '#6366f1' : 'rgba(255,255,255,0.08)',
+                            borderColor: selected?.id === doc.id ? '#D6FE51' : 'rgba(255,255,255,0.08)',
                             transition: 'border-color 0.2s',
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <FileText size={16} style={{ color: '#6366f1' }} />
+                            <FileText size={16} style={{ color: '#D6FE51' }} />
                             <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: '#eee' }}>{doc.filename}</span>
                             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: STATUS_COLORS[doc.status] + '22', color: STATUS_COLORS[doc.status], fontWeight: 600 }}>
                                 {doc.status.toUpperCase()}
@@ -348,7 +348,7 @@ function CorporateReviewInner() {
                                     <button
                                         data-testid={`corporate-review-action-create-workitem-${doc.id}`}
                                         onClick={e => { e.stopPropagation(); createWorkitem(doc); }}
-                                        style={btnStyle('#6366f1')}
+                                        style={btnStyle('#D6FE51')}
                                     >
                                         <Plus size={12} /> Create Workitem
                                     </button>
@@ -389,7 +389,7 @@ function CorporateReviewInner() {
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: '#eee', fontSize: 13, resize: 'vertical' }} />
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
                                 <button onClick={() => setShowUpload(false)} style={btnStyle('#666')}>Cancel</button>
-                                <button onClick={handleUpload} disabled={!uploadFile || loading} style={btnStyle('#6366f1')}>
+                                <button onClick={handleUpload} disabled={!uploadFile || loading} style={btnStyle('#D6FE51')}>
                                     {loading ? 'Uploading...' : 'Upload'}
                                 </button>
                             </div>
@@ -402,7 +402,7 @@ function CorporateReviewInner() {
             {feedback && (
                 <div style={{
                     position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-                    background: '#1a1a2e', border: '1px solid rgba(99,102,241,0.4)', borderRadius: 8,
+                    background: '#1a1a2e', border: '1px solid rgba(214,254,81,0.4)', borderRadius: 8,
                     padding: '10px 20px', color: '#eee', fontSize: 13, zIndex: 1000,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
                 }}>

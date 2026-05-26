@@ -9,7 +9,7 @@
     height: 100%;
     background: var(--window-bg, #0a0a15);
     color: var(--text-primary, #e0e0e0);
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     position: relative;
 }
 
@@ -41,7 +41,7 @@
 
 .fcl-header__loading {
     font-size: 8px;
-    color: #818cf8;
+    color: #D6FE51;
     animation: fcl-blink 1s ease infinite;
     margin-left: 4px;
 }
@@ -130,16 +130,16 @@
 }
 
 .fcl-input__field:focus {
-    border-color: rgba(129, 140, 248, 0.4);
-    background: rgba(129, 140, 248, 0.05);
+    border-color: rgba(214, 254, 81, 0.4);
+    background: rgba(214, 254, 81, 0.05);
 }
 
 .fcl-input__btn {
     padding: 8px 16px;
     border-radius: 10px;
-    border: 1px solid rgba(129, 140, 248, 0.2);
-    background: linear-gradient(135deg, rgba(129, 140, 248, 0.1), rgba(129, 140, 248, 0.05));
-    color: #818cf8;
+    border: 1px solid rgba(214, 254, 81, 0.2);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.1), rgba(214, 254, 81, 0.05));
+    color: #D6FE51;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -149,14 +149,14 @@
     align-items: center;
     gap: 5px;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.1);
 }
 
 .fcl-input__btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(129, 140, 248, 0.2), rgba(129, 140, 248, 0.1));
-    border-color: rgba(129, 140, 248, 0.35);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.2), rgba(214, 254, 81, 0.1));
+    border-color: rgba(214, 254, 81, 0.35);
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 4px 16px rgba(214, 254, 81, 0.15);
 }
 
 .fcl-input__btn:disabled {
@@ -202,10 +202,10 @@
 }
 
 .fcl-pill--active {
-    background: linear-gradient(135deg, rgba(129, 140, 248, 0.12), rgba(99, 102, 241, 0.06));
-    color: #818cf8;
-    border-color: rgba(129, 140, 248, 0.25);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.12), rgba(214, 254, 81, 0.06));
+    color: #D6FE51;
+    border-color: rgba(214, 254, 81, 0.25);
+    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.08);
 }
 
 .fcl-filters__search {
@@ -227,7 +227,7 @@
 }
 
 .fcl-filters__search:focus {
-    border-color: rgba(129, 140, 248, 0.3);
+    border-color: rgba(214, 254, 81, 0.3);
 }
 
 /* ========== ENTRIES LIST ========== */
@@ -309,9 +309,9 @@
 }
 
 .fcl-entry--expanded {
-    border-color: rgba(129, 140, 248, 0.2);
+    border-color: rgba(214, 254, 81, 0.2);
     background: rgba(255, 255, 255, 0.03);
-    box-shadow: 0 0 16px rgba(99, 102, 241, 0.06);
+    box-shadow: 0 0 16px rgba(214, 254, 81, 0.06);
 }
 
 .fcl-entry__main {
@@ -462,7 +462,7 @@
 }
 
 .fcl-entry__sources a {
-    color: #818cf8;
+    color: #D6FE51;
     text-decoration: none;
     font-size: 11px;
     word-break: break-all;
@@ -470,7 +470,7 @@
 }
 
 .fcl-entry__sources a:hover {
-    color: #a5b4fc;
+    color: #D6FE51;
     text-decoration: underline;
 }
 
@@ -514,22 +514,22 @@
 .fc-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    border-color: rgba(99, 102, 241, 0.15);
+    border-color: rgba(214, 254, 81, 0.15);
 }
 
 /* [P3] Source citation link style */
 .fc-source-link,
 .fc-citation {
-    color: var(--accent, #6366f1);
+    color: var(--accent, #D6FE51);
     text-decoration: none;
-    border-bottom: 1px dashed rgba(99, 102, 241, 0.3);
+    border-bottom: 1px dashed rgba(214, 254, 81, 0.3);
     transition: border-color 0.2s ease, color 0.2s ease;
 }
 
 .fc-source-link:hover,
 .fc-citation:hover {
-    border-bottom-color: var(--accent, #6366f1);
-    text-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+    border-bottom-color: var(--accent, #D6FE51);
+    text-shadow: 0 0 8px rgba(214, 254, 81, 0.2);
 }
 
 /* [P4] Confidence bar gradient */
@@ -553,7 +553,7 @@
 }
 
 .fc-filter-active {
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 12px rgba(214, 254, 81, 0.2);
 }
 
 /* ========== HEADER ACTIONS ROW ========== */
@@ -567,9 +567,9 @@
 .fcl-save-btn {
     padding: 6px 14px;
     border-radius: 8px;
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
-    color: #a5b4fc;
+    border: 1px solid rgba(214, 254, 81, 0.2);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.1), rgba(214, 254, 81, 0.05));
+    color: #D6FE51;
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
@@ -580,8 +580,8 @@
 }
 
 .fcl-save-btn:hover {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.1));
-    border-color: rgba(99, 102, 241, 0.35);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.2), rgba(214, 254, 81, 0.1));
+    border-color: rgba(214, 254, 81, 0.35);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.15);
 }

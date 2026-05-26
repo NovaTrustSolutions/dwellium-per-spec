@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { API_BASE } from '../../config';
 import './ThoughtWeaver.css';
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 ];
 
 const BUCKETS: { id: BucketId; label: string; icon: string; color: string }[] = [
-    { id: 'people', label: 'People', icon: '👤', color: '#a78bfa' },
+    { id: 'people', label: 'People', icon: '👤', color: '#D6FE51' },
     { id: 'projects', label: 'Projects', icon: '📁', color: '#60a5fa' },
     { id: 'ideas', label: 'Ideas', icon: '💡', color: '#fbbf24' },
     { id: 'admin', label: 'Tasks', icon: '📋', color: '#34d399' },
@@ -61,7 +62,7 @@ const TEMPLATES = [
     { icon: '📋', label: 'Task', template: 'Need to: [action]. Due: [date/timeframe]. Notes: [context].' },
 ];
 
-const API = '/api/thought-weaver';
+const API = `${API_BASE}/api/thought-weaver`;
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -256,7 +257,7 @@ export default function ThoughtWeaver() {
                     <h2 className="tw-title">🧠 Thought Weaver</h2>
                     {stats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: '#a78bfa' }}>👤 {stats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#D6FE51' }}>👤 {stats.activePeople}</span>
                             <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>📁 {stats.activeProjects}</span>
                             <span className="tw-stats-mini__item" style={{ color: '#fbbf24' }}>💡 {stats.totalIdeas}</span>
                             <span className="tw-stats-mini__item" style={{ color: '#34d399' }}>📋 {stats.tasksDue}</span>
@@ -366,9 +367,9 @@ export default function ThoughtWeaver() {
                     {stats && (
                         <div className="tw-stats-bar">
                             {[
-                                { icon: '🧠', label: 'Captures', value: stats.totalCaptures, color: '#8b5cf6' },
+                                { icon: '🧠', label: 'Captures', value: stats.totalCaptures, color: '#D6FE51' },
                                 { icon: '📥', label: 'To Review', value: stats.pendingReviews, color: '#f97316', highlight: stats.pendingReviews > 0 },
-                                { icon: '👤', label: 'People', value: stats.activePeople, color: '#a78bfa' },
+                                { icon: '👤', label: 'People', value: stats.activePeople, color: '#D6FE51' },
                                 { icon: '📁', label: 'Active', value: stats.activeProjects, color: '#60a5fa' },
                                 { icon: '💡', label: 'Ideas', value: stats.totalIdeas, color: '#fbbf24' },
                                 { icon: '📋', label: 'Due', value: stats.tasksDue, color: '#34d399', highlight: stats.tasksDue > 0 },

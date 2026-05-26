@@ -13,7 +13,7 @@
     overflow-y: auto;
     padding: 90px 0 40px;
     z-index: 99999;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
 
     /* Initially hide everything to show just the nebula */
     opacity: 0;
@@ -50,7 +50,7 @@
     font-size: 14px;
     letter-spacing: 4px;
     text-transform: uppercase;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     font-weight: 500;
     animation: flashText 3s infinite ease-in-out;
 }
@@ -112,7 +112,7 @@
     height: 500px;
     top: -120px;
     left: -100px;
-    background: radial-gradient(circle, #6366f1, transparent 70%);
+    background: radial-gradient(circle, #D6FE51, transparent 70%);
     animation: orbFloat1 12s ease-in-out infinite;
 }
 
@@ -177,11 +177,11 @@
     max-width: 95vw;
     margin: 0 auto;
     padding: 40px 36px 32px;
-    background: rgba(15, 20, 40, 0.85);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(14, 14, 14, 0.85);
+    border: 1px solid rgba(214, 254, 81, 0.2);
     border-radius: 20px;
-    backdrop-filter: blur(24px);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(99, 102, 241, 0.08);
+    backdrop-filter: none;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(214, 254, 81, 0.08);
     opacity: 0;
     transform: translateY(30px);
 }
@@ -205,10 +205,10 @@
     margin-bottom: 32px;
     margin-top: 4vh;
     padding: 24px;
-    background: rgba(15, 20, 40, 0.85);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(14, 14, 14, 0.85);
+    border: 1px solid rgba(214, 254, 81, 0.2);
     border-radius: 20px;
-    backdrop-filter: blur(24px);
+    backdrop-filter: none;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
     opacity: 0;
     transform: translateY(20px) scale(0.98);
@@ -276,13 +276,13 @@
 
 .login-avatar:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: rgba(214, 254, 81, 0.3);
     transform: translateY(-2px);
 }
 
 .login-avatar--active {
-    border-color: rgba(99, 102, 241, 0.5);
-    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(214, 254, 81, 0.5);
+    background: rgba(214, 254, 81, 0.12);
 }
 
 .login-avatar:disabled {
@@ -399,8 +399,8 @@
 }
 
 .login-field input:focus {
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: rgba(214, 254, 81, 0.5);
+    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.1);
 }
 
 .login-field input::placeholder {
@@ -441,8 +441,8 @@
     padding: 12px;
     border: none;
     border-radius: 10px;
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
-    color: white;
+    background: linear-gradient(135deg, #D6FE51, #b8d946);
+    color: #000000;
     font-size: 14px;
     font-weight: 600;
     font-family: inherit;
@@ -452,8 +452,8 @@
 }
 
 .login-submit:hover:not(:disabled) {
-    background: linear-gradient(135deg, #7c7ff7, #6366f1);
-    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+    background: linear-gradient(135deg, #E8FF7A, #D6FE51);
+    box-shadow: 0 4px 20px rgba(214, 254, 81, 0.35);
     transform: translateY(-1px);
 }
 

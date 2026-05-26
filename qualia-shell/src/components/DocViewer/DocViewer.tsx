@@ -77,7 +77,7 @@ const STAMP_COLORS: Record<StampType, string> = {
     CONFIDENTIAL: '#ef4444',
     REVIEWED: '#3b82f6',
     URGENT: '#dc2626',
-    FINAL: '#8b5cf6',
+    FINAL: '#D6FE51',
 };
 
 // ============================================
@@ -1290,7 +1290,7 @@ export default function DocViewer() {
     };
 
     // ---- TOOL CONFIG ----
-    const COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#1a1a2e', '#ffffff'];
+    const COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#D6FE51', '#ec4899', '#1a1a2e', '#ffffff'];
     const canEditPdf = previewMode === 'pdf';
     const canSaveBack = previewMode === 'pdf' || previewMode === 'text';
     const isTextDirty = previewMode === 'text' && textDraft !== textContent;

@@ -1,0 +1,338 @@
+diff --git a/ai-dashboard369-file-manager/src/app.ts b/ai-dashboard369-file-manager/src/app.ts
+index 4988593..2c81b92 100644
+--- a/ai-dashboard369-file-manager/src/app.ts
++++ b/ai-dashboard369-file-manager/src/app.ts
+@@ -16,6 +16,7 @@ import thoughtWeaverRoutes from './routes/thoughtWeaverRoutes';
+ import settingsRoutes from './routes/settingsRoutes';
+ import authRoutes from './routes/authRoutes';
+ import dwelliumRoutes from './routes/dwelliumRoutes';
++import tenantAdminRoutes from './routes/tenantAdminRoutes';
+ import gmailSendRoute from './routes/gmailSendRoute';
+ import intelligenceRoutes from './routes/intelligenceRoutes';
+ import accountingRoutes from './routes/accountingRoutes';
+@@ -105,6 +106,7 @@ app.use('/api/settings', settingsRoutes);
+ 
+ // Dwellium Data Foundation
+ app.use('/api/auth', authRoutes);
++app.use('/api/dwellium/tenant/admin', tenantAdminRoutes);
+ app.use('/api/dwellium', dwelliumRoutes);
+ app.use('/api/gmail', gmailSendRoute);
+ app.use('/api/intelligence', intelligenceRoutes);
+diff --git a/ai-dashboard369-file-manager/src/routes/dwelliumRoutes.ts b/ai-dashboard369-file-manager/src/routes/dwelliumRoutes.ts
+index 4aa15ed..b03d57d 100644
+--- a/ai-dashboard369-file-manager/src/routes/dwelliumRoutes.ts
++++ b/ai-dashboard369-file-manager/src/routes/dwelliumRoutes.ts
+@@ -337,4 +337,15 @@ router.get('/stats', authenticate, (req: Request, res: Response) => {
+     res.json(store.getDashboardStats(propertyId));
+ });
+ 
++// ═══════════════════════════════════════════
++// GLOBAL SEARCH — saved searches + health (no persistence / no index in v1)
++// ═══════════════════════════════════════════
++router.get('/search/saved', authenticate, (_req: Request, res: Response) => {
++    res.json([]);
++});
++
++router.get('/search/health', authenticate, (_req: Request, res: Response) => {
++    res.json({ status: 'ok', indexed: 0, totalIndexed: 0 });
++});
++
+ export default router;
+diff --git a/ai-dashboard369-file-manager/src/routes/tenantAdminRoutes.ts b/ai-dashboard369-file-manager/src/routes/tenantAdminRoutes.ts
+new file mode 100644
+index 0000000..c640ead
+--- /dev/null
++++ b/ai-dashboard369-file-manager/src/routes/tenantAdminRoutes.ts
+@@ -0,0 +1,199 @@
++/**
++ * Tenant-portal admin routes — mounted at /api/dwellium/tenant/admin.
++ *
++ * Mirrors the strataApi.static.ts shape so the management-side
++ * TenantPortalModule renders against real backend data the same way
++ * it renders in static mode.
++ *
++ * Added during Milestone-1 of the Dwellium 24h functionality bring-up
++ * (sibling-repo dwellium-per-spec branch feat/functionality-bringup).
++ * Routes resolve 404s previously surfaced at Check-in 1.
++ */
++
++import { Router, Request, Response } from 'express';
++import { database as db } from '../services/database';
++
++const router = Router();
++
++interface UnitRow {
++    id: string;
++    property_id: string;
++    unit_number: string;
++    rent_amount: number | null;
++    status: string;
++    current_tenant_id: string | null;
++    lease_start: string | null;
++    lease_end: string | null;
++}
++
++interface EntityRow {
++    id: string;
++    entity_type: string;
++    name: string;
++    email: string | null;
++    phone: string | null;
++    metadata: string;
++    status: string;
++}
++
++interface WorkitemRow {
++    id: string;
++    type: string;
++    domain: string;
++    status: string;
++    title: string;
++    priority: string;
++    unit_id: string | null;
++    assigned_to: string | null;
++    created_at: string;
++}
++
++const NINETY_DAYS_MS = 90 * 86_400_000;
++
++router.get('/stats', (_req: Request, res: Response) => {
++    const tenants = db
++        .prepare(`SELECT id FROM entity_profiles WHERE entity_type = 'tenant' AND status = 'active'`)
++        .all() as Array<{ id: string }>;
++    const units = db
++        .prepare(`SELECT status, lease_end FROM units`)
++        .all() as Array<{ status: string; lease_end: string | null }>;
++    const openMaint = db
++        .prepare(`SELECT COUNT(*) AS n FROM workitems
++                  WHERE type = 'work_order' AND domain = 'maintenance'
++                  AND status IN ('open', 'in_progress')`)
++        .get() as { n: number };
++    const now = Date.now();
++    const expiringLeases = units.filter(u => {
++        if (!u.lease_end) return false;
++        const t = new Date(u.lease_end).getTime();
++        return Number.isFinite(t) && t > now && (t - now) <= NINETY_DAYS_MS;
++    }).length;
++    res.json({
++        totalTenants: tenants.length,
++        totalUnits: units.length,
++        occupiedUnits: units.filter(u => u.status === 'occupied').length,
++        vacantUnits: units.filter(u => u.status === 'vacant').length,
++        openMaintenanceRequests: openMaint.n,
++        expiringLeases,
++    });
++});
++
++router.get('/directory', (req: Request, res: Response) => {
++    const tenants = db
++        .prepare(`SELECT id, entity_type, name, email, phone, metadata, status
++                  FROM entity_profiles
++                  WHERE entity_type = 'tenant' AND status = 'active'`)
++        .all() as EntityRow[];
++    const units = db
++        .prepare(`SELECT id, property_id, unit_number, rent_amount, status,
++                         current_tenant_id, lease_start, lease_end FROM units`)
++        .all() as UnitRow[];
++    const unitByTenantName = new Map<string, UnitRow>();
++    for (const u of units) {
++        if (u.current_tenant_id) unitByTenantName.set(String(u.current_tenant_id), u);
++    }
++    const now = Date.now();
++    const rows = tenants.map(t => {
++        const meta = safeJson(t.metadata) || {};
++        const u = unitByTenantName.get(t.name) || null;
++        const leaseEnd = u?.lease_end ?? null;
++        let leaseRemainingDays: number | null = null;
++        if (leaseEnd) {
++            const ts = new Date(leaseEnd).getTime();
++            if (Number.isFinite(ts)) {
++                leaseRemainingDays = Math.max(0, Math.round((ts - now) / 86_400_000));
++            }
++        }
++        const emailRaw = typeof t.email === 'string' ? t.email.split(',')[0].trim() : '';
++        return {
++            id: t.id,
++            name: t.name,
++            email: emailRaw,
++            phone: t.phone || null,
++            unitNumber: u?.unit_number || meta.unit || null,
++            propertyName: meta.propertyName || null,
++            rentAmount: u?.rent_amount ?? null,
++            leaseStart: u?.lease_start ?? null,
++            leaseEnd,
++            leaseRemainingDays,
++            status: t.status,
++        };
++    });
++    res.json(filterBySearch(rows, req.query.search, ['name', 'unitNumber', 'propertyName']));
++});
++
++router.get('/maintenance', (req: Request, res: Response) => {
++    const wos = db
++        .prepare(`SELECT id, type, domain, status, title, priority, unit_id, assigned_to, created_at
++                  FROM workitems WHERE type = 'work_order' AND domain = 'maintenance'`)
++        .all() as WorkitemRow[];
++    const units = db
++        .prepare(`SELECT id, unit_number, current_tenant_id FROM units`)
++        .all() as Array<{ id: string; unit_number: string; current_tenant_id: string | null }>;
++    const unitById = new Map<string, { unit_number: string; current_tenant_id: string | null }>();
++    for (const u of units) unitById.set(u.id, u);
++    const rows = wos.map(w => {
++        const u = w.unit_id ? unitById.get(w.unit_id) : null;
++        return {
++            id: w.id,
++            title: w.title || '',
++            tenantName: u?.current_tenant_id ? String(u.current_tenant_id) : '',
++            unitNumber: u?.unit_number || null,
++            priority: w.priority || 'medium',
++            status: w.status || 'open',
++            createdAt: w.created_at || '1970-01-01T00:00:00.000Z',
++        };
++    });
++    res.json(filterBySearch(rows, req.query.search, ['title', 'tenantName', 'unitNumber']));
++});
++
++// Payments + messages + lease-alerts have no backend table yet; return [].
++// Milestone-1 marks these as "wired-not-populated" — module renders without
++// errors, and Milestone-2+ can attach a real ledger / inbox source.
++router.get('/payments', (_req: Request, res: Response) => res.json([]));
++router.get('/messages', (_req: Request, res: Response) => res.json([]));
++
++router.get('/lease-alerts', (_req: Request, res: Response) => {
++    const units = db
++        .prepare(`SELECT id, unit_number, lease_end, current_tenant_id FROM units WHERE lease_end IS NOT NULL`)
++        .all() as Array<{ id: string; unit_number: string; lease_end: string; current_tenant_id: string | null }>;
++    const now = Date.now();
++    const alerts = units
++        .map(u => {
++            const ts = new Date(u.lease_end).getTime();
++            if (!Number.isFinite(ts)) return null;
++            const remainingMs = ts - now;
++            if (remainingMs < 0 || remainingMs > NINETY_DAYS_MS) return null;
++            return {
++                unitId: u.id,
++                unitNumber: u.unit_number,
++                tenantName: u.current_tenant_id ? String(u.current_tenant_id) : null,
++                leaseEnd: u.lease_end,
++                daysRemaining: Math.max(0, Math.round(remainingMs / 86_400_000)),
++            };
++        })
++        .filter(Boolean);
++    res.json(alerts);
++});
++
++function filterBySearch<T extends Record<string, unknown>>(
++    rows: T[],
++    search: unknown,
++    fields: (keyof T)[],
++): T[] {
++    if (typeof search !== 'string' || search.length === 0) return rows;
++    const q = search.toLowerCase();
++    return rows.filter(r =>
++        fields.some(f => {
++            const v = r[f];
++            return typeof v === 'string' && v.toLowerCase().includes(q);
++        })
++    );
++}
++
++function safeJson(s: string | null): Record<string, any> | null {
++    if (!s) return null;
++    try { return JSON.parse(s); } catch { return null; }
++}
++
++export default router;
+diff --git a/ai-dashboard369-file-manager/src/services/factCheckService.ts b/ai-dashboard369-file-manager/src/services/factCheckService.ts
+index bb49117..23552c5 100644
+--- a/ai-dashboard369-file-manager/src/services/factCheckService.ts
++++ b/ai-dashboard369-file-manager/src/services/factCheckService.ts
+@@ -112,7 +112,23 @@ const getOpenAIClient = (): OpenAI | null => {
+ /**
+  * Verify a batch of claims using OpenAI.
+  */
+-export async function verifyClaimBatch(claims: string[]): Promise<FactCheckBatchResult> {
++/**
++ * Pull the human-readable text out of whatever shape the caller sent.
++ * The route handler at /api/transcribe/fact-check forwards req.body.claims
++ * verbatim, and the frontend sends `[{id, text}]` objects — without this
++ * normalization the prompt below saw "[object Object]" as the claim text
++ * and the model dutifully returned "unverifiable: not a coherent statement"
++ * for every input. Accept string | { text } | anything-stringifiable.
++ */
++function extractClaimText(c: unknown): string {
++    if (typeof c === 'string') return c;
++    if (c && typeof c === 'object' && typeof (c as any).text === 'string') {
++        return (c as any).text;
++    }
++    return String(c);
++}
++
++export async function verifyClaimBatch(claims: any[]): Promise<FactCheckBatchResult> {
+     if (claims.length === 0) {
+         return { results: [], processedAt: Date.now(), totalClaims: 0 };
+     }
+@@ -135,7 +151,8 @@ export async function verifyClaimBatch(claims: string[]): Promise<FactCheckBatch
+     }
+ 
+     // Batch claims into a single prompt for efficiency
+-    const claimList = claims.map((c, i) => `${i + 1}. "${c}"`).join('\n');
++    const claimTexts = claims.map(extractClaimText);
++    const claimList = claimTexts.map((c, i) => `${i + 1}. ${c}`).join('\n');
+ 
+     try {
+         const response = await client.chat.completions.create({
+@@ -143,22 +160,44 @@ export async function verifyClaimBatch(claims: string[]): Promise<FactCheckBatch
+             messages: [
+                 {
+                     role: 'system',
+-                    content: `You are a fact-checking assistant. For each claim, determine its accuracy.
+-
+-Respond ONLY with valid JSON in this exact format:
++                    content: `You are a fact-checker. Assign exactly one verdict per numbered claim.
++
++VERDICT TAXONOMY
++  - "verified": well-established factual claim that aligns with scientific
++    consensus, basic physics/chemistry/biology, mathematical truth, established
++    geography, or widely-documented history. Use confidence 0.85-1.0.
++  - "disputed": claim that directly contradicts well-established facts as
++    above. Use confidence 0.85-1.0.
++  - "partially_true": contains both accurate and inaccurate elements, OR is
++    technically true but materially misleading. Confidence 0.5-0.8.
++  - "unverifiable": genuinely uncertain — requires real-time / private data
++    you don't have (current statistics, breaking news), subjective claims,
++    predictions about the future, or claims about specific unverified
++    individuals/events. Confidence 0.0-0.3.
++
++DECISIVENESS RULES
++  Be willing to call "verified" or "disputed" on unambiguous claims. Do NOT
++  default to "unverifiable" out of caution when the claim is clearly true or
++  clearly false under established knowledge. Examples of claims you CAN
++  verify with confidence: "Water boils at 100°C at sea level" (verified),
++  "The Earth is flat" (disputed), "Paris is the capital of France"
++  (verified), "Humans have 12 chromosomes" (disputed — humans have 46).
++  Examples of "unverifiable": "Crime is up 47% this year" (no time-bound
++  source), "Senator X said Y yesterday" (recent event you can't check),
++  "Y is the best restaurant in town" (subjective).
++
++Respond ONLY with valid JSON, no prose, in this exact shape:
+ {
+   "results": [
+     {
+       "index": 1,
+-      "verdict": "verified" | "disputed" | "unverifiable" | "partially_true",
++      "verdict": "verified" | "disputed" | "partially_true" | "unverifiable",
+       "confidence": 0.0-1.0,
+-      "explanation": "Brief explanation of why this verdict was reached",
+-      "sources": ["URL or reference if known"]
++      "explanation": "One sentence stating the reason for the verdict.",
++      "sources": []
+     }
+   ]
+-}
+-
+-Be precise and conservative. If you cannot verify a claim with confidence, mark it "unverifiable".`
++}`
+                 },
+                 {
+                     role: 'user',

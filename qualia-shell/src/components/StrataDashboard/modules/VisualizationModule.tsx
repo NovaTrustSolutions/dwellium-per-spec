@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { strataGet } from '../strataApi';
 import type { Workitem, Property, EntityProfile } from '../strataTypes';
+import { useStrataNav } from '../StrataNavContext';
 import { LoadingState, ErrorState } from '../StateView';
 
 type VizMode = 'timeline' | 'mindmap' | 'flowchart';
@@ -29,11 +30,11 @@ interface EntityLink {
 }
 
 const ENTITY_COLORS: Record<string, string> = {
-    property: '#6366f1',
+    property: '#D6FE51',
     vendor: '#f59e0b',
     tenant: '#10b981',
     owner: '#3b82f6',
-    workitem: '#a78bfa',
+    workitem: '#D6FE51',
     legal: '#ef4444',
 };
 
@@ -47,6 +48,7 @@ const ENTITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function VisualizationModule() {
+    const { navigateToProperty } = useStrataNav();
     const [mode, setMode] = useState<VizMode>('timeline');
     const [workitems, setWorkitems] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
@@ -175,7 +177,7 @@ export default function VisualizationModule() {
         switch (s) {
             case 'open': return '#3b82f6';
             case 'in_progress': return '#f59e0b';
-            case 'review': return '#a78bfa';
+            case 'review': return '#D6FE51';
             case 'completed': return '#10b981';
             case 'cancelled': return '#ef4444';
             default: return '#64748b';
@@ -187,7 +189,7 @@ export default function VisualizationModule() {
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">
-                        <Network size={22} style={{ verticalAlign: -4, marginRight: 8, color: '#818cf8' }} />
+                        <Network size={22} style={{ verticalAlign: -4, marginRight: 8, color: '#D6FE51' }} />
                         Visualization
                     </h2>
                     <p className="s-module-subtitle">
@@ -206,8 +208,8 @@ export default function VisualizationModule() {
                                 className="s-btn s-btn-ghost"
                                 style={{
                                     padding: '5px 10px', borderRadius: 0, margin: 0, gap: 4,
-                                    background: mode === m ? 'rgba(99,102,241,0.2)' : 'transparent',
-                                    color: mode === m ? '#6366f1' : '#64748b', fontSize: 11,
+                                    background: mode === m ? 'rgba(214,254,81,0.2)' : 'transparent',
+                                    color: mode === m ? '#D6FE51' : '#64748b', fontSize: 11,
                                 }}
                                 onClick={() => setMode(m)}
                             >
@@ -267,7 +269,7 @@ export default function VisualizationModule() {
                     {/* Vertical line */}
                     <div style={{
                         position: 'absolute', left: 12, top: 0, bottom: 0, width: 2,
-                        background: 'linear-gradient(to bottom, #6366f1, rgba(99,102,241,0.1))',
+                        background: 'linear-gradient(to bottom, #6366f1, rgba(214,254,81,0.1))',
                         borderRadius: 1,
                     }} />
 
@@ -284,7 +286,7 @@ export default function VisualizationModule() {
                             }}>
                                 <div style={{
                                     position: 'absolute', left: -22, width: 10, height: 10, borderRadius: '50%',
-                                    background: '#6366f1', border: '2px solid #1e1b4b',
+                                    background: '#D6FE51', border: '2px solid #1e1b4b',
                                 }} />
                                 <span style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0' }}>
                                     {new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
@@ -326,9 +328,9 @@ export default function VisualizationModule() {
                                                 {wi.domain && <span>• {wi.domain}</span>}
                                                 {wi.type && <span>• {wi.type}</span>}
                                                 {wi.propertyId && (
-                                                    <span style={{ color: '#818cf8' }}>
+                                                    <button className="s-property-link" style={{ fontSize: 'inherit', color: '#D6FE51' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
                                                         🏠 {properties.find(p => p.id === wi.propertyId)?.name || 'Unknown'}
-                                                    </span>
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -352,7 +354,7 @@ export default function VisualizationModule() {
                                         key={`${node.id}-${connId}`}
                                         x1={node.x} y1={node.y}
                                         x2={target.x} y2={target.y}
-                                        stroke="rgba(99,102,241,0.2)" strokeWidth={1.5}
+                                        stroke="rgba(214,254,81,0.2)" strokeWidth={1.5}
                                         strokeDasharray="4,4"
                                     />
                                 );
@@ -409,7 +411,7 @@ export default function VisualizationModule() {
                 /* ═══ FLOWCHART ═══ */
                 <div className="s-glass-card">
                     <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <GitBranch size={16} style={{ color: '#818cf8' }} />
+                        <GitBranch size={16} style={{ color: '#D6FE51' }} />
                         Workitem Status Flow
                     </h3>
 

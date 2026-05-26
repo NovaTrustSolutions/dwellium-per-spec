@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { AlertTriangle, TrendingDown, TrendingUp, Minus, Plus, CheckCircle } from 'lucide-react';
 import { strataGet, isStaticMode } from '../strataApi';
 import type { SentimentScore, SentimentScoreView } from '@qualia/types';
+import { useStrataNav } from '../StrataNavContext';
 // Task 2.8 — GR-13 observability wiring + ErrorBoundary, mirrors the
 // 2.1 / 2.2 / 2.4 / 2.10 retrofit pattern. Sentry breadcrumbs are
 // try/catch-wrapped so missing DSN is silent in test/local builds.
@@ -29,6 +30,7 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 function SentimentModuleInner() {
+    const { navigateToProperty } = useStrataNav();
     const [trends, setTrends] = useState<SentimentScore[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'all' | 'atRisk' | 'add'>('all');
@@ -145,7 +147,7 @@ function SentimentModuleInner() {
             {/* Stats bar */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                 {[
-                    { label: 'Total Tracked', value: trends.length, color: '#6366f1' },
+                    { label: 'Total Tracked', value: trends.length, color: '#D6FE51' },
                     { label: 'At Risk', value: atRisk.length, color: '#ef4444' },
                     { label: 'Improving', value: trends.filter(t => t.trend === 'improving').length, color: '#22c55e' },
                     { label: 'Avg Score', value: trends.length ? (trends.reduce((s, t) => s + t.avgScore, 0) / trends.length).toFixed(1) + '/5' : 'N/A', color: '#eab308' },
@@ -162,7 +164,7 @@ function SentimentModuleInner() {
                 {([['all', 'All Tenants'], ['atRisk', `At Risk (${atRisk.length})`], ['add', '+ Record Survey']] as const).map(([key, label]) => (
                     <button key={key} onClick={() => setActiveView(key)}
                         data-testid={`sentiment-tab-${key === 'atRisk' ? 'atrisk' : key}`}
-                        style={{ padding: '8px 16px', background: activeView === key ? '#6366f1' : 'transparent', border: 'none', borderRadius: '6px 6px 0 0', color: activeView === key ? '#fff' : '#94a3b8', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                        style={{ padding: '8px 16px', background: activeView === key ? '#D6FE51' : 'transparent', border: 'none', borderRadius: '6px 6px 0 0', color: activeView === key ? '#fff' : '#94a3b8', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                         {label}
                     </button>
                 ))}
@@ -210,7 +212,7 @@ function SentimentModuleInner() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
                         <button onClick={submitSurvey}
-                            style={{ padding: '10px 20px', background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '10px 20px', background: '#D6FE51', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                             <CheckCircle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Save Response
                         </button>
                         {submitMsg && <span style={{ fontSize: 13, color: submitMsg.startsWith('✅') ? '#22c55e' : '#ef4444' }}>{submitMsg}</span>}
@@ -248,11 +250,15 @@ function SentimentModuleInner() {
                                                 {t.tenantName}
                                             </td>
                                             <td style={{ padding: '10px 14px', color: '#94a3b8' }}>{t.unit}</td>
-                                            <td style={{ padding: '10px 14px', color: '#94a3b8', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.propertyName}</td>
+                                            <td style={{ padding: '10px 14px', color: '#94a3b8', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {t.propertyId ? (
+                                                    <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(t.propertyId); }}>{t.propertyName}</button>
+                                                ) : t.propertyName}
+                                            </td>
                                             <td style={{ padding: '10px 14px' }}><ScoreBadge score={t.latestScore} /></td>
                                             <td style={{ padding: '10px 14px' }}><TrendIcon trend={t.trend} /></td>
                                             <td style={{ padding: '10px 14px', color: '#94a3b8' }}>{t.avgScore}</td>
-                                            <td style={{ padding: '10px 14px', color: '#6366f1', fontSize: 12 }}>View ›</td>
+                                            <td style={{ padding: '10px 14px', color: '#D6FE51', fontSize: 12 }}>View ›</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -266,7 +272,11 @@ function SentimentModuleInner() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                                 <div>
                                     <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>{selected.tenantName}</div>
-                                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{selected.unit} · {selected.propertyName}</div>
+                                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                                        {selected.unit} · {selected.propertyId ? (
+                                            <button className="s-property-link" style={{ fontSize: 12 }} onClick={() => navigateToProperty(selected.propertyId)}>{selected.propertyName}</button>
+                                        ) : selected.propertyName}
+                                    </div>
                                 </div>
                                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 18 }}>×</button>
                             </div>
@@ -288,7 +298,7 @@ function SentimentModuleInner() {
                                             <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#94a3b8' }} />
                                             <YAxis domain={[1, 5]} tick={{ fontSize: 9, fill: '#94a3b8' }} />
                                             <Tooltip contentStyle={{ background: '#0f1624', border: '1px solid #334155', fontSize: 11 }} />
-                                            <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2} dot={{ r: 3, fill: '#6366f1' }} />
+                                            <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2} dot={{ r: 3, fill: '#D6FE51' }} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>

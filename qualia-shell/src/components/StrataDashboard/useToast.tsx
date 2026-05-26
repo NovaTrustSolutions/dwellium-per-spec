@@ -19,7 +19,7 @@ interface Toast {
 const TOAST_COLORS: Record<ToastType, { bg: string; border: string; text: string; icon: string }> = {
     success: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', text: '#10b981', icon: '✓' },
     error:   { bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.3)',  text: '#ef4444', icon: '✗' },
-    info:    { bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.3)', text: '#818cf8', icon: 'ℹ' },
+    info:    { bg: 'rgba(214,254,81,0.12)',  border: 'rgba(214,254,81,0.3)', text: '#D6FE51', icon: 'ℹ' },
 };
 
 export function useToast(autoHideMs = 3500) {

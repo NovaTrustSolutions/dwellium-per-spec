@@ -1,5 +1,8 @@
 import { Suspense, useEffect, useState } from 'react';
 import { WINDOW_COMPONENTS } from '../Shell/Desktop';
+import { LayoutProvider } from '../../context/LayoutContext';
+import { HierarchyProvider } from '../../context/HierarchyContext';
+import { WindowProvider } from '../../context/WindowContext';
 import '../../styles/global.css';
 import '../../styles/skins.css';
 
@@ -16,8 +19,11 @@ export function PopupShell({ component }: { component: string }) {
     const [meta, setMeta] = useState<{ title: string; icon: string }>({ title: component, icon: '🪟' });
     const [docking, setDocking] = useState(false);
 
-    // Restore skin + load metadata
+    // Restore theme + skin + load metadata
     useEffect(() => {
+        const savedTheme = localStorage.getItem('dwellium-theme') || localStorage.getItem('qualia-theme') || 'dark';
+        document.documentElement.className = `theme-${savedTheme}`;
+
         const savedSkin = localStorage.getItem('dwellium-skin') || 'default';
         document.documentElement.setAttribute('data-skin', savedSkin);
 
@@ -55,8 +61,8 @@ export function PopupShell({ component }: { component: string }) {
             <div style={{
                 position: 'fixed', inset: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'var(--bg-base, #0d1117)', color: 'var(--text-secondary, #94a3b8)',
-                fontFamily: 'Inter, -apple-system, sans-serif', fontSize: 14,
+                background: 'var(--bg-desktop, #000000)', color: 'var(--text-secondary, #868F97)',
+                fontFamily: "var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif)", fontSize: 14,
             }}>
                 Unknown widget: <code style={{ marginLeft: 8 }}>{component}</code>
             </div>
@@ -67,9 +73,9 @@ export function PopupShell({ component }: { component: string }) {
         <div style={{
             position: 'fixed', inset: 0,
             display: 'flex', flexDirection: 'column',
-            background: 'var(--bg-base, #0d1117)',
+            background: 'var(--bg-desktop, #000000)',
             overflow: 'hidden',
-            fontFamily: 'Inter, -apple-system, sans-serif',
+            fontFamily: "var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif)",
         }}>
             {/* ── Popup Titlebar with Dock Back ── */}
             <div style={{
@@ -77,15 +83,15 @@ export function PopupShell({ component }: { component: string }) {
                 padding: '0 14px',
                 height: 40,
                 flexShrink: 0,
-                background: 'rgba(255,255,255,0.04)',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                background: '#0e0e0e',
+                borderBottom: '1px solid #222222',
                 userSelect: 'none',
             }}>
                 <span style={{ fontSize: 16 }}>{meta.icon}</span>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #e2e8f0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #ffffff)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {meta.title}
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #64748b)', marginRight: 4 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #555555)', marginRight: 4 }}>
                     Standalone window
                 </span>
                 {/* Dock Back button */}
@@ -96,12 +102,12 @@ export function PopupShell({ component }: { component: string }) {
                     style={{
                         display: 'flex', alignItems: 'center', gap: 5,
                         padding: '4px 12px',
-                        background: docking ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.15)',
-                        border: '1px solid rgba(99,102,241,0.35)',
-                        borderRadius: 8,
-                        color: '#a5b4fc',
+                        background: docking ? 'rgba(214,254,81,0.3)' : 'rgba(214,254,81,0.10)',
+                        border: '1px solid rgba(214,254,81,0.3)',
+                        borderRadius: 4,
+                        color: '#D6FE51',
                         fontSize: 12,
-                        fontWeight: 600,
+                        fontWeight: 500,
                         cursor: docking ? 'not-allowed' : 'pointer',
                         fontFamily: 'inherit',
                         transition: 'all 0.15s ease',
@@ -110,14 +116,14 @@ export function PopupShell({ component }: { component: string }) {
                     }}
                     onMouseEnter={e => {
                         if (!docking) {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.28)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(99,102,241,0.6)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(214,254,81,0.20)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(214,254,81,0.5)';
                         }
                     }}
                     onMouseLeave={e => {
                         if (!docking) {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.15)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(99,102,241,0.35)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(214,254,81,0.10)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(214,254,81,0.3)';
                         }
                     }}
                 >
@@ -125,17 +131,30 @@ export function PopupShell({ component }: { component: string }) {
                 </button>
             </div>
 
-            {/* ── Widget Content ── */}
-            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {/* ── Widget Content ──
+                Popup mode bypasses AdminShell, so widgets that call
+                useHierarchy / useWindows / useLayout (ara-console, file-manager,
+                notepad, control-panel, etc.) would throw "must be used within
+                Provider" without these wrappers. AdminShell.tsx stacks the
+                same three providers around <Sidebar /> + <Desktop />.
+                height: calc(100% - 40px) ensures children with height:100%
+                (like strata-shell) resolve against a concrete pixel height. */}
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100% - 40px)' }}>
                 <Suspense fallback={
                     <div style={{
                         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#6366f1', fontSize: 13,
+                        color: '#D6FE51', fontSize: 13,
                     }}>
                         Loading widget…
                     </div>
                 }>
-                    <Component />
+                    <LayoutProvider>
+                        <HierarchyProvider>
+                            <WindowProvider>
+                                <Component />
+                            </WindowProvider>
+                        </HierarchyProvider>
+                    </LayoutProvider>
                 </Suspense>
             </div>
         </div>

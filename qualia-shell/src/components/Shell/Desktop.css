@@ -24,11 +24,11 @@
     background: transparent;
 }
 
-/* [27] active background intensity */
+/* fey.com: acid lime snap region */
 .desktop__region--active {
-    background: rgba(0, 136, 204, 0.12);
-    border-color: var(--accent, #0088cc);
-    box-shadow: inset 0 0 40px rgba(0, 136, 204, 0.1), 0 0 20px rgba(0, 136, 204, 0.06);
+    background: rgba(214, 254, 81, 0.06);
+    border-color: rgba(214, 254, 81, 0.4);
+    box-shadow: none;
 }
 
 .desktop__region--occupied {
@@ -118,7 +118,7 @@
         radial-gradient(circle at 1px 1px, var(--border-subtle) 0.4px, transparent 0),
         radial-gradient(ellipse at top left, color-mix(in srgb, var(--accent) 15%, transparent) 0%, transparent 60%),
         radial-gradient(ellipse at bottom right, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 50%),
-        radial-gradient(ellipse at 30% 70%, color-mix(in srgb, #8b5cf6 6%, transparent) 0%, transparent 45%),
+        radial-gradient(ellipse at 30% 70%, color-mix(in srgb, #D6FE51 6%, transparent) 0%, transparent 45%),
         radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 70%);
     background-size: 24px 24px, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
     opacity: 0.8;
@@ -133,11 +133,11 @@
     inset: 0;
     background-image:
         radial-gradient(1.5px 1.5px at 20% 30%, rgba(100, 180, 255, 0.15) 50%, transparent 50%),
-        radial-gradient(1px 1px at 60% 15%, rgba(139, 92, 246, 0.12) 50%, transparent 50%),
+        radial-gradient(1px 1px at 60% 15%, rgba(214, 254, 81, 0.12) 50%, transparent 50%),
         radial-gradient(1.5px 1.5px at 80% 60%, rgba(100, 180, 255, 0.1) 50%, transparent 50%),
         radial-gradient(1px 1px at 40% 80%, rgba(236, 72, 153, 0.08) 50%, transparent 50%),
         radial-gradient(1.5px 1.5px at 10% 70%, rgba(100, 180, 255, 0.1) 50%, transparent 50%),
-        radial-gradient(1px 1px at 90% 40%, rgba(139, 92, 246, 0.08) 50%, transparent 50%);
+        radial-gradient(1px 1px at 90% 40%, rgba(214, 254, 81, 0.08) 50%, transparent 50%);
     animation: particleDrift 40s ease-in-out infinite alternate;
     pointer-events: none;
 }
@@ -535,8 +535,8 @@
         0 4px 12px rgba(0, 0, 0, 0.25),
         inset 0 1px 0 rgba(255, 255, 255, 0.06);
     z-index: 10000;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     animation: toastEnter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), toastFade 3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -592,9 +592,9 @@
     gap: 6px;
     /* [38] item gap */
     z-index: 10001;
-    backdrop-filter: blur(20px);
+    backdrop-filter: none;
     /* [34] increased */
-    -webkit-backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: none;
     min-width: 200px;
     /* [37] wider */
     animation: contextMenuFade 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -646,9 +646,9 @@
     z-index: 100000;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     /* [40] increased */
-    -webkit-backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: none;
     white-space: nowrap;
     animation: tooltipFadeIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
@@ -690,15 +690,15 @@
 }
 
 .explorer-file-list:focus-within {
-    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(214, 254, 81, 0.15);
 }
 
 /* Focused file row — keyboard navigation highlight */
 .detail-child-row--focused {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%) !important;
-    border-left: 2px solid rgba(99, 102, 241, 0.5);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.08) 0%, rgba(214, 254, 81, 0.04) 100%) !important;
+    border-left: 2px solid rgba(214, 254, 81, 0.5);
     padding-left: calc(var(--sp-3, 12px) - 2px);
-    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.06);
+    box-shadow: 0 1px 4px rgba(214, 254, 81, 0.06);
 }
 
 .detail-child-row--focused .detail-child-row__label {
@@ -727,23 +727,23 @@
 }
 
 .detail-child-row__action--preview:hover {
-    background: rgba(99, 102, 241, 0.12) !important;
-    border-color: rgba(99, 102, 241, 0.25) !important;
+    background: rgba(214, 254, 81, 0.12) !important;
+    border-color: rgba(214, 254, 81, 0.25) !important;
 }
 
 /* Open in Window button */
 .detail-child-row__action--open {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%);
-    color: var(--accent-text, #818cf8);
-    border-color: rgba(99, 102, 241, 0.18);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.08) 0%, rgba(214, 254, 81, 0.04) 100%);
+    color: var(--accent-text, #D6FE51);
+    border-color: rgba(214, 254, 81, 0.18);
     font-weight: 600;
     letter-spacing: 0.2px;
 }
 
 .detail-child-row__action--open:hover {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.08) 100%) !important;
-    border-color: rgba(99, 102, 241, 0.35) !important;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15) 0%, rgba(214, 254, 81, 0.08) 100%) !important;
+    border-color: rgba(214, 254, 81, 0.35) !important;
+    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.12);
     transform: translateY(-1px);
 }
 
@@ -752,7 +752,7 @@
    ============================================ */
 
 .explorer-files-section {
-    border-top: 1px solid rgba(99, 102, 241, 0.08);
+    border-top: 1px solid rgba(214, 254, 81, 0.08);
     padding-top: 8px;
     margin-top: 8px;
 }
@@ -778,7 +778,7 @@
 }
 
 .explorer-filter-input:focus {
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: rgba(214, 254, 81, 0.4);
     background: rgba(15, 23, 42, 0.5);
     width: 180px;
 }
@@ -800,15 +800,15 @@
 }
 
 .explorer-toggle-preview:hover {
-    background: rgba(99, 102, 241, 0.08);
-    border-color: rgba(99, 102, 241, 0.25);
+    background: rgba(214, 254, 81, 0.08);
+    border-color: rgba(214, 254, 81, 0.25);
     color: var(--text-primary, #e2e8f0);
 }
 
 .explorer-toggle-preview--active {
-    color: var(--accent-text, #818cf8);
-    background: rgba(99, 102, 241, 0.08);
-    border-color: rgba(99, 102, 241, 0.2);
+    color: var(--accent-text, #D6FE51);
+    background: rgba(214, 254, 81, 0.08);
+    border-color: rgba(214, 254, 81, 0.2);
 }
 
 /* Hints line */
@@ -835,7 +835,7 @@
     flex: 1 1 50%;
     max-height: 460px;
     overflow-y: auto;
-    border-right: 1px solid rgba(99, 102, 241, 0.06);
+    border-right: 1px solid rgba(214, 254, 81, 0.06);
 }
 
 .explorer-split-view--with-preview .explorer-file-list {
@@ -852,7 +852,7 @@
     overflow-y: auto;
     background: rgba(15, 23, 42, 0.2);
     border-radius: 0 var(--radius-sm, 6px) var(--radius-sm, 6px) 0;
-    border-left: 1px solid rgba(99, 102, 241, 0.06);
+    border-left: 1px solid rgba(214, 254, 81, 0.06);
     animation: explorerPaneFadeIn 0.2s ease;
 }
 
@@ -867,7 +867,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 14px;
-    border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+    border-bottom: 1px solid rgba(214, 254, 81, 0.06);
     background: rgba(15, 23, 42, 0.15);
 }
 
@@ -897,19 +897,19 @@
     flex-shrink: 0;
     font-size: 11px;
     padding: 4px 10px;
-    border: 1px solid rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(214, 254, 81, 0.18);
     border-radius: 6px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(99, 102, 241, 0.04));
-    color: var(--accent-text, #818cf8);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.08), rgba(214, 254, 81, 0.04));
+    color: var(--accent-text, #D6FE51);
     cursor: pointer;
     font-weight: 600;
     transition: all 0.15s ease;
 }
 
 .explorer-preview-header .ql-btn--open:hover {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.08));
-    border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.12);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15), rgba(214, 254, 81, 0.08));
+    border-color: rgba(214, 254, 81, 0.35);
+    box-shadow: 0 2px 6px rgba(214, 254, 81, 0.12);
 }
 
 /* Empty / Idle state */
@@ -953,8 +953,8 @@
 .explorer-preview-spinner {
     width: 28px;
     height: 28px;
-    border: 2px solid rgba(99, 102, 241, 0.15);
-    border-top-color: rgba(99, 102, 241, 0.6);
+    border: 2px solid rgba(214, 254, 81, 0.15);
+    border-top-color: rgba(214, 254, 81, 0.6);
     border-radius: 50%;
     animation: explorerSpin 0.7s linear infinite;
 }
@@ -988,7 +988,7 @@
     padding: 6px 14px;
     font-size: 11px;
     color: rgba(251, 191, 36, 0.7);
-    border-top: 1px solid rgba(99, 102, 241, 0.06);
+    border-top: 1px solid rgba(214, 254, 81, 0.06);
     text-align: center;
 }
 

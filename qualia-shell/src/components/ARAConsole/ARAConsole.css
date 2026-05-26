@@ -14,9 +14,9 @@
     max-height: 100%;
     min-height: 0;
     overflow: hidden;
-    background: var(--window-bg, #0a0a15);
+    background: var(--window-bg, #000000);
     position: relative;
-    font-family: 'Inter', 'SF Pro Display', -apple-system, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     -webkit-font-smoothing: antialiased;
     isolation: isolate;
 }
@@ -62,7 +62,7 @@
     padding: 10px 16px;
     border-bottom: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-    backdrop-filter: blur(16px);
+    backdrop-filter: none;
     min-height: 44px;
     flex-shrink: 0;
     transition: border-color 0.4s;
@@ -84,7 +84,7 @@
     padding: 7px 16px;
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06);
     border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.18);
-    border-radius: 12px;
+    border-radius: 8px;
     color: #e0e0e0;
     cursor: pointer;
     font-size: 13px;
@@ -138,7 +138,7 @@
     inset: 0;
     z-index: 90;
     background: rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(2px);
+    backdrop-filter: none;
     animation: overlayFade 0.2s ease;
 }
 
@@ -162,15 +162,12 @@
     max-height: 480px;
     display: flex;
     flex-direction: column;
-    background: rgba(12, 14, 22, 0.98);
+    background: rgba(14, 14, 14, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    box-shadow:
-        0 24px 64px rgba(0, 0, 0, 0.7),
-        0 0 40px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06),
-        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     z-index: 100;
-    backdrop-filter: blur(32px);
+    backdrop-filter: none;
     animation: dropdownReveal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     overflow: hidden;
 }
@@ -203,7 +200,7 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     text-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
 }
 
@@ -213,7 +210,7 @@
     color: #52525b;
     background: rgba(255, 255, 255, 0.04);
     padding: 2px 10px;
-    border-radius: 12px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.05);
     font-weight: 600;
 }
@@ -252,7 +249,7 @@
     padding: 10px 14px;
     background: transparent;
     border: none;
-    border-radius: 10px;
+    border-radius: 6px;
     border-left: 3px solid transparent;
     color: #d1d5db;
     cursor: pointer;
@@ -265,14 +262,14 @@
 /* [D11] Hover with per-persona accent tint */
 .ara-mode-option:hover {
     background: rgba(var(--opt-accent-rgb, 56, 152, 236), 0.06);
-    border-left-color: var(--opt-accent, #3898ec);
+    border-left-color: var(--opt-accent, #D6FE51);
     transform: translateX(2px);
 }
 
 /* [D12] Active option with accent glow */
 .ara-mode-option.active {
     background: rgba(var(--opt-accent-rgb, 56, 152, 236), 0.1);
-    border-left-color: var(--opt-accent, #3898ec);
+    border-left-color: var(--opt-accent, #D6FE51);
     color: #e0e0e0;
     box-shadow: inset 3px 0 12px -4px rgba(var(--opt-accent-rgb, 56, 152, 236), 0.2);
 }
@@ -368,7 +365,7 @@
 /* [D16] Lens text with accent color */
 .ara-detail-lens {
     font-size: 12px;
-    color: var(--opt-accent, #3898ec);
+    color: var(--opt-accent, #D6FE51);
     font-style: italic;
     margin: 0 0 10px;
     line-height: 1.5;
@@ -430,7 +427,7 @@
     display: flex;
     gap: 2px;
     background: rgba(255, 255, 255, 0.04);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 3px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     animation: dropdownReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -444,7 +441,7 @@
     background: transparent;
     border: none;
     padding: 4px 12px;
-    border-radius: 10px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
@@ -478,7 +475,7 @@
     color: #fbbf24;
     background: rgba(251, 191, 36, 0.08);
     padding: 4px 12px;
-    border-radius: 20px;
+    border-radius: 8px;
     border: 1px solid rgba(251, 191, 36, 0.2);
     font-weight: 700;
     animation: guardianPulse 2.5s ease infinite;
@@ -504,7 +501,7 @@
     color: #6b7280;
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 15px;
     display: flex;
@@ -563,7 +560,7 @@
     font-size: 20px;
     font-weight: 800;
     letter-spacing: -0.4px;
-    background: linear-gradient(135deg, #f4f4f5 0%, var(--ara-accent, #3898ec) 100%);
+    background: linear-gradient(135deg, #f4f4f5 0%, var(--ara-accent, #D6FE51) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -572,7 +569,7 @@
 /* [D24] Lens text */
 .ara-hint-lens {
     font-size: 13px;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     font-style: italic;
     margin: 0 0 8px;
     opacity: 0.8;
@@ -596,7 +593,7 @@
 .ara-hint-tag {
     font-size: 10px;
     padding: 4px 14px;
-    border-radius: 20px;
+    border-radius: 8px;
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06);
     border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
     color: #a1a1aa;
@@ -696,7 +693,7 @@
 
 /* [D28] Avatar diamond with accent glow */
 .ara-avatar {
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     font-size: 13px;
     text-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.5);
 }
@@ -705,7 +702,7 @@
 .ara-sender {
     font-size: 10px;
     font-weight: 800;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     text-transform: uppercase;
     letter-spacing: 0.8px;
 }
@@ -743,7 +740,7 @@
 /* [D30] Assistant bubble with glass + inner glow */
 .ara-message-body {
     padding: 14px 18px;
-    border-radius: 16px;
+    border-radius: 8px;
     font-size: 13px;
     line-height: 1.65;
     position: relative;
@@ -782,7 +779,7 @@
 
 /* [D34] Italic with accent color */
 .ara-line em {
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     font-style: italic;
 }
 
@@ -791,16 +788,16 @@
     background: rgba(255, 255, 255, 0.08);
     padding: 2px 7px;
     border-radius: 5px;
-    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.85em;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    color: #a5b4fc;
+    color: #D6FE51;
 }
 
 /* [D36] Bullets with accent */
 .ara-bullet,
 .ara-num {
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     margin-right: 6px;
     font-weight: 700;
 }
@@ -819,7 +816,7 @@
 .ara-h3 {
     font-size: 13px;
     margin: 8px 0 4px;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     font-weight: 700;
 }
 
@@ -834,7 +831,7 @@
 .ara-typing span {
     width: 7px;
     height: 7px;
-    background: var(--ara-gradient, linear-gradient(135deg, #3898ec, #60a5fa));
+    background: var(--ara-gradient, linear-gradient(135deg, #D6FE51, #E8FF7A));
     border-radius: 50%;
     animation: araTypingDot 1.4s ease infinite;
     box-shadow: 0 0 8px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
@@ -871,7 +868,7 @@
     padding: 12px 16px;
     border-top: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(0, 0, 0, 0.15) 100%);
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     flex-shrink: 0;
 }
 
@@ -880,7 +877,7 @@
     flex: 1;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 14px;
+    border-radius: 8px;
     padding: 11px 16px;
     color: #e0e0e0;
     font-size: 13px;
@@ -910,9 +907,9 @@
 .ara-send-btn {
     width: 42px;
     height: 42px;
-    background: var(--ara-gradient, linear-gradient(135deg, #3898ec, #2563eb));
+    background: var(--ara-gradient, linear-gradient(135deg, #D6FE51, #D6FE51));
     border: none;
-    border-radius: 12px;
+    border-radius: 8px;
     color: white;
     font-size: 16px;
     cursor: pointer;
@@ -950,7 +947,7 @@
     height: 42px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: 8px;
     color: #6b7280;
     font-size: 16px;
     cursor: pointer;
@@ -1056,7 +1053,7 @@
 .ara-send-btn:focus-visible,
 .ara-mic-btn:focus-visible,
 .ara-clear-btn:focus-visible {
-    outline: 2px solid var(--ara-accent, #3898ec);
+    outline: 2px solid var(--ara-accent, #D6FE51);
     outline-offset: 2px;
 }
 
@@ -1211,7 +1208,7 @@
 .ara-mode-option.active::after {
     content: '✓';
     font-size: 12px;
-    color: var(--opt-accent, #3898ec);
+    color: var(--opt-accent, #D6FE51);
     margin-left: 6px;
     font-weight: 800;
 }
@@ -1251,7 +1248,7 @@
     height: 42px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: 8px;
     color: #6b7280;
     font-size: 16px;
     cursor: pointer;
@@ -1274,7 +1271,7 @@
 .ara-tts-btn--on {
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.1);
     border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     box-shadow: 0 0 12px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
 }
 
@@ -1290,7 +1287,7 @@
     height: 42px;
     background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.35);
-    border-radius: 12px;
+    border-radius: 8px;
     color: #ef4444;
     font-size: 16px;
     cursor: pointer;
@@ -1341,13 +1338,13 @@
 }
 
 .ara-speak-btn:hover {
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
 }
 
 .ara-speak-btn--active {
     opacity: 1;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     animation: araSpeakPulse 1.5s ease infinite;
 }
 
@@ -1371,7 +1368,7 @@
     height: 42px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: 8px;
     color: #6b7280;
     font-size: 16px;
     cursor: pointer;
@@ -1393,7 +1390,7 @@
 .ara-voice-settings-btn--active {
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.1);
     border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     box-shadow: 0 0 12px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
 }
 
@@ -1403,14 +1400,11 @@
     bottom: 64px;
     left: 12px;
     right: 12px;
-    background: rgba(12, 14, 22, 0.97);
+    background: rgba(14, 14, 14, 0.97);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 18px;
-    box-shadow:
-        0 -16px 48px rgba(0, 0, 0, 0.6),
-        0 0 30px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06),
-        inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(32px);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    backdrop-filter: none;
     z-index: 50;
     padding: 0;
     animation: voicePanelReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1452,9 +1446,9 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     position: sticky;
     top: 0;
-    background: rgba(12, 14, 22, 0.98);
+    background: rgba(14, 14, 14, 0.98);
     z-index: 2;
-    border-radius: 18px 18px 0 0;
+    border-radius: 8px 8px 0 0;
 }
 
 .ara-voice-panel-header h4 {
@@ -1524,7 +1518,7 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
 }
 
 /* Voice list */
@@ -1538,7 +1532,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    border-radius: 10px;
+    border-radius: 6px;
     transition: all 0.2s;
 }
 
@@ -1560,7 +1554,7 @@
     font-size: 12px;
     text-align: left;
     transition: all 0.2s;
-    border-radius: 10px;
+    border-radius: 6px;
 }
 
 .ara-voice-item-select:hover {
@@ -1569,7 +1563,7 @@
 
 .ara-voice-item-radio {
     font-size: 14px;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
 }
 
 .ara-voice-item-name {
@@ -1616,7 +1610,7 @@
     padding: 9px 14px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+    border-radius: 6px;
     color: #e0e0e0;
     font-size: 12px;
     font-family: inherit;
@@ -1643,7 +1637,7 @@
     justify-content: center;
     padding: 24px 16px;
     border: 2px dashed rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
-    border-radius: 14px;
+    border-radius: 8px;
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.02);
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1657,7 +1651,7 @@
 }
 
 .ara-voice-dropzone--drag {
-    border-color: var(--ara-accent, #3898ec);
+    border-color: var(--ara-accent, #D6FE51);
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
     box-shadow: 0 0 24px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
     transform: scale(1.02);
@@ -1684,7 +1678,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     font-size: 12px;
     font-weight: 600;
 }
@@ -1693,7 +1687,7 @@
     width: 18px;
     height: 18px;
     border: 2px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
-    border-top-color: var(--ara-accent, #3898ec);
+    border-top-color: var(--ara-accent, #D6FE51);
     border-radius: 50%;
     animation: araVoiceSpin 0.8s linear infinite;
 }
@@ -1714,7 +1708,7 @@
     padding: 4px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: 8px;
     cursor: pointer;
     flex-shrink: 0;
     align-self: flex-end;
@@ -1743,7 +1737,7 @@
 
 .ara-gender-option--active {
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15);
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     box-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15);
 }
 
@@ -1753,14 +1747,14 @@
 
 /* [P1] Send button gradient shimmer on hover */
 .ara-input-send:hover {
-    background: linear-gradient(135deg, var(--ara-accent, #3898ec), color-mix(in srgb, var(--ara-accent, #3898ec) 70%, #c084fc)) !important;
+    background: linear-gradient(135deg, var(--ara-accent, #D6FE51), color-mix(in srgb, var(--ara-accent, #D6FE51) 70%, #E8FF7A)) !important;
     box-shadow: 0 4px 20px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
     transform: translateY(-2px) scale(1.05);
 }
 
 /* [P2] Message bubble glassmorphism with inner glow */
 .ara-message--assistant .ara-message-body {
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -1794,7 +1788,7 @@
 
 /* [P4] Mode selector pill with accent gradient ring */
 .ara-mode-trigger {
-    background-image: linear-gradient(var(--window-bg, #0a0a15), var(--window-bg, #0a0a15)), linear-gradient(135deg, rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3), rgba(192, 132, 252, 0.2));
+    background-image: linear-gradient(var(--window-bg, #000000), var(--window-bg, #000000)), linear-gradient(135deg, rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3), rgba(214, 254, 81, 0.2));
     background-origin: border-box;
     background-clip: padding-box, border-box;
 }
@@ -1814,7 +1808,7 @@
     height: 42px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: 8px;
     color: #6b7280;
     font-size: 16px;
     cursor: pointer;
@@ -1828,34 +1822,34 @@
 
 .ara-avatar-btn:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(168, 85, 247, 0.3);
+    border-color: rgba(214, 254, 81, 0.3);
     color: #d1d5db;
     transform: translateY(-1px);
 }
 
 .ara-avatar-btn--active {
-    background: rgba(168, 85, 247, 0.12);
-    border-color: rgba(168, 85, 247, 0.35);
-    color: #a855f7;
-    box-shadow: 0 0 14px rgba(168, 85, 247, 0.15);
+    background: rgba(214, 254, 81, 0.12);
+    border-color: rgba(214, 254, 81, 0.35);
+    color: #D6FE51;
+    box-shadow: 0 0 14px rgba(214, 254, 81, 0.15);
     animation: araAvatarPulse 2.5s ease infinite;
 }
 
 .ara-avatar-btn--active:hover {
-    background: rgba(168, 85, 247, 0.18);
-    border-color: rgba(168, 85, 247, 0.5);
-    box-shadow: 0 0 22px rgba(168, 85, 247, 0.22);
+    background: rgba(214, 254, 81, 0.18);
+    border-color: rgba(214, 254, 81, 0.5);
+    box-shadow: 0 0 22px rgba(214, 254, 81, 0.22);
 }
 
 @keyframes araAvatarPulse {
 
     0%,
     100% {
-        box-shadow: 0 0 14px rgba(168, 85, 247, 0.15);
+        box-shadow: 0 0 14px rgba(214, 254, 81, 0.15);
     }
 
     50% {
-        box-shadow: 0 0 22px rgba(168, 85, 247, 0.25);
+        box-shadow: 0 0 22px rgba(214, 254, 81, 0.25);
     }
 }
 
@@ -1865,14 +1859,11 @@
     bottom: 64px;
     left: 12px;
     right: 12px;
-    background: rgba(8, 10, 18, 0.98);
-    border: 1px solid rgba(168, 85, 247, 0.15);
-    border-radius: 18px;
-    box-shadow:
-        0 -16px 48px rgba(0, 0, 0, 0.6),
-        0 0 40px rgba(168, 85, 247, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(32px);
+    background: rgba(0, 0, 0, 0.98);
+    border: 1px solid rgba(214, 254, 81, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    backdrop-filter: none;
     z-index: 55;
     overflow: hidden;
     animation: avatarPanelReveal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1895,8 +1886,8 @@
     align-items: center;
     gap: 10px;
     padding: 12px 18px;
-    border-bottom: 1px solid rgba(168, 85, 247, 0.1);
-    background: rgba(168, 85, 247, 0.04);
+    border-bottom: 1px solid rgba(214, 254, 81, 0.1);
+    background: rgba(214, 254, 81, 0.04);
 }
 
 .ara-avatar-panel-header h4 {
@@ -1913,9 +1904,9 @@
     font-weight: 800;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: #a855f7;
-    background: rgba(168, 85, 247, 0.12);
-    border: 1px solid rgba(168, 85, 247, 0.2);
+    color: #D6FE51;
+    background: rgba(214, 254, 81, 0.12);
+    border: 1px solid rgba(214, 254, 81, 0.2);
     border-radius: 6px;
     padding: 3px 8px;
 }
@@ -1989,7 +1980,7 @@
     height: 360px;
     position: relative;
     background: #000;
-    border-radius: 0 0 18px 18px;
+    border-radius: 0 0 8px 8px;
     overflow: hidden;
 }
 
@@ -1998,7 +1989,7 @@
     height: 100%;
     object-fit: cover;
     display: block;
-    border-radius: 0 0 18px 18px;
+    border-radius: 0 0 8px 8px;
 }
 
 /* Error state */
@@ -2025,12 +2016,12 @@
 }
 
 .ara-avatar-error code {
-    background: rgba(168, 85, 247, 0.1);
-    border: 1px solid rgba(168, 85, 247, 0.2);
+    background: rgba(214, 254, 81, 0.1);
+    border: 1px solid rgba(214, 254, 81, 0.2);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 11px;
-    color: #c084fc;
+    color: #E8FF7A;
 }
 
 .ara-avatar-error-hint {
@@ -2048,8 +2039,8 @@
     justify-content: center;
     gap: 14px;
     background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
-    color: #a855f7;
+    backdrop-filter: none;
+    color: #D6FE51;
     font-size: 13px;
     font-weight: 600;
 }
@@ -2057,8 +2048,8 @@
 .ara-avatar-connecting-spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid rgba(168, 85, 247, 0.2);
-    border-top-color: #a855f7;
+    border: 3px solid rgba(214, 254, 81, 0.2);
+    border-top-color: #D6FE51;
     border-radius: 50%;
     animation: araVoiceSpin 0.8s linear infinite;
 }
@@ -2069,7 +2060,7 @@
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     z-index: 100;
     display: flex;
     align-items: center;
@@ -2090,13 +2081,10 @@
 .ara-avatar-modal {
     width: 340px;
     max-width: calc(100% - 48px);
-    background: rgba(16, 18, 28, 0.98);
-    border: 1px solid rgba(168, 85, 247, 0.2);
-    border-radius: 20px;
-    box-shadow:
-        0 24px 64px rgba(0, 0, 0, 0.6),
-        0 0 48px rgba(168, 85, 247, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    background: rgba(18, 18, 18, 0.98);
+    border: 1px solid rgba(214, 254, 81, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     padding: 28px 24px 22px;
     animation: avatarModalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -2145,7 +2133,7 @@
     padding: 12px 16px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
+    border-radius: 8px;
     color: #e4e4e7;
     font-size: 14px;
     font-family: inherit;
@@ -2156,8 +2144,8 @@
 }
 
 .ara-avatar-modal-input:focus {
-    border-color: rgba(168, 85, 247, 0.45);
-    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.08);
+    border-color: rgba(214, 254, 81, 0.45);
+    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.08);
     background: rgba(255, 255, 255, 0.06);
 }
 
@@ -2215,7 +2203,7 @@
     padding: 9px 18px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+    border-radius: 6px;
     color: #9ca3af;
     font-size: 13px;
     font-weight: 600;
@@ -2231,21 +2219,21 @@
 
 .ara-avatar-modal-submit {
     padding: 9px 22px;
-    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
     border: none;
-    border-radius: 10px;
+    border-radius: 6px;
     color: white;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     font-family: inherit;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.25);
+    box-shadow: 0 4px 16px rgba(214, 254, 81, 0.25);
 }
 
 .ara-avatar-modal-submit:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 24px rgba(168, 85, 247, 0.35);
+    box-shadow: 0 6px 24px rgba(214, 254, 81, 0.35);
     filter: brightness(1.1);
 }
 
@@ -2280,7 +2268,7 @@
 .ara-meta-toggle {
     background: transparent;
     border: none;
-    color: var(--ara-accent, #3898ec);
+    color: var(--ara-accent, #D6FE51);
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
@@ -2291,7 +2279,7 @@
     display: grid;
     gap: 10px;
     padding: 12px;
-    border-radius: 12px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -2360,7 +2348,7 @@
     justify-content: center;
     gap: 6px;
     border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.22);
-    border-radius: 10px;
+    border-radius: 6px;
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
     color: #e2e8f0;
     padding: 8px 12px;
@@ -2391,8 +2379,8 @@
     display: grid;
     gap: 12px;
     padding: 12px;
-    border-radius: 14px;
-    background: rgba(10, 14, 25, 0.6);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -2415,7 +2403,7 @@
 
 .ara-action-field input,
 .ara-action-field select {
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.04);
     color: #f8fafc;
@@ -2430,7 +2418,7 @@
 }
 
 .ara-action-feedback {
-    border-radius: 10px;
+    border-radius: 6px;
     padding: 10px 12px;
     font-size: 12px;
     font-weight: 600;
@@ -2464,7 +2452,7 @@
     display: grid;
     gap: 10px;
     padding: 12px;
-    border-radius: 14px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.025);
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -2479,7 +2467,7 @@
     display: grid;
     gap: 6px;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -2499,7 +2487,7 @@
     display: grid;
     gap: 4px;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: 8px;
     background: rgba(239, 68, 68, 0.08);
     border: 1px solid rgba(239, 68, 68, 0.16);
     color: #fecaca;

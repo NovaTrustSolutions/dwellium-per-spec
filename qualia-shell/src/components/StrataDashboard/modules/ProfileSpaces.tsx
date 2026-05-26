@@ -58,7 +58,7 @@ interface Props {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-    open: '#3b82f6', in_progress: '#f59e0b', completed: '#22c55e', closed: '#64748b', pending: '#8b5cf6',
+    open: '#3b82f6', in_progress: '#f59e0b', completed: '#22c55e', closed: '#64748b', pending: '#D6FE51',
 };
 
 export default function ProfileSpaces({ entityType, entityId }: Props) {
@@ -215,7 +215,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
     const TAG_COLORS: Record<string, { bg: string; border: string; text: string }> = {
         property: { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.2)', text: '#93c5fd' },
         tenant: { bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.2)', text: '#86efac' },
-        vendor: { bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.2)', text: '#c084fc' },
+        vendor: { bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.2)', text: '#E8FF7A' },
         owner: { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)', text: '#fcd34d' },
         default: { bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.2)', text: '#94a3b8' },
     };
@@ -323,11 +323,11 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                 placeholder="Space name…"
                                 style={{
                                     width: 120, padding: '4px 8px', borderRadius: 4, fontSize: 11,
-                                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(99,102,241,0.3)',
+                                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(214,254,81,0.3)',
                                     color: '#e2e8f0', outline: 'none',
                                 }}
                             />
-                            <button onClick={handleAddSpace} style={{ background: '#6366f1', border: 'none', borderRadius: 4, color: '#fff', padding: '3px 8px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>Add</button>
+                            <button onClick={handleAddSpace} style={{ background: '#D6FE51', border: 'none', borderRadius: 4, color: '#fff', padding: '3px 8px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>Add</button>
                             <button onClick={() => setShowAddSpace(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={12} /></button>
                         </div>
                     ) : (
@@ -360,7 +360,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                         display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
                                         borderRadius: 6, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', marginBottom: 4,
                                     }}>
-                                        <ClipboardList size={11} style={{ color: '#6366f1', flexShrink: 0 }} />
+                                        <ClipboardList size={11} style={{ color: '#D6FE51', flexShrink: 0 }} />
                                         <span style={{ fontSize: 11, color: '#cbd5e1', flex: 1, fontFamily: 'monospace' }}>{wi.itemId?.slice(0, 16)}…</span>
                                         <button onClick={() => handleDeleteItem(wi.id)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 2 }}><Trash2 size={10} /></button>
                                     </div>
@@ -372,7 +372,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                         style={{ flex: 1, padding: '4px 8px', borderRadius: 4, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0', outline: 'none' }}
                                     />
                                     <button onClick={handleLinkWorkitem} disabled={!newItemId.trim()}
-                                        style={{ padding: '4px 10px', borderRadius: 4, background: newItemId.trim() ? '#6366f1' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newItemId.trim() ? 'pointer' : 'not-allowed' }}>Link</button>
+                                        style={{ padding: '4px 10px', borderRadius: 4, background: newItemId.trim() ? '#D6FE51' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newItemId.trim() ? 'pointer' : 'not-allowed' }}>Link</button>
                                 </div>
                             </div>
 
@@ -443,7 +443,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                         style={{ flex: 1, padding: '4px 8px', borderRadius: 4, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#e2e8f0', outline: 'none' }}
                                     />
                                     <button onClick={handleAddTag} disabled={!newTagText.trim()}
-                                        style={{ padding: '4px 10px', borderRadius: 4, background: newTagText.trim() ? '#a78bfa' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newTagText.trim() ? 'pointer' : 'not-allowed' }}>Tag</button>
+                                        style={{ padding: '4px 10px', borderRadius: 4, background: newTagText.trim() ? '#D6FE51' : 'rgba(100,116,139,0.2)', border: 'none', color: '#fff', fontSize: 10, fontWeight: 600, cursor: newTagText.trim() ? 'pointer' : 'not-allowed' }}>Tag</button>
                                 </div>
                             </div>
 
@@ -499,9 +499,9 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                     <button
                         onClick={() => setShowAddLink(!showAddLink)}
                         style={{
-                            background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+                            background: 'rgba(214,254,81,0.08)', border: '1px solid rgba(214,254,81,0.2)',
                             borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-                            color: '#a5b4fc', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                            color: '#D6FE51', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                         }}
                     >
                         <Plus size={11} /> Link Entity
@@ -512,7 +512,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                 {showAddLink && (
                     <div style={{
                         padding: 12, borderRadius: 8, marginBottom: 10,
-                        background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)',
+                        background: 'rgba(214,254,81,0.04)', border: '1px solid rgba(214,254,81,0.15)',
                     }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
                             <select value={linkForm.targetType} onChange={e => setLinkForm(p => ({ ...p, targetType: e.target.value }))}
@@ -537,7 +537,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                         <div style={{ display: 'flex', gap: 8 }}>
                             <input value={linkForm.note} onChange={e => setLinkForm(p => ({ ...p, note: e.target.value }))}
                                 placeholder="Optional note…" style={{ flex: 1, padding: '6px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 11, outline: 'none' }} />
-                            <button onClick={handleAddLink} style={{ background: '#6366f1', border: 'none', borderRadius: 4, color: '#fff', padding: '4px 14px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>Link</button>
+                            <button onClick={handleAddLink} style={{ background: '#D6FE51', border: 'none', borderRadius: 4, color: '#fff', padding: '4px 14px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>Link</button>
                         </div>
                     </div>
                 )}
@@ -558,7 +558,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                     <span style={{
                                         fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
                                         padding: '1px 6px', borderRadius: 10,
-                                        background: 'rgba(99,102,241,0.12)', color: '#a5b4fc',
+                                        background: 'rgba(214,254,81,0.12)', color: '#D6FE51',
                                     }}>{otherType}</span>
                                     <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{otherId.slice(0, 12)}…</span>
                                     <Tag size={10} style={{ color: '#475569' }} />

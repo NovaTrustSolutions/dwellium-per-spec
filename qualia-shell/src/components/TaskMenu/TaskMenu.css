@@ -9,8 +9,8 @@
     height: 100%;
     gap: 0;
     overflow: hidden;
-    font-family: 'Inter', -apple-system, sans-serif;
-    background: var(--window-bg, #0f0f1a);
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
+    background: var(--window-bg, #000000);
 }
 
 /* ========== AI Action Bar ========== */
@@ -18,7 +18,7 @@
     display: flex;
     gap: 8px;
     padding: 10px 14px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.03) 50%, rgba(236, 72, 153, 0.03) 100%);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.06) 0%, rgba(214, 254, 81, 0.03) 50%, rgba(236, 72, 153, 0.03) 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -30,10 +30,10 @@
     justify-content: center;
     gap: 8px;
     padding: 10px 16px;
-    border: 1px solid rgba(139, 92, 246, 0.25);
+    border: 1px solid rgba(214, 254, 81, 0.25);
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(99, 102, 241, 0.06) 100%);
-    color: #a78bfa;
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.1) 0%, rgba(214, 254, 81, 0.06) 100%);
+    color: #D6FE51;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -47,7 +47,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15) 0%, rgba(214, 254, 81, 0.1) 100%);
     opacity: 0;
     transition: opacity 0.3s;
     pointer-events: none;
@@ -58,17 +58,17 @@
 }
 
 .ai-organize-btn:hover {
-    border-color: rgba(139, 92, 246, 0.45);
-    color: #c4b5fd;
+    border-color: rgba(214, 254, 81, 0.45);
+    color: #E8FF7A;
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2), 0 0 40px rgba(139, 92, 246, 0.05);
+    box-shadow: 0 4px 20px rgba(214, 254, 81, 0.2), 0 0 40px rgba(214, 254, 81, 0.05);
 }
 
 .ai-organize-btn.active {
-    background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
-    color: #fff;
+    background: linear-gradient(135deg, #D6FE51 0%, #D6FE51 100%);
+    color: #000000;
     border-color: transparent;
-    box-shadow: 0 4px 24px rgba(124, 58, 237, 0.35);
+    box-shadow: 0 4px 24px rgba(214, 254, 81, 0.35);
 }
 
 .ai-organize-btn.analyzing {
@@ -96,8 +96,8 @@
 .ai-spinner {
     width: 14px;
     height: 14px;
-    border: 2px solid rgba(167, 139, 250, 0.3);
-    border-top-color: #a78bfa;
+    border: 2px solid rgba(232, 255, 122, 0.3);
+    border-top-color: #D6FE51;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -175,7 +175,7 @@
     align-items: center;
     padding: 10px 16px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-    backdrop-filter: blur(12px);
+    backdrop-filter: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     gap: 8px;
     flex-wrap: wrap;
@@ -222,15 +222,15 @@
 
 .sort-btn.active,
 .urgency-filter.active {
-    background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
-    color: #fff;
+    background: linear-gradient(135deg, #D6FE51 0%, #D6FE51 100%);
+    color: #000000;
     border-color: transparent;
-    box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 12px rgba(214, 254, 81, 0.3);
 }
 
 .sort-btn--ai.active {
-    background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
-    box-shadow: 0 2px 12px rgba(124, 58, 237, 0.35);
+    background: linear-gradient(135deg, #D6FE51 0%, #b8d946 100%);
+    box-shadow: 0 2px 12px rgba(214, 254, 81, 0.35);
 }
 
 /* ========== Task list ========== */
@@ -272,7 +272,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    backdrop-filter: blur(4px);
+    backdrop-filter: none;
 }
 
 .group-header.high {
@@ -339,11 +339,11 @@
 }
 
 .task-card.task-card--highlighted {
-    border-color: rgba(99, 102, 241, 0.45);
+    border-color: rgba(214, 254, 81, 0.45);
     box-shadow:
-        0 0 0 1px rgba(99, 102, 241, 0.28) inset,
-        0 0 0 2px rgba(99, 102, 241, 0.14),
-        0 8px 30px rgba(99, 102, 241, 0.18);
+        0 0 0 1px rgba(214, 254, 81, 0.28) inset,
+        0 0 0 2px rgba(214, 254, 81, 0.14),
+        0 8px 30px rgba(214, 254, 81, 0.18);
     animation: taskFlashFocus 1.8s ease;
 }
 
@@ -368,9 +368,9 @@
     height: 22px;
     padding: 0 6px;
     border-radius: 6px;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%);
-    border: 1px solid rgba(139, 92, 246, 0.2);
-    color: #c4b5fd;
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15) 0%, rgba(214, 254, 81, 0.1) 100%);
+    border: 1px solid rgba(214, 254, 81, 0.2);
+    color: #E8FF7A;
     font-size: 11px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
@@ -385,9 +385,9 @@
     height: 24px;
     padding: 0 8px;
     border-radius: 8px;
-    background: color-mix(in srgb, var(--score-color, #a78bfa) 15%, transparent);
-    border: 1px solid color-mix(in srgb, var(--score-color, #a78bfa) 30%, transparent);
-    color: var(--score-color, #a78bfa);
+    background: color-mix(in srgb, var(--score-color, #D6FE51) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--score-color, #D6FE51) 30%, transparent);
+    color: var(--score-color, #D6FE51);
     font-size: 12px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
@@ -396,18 +396,18 @@
 }
 
 .task-card:hover .ai-score-badge {
-    box-shadow: 0 0 12px color-mix(in srgb, var(--score-color, #a78bfa) 25%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--score-color, #D6FE51) 25%, transparent);
     transform: scale(1.05);
 }
 
 .ai-reason {
     font-size: 10px;
-    color: #a78bfa;
+    color: #D6FE51;
     margin-top: 4px;
     padding: 3px 8px;
-    background: rgba(139, 92, 246, 0.06);
+    background: rgba(214, 254, 81, 0.06);
     border-radius: 6px;
-    border-left: 2px solid rgba(139, 92, 246, 0.3);
+    border-left: 2px solid rgba(214, 254, 81, 0.3);
     line-height: 1.4;
     font-style: italic;
 }
@@ -446,11 +446,11 @@
 }
 
 .urgency-select:hover {
-    border-color: rgba(129, 140, 248, 0.3);
+    border-color: rgba(214, 254, 81, 0.3);
 }
 
 .urgency-select:focus {
-    border-color: #818cf8;
+    border-color: #D6FE51;
     outline: none;
 }
 
@@ -478,19 +478,19 @@
 
 .task-project {
     font-size: 11px;
-    color: #818cf8;
+    color: #D6FE51;
     cursor: pointer;
     padding: 3px 10px;
     border-radius: 20px;
     transition: all 0.2s;
-    background: rgba(129, 140, 248, 0.06);
-    border: 1px solid rgba(129, 140, 248, 0.1);
+    background: rgba(214, 254, 81, 0.06);
+    border: 1px solid rgba(214, 254, 81, 0.1);
     font-weight: 600;
 }
 
 .task-project:hover {
-    background: rgba(129, 140, 248, 0.15);
-    border-color: rgba(129, 140, 248, 0.25);
+    background: rgba(214, 254, 81, 0.15);
+    border-color: rgba(214, 254, 81, 0.25);
     transform: translateY(-1px);
 }
 
@@ -521,10 +521,10 @@
 }
 
 .status-btn.active {
-    background: linear-gradient(135deg, #818cf8, #6366f1);
-    color: #fff;
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
+    color: #000000;
     border-color: transparent;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.25);
 }
 
 /* ========== Reassign picker ========== */
@@ -535,7 +535,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     animation: pickerReveal 0.2s ease-out;
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
 }
 
 @keyframes pickerReveal {
@@ -579,9 +579,9 @@
 }
 
 .picker-item:hover {
-    background: linear-gradient(135deg, rgba(129, 140, 248, 0.15), rgba(99, 102, 241, 0.1));
-    color: #818cf8;
-    border-color: rgba(129, 140, 248, 0.25);
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15), rgba(214, 254, 81, 0.1));
+    color: #D6FE51;
+    border-color: rgba(214, 254, 81, 0.25);
     transform: translateX(2px);
 }
 
@@ -650,11 +650,11 @@
 
     0%,
     100% {
-        box-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
+        box-shadow: 0 0 8px rgba(214, 254, 81, 0.2);
     }
 
     50% {
-        box-shadow: 0 0 24px rgba(139, 92, 246, 0.5), 0 0 48px rgba(139, 92, 246, 0.15);
+        box-shadow: 0 0 24px rgba(214, 254, 81, 0.5), 0 0 48px rgba(214, 254, 81, 0.15);
     }
 }
 
@@ -699,10 +699,10 @@
 @keyframes taskFlashFocus {
     0% {
         transform: translateY(-2px);
-        background: rgba(99, 102, 241, 0.12);
+        background: rgba(214, 254, 81, 0.12);
     }
     40% {
-        background: rgba(99, 102, 241, 0.09);
+        background: rgba(214, 254, 81, 0.09);
     }
     100% {
         background: rgba(255, 255, 255, 0.02);

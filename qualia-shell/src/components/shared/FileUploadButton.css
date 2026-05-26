@@ -22,11 +22,11 @@
 }
 
 .fub-trigger:hover:not(:disabled) {
-    border-color: var(--accent, #6366f1);
-    background: rgba(99, 102, 241, 0.12);
-    color: var(--accent, #6366f1);
+    border-color: var(--accent, #D6FE51);
+    background: rgba(214, 254, 81, 0.12);
+    color: var(--accent, #D6FE51);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.2);
 }
 
 .fub-trigger--sm {
@@ -36,9 +36,9 @@
 }
 
 .fub-trigger--drag {
-    border-color: var(--accent, #6366f1);
-    background: rgba(99, 102, 241, 0.15);
-    color: var(--accent, #6366f1);
+    border-color: var(--accent, #D6FE51);
+    background: rgba(214, 254, 81, 0.15);
+    color: var(--accent, #D6FE51);
 }
 
 .fub-trigger--uploading {
@@ -58,8 +58,8 @@
 .fub-spinner {
     width: 14px;
     height: 14px;
-    border: 2px solid rgba(99, 102, 241, 0.3);
-    border-top-color: var(--accent, #6366f1);
+    border: 2px solid rgba(214, 254, 81, 0.3);
+    border-top-color: var(--accent, #D6FE51);
     border-radius: 50%;
     animation: fub-spin 0.7s linear infinite;
     flex-shrink: 0;
@@ -74,7 +74,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(6px);
+    backdrop-filter: none;
     z-index: 99999;
     display: flex;
     align-items: center;
@@ -91,14 +91,14 @@
 .fub-modal {
     width: 420px;
     max-width: calc(100vw - 32px);
-    background: var(--bg-card, #1a1d2e);
+    background: var(--bg-card, #121212);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
     padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 16px;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(214, 254, 81, 0.1);
     animation: fub-slide-up 0.2s ease;
 }
 
@@ -181,8 +181,8 @@
     transition: all 0.15s;
 }
 .fub-file-change:hover {
-    border-color: var(--accent, #6366f1);
-    color: var(--accent, #6366f1);
+    border-color: var(--accent, #D6FE51);
+    color: var(--accent, #D6FE51);
 }
 
 /* ── Fields ──────────────────────────────────────────── */
@@ -217,7 +217,7 @@
 
 .fub-prompt:focus {
     outline: none;
-    border-color: var(--accent, #6366f1);
+    border-color: var(--accent, #D6FE51);
 }
 
 .fub-prompt::placeholder {
@@ -245,7 +245,7 @@
 .fub-checkbox {
     width: 15px;
     height: 15px;
-    accent-color: var(--accent, #6366f1);
+    accent-color: var(--accent, #D6FE51);
     cursor: pointer;
 }
 
@@ -263,7 +263,7 @@
 }
 .fub-doc-title:focus {
     outline: none;
-    border-color: var(--accent, #6366f1);
+    border-color: var(--accent, #D6FE51);
 }
 .fub-doc-title::placeholder { color: var(--text-muted, #6b7280); }
 
@@ -292,7 +292,7 @@
     left: 0;
     top: 0;
     height: 100%;
-    background: linear-gradient(90deg, var(--accent, #6366f1), #818cf8);
+    background: linear-gradient(90deg, var(--accent, #D6FE51), #D6FE51);
     border-radius: 8px;
     transition: width 0.4s ease;
 }
@@ -334,19 +334,19 @@
 
 .fub-btn-upload {
     padding: 9px 22px;
-    background: linear-gradient(135deg, var(--accent, #6366f1), #4f46e5);
+    background: linear-gradient(135deg, var(--accent, #D6FE51), #b8d946);
     border: none;
     border-radius: 8px;
-    color: white;
+    color: #000000;
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
     transition: all 0.18s;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.3);
 }
 .fub-btn-upload:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 20px rgba(214, 254, 81, 0.4);
 }
 .fub-btn-upload:disabled {
     opacity: 0.5;

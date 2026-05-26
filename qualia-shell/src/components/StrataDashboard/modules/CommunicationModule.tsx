@@ -27,11 +27,11 @@ const TABS: { id: CommTab; label: string; icon: typeof Mail }[] = [
 const LETTER_TEMPLATES = [
     { id: '3-day-notice', name: '3-Day Notice to Pay or Quit', category: 'Legal', color: '#ef4444' },
     { id: '30-day-notice', name: '30-Day Notice to Vacate', category: 'Legal', color: '#f59e0b' },
-    { id: 'lease-renewal', name: 'Lease Renewal Offer', category: 'Leasing', color: '#6366f1' },
+    { id: 'lease-renewal', name: 'Lease Renewal Offer', category: 'Leasing', color: '#D6FE51' },
     { id: 'rent-increase', name: 'Rent Increase Notice', category: 'Leasing', color: '#0ea5e9' },
     { id: 'welcome', name: 'Welcome Letter', category: 'Onboarding', color: '#10b981' },
-    { id: 'move-out', name: 'Move-Out Instructions', category: 'Move-Out', color: '#a78bfa' },
-    { id: 'maintenance-notice', name: 'Maintenance Entry Notice', category: 'Maintenance', color: '#818cf8' },
+    { id: 'move-out', name: 'Move-Out Instructions', category: 'Move-Out', color: '#D6FE51' },
+    { id: 'maintenance-notice', name: 'Maintenance Entry Notice', category: 'Maintenance', color: '#D6FE51' },
     { id: 'late-rent', name: 'Late Rent Reminder', category: 'Collections', color: '#ef4444' },
 ];
 
@@ -46,7 +46,7 @@ const FORM_TEMPLATES = [
 
 function channelColor(ch: string): string {
     switch (ch) {
-        case 'email': return '#6366f1';
+        case 'email': return '#D6FE51';
         case 'sms': return '#10b981';
         case 'phone': return '#f59e0b';
         default: return '#94a3b8';
@@ -122,8 +122,8 @@ export default function CommunicationModule() {
                             onClick={() => { setTab(t.id); setSelected(null); }}
                             style={{
                                 padding: '6px 12px', border: 'none', borderRadius: 6,
-                                background: tab === t.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                                color: tab === t.id ? '#818cf8' : '#94a3b8',
+                                background: tab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                color: tab === t.id ? '#D6FE51' : '#94a3b8',
                                 cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
                                 display: 'flex', alignItems: 'center', gap: 4,
                             }}
@@ -264,8 +264,8 @@ export default function CommunicationModule() {
                             <Clipboard size={14} /> Form Templates
                         </h3>
                         <button style={{
-                            padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(99,102,241,0.3)',
-                            background: 'rgba(99,102,241,0.1)', color: '#a5b4fc', cursor: 'pointer',
+                            padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(214,254,81,0.3)',
+                            background: 'rgba(214,254,81,0.1)', color: '#D6FE51', cursor: 'pointer',
                             fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                         }}>
                             <Plus size={12} /> New Form
@@ -278,7 +278,7 @@ export default function CommunicationModule() {
                                 background: 'rgba(255,255,255,0.02)', borderRadius: 6,
                                 border: '1px solid rgba(255,255,255,0.04)',
                             }}>
-                                <FileText size={14} style={{ color: '#6366f1', flexShrink: 0 }} />
+                                <FileText size={14} style={{ color: '#D6FE51', flexShrink: 0 }} />
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 500 }}>{ft.name}</div>
                                 </div>

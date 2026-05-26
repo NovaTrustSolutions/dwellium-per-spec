@@ -249,7 +249,7 @@ function ActiveWorkitems() {
         <div className="a-card">
             <div className="a-card-header">
                 <ClipboardList size={16} /> Active Workitems
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#818cf8', fontWeight: 700 }}>{ACTIVE_WORKITEMS.length}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#D6FE51', fontWeight: 700 }}>{ACTIVE_WORKITEMS.length}</span>
             </div>
             <div className="a-card-body" style={{ padding: 0 }}>
                 {ACTIVE_WORKITEMS.map(wi => (
@@ -266,7 +266,7 @@ function ActiveWorkitems() {
                         </span>
                         <span style={{
                             fontSize: 10, padding: '1px 5px', borderRadius: 3,
-                            background: 'rgba(99,102,241,0.12)', color: '#818cf8',
+                            background: 'rgba(214,254,81,0.12)', color: '#D6FE51',
                         }}>{wi.domain}</span>
                         <span style={{ color: '#64748b', fontSize: 11, minWidth: 22 }}>{wi.age}</span>
                         <button
@@ -331,7 +331,7 @@ function CrossDomainSnapshots() {
 const ARBITRAGE_OPPORTUNITIES: { id: string; title: string; roi: string; confidence: number; window: string; type: 'lease' | 'maintenance' | 'finance' | 'revenue' }[] = [];
 
 const ARB_COLORS: Record<string, string> = {
-    lease: '#3b82f6', maintenance: '#f97316', finance: '#10b981', revenue: '#8b5cf6',
+    lease: '#3b82f6', maintenance: '#f97316', finance: '#10b981', revenue: '#D6FE51',
 };
 
 function QuickArbitrage() {

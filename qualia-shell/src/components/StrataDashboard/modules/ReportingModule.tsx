@@ -10,6 +10,7 @@ import {
 import { strataGet, strataPost } from '../strataApi';
 import type { Report } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
+import { useStrataNav } from '../StrataNavContext';
 
 type ReportTab = 'reports' | 'scheduled' | 'metrics' | 'surveys' | 'custom-query' | 'rollups' | 'intake';
 type RollupView = 'insurance' | 'vendor-compliance' | 'vendor-by-property';
@@ -52,14 +53,14 @@ const STATUS_BADGE = (status: string) => {
 
 const REPORT_TEMPLATES = [
     { id: 'delinquency', name: 'Delinquency', icon: <DollarSign size={16} />, color: '#ef4444', description: 'Outstanding tenant balances and aging' },
-    { id: 'tenant-ledger', name: 'Tenant Ledger', icon: <Users size={16} />, color: '#6366f1', description: 'Individual tenant transaction history' },
+    { id: 'tenant-ledger', name: 'Tenant Ledger', icon: <Users size={16} />, color: '#D6FE51', description: 'Individual tenant transaction history' },
     { id: 'income-statement', name: 'Income Statement', icon: <TrendingUp size={16} />, color: '#10b981', description: 'Revenue and expense summary by period' },
     { id: 'vacancy-detail', name: 'Unit Vacancy Detail', icon: <Building2 size={16} />, color: '#f59e0b', description: 'Vacant units with days vacant and market rent' },
     { id: 'rent-roll', name: 'Rent Roll', icon: <FileText size={16} />, color: '#0ea5e9', description: 'Current rent amounts for all occupied units' },
-    { id: 'cash-flow', name: 'Cash Flow', icon: <DollarSign size={16} />, color: '#a78bfa', description: 'Cash inflows and outflows by period' },
-    { id: 'lease-expiration', name: 'Lease Expiration Detail By Month', icon: <Calendar size={16} />, color: '#818cf8', description: 'Leases expiring grouped by month' },
+    { id: 'cash-flow', name: 'Cash Flow', icon: <DollarSign size={16} />, color: '#D6FE51', description: 'Cash inflows and outflows by period' },
+    { id: 'lease-expiration', name: 'Lease Expiration Detail By Month', icon: <Calendar size={16} />, color: '#D6FE51', description: 'Leases expiring grouped by month' },
     { id: 'balance-sheet', name: 'Balance Sheet', icon: <BarChart3 size={16} />, color: '#10b981', description: 'Assets, liabilities, and equity summary' },
-    { id: 't12', name: 'T12 (Trailing Twelve Months)', icon: <TrendingUp size={16} />, color: '#8b5cf6', description: 'Rolling 12-month income & expense breakdown by property' },
+    { id: 't12', name: 'T12 (Trailing Twelve Months)', icon: <TrendingUp size={16} />, color: '#D6FE51', description: 'Rolling 12-month income & expense breakdown by property' },
     { id: 'bill-detail', name: 'Bill Detail', icon: <FileText size={16} />, color: '#ec4899', description: 'Detailed vendor bills, payment status, and aging' },
     { id: 'business-metrics', name: 'Business Metrics', icon: <PieChart size={16} />, color: '#f59e0b', description: 'KPIs and operational performance metrics' },
 ];
@@ -72,15 +73,16 @@ const SCHEDULED_REPORTS = [
 
 const METRICS_DATA = [
     { label: 'Occupancy Rate', value: '94.2%', trend: '+1.3%', color: '#10b981' },
-    { label: 'Avg. Days to Lease', value: '23', trend: '-4 days', color: '#6366f1' },
+    { label: 'Avg. Days to Lease', value: '23', trend: '-4 days', color: '#D6FE51' },
     { label: 'Rent Collection Rate', value: '97.8%', trend: '+0.5%', color: '#0ea5e9' },
     { label: 'Maintenance Response', value: '1.2 days', trend: '-0.3 days', color: '#f59e0b' },
-    { label: 'Net Operating Income', value: '$142,500', trend: '+6.2%', color: '#a78bfa' },
+    { label: 'Net Operating Income', value: '$142,500', trend: '+6.2%', color: '#D6FE51' },
     { label: 'Delinquency Rate', value: '2.1%', trend: '-0.4%', color: '#ef4444' },
 ];
 
 export default function ReportingModule() {
     const { hasPermission } = useUser();
+    const { navigateToProperty } = useStrataNav();
     const [tab, setTab] = useState<ReportTab>('reports');
     const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
@@ -199,8 +201,8 @@ export default function ReportingModule() {
                             onClick={() => setTab(t.id)}
                             style={{
                                 padding: '6px 12px', border: 'none', borderRadius: 6,
-                                background: tab === t.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                                color: tab === t.id ? '#818cf8' : '#94a3b8',
+                                background: tab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                color: tab === t.id ? '#D6FE51' : '#94a3b8',
                                 cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
                                 display: 'flex', alignItems: 'center', gap: 4,
                             }}
@@ -234,7 +236,7 @@ export default function ReportingModule() {
                                         background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
                                         borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
                                     }}
-                                    onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.08)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(99,102,241,0.3)'; }}
+                                    onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(214,254,81,0.08)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(214,254,81,0.3)'; }}
                                     onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)'; }}
                                 >
                                     <div style={{ width: 32, height: 32, borderRadius: 8, background: `${rt.color}15`, color: rt.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -265,14 +267,14 @@ export default function ReportingModule() {
                                         background: 'rgba(255,255,255,0.02)', borderRadius: 6,
                                         border: '1px solid rgba(255,255,255,0.04)',
                                     }}>
-                                        <FileText size={14} style={{ color: '#6366f1', flexShrink: 0 }} />
+                                        <FileText size={14} style={{ color: '#D6FE51', flexShrink: 0 }} />
                                         <div style={{ flex: 1, overflow: 'hidden' }}>
                                             <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 500 }}>{r.reportType} Report</div>
                                             <div style={{ fontSize: 11, color: '#64748b' }}>{r.period} · Generated {new Date(r.createdAt).toLocaleDateString()}</div>
                                         </div>
                                         <button style={{
                                             padding: '4px 8px', border: 'none', borderRadius: 4,
-                                            background: 'rgba(99,102,241,0.1)', color: '#a5b4fc', cursor: 'pointer',
+                                            background: 'rgba(214,254,81,0.1)', color: '#D6FE51', cursor: 'pointer',
                                             fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3,
                                         }}>
                                             <Download size={11} /> Export
@@ -300,7 +302,7 @@ export default function ReportingModule() {
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                                     <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 13 }}>{sr.name}</span>
-                                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600 }}>{sr.frequency}</span>
+                                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600 }}>{sr.frequency}</span>
                                 </div>
                                 <div style={{ fontSize: 11, color: '#64748b' }}>
                                     <span>Next run: {sr.nextRun}</span>
@@ -349,8 +351,8 @@ export default function ReportingModule() {
                             <button key={f.id} onClick={() => setQueryField(f.id)}
                                 style={{
                                     padding: '6px 14px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                                    background: queryField === f.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                                    color: queryField === f.id ? '#818cf8' : '#94a3b8',
+                                    background: queryField === f.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                    color: queryField === f.id ? '#D6FE51' : '#94a3b8',
                                 }}>
                                 {f.label}
                             </button>
@@ -378,7 +380,7 @@ export default function ReportingModule() {
                         } catch { setQueryResults([]); }
                         setQueryLoading(false);
                     }} style={{
-                        padding: '8px 20px', border: 'none', borderRadius: 6, background: '#6366f1', color: '#fff',
+                        padding: '8px 20px', border: 'none', borderRadius: 6, background: '#D6FE51', color: '#fff',
                         fontWeight: 700, cursor: 'pointer', fontSize: 13, marginBottom: 16,
                     }}>
                         {queryLoading ? 'Running…' : 'Run Query'}
@@ -401,13 +403,13 @@ export default function ReportingModule() {
                                         <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             <td style={{ padding: '8px 10px', color: '#e2e8f0', fontWeight: 500 }}>{r.entityName}</td>
                                             <td style={{ padding: '8px 10px' }}>
-                                                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600, textTransform: 'uppercase' }}>{r.gapType}</span>
+                                                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600, textTransform: 'uppercase' }}>{r.gapType}</span>
                                             </td>
                                             <td style={{ padding: '8px 10px' }}>
                                                 <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 700, background: r.severity === 'critical' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)', color: r.severity === 'critical' ? '#ef4444' : '#f59e0b' }}>{r.severity}</span>
                                             </td>
                                             <td style={{ padding: '8px 10px', color: '#94a3b8' }}>{r.message}</td>
-                                            <td style={{ padding: '8px 10px', color: '#6366f1', fontSize: 11 }}>{r.recommendation}</td>
+                                            <td style={{ padding: '8px 10px', color: '#D6FE51', fontSize: 11 }}>{r.recommendation}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -424,7 +426,7 @@ export default function ReportingModule() {
                     <Clipboard size={40} strokeWidth={1} style={{ color: '#475569', marginBottom: 12 }} />
                     <h3 style={{ color: '#e2e8f0', margin: '0 0 6px' }}>Tenant Surveys</h3>
                     <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Create and distribute satisfaction surveys to tenants</p>
-                    <span style={{ display: 'inline-block', marginTop: 12, padding: '4px 12px', borderRadius: 6, background: 'rgba(99,102,241,0.1)', color: '#a5b4fc', fontSize: 12, fontWeight: 600 }}>Coming Soon</span>
+                    <span style={{ display: 'inline-block', marginTop: 12, padding: '4px 12px', borderRadius: 6, background: 'rgba(214,254,81,0.1)', color: '#D6FE51', fontSize: 12, fontWeight: 600 }}>Coming Soon</span>
                 </div>
             )}
 
@@ -440,8 +442,8 @@ export default function ReportingModule() {
                         ].map(rv => (
                             <button key={rv.id} onClick={() => setRollupView(rv.id)} style={{
                                 padding: '6px 14px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                                background: rollupView === rv.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                                color: rollupView === rv.id ? '#818cf8' : '#94a3b8',
+                                background: rollupView === rv.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                color: rollupView === rv.id ? '#D6FE51' : '#94a3b8',
                                 display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.15s',
                             }}>
                                 {rv.icon} {rv.label}
@@ -463,8 +465,8 @@ export default function ReportingModule() {
                                     insuranceRollup.map((p: any) => [p.propertyName, p.carrier, p.policyNumber, p.policyType, p.coverageAmount || '', p.premiumAnnual || '', p.effectiveDate, p.expirationDate, p.statusLabel]),
                                     'insurance-rollup.csv'
                                 )} style={{
-                                    padding: '5px 12px', border: 'none', borderRadius: 6, background: 'rgba(99,102,241,0.12)',
-                                    color: '#a5b4fc', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                                    padding: '5px 12px', border: 'none', borderRadius: 6, background: 'rgba(214,254,81,0.12)',
+                                    color: '#D6FE51', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                                 }}>
                                     <Download size={12} /> Export CSV
                                 </button>
@@ -484,7 +486,11 @@ export default function ReportingModule() {
                                         <tbody>
                                             {insuranceRollup.map((p: any) => (
                                                 <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                                    <td style={{ padding: '8px 10px', color: '#e2e8f0', fontWeight: 500 }}>{p.propertyName}</td>
+                                                    <td style={{ padding: '8px 10px', color: '#e2e8f0', fontWeight: 500 }}>
+                                                        {p.propertyId ? (
+                                                            <button className="s-property-link" style={{ fontSize: 12, fontWeight: 500 }} onClick={() => navigateToProperty(p.propertyId)}>{p.propertyName}</button>
+                                                        ) : p.propertyName}
+                                                    </td>
                                                     <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>{p.carrier || '—'}</td>
                                                     <td style={{ padding: '8px 10px', color: '#94a3b8', fontFamily: 'monospace', fontSize: 11 }}>{p.policyNumber || '—'}</td>
                                                     <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>{p.policyType}</td>
@@ -515,8 +521,8 @@ export default function ReportingModule() {
                                     vendorCompliance.map((v: any) => [v.name, v.email, v.coiStatus, v.coiExpiry || '', v.w9Status, v.w9Expiry || '', (v.propertiesServed || []).join('; '), v.missingDocs]),
                                     'vendor-compliance-rollup.csv'
                                 )} style={{
-                                    padding: '5px 12px', border: 'none', borderRadius: 6, background: 'rgba(99,102,241,0.12)',
-                                    color: '#a5b4fc', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                                    padding: '5px 12px', border: 'none', borderRadius: 6, background: 'rgba(214,254,81,0.12)',
+                                    color: '#D6FE51', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                                 }}>
                                     <Download size={12} /> Export CSV
                                 </button>
@@ -582,11 +588,14 @@ export default function ReportingModule() {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                                             <div>
                                                 <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <Building2 size={14} style={{ color: '#3b82f6' }} /> {prop.propertyName}
+                                                    <Building2 size={14} style={{ color: '#3b82f6' }} />
+                                                    {prop.propertyId ? (
+                                                        <button className="s-property-link" style={{ fontSize: 14, fontWeight: 600 }} onClick={() => navigateToProperty(prop.propertyId)}>{prop.propertyName}</button>
+                                                    ) : prop.propertyName}
                                                 </div>
                                                 <div style={{ fontSize: 11, color: '#64748b' }}>{prop.propertyAddress}</div>
                                             </div>
-                                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600 }}>
+                                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600 }}>
                                                 {prop.vendors.length} vendor{prop.vendors.length !== 1 ? 's' : ''}
                                             </span>
                                         </div>
@@ -617,8 +626,8 @@ export default function ReportingModule() {
                                 vendorByProperty.flatMap((p: any) => p.vendors.map((v: any) => [p.propertyName, v.vendorName, v.serviceType || '', v.accountNumber || '', v.status || 'active'])),
                                 'vendor-by-property.csv'
                             )} style={{
-                                padding: '8px 16px', border: 'none', borderRadius: 6, background: 'rgba(99,102,241,0.12)',
-                                color: '#a5b4fc', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-end',
+                                padding: '8px 16px', border: 'none', borderRadius: 6, background: 'rgba(214,254,81,0.12)',
+                                color: '#D6FE51', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-end',
                             }}>
                                 <Download size={13} /> Export All Associations CSV
                             </button>
@@ -632,12 +641,12 @@ export default function ReportingModule() {
                 <div className="s-glass-card" style={{ padding: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                         <h3 style={{ margin: 0, fontSize: 15, color: '#e2e8f0', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <FileSearch size={16} style={{ color: '#818cf8' }} />
+                            <FileSearch size={16} style={{ color: '#D6FE51' }} />
                             AI Document Intake — Pending Review
                         </h3>
                         <button onClick={fetchIntake} style={{
-                            padding: '6px 12px', border: 'none', borderRadius: 6, background: 'rgba(99,102,241,0.12)',
-                            color: '#a5b4fc', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '6px 12px', border: 'none', borderRadius: 6, background: 'rgba(214,254,81,0.12)',
+                            color: '#D6FE51', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                         }}>
                             <RefreshCw size={12} /> Refresh
                         </button>
@@ -674,22 +683,22 @@ export default function ReportingModule() {
                                     }}>
                                         <div style={{
                                             width: 38, height: 38, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            background: 'rgba(99,102,241,0.12)', flexShrink: 0,
+                                            background: 'rgba(214,254,81,0.12)', flexShrink: 0,
                                         }}>
-                                            <FileText size={18} style={{ color: '#818cf8' }} />
+                                            <FileText size={18} style={{ color: '#D6FE51' }} />
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {item.filename}
                                             </div>
                                             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                                                Detected: <strong style={{ color: '#c4b5fd' }}>{item.doc_label}</strong>
+                                                Detected: <strong style={{ color: '#E8FF7A' }}>{item.doc_label}</strong>
                                                 <span style={{ margin: '0 6px', opacity: 0.3 }}>|</span>
                                                 Confidence: <span style={{ color: confColor, fontWeight: 600 }}>{confPct}%</span>
                                             </div>
                                             {item.suggested_entity_name && (
                                                 <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                                                    → Suggested: <strong style={{ color: '#a5b4fc' }}>{item.suggested_entity_name}</strong>
+                                                    → Suggested: <strong style={{ color: '#D6FE51' }}>{item.suggested_entity_name}</strong>
                                                     <span style={{ opacity: 0.5 }}> ({item.suggested_entity_type})</span>
                                                 </div>
                                             )}

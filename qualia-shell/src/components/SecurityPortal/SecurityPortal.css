@@ -9,8 +9,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #0a0e1a 0%, #111827 50%, #0f172a 100%);
-    font-family: 'Inter', -apple-system, sans-serif;
+    background: linear-gradient(135deg, #000000 0%, #0e0e0e 50%, #000000 100%);
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     overflow-y: auto;
     padding: 20px;
 }
@@ -20,18 +20,18 @@
     text-align: center;
     padding: 48px 40px;
     background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(214, 254, 81, 0.15);
     border-radius: 16px;
     width: 100%;
     max-width: 400px;
-    backdrop-filter: blur(20px);
+    backdrop-filter: none;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .sp-logo {
     font-size: 48px;
     margin-bottom: 16px;
-    filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.3));
+    filter: drop-shadow(0 4px 12px rgba(214, 254, 81, 0.3));
 }
 
 .sp-logo-success {
@@ -46,7 +46,7 @@
     font-size: 24px;
     font-weight: 700;
     margin: 0 0 6px;
-    background: linear-gradient(135deg, #e2e8f0, #a5b4fc);
+    background: linear-gradient(135deg, #e2e8f0, #D6FE51);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -73,11 +73,11 @@
 /* ── Form Card ── */
 .sp-form-card {
     background: rgba(15, 23, 42, 0.92);
-    border: 1px solid rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(214, 254, 81, 0.12);
     border-radius: 16px;
     width: 100%;
     max-width: 640px;
-    backdrop-filter: blur(20px);
+    backdrop-filter: none;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     overflow: hidden;
 }
@@ -87,8 +87,8 @@
     align-items: center;
     gap: 14px;
     padding: 20px 24px;
-    background: rgba(99, 102, 241, 0.06);
-    border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+    background: rgba(214, 254, 81, 0.06);
+    border-bottom: 1px solid rgba(214, 254, 81, 0.1);
 }
 
 .sp-form-title {
@@ -149,8 +149,8 @@
 .sp-input:focus,
 .sp-select:focus,
 .sp-textarea:focus {
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: rgba(214, 254, 81, 0.5);
+    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.1);
 }
 
 .sp-input-lg {
@@ -197,14 +197,14 @@
 }
 
 .sp-category-btn:hover {
-    background: rgba(99, 102, 241, 0.06);
-    border-color: rgba(99, 102, 241, 0.2);
+    background: rgba(214, 254, 81, 0.06);
+    border-color: rgba(214, 254, 81, 0.2);
 }
 
 .sp-category-btn--active {
-    background: rgba(99, 102, 241, 0.12);
-    border-color: rgba(99, 102, 241, 0.4);
-    color: #a5b4fc;
+    background: rgba(214, 254, 81, 0.12);
+    border-color: rgba(214, 254, 81, 0.4);
+    color: #D6FE51;
     font-weight: 600;
 }
 
@@ -283,14 +283,14 @@
 }
 
 .sp-btn-primary {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
     color: #fff;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.3);
 }
 
 .sp-btn-primary:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 20px rgba(214, 254, 81, 0.4);
 }
 
 .sp-btn-submit {

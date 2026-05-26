@@ -7,7 +7,7 @@
     flex-direction: column;
     height: 100%;
     overflow-y: auto;
-    background: var(--bg-primary, #0d1117);
+    background: var(--bg-primary, #000000);
     color: var(--text-primary, #e6edf3);
     font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
     padding: 0;
@@ -38,7 +38,7 @@
     font-size: 18px;
     font-weight: 700;
     margin: 0 0 2px;
-    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    background: linear-gradient(135deg, #D6FE51, #00f2fe);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -154,7 +154,7 @@
     width: 16px;
     height: 16px;
     border: 2px solid rgba(79, 172, 254, 0.2);
-    border-top-color: #4facfe;
+    border-top-color: #D6FE51;
     border-radius: 50%;
     animation: nlm-spin 0.8s linear infinite;
     display: inline-block;
@@ -320,7 +320,7 @@
     background: rgba(79, 172, 254, 0.08);
     border: 1px dashed rgba(79, 172, 254, 0.3);
     border-radius: 8px;
-    color: #4facfe;
+    color: #D6FE51;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -353,7 +353,7 @@
     line-height: 1.5;
 }
 
-.nlm-add-hint code { color: #4facfe; }
+.nlm-add-hint code { color: #D6FE51; }
 
 .nlm-form-group { display: flex; flex-direction: column; gap: 4px; }
 
@@ -382,7 +382,7 @@
 .nlm-form-save {
     flex: 1;
     padding: 9px;
-    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    background: linear-gradient(135deg, #D6FE51, #00f2fe);
     border: none;
     border-radius: 6px;
     color: #000;

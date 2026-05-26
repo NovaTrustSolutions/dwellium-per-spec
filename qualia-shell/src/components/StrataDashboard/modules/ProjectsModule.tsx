@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut, isStaticMode } from '../strataApi';
 import type { Workitem, Property } from '../strataTypes';
+import { useStrataNav } from '../StrataNavContext';
 import { LoadingState, ErrorState } from '../StateView';
 // Task 3.7 — GR-13 observability wiring + ErrorBoundary, mirrors the
 // Task 2.4 / 2.8 SentimentModule retrofit pattern. Sentry breadcrumbs
@@ -40,6 +41,7 @@ const ENTITY_ICON: Record<string, React.ReactNode> = {
 };
 
 function ProjectsModuleInner() {
+    const { navigateToProperty } = useStrataNav();
     const [items, setItems] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
@@ -184,7 +186,7 @@ function ProjectsModuleInner() {
         switch (s) {
             case 'open': return '#3b82f6';
             case 'in_progress': return '#f59e0b';
-            case 'review': return '#a78bfa';
+            case 'review': return '#D6FE51';
             case 'completed': return '#10b981';
             case 'cancelled': return '#ef4444';
             default: return '#64748b';
@@ -230,7 +232,7 @@ function ProjectsModuleInner() {
                                 {wi.tags.slice(0, 3).map((tag, i) => (
                                     <span key={i} style={{
                                         fontSize: 9, padding: '1px 5px', borderRadius: 4,
-                                        background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600,
+                                        background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600,
                                     }}>{tag}</span>
                                 ))}
                                 {wi.tags.length > 3 && <span style={{ fontSize: 9, color: '#475569' }}>+{wi.tags.length - 3}</span>}
@@ -266,15 +268,15 @@ function ProjectsModuleInner() {
                             {wi.type && <span>Type: {wi.type}</span>}
                             {md.boardName && <span>Board: {md.boardName}</span>}
                             {md.listName && <span>List: {md.listName}</span>}
-                            {wi.propertyId && <span>🏠 {propMap.get(wi.propertyId)?.name || wi.propertyId.slice(0, 8)}</span>}
+                            {wi.propertyId && <span>🏠 <button className="s-property-link" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>{propMap.get(wi.propertyId)?.name || wi.propertyId.slice(0, 8)}</button></span>}
                         </div>
                         <button
                             onClick={(e) => { e.stopPropagation(); toggleStatus(wi.id, wi.status); }}
                             style={{
                                 padding: '5px 14px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                                border: `1px solid ${isActive ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)'}`,
-                                background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(99,102,241,0.1)',
-                                color: isActive ? '#10b981' : '#a5b4fc',
+                                border: `1px solid ${isActive ? 'rgba(16,185,129,0.3)' : 'rgba(214,254,81,0.3)'}`,
+                                background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(214,254,81,0.1)',
+                                color: isActive ? '#10b981' : '#D6FE51',
                                 cursor: 'pointer',
                                 display: 'inline-flex', alignItems: 'center', gap: 5,
                             }}
@@ -307,12 +309,12 @@ function ProjectsModuleInner() {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
                 >
-                    <span style={{ color: '#818cf8' }}>{group.icon}</span>
+                    <span style={{ color: '#D6FE51' }}>{group.icon}</span>
                     <span style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0', flex: 1 }}>{group.label}</span>
                     <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                        background: active.length > 0 ? 'rgba(99,102,241,0.15)' : 'rgba(100,116,139,0.1)',
-                        color: active.length > 0 ? '#a5b4fc' : '#64748b',
+                        background: active.length > 0 ? 'rgba(214,254,81,0.15)' : 'rgba(100,116,139,0.1)',
+                        color: active.length > 0 ? '#D6FE51' : '#64748b',
                     }}>{active.length} active</span>
                     <span style={{
                         fontSize: 10, padding: '2px 8px', borderRadius: 10,
@@ -345,7 +347,7 @@ function ProjectsModuleInner() {
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">
-                        <FolderKanban size={22} style={{ verticalAlign: -4, marginRight: 8, color: '#818cf8' }} />
+                        <FolderKanban size={22} style={{ verticalAlign: -4, marginRight: 8, color: '#D6FE51' }} />
                         Projects — Universal Node
                     </h2>
                     <p className="s-module-subtitle">
@@ -366,8 +368,8 @@ function ProjectsModuleInner() {
                                 className="s-btn s-btn-ghost"
                                 style={{
                                     padding: '5px 10px', borderRadius: 0, margin: 0, gap: 4,
-                                    background: viewMode === mode ? 'rgba(99,102,241,0.2)' : 'transparent',
-                                    color: viewMode === mode ? '#6366f1' : '#64748b', fontSize: 11,
+                                    background: viewMode === mode ? 'rgba(214,254,81,0.2)' : 'transparent',
+                                    color: viewMode === mode ? '#D6FE51' : '#64748b', fontSize: 11,
                                 }}
                                 onClick={() => setViewMode(mode)}
                             >
@@ -471,7 +473,7 @@ function ProjectsModuleInner() {
                 /* ── All / List View ── */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <h3 style={{ margin: '8px 0', fontSize: 14, color: '#e2e8f0' }}>
-                        <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 6, color: '#6366f1' }} />
+                        <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 6, color: '#D6FE51' }} />
                         Active ({activeItems.length})
                     </h3>
                     {activeItems.map(wi => <ProjectCard key={wi.id} wi={wi} />)}

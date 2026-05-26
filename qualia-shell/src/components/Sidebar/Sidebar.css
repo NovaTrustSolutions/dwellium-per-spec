@@ -5,17 +5,16 @@
 
 .sidebar {
     height: 100%;
-    background: var(--sidebar-bg);
-    backdrop-filter: blur(28px) saturate(200%);
-    /* [2] deeper glass */
-    -webkit-backdrop-filter: blur(28px) saturate(200%);
-    border-right: 1px solid var(--border-subtle);
+    background: #0a0a0a;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-right: 1px solid #222222;
     display: flex;
     flex-direction: column;
     z-index: var(--z-sidebar);
     flex-shrink: 0;
     position: relative;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.2s ease;
 }
 
 /* --- Resize Handle --- */
@@ -48,24 +47,23 @@
 .sidebar__resize-handle:hover::after,
 .sidebar__resize-handle:active::after {
     opacity: 1;
-    background: var(--accent);
-    box-shadow: 0 0 12px var(--accent);
+    background: #D6FE51;
+    box-shadow: 0 0 6px rgba(214, 254, 81, 0.3);
 }
 
 .sidebar__resize-handle:hover {
-    background: linear-gradient(180deg, transparent, rgba(var(--accent-rgb, 0, 136, 204), 0.15) 50%, transparent);
+    background: rgba(214, 254, 81, 0.04);
 }
 
 /* --- Header --- */
 .sidebar__header {
     padding: var(--sp-4) var(--sp-4) var(--sp-3);
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid #222222;
     display: flex;
     align-items: center;
     justify-content: space-between;
     position: relative;
-    background: linear-gradient(180deg, rgba(100, 180, 255, 0.03), transparent);
-    /* [1] inner glow */
+    background: transparent;
 }
 
 /* --- Sign Out Button --- */
@@ -73,8 +71,8 @@
 /* --- Personalized Greeting Strip --- */
 .sidebar__greeting {
     padding: 10px 14px 8px;
-    border-bottom: 1px solid var(--border-subtle);
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(236, 72, 153, 0.04));
+    border-bottom: 1px solid #222222;
+    background: transparent;
     position: relative;
     overflow: hidden;
 }
@@ -86,7 +84,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), rgba(236, 72, 153, 0.3), transparent);
+    background: linear-gradient(90deg, transparent, rgba(214, 254, 81, 0.3), rgba(236, 72, 153, 0.3), transparent);
 }
 
 .sidebar__greeting-top {
@@ -239,8 +237,8 @@
     right: var(--sp-2);
     z-index: 100;
     background: var(--sidebar-bg, rgba(22, 22, 30, 0.92));
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -839,8 +837,8 @@
     left: var(--sp-3, 12px);
     right: var(--sp-3, 12px);
     background: rgba(22, 25, 31, 0.96);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md, 8px);
     padding: 6px;
@@ -1344,8 +1342,8 @@
     display: flex;
     gap: 6px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     z-index: 100;
     animation: slideUpFade 0.2s ease-out;
 }

@@ -268,6 +268,11 @@ export default function StellaAgent() {
     const [showAddHonchoMemory, setShowAddHonchoMemory] = useState(false);
     const [newHonchoMemory, setNewHonchoMemory] = useState({ content: '', memoryType: 'fact', importance: 0.5 });
     const [honchoLearnActive, setHonchoLearnActive] = useState(() => {
+        // SSR guard: useState lazy initializer fires during render(), which
+        // runs server-side in dev/SSR mode. localStorage doesn't exist there.
+        // CSR fallback rehydrates with the same default; client effect would
+        // re-sync if we needed to mirror real storage on hydration.
+        if (typeof window === 'undefined') return false;
         return localStorage.getItem('honcho-learn-active') === 'true';
     });
     const honchoLearnRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -739,7 +744,7 @@ export default function StellaAgent() {
     };
     const TYPE_COLORS: Record<string, string> = {
         fact: '#3b82f6', preference: '#f59e0b', decision: '#ef4444',
-        observation: '#8b5cf6', insight: '#10b981', manual: '#6366f1',
+        observation: '#D6FE51', insight: '#10b981', manual: '#D6FE51',
     };
 
     const fetchHonchoMemories = useCallback(async () => {
@@ -1116,10 +1121,13 @@ export default function StellaAgent() {
                 {pid && <span className="stella__pid">PID {pid}</span>}
             </div>
 
-            {/* Offline Banner */}
+            {/* Offline Banner — wording calls out the missing service so the
+                operator knows this isn't a transient hiccup but a setup gap.
+                Stella's chat path needs the sibling Python agent (+ Honcho/
+                Hermes) running; backend A doesn't ship it. */}
             {status === 'offline' && (
                 <div className="stella__offline-banner">
-                    ⚠️ Stella is not running.
+                    ⚠️ Stella agent is offline — requires the Stella Python agent service.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry</button>
                     <button className="stella__retry-btn" onClick={async () => {
                         setInitLoading(true);
@@ -1248,7 +1256,7 @@ export default function StellaAgent() {
                             <div className="stella__honcho-list">{honchoLoading ? (<div className="stella__loading"><div className="stella__spinner" /> Loading…</div>
                             ) : filteredHonchoMemories.length === 0 ? (<div className="stella__empty"><span className="stella__empty-icon">🧠</span><p className="stella__empty-text">No memories yet.</p></div>
                             ) : filteredHonchoMemories.map(m => (
-                                <div key={m.id} className="stella__honcho-memory" style={{ borderLeftColor: TYPE_COLORS[m.memoryType] || '#6366f1' }}>
+                                <div key={m.id} className="stella__honcho-memory" style={{ borderLeftColor: TYPE_COLORS[m.memoryType] || '#D6FE51' }}>
                                     <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">{TYPE_ICONS[m.memoryType] || '📋'} {m.memoryType}</span>
                                         <span className={`stella__honcho-importance imp-${getImportanceLabel(m.importance).toLowerCase()}`}>{getImportanceLabel(m.importance)}</span>
                                         <span className="stella__honcho-source">{m.source}</span></div>
@@ -1269,7 +1277,7 @@ export default function StellaAgent() {
                                 {filteredHonchoMemories.slice(0, 20).map((m, i) => (
                                     <div key={m.id} className="stella__honcho-network-node" style={{
                                         left: `${15 + (i % 5) * 18}%`, top: `${10 + Math.floor(i / 5) * 22}%`,
-                                        borderColor: TYPE_COLORS[m.memoryType] || '#6366f1',
+                                        borderColor: TYPE_COLORS[m.memoryType] || '#D6FE51',
                                     }}><span>{TYPE_ICONS[m.memoryType] || '📋'}</span><span className="stella__honcho-network-text">{m.content?.substring(0, 30)}…</span></div>
                                 ))}
                                 {filteredHonchoMemories.length === 0 && (<div className="stella__empty"><span className="stella__empty-icon">🕸️</span><p className="stella__empty-text">No memories to visualize.</p></div>)}
@@ -1344,7 +1352,7 @@ export default function StellaAgent() {
                             <div className="stella__honcho-list">{honchoSearchResults.length === 0 ? (
                                 <div className="stella__empty"><span className="stella__empty-icon">🔍</span><p className="stella__empty-text">Enter a query to search.</p></div>
                             ) : honchoSearchResults.map((r: any, i: number) => (
-                                <div key={i} className="stella__honcho-memory" style={{ borderLeftColor: '#8b5cf6' }}>
+                                <div key={i} className="stella__honcho-memory" style={{ borderLeftColor: '#D6FE51' }}>
                                     <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">🔍 {r.memoryType || 'result'}</span>
                                         {r.score && <span className="stella__honcho-importance imp-medium">{(r.score * 100).toFixed(0)}%</span>}</div>
                                     <p className="stella__honcho-content">{r.content || r.text}</p></div>))}</div>
@@ -1401,9 +1409,9 @@ export default function StellaAgent() {
                                     const radius = Math.min(w, h) * 0.36;
                                     const nodeColors: Record<string, string> = {
                                         center: '#f59e0b',
-                                        user: '#a78bfa',
-                                        agent: '#a78bfa',
-                                        system: '#a78bfa',
+                                        user: '#D6FE51',
+                                        agent: '#D6FE51',
+                                        system: '#D6FE51',
                                         peer: '#22d3ee',
                                         memory: '#22d3ee',
                                         external: '#22d3ee',
@@ -1411,7 +1419,7 @@ export default function StellaAgent() {
                                     const positions: { x: number; y: number; color: string; label: string; isCenter: boolean }[] = [];
                                     allNodes.forEach((node, i) => {
                                         if (i === 0) {
-                                            positions.push({ x: cx, y: cy, color: nodeColors[node.type] || '#a78bfa', label: node.label, isCenter: true });
+                                            positions.push({ x: cx, y: cy, color: nodeColors[node.type] || '#D6FE51', label: node.label, isCenter: true });
                                         } else {
                                             const angle = ((i - 1) / (allNodes.length - 1)) * Math.PI * 2 - Math.PI / 2;
                                             positions.push({

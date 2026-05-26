@@ -40,14 +40,14 @@ function eventColor(type: string, priority?: string, severity?: string) {
     if (type === 'workitem') {
         if (priority === 'high') return '#ef4444';
         if (priority === 'medium') return '#f59e0b';
-        return '#818cf8';
+        return '#D6FE51';
     }
     // Task 2.10 — source-specific colors.
     if (type === 'communication') return '#22c55e';
     if (type === 'compliance') {
         if (severity === 'high') return '#ef4444';
         if (severity === 'medium') return '#f59e0b';
-        return '#a78bfa';
+        return '#D6FE51';
     }
     if (type === 'insurance') {
         if (severity === 'high') return '#ef4444';
@@ -136,7 +136,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                 Activity Timeline
                 <span style={{
                     fontSize: 10, padding: '2px 8px', borderRadius: 10,
-                    background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', fontWeight: 600, marginLeft: 4,
+                    background: 'rgba(214,254,81,0.15)', color: '#D6FE51', fontWeight: 600, marginLeft: 4,
                 }}>{events.length} events</span>
             </h3>
 
@@ -237,7 +237,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                             onClick={() => setShowAll(true)}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 4, margin: '4px auto 0',
-                                background: 'none', border: 'none', color: '#818cf8', fontSize: 11,
+                                background: 'none', border: 'none', color: '#D6FE51', fontSize: 11,
                                 fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                             }}
                         >

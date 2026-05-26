@@ -97,7 +97,7 @@ test.describe('Screenshot baseline — AppFolio parity modules', () => {
       await expect(page).toHaveScreenshot(`${mod.id}.png`, {
         fullPage: true,
         mask: dynamicMasks,
-        maxDiffPixelRatio: 0.01, // Tolerate ~1% pixel drift (font AA, scrollbars).
+        maxDiffPixelRatio: 0.03, // Tolerate ~3% pixel drift (cross-runner font rendering + scrollbars).
         animations: 'disabled',
       });
     });

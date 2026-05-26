@@ -14,6 +14,7 @@ import { useUser } from '../../../context/UserContext';
 import type { Property, Unit, EntityProfile } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
 import { strataGet } from '../strataApi';
+import { useStrataNav } from '../StrataNavContext';
 
 // Entity is an alias for EntityProfile (canonical type from strataTypes)
 type Entity = EntityProfile;
@@ -51,6 +52,7 @@ const tdStyle: React.CSSProperties = {
 
 export default function ProfilesModule() {
     const { hasPermission } = useUser();
+    const { navigateToProperty } = useStrataNav();
     const [tab, setTab] = useState<ProfileTab>('properties');
     const [search, setSearch] = useState('');
     const [entities, setEntities] = useState<Entity[]>([]);
@@ -139,8 +141,8 @@ export default function ProfilesModule() {
                         style={{
                             display: 'flex', alignItems: 'center', gap: 6,
                             padding: '7px 14px', border: 'none', borderRadius: 8,
-                            background: tab === t.id ? 'rgba(99,102,241,0.15)' : 'transparent',
-                            color: tab === t.id ? '#818cf8' : '#94a3b8',
+                            background: tab === t.id ? 'rgba(214,254,81,0.15)' : 'transparent',
+                            color: tab === t.id ? '#D6FE51' : '#94a3b8',
                             fontSize: 12, fontWeight: 600, cursor: 'pointer',
                             fontFamily: 'inherit', transition: 'all 0.15s',
                         }}
@@ -308,7 +310,7 @@ export default function ProfilesModule() {
                                 </h3>
                                 <span style={{
                                     fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                                    letterSpacing: 1, color: '#818cf8',
+                                    letterSpacing: 1, color: '#D6FE51',
                                 }}>
                                     {selectedEntity.entityType}
                                 </span>
@@ -351,7 +353,7 @@ export default function ProfilesModule() {
                                     selectedEntity.propertyIds.map(pid => (
                                         <div key={pid} style={{ fontSize: 12, color: '#94a3b8', padding: '2px 0' }}>
                                             <Building2 size={11} style={{ marginRight: 6, verticalAlign: -1 }} />
-                                            {pid}
+                                            <button className="s-property-link" style={{ fontSize: 12 }} onClick={() => navigateToProperty(pid)}>{pid}</button>
                                         </div>
                                     ))
                                 ) : (

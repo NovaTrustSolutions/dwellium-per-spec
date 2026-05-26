@@ -3,9 +3,9 @@
    ============================================ */
 
 :root {
-  /* --- Typography --- */
-  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* --- Typography (fey.com parity) --- */
+  --font-primary: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
   --fs-scale: 1;
@@ -48,12 +48,12 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* --- Shadows --- */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.4);
-  --shadow-window: 0 8px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.2);
+  /* --- Shadows (fey.com: minimal, border-driven depth) --- */
+  --shadow-sm: none;
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-window: 0 4px 24px rgba(0, 0, 0, 0.3);
 
   /* --- Transitions --- */
   --transition-fast: 120ms ease;
@@ -68,59 +68,67 @@
   --z-modal: 900;
   --z-tooltip: 1000;
 
-  /* --- Brand --- */
-  --brand-blue: #0088cc;
-  --brand-orange: #f05a28;
-  --brand-blue-light: #33aaee;
-  --brand-orange-light: #ff7b4f;
+  /* --- Brand (fey.com parity) --- */
+  --brand-blue: #D6FE51;
+  --brand-orange: #ffa16c;
+  --brand-blue-light: #E8FF7A;
+  --brand-orange-light: #ffb68f;
 
-  /* --- Sidebar Accent (Baby Blue) --- */
-  --sidebar-accent: rgba(100, 180, 255, 0.08);
-  --sidebar-accent-hover: rgba(100, 180, 255, 0.12);
-  --sidebar-accent-border: rgba(100, 180, 255, 0.25);
-  --sidebar-accent-glow: rgba(100, 180, 255, 0.4);
-  --sidebar-group-radius: 8px;
+  /* --- Fey.com Accent Tokens --- */
+  --fey-acid-lime: #D6FE51;
+  --fey-coral: #ffa16c;
+  --fey-muted-slate: #868F97;
+  --fey-surface-elevated: #121212;
+  --fey-border: #222222;
+
+  /* --- Sidebar Accent (Acid Lime) --- */
+  --sidebar-accent: rgba(214, 254, 81, 0.06);
+  --sidebar-accent-hover: rgba(214, 254, 81, 0.10);
+  --sidebar-accent-border: rgba(214, 254, 81, 0.25);
+  --sidebar-accent-glow: rgba(214, 254, 81, 0.35);
+  --sidebar-group-radius: 4px;
 }
 
 /* ============================================
    DARK THEME (Default)
    ============================================ */
 .theme-dark {
-  --bg-desktop: #0d0f12;
-  --bg-surface: #16191f;
-  --bg-surface-elevated: #1c2028;
-  --bg-surface-hover: #22262e;
-  --bg-surface-active: #282d37;
-  --bg-glass: rgba(22, 25, 31, 0.72);
-  --bg-glass-hover: rgba(34, 38, 46, 0.82);
+  /* fey.com parity: pure black base, tonal layers, no heavy shadows */
+  --bg-desktop: #000000;
+  --bg-surface: #0e0e0e;
+  --bg-surface-elevated: #121212;
+  --bg-surface-hover: #1b1b1b;
+  --bg-surface-active: #1f1f1f;
+  --bg-glass: rgba(14, 14, 14, 0.88);
+  --bg-glass-hover: rgba(18, 18, 18, 0.92);
 
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-subtle: #1a1a1a;
+  --border-default: #222222;
+  --border-strong: #333333;
 
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0a8;
-  --text-tertiary: #5f6570;
-  --text-inverse: #0d0f12;
+  --text-primary: #ffffff;
+  --text-secondary: #868F97;
+  --text-tertiary: #808080;
+  --text-inverse: #000000;
 
-  --accent: var(--brand-blue);
-  --accent-hover: var(--brand-blue-light);
-  --accent-subtle: rgba(0, 136, 204, 0.15);
-  --accent-text: #66bbee;
+  --accent: #D6FE51;
+  --accent-hover: #E8FF7A;
+  --accent-subtle: rgba(214, 254, 81, 0.10);
+  --accent-text: #D6FE51;
 
-  --danger: #e74c3c;
-  --warning: #f39c12;
-  --success: #27ae60;
+  --danger: #ffa16c;
+  --warning: #f59e0b;
+  --success: #D6FE51;
 
-  --dock-bg: rgba(22, 25, 31, 0.65);
-  --sidebar-bg: rgba(22, 25, 31, 0.85);
-  --window-bg: #1a1d24;
-  --window-titlebar: #21242b;
-  --window-border: rgba(255, 255, 255, 0.08);
+  --dock-bg: rgba(0, 0, 0, 0.75);
+  --sidebar-bg: rgba(10, 10, 10, 0.92);
+  --window-bg: #0e0e0e;
+  --window-titlebar: #121212;
+  --window-border: #222222;
 
   --scrollbar-track: transparent;
-  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.15);
 }
 
 /* ============================================

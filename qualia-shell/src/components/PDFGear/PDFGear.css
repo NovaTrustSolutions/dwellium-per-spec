@@ -8,9 +8,9 @@
     display: flex;
     width: 100%;
     height: 100%;
-    background: #1a1a2e;
+    background: #0e0e0e;
     color: #e0e0e8;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     overflow: hidden;
     border-radius: 10px;
 }
@@ -19,7 +19,7 @@
 .pdfg-sidebar {
     width: 200px;
     min-width: 200px;
-    background: #12121e;
+    background: #0e0e0e;
     border-right: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     flex-direction: column;
@@ -695,8 +695,8 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     z-index: 99999;
     animation: pdfg-toast-in 0.3s ease;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 @keyframes pdfg-toast-in {

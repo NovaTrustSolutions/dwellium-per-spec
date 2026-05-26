@@ -25,12 +25,12 @@ const API = 'http://localhost:3000';
 type Tab = 'calendar' | 'integrations';
 
 const typeColor: Record<string, string> = {
-    lease: '#6366f1',
-    inspection: '#818cf8',
+    lease: '#D6FE51',
+    inspection: '#D6FE51',
     work_order: '#f59e0b',
     task: '#10b981',
     payment: '#0ea5e9',
-    recurring: '#a78bfa',
+    recurring: '#D6FE51',
 };
 
 const typeIcon = (t: string) => {
@@ -176,14 +176,14 @@ export default function CalendarModule() {
                     <div style={{ display: 'inline-flex', borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', marginRight: 8 }}>
                         <button
                             className="s-btn s-btn-ghost"
-                            style={{ padding: '5px 10px', borderRadius: 0, background: tab === 'calendar' ? 'rgba(99,102,241,0.2)' : 'transparent', color: tab === 'calendar' ? '#6366f1' : 'var(--s-text-secondary)' }}
+                            style={{ padding: '5px 10px', borderRadius: 0, background: tab === 'calendar' ? 'rgba(214,254,81,0.2)' : 'transparent', color: tab === 'calendar' ? '#D6FE51' : 'var(--s-text-secondary)' }}
                             onClick={() => setTab('calendar')}
                         >
                             <CalendarDays size={14} /> Calendar
                         </button>
                         <button
                             className="s-btn s-btn-ghost"
-                            style={{ padding: '5px 10px', borderRadius: 0, background: tab === 'integrations' ? 'rgba(99,102,241,0.2)' : 'transparent', color: tab === 'integrations' ? '#6366f1' : 'var(--s-text-secondary)' }}
+                            style={{ padding: '5px 10px', borderRadius: 0, background: tab === 'integrations' ? 'rgba(214,254,81,0.2)' : 'transparent', color: tab === 'integrations' ? '#D6FE51' : 'var(--s-text-secondary)' }}
                             onClick={() => setTab('integrations')}
                         >
                             <Settings size={14} /> Integrations
@@ -234,7 +234,7 @@ export default function CalendarModule() {
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
                                         <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Calendar</div>
-                                        <div style={{ fontSize: '0.85rem', color: '#a5b4fc' }}>{gcalStatus.defaultCalendarId}</div>
+                                        <div style={{ fontSize: '0.85rem', color: '#D6FE51' }}>{gcalStatus.defaultCalendarId}</div>
                                     </div>
                                 </div>
 
@@ -410,8 +410,8 @@ export default function CalendarModule() {
                                                     padding: '4px 6px',
                                                     borderRadius: 6,
                                                     cursor: 'pointer',
-                                                    background: isSelected ? 'rgba(99,102,241,0.15)' : isToday ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.02)',
-                                                    border: `1px solid ${isSelected ? 'rgba(99,102,241,0.4)' : isToday ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.04)'}`,
+                                                    background: isSelected ? 'rgba(214,254,81,0.15)' : isToday ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.02)',
+                                                    border: `1px solid ${isSelected ? 'rgba(214,254,81,0.4)' : isToday ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.04)'}`,
                                                     transition: 'all 0.15s',
                                                 }}
                                             >
@@ -424,7 +424,7 @@ export default function CalendarModule() {
                                                             data-type={ev.type}
                                                             style={{
                                                                 fontSize: 9, padding: '1px 4px', borderRadius: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                                                background: `${typeColor[ev.type] || '#6366f1'}20`, color: typeColor[ev.type] || '#a5b4fc',
+                                                                background: `${typeColor[ev.type] || '#D6FE51'}20`, color: typeColor[ev.type] || '#D6FE51',
                                                             }}
                                                         >
                                                             {ev.title}
@@ -460,14 +460,14 @@ export default function CalendarModule() {
                                                     border: '1px solid rgba(255,255,255,0.06)',
                                                 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                                        <span style={{ color: typeColor[ev.type] || '#a5b4fc' }}>{typeIcon(ev.type)}</span>
+                                                        <span style={{ color: typeColor[ev.type] || '#D6FE51' }}>{typeIcon(ev.type)}</span>
                                                         <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{ev.title}</span>
                                                     </div>
                                                     <div style={{ fontSize: 11, color: '#64748b' }}>{ev.description || 'No description'}</div>
                                                     <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                                                         <span style={{
                                                             fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600, textTransform: 'uppercase',
-                                                            background: `${typeColor[ev.type] || '#6366f1'}15`, color: typeColor[ev.type] || '#a5b4fc',
+                                                            background: `${typeColor[ev.type] || '#D6FE51'}15`, color: typeColor[ev.type] || '#D6FE51',
                                                         }}>{ev.type}</span>
                                                         <span className={`s-badge s-badge-sm ${ev.status}`}>{ev.status}</span>
                                                     </div>
@@ -516,7 +516,7 @@ export default function CalendarModule() {
                                                     cursor: ev.type === 'inspection' ? 'pointer' : 'default',
                                                 }}
                                             >
-                                                <span style={{ color: typeColor[ev.type] || '#a5b4fc' }}>{typeIcon(ev.type)}</span>
+                                                <span style={{ color: typeColor[ev.type] || '#D6FE51' }}>{typeIcon(ev.type)}</span>
                                                 <div style={{ flex: 1, overflow: 'hidden' }}>
                                                     <div style={{ fontSize: 12, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
                                                 </div>

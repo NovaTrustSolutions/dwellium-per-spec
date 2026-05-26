@@ -11,10 +11,10 @@ import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
 
 const POLICY_TYPES = [
-    { key: 'liability', label: 'General Liability', color: '#6366f1' },
+    { key: 'liability', label: 'General Liability', color: '#D6FE51' },
     { key: 'property', label: 'Property', color: '#3b82f6' },
     { key: 'flood', label: 'Flood', color: '#06b6d4' },
-    { key: 'umbrella', label: 'Umbrella', color: '#8b5cf6' },
+    { key: 'umbrella', label: 'Umbrella', color: '#D6FE51' },
     { key: 'workers_comp', label: "Workers' Comp", color: '#f59e0b' },
     { key: 'auto', label: 'Auto', color: '#22c55e' },
     { key: 'other', label: 'Other', color: '#64748b' },
@@ -186,8 +186,8 @@ export default function InsuranceModule({ propertyId }: Props) {
                         className="s-glass-card"
                         style={{
                             padding: '14px 16px', marginBottom: 12,
-                            border: '1px solid rgba(99,102,241,0.25)',
-                            background: 'rgba(99,102,241,0.04)',
+                            border: '1px solid rgba(214,254,81,0.25)',
+                            background: 'rgba(214,254,81,0.04)',
                         }}
                         onClick={() => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: 'insurance.folioguard.inspect', level: 'info', data: { propertyId: folioguardRollup.propertyId, lapsed: folioguardRollup.lapsed } }); } catch { /* no-op */ } }}
                     >
@@ -263,7 +263,7 @@ export default function InsuranceModule({ propertyId }: Props) {
             {showForm && (
                 <form onSubmit={handleSubmit} style={{
                     padding: 12, borderRadius: 8, marginBottom: 12,
-                    background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)',
+                    background: 'rgba(214,254,81,0.04)', border: '1px solid rgba(214,254,81,0.15)',
                 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                         <select name="policyType" defaultValue={editing?.policyType || 'liability'} className="s-input" style={{ fontSize: 11 }}>
@@ -347,7 +347,7 @@ export default function InsuranceModule({ propertyId }: Props) {
 
                                 {/* Expand/Collapse for docs & workitems */}
                                 <button onClick={() => setExpandedPolicy(expandedPolicy === p.id ? null : p.id)}
-                                    style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 10, fontWeight: 600, cursor: 'pointer', marginTop: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    style={{ background: 'none', border: 'none', color: '#D6FE51', fontSize: 10, fontWeight: 600, cursor: 'pointer', marginTop: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                                     {expandedPolicy === p.id ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                                     {expandedPolicy === p.id ? 'Collapse' : 'Documents & Links'}
                                 </button>
@@ -367,7 +367,7 @@ export default function InsuranceModule({ propertyId }: Props) {
                                                     background: 'rgba(255,255,255,0.02)', fontSize: 10, color: '#cbd5e1',
                                                     display: 'flex', alignItems: 'center', gap: 6,
                                                 }}>
-                                                    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'rgba(99,102,241,0.12)', color: '#818cf8', textTransform: 'uppercase' }}>{doc.type}</span>
+                                                    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', textTransform: 'uppercase' }}>{doc.type}</span>
                                                     <span style={{ flex: 1 }}>{doc.description}</span>
                                                     <span style={{ color: '#475569' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>
                                                 </div>
@@ -382,7 +382,7 @@ export default function InsuranceModule({ propertyId }: Props) {
                                                     <option value="other">Other</option>
                                                 </select>
                                                 <input name="description" placeholder="Description" style={{ flex: 1, padding: '3px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0' }} />
-                                                <button type="submit" style={{ padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                <button type="submit" style={{ padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.2)', color: '#D6FE51', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
                                                     <Upload size={9} /> Add
                                                 </button>
                                             </form>

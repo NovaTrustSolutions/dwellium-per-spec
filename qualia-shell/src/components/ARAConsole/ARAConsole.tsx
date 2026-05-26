@@ -102,10 +102,10 @@ const PERSONA_THEMES: Record<string, { accent: string; accentRgb: string; gradie
         bgTint: 'rgba(245, 158, 11, 0.04)',
     },
     'diplomat': {
-        accent: '#8b5cf6',
+        accent: '#D6FE51',
         accentRgb: '139, 92, 246',
         gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-        bgTint: 'rgba(139, 92, 246, 0.04)',
+        bgTint: 'rgba(214, 254, 81, 0.04)',
     },
     'devils-advocate': {
         accent: '#ef4444',
@@ -572,13 +572,21 @@ export default function ARAConsole() {
             console.error('[ARA TTS] ❌ Backend TTS fetch failed:', err);
         }
 
-        // Fallback: browser SpeechSynthesis
+        // Fallback: browser SpeechSynthesis (tuned for natural human delivery)
         console.log('[ARA TTS] ⚠️ Falling back to browser SpeechSynthesis');
         const utterance = new SpeechSynthesisUtterance(cleaned);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
+        utterance.rate = 0.92;
+        utterance.pitch = 1.06;
         const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v => v.name.includes('Samantha')) ||
+        const preferred =
+            voices.find(v => v.name.includes('Samantha (Enhanced)')) ||
+            voices.find(v => v.name.includes('Karen (Enhanced)')) ||
+            voices.find(v => v.name.includes('Zoe (Enhanced)')) ||
+            voices.find(v => v.name.includes('Samantha')) ||
+            voices.find(v => v.name.includes('Karen')) ||
+            voices.find(v => v.name.includes('Zoe')) ||
+            voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) ||
+            voices.find(v => v.lang.startsWith('en-US') && v.localService) ||
             voices.find(v => v.lang.startsWith('en'));
         if (preferred) utterance.voice = preferred;
         utterance.onend = () => setIsSpeaking(false);
@@ -1688,7 +1696,7 @@ export default function ARAConsole() {
 
                     {/* Provider Status */}
                     <div className="ara-voice-provider">
-                        <span className="ara-voice-provider-dot" style={{ background: voiceStatus?.tts?.provider === 'openai-tts' ? '#8b5cf6' : voiceStatus?.tts?.provider === 'chatterbox' ? '#22c55e' : voiceStatus?.tts?.provider === 'google-cloud' ? '#3b82f6' : '#f59e0b' }} />
+                        <span className="ara-voice-provider-dot" style={{ background: voiceStatus?.tts?.provider === 'openai-tts' ? '#D6FE51' : voiceStatus?.tts?.provider === 'chatterbox' ? '#22c55e' : voiceStatus?.tts?.provider === 'google-cloud' ? '#3b82f6' : '#f59e0b' }} />
                         <span className="ara-voice-provider-label">
                             {voiceStatus?.tts?.provider === 'openai-tts' ? 'OpenAI TTS (Primary)'
                                 : voiceStatus?.tts?.provider === 'chatterbox' ? 'Chatterbox TTS (Fallback)'

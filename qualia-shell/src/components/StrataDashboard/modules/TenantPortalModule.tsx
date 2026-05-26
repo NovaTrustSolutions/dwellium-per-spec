@@ -80,6 +80,7 @@ import { strataGet, strataPost, isStaticMode } from '../strataApi';
 import type { PortalTab, TenantPortalPagination, TenantPortalStats } from '../strataTypes';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
+import { useStrataNav } from '../StrataNavContext';
 
 const TABS: { id: PortalTab; label: string; icon: typeof Users }[] = [
     { id: 'directory', label: 'Directory', icon: Users },
@@ -98,7 +99,7 @@ const getInitials = (name: string) => name?.split(' ').map(w => w[0]).join('').s
 
 // Color from name hash
 const nameColor = (name: string) => {
-    const colors = ['#6366f1', '#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#14b8a6', '#ef4444', '#3b82f6'];
+    const colors = ['#D6FE51', '#06b6d4', '#D6FE51', '#ec4899', '#f59e0b', '#14b8a6', '#ef4444', '#3b82f6'];
     let h = 0;
     for (let i = 0; i < (name?.length || 0); i++) h = name.charCodeAt(i) + ((h << 5) - h);
     return colors[Math.abs(h) % colors.length];
@@ -106,6 +107,7 @@ const nameColor = (name: string) => {
 
 function TenantPortalModuleInner() {
     const { hasPermission } = useUser();
+    const { navigateToResident, navigateToProperty } = useStrataNav();
     const [tab, setTab] = useState<PortalTab>('directory');
     const [search, setSearch] = useState('');
     const [stats, setStats] = useState<TenantPortalStats | null>(null);
@@ -266,10 +268,10 @@ function TenantPortalModuleInner() {
     function KpiRow() {
         if (!stats) return null;
         const cards = [
-            { label: 'Total Tenants', value: String(stats.totalTenants), icon: Users, color: '#6366f1' },
+            { label: 'Total Tenants', value: String(stats.totalTenants), icon: Users, color: '#D6FE51' },
             { label: 'Open Requests', value: String(stats.openMaintenanceRequests), icon: Wrench, color: '#f59e0b' },
             { label: 'Expiring Leases', value: String(stats.expiringLeases), icon: AlertTriangle, color: '#ef4444' },
-            { label: 'Vacant Units', value: String(stats.vacantUnits), icon: Building2, color: '#8b5cf6' },
+            { label: 'Vacant Units', value: String(stats.vacantUnits), icon: Building2, color: '#D6FE51' },
         ];
         return (
             <div className="tp-kpi-grid">
@@ -334,7 +336,7 @@ function TenantPortalModuleInner() {
         return (
             <div className="tp-card">
                 <div className="tp-card-header">
-                    <div className="tp-card-header-icon" style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8' }}>
+                    <div className="tp-card-header-icon" style={{ background: 'rgba(214,254,81,0.12)', color: '#D6FE51' }}>
                         <Users size={15} />
                     </div>
                     <h3>Tenant Directory</h3>
@@ -372,13 +374,15 @@ function TenantPortalModuleInner() {
                                                         {getInitials(t.name)}
                                                     </div>
                                                     <div>
-                                                        <div className="tp-cell-name">{t.name}</div>
+                                                        <button className="s-resident-link tp-cell-name" onClick={(e) => { e.stopPropagation(); navigateToResident(t.id); }}>{t.name}</button>
                                                         <div className="tp-cell-sub">{t.email}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>{t.unitNumber || '—'}</td>
-                                            <td>{t.propertyName || '—'}</td>
+                                            <td>{t.propertyId ? (
+                                                <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(t.propertyId); }}>{t.propertyName || '—'}</button>
+                                            ) : (t.propertyName || '—')}</td>
                                             <td className="tp-cell-money">{t.rentAmount ? `$${t.rentAmount.toLocaleString()}` : '—'}</td>
                                             <td>
                                                 {t.leaseEnd ? new Date(t.leaseEnd).toLocaleDateString() : '—'}
@@ -444,7 +448,11 @@ function TenantPortalModuleInner() {
                                     <Building2 size={14} />
                                     <div>
                                         <div className="tp-detail-item-label">Property</div>
-                                        <div className="tp-detail-item-value">{selectedTenant.propertyName}</div>
+                                        <div className="tp-detail-item-value">
+                                            {selectedTenant.propertyId ? (
+                                                <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={() => navigateToProperty(selectedTenant.propertyId)}>{selectedTenant.propertyName}</button>
+                                            ) : selectedTenant.propertyName}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -601,7 +609,9 @@ function TenantPortalModuleInner() {
                                                     <span className="tp-cell-name">{p.tenantName}</span>
                                                 </div>
                                             </td>
-                                            <td>{p.propertyName || '—'}</td>
+                                            <td>{p.propertyId ? (
+                                                <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(p.propertyId); }}>{p.propertyName || '—'}</button>
+                                            ) : (p.propertyName || '—')}</td>
                                             <td>{p.unitNumber || '—'}</td>
                                             <td>{p.title}</td>
                                             <td>{statusBadge(p.status)}</td>
@@ -625,7 +635,7 @@ function TenantPortalModuleInner() {
                 {replyTo && (
                     <div className="tp-reply-form">
                         <h4 className="tp-reply-title">
-                            <Send size={14} style={{ color: '#6366f1' }} />
+                            <Send size={14} style={{ color: '#D6FE51' }} />
                             Reply to {replyTo.tenantName}
                         </h4>
                         <div className="tp-reply-fields">
@@ -658,7 +668,7 @@ function TenantPortalModuleInner() {
 
                 <div className="tp-card">
                     <div className="tp-card-header">
-                        <div className="tp-card-header-icon" style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8' }}>
+                        <div className="tp-card-header-icon" style={{ background: 'rgba(214,254,81,0.12)', color: '#D6FE51' }}>
                             <MessageSquare size={15} />
                         </div>
                         <h3>Tenant Messages</h3>
@@ -756,7 +766,9 @@ function TenantPortalModuleInner() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>{a.propertyName}</td>
+                                        <td>{a.propertyId ? (
+                                            <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(a.propertyId); }}>{a.propertyName}</button>
+                                        ) : a.propertyName}</td>
                                         <td>
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                                 <Hash size={11} style={{ color: '#475569' }} />{a.unitNumber}

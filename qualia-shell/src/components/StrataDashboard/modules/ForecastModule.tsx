@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, DollarSign, Building, AlertCircle, RefreshCw } from 'lucide-react';
 import { strataGet } from '../strataApi';
 import type { ForecastResult } from '@qualia/types';
+import { useStrataNav } from '../StrataNavContext';
 // Task 2.4 — GR-13 observability wiring + ErrorBoundary, mirrors the
 // 2.1 / 2.2 / 2.10 retrofit pattern. Sentry breadcrumbs are
 // try/catch-wrapped so missing DSN is silent in test/local builds.
@@ -13,6 +14,7 @@ const fmt = (n: number) => `$${n.toLocaleString()}`;
 const fmtK = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(0)}k` : `$${n}`;
 
 function ForecastModuleInner() {
+    const { navigateToProperty } = useStrataNav();
     const [forecast, setForecast] = useState<ForecastResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -103,7 +105,7 @@ function ForecastModuleInner() {
                     onClick={runForecast}
                     disabled={loading}
                     data-testid="forecast-run-button"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#D6FE51', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                 >
                     <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
                     {loading ? 'Running...' : 'Run Forecast'}
@@ -128,7 +130,7 @@ function ForecastModuleInner() {
                 <div>
                     <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Months: {months}</label>
                     <input type="range" min="3" max="36" value={months} onChange={e => setMonths(Number(e.target.value))}
-                        style={{ width: '100%', accentColor: '#6366f1' }} />
+                        style={{ width: '100%', accentColor: '#D6FE51' }} />
                 </div>
 
                 <div>
@@ -137,7 +139,7 @@ function ForecastModuleInner() {
                         Override Occupancy: {occupancy}%
                     </label>
                     <input type="range" min="40" max="100" value={occupancy} onChange={e => setOccupancy(Number(e.target.value))}
-                        disabled={!useOccupancyOverride} style={{ width: '100%', accentColor: '#6366f1' }} />
+                        disabled={!useOccupancyOverride} style={{ width: '100%', accentColor: '#D6FE51' }} />
                 </div>
 
                 <div>
@@ -163,7 +165,7 @@ function ForecastModuleInner() {
                             { id: 'revenue', testid: 'forecast-summary-revenue', icon: <DollarSign size={16} />, label: 'Projected Revenue', value: fmt(forecast.summary.totalRevenue), color: '#22c55e' },
                             { id: 'expenses', testid: 'forecast-summary-expenses', icon: <DollarSign size={16} />, label: 'Projected Expenses', value: fmt(forecast.summary.totalExpenses), color: '#f97316' },
                             { id: 'net', testid: 'forecast-summary-net', icon: <TrendingUp size={16} />, label: 'Net Cash Flow', value: fmt(forecast.summary.totalNet), color: netColor(forecast.summary.totalNet) },
-                            { id: 'occupancy', testid: 'forecast-summary-occupancy', icon: <Building size={16} />, label: 'Avg Occupancy', value: `${forecast.summary.avgOccupancy}%`, color: '#6366f1' },
+                            { id: 'occupancy', testid: 'forecast-summary-occupancy', icon: <Building size={16} />, label: 'Avg Occupancy', value: `${forecast.summary.avgOccupancy}%`, color: '#D6FE51' },
                         ].map(card => (
                             <div key={card.id} data-testid={card.testid} style={{ background: '#1e2537', borderRadius: 10, padding: 14 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: 12, marginBottom: 6 }}>
@@ -183,7 +185,9 @@ function ForecastModuleInner() {
 
                     {/* Bar Chart */}
                     <div style={{ background: '#1e2537', borderRadius: 12, padding: 20 }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#f1f5f9', fontWeight: 600 }}>Monthly Projection — {forecast.propertyName}</h3>
+                        <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#f1f5f9', fontWeight: 600 }}>Monthly Projection — {forecast.propertyId ? (
+                            <button className="s-property-link" style={{ fontSize: 14, fontWeight: 600 }} onClick={() => navigateToProperty(forecast.propertyId!)}>{forecast.propertyName}</button>
+                        ) : forecast.propertyName}</h3>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={forecast.months} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -218,7 +222,7 @@ function ForecastModuleInner() {
                                         <td style={{ padding: '10px 12px', color: '#22c55e' }}>{fmt(m.projectedRevenue)}</td>
                                         <td style={{ padding: '10px 12px', color: '#f97316' }}>{fmt(m.projectedExpenses)}</td>
                                         <td style={{ padding: '10px 12px', color: netColor(m.netCashFlow), fontWeight: 600 }}>{fmt(m.netCashFlow)}</td>
-                                        <td style={{ padding: '10px 12px', color: '#6366f1' }}>{m.occupancyRate}%</td>
+                                        <td style={{ padding: '10px 12px', color: '#D6FE51' }}>{m.occupancyRate}%</td>
                                     </tr>
                                 ))}
                             </tbody>

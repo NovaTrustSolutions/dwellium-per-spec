@@ -5,21 +5,21 @@
 
 /* ── Variables — inherit from global theme ────────────────────────── */
 .astra-dashboard {
-    --a-bg: var(--bg-desktop, #0a0e1a);
+    --a-bg: var(--bg-desktop, #000000);
     --a-surface: var(--bg-glass, rgba(20, 27, 45, 0.85));
     --a-surface-2: var(--bg-glass-hover, rgba(30, 40, 65, 0.7));
     --a-border: var(--border-default, rgba(100, 120, 180, 0.15));
     --a-text: var(--text-primary, #e2e8f0);
     --a-text-dim: var(--text-secondary, #8892a8);
-    --a-accent: var(--accent, #818cf8);
-    --a-accent-glow: rgba(129, 140, 248, 0.3);
+    --a-accent: var(--accent, #D6FE51);
+    --a-accent-glow: rgba(214, 254, 81, 0.3);
     --a-heat-good: rgba(34, 197, 94, 0.25);
     --a-heat-ok: rgba(234, 179, 8, 0.25);
     --a-heat-bad: rgba(239, 68, 68, 0.25);
     --a-cal-inspect: #f97316;
     --a-cal-comply: var(--success, #22c55e);
     --a-cal-deadline: var(--danger, #ef4444);
-    --a-cal-corporate: #6366f1;
+    --a-cal-corporate: #D6FE51;
     --a-radius: 10px;
     --a-glass: blur(20px);
 
@@ -29,7 +29,7 @@
     color: var(--a-text);
     display: flex;
     flex-direction: column;
-    font-family: var(--font-primary, 'Inter', -apple-system, sans-serif);
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     font-size: 13px;
     overflow: hidden;
     transition: background 0.35s ease, color 0.35s ease;
@@ -41,7 +41,7 @@
    clear contrast and visual separation.
    ═══════════════════════════════════════════ */
 :is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .astra-dashboard {
-    --a-accent-glow: rgba(99, 102, 241, 0.15);
+    --a-accent-glow: rgba(214, 254, 81, 0.15);
     --a-heat-good: rgba(34, 197, 94, 0.15);
     --a-heat-ok: rgba(234, 179, 8, 0.15);
     --a-heat-bad: rgba(239, 68, 68, 0.15);
@@ -97,8 +97,8 @@
 
     /* ── Active tabs ── */
     & .a-tab-active {
-        background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
-        border-color: var(--accent, rgba(99, 102, 241, 0.3));
+        background: var(--accent-subtle, rgba(214, 254, 81, 0.1));
+        border-color: var(--accent, rgba(214, 254, 81, 0.3));
     }
 
     /* ── Calendar → visible grid cells ── */
@@ -106,7 +106,7 @@
         background: var(--bg-surface-hover, #eef0f3);
     }
     & .a-cal-today {
-        background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
+        background: var(--accent-subtle, rgba(214, 254, 81, 0.1));
     }
     & .a-cal-legend {
         border-top: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
@@ -138,8 +138,8 @@
         background: var(--bg-surface-hover, #eef0f3);
     }
     & .aw-queue-active {
-        background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
-        border-color: var(--accent, rgba(99, 102, 241, 0.3));
+        background: var(--accent-subtle, rgba(214, 254, 81, 0.1));
+        border-color: var(--accent, rgba(214, 254, 81, 0.3));
     }
 
     /* ── Chat pane ── */
@@ -153,8 +153,8 @@
         border-bottom: 1px solid var(--border-default, rgba(0, 0, 0, 0.1));
     }
     & .aw-msg-user .aw-msg-body {
-        background: var(--accent-subtle, rgba(99, 102, 241, 0.08));
-        border: 1px solid var(--accent, rgba(99, 102, 241, 0.2));
+        background: var(--accent-subtle, rgba(214, 254, 81, 0.08));
+        border: 1px solid var(--accent, rgba(214, 254, 81, 0.2));
     }
     & .aw-msg-assistant .aw-msg-body {
         background: var(--bg-surface-elevated, #f6f7f9);
@@ -215,8 +215,8 @@
         border-color: var(--border-default, rgba(0, 0, 0, 0.1));
     }
     & .tc-tab-active {
-        background: var(--accent-subtle, rgba(99, 102, 241, 0.1));
-        border-color: var(--accent, rgba(99, 102, 241, 0.3));
+        background: var(--accent-subtle, rgba(214, 254, 81, 0.1));
+        border-color: var(--accent, rgba(214, 254, 81, 0.3));
     }
     & .tc-tab-count {
         background: var(--bg-surface-elevated, #f6f7f9);
@@ -232,8 +232,8 @@
         background: var(--bg-surface-hover, #eef0f3);
     }
     & .tc-thread-active {
-        background: var(--accent-subtle, rgba(99, 102, 241, 0.08));
-        border-color: var(--accent, rgba(99, 102, 241, 0.25));
+        background: var(--accent-subtle, rgba(214, 254, 81, 0.08));
+        border-color: var(--accent, rgba(214, 254, 81, 0.25));
     }
 
     /* ── Thread detail ── */
@@ -263,7 +263,7 @@
     justify-content: space-between;
     padding: 10px 20px;
     background: var(--a-surface);
-    backdrop-filter: var(--a-glass);
+    backdrop-filter: none;
     border-bottom: 1px solid var(--a-border);
     flex-shrink: 0;
 }
@@ -284,7 +284,7 @@
     font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    background: linear-gradient(135deg, var(--a-accent), #c084fc);
+    background: linear-gradient(135deg, var(--a-accent), #E8FF7A);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -323,8 +323,8 @@
 
 .astra-dashboard .a-tab-active {
     color: var(--a-accent);
-    background: rgba(129, 140, 248, 0.1);
-    border-color: rgba(129, 140, 248, 0.3);
+    background: rgba(214, 254, 81, 0.1);
+    border-color: rgba(214, 254, 81, 0.3);
 }
 
 /* ── Content ──────────────────────────────────────────────────────── */
@@ -356,7 +356,7 @@
 /* ── Panel Base ───────────────────────────────────────────────────── */
 .astra-dashboard .a-panel {
     background: var(--a-surface);
-    backdrop-filter: var(--a-glass);
+    backdrop-filter: none;
     border: 1px solid var(--a-border);
     border-radius: var(--a-radius);
     padding: 14px;
@@ -618,7 +618,7 @@
 .astra-dashboard .a-cal-today {
     font-weight: 700;
     color: var(--a-accent);
-    background: rgba(129, 140, 248, 0.1);
+    background: rgba(214, 254, 81, 0.1);
 }
 
 .astra-dashboard .a-cal-empty {
@@ -817,8 +817,8 @@
 }
 
 .aw-queue-active {
-    background: rgba(129, 140, 248, 0.1);
-    border-color: rgba(129, 140, 248, 0.3);
+    background: rgba(214, 254, 81, 0.1);
+    border-color: rgba(214, 254, 81, 0.3);
 }
 
 .aw-item-top {
@@ -956,8 +956,8 @@
 }
 
 .aw-msg-user .aw-msg-body {
-    background: rgba(129, 140, 248, 0.15);
-    border: 1px solid rgba(129, 140, 248, 0.25);
+    background: rgba(214, 254, 81, 0.15);
+    border: 1px solid rgba(214, 254, 81, 0.25);
     border-radius: 12px 12px 2px 12px;
     padding: 10px 14px;
     max-width: 75%;
@@ -1144,7 +1144,7 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    backdrop-filter: blur(4px);
+    backdrop-filter: none;
 }
 
 .aw-modal,
@@ -1258,7 +1258,7 @@
     padding: 8px 18px;
     font-size: 13px;
     font-weight: 500;
-    box-shadow: 0 4px 20px rgba(129, 140, 248, 0.3);
+    box-shadow: 0 4px 20px rgba(214, 254, 81, 0.3);
     animation: toast-in 0.3s ease;
     z-index: 999;
 }
@@ -1316,7 +1316,7 @@
 .tc-tab-active {
     color: var(--a-text);
     border-color: var(--tc-accent, var(--a-accent));
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(214, 254, 81, 0.1);
 }
 
 .tc-tab-active svg {
@@ -1392,8 +1392,8 @@
 }
 
 .tc-thread-active {
-    background: rgba(129, 140, 248, 0.1);
-    border-color: rgba(129, 140, 248, 0.3);
+    background: rgba(214, 254, 81, 0.1);
+    border-color: rgba(214, 254, 81, 0.3);
 }
 
 .tc-thread-top {
@@ -1564,8 +1564,8 @@
 }
 .astra-dashboard .a-finance-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(129, 140, 248, 0.15), 0 0 0 1px rgba(129, 140, 248, 0.1);
-    border-color: rgba(129, 140, 248, 0.25);
+    box-shadow: 0 8px 24px rgba(214, 254, 81, 0.15), 0 0 0 1px rgba(214, 254, 81, 0.1);
+    border-color: rgba(214, 254, 81, 0.25);
 }
 
 /* [P2] Tab indicator sliding animation */
@@ -1593,7 +1593,7 @@
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .astra-dashboard .a-panel:hover {
-    border-color: rgba(129, 140, 248, 0.2);
+    border-color: rgba(214, 254, 81, 0.2);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 

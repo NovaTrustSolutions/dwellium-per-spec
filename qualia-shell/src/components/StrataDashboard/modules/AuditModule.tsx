@@ -43,7 +43,7 @@ const ACTION_COLORS: Record<string, string> = {
 
 const ROLE_COLORS: Record<string, string> = {
     god: '#f59e0b',
-    corporate: '#8b5cf6',
+    corporate: '#D6FE51',
     management: '#3b82f6',
     advisor: '#06b6d4',
     maintenance: '#22c55e',
@@ -210,7 +210,7 @@ export default function AuditModule() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Shield size={22} style={{ color: '#a78bfa' }} />
+                        <Shield size={22} style={{ color: '#D6FE51' }} />
                         Audit &amp; Archive
                     </h2>
                     <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
@@ -223,8 +223,8 @@ export default function AuditModule() {
                         style={{
                             display: 'flex', alignItems: 'center', gap: 6,
                             padding: '8px 14px', borderRadius: 8,
-                            background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)',
-                            color: '#a5b4fc', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                            background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.3)',
+                            color: '#D6FE51', cursor: 'pointer', fontSize: 12, fontWeight: 600,
                         }}
                     >
                         <Plus size={14} /> Log Historical Event
@@ -257,8 +257,8 @@ export default function AuditModule() {
                         }}
                         style={{
                             padding: '6px 14px', border: 'none', borderRadius: 6,
-                            background: viewTab === t.id ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                            color: viewTab === t.id ? '#818cf8' : '#94a3b8',
+                            background: viewTab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                            color: viewTab === t.id ? '#D6FE51' : '#94a3b8',
                             cursor: 'pointer', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4,
                         }}>
                         <t.Icon size={13} /> {t.label}
@@ -415,7 +415,7 @@ export default function AuditModule() {
                                                         <span style={{ fontWeight: 600, color: '#64748b', fontSize: 11 }}>Details</span>
                                                         <pre style={{
                                                             margin: '4px 0 0', padding: 10, borderRadius: 6,
-                                                            background: 'rgba(0,0,0,0.3)', color: '#a5b4fc',
+                                                            background: 'rgba(0,0,0,0.3)', color: '#D6FE51',
                                                             fontSize: 11, overflow: 'auto', maxHeight: 200,
                                                             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                                                         }}>
@@ -500,7 +500,7 @@ export default function AuditModule() {
                                     <span style={{
                                         fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
                                         padding: '2px 6px', borderRadius: 10,
-                                        background: 'rgba(99,102,241,0.12)', color: '#a5b4fc',
+                                        background: 'rgba(214,254,81,0.12)', color: '#D6FE51',
                                         flexShrink: 0, marginTop: 2,
                                     }}>{r.type}</span>
                                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -526,7 +526,7 @@ export default function AuditModule() {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onClick={() => setShowHistForm(false)}
                 >
-                    <div style={{ background: '#111827', borderRadius: 16, border: '1px solid rgba(99,102,241,0.25)', width: 480, maxWidth: '90vw', overflow: 'hidden' }}
+                    <div style={{ background: '#111827', borderRadius: 16, border: '1px solid rgba(214,254,81,0.25)', width: 480, maxWidth: '90vw', overflow: 'hidden' }}
                         onClick={e => e.stopPropagation()}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #1e2a3d' }}>
@@ -574,7 +574,7 @@ export default function AuditModule() {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
                                 <button type="button" onClick={() => setShowHistForm(false)} style={{ padding: '8px 16px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}>Cancel</button>
-                                <button type="submit" style={{ padding: '8px 20px', borderRadius: 6, background: '#6366f1', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Log Event</button>
+                                <button type="submit" style={{ padding: '8px 20px', borderRadius: 6, background: '#D6FE51', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Log Event</button>
                             </div>
                         </form>
                     </div>
@@ -651,7 +651,7 @@ export default function AuditModule() {
                                 {Object.entries(complianceSummary.byCategory as Record<string, number>).map(([cat, count]) => (
                                     <span key={cat} style={{
                                         padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 600,
-                                        background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)', color: '#a78bfa',
+                                        background: 'rgba(214,254,81,0.08)', border: '1px solid rgba(214,254,81,0.15)', color: '#D6FE51',
                                     }}>
                                         {cat.replace(/_/g, ' ')}: {count}
                                     </span>
@@ -721,7 +721,7 @@ export default function AuditModule() {
                                     <span key={src} style={{
                                         fontSize: 11, fontWeight: 600,
                                         padding: '2px 8px', borderRadius: 5,
-                                        background: 'rgba(99,102,241,0.1)', color: '#a5b4fc',
+                                        background: 'rgba(214,254,81,0.1)', color: '#D6FE51',
                                     }}>
                                         {src.replace('_', ' ')}: {unifiedBreakdown[src] ?? 0}
                                     </span>
@@ -801,7 +801,7 @@ export default function AuditModule() {
 // Task 2.7 — source/severity color maps. Kept module-scoped (not inline)
 // so tests can import them if needed and so the render block stays clean.
 const SOURCE_COLORS: Record<string, string> = {
-    compliance: '#818cf8',
+    compliance: '#D6FE51',
     insurance: '#3b82f6',
     workitem: '#f59e0b',
     audit_log: '#94a3b8',

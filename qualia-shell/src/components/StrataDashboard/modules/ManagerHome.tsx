@@ -163,7 +163,7 @@ export default function ManagerHome() {
             <div style={cardStyle}>
                 <div style={headerStyle}>
                     <ClipboardList size={16} color="#818cf8" /> My Tasks
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#818cf8', fontWeight: 700 }}>{tasks.length}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#D6FE51', fontWeight: 700 }}>{tasks.length}</span>
                 </div>
                 {tasks.length === 0 ? (
                     <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>

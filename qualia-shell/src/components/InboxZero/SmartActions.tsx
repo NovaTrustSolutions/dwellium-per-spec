@@ -420,7 +420,7 @@ export default function SmartActions() {
                                 <div key={t.id} style={styles.card}>
                                     <div style={styles.cardTitle}>
                                         {t.name}
-                                        <span style={{ ...styles.badge, background: 'rgba(99, 102, 241, 0.2)', color: '#6366f1' }}>
+                                        <span style={{ ...styles.badge, background: 'rgba(214, 254, 81, 0.2)', color: '#D6FE51' }}>
                                             used {t.useCount}x
                                         </span>
                                     </div>

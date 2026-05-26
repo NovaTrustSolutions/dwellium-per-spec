@@ -9,7 +9,7 @@
     flex-direction: column;
     gap: 16px;
     animation: tp-fadeIn 0.35s ease-out;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
 }
 
 @keyframes tp-fadeIn {
@@ -41,7 +41,7 @@
     left: 0;
     width: 120px;
     height: 2px;
-    background: linear-gradient(90deg, #6366f1, #818cf8, transparent);
+    background: linear-gradient(90deg, #D6FE51, #D6FE51, transparent);
     border-radius: 1px;
 }
 
@@ -127,14 +127,14 @@
 }
 
 .tp-search:focus {
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: rgba(214, 254, 81, 0.4);
+    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.1);
     background: rgba(255, 255, 255, 0.05);
 }
 
 .tp-search:focus+.tp-search-icon,
 .tp-search-wrap:focus-within .tp-search-icon {
-    color: #818cf8;
+    color: #D6FE51;
 }
 
 .tp-search::placeholder {
@@ -157,9 +157,9 @@
 }
 
 .tp-refresh-btn:hover {
-    border-color: rgba(99, 102, 241, 0.3);
-    color: #818cf8;
-    background: rgba(99, 102, 241, 0.06);
+    border-color: rgba(214, 254, 81, 0.3);
+    color: #D6FE51;
+    background: rgba(214, 254, 81, 0.06);
 }
 
 .tp-refresh-btn:active svg {
@@ -191,7 +191,7 @@
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
     transition: all 0.25s ease;
     cursor: default;
     position: relative;
@@ -294,10 +294,10 @@
 
 /* 17. Active tab with accent glow */
 .tp-tab.active {
-    background: rgba(99, 102, 241, 0.12);
-    color: #a5b4fc;
+    background: rgba(214, 254, 81, 0.12);
+    color: #D6FE51;
     font-weight: 600;
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.08);
+    box-shadow: 0 0 12px rgba(214, 254, 81, 0.08);
 }
 
 .tp-tab.active::after {
@@ -309,7 +309,7 @@
     width: 20px;
     height: 2px;
     border-radius: 1px;
-    background: #6366f1;
+    background: #D6FE51;
 }
 
 /* ── 18–21. Content card (glass container for each tab) ── */
@@ -317,7 +317,7 @@
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.015);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(6px);
+    backdrop-filter: none;
     padding: 20px;
     animation: tp-slideUp 0.3s ease-out;
 }
@@ -410,7 +410,7 @@
 }
 
 .tp-table tbody tr:hover {
-    background: rgba(99, 102, 241, 0.04);
+    background: rgba(214, 254, 81, 0.04);
 }
 
 .tp-table tbody tr:last-child {
@@ -430,12 +430,12 @@
 }
 
 .tp-table tbody tr.tp-row-clickable:hover {
-    background: rgba(99, 102, 241, 0.06);
+    background: rgba(214, 254, 81, 0.06);
 }
 
 .tp-table tbody tr.tp-row-selected {
-    background: rgba(99, 102, 241, 0.08) !important;
-    border-left: 3px solid #6366f1;
+    background: rgba(214, 254, 81, 0.08) !important;
+    border-left: 3px solid #D6FE51;
 }
 
 /* 27. Name cell with two lines */
@@ -480,8 +480,8 @@
 
 .tp-badge-pending,
 .tp-badge-in_progress {
-    background: rgba(99, 102, 241, 0.12);
-    color: #a5b4fc;
+    background: rgba(214, 254, 81, 0.12);
+    color: #D6FE51;
 }
 
 .tp-badge-closed,
@@ -616,9 +616,9 @@
 }
 
 .tp-page-btn:hover:not(:disabled) {
-    background: rgba(99, 102, 241, 0.1);
-    color: #a5b4fc;
-    border-color: rgba(99, 102, 241, 0.2);
+    background: rgba(214, 254, 81, 0.1);
+    color: #D6FE51;
+    border-color: rgba(214, 254, 81, 0.2);
 }
 
 .tp-page-btn:disabled {
@@ -639,9 +639,9 @@
     margin-top: 14px;
     padding: 18px;
     border-radius: 12px;
-    background: rgba(99, 102, 241, 0.03);
-    border: 1px solid rgba(99, 102, 241, 0.1);
-    border-left: 3px solid #6366f1;
+    background: rgba(214, 254, 81, 0.03);
+    border: 1px solid rgba(214, 254, 81, 0.1);
+    border-left: 3px solid #D6FE51;
     animation: tp-slideUp 0.25s ease-out;
 }
 
@@ -652,7 +652,7 @@
     align-items: center;
     margin-bottom: 14px;
     padding-bottom: 10px;
-    border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+    border-bottom: 1px solid rgba(214, 254, 81, 0.08);
 }
 
 .tp-detail-name {
@@ -703,7 +703,7 @@
 }
 
 .tp-detail-item svg {
-    color: #6366f1;
+    color: #D6FE51;
     flex-shrink: 0;
 }
 
@@ -744,8 +744,8 @@
 }
 
 .tp-msg-outbound {
-    background: rgba(99, 102, 241, 0.04);
-    border-left: 3px solid rgba(99, 102, 241, 0.4);
+    background: rgba(214, 254, 81, 0.04);
+    border-left: 3px solid rgba(214, 254, 81, 0.4);
 }
 
 /* 45. Message header */
@@ -779,8 +779,8 @@
 }
 
 .tp-msg-direction-out {
-    background: rgba(99, 102, 241, 0.12);
-    color: #a5b4fc;
+    background: rgba(214, 254, 81, 0.12);
+    color: #D6FE51;
 }
 
 .tp-msg-sender {
@@ -811,9 +811,9 @@
     margin-bottom: 14px;
     padding: 16px;
     border-radius: 12px;
-    background: rgba(99, 102, 241, 0.03);
-    border: 1px solid rgba(99, 102, 241, 0.12);
-    border-left: 3px solid #6366f1;
+    background: rgba(214, 254, 81, 0.03);
+    border: 1px solid rgba(214, 254, 81, 0.12);
+    border-left: 3px solid #D6FE51;
     animation: tp-slideUp 0.25s ease-out;
 }
 
@@ -846,8 +846,8 @@
 }
 
 .tp-input:focus {
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+    border-color: rgba(214, 254, 81, 0.4);
+    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.08);
 }
 
 .tp-input::placeholder {
@@ -877,15 +877,15 @@
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
     color: #fff;
     transition: all 0.2s;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.3);
 }
 
 .tp-btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #818cf8, #6366f1);
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    background: linear-gradient(135deg, #D6FE51, #D6FE51);
+    box-shadow: 0 4px 16px rgba(214, 254, 81, 0.4);
     transform: translateY(-1px);
 }
 
@@ -922,16 +922,16 @@
     font-weight: 600;
     font-family: inherit;
     border-radius: 6px;
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(214, 254, 81, 0.2);
     cursor: pointer;
-    background: rgba(99, 102, 241, 0.08);
-    color: #a5b4fc;
+    background: rgba(214, 254, 81, 0.08);
+    color: #D6FE51;
     transition: all 0.2s;
 }
 
 .tp-reply-btn:hover {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(214, 254, 81, 0.15);
+    border-color: rgba(214, 254, 81, 0.3);
 }
 
 /* ── 48. Empty state ── */

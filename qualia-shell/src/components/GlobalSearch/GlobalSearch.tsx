@@ -56,7 +56,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-    property: '#3b82f6', unit: '#8b5cf6', tenant: '#10b981', vendor: '#f59e0b', owner: '#6366f1',
+    property: '#3b82f6', unit: '#D6FE51', tenant: '#10b981', vendor: '#f59e0b', owner: '#D6FE51',
     vehicle: '#ec4899', workitem: '#06b6d4', insurance: '#22c55e',
     compliance: '#14b8a6', incident: '#ef4444', legal: '#a855f7',
 };
@@ -208,8 +208,8 @@ export default function GlobalSearch({ onNavigate }: Props) {
                 {FACET_OPTIONS.map(f => (
                     <button key={f} onClick={() => handleFacetClick(f)} style={{
                         padding: '2px 8px', borderRadius: 10, fontSize: 9, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                        background: activeFacet === f ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)',
-                        color: activeFacet === f ? '#a5b4fc' : '#64748b',
+                        background: activeFacet === f ? 'rgba(214,254,81,0.15)' : 'rgba(255,255,255,0.04)',
+                        color: activeFacet === f ? '#D6FE51' : '#64748b',
                     }}>
                         {f === 'all' ? 'All' : TYPE_LABELS[f] || f}
                         {f !== 'all' && response?.facets?.[f] ? ` (${response.facets[f]})` : ''}

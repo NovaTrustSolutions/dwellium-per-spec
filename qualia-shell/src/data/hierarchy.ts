@@ -20,7 +20,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-universal-shell', label: 'Universal Shell', icon: 'layout-grid', component: 'universal-shell', pinned: true, group: 'Property Management' },
    { id: 'dock-trello', label: 'Trello', icon: 'layout-list', component: 'trello-board', pinned: true, group: 'Property Management' },
    { id: 'dock-inbox-zero', label: 'Inbox Zero', icon: 'mail-open', component: 'inbox-zero', pinned: true, group: 'Property Management' },
-   { id: 'dock-settings', label: 'Settings', icon: 'settings', component: 'control-panel', pinned: true, group: 'Property Management' },
+   // dock-settings removed 2026-05-26 — Settings is now opened from the inline gear button next to the Domains header in Sidebar.tsx. Filter at Sidebar.tsx::permittedItems (component !== 'control-panel') also drops it for existing installs that have it in their saved layout.
    { id: 'dock-tenant-portal', label: 'Tenant Portal', icon: 'home', component: 'tenant-portal-mgmt', pinned: true, group: 'Property Management' },
    // ── AI Tools ──
    { id: 'dock-thought-weaver', label: 'Thought Weaver', icon: 'brain-circuit', component: 'thought-weaver', pinned: true, group: 'AI Tools' },

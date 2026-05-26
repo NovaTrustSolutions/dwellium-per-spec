@@ -618,20 +618,29 @@ export default function Sidebar() {
                                         style={{ marginRight: '4px' }}
                                     >{domainsCollapsed ? '+' : '−'}</button>
                                     <span className="sidebar__panel-title">Domains</span>
-                                    {!domainsCollapsed && hierarchy.length > 0 && (
-                                        <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
-                                            <button
-                                                className="sidebar__domain-toggle-btn"
-                                                onClick={expandAllDomains}
-                                                title="Expand All Nodes"
-                                            >⊞</button>
-                                            <button
-                                                className="sidebar__domain-toggle-btn"
-                                                onClick={collapseAllDomains}
-                                                title="Collapse All Nodes"
-                                            >⊟</button>
-                                        </div>
-                                    )}
+                                    {/* 2026-05-26: gear button ALWAYS visible to the right of the Domains header; expand/collapse-all buttons remain conditional on domains being open + non-empty. */}
+                                    <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
+                                        {!domainsCollapsed && hierarchy.length > 0 && (
+                                            <>
+                                                <button
+                                                    className="sidebar__domain-toggle-btn"
+                                                    onClick={expandAllDomains}
+                                                    title="Expand All Nodes"
+                                                >⊞</button>
+                                                <button
+                                                    className="sidebar__domain-toggle-btn"
+                                                    onClick={collapseAllDomains}
+                                                    title="Collapse All Nodes"
+                                                >⊟</button>
+                                            </>
+                                        )}
+                                        <button
+                                            className="sidebar__domain-toggle-btn"
+                                            onClick={() => handleWidgetClick('control-panel', 'Settings', 'settings')}
+                                            title="Settings"
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        ><SidebarIcon iconKey="settings" size={12} /></button>
+                                    </div>
                                 </div>
                                 {!domainsCollapsed && (
                                     <div className="sidebar__tree">
@@ -725,7 +734,8 @@ export default function Sidebar() {
                             {(() => {
                                 const query = searchQuery.trim();
                                 const searchActive = query.length > 0;
-                                const permittedItems = dockItems.filter(item => can(`widget:${item.component}`));
+                                // 2026-05-26: exclude control-panel — Settings is now opened from the gear button next to the Domains header, not from the widgets list.
+                                const permittedItems = dockItems.filter(item => can(`widget:${item.component}`) && item.component !== 'control-panel');
                                 const searchMatches = searchActive
                                     ? rankWidgetSearchResults(permittedItems, query, new Set(windows.map(w => w.component)))
                                     : [];

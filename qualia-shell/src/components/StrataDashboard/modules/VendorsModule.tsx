@@ -5,6 +5,7 @@ import type { EntityProfile, Workitem, VendorFederalTax, VendorAccountingInfo, V
 import { useUser } from '../../../context/UserContext';
 import ProfileSpaces from './ProfileSpaces';
 import { useToast } from '../useToast';
+import { useStrataNav } from '../StrataNavContext';
 import { LoadingState, ErrorState } from '../StateView';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
@@ -303,6 +304,7 @@ interface VendorsModuleProps {
 
 export default function VendorsModule({ searchNavTarget, onNavComplete }: VendorsModuleProps) {
     const { hasPermission } = useUser();
+    const { navigateToProperty } = useStrataNav();
     const { showToast, ToastContainer } = useToast();
     const [vendors, setVendors] = useState<EntityProfile[]>([]);
     const [workOrders, setWorkOrders] = useState<Workitem[]>([]);
@@ -1060,7 +1062,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                                     <Building2 size={12} color="#3b82f6" />
                                                                     <span style={{ flex: 1, fontWeight: 600, color: '#e2e8f0' }}>
-                                                                        {prop?.name || assoc.propertyId}
+                                                                        <button className="s-property-link" style={{ fontSize: 12, fontWeight: 600 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(assoc.propertyId); }}>{prop?.name || assoc.propertyId}</button>
                                                                     </span>
                                                                     <button onClick={() => handleToggleAssocStatus(assoc, selected.id)} style={{
                                                                         padding: '1px 7px', borderRadius: 6, fontSize: 9, fontWeight: 700,

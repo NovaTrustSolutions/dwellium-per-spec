@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import type { Property } from '../strataTypes';
+import { useStrataNav } from '../StrataNavContext';
 import { useToast } from '../useToast';
 
 interface IncidentLog {
@@ -47,6 +48,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function IncidentModule() {
+    const { navigateToProperty, navigateToUnit } = useStrataNav();
     const { showToast, ToastContainer } = useToast();
     const [incidents, setIncidents] = useState<IncidentLog[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
@@ -280,7 +282,7 @@ Generated: ${new Date().toLocaleString()}
                                         }}>{inc.severity}</span>
                                     </div>
                                     <div style={{ display: 'flex', gap: 8, fontSize: 10, color: '#475569' }}>
-                                        {prop && <span><Building2 size={9} style={{ verticalAlign: -1 }} /> {prop.name}</span>}
+                                        {prop && <span><Building2 size={9} style={{ verticalAlign: -1 }} /> <button className="s-property-link" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(inc.propertyId); }}>{prop.name}</button></span>}
                                         <span><Clock size={9} style={{ verticalAlign: -1 }} /> {new Date(inc.createdAt).toLocaleDateString()}</span>
                                         {inc.reportedBy && <span><User size={9} style={{ verticalAlign: -1 }} /> {inc.reportedBy}</span>}
                                     </div>
@@ -314,8 +316,8 @@ Generated: ${new Date().toLocaleString()}
                             {/* Property */}
                             <div style={{ marginBottom: 14 }}>
                                 <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Property</label>
-                                <span style={{ fontSize: 13, color: '#e2e8f0' }}>{propMap.get(selected.propertyId)?.name || selected.propertyId}</span>
-                                {selected.unitId && <span style={{ marginLeft: 8, fontSize: 11, color: '#64748b' }}>Unit: {selected.unitId}</span>}
+                                <button className="s-property-link" style={{ fontSize: 13 }} onClick={() => navigateToProperty(selected.propertyId)}>{propMap.get(selected.propertyId)?.name || selected.propertyId}</button>
+                                {selected.unitId && <span style={{ marginLeft: 8, fontSize: 11, color: '#64748b' }}>Unit: <button className="s-unit-link" style={{ fontSize: 11 }} onClick={() => navigateToUnit(selected.unitId!, selected.propertyId)}>{selected.unitId}</button></span>}
                             </div>
 
                             {/* Description */}

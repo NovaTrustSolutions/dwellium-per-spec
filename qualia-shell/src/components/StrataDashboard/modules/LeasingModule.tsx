@@ -18,6 +18,7 @@ import { strataGet, strataPut, strataPost } from '../strataApi';
 import type { Workitem, Property, Unit } from '../strataTypes';
 import ProfileSpaces from './ProfileSpaces';
 import { useUser } from '../../../context/UserContext';
+import { useStrataNav } from '../StrataNavContext';
 import { useToast } from '../useToast';
 import { LoadingState, ErrorState } from '../StateView';
 
@@ -178,6 +179,7 @@ function daysVacantColor(days: number) {
 
 export default function LeasingModule() {
     const { hasPermission } = useUser();
+    const { navigateToProperty, navigateToUnit } = useStrataNav();
     const { showToast, ToastContainer } = useToast();
     const [tab, setTab] = useState<LeaseTab>('leases');
     const [leases, setLeases] = useState<Workitem[]>([]);
@@ -432,8 +434,16 @@ SIGNATURES: (Pending)
                             <tbody>
                                 {vacantUnits.map((u: any) => (
                                     <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                        <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>{u.unitNumber}</td>
-                                        <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{u.propertyName}</td>
+                                        <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>
+                                            {u.id && u.propertyId ? (
+                                                <button className="s-unit-link" onClick={() => navigateToUnit(u.id, u.propertyId)}>{u.unitNumber}</button>
+                                            ) : u.unitNumber}
+                                        </td>
+                                        <td style={{ padding: '8px 12px', color: '#94a3b8' }}>
+                                            {u.propertyId ? (
+                                                <button className="s-property-link" onClick={() => navigateToProperty(u.propertyId)}>{u.propertyName}</button>
+                                            ) : u.propertyName}
+                                        </td>
                                         <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{u.bedrooms ?? '—'}/{u.bathrooms ?? '—'}</td>
                                         <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{u.sqft ? `${u.sqft.toLocaleString()} ft²` : '—'}</td>
                                         <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>{u.marketRent ? `$${u.marketRent.toLocaleString()}` : '—'}</td>

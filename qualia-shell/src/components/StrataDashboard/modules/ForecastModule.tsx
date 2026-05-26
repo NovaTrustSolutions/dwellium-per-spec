@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, DollarSign, Building, AlertCircle, RefreshCw } from 'lucide-react';
 import { strataGet } from '../strataApi';
 import type { ForecastResult } from '@qualia/types';
+import { useStrataNav } from '../StrataNavContext';
 // Task 2.4 — GR-13 observability wiring + ErrorBoundary, mirrors the
 // 2.1 / 2.2 / 2.10 retrofit pattern. Sentry breadcrumbs are
 // try/catch-wrapped so missing DSN is silent in test/local builds.
@@ -13,6 +14,7 @@ const fmt = (n: number) => `$${n.toLocaleString()}`;
 const fmtK = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(0)}k` : `$${n}`;
 
 function ForecastModuleInner() {
+    const { navigateToProperty } = useStrataNav();
     const [forecast, setForecast] = useState<ForecastResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -183,7 +185,9 @@ function ForecastModuleInner() {
 
                     {/* Bar Chart */}
                     <div style={{ background: '#1e2537', borderRadius: 12, padding: 20 }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#f1f5f9', fontWeight: 600 }}>Monthly Projection — {forecast.propertyName}</h3>
+                        <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#f1f5f9', fontWeight: 600 }}>Monthly Projection — {forecast.propertyId ? (
+                            <button className="s-property-link" style={{ fontSize: 14, fontWeight: 600 }} onClick={() => navigateToProperty(forecast.propertyId!)}>{forecast.propertyName}</button>
+                        ) : forecast.propertyName}</h3>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={forecast.months} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />

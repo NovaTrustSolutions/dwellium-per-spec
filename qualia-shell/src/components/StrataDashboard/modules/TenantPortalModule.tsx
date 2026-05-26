@@ -80,6 +80,7 @@ import { strataGet, strataPost, isStaticMode } from '../strataApi';
 import type { PortalTab, TenantPortalPagination, TenantPortalStats } from '../strataTypes';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
+import { useStrataNav } from '../StrataNavContext';
 
 const TABS: { id: PortalTab; label: string; icon: typeof Users }[] = [
     { id: 'directory', label: 'Directory', icon: Users },
@@ -106,6 +107,7 @@ const nameColor = (name: string) => {
 
 function TenantPortalModuleInner() {
     const { hasPermission } = useUser();
+    const { navigateToResident, navigateToProperty } = useStrataNav();
     const [tab, setTab] = useState<PortalTab>('directory');
     const [search, setSearch] = useState('');
     const [stats, setStats] = useState<TenantPortalStats | null>(null);
@@ -372,13 +374,15 @@ function TenantPortalModuleInner() {
                                                         {getInitials(t.name)}
                                                     </div>
                                                     <div>
-                                                        <div className="tp-cell-name">{t.name}</div>
+                                                        <button className="s-resident-link tp-cell-name" onClick={(e) => { e.stopPropagation(); navigateToResident(t.id); }}>{t.name}</button>
                                                         <div className="tp-cell-sub">{t.email}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>{t.unitNumber || '—'}</td>
-                                            <td>{t.propertyName || '—'}</td>
+                                            <td>{t.propertyId ? (
+                                                <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(t.propertyId); }}>{t.propertyName || '—'}</button>
+                                            ) : (t.propertyName || '—')}</td>
                                             <td className="tp-cell-money">{t.rentAmount ? `$${t.rentAmount.toLocaleString()}` : '—'}</td>
                                             <td>
                                                 {t.leaseEnd ? new Date(t.leaseEnd).toLocaleDateString() : '—'}
@@ -444,7 +448,11 @@ function TenantPortalModuleInner() {
                                     <Building2 size={14} />
                                     <div>
                                         <div className="tp-detail-item-label">Property</div>
-                                        <div className="tp-detail-item-value">{selectedTenant.propertyName}</div>
+                                        <div className="tp-detail-item-value">
+                                            {selectedTenant.propertyId ? (
+                                                <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={() => navigateToProperty(selectedTenant.propertyId)}>{selectedTenant.propertyName}</button>
+                                            ) : selectedTenant.propertyName}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -601,7 +609,9 @@ function TenantPortalModuleInner() {
                                                     <span className="tp-cell-name">{p.tenantName}</span>
                                                 </div>
                                             </td>
-                                            <td>{p.propertyName || '—'}</td>
+                                            <td>{p.propertyId ? (
+                                                <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(p.propertyId); }}>{p.propertyName || '—'}</button>
+                                            ) : (p.propertyName || '—')}</td>
                                             <td>{p.unitNumber || '—'}</td>
                                             <td>{p.title}</td>
                                             <td>{statusBadge(p.status)}</td>
@@ -756,7 +766,9 @@ function TenantPortalModuleInner() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>{a.propertyName}</td>
+                                        <td>{a.propertyId ? (
+                                            <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(a.propertyId); }}>{a.propertyName}</button>
+                                        ) : a.propertyName}</td>
                                         <td>
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                                 <Hash size={11} style={{ color: '#475569' }} />{a.unitNumber}

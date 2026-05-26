@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { strataGet } from '../strataApi';
 import type { Workitem, Property, EntityProfile } from '../strataTypes';
+import { useStrataNav } from '../StrataNavContext';
 import { LoadingState, ErrorState } from '../StateView';
 
 type VizMode = 'timeline' | 'mindmap' | 'flowchart';
@@ -47,6 +48,7 @@ const ENTITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function VisualizationModule() {
+    const { navigateToProperty } = useStrataNav();
     const [mode, setMode] = useState<VizMode>('timeline');
     const [workitems, setWorkitems] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
@@ -326,9 +328,9 @@ export default function VisualizationModule() {
                                                 {wi.domain && <span>• {wi.domain}</span>}
                                                 {wi.type && <span>• {wi.type}</span>}
                                                 {wi.propertyId && (
-                                                    <span style={{ color: '#818cf8' }}>
+                                                    <button className="s-property-link" style={{ fontSize: 'inherit', color: '#818cf8' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
                                                         🏠 {properties.find(p => p.id === wi.propertyId)?.name || 'Unknown'}
-                                                    </span>
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>

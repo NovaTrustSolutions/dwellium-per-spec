@@ -384,8 +384,8 @@ export default function TranscriptionHub() {
     // --- Cloud STT state (Leon-powered Google Cloud Speech) ---
     const [cloudSTTEnabled, setCloudSTTEnabled] = useState(false);
 
-    // --- Moonshine AI state ---
-    const [moonshineEnabled, setMoonshineEnabled] = useState(false);
+    // --- Moonshine AI state (default ON — captures locally without backend) ---
+    const [moonshineEnabled, setMoonshineEnabled] = useState(true);
     const [moonshineLoading, setMoonshineLoading] = useState(false);
     const [moonshineReady, setMoonshineReady] = useState(false);
     const moonshineRef = useRef<MicrophoneTranscriber | null>(null);

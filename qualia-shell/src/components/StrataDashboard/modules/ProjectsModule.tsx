@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut, isStaticMode } from '../strataApi';
 import type { Workitem, Property } from '../strataTypes';
+import { useStrataNav } from '../StrataNavContext';
 import { LoadingState, ErrorState } from '../StateView';
 // Task 3.7 — GR-13 observability wiring + ErrorBoundary, mirrors the
 // Task 2.4 / 2.8 SentimentModule retrofit pattern. Sentry breadcrumbs
@@ -40,6 +41,7 @@ const ENTITY_ICON: Record<string, React.ReactNode> = {
 };
 
 function ProjectsModuleInner() {
+    const { navigateToProperty } = useStrataNav();
     const [items, setItems] = useState<Workitem[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
@@ -266,7 +268,7 @@ function ProjectsModuleInner() {
                             {wi.type && <span>Type: {wi.type}</span>}
                             {md.boardName && <span>Board: {md.boardName}</span>}
                             {md.listName && <span>List: {md.listName}</span>}
-                            {wi.propertyId && <span>🏠 {propMap.get(wi.propertyId)?.name || wi.propertyId.slice(0, 8)}</span>}
+                            {wi.propertyId && <span>🏠 <button className="s-property-link" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>{propMap.get(wi.propertyId)?.name || wi.propertyId.slice(0, 8)}</button></span>}
                         </div>
                         <button
                             onClick={(e) => { e.stopPropagation(); toggleStatus(wi.id, wi.status); }}

@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { AlertTriangle, TrendingDown, TrendingUp, Minus, Plus, CheckCircle } from 'lucide-react';
 import { strataGet, isStaticMode } from '../strataApi';
 import type { SentimentScore, SentimentScoreView } from '@qualia/types';
+import { useStrataNav } from '../StrataNavContext';
 // Task 2.8 — GR-13 observability wiring + ErrorBoundary, mirrors the
 // 2.1 / 2.2 / 2.4 / 2.10 retrofit pattern. Sentry breadcrumbs are
 // try/catch-wrapped so missing DSN is silent in test/local builds.
@@ -29,6 +30,7 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 function SentimentModuleInner() {
+    const { navigateToProperty } = useStrataNav();
     const [trends, setTrends] = useState<SentimentScore[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'all' | 'atRisk' | 'add'>('all');
@@ -248,7 +250,11 @@ function SentimentModuleInner() {
                                                 {t.tenantName}
                                             </td>
                                             <td style={{ padding: '10px 14px', color: '#94a3b8' }}>{t.unit}</td>
-                                            <td style={{ padding: '10px 14px', color: '#94a3b8', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.propertyName}</td>
+                                            <td style={{ padding: '10px 14px', color: '#94a3b8', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {t.propertyId ? (
+                                                    <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(t.propertyId); }}>{t.propertyName}</button>
+                                                ) : t.propertyName}
+                                            </td>
                                             <td style={{ padding: '10px 14px' }}><ScoreBadge score={t.latestScore} /></td>
                                             <td style={{ padding: '10px 14px' }}><TrendIcon trend={t.trend} /></td>
                                             <td style={{ padding: '10px 14px', color: '#94a3b8' }}>{t.avgScore}</td>
@@ -266,7 +272,11 @@ function SentimentModuleInner() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                                 <div>
                                     <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>{selected.tenantName}</div>
-                                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{selected.unit} · {selected.propertyName}</div>
+                                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                                        {selected.unit} · {selected.propertyId ? (
+                                            <button className="s-property-link" style={{ fontSize: 12 }} onClick={() => navigateToProperty(selected.propertyId)}>{selected.propertyName}</button>
+                                        ) : selected.propertyName}
+                                    </div>
                                 </div>
                                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 18 }}>×</button>
                             </div>

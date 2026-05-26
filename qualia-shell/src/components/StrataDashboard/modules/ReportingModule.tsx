@@ -10,6 +10,7 @@ import {
 import { strataGet, strataPost } from '../strataApi';
 import type { Report } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
+import { useStrataNav } from '../StrataNavContext';
 
 type ReportTab = 'reports' | 'scheduled' | 'metrics' | 'surveys' | 'custom-query' | 'rollups' | 'intake';
 type RollupView = 'insurance' | 'vendor-compliance' | 'vendor-by-property';
@@ -81,6 +82,7 @@ const METRICS_DATA = [
 
 export default function ReportingModule() {
     const { hasPermission } = useUser();
+    const { navigateToProperty } = useStrataNav();
     const [tab, setTab] = useState<ReportTab>('reports');
     const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(true);
@@ -484,7 +486,11 @@ export default function ReportingModule() {
                                         <tbody>
                                             {insuranceRollup.map((p: any) => (
                                                 <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                                    <td style={{ padding: '8px 10px', color: '#e2e8f0', fontWeight: 500 }}>{p.propertyName}</td>
+                                                    <td style={{ padding: '8px 10px', color: '#e2e8f0', fontWeight: 500 }}>
+                                                        {p.propertyId ? (
+                                                            <button className="s-property-link" style={{ fontSize: 12, fontWeight: 500 }} onClick={() => navigateToProperty(p.propertyId)}>{p.propertyName}</button>
+                                                        ) : p.propertyName}
+                                                    </td>
                                                     <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>{p.carrier || '—'}</td>
                                                     <td style={{ padding: '8px 10px', color: '#94a3b8', fontFamily: 'monospace', fontSize: 11 }}>{p.policyNumber || '—'}</td>
                                                     <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>{p.policyType}</td>
@@ -582,7 +588,10 @@ export default function ReportingModule() {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                                             <div>
                                                 <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <Building2 size={14} style={{ color: '#3b82f6' }} /> {prop.propertyName}
+                                                    <Building2 size={14} style={{ color: '#3b82f6' }} />
+                                                    {prop.propertyId ? (
+                                                        <button className="s-property-link" style={{ fontSize: 14, fontWeight: 600 }} onClick={() => navigateToProperty(prop.propertyId)}>{prop.propertyName}</button>
+                                                    ) : prop.propertyName}
                                                 </div>
                                                 <div style={{ fontSize: 11, color: '#64748b' }}>{prop.propertyAddress}</div>
                                             </div>

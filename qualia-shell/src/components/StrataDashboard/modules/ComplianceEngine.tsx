@@ -24,6 +24,7 @@ import {
 import { strataGet, strataPost, strataPut } from '../strataApi';
 import type { Property, EntityProfile, ComplianceRecord, Section8Rollup } from '../strataTypes';
 import { useToast } from '../useToast';
+import { useStrataNav } from '../StrataNavContext';
 import { LoadingState, ErrorState } from '../StateView';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
@@ -80,6 +81,7 @@ function computeStatus(item: ComplianceItem): 'valid' | 'warning' | 'expired' | 
 type EnrichedComplianceItem = ComplianceItem & { computedStatus: 'valid' | 'warning' | 'expired' | 'missing' };
 
 export default function ComplianceEngine() {
+    const { navigateToProperty } = useStrataNav();
     const { showToast, ToastContainer } = useToast();
     const [view, setView] = useState<ViewMode>('heatmap');
     const [items, setItems] = useState<ComplianceItem[]>([]);
@@ -489,13 +491,14 @@ export default function ComplianceEngine() {
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginLeft: 'auto' }}>
                             <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 700 }}>Needs Attention:</span>
                             {portfolioRollup.worstPerformers.slice(0, 3).map((wp: any) => (
-                                <span key={wp.propertyId} style={{
+                                <button key={wp.propertyId} className="s-property-link" style={{
                                     fontSize: 9, padding: '1px 6px', borderRadius: 4,
                                     background: wp.score < 50 ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
                                     color: wp.score < 50 ? '#ef4444' : '#f59e0b', fontWeight: 600,
-                                }}>
+                                    borderBottom: 'none',
+                                }} onClick={() => navigateToProperty(wp.propertyId)}>
                                     {wp.propertyName} ({wp.score}%)
-                                </span>
+                                </button>
                             ))}
                         </div>
                     )}
@@ -987,7 +990,9 @@ export default function ComplianceEngine() {
                                                 Section 8 (AHA) Rollup
                                             </div>
                                             <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, marginTop: 2 }} data-testid="compliance-section8-property">
-                                                {section8Rollup.propertyName}
+                                                {section8Rollup.propertyId ? (
+                                                    <button className="s-property-link" style={{ fontSize: 13, fontWeight: 600 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(section8Rollup.propertyId!); }}>{section8Rollup.propertyName}</button>
+                                                ) : section8Rollup.propertyName}
                                             </div>
                                         </div>
                                     </div>

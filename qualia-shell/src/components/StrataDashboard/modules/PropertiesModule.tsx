@@ -23,6 +23,7 @@ import InsuranceModule from './InsuranceModule';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
 import FixedAssetsTable from './__properties/FixedAssetsTable';
+import { useStrataNav } from '../StrataNavContext';
 
 interface LinkedData {
     workitems: Workitem[];
@@ -172,12 +173,13 @@ function Field({ label, value, full }: { label: string; value?: string; full?: b
 }
 
 interface PropertiesModuleProps {
-    searchNavTarget?: { type: string; id: string } | null;
+    searchNavTarget?: { type: string; id: string; parentId?: string } | null;
     onNavComplete?: () => void;
 }
 
 export default function PropertiesModule({ searchNavTarget, onNavComplete }: PropertiesModuleProps) {
     const { hasPermission } = useUser();
+    const { navigateToResident } = useStrataNav();
 
     // ── React Query hooks (replaces manual fetch) ──
     const propertiesQuery = useProperties();
@@ -227,6 +229,18 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
     useEffect(() => {
         if (searchNavTarget && properties.length > 0) {
             const navType = searchNavTarget.type;
+            // Unit navigation — parentId is the propertyId, id is the unitId
+            if (navType === 'unit' && searchNavTarget.parentId) {
+                const target = properties.find(p => p.id === searchNavTarget.parentId);
+                if (target) {
+                    setSelected(target);
+                    setActiveTab('units');
+                    // Defer unit selection until units are loaded (handled via separate effect below)
+                    setPendingUnitId(searchNavTarget.id);
+                    onNavComplete?.();
+                }
+                return;
+            }
             // Find the property — the id always refers to a property
             if (['property', 'insurance', 'work', 'legal', 'units', 'documents', 'incidents', 'vehicles', 'utilities', 'residents'].includes(navType)) {
                 const target = properties.find(p => p.id === searchNavTarget.id);
@@ -255,7 +269,17 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
     }, [moduleConfigQuery.data]);
 
     // ── Feature 1: Tenant detail for units ──
+    const [pendingUnitId, setPendingUnitId] = useState<string | null>(null);
     const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
+
+    // ── Unit navigation: deferred selection until units load ──
+    useEffect(() => {
+        if (pendingUnitId && units.length > 0) {
+            const target = units.find(u => u.id === pendingUnitId);
+            if (target) setSelectedUnit(target);
+            setPendingUnitId(null);
+        }
+    }, [pendingUnitId, units]);
     // Tenants — filter to property-specific when selected
     const allTenants = tenantsQuery.data ?? [];
     const tenants = useMemo(() => {
@@ -2264,7 +2288,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 {matchedTenant.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 15 }}>{matchedTenant.name}</div>
+                                                <button className="s-resident-link" style={{ fontWeight: 700, fontSize: 15 }} onClick={() => navigateToResident(matchedTenant!.id)}>{matchedTenant.name}</button>
                                                 <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
                                                     <span style={{
                                                         padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 600,

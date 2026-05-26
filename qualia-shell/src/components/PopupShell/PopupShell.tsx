@@ -19,8 +19,11 @@ export function PopupShell({ component }: { component: string }) {
     const [meta, setMeta] = useState<{ title: string; icon: string }>({ title: component, icon: '🪟' });
     const [docking, setDocking] = useState(false);
 
-    // Restore skin + load metadata
+    // Restore theme + skin + load metadata
     useEffect(() => {
+        const savedTheme = localStorage.getItem('dwellium-theme') || localStorage.getItem('qualia-theme') || 'dark';
+        document.documentElement.className = `theme-${savedTheme}`;
+
         const savedSkin = localStorage.getItem('dwellium-skin') || 'default';
         document.documentElement.setAttribute('data-skin', savedSkin);
 

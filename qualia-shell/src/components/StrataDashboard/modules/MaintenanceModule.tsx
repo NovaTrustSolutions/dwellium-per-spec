@@ -16,6 +16,7 @@ import type { Workitem } from '../strataTypes';
 import { LoadingState, EmptyState, ErrorState } from '../StateView';
 import TrelloCardModal from './TrelloCardModal';
 import { useUser } from '../../../context/UserContext';
+import { useStrataNav } from '../StrataNavContext';
 import ProfileSpaces from './ProfileSpaces';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
@@ -302,6 +303,7 @@ export function BlockNotes({ item }: { item: Workitem }) {
 
 export default function MaintenanceModule() {
     const { hasPermission, authFetch } = useUser();
+    const { navigateToProperty } = useStrataNav();
     const [tab, setTab] = useState<MaintTab>('work-orders');
     const [viewMode, setViewMode] = useState<ViewMode>('status');
     const [items, setItems] = useState<Workitem[]>([]);
@@ -699,6 +701,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
     attachments: any[]; onDispatch: () => void; onSignOff: (notes?: string) => void;
     onAddAttachment: (type: string, description: string) => void;
 }) {
+    const { navigateToProperty } = useStrataNav();
     // Task 3.4: defensive metadata guard per Drift #B-i ack — ~370/371 work_orders
     // in dev fixture carry STRING-typed metadata blobs ("enc:v1:astra:...") while
     // Workitem.metadata is typed Record<string, any>. Guard isolates the runtime
@@ -773,7 +776,11 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Building2 size={13} color="#64748b" />
-                        <span style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 600 }}>{propName}</span>
+                        {item.propertyId ? (
+                            <button className="s-property-link" style={{ fontSize: 12, fontWeight: 600 }} onClick={() => navigateToProperty(item.propertyId!)}>{propName}</button>
+                        ) : (
+                            <span style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 600 }}>{propName}</span>
+                        )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <User size={13} color="#64748b" />

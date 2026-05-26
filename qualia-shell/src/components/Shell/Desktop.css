@@ -24,11 +24,11 @@
     background: transparent;
 }
 
-/* [27] active background intensity */
+/* fey.com: acid lime snap region */
 .desktop__region--active {
-    background: rgba(0, 136, 204, 0.12);
-    border-color: var(--accent, #0088cc);
-    box-shadow: inset 0 0 40px rgba(0, 136, 204, 0.1), 0 0 20px rgba(0, 136, 204, 0.06);
+    background: rgba(214, 254, 81, 0.06);
+    border-color: rgba(214, 254, 81, 0.4);
+    box-shadow: none;
 }
 
 .desktop__region--occupied {

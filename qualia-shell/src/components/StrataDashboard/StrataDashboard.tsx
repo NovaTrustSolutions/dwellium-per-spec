@@ -76,6 +76,7 @@ import type { StrataModule } from './strataTypes';
 import { useUser } from '../../context/UserContext';
 import { Settings, Scale, FolderKanban, Shield, Activity, Pencil, HardHat, Plus, X } from 'lucide-react';
 import { strataPost, strataGet } from './strataApi';
+import { StrataNavProvider, type SearchNavTarget } from './StrataNavContext';
 import './StrataDashboard.css';
 
 
@@ -1668,7 +1669,7 @@ function IntegrationsModule() {
 export default function StrataDashboard() {
     const { logout, hasPermission, user } = useUser();
     const [activeModule, setActiveModule] = useState<StrataModule | 'settings'>('overview');
-    const [searchNavTarget, setSearchNavTarget] = useState<{ type: string; id: string } | null>(null);
+    const [searchNavTarget, setSearchNavTarget] = useState<SearchNavTarget | null>(null);
 
     const renderModule = () => {
         switch (activeModule) {
@@ -1705,73 +1706,75 @@ export default function StrataDashboard() {
     };
 
     return (
-        <div className="strata-dashboard strata-shell">
-            {/* Sidebar Navigation */}
-            <nav className="s-sidebar">
-                <div className="s-sidebar-brand">
-                    <Sparkles size={20} />
-                    <span>Strata</span>
-                </div>
+        <StrataNavProvider setActiveModule={setActiveModule} setSearchNavTarget={setSearchNavTarget}>
+            <div className="strata-dashboard strata-shell">
+                {/* Sidebar Navigation */}
+                <nav className="s-sidebar">
+                    <div className="s-sidebar-brand">
+                        <Sparkles size={20} />
+                        <span>Strata</span>
+                    </div>
 
-                {/* ── Global Search (top of sidebar) ── */}
-                <div style={{ padding: '4px 6px', marginBottom: 4 }}>
-                    <GlobalSearch onNavigate={(r) => {
-                        const typeToModule: Record<string, StrataModule> = {
-                            property: 'properties',
-                            tenant: 'residents',
-                            unit: 'properties',
-                            workitem: 'work-orders',
-                            vendor: 'vendors',
-                            owner: 'owners',
-                            insurance: 'properties',
-                            email: 'communication',
-                        };
-                        const mod = typeToModule[r.type] as StrataModule;
-                        if (mod) {
-                            setSearchNavTarget({ type: r.type, id: r.id });
-                            setActiveModule(mod);
-                        }
-                    }} />
-                </div>
+                    {/* ── Global Search (top of sidebar) ── */}
+                    <div style={{ padding: '4px 6px', marginBottom: 4 }}>
+                        <GlobalSearch onNavigate={(r) => {
+                            const typeToModule: Record<string, StrataModule> = {
+                                property: 'properties',
+                                tenant: 'residents',
+                                unit: 'properties',
+                                workitem: 'work-orders',
+                                vendor: 'vendors',
+                                owner: 'owners',
+                                insurance: 'properties',
+                                email: 'communication',
+                            };
+                            const mod = typeToModule[r.type] as StrataModule;
+                            if (mod) {
+                                setSearchNavTarget({ type: r.type, id: r.id });
+                                setActiveModule(mod);
+                            }
+                        }} />
+                    </div>
 
-                <div className="s-sidebar-nav">
-                    {NAV_ITEMS.map((item) => {
-                        if (!hasPermission(item.permKey as string)) return null;
-                        return (
+                    <div className="s-sidebar-nav">
+                        {NAV_ITEMS.map((item) => {
+                            if (!hasPermission(item.permKey as string)) return null;
+                            return (
+                                <button
+                                    key={item.id}
+                                    className={`s-nav-item ${activeModule === item.id ? 'active' : ''}`}
+                                    onClick={() => setActiveModule(item.id)}
+                                >
+                                    {item.icon}
+                                    <span>{item.label}</span>
+                                </button>
+                            );
+                        })}
+
+                        <div style={{ height: '1px', background: 'var(--s-glass-border)', margin: '8px 0' }} />
+
+                        {hasPermission('section:strata-settings') && (
                             <button
-                                key={item.id}
-                                className={`s-nav-item ${activeModule === item.id ? 'active' : ''}`}
-                                onClick={() => setActiveModule(item.id)}
+                                className={`s-nav-item ${activeModule === 'settings' ? 'active' : ''}`}
+                                onClick={() => setActiveModule('settings')}
                             >
-                                {item.icon}
-                                <span>{item.label}</span>
+                                <Settings size={18} />
+                                <span>Settings</span>
                             </button>
-                        );
-                    })}
+                        )}
 
-                    <div style={{ height: '1px', background: 'var(--s-glass-border)', margin: '8px 0' }} />
-
-                    {hasPermission('section:strata-settings') && (
-                        <button
-                            className={`s-nav-item ${activeModule === 'settings' ? 'active' : ''}`}
-                            onClick={() => setActiveModule('settings')}
-                        >
-                            <Settings size={18} />
-                            <span>Settings</span>
+                        <button className="s-nav-item" onClick={logout}>
+                            <LogOut size={18} />
+                            <span>Sign Out</span>
                         </button>
-                    )}
+                    </div>
+                </nav>
 
-                    <button className="s-nav-item" onClick={logout}>
-                        <LogOut size={18} />
-                        <span>Sign Out</span>
-                    </button>
-                </div>
-            </nav>
-
-            {/* Module Content */}
-            <main className="s-main-content">
-                {renderModule()}
-            </main>
-        </div>
+                {/* Module Content */}
+                <main className="s-main-content">
+                    {renderModule()}
+                </main>
+            </div>
+        </StrataNavProvider>
     );
 }

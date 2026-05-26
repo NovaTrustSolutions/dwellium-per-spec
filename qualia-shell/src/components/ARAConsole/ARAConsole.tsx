@@ -572,13 +572,21 @@ export default function ARAConsole() {
             console.error('[ARA TTS] ❌ Backend TTS fetch failed:', err);
         }
 
-        // Fallback: browser SpeechSynthesis
+        // Fallback: browser SpeechSynthesis (tuned for natural human delivery)
         console.log('[ARA TTS] ⚠️ Falling back to browser SpeechSynthesis');
         const utterance = new SpeechSynthesisUtterance(cleaned);
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
+        utterance.rate = 0.92;
+        utterance.pitch = 1.06;
         const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v => v.name.includes('Samantha')) ||
+        const preferred =
+            voices.find(v => v.name.includes('Samantha (Enhanced)')) ||
+            voices.find(v => v.name.includes('Karen (Enhanced)')) ||
+            voices.find(v => v.name.includes('Zoe (Enhanced)')) ||
+            voices.find(v => v.name.includes('Samantha')) ||
+            voices.find(v => v.name.includes('Karen')) ||
+            voices.find(v => v.name.includes('Zoe')) ||
+            voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) ||
+            voices.find(v => v.lang.startsWith('en-US') && v.localService) ||
             voices.find(v => v.lang.startsWith('en'));
         if (preferred) utterance.voice = preferred;
         utterance.onend = () => setIsSpeaking(false);

@@ -3,55 +3,55 @@
    All styles scoped under .strata-dashboard
    ======================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 .strata-dashboard {
-    /* -- Base Colors (default = dark) -- */
-    --s-bg-primary: var(--bg-desktop, #0a0e1a);
-    --s-bg-secondary: var(--bg-surface, #0f1424);
-    --s-bg-tertiary: var(--bg-surface-elevated, #151b2e);
-    --s-bg-elevated: var(--bg-surface-hover, #1a2138);
-    --s-bg-surface: var(--bg-surface-active, #1e2642);
-    --s-bg-hover: var(--bg-surface-hover, #242d4a);
+    /* -- Base Colors (fey.com parity: pure black, tonal layers) -- */
+    --s-bg-primary: var(--bg-desktop, #000000);
+    --s-bg-secondary: var(--bg-surface, #0e0e0e);
+    --s-bg-tertiary: var(--bg-surface-elevated, #121212);
+    --s-bg-elevated: var(--bg-surface-hover, #1b1b1b);
+    --s-bg-surface: var(--bg-surface-active, #1f1f1f);
+    --s-bg-hover: var(--bg-surface-hover, #1b1b1b);
 
-    /* -- Glass -- */
-    --s-glass-bg: var(--bg-glass, rgba(22, 30, 56, 0.65));
-    --s-glass-bg-strong: var(--bg-glass-hover, rgba(22, 30, 56, 0.85));
-    --s-glass-border: var(--border-default, rgba(99, 130, 255, 0.12));
-    --s-glass-border-hover: var(--border-strong, rgba(99, 130, 255, 0.25));
-    --s-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-    --s-glass-blur: blur(16px);
+    /* -- Glass (fey.com: no blur, solid tonal layers) -- */
+    --s-glass-bg: var(--bg-glass, rgba(14, 14, 14, 0.88));
+    --s-glass-bg-strong: var(--bg-glass-hover, rgba(18, 18, 18, 0.92));
+    --s-glass-border: var(--border-default, #222222);
+    --s-glass-border-hover: var(--border-strong, #333333);
+    --s-glass-shadow: none;
+    --s-glass-blur: blur(0px);
 
-    /* -- Accent Colors — inherit from global accent -- */
-    --s-accent-primary: var(--accent, #6366f1);
-    --s-accent-primary-hover: var(--accent-hover, #818cf8);
-    --s-accent-primary-glow: rgba(99, 102, 241, 0.3);
-    --s-accent-gradient: linear-gradient(135deg, var(--accent, #6366f1), #3b82f6, #06b6d4);
+    /* -- Accent Colors (fey.com: acid lime) -- */
+    --s-accent-primary: var(--accent, #D6FE51);
+    --s-accent-primary-hover: var(--accent-hover, #E8FF7A);
+    --s-accent-primary-glow: rgba(214, 254, 81, 0.15);
+    --s-accent-gradient: linear-gradient(135deg, #D6FE51, #b4da2e);
 
-    /* -- Semantic Colors -- */
-    --s-success: var(--success, #10b981);
-    --s-success-bg: rgba(16, 185, 129, 0.12);
-    --s-success-border: rgba(16, 185, 129, 0.25);
+    /* -- Semantic Colors (fey.com palette) -- */
+    --s-success: var(--success, #D6FE51);
+    --s-success-bg: rgba(214, 254, 81, 0.08);
+    --s-success-border: rgba(214, 254, 81, 0.20);
     --s-warning: var(--warning, #f59e0b);
-    --s-warning-bg: rgba(245, 158, 11, 0.12);
-    --s-warning-border: rgba(245, 158, 11, 0.25);
-    --s-danger: var(--danger, #ef4444);
-    --s-danger-bg: rgba(239, 68, 68, 0.12);
-    --s-danger-border: rgba(239, 68, 68, 0.25);
-    --s-info: #06b6d4;
-    --s-info-bg: rgba(6, 182, 212, 0.12);
-    --s-info-border: rgba(6, 182, 212, 0.25);
+    --s-warning-bg: rgba(245, 158, 11, 0.08);
+    --s-warning-border: rgba(245, 158, 11, 0.20);
+    --s-danger: var(--danger, #ffa16c);
+    --s-danger-bg: rgba(255, 161, 108, 0.08);
+    --s-danger-border: rgba(255, 161, 108, 0.20);
+    --s-info: #868F97;
+    --s-info-bg: rgba(134, 143, 151, 0.08);
+    --s-info-border: rgba(134, 143, 151, 0.20);
 
-    /* -- Text — inherit from global theme -- */
-    --s-text-primary: var(--text-primary, #f1f5f9);
-    --s-text-secondary: var(--text-secondary, #94a3b8);
-    --s-text-tertiary: var(--text-tertiary, #64748b);
-    --s-text-accent: var(--accent-text, #a5b4fc);
+    /* -- Text (fey.com: pure white primary, muted slate secondary) -- */
+    --s-text-primary: var(--text-primary, #ffffff);
+    --s-text-secondary: var(--text-secondary, #868F97);
+    --s-text-tertiary: var(--text-tertiary, #555555);
+    --s-text-accent: var(--accent-text, #D6FE51);
 
-    /* -- Typography — use global font stack -- */
-    --s-font-sans: var(--font-primary, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    /* -- Typography (fey.com: Hanken Grotesk + JetBrains Mono) -- */
+    --s-font-sans: var(--font-primary, 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
     --s-font-mono: var(--font-mono, 'JetBrains Mono', 'Fira Code', monospace);
-    --s-font-primary: var(--font-primary, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    --s-font-primary: var(--font-primary, 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
 
     /* -- Spacing -- */
     --s-space-1: 0.25rem;
@@ -62,24 +62,24 @@
     --s-space-6: 1.5rem;
     --s-space-8: 2rem;
 
-    /* -- Border Radius -- */
-    --s-radius-sm: 6px;
-    --s-radius-md: 10px;
-    --s-radius-lg: 14px;
-    --s-radius-xl: 20px;
+    /* -- Border Radius (fey.com: soft-technical 4-8px) -- */
+    --s-radius-sm: 4px;
+    --s-radius-md: 6px;
+    --s-radius-lg: 8px;
+    --s-radius-xl: 12px;
     --s-radius-full: 9999px;
 
-    /* -- Shadows -- */
-    --s-shadow-glow: 0 0 24px var(--s-accent-primary-glow);
+    /* -- Shadows (fey.com: none — use borders for depth) -- */
+    --s-shadow-glow: 0 0 12px var(--s-accent-primary-glow);
 
-    /* -- Hardcoded RGBA helpers (theme-aware, dark default) -- */
-    --s-separator: rgba(255, 255, 255, 0.04);
-    --s-row-hover: rgba(99, 130, 255, 0.04);
-    --s-row-border: rgba(99, 130, 255, 0.06);
+    /* -- Hardcoded RGBA helpers (fey.com: #222222 borders, subtle hovers) -- */
+    --s-separator: #1a1a1a;
+    --s-row-hover: rgba(255, 255, 255, 0.02);
+    --s-row-border: #222222;
 
     /* -- Transitions -- */
     --s-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --s-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --s-transition-normal: 200ms ease;
 
     font-family: var(--s-font-sans);
     color: var(--s-text-primary);
@@ -765,36 +765,38 @@
     align-items: center;
     gap: 6px;
     padding: 8px 14px;
-    border-radius: 8px;
+    border-radius: 4px;
     font-family: var(--s-font-primary);
     font-size: 0.8rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     border: 1px solid transparent;
-    transition: all 0.2s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     white-space: nowrap;
 }
 
 .strata-dashboard .s-btn-primary {
-    background: var(--s-accent-primary);
-    color: #fff;
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
 }
 
 .strata-dashboard .s-btn-primary:hover {
-    background: var(--s-accent-primary-hover);
-    box-shadow: 0 0 12px var(--s-accent-primary-glow);
+    background: #e2e2e2;
+    border-color: #e2e2e2;
+    box-shadow: none;
 }
 
 .strata-dashboard .s-btn-ghost {
     background: transparent;
     color: var(--s-text-secondary);
-    border-color: var(--s-glass-border);
+    border-color: #222222;
 }
 
 .strata-dashboard .s-btn-ghost:hover {
-    background: var(--s-bg-hover);
-    color: var(--s-text-primary);
-    border-color: var(--s-glass-border-hover);
+    background: transparent;
+    color: #ffffff;
+    border-color: #ffffff;
 }
 
 .strata-dashboard .s-btn-sm {
@@ -805,7 +807,7 @@
 .strata-dashboard .s-btn-xs {
     padding: 3px 8px;
     font-size: 0.7rem;
-    border-radius: 6px;
+    border-radius: 4px;
 }
 
 .strata-dashboard .s-btn-icon {
@@ -816,18 +818,18 @@
     padding: 4px;
     display: flex;
     align-items: center;
-    transition: color 0.2s ease;
+    transition: color 0.15s ease;
 }
 
 .strata-dashboard .s-btn-icon:hover {
-    color: var(--s-text-primary);
+    color: #ffffff;
 }
 
-/* ── Inputs ── */
+/* ── Inputs (fey.com: subtle border, dark fill) ── */
 .strata-dashboard .s-input {
-    background: var(--s-bg-tertiary);
-    border: 1px solid var(--s-glass-border);
-    border-radius: 8px;
+    background: #0e0e0e;
+    border: 1px solid #222222;
+    border-radius: 4px;
     padding: 8px 12px;
     color: var(--s-text-primary);
     font-family: var(--s-font-primary);
@@ -2140,6 +2142,57 @@
     box-shadow: 0 0 12px rgba(99, 102, 241, 0.08);
 }
 
+/* ── Property Navigation Link ── */
+.strata-dashboard .s-property-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--s-text-primary);
+    cursor: pointer;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(214, 254, 81, 0.3);
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.strata-dashboard .s-property-link:hover {
+    color: #D6FE51;
+    border-bottom-color: #D6FE51;
+}
+
+/* ── Resident Navigation Link ── */
+.strata-dashboard .s-resident-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--s-text-primary);
+    cursor: pointer;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(214, 254, 81, 0.3);
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.strata-dashboard .s-resident-link:hover {
+    color: #D6FE51;
+    border-bottom-color: #D6FE51;
+}
+
+/* ── Unit Navigation Link ── */
+.strata-dashboard .s-unit-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--s-text-primary);
+    cursor: pointer;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(214, 254, 81, 0.3);
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.strata-dashboard .s-unit-link:hover {
+    color: #D6FE51;
+    border-bottom-color: #D6FE51;
+}
+
 /* ═══════════════════════════════════════════════════════════
    LIGHT THEME — Inline-style overrides for Strata sub-modules
    These override hardcoded dark hex values in TSX inline styles
@@ -2393,4 +2446,34 @@
     & .tp-occupancy-ring-text { color: var(--text-primary); }
     & .tp-days-left.safe { color: var(--text-secondary); }
     & .tp-lease-progress { background: var(--border-subtle); }
+
+    /* Property navigation link — light theme */
+    & .s-property-link {
+        color: var(--text-primary);
+        border-bottom-color: rgba(99, 102, 241, 0.3);
+    }
+    & .s-property-link:hover {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+    }
+
+    /* Resident navigation link — light theme */
+    & .s-resident-link {
+        color: var(--text-primary);
+        border-bottom-color: rgba(99, 102, 241, 0.3);
+    }
+    & .s-resident-link:hover {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+    }
+
+    /* Unit navigation link — light theme */
+    & .s-unit-link {
+        color: var(--text-primary);
+        border-bottom-color: rgba(99, 102, 241, 0.3);
+    }
+    & .s-unit-link:hover {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+    }
 }

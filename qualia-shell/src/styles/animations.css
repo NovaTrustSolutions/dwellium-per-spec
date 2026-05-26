@@ -47,17 +47,18 @@ button,
     will-change: transform;
 }
 
-/* Lift — subtle Y-shift + elevated shadow */
+/* fey.com: no lift, border brightens on hover */
 button:hover,
 [role="button"]:hover,
 .btn:hover {
-    transform: translateY(-1px);
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 button:active,
 [role="button"]:active,
 .btn:active {
-    transform: translateY(0) scale(0.98);
+    transform: scale(0.98);
     transition-duration: var(--anim-instant);
 }
 
@@ -70,11 +71,12 @@ button:active,
     transform: translateY(0) scale(0.97);
 }
 
-/* — Glow hover — */
+/* — Glow hover (fey.com: acid lime glow) — */
 .btn--glow:hover {
     box-shadow:
-        0 0 20px rgba(var(--accent-rgb, 59, 130, 246), 0.35),
-        0 0 40px rgba(var(--accent-rgb, 59, 130, 246), 0.15);
+        0 0 12px rgba(214, 254, 81, 0.25),
+        0 0 24px rgba(214, 254, 81, 0.10);
+    border-color: rgba(214, 254, 81, 0.4);
 }
 
 /* — Ripple effect — */

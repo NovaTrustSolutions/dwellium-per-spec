@@ -14,6 +14,7 @@ import { useUser } from '../../../context/UserContext';
 import type { Property, Unit, EntityProfile } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
 import { strataGet } from '../strataApi';
+import { useStrataNav } from '../StrataNavContext';
 
 // Entity is an alias for EntityProfile (canonical type from strataTypes)
 type Entity = EntityProfile;
@@ -51,6 +52,7 @@ const tdStyle: React.CSSProperties = {
 
 export default function ProfilesModule() {
     const { hasPermission } = useUser();
+    const { navigateToProperty } = useStrataNav();
     const [tab, setTab] = useState<ProfileTab>('properties');
     const [search, setSearch] = useState('');
     const [entities, setEntities] = useState<Entity[]>([]);
@@ -351,7 +353,7 @@ export default function ProfilesModule() {
                                     selectedEntity.propertyIds.map(pid => (
                                         <div key={pid} style={{ fontSize: 12, color: '#94a3b8', padding: '2px 0' }}>
                                             <Building2 size={11} style={{ marginRight: 6, verticalAlign: -1 }} />
-                                            {pid}
+                                            <button className="s-property-link" style={{ fontSize: 12 }} onClick={() => navigateToProperty(pid)}>{pid}</button>
                                         </div>
                                     ))
                                 ) : (

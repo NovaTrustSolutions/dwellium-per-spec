@@ -1,10 +1,7 @@
 /**
- * UniversalShell.css — styling for the F-1 Universal Shell scaffold.
- * Canary: [CT-3E-ARCH-W8K3]
- *
- * Matches the existing Strata/Astra glass aesthetic without importing
- * either dashboard's full stylesheet — class names are namespaced with
- * `us-` so they never collide with `s-*` (Strata) or `a-*` (Astra).
+ * UniversalShell.css — fey.com parity styling.
+ * Pure black base, #121212 cards, #222222 borders, Hanken Grotesk + JetBrains Mono,
+ * acid lime accents, no glass/blur, no shadows.
  */
 
 .us-shell {
@@ -13,14 +10,9 @@
     width: 100%;
     height: 100%;
     min-height: 0;
-    background: radial-gradient(
-            ellipse at top,
-            rgba(40, 48, 80, 0.35),
-            rgba(12, 16, 28, 0.9) 60%
-        ),
-        #0a0d18;
-    color: var(--text-primary, #e6e8f0);
-    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: #000000;
+    color: var(--text-primary, #ffffff);
+    font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
 }
 
 .us-shell--empty {
@@ -35,9 +27,8 @@
     align-items: center;
     gap: 12px;
     padding: 10px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(10, 14, 26, 0.6);
-    backdrop-filter: blur(16px);
+    border-bottom: 1px solid #222222;
+    background: #0e0e0e;
 }
 
 .us-header__brand {
@@ -49,21 +40,23 @@
 
 .us-header__glyph {
     font-size: 18px;
-    color: #818cf8;
+    color: #D6FE51;
 }
 
 .us-header__title {
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #ffffff;
 }
 
 .us-header__surface {
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 4px;
-    background: rgba(99, 102, 241, 0.18);
-    color: #a5b4fc;
+    background: rgba(214, 254, 81, 0.08);
+    color: #D6FE51;
     letter-spacing: 0.08em;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
 /* ── Switcher ── */
@@ -76,25 +69,26 @@
 
 .us-switcher__item {
     appearance: none;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-secondary, #c5cbe0);
+    border: 1px solid #222222;
+    background: transparent;
+    color: var(--text-secondary, #868F97);
     padding: 6px 10px;
-    border-radius: 6px;
+    border-radius: 4px;
     font-size: 12px;
+    font-family: inherit;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .us-switcher__item:hover {
-    background: rgba(99, 102, 241, 0.1);
-    color: #e6e8f0;
+    border-color: #444444;
+    color: #ffffff;
 }
 
 .us-switcher__item--active {
-    background: rgba(99, 102, 241, 0.22);
-    border-color: rgba(129, 140, 248, 0.5);
-    color: #eef0ff;
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #000000;
 }
 
 /* ── Columns ── */
@@ -112,29 +106,30 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    background: rgba(18, 22, 40, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
+    background: #121212;
+    border: 1px solid #222222;
+    border-radius: 8px;
     overflow: hidden;
 }
 
 .us-column__header {
     padding: 10px 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid #222222;
     background: rgba(255, 255, 255, 0.02);
 }
 
 .us-column__label {
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    font-weight: 500;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #a5b4fc;
+    color: #D6FE51;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
 .us-column__subtitle {
     font-size: 11px;
-    color: var(--text-tertiary, #8993ad);
+    color: var(--text-tertiary, #555555);
     margin-top: 2px;
 }
 
@@ -164,22 +159,22 @@
     flex-direction: column;
     gap: 6px;
     padding: 12px;
-    border-radius: 8px;
+    border-radius: 4px;
     background: rgba(255, 255, 255, 0.02);
-    border: 1px dashed rgba(129, 140, 248, 0.25);
-    color: var(--text-secondary, #c5cbe0);
+    border: 1px dashed #333333;
+    color: var(--text-secondary, #868F97);
     font-size: 12.5px;
     line-height: 1.5;
 }
 
 .us-adapter-stub__title {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 13px;
-    color: #eef0ff;
+    color: #ffffff;
 }
 
 .us-adapter-stub__body {
-    color: var(--text-secondary, #c5cbe0);
+    color: var(--text-secondary, #868F97);
 }
 
 .us-adapter-stub code {
@@ -187,16 +182,16 @@
     padding: 0 4px;
     border-radius: 3px;
     font-size: 11.5px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
 .us-adapter-loading {
-    color: var(--text-tertiary, #8993ad);
+    color: var(--text-tertiary, #555555);
     font-size: 12px;
     padding: 10px;
 }
 
 .us-adapter-legacy {
-    /* Host existing Strata/Astra modules without double-padding. */
     margin: -12px;
 }
 
@@ -206,15 +201,18 @@
     flex-direction: column;
     gap: 4px;
     padding: 14px;
-    color: var(--text-tertiary, #8993ad);
+    color: var(--text-tertiary, #555555);
     font-size: 12px;
     font-style: italic;
 }
 
 .us-column-empty__label {
     font-weight: 600;
-    color: #a5b4fc;
+    color: #D6FE51;
     font-style: normal;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    letter-spacing: 0.05em;
 }
 
 .us-empty-state {
@@ -223,13 +221,14 @@
 }
 
 .us-empty-state__title {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 14px;
     margin-bottom: 6px;
+    color: #ffffff;
 }
 
 .us-empty-state__body {
-    color: var(--text-tertiary, #8993ad);
+    color: var(--text-tertiary, #555555);
     font-size: 12.5px;
 }
 
@@ -239,16 +238,16 @@
     flex-direction: column;
     gap: 6px;
     padding: 12px;
-    border-radius: 8px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #fecaca;
+    border-radius: 4px;
+    background: rgba(255, 161, 108, 0.06);
+    border: 1px solid rgba(255, 161, 108, 0.25);
+    color: #ffa16c;
     font-size: 12px;
 }
 
 .us-column-error__title {
-    font-weight: 700;
-    color: #fca5a5;
+    font-weight: 600;
+    color: #ffa16c;
     font-size: 13px;
 }
 
@@ -256,30 +255,34 @@
     background: rgba(255, 255, 255, 0.06);
     padding: 0 4px;
     border-radius: 3px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
 .us-column-error__message {
-    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 11.5px;
-    color: #fda4af;
+    color: #ffa16c;
     padding: 6px 8px;
-    background: rgba(0, 0, 0, 0.25);
-    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
     word-break: break-word;
 }
 
 .us-column-error__retry {
     align-self: flex-start;
     appearance: none;
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid rgba(239, 68, 68, 0.4);
-    color: #fecaca;
+    background: transparent;
+    border: 1px solid rgba(255, 161, 108, 0.4);
+    color: #ffa16c;
     padding: 4px 10px;
-    border-radius: 6px;
+    border-radius: 4px;
     font-size: 11px;
+    font-family: inherit;
     cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .us-column-error__retry:hover {
-    background: rgba(239, 68, 68, 0.3);
+    border-color: #ffa16c;
+    color: #ffffff;
 }

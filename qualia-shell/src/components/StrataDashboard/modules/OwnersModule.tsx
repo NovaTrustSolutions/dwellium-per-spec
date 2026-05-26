@@ -4,6 +4,7 @@ import { Landmark, RefreshCw, Building2, DollarSign, Mail, Phone, FileText, Car,
 import { strataGet, strataPost } from '../strataApi';
 import type { EntityProfile, Property, Report } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
+import { useStrataNav } from '../StrataNavContext';
 import ProfileSpaces from './ProfileSpaces';
 
 interface OwnersModuleProps {
@@ -13,6 +14,7 @@ interface OwnersModuleProps {
 
 export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersModuleProps) {
     const { hasPermission } = useUser();
+    const { navigateToProperty } = useStrataNav();
     const [owners, setOwners] = useState<EntityProfile[]>([]);
     const [properties, setProperties] = useState<Property[]>([]);
     const [reports, setReports] = useState<Report[]>([]);
@@ -206,7 +208,7 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                                                     const breakdown = propDetail?.breakdown || {};
                                                     return (
                                                         <div key={p.id} className="s-owner-prop-card">
-                                                            <div className="s-owner-prop-name">{p.name}</div>
+                                                            <div className="s-owner-prop-name"><button className="s-property-link" style={{ fontSize: 'inherit', fontWeight: 'inherit' }} onClick={() => navigateToProperty(p.id)}>{p.name}</button></div>
                                                             <div className="s-owner-prop-meta">{p.address}</div>
                                                             {Object.keys(breakdown).length > 0 && (
                                                                 <div className="s-owner-prop-meta" style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>

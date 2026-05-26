@@ -20,6 +20,7 @@ import ProfileSpaces from './ProfileSpaces';
 import { LoadingState, ErrorState } from '../StateView';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
+import { useStrataNav } from '../StrataNavContext';
 import type { ResidentHistoryEvent, ResidentLinkage, CommunicationTemplate, Occupancy, EntityProfile, EmergencyContact, Animal, Vehicle } from '../strataTypes';
 
 const API = API_BASE;
@@ -551,6 +552,7 @@ interface ResidentsModuleProps {
 
 export default function ResidentsModule({ searchNavTarget, onNavComplete }: ResidentsModuleProps) {
     const { hasPermission, authFetch } = useUser();
+    const { navigateToProperty } = useStrataNav();
     const [tenants, setTenants] = useState<Tenant[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -840,7 +842,11 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                         <td style={{ padding: '8px 12px', fontSize: 13, color: '#e2e8f0', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t.name} <LinkageIndicator tenantId={t.id} /></div>
                                         </td>
-                                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.propertyName || '—'}</td>
+                                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                            {m.propertyName && t.propertyIds?.[0] ? (
+                                                <button className="s-property-link" onClick={(e) => { e.stopPropagation(); navigateToProperty(t.propertyIds[0]); }}>{m.propertyName}</button>
+                                            ) : (m.propertyName || '—')}
+                                        </td>
                                         <td style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.unit || '—'}</td>
                                         <td style={{ padding: '8px 12px', fontSize: 12, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: sc(t.status).bg, color: sc(t.status).color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t.status}</span>

@@ -179,7 +179,7 @@ describe('StellaAgent', () => {
         render(<StellaAgent />);
 
         await waitFor(() => {
-            expect(screen.getByText(/Stella is not running/)).toBeInTheDocument();
+            expect(screen.getByText(/Stella agent is offline/)).toBeInTheDocument();
         });
 
         expect(screen.getByText('Retry')).toBeInTheDocument();

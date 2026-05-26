@@ -25,7 +25,7 @@ globalThis.ResizeObserver = MockResizeObserver as any;
 import Terminal from '../components/Terminal/Terminal';
 
 function json(data: any, ok = true, status = 200): Response {
-    return { ok, status, json: async () => data, headers: new Headers() } as Response;
+    return { ok, status, json: async () => data, headers: new Headers({ 'content-type': 'application/json' }) } as Response;
 }
 
 describe('Terminal', () => {

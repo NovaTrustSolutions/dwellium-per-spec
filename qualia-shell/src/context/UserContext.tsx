@@ -65,7 +65,11 @@ interface UserContextValue {
 
 const ROLE_HIERARCHY = ['tenant', 'agent', 'maintenance', 'advisor', 'management', 'corporate', 'god'];
 
-const UserContext = createContext<UserContextValue | null>(null);
+// Exported (2026-05-26) so hooks like useIntegrations can read the context
+// directly without going through useUser() — useUser throws when called
+// outside a UserProvider, which breaks tests that mount widgets without
+// auth setup. Raw-context consumers degrade to null user instead.
+export const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<DwelliumUser | null>(null);

@@ -8,6 +8,8 @@ import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
 import { renderSafeMarkdown, sanitizeSvg } from '../../utils/safeMarkdown';
 import { getAuthToken } from '../../context/UserContext';
+import { useIntegrations } from '../../hooks/useIntegrations';
+import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 
 const API_BASE = '/api/stella';
 
@@ -192,6 +194,7 @@ const TAB_CONFIG: { id: Tab; label: string; icon: string }[] = [
 ];
 
 export default function StellaAgent() {
+    const { integrations } = useIntegrations();
     const [tab, setTab] = useState<Tab>('chat');
     const [status, setStatus] = useState<ConnectionStatus>('loading');
     const [version, setVersion] = useState<string>('');
@@ -457,7 +460,11 @@ export default function StellaAgent() {
     // ─── Chat ─────────────────────────────────────────
     const sendMessage = async () => {
         const text = input.trim();
-        if (!text || isTyping || status !== 'online') return;
+        // 2026-05-26: relax `status !== 'online'` gate when user has LLM configured.
+        // Stella backend can be offline AND the chat still works via the user's
+        // personal LLM key (Settings → API Keys).
+        const llmReady = hasActiveLlm(integrations.llm);
+        if (!text || isTyping || (status !== 'online' && !llmReady)) return;
 
         const userMsg: ChatMessage = {
             id: `user-${Date.now()}`,
@@ -470,6 +477,45 @@ export default function StellaAgent() {
         setInput('');
         setIsTyping(true);
 
+        // ── 1) Try user-configured LLM first ──
+        // When a personal LLM is configured, route directly. Drops SSE streaming
+        // (single-shot response), but preserves chat continuity even when the
+        // Stella backend is offline. Falls through to backend on LLM error.
+        if (llmReady) {
+            try {
+                const llmRes = await callLlm({
+                    systemPrompt: `You are Stella, a helpful personal AI assistant inside the Dwellium property-management app. Be concise, direct, and useful. Help with tasks, research, file management, and general questions. Use Markdown for formatting when appropriate.`,
+                    prompt: text,
+                    maxTokens: 1024,
+                    temperature: 0.4,
+                }, integrations.llm);
+                if (llmRes) {
+                    setMessages(prev => [...prev, {
+                        id: `assistant-${Date.now()}`,
+                        role: 'assistant',
+                        content: llmRes.text,
+                        timestamp: Date.now(),
+                    }]);
+                    setIsTyping(false);
+                    return;
+                }
+            } catch (err) {
+                // LLM call failed — surface to UI only if backend is also offline.
+                if (status !== 'online') {
+                    setMessages(prev => [...prev, {
+                        id: `error-${Date.now()}`,
+                        role: 'system',
+                        content: `⚠️ LLM error: ${err instanceof Error ? err.message : 'Failed'}`,
+                        timestamp: Date.now(),
+                    }]);
+                    setIsTyping(false);
+                    return;
+                }
+                // Otherwise fall through to backend.
+            }
+        }
+
+        // ── 2) Fall back to backend (existing SSE-aware path) ──
         try {
             const resp = await fetch(`${API_BASE}/chat`, {
                 method: 'POST',
@@ -1124,10 +1170,13 @@ export default function StellaAgent() {
             {/* Offline Banner — wording calls out the missing service so the
                 operator knows this isn't a transient hiccup but a setup gap.
                 Stella's chat path needs the sibling Python agent (+ Honcho/
-                Hermes) running; backend A doesn't ship it. */}
-            {status === 'offline' && (
+                Hermes) running; backend A doesn't ship it.
+                2026-05-26: when the user has an LLM configured in Settings →
+                API Keys, chat works via the personal LLM key — surface a
+                softer banner that explains the fallback rather than blocking. */}
+            {status === 'offline' && !hasActiveLlm(integrations.llm) && (
                 <div className="stella__offline-banner">
-                    ⚠️ Stella agent is offline — requires the Stella Python agent service.
+                    ⚠️ Stella agent is offline — requires the Stella Python agent service, OR configure a personal LLM in Settings → API Keys.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry</button>
                     <button className="stella__retry-btn" onClick={async () => {
                         setInitLoading(true);
@@ -1136,6 +1185,12 @@ export default function StellaAgent() {
                             await checkStatus();
                         } catch { } finally { setInitLoading(false); }
                     }} disabled={initLoading}>{initLoading ? 'Initializing…' : 'Initialize'}</button>
+                </div>
+            )}
+            {status === 'offline' && hasActiveLlm(integrations.llm) && (
+                <div className="stella__offline-banner" style={{ background: 'rgba(214,254,81,0.08)', borderColor: 'rgba(214,254,81,0.3)' }}>
+                    💡 Stella's Python agent is offline — chat is using your personal LLM ({integrations.llm.active}) instead. Skills/memory tabs require the agent.
+                    <button className="stella__retry-btn" onClick={checkStatus}>Retry agent</button>
                 </div>
             )}
 
@@ -1184,14 +1239,18 @@ export default function StellaAgent() {
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={status === 'online' ? 'Ask Stella anything…' : 'Stella is offline'}
-                            disabled={status !== 'online'}
+                            placeholder={
+                                status === 'online' ? 'Ask Stella anything…' :
+                                hasActiveLlm(integrations.llm) ? `Ask anything (via ${integrations.llm.active})…` :
+                                'Stella is offline — configure an LLM in Settings'
+                            }
+                            disabled={status !== 'online' && !hasActiveLlm(integrations.llm)}
                             rows={1}
                         />
                         <button
                             className="stella__send-btn"
                             onClick={sendMessage}
-                            disabled={!input.trim() || isTyping || status !== 'online'}
+                            disabled={!input.trim() || isTyping || (status !== 'online' && !hasActiveLlm(integrations.llm))}
                             title="Send"
                         >
                             ➤

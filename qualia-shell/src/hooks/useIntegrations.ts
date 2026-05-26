@@ -7,8 +7,8 @@
  * savedLayoutsUserIdHolder (Phase-8+ Task 8.10 Option β).
  */
 
-import { useCallback, useSyncExternalStore } from 'react';
-import { useUser } from '../context/UserContext';
+import { useCallback, useContext, useSyncExternalStore } from 'react';
+import { UserContext } from '../context/UserContext';
 import {
     integrationsStore,
     integrationsUserIdHolder,
@@ -18,12 +18,17 @@ import {
 import type { IntegrationsBundle } from '../types/integrations';
 
 export function useIntegrations() {
-    const { user } = useUser();
+    // Use raw context (NOT useUser()) — useUser throws when no provider is
+    // present (test environments, anonymous routes). Reading the context
+    // directly lets useIntegrations degrade gracefully to the `_anonymous`
+    // namespace when there's no user.
+    const userCtx = useContext(UserContext);
+    const userId = userCtx?.user?.id ?? null;
 
     // Update holder DURING render BEFORE useSyncExternalStore reads.
     // Factory cache invalidates automatically on key change → returns the
     // fresh per-user-id value without a separate re-init effect.
-    integrationsUserIdHolder.current = user?.id ?? null;
+    integrationsUserIdHolder.current = userId;
 
     const bundle = useSyncExternalStore(
         integrationsStore.subscribe,

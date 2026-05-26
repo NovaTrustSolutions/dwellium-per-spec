@@ -128,12 +128,12 @@ function Section({ title, icon, children, defaultOpen = true, onToggle }: {
 }
 
 /* ── Detail field ── */
-function Field({ label, value }: { label: string; value?: string | number | null }) {
+function Field({ label, value, dynamic }: { label: string; value?: string | number | null; dynamic?: boolean }) {
     if (!value && value !== 0) return null;
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
             <span style={{ color: '#64748b', fontSize: 12, fontWeight: 500 }}>{label}</span>
-            <span style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600, textAlign: 'right', maxWidth: '60%', wordBreak: 'break-word' }}>{value}</span>
+            <span data-dynamic={dynamic ? 'timestamp' : undefined} style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600, textAlign: 'right', maxWidth: '60%', wordBreak: 'break-word' }}>{value}</span>
         </div>
     );
 }
@@ -665,7 +665,7 @@ export default function MaintenanceModule() {
                                         <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{h.title}</span>
                                         {h.technicianName && <span style={{ fontSize: 10, color: '#94a3b8' }}><User size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{h.technicianName}</span>}
                                         {h.resolutionHours !== null && h.resolutionHours !== undefined && <span style={{ fontSize: 10, color: '#D6FE51' }}>{h.resolutionHours}h</span>}
-                                        <span style={{ fontSize: 10, color: '#475569' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                                        <span data-dynamic="timestamp" style={{ fontSize: 10, color: '#475569' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 ))}
                             </div>
@@ -819,10 +819,10 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
 
             {/* ── Dates & Details ── */}
             <Section title="Details" icon={<CalendarDays size={13} />}>
-                <Field label="Created" value={item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
-                <Field label="Due Date" value={item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
-                <Field label="Last Updated" value={item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
-                <Field label="Resolved" value={item.resolvedAt ? new Date(item.resolvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
+                <Field label="Created" value={item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} dynamic />
+                <Field label="Due Date" value={item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : undefined} dynamic />
+                <Field label="Last Updated" value={item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} dynamic />
+                <Field label="Resolved" value={item.resolvedAt ? new Date(item.resolvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} dynamic />
             </Section>
 
             {/* ════════ Task 1.4 — Work Order detail-panel extensions ════════ */}
@@ -913,8 +913,8 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     <Field label="Tenant-Visible Status" value={meta.tenantStatus} />
                     {meta.techStatus && <Field label="Technician Status" value={meta.techStatus} />}
                     {meta.scheduledDate && <Field label="Scheduled" value={`${meta.scheduledDate}${meta.scheduledTime ? ' at ' + meta.scheduledTime : ''}`} />}
-                    {meta.dispatchedAt && <Field label="Dispatched" value={new Date(meta.dispatchedAt).toLocaleString()} />}
-                    {meta.signedOffAt && <Field label="Signed Off" value={`${new Date(meta.signedOffAt).toLocaleString()} by ${meta.signedOffBy}`} />}
+                    {meta.dispatchedAt && <Field label="Dispatched" value={new Date(meta.dispatchedAt).toLocaleString()} dynamic />}
+                    {meta.signedOffAt && <Field label="Signed Off" value={`${new Date(meta.signedOffAt).toLocaleString()} by ${meta.signedOffBy}`} dynamic />}
                 </Section>
             )}
 
@@ -928,7 +928,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                 <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600 }}>{a.type?.replace(/_/g, ' ')}</span>
                                 <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{a.description || a.metadata?.fileName || 'Unnamed'}</span>
-                                <span style={{ fontSize: 10, color: '#475569' }}>{a.metadata?.uploadedAt ? new Date(a.metadata.uploadedAt).toLocaleDateString() : ''}</span>
+                                <span data-dynamic="timestamp" style={{ fontSize: 10, color: '#475569' }}>{a.metadata?.uploadedAt ? new Date(a.metadata.uploadedAt).toLocaleDateString() : ''}</span>
                             </div>
                         ))}
                     </div>
@@ -1043,7 +1043,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                 <Section title="Trello Source" icon={<ExternalLink size={13} />} defaultOpen={false}>
                     <Field label="Board" value={meta.trelloBoardName} />
                     <Field label="List" value={meta.trelloListName} />
-                    <Field label="Last Activity" value={meta.trelloLastActivity ? new Date(meta.trelloLastActivity).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} />
+                    <Field label="Last Activity" value={meta.trelloLastActivity ? new Date(meta.trelloLastActivity).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined} dynamic />
                     {meta.trelloUrl && (
                         <div style={{ marginTop: 8 }}>
                             <a

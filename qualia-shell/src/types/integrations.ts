@@ -71,6 +71,36 @@ export interface SupabaseConfig {
     enabled: boolean;
 }
 
+/**
+ * Postgres config — single cloud-hosted instance shared between the Electron
+ * app and the web version. Browsers can't speak the Postgres wire protocol
+ * directly, so the actual connection lives in the backend OR (for Electron)
+ * the main process. This config is the per-user definition of WHICH cloud
+ * Postgres to talk to; the connection itself goes through a transport layer
+ * that consumes these fields.
+ *
+ * Accepts either a full connection string OR discrete host/port/database/
+ * user/password fields. Connection string takes precedence when set.
+ */
+export interface PostgresConfig {
+    /** Full URL — postgres://user:pass@host:port/db?sslmode=require */
+    connectionString?: string;
+    /** Discrete fields — used if connectionString is empty. */
+    host?: string;
+    port?: number;
+    database?: string;
+    user?: string;
+    password?: string;
+    /** SSL mode for discrete-field shape. Strings match libpq: disable/require/verify-ca/verify-full. */
+    sslMode?: 'disable' | 'require' | 'verify-ca' | 'verify-full';
+    /**
+     * Whether the Electron app should sync state to this Postgres in
+     * addition to the web frontend. Both endpoints write to the same DB.
+     */
+    syncEnabled?: boolean;
+    enabled: boolean;
+}
+
 /** Test-result metadata, attached separately so it doesn't pollute config. */
 export interface IntegrationTestResult {
     ok: boolean;
@@ -96,6 +126,7 @@ export interface IntegrationsBundle {
         calendar?: GoogleCalendarConfig;
     };
     supabase?: SupabaseConfig;
+    postgres?: PostgresConfig;
     tests: {
         anthropic?: IntegrationTestResult;
         openai?: IntegrationTestResult;
@@ -105,6 +136,7 @@ export interface IntegrationsBundle {
         gmail?: IntegrationTestResult;
         calendar?: IntegrationTestResult;
         supabase?: IntegrationTestResult;
+        postgres?: IntegrationTestResult;
     };
 }
 

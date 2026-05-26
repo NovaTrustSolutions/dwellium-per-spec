@@ -23,6 +23,7 @@ import { useState } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { testProvider } from '../../lib/llmClient';
+import { API_BASE } from '../../config';
 import type {
     IntegrationsBundle,
     LlmProvider,
@@ -32,6 +33,7 @@ import type {
     LlmLocalConfig,
     LlmCustomConfig,
     SupabaseConfig,
+    PostgresConfig,
 } from '../../types/integrations';
 import { DEFAULT_MODELS, PROVIDER_LABELS, maskKey } from '../../types/integrations';
 
@@ -99,11 +101,12 @@ export default function LlmIntegrationsSection() {
             <LocalCard bundle={integrations} update={update} />
             <CustomCard bundle={integrations} update={update} />
 
-            {/* Supabase */}
+            {/* Database */}
             <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 20, marginBottom: 8 }}>
-                Supabase
+                Databases
             </h4>
             <SupabaseCard bundle={integrations} update={update} />
+            <PostgresCard bundle={integrations} update={update} />
         </section>
     );
 }
@@ -439,6 +442,210 @@ function SupabaseCard({ bundle, update }: CardProps) {
             <div className="cp-field">
                 <label className="cp-label">Service Key (optional, server-side admin)</label>
                 <ApiKeyInput value={cfg.serviceKey || ''} onChange={v => setField({ serviceKey: v })} placeholder="eyJ…" />
+            </div>
+        </div>
+    );
+}
+
+function PostgresCard({ bundle, update }: CardProps) {
+    const cfg: PostgresConfig = bundle.postgres || {
+        connectionString: '',
+        host: '',
+        port: 5432,
+        database: '',
+        user: '',
+        password: '',
+        sslMode: 'require',
+        syncEnabled: true,
+        enabled: false,
+    };
+    const setField = (patch: Partial<PostgresConfig>) => update(b => ({
+        ...b,
+        postgres: { ...cfg, ...patch },
+    }));
+
+    const [mode, setMode] = useState<'string' | 'fields'>(cfg.connectionString ? 'string' : 'fields');
+    const [testing, setTesting] = useState(false);
+    const [testMsg, setTestMsg] = useState<string | null>(null);
+
+    const handleTest = async () => {
+        setTesting(true);
+        setTestMsg(null);
+        // Browser can't speak Postgres wire protocol directly. We POST to a
+        // backend route that runs the connection on our behalf. If the route
+        // doesn't exist yet (404), surface that clearly so the user knows
+        // the test is awaiting backend wiring.
+        try {
+            const payload: any = mode === 'string'
+                ? { connectionString: cfg.connectionString }
+                : {
+                    host: cfg.host,
+                    port: cfg.port,
+                    database: cfg.database,
+                    user: cfg.user,
+                    password: cfg.password,
+                    sslMode: cfg.sslMode,
+                };
+            const res = await fetch(`${API_BASE}/api/integrations/test-postgres`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (res.status === 404) {
+                setTestMsg('✗ Backend route /api/integrations/test-postgres not implemented yet. Config saved; test wiring is backend work.');
+                return;
+            }
+            const json = await res.json().catch(() => ({}));
+            if (res.ok && json?.success) {
+                setTestMsg(`✓ Connected${json.version ? ` (${json.version})` : ''}`);
+            } else {
+                setTestMsg(`✗ ${json?.error || `HTTP ${res.status}`}`);
+            }
+        } catch (e: any) {
+            setTestMsg(`✗ Network error: ${e?.message || 'unreachable'}`);
+        } finally {
+            setTesting(false);
+        }
+    };
+
+    return (
+        <div className="cp-integration-card" style={{ marginBottom: 12 }}>
+            <div className="cp-integration-card__header">
+                <span className="cp-integration-card__title">Postgres (shared cloud DB)</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                    <input
+                        type="checkbox"
+                        checked={cfg.enabled}
+                        onChange={e => setField({ enabled: e.target.checked })}
+                    />
+                    Enabled
+                </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <button
+                    type="button"
+                    className={`cp-btn ${mode === 'string' ? '' : 'cp-btn--subtle'}`}
+                    onClick={() => setMode('string')}
+                    style={{ fontSize: 12 }}
+                >Connection String</button>
+                <button
+                    type="button"
+                    className={`cp-btn ${mode === 'fields' ? '' : 'cp-btn--subtle'}`}
+                    onClick={() => setMode('fields')}
+                    style={{ fontSize: 12 }}
+                >Discrete Fields</button>
+            </div>
+
+            {mode === 'string' ? (
+                <div className="cp-field" style={{ marginBottom: 8 }}>
+                    <label className="cp-label">Connection String</label>
+                    <ApiKeyInput
+                        value={cfg.connectionString || ''}
+                        onChange={v => setField({ connectionString: v })}
+                        placeholder="postgres://user:pass@host:5432/db?sslmode=require"
+                    />
+                </div>
+            ) : (
+                <>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        <div className="cp-field" style={{ flex: 2 }}>
+                            <label className="cp-label">Host</label>
+                            <input
+                                className="cp-input"
+                                type="text"
+                                value={cfg.host || ''}
+                                onChange={e => setField({ host: e.target.value })}
+                                placeholder="db.example.com"
+                            />
+                        </div>
+                        <div className="cp-field" style={{ flex: 1 }}>
+                            <label className="cp-label">Port</label>
+                            <input
+                                className="cp-input"
+                                type="number"
+                                value={cfg.port || 5432}
+                                onChange={e => setField({ port: parseInt(e.target.value, 10) || 5432 })}
+                                placeholder="5432"
+                            />
+                        </div>
+                    </div>
+                    <div className="cp-field" style={{ marginBottom: 8 }}>
+                        <label className="cp-label">Database</label>
+                        <input
+                            className="cp-input"
+                            type="text"
+                            value={cfg.database || ''}
+                            onChange={e => setField({ database: e.target.value })}
+                            placeholder="dwellium"
+                        />
+                    </div>
+                    <div className="cp-field" style={{ marginBottom: 8 }}>
+                        <label className="cp-label">User</label>
+                        <input
+                            className="cp-input"
+                            type="text"
+                            value={cfg.user || ''}
+                            onChange={e => setField({ user: e.target.value })}
+                            placeholder="postgres"
+                            autoComplete="off"
+                        />
+                    </div>
+                    <div className="cp-field" style={{ marginBottom: 8 }}>
+                        <label className="cp-label">Password</label>
+                        <ApiKeyInput
+                            value={cfg.password || ''}
+                            onChange={v => setField({ password: v })}
+                            placeholder="••••••••"
+                        />
+                    </div>
+                    <div className="cp-field" style={{ marginBottom: 8 }}>
+                        <label className="cp-label">SSL Mode</label>
+                        <select
+                            className="cp-select"
+                            value={cfg.sslMode || 'require'}
+                            onChange={e => setField({ sslMode: e.target.value as PostgresConfig['sslMode'] })}
+                        >
+                            <option value="disable">disable</option>
+                            <option value="require">require (recommended)</option>
+                            <option value="verify-ca">verify-ca</option>
+                            <option value="verify-full">verify-full</option>
+                        </select>
+                    </div>
+                </>
+            )}
+
+            <div className="cp-field" style={{ marginBottom: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    <input
+                        type="checkbox"
+                        checked={cfg.syncEnabled ?? true}
+                        onChange={e => setField({ syncEnabled: e.target.checked })}
+                    />
+                    Sync between Electron app and web version
+                </label>
+                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                    Both clients read/write the same cloud Postgres. Disable if you want client-local-only storage in Electron.
+                </p>
+            </div>
+
+            <div className="cp-actions" style={{ marginTop: 4 }}>
+                <button
+                    className="cp-btn"
+                    onClick={handleTest}
+                    disabled={testing || !cfg.enabled || (mode === 'string' ? !cfg.connectionString : !cfg.host)}
+                >
+                    {testing ? 'Testing…' : 'Test Connection'}
+                </button>
+                {testMsg && (
+                    <span style={{
+                        fontSize: 11,
+                        color: testMsg.startsWith('✓') ? '#22c55e' : '#ef4444',
+                        marginLeft: 8,
+                        alignSelf: 'center',
+                        lineHeight: 1.4,
+                    }}>{testMsg}</span>
+                )}
             </div>
         </div>
     );

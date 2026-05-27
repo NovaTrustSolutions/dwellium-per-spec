@@ -16,9 +16,11 @@ import { SelectionToolbar } from './SelectionToolbar';
 import { RedlineNavigator } from './RedlineNavigator';
 import { CommentEditor } from './CommentEditor';
 import { Minimap } from './Minimap';
+import { useScribeTheme } from './useScribeTheme';
 import './Scribe.css';
 
 export default function Scribe() {
+    useScribeTheme();
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const activeFilepath = useScribeStore((s) => s.activeFilepath);

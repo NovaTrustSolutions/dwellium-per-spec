@@ -256,6 +256,13 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     // ═══════════════════════════════════════
     //  TOOLS — System & Configuration
     // ═══════════════════════════════════════
+    'scribe': {
+        id: 'scribe',
+        label: 'Scribe',
+        icon: 'pen-tool',
+        component: lazyWithReload(() => import('../components/Scribe/Scribe')),
+        category: 'tools',
+    },
     'terminal': {
         id: 'terminal',
         label: 'Terminal',

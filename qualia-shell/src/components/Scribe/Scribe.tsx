@@ -1,10 +1,6 @@
 /**
- * Scribe — CodeMirror 6 markdown editor widget with multi-tab support
- * and AI redlines.
- *
- * Cycle 6: AI redlines via per-user llmClient. Select text → floating
- * toolbar → "Redline" button → LLM returns proposed edits → inline
- * accept/reject. Self-contained per architecture decision §8.
+ * Scribe — CodeMirror 6 markdown editor widget with multi-tab support,
+ * AI redlines, inline comments, versioning, and table of contents.
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
@@ -14,6 +10,8 @@ import { getMarkdownExtensions, registerEditorView } from './markdownConfig';
 import { useScribeStore, type FileEntry } from './scribeStore';
 import { useAutoSave } from './useAutoSave';
 import { TabBar } from './TabBar';
+import { DocumentToolbar } from './DocumentToolbar';
+import { TableOfContents } from './TableOfContents';
 import { SelectionToolbar } from './SelectionToolbar';
 import { RedlineNavigator } from './RedlineNavigator';
 import { CommentEditor } from './CommentEditor';
@@ -27,6 +25,7 @@ export default function Scribe() {
     const loading = useScribeStore((s) => s.loading);
     const error = useScribeStore((s) => s.error);
     const redlineLoading = useScribeStore((s) => s.redlineLoading);
+    const tocVisible = useScribeStore((s) => s.tocVisible);
     const activeFile = openFiles.find((f) => f.filepath === activeFilepath);
 
     useAutoSave(activeFilepath);
@@ -87,12 +86,14 @@ export default function Scribe() {
     return (
         <div className="scribe">
             <TabBar />
+            <DocumentToolbar />
             {loading && <div className="scribe__status">Loading...</div>}
             {error && <div className="scribe__status scribe__status--error">{error}</div>}
             {redlineLoading && <div className="scribe__status">AI is thinking...</div>}
             <div className="scribe__editor-area">
                 <div className="scribe__editor" ref={containerRef} />
                 <RedlineNavigator getView={() => viewRef.current} />
+                {tocVisible && <TableOfContents getView={() => viewRef.current} />}
             </div>
             <SelectionToolbar />
             <CommentEditor getView={() => viewRef.current} />

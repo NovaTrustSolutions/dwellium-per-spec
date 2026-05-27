@@ -74,6 +74,11 @@ interface ScribeState {
     persistComments: (filepath: string) => Promise<void>;
     remapCommentAnchors: (filepath: string, mapPos: (pos: number, assoc?: number) => number) => void;
 
+    tocVisible: boolean;
+    setTocVisible: (v: boolean) => void;
+
+    createVersion: (filepath: string) => Promise<string | null>;
+
     openFile: (filepath: string) => Promise<void>;
     closeFile: (filepath: string) => void;
     setActiveFile: (filepath: string) => void;
@@ -187,6 +192,26 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
             });
             return changed ? { comments: next } : {};
         });
+    },
+
+    tocVisible: false,
+    setTocVisible: (v) => set({ tocVisible: v }),
+
+    createVersion: async (filepath) => {
+        try {
+            const data = await apiFetch('/api/scribe/version', {
+                method: 'POST',
+                body: JSON.stringify({ filepath }),
+            });
+            if (data.newFilepath) {
+                void get().openFile(data.newFilepath);
+                return data.newFilepath as string;
+            }
+            return null;
+        } catch (err: any) {
+            set({ error: err.message });
+            return null;
+        }
     },
 
     openFile: async (filepath) => {

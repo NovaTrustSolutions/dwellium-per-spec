@@ -56,10 +56,10 @@ index 4aa15ed..b03d57d 100644
  export default router;
 diff --git a/ai-dashboard369-file-manager/src/routes/scribeRoutes.ts b/ai-dashboard369-file-manager/src/routes/scribeRoutes.ts
 new file mode 100644
-index 0000000..2637e90
+index 0000000..c367b61
 --- /dev/null
 +++ b/ai-dashboard369-file-manager/src/routes/scribeRoutes.ts
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,215 @@
 +/**
 + * Scribe Routes — per-user markdown file CRUD for the Scribe editor widget.
 + *
@@ -213,6 +213,63 @@ index 0000000..2637e90
 +    } catch (err: any) {
 +        if (err.code === 'ENOENT') return res.status(404).json({ success: false, error: 'File not found' });
 +        console.error('[Scribe] delete error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── GET /comments/* — read comment sidecar ───────────────────────────────
++
++function getCommentSidecarPath(base: string, filepath: string): { resolved: string } | { error: string } {
++    const err = validateFilepath(filepath);
++    if (err) return { error: err };
++    const commentsDir = path.join(base, '.comments');
++    const resolved = path.resolve(commentsDir, filepath + '.json');
++    if (!resolved.startsWith(commentsDir + path.sep) && resolved !== commentsDir) {
++        return { error: 'path traversal not allowed' };
++    }
++    return { resolved };
++}
++
++router.get('/comments/*', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const filepath = (req.params as any)[0];
++        const base = getUserBase(userId);
++        const result = getCommentSidecarPath(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++        try {
++            const raw = await fs.readFile(result.resolved, 'utf-8');
++            return res.json({ success: true, comments: JSON.parse(raw) });
++        } catch (err: any) {
++            if (err.code === 'ENOENT') return res.json({ success: true, comments: [] });
++            throw err;
++        }
++    } catch (err: any) {
++        console.error('[Scribe] comments read error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── PUT /comments/* — save comment sidecar ───────────────────────────────
++
++router.put('/comments/*', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const filepath = (req.params as any)[0];
++        const base = getUserBase(userId);
++        const result = getCommentSidecarPath(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++        const { comments } = req.body;
++        if (!Array.isArray(comments)) return res.status(400).json({ success: false, error: 'comments must be an array' });
++        await fs.mkdir(path.dirname(result.resolved), { recursive: true });
++        const tmp = result.resolved + '.tmp';
++        await fs.writeFile(tmp, JSON.stringify(comments, null, 2), 'utf-8');
++        await fs.rename(tmp, result.resolved);
++        return res.json({ success: true });
++    } catch (err: any) {
++        console.error('[Scribe] comments write error:', err.message);
 +        return res.status(500).json({ success: false, error: err.message });
 +    }
 +});

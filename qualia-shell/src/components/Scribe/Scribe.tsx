@@ -16,6 +16,7 @@ import { useAutoSave } from './useAutoSave';
 import { TabBar } from './TabBar';
 import { SelectionToolbar } from './SelectionToolbar';
 import { RedlineNavigator } from './RedlineNavigator';
+import { CommentEditor } from './CommentEditor';
 import './Scribe.css';
 
 export default function Scribe() {
@@ -94,6 +95,7 @@ export default function Scribe() {
                 <RedlineNavigator getView={() => viewRef.current} />
             </div>
             <SelectionToolbar />
+            <CommentEditor getView={() => viewRef.current} />
         </div>
     );
 }

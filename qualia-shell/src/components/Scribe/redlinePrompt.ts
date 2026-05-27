@@ -27,6 +27,10 @@ export interface RedlineResponse {
     redlines: RedlineProposal[];
 }
 
+export const COMMENT_REDLINE_SYSTEM_PROMPT = REDLINE_SYSTEM_PROMPT + `
+
+The user has attached a comment to this selection. Treat the comment as the EDITING INSTRUCTION — apply the feedback described in the comment to the selected text. Respond with the same JSON shape (redlines array).`;
+
 export function parseRedlineResponse(text: string): RedlineResponse | null {
     try {
         const cleaned = text.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();

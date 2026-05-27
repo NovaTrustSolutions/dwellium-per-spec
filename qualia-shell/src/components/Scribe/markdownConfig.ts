@@ -17,6 +17,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { Table } from '@lezer/markdown';
 import { mdTableField } from './tablePlugin';
 import { redlinePlugin } from './redlinePlugin';
+import { commentPlugin } from './commentPlugin';
 import { selectionObserver } from './selectionObserver';
 import { basicSetup } from 'codemirror';
 import { closeBrackets } from '@codemirror/autocomplete';
@@ -537,6 +538,7 @@ export function getMarkdownExtensions(): Extension[] {
         doubleSpacePeriod,
         smartPasteKeymap,
         redlinePlugin(),
+        commentPlugin(),
         selectionObserver(),
         scribeTheme,
         EditorView.lineWrapping,

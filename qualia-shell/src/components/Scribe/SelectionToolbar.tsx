@@ -40,6 +40,11 @@ export function SelectionToolbar() {
     const left = Math.max(8, Math.min(window.innerWidth - 8, x));
     const llmReady = hasActiveLlm(integrations.llm);
 
+    const handleAddComment = () => {
+        useScribeStore.getState().addComment(filepath, from, to);
+        useScribeStore.getState().setSelectionToolbar(null);
+    };
+
     const handleSendToAgent = async () => {
         if (!llmReady || redlineLoading) return;
         useScribeStore.getState().setSelectionToolbar(null);
@@ -111,6 +116,26 @@ export function SelectionToolbar() {
             }}
             onMouseDown={(e) => e.stopPropagation()}
         >
+            <button
+                title="Add a comment to this selection"
+                onClick={handleAddComment}
+                style={{
+                    background: 'transparent',
+                    border: '1px solid #444',
+                    color: '#ccc',
+                    cursor: 'pointer',
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    transition: 'background 100ms, color 100ms',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#222'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ccc'; }}
+            >
+                💬 Comment
+            </button>
             <button
                 title={llmReady ? 'Send selection to AI for editing suggestions' : 'Configure an LLM in Settings → API Keys'}
                 onClick={() => void handleSendToAgent()}

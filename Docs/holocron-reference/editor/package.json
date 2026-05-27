@@ -1,0 +1,80 @@
+{
+  "name": "holocron-editor",
+  "version": "0.1.0",
+  "description": "Holocron Editor — local-first AI-native document editor",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "package": "electron-builder --mac",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "db:setup": "ts-node scripts/db-setup.ts",
+    "test": "ts-node scripts/test-with-db.ts",
+    "test:run": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.1",
+    "@codemirror/lang-markdown": "^6.3.1",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/state": "^6.4.1",
+    "@codemirror/view": "^6.33.0",
+    "@lezer/highlight": "^1.2.3",
+    "@mdxeditor/editor": "^3.55.0",
+    "bullmq": "^5.0.0",
+    "chokidar": "^3.6.0",
+    "codemirror": "^6.0.1",
+    "d3": "^7.9.0",
+    "docx": "^9.6.1",
+    "dotenv": "^16.4.5",
+    "graphology": "^0.26.0",
+    "graphology-communities-louvain": "^2.0.2",
+    "graphology-metrics": "^2.4.0",
+    "mammoth": "^1.12.0",
+    "marked": "^18.0.3",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.7.284",
+    "pg": "^8.12.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^8.0.7",
+    "read-excel-file": "^9.0.10",
+    "sanitize-html": "^2.17.4",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.6",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/sanitize-html": "^2.16.1",
+    "@vitejs/plugin-react": "^5.2.0",
+    "autoprefixer": "^10.4.19",
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0",
+    "vite": "^7.3.3",
+    "vitest": "^4.1.6"
+  },
+  "build": {
+    "appId": "com.holocron.editor",
+    "productName": "Agenteryx",
+    "directories": {
+      "buildResources": "resources"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
+    }
+  }
+}

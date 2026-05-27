@@ -224,3 +224,42 @@
     background: rgba(214, 254, 81, 0.06);
     color: #D6FE51;
 }
+
+/* ── Minimap ──────────────────────────────────────── */
+
+.scribe__minimap {
+    width: 64px;
+    flex-shrink: 0;
+    background: rgba(5, 5, 5, 0.55);
+    border-left: 1px solid #222;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    overflow: hidden;
+}
+
+.scribe__minimap-marker {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-radius: 1px;
+    pointer-events: none;
+}
+
+.scribe__minimap-marker--comment {
+    background: rgba(245, 158, 11, 0.8);
+}
+
+.scribe__minimap-marker--redline {
+    background: rgba(255, 77, 77, 0.6);
+}
+
+.scribe__minimap-viewport {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    pointer-events: none;
+}

@@ -15,6 +15,7 @@ import { TableOfContents } from './TableOfContents';
 import { SelectionToolbar } from './SelectionToolbar';
 import { RedlineNavigator } from './RedlineNavigator';
 import { CommentEditor } from './CommentEditor';
+import { Minimap } from './Minimap';
 import './Scribe.css';
 
 export default function Scribe() {
@@ -26,6 +27,7 @@ export default function Scribe() {
     const error = useScribeStore((s) => s.error);
     const redlineLoading = useScribeStore((s) => s.redlineLoading);
     const tocVisible = useScribeStore((s) => s.tocVisible);
+    const minimapVisible = useScribeStore((s) => s.minimapVisible);
     const activeFile = openFiles.find((f) => f.filepath === activeFilepath);
 
     useAutoSave(activeFilepath);
@@ -93,6 +95,7 @@ export default function Scribe() {
             <div className="scribe__editor-area">
                 <div className="scribe__editor" ref={containerRef} />
                 <RedlineNavigator getView={() => viewRef.current} />
+                {minimapVisible && <Minimap getView={() => viewRef.current} />}
                 {tocVisible && <TableOfContents getView={() => viewRef.current} />}
             </div>
             <SelectionToolbar />

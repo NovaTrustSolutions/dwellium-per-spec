@@ -77,6 +77,9 @@ interface ScribeState {
     tocVisible: boolean;
     setTocVisible: (v: boolean) => void;
 
+    minimapVisible: boolean;
+    setMinimapVisible: (v: boolean) => void;
+
     createVersion: (filepath: string) => Promise<string | null>;
 
     openFile: (filepath: string) => Promise<void>;
@@ -196,6 +199,9 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
 
     tocVisible: false,
     setTocVisible: (v) => set({ tocVisible: v }),
+
+    minimapVisible: true,
+    setMinimapVisible: (v) => set({ minimapVisible: v }),
 
     createVersion: async (filepath) => {
         try {

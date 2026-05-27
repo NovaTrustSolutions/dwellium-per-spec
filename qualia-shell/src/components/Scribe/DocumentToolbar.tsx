@@ -13,6 +13,8 @@ export function DocumentToolbar() {
     const activeFilepath = useScribeStore((s) => s.activeFilepath);
     const tocVisible = useScribeStore((s) => s.tocVisible);
     const setTocVisible = useScribeStore((s) => s.setTocVisible);
+    const minimapVisible = useScribeStore((s) => s.minimapVisible);
+    const setMinimapVisible = useScribeStore((s) => s.setMinimapVisible);
     const createVersion = useScribeStore((s) => s.createVersion);
     const deleteFile = useScribeStore((s) => s.deleteFile);
     const closeFile = useScribeStore((s) => s.closeFile);
@@ -58,6 +60,12 @@ export function DocumentToolbar() {
                 title={tocVisible ? 'Hide table of contents' : 'Show table of contents'}
                 active={tocVisible}
                 onClick={() => setTocVisible(!tocVisible)}
+            />
+            <ToolbarBtn
+                label="🗺 Minimap"
+                title={minimapVisible ? 'Hide minimap' : 'Show minimap'}
+                active={minimapVisible}
+                onClick={() => setMinimapVisible(!minimapVisible)}
             />
             <ToolbarBtn
                 label={versioning ? '...' : '🕒 Version'}

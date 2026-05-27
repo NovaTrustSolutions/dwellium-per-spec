@@ -17,6 +17,16 @@ interface FactCheckEntry {
     sources: string[];
     timestamp: number;
     sessionId?: string;
+    /**
+     * Where the verdict came from. 'local' = LLM-first path stored client-side
+     * only (backend has no record). 'backend' = came from /api/transcribe/fact-check/log
+     * (or omitted for legacy entries pre-dating this tag).
+     *
+     * Used by fetchLog to PRESERVE local entries across polling refreshes —
+     * without this tag the 5-second poll would wipe LLM-sourced verdicts on
+     * the next fetchLog call.
+     */
+    source?: 'local' | 'backend';
 }
 
 type VerdictFilter = 'all' | 'verified' | 'disputed' | 'unverifiable' | 'partially_true';
@@ -45,16 +55,30 @@ export default function FactCheckLog() {
     const [checking, setChecking] = useState(false);
 
     // ---- POLL FOR NEW ENTRIES ----
+    // 2026-05-26 bug fix: previous version did setEntries(json.data.entries) — a
+    // wholesale replace — which wiped LLM-first verdicts (source:'local') on the
+    // next 5-second poll because backend doesn't know about them. Now we MERGE:
+    // backend entries (tagged source:'backend') + any local entries that aren't
+    // duplicated in the backend response (matched by claim + close timestamp).
     const fetchLog = useCallback(async () => {
         try {
             setLoading(true);
             const res = await fetch(`${API_FACT_CHECK}/log`);
             const json = await res.json();
             if (json.success && json.data?.entries) {
-                setEntries(json.data.entries);
+                const backendEntries: FactCheckEntry[] = (json.data.entries as FactCheckEntry[])
+                    .map(e => ({ ...e, source: 'backend' as const }));
+                setEntries(prev => {
+                    const localOnly = prev.filter(e => e.source === 'local');
+                    // Drop a local entry if backend now has a same-claim entry within ±30s.
+                    const survivingLocal = localOnly.filter(local => !backendEntries.some(b =>
+                        b.claim === local.claim && Math.abs(b.timestamp - local.timestamp) < 30_000
+                    ));
+                    return [...survivingLocal, ...backendEntries].sort((a, b) => b.timestamp - a.timestamp);
+                });
             }
         } catch {
-            // Backend offline — use local entries
+            // Backend offline — preserve whatever's already in state (local entries survive).
         } finally {
             setLoading(false);
         }
@@ -94,6 +118,8 @@ export default function FactCheckLog() {
                         explanation: parsed.explanation || '',
                         sources: Array.isArray(parsed.sources) ? parsed.sources : [],
                         timestamp: Date.now(),
+                        // 2026-05-26: tag as local so fetchLog's merge preserves us across polls.
+                        source: 'local',
                     }, ...prev]);
                     setManualClaim('');
                     setChecking(false);

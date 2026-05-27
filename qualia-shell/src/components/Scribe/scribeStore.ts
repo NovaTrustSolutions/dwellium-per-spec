@@ -15,11 +15,42 @@ export interface FileEntry {
     modified: string;
 }
 
+export interface Redline {
+    id: string;
+    filepath: string;
+    from: number;
+    to: number;
+    originalText: string;
+    proposedText: string;
+    rationale: string;
+    state: 'pending' | 'accepted' | 'rejected';
+}
+
+export interface SelectionToolbarState {
+    filepath: string;
+    x: number;
+    y: number;
+    from: number;
+    to: number;
+    text: string;
+}
+
 interface ScribeState {
     openFiles: OpenFile[];
     activeFilepath: string | null;
     loading: boolean;
     error: string | null;
+
+    redlines: Redline[];
+    addRedline: (r: Redline) => void;
+    removeRedline: (id: string) => void;
+    clearRedlinesForFile: (filepath: string) => void;
+
+    selectionToolbar: SelectionToolbarState | null;
+    setSelectionToolbar: (s: SelectionToolbarState | null) => void;
+
+    redlineLoading: boolean;
+    setRedlineLoading: (b: boolean) => void;
 
     openFile: (filepath: string) => Promise<void>;
     closeFile: (filepath: string) => void;
@@ -47,6 +78,17 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     activeFilepath: null,
     loading: false,
     error: null,
+
+    redlines: [],
+    addRedline: (r) => set((s) => ({ redlines: [...s.redlines, r] })),
+    removeRedline: (id) => set((s) => ({ redlines: s.redlines.filter((r) => r.id !== id) })),
+    clearRedlinesForFile: (filepath) => set((s) => ({ redlines: s.redlines.filter((r) => r.filepath !== filepath) })),
+
+    selectionToolbar: null,
+    setSelectionToolbar: (s) => set({ selectionToolbar: s }),
+
+    redlineLoading: false,
+    setRedlineLoading: (b) => set({ redlineLoading: b }),
 
     openFile: async (filepath) => {
         const existing = get().openFiles.find((f) => f.filepath === filepath);

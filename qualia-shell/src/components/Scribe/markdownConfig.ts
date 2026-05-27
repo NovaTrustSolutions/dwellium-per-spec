@@ -16,6 +16,8 @@ import { buildHighlightStyle, DWELLIUM_DEFAULT, type ScribeColorTheme } from './
 import { markdown } from '@codemirror/lang-markdown';
 import { Table } from '@lezer/markdown';
 import { mdTableField } from './tablePlugin';
+import { redlinePlugin } from './redlinePlugin';
+import { selectionObserver } from './selectionObserver';
 import { basicSetup } from 'codemirror';
 import { closeBrackets } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
@@ -534,6 +536,8 @@ export function getMarkdownExtensions(): Extension[] {
         mdTableField,
         doubleSpacePeriod,
         smartPasteKeymap,
+        redlinePlugin(),
+        selectionObserver(),
         scribeTheme,
         EditorView.lineWrapping,
     ];

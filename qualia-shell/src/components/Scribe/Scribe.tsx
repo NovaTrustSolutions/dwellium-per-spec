@@ -1,9 +1,10 @@
 /**
- * Scribe — CodeMirror 6 markdown editor widget with multi-tab support.
+ * Scribe — CodeMirror 6 markdown editor widget with multi-tab support
+ * and AI redlines.
  *
- * Cycle 5: backend file CRUD + multi-tab editing. Editor content syncs
- * with the scribeStore; auto-save fires 500ms after last edit via
- * useAutoSave. File CRUD goes to /api/scribe/* on the backend.
+ * Cycle 6: AI redlines via per-user llmClient. Select text → floating
+ * toolbar → "Redline" button → LLM returns proposed edits → inline
+ * accept/reject. Self-contained per architecture decision §8.
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
@@ -13,6 +14,8 @@ import { getMarkdownExtensions, registerEditorView } from './markdownConfig';
 import { useScribeStore, type FileEntry } from './scribeStore';
 import { useAutoSave } from './useAutoSave';
 import { TabBar } from './TabBar';
+import { SelectionToolbar } from './SelectionToolbar';
+import { RedlineNavigator } from './RedlineNavigator';
 import './Scribe.css';
 
 export default function Scribe() {
@@ -22,6 +25,7 @@ export default function Scribe() {
     const openFiles = useScribeStore((s) => s.openFiles);
     const loading = useScribeStore((s) => s.loading);
     const error = useScribeStore((s) => s.error);
+    const redlineLoading = useScribeStore((s) => s.redlineLoading);
     const activeFile = openFiles.find((f) => f.filepath === activeFilepath);
 
     useAutoSave(activeFilepath);
@@ -84,7 +88,12 @@ export default function Scribe() {
             <TabBar />
             {loading && <div className="scribe__status">Loading...</div>}
             {error && <div className="scribe__status scribe__status--error">{error}</div>}
-            <div className="scribe__editor" ref={containerRef} />
+            {redlineLoading && <div className="scribe__status">AI is thinking...</div>}
+            <div className="scribe__editor-area">
+                <div className="scribe__editor" ref={containerRef} />
+                <RedlineNavigator getView={() => viewRef.current} />
+            </div>
+            <SelectionToolbar />
         </div>
     );
 }

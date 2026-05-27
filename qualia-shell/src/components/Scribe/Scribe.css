@@ -7,9 +7,15 @@
     overflow: hidden;
 }
 
-.scribe__editor {
+.scribe__editor-area {
+    position: relative;
     flex: 1;
     min-height: 0;
+    overflow: hidden;
+}
+
+.scribe__editor {
+    height: 100%;
     overflow: hidden;
 }
 

@@ -19,6 +19,7 @@ import { mdTableField } from './tablePlugin';
 import { redlinePlugin } from './redlinePlugin';
 import { commentPlugin } from './commentPlugin';
 import { selectionObserver } from './selectionObserver';
+import { scribeKeymap } from './scribeKeymap';
 import { basicSetup } from 'codemirror';
 import { closeBrackets } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
@@ -523,6 +524,7 @@ const codeBlockKeymap = keymap.of([{
 
 export function getMarkdownExtensions(): Extension[] {
     return [
+        scribeKeymap,
         codeBlockKeymap,
         closeBrackets(),
         basicSetup,

@@ -16,6 +16,7 @@ import { SelectionToolbar } from './SelectionToolbar';
 import { RedlineNavigator } from './RedlineNavigator';
 import { CommentEditor } from './CommentEditor';
 import { Minimap } from './Minimap';
+import { ContextMenu } from './ContextMenu';
 import { useScribeTheme } from './useScribeTheme';
 import './Scribe.css';
 
@@ -102,6 +103,7 @@ export default function Scribe() {
             </div>
             <SelectionToolbar />
             <CommentEditor getView={() => viewRef.current} />
+            <ContextMenu getView={() => viewRef.current} />
         </div>
     );
 }

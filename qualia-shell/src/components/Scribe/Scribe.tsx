@@ -1,36 +1,49 @@
 /**
- * Scribe — CodeMirror 6 markdown editor widget.
+ * Scribe — CodeMirror 6 markdown editor widget with multi-tab support.
  *
- * Cycle 4: basic editor with syntax highlighting, all ViewPlugins,
- * smart paste, and theme support. Loads a hardcoded sample document;
- * file CRUD lands in Cycle 5.
+ * Cycle 5: backend file CRUD + multi-tab editing. Editor content syncs
+ * with the scribeStore; auto-save fires 500ms after last edit via
+ * useAutoSave. File CRUD goes to /api/scribe/* on the backend.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { getMarkdownExtensions, registerEditorView } from './markdownConfig';
-import { useScribeStore } from './scribeStore';
+import { useScribeStore, type FileEntry } from './scribeStore';
+import { useAutoSave } from './useAutoSave';
+import { TabBar } from './TabBar';
 import './Scribe.css';
 
 export default function Scribe() {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
-    const contentRef = useRef(useScribeStore.getState().activeContent);
+    const activeFilepath = useScribeStore((s) => s.activeFilepath);
+    const openFiles = useScribeStore((s) => s.openFiles);
+    const loading = useScribeStore((s) => s.loading);
+    const error = useScribeStore((s) => s.error);
+    const activeFile = openFiles.find((f) => f.filepath === activeFilepath);
+
+    useAutoSave(activeFilepath);
+
+    const onDocChange = useCallback((filepath: string, content: string) => {
+        useScribeStore.getState().updateContent(filepath, content);
+    }, []);
 
     useEffect(() => {
         if (!containerRef.current) return;
 
+        const doc = activeFile?.content ?? '';
+        const filepath = activeFilepath;
+
         const view = new EditorView({
             state: EditorState.create({
-                doc: contentRef.current,
+                doc,
                 extensions: [
                     ...getMarkdownExtensions(),
                     EditorView.updateListener.of((update) => {
-                        if (update.docChanged) {
-                            const text = update.state.doc.toString();
-                            contentRef.current = text;
-                            useScribeStore.getState().setActiveContent(text);
+                        if (update.docChanged && filepath) {
+                            onDocChange(filepath, update.state.doc.toString());
                         }
                     }),
                 ],
@@ -41,16 +54,89 @@ export default function Scribe() {
         viewRef.current = view;
         const unregister = registerEditorView(view);
 
+        if (activeFile?.scrollTop) {
+            requestAnimationFrame(() => {
+                if (viewRef.current) viewRef.current.scrollDOM.scrollTop = activeFile.scrollTop;
+            });
+        }
+
         return () => {
+            if (viewRef.current && filepath) {
+                useScribeStore.getState().setScrollTop(filepath, viewRef.current.scrollDOM.scrollTop);
+            }
             unregister();
             view.destroy();
             viewRef.current = null;
         };
-    }, []);
+    }, [activeFilepath]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    if (!activeFile) {
+        return (
+            <div className="scribe">
+                <TabBar />
+                <EmptyState />
+            </div>
+        );
+    }
 
     return (
         <div className="scribe">
+            <TabBar />
+            {loading && <div className="scribe__status">Loading...</div>}
+            {error && <div className="scribe__status scribe__status--error">{error}</div>}
             <div className="scribe__editor" ref={containerRef} />
+        </div>
+    );
+}
+
+function EmptyState() {
+    const [files, setFiles] = useState<FileEntry[]>([]);
+    const [fetched, setFetched] = useState(false);
+    const openFile = useScribeStore((s) => s.openFile);
+    const createFile = useScribeStore((s) => s.createFile);
+
+    useEffect(() => {
+        void useScribeStore.getState().listFiles().then((f) => {
+            setFiles(f);
+            setFetched(true);
+        }).catch(() => setFetched(true));
+    }, []);
+
+    const handleNew = () => {
+        const name = prompt('New file name (e.g. notes.md):');
+        if (!name?.trim()) return;
+        const filepath = name.trim().endsWith('.md') ? name.trim() : `${name.trim()}.md`;
+        void createFile(filepath);
+    };
+
+    return (
+        <div className="scribe__empty">
+            <h2>Scribe</h2>
+            <p>Markdown editor with AI redlines, inline comments, versioning, smart paste.</p>
+
+            {fetched && files.length > 0 && (
+                <div className="scribe__file-list">
+                    <div className="scribe__file-list-header">Your files</div>
+                    {files.map((f) => (
+                        <button
+                            key={f.filepath}
+                            className="scribe__file-item"
+                            onClick={() => void openFile(f.filepath)}
+                        >
+                            <span className="scribe__file-name">{f.filepath}</span>
+                            <span className="scribe__file-meta">{(f.size / 1024).toFixed(1)} KB</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            <button className="scribe__new-btn" onClick={handleNew}>
+                + New File
+            </button>
+
+            {fetched && files.length === 0 && (
+                <p className="scribe__muted">No files yet. Create one to get started.</p>
+            )}
         </div>
     );
 }

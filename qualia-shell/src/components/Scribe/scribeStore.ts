@@ -1,65 +1,154 @@
 import { create } from 'zustand';
+import { API_BASE } from '../../config';
+import { getAuthHeaders } from '../../context/UserContext';
 
-interface ScribeState {
-    activeContent: string;
-    setActiveContent: (s: string) => void;
+export interface OpenFile {
+    filepath: string;
+    content: string;
+    dirty: boolean;
+    scrollTop: number;
 }
 
-const SAMPLE_DOC = `# Welcome to Scribe
+export interface FileEntry {
+    filepath: string;
+    size: number;
+    modified: string;
+}
 
-Markdown editor with AI redlines, inline comments, versioning, smart paste.
+interface ScribeState {
+    openFiles: OpenFile[];
+    activeFilepath: string | null;
+    loading: boolean;
+    error: string | null;
 
----
+    openFile: (filepath: string) => Promise<void>;
+    closeFile: (filepath: string) => void;
+    setActiveFile: (filepath: string) => void;
+    updateContent: (filepath: string, content: string) => void;
+    saveFile: (filepath: string) => Promise<void>;
+    createFile: (filepath: string, content?: string) => Promise<void>;
+    deleteFile: (filepath: string) => Promise<void>;
+    listFiles: () => Promise<FileEntry[]>;
+    setScrollTop: (filepath: string, scrollTop: number) => void;
+}
 
-## What works in Cycle 4
+async function apiFetch(path: string, opts: RequestInit = {}): Promise<any> {
+    const res = await fetch(`${API_BASE}${path}`, {
+        ...opts,
+        headers: { ...getAuthHeaders(), ...(opts.headers || {}) },
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+}
 
-- CodeMirror 6 editor with full markdown syntax highlighting
-- Mark-hiding (markup chars vanish when cursor is elsewhere)
-- Live table preview (GFM tables render as HTML when cursor leaves)
-- Fenced code block highlighting
-- ==Highlight== markers
-- Smart paste (Cmd+Shift+V strips soft-wraps; Cmd+Shift+Alt+V collapses whitespace)
-- Double-space period (iOS-style ". " insertion)
+export const useScribeStore = create<ScribeState>((set, get) => ({
+    openFiles: [],
+    activeFilepath: null,
+    loading: false,
+    error: null,
 
-## What's coming
+    openFile: async (filepath) => {
+        const existing = get().openFiles.find((f) => f.filepath === filepath);
+        if (existing) {
+            set({ activeFilepath: filepath });
+            return;
+        }
+        set({ loading: true, error: null });
+        try {
+            const data = await apiFetch(`/api/scribe/files/${filepath}`);
+            set((s) => ({
+                openFiles: [...s.openFiles, { filepath, content: data.content, dirty: false, scrollTop: 0 }],
+                activeFilepath: filepath,
+                loading: false,
+            }));
+        } catch (err: any) {
+            set({ loading: false, error: err.message });
+        }
+    },
 
-- **Cycle 5:** File CRUD against backend
-- **Cycle 6:** AI redlines via \`callLlm()\`
-- **Cycle 7:** Inline comments
-- **Cycle 8:** Versioning + Table of Contents
-- **Cycle 9:** Minimap
-- **Cycle 10:** Theme settings UI
+    closeFile: (filepath) => {
+        set((s) => {
+            const next = s.openFiles.filter((f) => f.filepath !== filepath);
+            let nextActive = s.activeFilepath;
+            if (nextActive === filepath) {
+                nextActive = next.length > 0 ? next[next.length - 1].filepath : null;
+            }
+            return { openFiles: next, activeFilepath: nextActive };
+        });
+    },
 
-> "The filesystem is the source of truth, and the database is a rebuildable index."
-> — Agenteryx architecture-v4
+    setActiveFile: (filepath) => set({ activeFilepath: filepath }),
 
-### Code example
+    updateContent: (filepath, content) => {
+        set((s) => ({
+            openFiles: s.openFiles.map((f) =>
+                f.filepath === filepath ? { ...f, content, dirty: true } : f
+            ),
+        }));
+    },
 
-\`\`\`typescript
-import { callLlm } from '../lib/llmClient';
+    saveFile: async (filepath) => {
+        const file = get().openFiles.find((f) => f.filepath === filepath);
+        if (!file) return;
+        try {
+            await apiFetch(`/api/scribe/files/${filepath}`, {
+                method: 'PUT',
+                body: JSON.stringify({ content: file.content }),
+            });
+            set((s) => ({
+                openFiles: s.openFiles.map((f) =>
+                    f.filepath === filepath ? { ...f, dirty: false } : f
+                ),
+            }));
+        } catch (err: any) {
+            set({ error: err.message });
+        }
+    },
 
-const response = await callLlm({
-    prompt: selectedText,
-    systemPrompt: REDLINE_SYSTEM_PROMPT,
-    responseFormat: 'json',
-}, integrations.llm);
-\`\`\`
+    createFile: async (filepath, content) => {
+        set({ loading: true, error: null });
+        try {
+            await apiFetch('/api/scribe/files', {
+                method: 'POST',
+                body: JSON.stringify({ filepath, content: content ?? '' }),
+            });
+            set((s) => ({
+                openFiles: [...s.openFiles, { filepath, content: content ?? '', dirty: false, scrollTop: 0 }],
+                activeFilepath: filepath,
+                loading: false,
+            }));
+        } catch (err: any) {
+            set({ loading: false, error: err.message });
+        }
+    },
 
-### Table example
+    deleteFile: async (filepath) => {
+        try {
+            await apiFetch(`/api/scribe/files/${filepath}`, { method: 'DELETE' });
+            set((s) => {
+                const next = s.openFiles.filter((f) => f.filepath !== filepath);
+                let nextActive = s.activeFilepath;
+                if (nextActive === filepath) {
+                    nextActive = next.length > 0 ? next[next.length - 1].filepath : null;
+                }
+                return { openFiles: next, activeFilepath: nextActive };
+            });
+        } catch (err: any) {
+            set({ error: err.message });
+        }
+    },
 
-| Feature | Status | Cycle |
-|---------|--------|-------|
-| Editor | Done | 4 |
-| File CRUD | Planned | 5 |
-| Redlines | Planned | 6 |
-| Comments | Planned | 7 |
+    listFiles: async () => {
+        const data = await apiFetch('/api/scribe/files');
+        return data.files as FileEntry[];
+    },
 
----
-
-*Scribe is ported from [Agenteryx](https://github.com/NovaTrustSolutions/Agenteryx) — see \`Scripts/autorun/PORTING_PLAN.md\` for the full plan.*
-`;
-
-export const useScribeStore = create<ScribeState>((set) => ({
-    activeContent: SAMPLE_DOC,
-    setActiveContent: (s) => set({ activeContent: s }),
+    setScrollTop: (filepath, scrollTop) => {
+        set((s) => ({
+            openFiles: s.openFiles.map((f) =>
+                f.filepath === filepath ? { ...f, scrollTop } : f
+            ),
+        }));
+    },
 }));

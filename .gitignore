@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Editor / IDE state
+.obsidian/
+
+# Node / Vite / Electron build artifacts
+node_modules/
+out/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Local-only data — keep on disk, don't track
+_Notes/
+_Projects/
+memory/

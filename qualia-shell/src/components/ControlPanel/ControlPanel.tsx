@@ -4,6 +4,7 @@ import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
+import SystemUpdateSection from './SystemUpdateSection';
 import ScribeSettings from '../Scribe/ScribeSettings';
 import './ControlPanel.css';
 
@@ -425,6 +426,9 @@ export default function ControlPanel() {
 
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />
+
+            {/* App updates — git pull + rebuild + restart (2026-05-28) */}
+            <SystemUpdateSection />
 
             {/* Scribe editor theme picker — Cycle 10 */}
             <ScribeSettings />

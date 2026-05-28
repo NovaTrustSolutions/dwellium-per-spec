@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "notebooklm-mcp": {
+      "command": "/Users/ilyaklipinitser/.local/pipx/venvs/notebooklm-mcp-server/bin/notebooklm-mcp",
+      "args": ["--transport", "stdio"],
+      "description": "NotebookLM MCP Server (jacob-bd/notebooklm-mcp v0.1.15 / notebooklm v3.3.1, 32 tools — notebook_list, notebook_create, notebook_get, notebook_describe, source_describe, notebook_query, research_start, audio_overview_create, mind_map_create, etc.). Authenticated via cookies cached at ~/.notebooklm-mcp/auth.json (run `notebooklm-mcp-auth` to re-auth if cookies expire)."
+    }
+  },
+  "_notes": {
+    "binary_paths": {
+      "v0.1.15_pipx (USE THIS — 32 tools, cookie auth)": "/Users/ilyaklipinitser/.local/pipx/venvs/notebooklm-mcp-server/bin/notebooklm-mcp",
+      "v3.2.3_uv_old_project (8 chat tools, GUI auth)": "/Users/ilyaklipinitser/.local/share/uv/tools/notebooklm-mcp/bin/notebooklm-mcp"
+    },
+    "auth_command": "/Users/ilyaklipinitser/.local/bin/notebooklm-mcp-auth",
+    "auth_cookie_cache": "/Users/ilyaklipinitser/.notebooklm-mcp/auth.json",
+    "claude_desktop_config_also_patched": "/Users/ilyaklipinitser/Library/Application Support/Claude/claude_desktop_config.json"
+  }
+}

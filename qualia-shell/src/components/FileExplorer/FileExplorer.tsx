@@ -21,6 +21,25 @@ import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus } from 'l
 import { FileExplorerCell, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
 import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
+import { API_BASE } from '../../config';
+import { getAuthHeaders } from '../../context/UserContext';
+
+// Cycle 8: upload a pasted/dropped image to /api/scribe/images (reused per Ilya design lock #4)
+// Returns the server-side URL of the uploaded image, or null on failure.
+async function uploadImageBlob(blob: Blob, filename: string): Promise<string | null> {
+    const fd = new FormData();
+    fd.append('image', new File([blob], filename, { type: blob.type }));
+    try {
+        const res = await fetch(`${API_BASE}/api/scribe/images`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: fd,
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) return null;
+        return data.url ?? null;
+    } catch { return null; }
+}
 
 interface NewEntryState {
     parentPath: string; // '' for root
@@ -41,10 +60,11 @@ function flattenTree(entries: FileEntry[]): FileEntry[] {
 }
 
 export default function FileExplorer() {
-    const { locked, viewMode, setLocked, setViewMode } = useFileExplorer();
+    const { locked, viewMode, selectedPath, setLocked, setViewMode } = useFileExplorer();
     const [entries, setEntries] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [toast, setToast] = useState<string | null>(null);
 
     const [newEntry, setNewEntry] = useState<NewEntryState | null>(null);
     const [newName, setNewName] = useState('');
@@ -67,6 +87,56 @@ export default function FileExplorer() {
     useEffect(() => {
         if (newEntry) newInputRef.current?.focus();
     }, [newEntry]);
+
+    // Cycle 8: Cmd+V screenshot-paste. Image bytes upload to /api/scribe/images
+    // (reused per Ilya design lock #4); a small .md reference file is created
+    // in the currently-selected folder (or at root if nothing selected).
+    const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+        if (locked) return;
+        const items = Array.from(e.clipboardData?.items ?? []);
+        const imageItems = items.filter((it) => it.type.startsWith('image/'));
+        if (imageItems.length === 0) return;
+        e.preventDefault();
+
+        // Resolve target folder: selected folder if it's tier != 'file', else parent of selected file, else root
+        const allFiles = flattenTree(entries);
+        const allEntries = (function collect(list: FileEntry[], acc: FileEntry[] = []): FileEntry[] {
+            list.forEach((x) => { acc.push(x); x.children && collect(x.children, acc); });
+            return acc;
+        })(entries);
+        const sel = selectedPath ? allEntries.find((x) => x.path === selectedPath) : null;
+        let targetFolder = '';
+        if (sel) {
+            if (sel.tier !== 'file') targetFolder = sel.path;
+            else if (sel.path.includes('/')) targetFolder = sel.path.slice(0, sel.path.lastIndexOf('/'));
+        }
+        // unused but kept for symmetry with flat view counts
+        void allFiles;
+
+        let pastedCount = 0;
+        for (const item of imageItems) {
+            const blob = item.getAsFile();
+            if (!blob) continue;
+            const ext = (blob.type.split('/')[1] ?? 'png').replace('+xml', '');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const imgName = `screenshot-${timestamp}.${ext}`;
+            const url = await uploadImageBlob(blob, imgName);
+            if (!url) continue;
+            const mdName = `screenshot-${timestamp}.md`;
+            const mdRel = targetFolder ? `${targetFolder}/${mdName}` : mdName;
+            const fullUrl = `${API_BASE}${url}`;
+            const content = `# Screenshot · ${new Date().toLocaleString()}\n\n![${imgName}](${fullUrl})\n\n_Pasted via Cmd+V into ${targetFolder || '(root)'}._\n`;
+            try {
+                await touch(mdRel, content);
+                pastedCount++;
+            } catch { /* skip individual failures */ }
+        }
+        if (pastedCount > 0) {
+            await refresh();
+            setToast(`📋 ${pastedCount} screenshot${pastedCount === 1 ? '' : 's'} pasted to ${targetFolder || 'root'}`);
+            setTimeout(() => setToast(null), 3000);
+        }
+    }, [entries, locked, refresh, selectedPath]);
 
     const requestNewEntry = useCallback((parentPath: string, type: 'file' | 'folder') => {
         if (locked) return;
@@ -154,13 +224,19 @@ export default function FileExplorer() {
     };
 
     return (
-        <div style={{
-            display: 'flex', flexDirection: 'column',
-            height: '100%', width: '100%',
-            background: '#000', color: '#ccc',
-            fontFamily: 'inherit', fontSize: 12,
-            overflow: 'hidden',
-        }}>
+        <div
+            onPaste={(e) => void handlePaste(e)}
+            tabIndex={-1}
+            style={{
+                position: 'relative',
+                display: 'flex', flexDirection: 'column',
+                height: '100%', width: '100%',
+                background: '#000', color: '#ccc',
+                fontFamily: 'inherit', fontSize: 12,
+                overflow: 'hidden',
+                outline: 'none',
+            }}
+        >
             {/* Toolbar */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 4,
@@ -331,6 +407,18 @@ export default function FileExplorer() {
             </div>
 
             {/* Status footer */}
+            {/* Paste toast (Cycle 8) */}
+            {toast && (
+                <div style={{
+                    position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+                    padding: '6px 14px', background: 'rgba(214,254,81,0.12)',
+                    border: '1px solid rgba(214,254,81,0.5)', color: '#D6FE51',
+                    fontSize: 11, borderRadius: 6, zIndex: 50,
+                    pointerEvents: 'none',
+                    animation: 'feToastFade 3s ease-out forwards',
+                }}>{toast}</div>
+            )}
+
             <div style={{
                 padding: '4px 10px', flexShrink: 0,
                 background: '#0a0a0a', borderTop: '1px solid #222',
@@ -340,7 +428,7 @@ export default function FileExplorer() {
                 <span>{viewMode === 'tree' ? 'Tree view' : 'Flat view'}</span>
                 <span>{locked ? '🔒 Locked · ' : ''}{fileCount} file{fileCount === 1 ? '' : 's'}</span>
             </div>
-            <style>{`@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }`}</style>
+            <style>{`@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } } @keyframes feToastFade { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }`}</style>
         </div>
     );
 }

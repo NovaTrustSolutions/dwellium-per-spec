@@ -248,7 +248,10 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                         ? 'rgba(214,254,81,0.18)'
                         : isSelected ? 'rgba(214,254,81,0.08)' : 'transparent',
                     boxShadow: dragOver ? 'inset 0 0 0 1px #D6FE51' : 'none',
+                    // Cycle 9: lock-aware cursor — pointer for navigation (selection/expand still allowed),
+                    // not-allowed when hovering a draggable file/folder under lock since rearrangement is blocked.
                     cursor: 'pointer',
+                    opacity: locked && isFolder ? 0.85 : 1,
                     userSelect: 'none',
                     borderRadius: 4,
                     outline: 'none',

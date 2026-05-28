@@ -235,6 +235,9 @@ export default function FileExplorer() {
                 fontFamily: 'inherit', fontSize: 12,
                 overflow: 'hidden',
                 outline: 'none',
+                // Cycle 9: visible lock state — subtle warm-amber inner border when locked
+                boxShadow: locked ? 'inset 0 0 0 1px rgba(255, 140, 0, 0.35)' : 'none',
+                transition: 'box-shadow 150ms',
             }}
         >
             {/* Toolbar */}
@@ -311,6 +314,31 @@ export default function FileExplorer() {
             </div>
 
             {/* Tree body */}
+            {/* Cycle 9: lock banner — appears below toolbar when locked, explains state */}
+            {locked && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '4px 12px', flexShrink: 0,
+                    background: 'rgba(255, 140, 0, 0.08)',
+                    borderBottom: '1px solid rgba(255, 140, 0, 0.2)',
+                    fontSize: 10, color: '#ffa84d',
+                    letterSpacing: '0.02em',
+                }}>
+                    <Lock size={11} strokeWidth={2} />
+                    <span style={{ flex: 1 }}>Hierarchy locked — drag, rename, move, delete, paste disabled.</span>
+                    <button
+                        onClick={() => setLocked(false)}
+                        style={{
+                            padding: '2px 8px', fontSize: 10,
+                            background: 'transparent',
+                            border: '1px solid rgba(255,140,0,0.5)',
+                            color: '#ffa84d', borderRadius: 3,
+                            cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                    >Unlock</button>
+                </div>
+            )}
+
             <div
                 onDragOver={handleRootDragOver}
                 onDragLeave={handleRootDragLeave}
@@ -321,6 +349,7 @@ export default function FileExplorer() {
                     background: rootDragOver ? 'rgba(214,254,81,0.04)' : 'transparent',
                     boxShadow: rootDragOver ? 'inset 0 0 0 2px rgba(214,254,81,0.4)' : 'none',
                     transition: 'background 80ms, box-shadow 80ms',
+                    cursor: locked ? 'not-allowed' : 'default',
                 }}
                 role="tree"
                 aria-label="File explorer"

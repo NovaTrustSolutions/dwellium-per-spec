@@ -514,6 +514,25 @@ export default function ARAConsole() {
     });
     const [isSpeaking, setIsSpeaking] = useState(false);
 
+    // Humanize state — when ON, prepends a humanize directive to the outgoing
+    // user message so ARA's reply lands warmer, more conversational. Persisted
+    // per-user via localStorage. Default ON for new users since the corporate-
+    // sounding default was the original complaint.
+    const [humanizeEnabled, setHumanizeEnabled] = useState<boolean>(() => {
+        try {
+            const saved = localStorage.getItem('dwellium-ara-humanize');
+            if (saved === null) return true;
+            return saved === 'true';
+        } catch { return true; }
+    });
+    const toggleHumanize = useCallback(() => {
+        setHumanizeEnabled(prev => {
+            const next = !prev;
+            try { localStorage.setItem('dwellium-ara-humanize', String(next)); } catch { /* sandboxed */ }
+            return next;
+        });
+    }, []);
+
     const toggleTts = useCallback(() => {
         setTtsEnabled(prev => {
             const next = !prev;
@@ -885,14 +904,25 @@ export default function ARAConsole() {
         setIsLoading(true);
         setLastRequest({ text, mode: modeToUse, jurisdiction: jurisdictionToUse, workspaceContext: workspaceContextToUse });
 
+        // Humanize prefix: prepended to the outgoing user message when the
+        // toggle is on. Frontend-only — no backend change needed. The LLM
+        // honors this style guidance for its reply.
+        const HUMANIZE_PREFIX =
+            "[Reply style: warm and conversational. Use contractions (don't, you're, we'll). " +
+            "Short sentences. Plain language — no corporate jargon, no hedging, no excessive bullet lists. " +
+            "Sound like a thoughtful friend talking, not a chatbot. " +
+            "If you must list things, lead with a single sentence first, then the list.]\n\n";
+        const outgoingMessage = humanizeEnabled ? HUMANIZE_PREFIX + text : text;
+
         try {
             const res = await authFetch(`${API_ARA}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     mode: modeToUse,
-                    message: text,
+                    message: outgoingMessage,
                     sessionId: sessionId.current,
+                    humanize: humanizeEnabled,  // backend hint for future use
                     ...(jurisdictionToUse ? { jurisdiction: jurisdictionToUse } : {}),
                     ...(workspaceContextToUse ? { workspaceContext: workspaceContextToUse } : {}),
                 })
@@ -954,6 +984,7 @@ export default function ARAConsole() {
         speakText,
         stripMarkdown,
         ttsEnabled,
+        humanizeEnabled,
     ]);
 
     const sendMessage = useCallback(async () => {
@@ -1676,6 +1707,18 @@ export default function ARAConsole() {
                     title={ttsEnabled ? 'Disable auto-read replies (TTS on)' : 'Enable auto-read replies (TTS off)'}
                 >
                     {ttsEnabled ? '🔊' : '🔇'}
+                </button>
+                {/* Humanize toggle — when ON, prepends a warm-conversational style
+                    directive to outgoing messages so ARA's replies sound human, not corporate. */}
+                <button
+                    className={`ara-tts-btn ${humanizeEnabled ? 'ara-tts-btn--on' : ''}`}
+                    onClick={toggleHumanize}
+                    title={humanizeEnabled
+                        ? 'Humanize ON — replies are warm + conversational. Click to turn off.'
+                        : 'Humanize OFF — replies use ARA default tone. Click to turn on.'}
+                    style={{ fontSize: 14 }}
+                >
+                    {humanizeEnabled ? '💬' : '🤖'}
                 </button>
                 {isSpeaking && (
                     <button

@@ -19,6 +19,7 @@ import { mdTableField } from './tablePlugin';
 import { redlinePlugin } from './redlinePlugin';
 import { commentPlugin } from './commentPlugin';
 import { selectionObserver } from './selectionObserver';
+import { scribeDropHandler } from './dropHandler';
 import { scribeKeymap } from './scribeKeymap';
 import { basicSetup } from 'codemirror';
 import { closeBrackets } from '@codemirror/autocomplete';
@@ -542,6 +543,7 @@ export function getMarkdownExtensions(): Extension[] {
         redlinePlugin(),
         commentPlugin(),
         selectionObserver(),
+        scribeDropHandler(),
         scribeTheme,
         EditorView.lineWrapping,
     ];

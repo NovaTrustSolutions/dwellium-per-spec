@@ -477,6 +477,49 @@
     background: rgba(45, 140, 240, 0.2);
 }
 
+/* Edit bar */
+.pdfg-viewer__edit-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(214, 254, 81, 0.04);
+    border: 1px solid rgba(214, 254, 81, 0.15);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.pdfg-viewer__edit-label {
+    color: #d6fe51;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 4px;
+}
+
+.pdfg-viewer__edit-btn {
+    background: rgba(214, 254, 81, 0.10);
+    border: 1px solid rgba(214, 254, 81, 0.22);
+    border-radius: 5px;
+    color: #d6fe51;
+    padding: 5px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.pdfg-viewer__edit-btn:hover:not(:disabled) {
+    background: rgba(214, 254, 81, 0.18);
+}
+
+.pdfg-viewer__edit-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 /* Split bar */
 .pdfg-viewer__split-bar {
     display: flex;

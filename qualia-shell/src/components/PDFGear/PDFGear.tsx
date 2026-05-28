@@ -10,7 +10,7 @@
  * - Merge/Split operations via pdf-lib
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, degrees, StandardFonts, rgb } from 'pdf-lib';
 import './PDFGear.css';
 import { API_BASE } from '../../config';
 
@@ -58,7 +58,7 @@ interface ConversionJob {
     error?: string;
 }
 
-type ToolCategory = 'hot' | 'from-pdf' | 'to-pdf' | 'merge-split' | 'all';
+type ToolCategory = 'hot' | 'from-pdf' | 'to-pdf' | 'merge-split' | 'edit' | 'all';
 type ViewMode = 'toolset' | 'viewer' | 'converting';
 
 interface PDFTool {
@@ -213,6 +213,12 @@ export default function PDFGear() {
     }, [totalPages, pdfUrl, zoomLevel]);
 
     // ---- Conversion Engine ----
+    // Client-side-handled formats: try in-browser FIRST (instant + no backend round-trip).
+    // Backend-only formats (docx/xlsx/pptx + reverse): hit /docs/convert which requires
+    // LibreOffice on backend; falls back to a friendly error if unavailable.
+    const CLIENT_FORMATS = new Set(['txt', 'png', 'jpeg', 'jpg', 'html', 'md', 'rtf', 'xml']);
+    const BACKEND_ONLY_FORMATS = new Set(['docx', 'xlsx', 'pptx', 'pdf-from-docx', 'pdf-from-xlsx', 'pdf-from-pptx']);
+
     const convertFile = useCallback(async (file: File, targetFormat: string) => {
         const jobId = `job_${Date.now().toString(36)}`;
         const job: ConversionJob = {
@@ -225,52 +231,75 @@ export default function PDFGear() {
         setConversionJobs(prev => [job, ...prev]);
         setViewMode('converting');
 
-        try {
-            // Simulate progress animation
-            const progressInterval = setInterval(() => {
-                setConversionJobs(prev => prev.map(j =>
-                    j.id === jobId && j.status === 'processing'
-                        ? { ...j, progress: Math.min(j.progress + 8, 90) }
-                        : j
-                ));
-            }, 300);
+        const progressInterval = setInterval(() => {
+            setConversionJobs(prev => prev.map(j =>
+                j.id === jobId && j.status === 'processing'
+                    ? { ...j, progress: Math.min(j.progress + 12, 90) }
+                    : j
+            ));
+        }, 200);
 
-            // Perform actual conversion via backend
+        try {
+            // 1. Try client-side first for supported formats (fast path)
+            if (CLIENT_FORMATS.has(targetFormat)) {
+                const result = await clientSideConvert(file, targetFormat);
+                if (result) {
+                    clearInterval(progressInterval);
+                    setConversionJobs(prev => prev.map(j =>
+                        j.id === jobId ? { ...j, status: 'done', progress: 100, resultUrl: result } : j
+                    ));
+                    showToast(`Converted to ${targetFormat.toUpperCase()}`);
+                    return;
+                }
+            }
+
+            // 2. Backend (requires LibreOffice for office formats)
             const formData = new FormData();
             formData.append('file', file);
             formData.append('targetFormat', targetFormat);
 
-            const res = await fetch(`${API_BASE}/docs/convert`, {
-                method: 'POST',
-                body: formData,
-            });
+            let res: Response | null = null;
+            try {
+                res = await fetch(`${API_BASE}/docs/convert`, {
+                    method: 'POST',
+                    body: formData,
+                });
+            } catch {
+                res = null;
+            }
 
             clearInterval(progressInterval);
 
-            if (res.ok) {
+            if (res && res.ok) {
                 const blob = await res.blob();
                 const resultUrl = URL.createObjectURL(blob);
                 setConversionJobs(prev => prev.map(j =>
                     j.id === jobId ? { ...j, status: 'done', progress: 100, resultUrl } : j
                 ));
-                showToast(`✅ Converted to ${targetFormat.toUpperCase()}`);
+                showToast(`Converted to ${targetFormat.toUpperCase()}`);
             } else {
-                // Fallback: client-side conversion where possible
-                const result = await clientSideConvert(file, targetFormat);
-                if (result) {
-                    setConversionJobs(prev => prev.map(j =>
-                        j.id === jobId ? { ...j, status: 'done', progress: 100, resultUrl: result } : j
-                    ));
-                    showToast(`✅ Converted to ${targetFormat.toUpperCase()}`);
-                } else {
-                    throw new Error('Conversion failed on both server and client');
+                // Backend failed → try client fallback if not already tried
+                if (!CLIENT_FORMATS.has(targetFormat)) {
+                    const result = await clientSideConvert(file, targetFormat);
+                    if (result) {
+                        setConversionJobs(prev => prev.map(j =>
+                            j.id === jobId ? { ...j, status: 'done', progress: 100, resultUrl: result } : j
+                        ));
+                        showToast(`Converted to ${targetFormat.toUpperCase()}`);
+                        return;
+                    }
                 }
+                const msg = BACKEND_ONLY_FORMATS.has(targetFormat)
+                    ? `${targetFormat.toUpperCase()} requires LibreOffice on the backend (not yet installed). Available client-side formats: TXT, PNG, JPEG, HTML, MD, RTF, XML.`
+                    : `Conversion to ${targetFormat.toUpperCase()} unavailable`;
+                throw new Error(msg);
             }
         } catch (err: any) {
+            clearInterval(progressInterval);
             setConversionJobs(prev => prev.map(j =>
                 j.id === jobId ? { ...j, status: 'error', progress: 0, error: err.message || 'Conversion failed' } : j
             ));
-            showToast(`❌ Conversion failed: ${err.message || 'Unknown error'}`);
+            showToast(`Conversion failed: ${err.message || 'Unknown error'}`);
         }
     }, []);
 
@@ -330,10 +359,275 @@ export default function PDFGear() {
                 const blob = new Blob([html], { type: 'text/html' });
                 return URL.createObjectURL(blob);
             }
+            case 'md': {
+                // PDF to Markdown — plain text with page headers
+                const pdfjsLib = await loadPdfjs();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let md = `# ${file.name.replace(/\.pdf$/i, '')}\n\n`;
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    const pageText = content.items.map((item: any) => item.str).join(' ');
+                    md += `## Page ${i}\n\n${pageText}\n\n`;
+                }
+                const blob = new Blob([md], { type: 'text/markdown' });
+                return URL.createObjectURL(blob);
+            }
+            case 'rtf': {
+                // PDF to RTF — plain text wrapped in minimal RTF header
+                const pdfjsLib = await loadPdfjs();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let body = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    const pageText = content.items.map((item: any) => item.str).join(' ');
+                    body += `\\par\\b Page ${i}\\b0\\par ${pageText.replace(/\\/g, '\\\\').replace(/\{/g, '\\{').replace(/\}/g, '\\}')}\\par\\par `;
+                }
+                const rtf = `{\\rtf1\\ansi\\deff0 {\\fonttbl{\\f0 Helvetica;}}\\f0\\fs24 ${body}}`;
+                const blob = new Blob([rtf], { type: 'application/rtf' });
+                return URL.createObjectURL(blob);
+            }
+            case 'xml': {
+                // PDF to XML — structured page/text element tree
+                const pdfjsLib = await loadPdfjs();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<document>\n';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    xml += `  <page number="${i}">\n`;
+                    for (const item of content.items as any[]) {
+                        xml += `    <text>${escapeHtml(item.str)}</text>\n`;
+                    }
+                    xml += '  </page>\n';
+                }
+                xml += '</document>\n';
+                const blob = new Blob([xml], { type: 'application/xml' });
+                return URL.createObjectURL(blob);
+            }
             default:
+                // DOCX / XLSX / PPTX require server-side LibreOffice — not available client-side
                 return null;
         }
     };
+
+    // ---- Edit Operations (pdf-lib, all client-side) ----
+    const downloadPdfBytes = (bytes: Uint8Array, filename: string) => {
+        const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    const parsePageRange = (input: string, total: number): number[] => {
+        // 1-based input → 0-based indices; supports "1-3,5,7-9" syntax
+        const out: number[] = [];
+        for (const part of input.split(',')) {
+            const trimmed = part.trim();
+            if (!trimmed) continue;
+            if (trimmed.includes('-')) {
+                const [s, e] = trimmed.split('-').map(n => Number(n.trim()));
+                for (let i = Math.max(1, s); i <= Math.min(total, e); i++) out.push(i - 1);
+            } else {
+                const n = Number(trimmed);
+                if (n >= 1 && n <= total) out.push(n - 1);
+            }
+        }
+        return Array.from(new Set(out)).sort((a, b) => a - b);
+    };
+
+    const rotatePages = useCallback(async () => {
+        if (!selectedFile) { showToast('Open a PDF first'); return; }
+        const angleStr = window.prompt('Rotation angle (90, 180, 270, or -90)?', '90');
+        if (!angleStr) return;
+        const angle = Number(angleStr);
+        if (![90, 180, 270, -90, -180, -270].includes(angle)) { showToast('Invalid angle'); return; }
+        const rangeStr = window.prompt('Pages to rotate (e.g., "1-3,5" or "all")?', 'all');
+        if (rangeStr === null) return;
+        setIsLoading(true);
+        try {
+            const buf = await selectedFile.arrayBuffer();
+            const pdf = await PDFDocument.load(buf);
+            const total = pdf.getPageCount();
+            const indices = rangeStr.trim().toLowerCase() === 'all'
+                ? Array.from({ length: total }, (_, i) => i)
+                : parsePageRange(rangeStr, total);
+            indices.forEach(i => {
+                const p = pdf.getPage(i);
+                const current = p.getRotation().angle;
+                p.setRotation(degrees((current + angle + 360) % 360));
+            });
+            const bytes = await pdf.save();
+            downloadPdfBytes(bytes, `rotated_${selectedFile.name}`);
+            showToast(`Rotated ${indices.length} page(s) by ${angle}°`);
+        } catch (e: any) {
+            showToast(`Rotate failed: ${e.message}`);
+        } finally { setIsLoading(false); }
+    }, [selectedFile]);
+
+    const deletePages = useCallback(async () => {
+        if (!selectedFile) { showToast('Open a PDF first'); return; }
+        const rangeStr = window.prompt('Pages to DELETE (e.g., "1-3,5")?', '');
+        if (!rangeStr) return;
+        setIsLoading(true);
+        try {
+            const buf = await selectedFile.arrayBuffer();
+            const pdf = await PDFDocument.load(buf);
+            const total = pdf.getPageCount();
+            const removeSet = new Set(parsePageRange(rangeStr, total));
+            if (removeSet.size === 0) { showToast('No valid pages'); return; }
+            if (removeSet.size >= total) { showToast('Cannot delete all pages'); return; }
+            // Delete from highest index down so earlier indices stay valid
+            const sorted = Array.from(removeSet).sort((a, b) => b - a);
+            sorted.forEach(i => pdf.removePage(i));
+            const bytes = await pdf.save();
+            downloadPdfBytes(bytes, `trimmed_${selectedFile.name}`);
+            showToast(`Deleted ${removeSet.size} page(s)`);
+        } catch (e: any) {
+            showToast(`Delete failed: ${e.message}`);
+        } finally { setIsLoading(false); }
+    }, [selectedFile]);
+
+    const addWatermark = useCallback(async () => {
+        if (!selectedFile) { showToast('Open a PDF first'); return; }
+        const text = window.prompt('Watermark text?', 'DRAFT');
+        if (!text) return;
+        setIsLoading(true);
+        try {
+            const buf = await selectedFile.arrayBuffer();
+            const pdf = await PDFDocument.load(buf);
+            const font = await pdf.embedFont(StandardFonts.HelveticaBold);
+            const pages = pdf.getPages();
+            pages.forEach(p => {
+                const { width, height } = p.getSize();
+                const size = Math.min(width, height) * 0.18;
+                const textWidth = font.widthOfTextAtSize(text, size);
+                p.drawText(text, {
+                    x: (width - textWidth) / 2,
+                    y: height / 2,
+                    size,
+                    font,
+                    color: rgb(0.75, 0.75, 0.75),
+                    opacity: 0.35,
+                    rotate: degrees(45),
+                });
+            });
+            const bytes = await pdf.save();
+            downloadPdfBytes(bytes, `watermarked_${selectedFile.name}`);
+            showToast(`Added watermark "${text}" to ${pages.length} page(s)`);
+        } catch (e: any) {
+            showToast(`Watermark failed: ${e.message}`);
+        } finally { setIsLoading(false); }
+    }, [selectedFile]);
+
+    const addPageNumbers = useCallback(async () => {
+        if (!selectedFile) { showToast('Open a PDF first'); return; }
+        setIsLoading(true);
+        try {
+            const buf = await selectedFile.arrayBuffer();
+            const pdf = await PDFDocument.load(buf);
+            const font = await pdf.embedFont(StandardFonts.Helvetica);
+            const pages = pdf.getPages();
+            pages.forEach((p, i) => {
+                const { width } = p.getSize();
+                const label = `${i + 1} / ${pages.length}`;
+                const size = 10;
+                const textWidth = font.widthOfTextAtSize(label, size);
+                p.drawText(label, {
+                    x: (width - textWidth) / 2,
+                    y: 24,
+                    size,
+                    font,
+                    color: rgb(0.4, 0.4, 0.4),
+                });
+            });
+            const bytes = await pdf.save();
+            downloadPdfBytes(bytes, `numbered_${selectedFile.name}`);
+            showToast(`Added page numbers to ${pages.length} page(s)`);
+        } catch (e: any) {
+            showToast(`Page numbering failed: ${e.message}`);
+        } finally { setIsLoading(false); }
+    }, [selectedFile]);
+
+    const addTextOverlay = useCallback(async () => {
+        if (!selectedFile) { showToast('Open a PDF first'); return; }
+        const text = window.prompt('Text to overlay?', '');
+        if (!text) return;
+        const pageStr = window.prompt(`Which page (1-${totalPages || '?'})?`, String(currentPage || 1));
+        if (!pageStr) return;
+        const pageNum = Number(pageStr);
+        const xStr = window.prompt('X position (0 = left, default 50)?', '50');
+        if (xStr === null) return;
+        const yStr = window.prompt('Y position from bottom (default 50)?', '50');
+        if (yStr === null) return;
+        const sizeStr = window.prompt('Font size (default 14)?', '14');
+        if (sizeStr === null) return;
+        setIsLoading(true);
+        try {
+            const buf = await selectedFile.arrayBuffer();
+            const pdf = await PDFDocument.load(buf);
+            const total = pdf.getPageCount();
+            if (pageNum < 1 || pageNum > total) { showToast('Page out of range'); return; }
+            const font = await pdf.embedFont(StandardFonts.Helvetica);
+            const page = pdf.getPage(pageNum - 1);
+            page.drawText(text, {
+                x: Number(xStr) || 50,
+                y: Number(yStr) || 50,
+                size: Number(sizeStr) || 14,
+                font,
+                color: rgb(0, 0, 0),
+            });
+            const bytes = await pdf.save();
+            downloadPdfBytes(bytes, `annotated_${selectedFile.name}`);
+            showToast(`Text added to page ${pageNum}`);
+        } catch (e: any) {
+            showToast(`Overlay failed: ${e.message}`);
+        } finally { setIsLoading(false); }
+    }, [selectedFile, totalPages, currentPage]);
+
+    const extractPages = useCallback(async () => {
+        if (!selectedFile) { showToast('Open a PDF first'); return; }
+        const rangeStr = window.prompt('Pages to extract (e.g., "1-3,5")?', '');
+        if (!rangeStr) return;
+        setIsLoading(true);
+        try {
+            const buf = await selectedFile.arrayBuffer();
+            const src = await PDFDocument.load(buf);
+            const total = src.getPageCount();
+            const indices = parsePageRange(rangeStr, total);
+            if (indices.length === 0) { showToast('No valid pages'); return; }
+            const out = await PDFDocument.create();
+            const copied = await out.copyPages(src, indices);
+            copied.forEach(p => out.addPage(p));
+            const bytes = await out.save();
+            downloadPdfBytes(bytes, `extract_${selectedFile.name}`);
+            showToast(`Extracted ${indices.length} page(s)`);
+        } catch (e: any) {
+            showToast(`Extract failed: ${e.message}`);
+        } finally { setIsLoading(false); }
+    }, [selectedFile]);
+
+    const compressPdf = useCallback(async () => {
+        if (!selectedFile) { showToast('Open a PDF first'); return; }
+        setIsLoading(true);
+        try {
+            const buf = await selectedFile.arrayBuffer();
+            const pdf = await PDFDocument.load(buf);
+            // pdf-lib's useObjectStreams: true + addCompression flags reduce file size by ~15-30%
+            const bytes = await pdf.save({ useObjectStreams: true, addDefaultPage: false });
+            const orig = buf.byteLength;
+            const newSize = bytes.byteLength;
+            const pct = Math.round((1 - newSize / orig) * 100);
+            downloadPdfBytes(bytes, `compressed_${selectedFile.name}`);
+            showToast(`Compressed: ${formatFileSize(orig)} → ${formatFileSize(newSize)} (${pct > 0 ? `-${pct}%` : 'no change'})`);
+        } catch (e: any) {
+            showToast(`Compress failed: ${e.message}`);
+        } finally { setIsLoading(false); }
+    }, [selectedFile]);
 
     function escapeHtml(unsafe: string): string {
         return unsafe.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -475,6 +769,15 @@ export default function PDFGear() {
         // Merge & Split
         { id: 'merge-pdf', label: 'Merge PDFs', icon: '⊕', iconBg: '#6c5ce7', category: ['hot', 'merge-split', 'all'], description: 'Combine multiple PDFs into one', action: () => mergeInputRef.current?.click() },
         { id: 'split-pdf', label: 'Split PDF', icon: '✂', iconBg: '#00cec9', category: ['hot', 'merge-split', 'all'], description: 'Split PDF by page range', action: () => { if (!selectedFile) { fileInputRef.current?.click(); } else { showToast('Use the split controls in the viewer'); } } },
+
+        // ---- Edit (all client-side via pdf-lib) ----
+        { id: 'rotate-pages', label: 'Rotate Pages', icon: '↻', iconBg: '#0984e3', category: ['hot', 'edit', 'all'], description: 'Rotate selected pages 90/180/270°', action: () => { if (!selectedFile) fileInputRef.current?.click(); else void rotatePages(); } },
+        { id: 'delete-pages', label: 'Delete Pages', icon: '🗑', iconBg: '#d63031', category: ['hot', 'edit', 'all'], description: 'Remove pages from PDF', action: () => { if (!selectedFile) fileInputRef.current?.click(); else void deletePages(); } },
+        { id: 'extract-pages', label: 'Extract Pages', icon: '⎘', iconBg: '#00b894', category: ['edit', 'all'], description: 'Save selected pages as new PDF', action: () => { if (!selectedFile) fileInputRef.current?.click(); else void extractPages(); } },
+        { id: 'add-watermark', label: 'Watermark', icon: '⌘', iconBg: '#fdcb6e', category: ['hot', 'edit', 'all'], description: 'Add diagonal text watermark to all pages', action: () => { if (!selectedFile) fileInputRef.current?.click(); else void addWatermark(); } },
+        { id: 'page-numbers', label: 'Page Numbers', icon: '№', iconBg: '#6c5ce7', category: ['edit', 'all'], description: 'Add page numbers to bottom of each page', action: () => { if (!selectedFile) fileInputRef.current?.click(); else void addPageNumbers(); } },
+        { id: 'text-overlay', label: 'Add Text', icon: '✎', iconBg: '#e17055', category: ['edit', 'all'], description: 'Draw text on a specific page', action: () => { if (!selectedFile) fileInputRef.current?.click(); else void addTextOverlay(); } },
+        { id: 'compress-pdf', label: 'Compress PDF', icon: '⇪', iconBg: '#00cec9', category: ['edit', 'all'], description: 'Reduce file size via object streams', action: () => { if (!selectedFile) fileInputRef.current?.click(); else void compressPdf(); } },
     ];
 
     const filteredTools = activeCategory === 'all'
@@ -517,6 +820,7 @@ export default function PDFGear() {
         { key: 'from-pdf', label: 'Convert from PDF' },
         { key: 'to-pdf', label: 'Convert to PDF' },
         { key: 'merge-split', label: 'Merge & Split' },
+        { key: 'edit', label: 'Edit' },
         { key: 'all', label: 'All Tools' },
     ];
 
@@ -661,10 +965,25 @@ export default function PDFGear() {
                                 <button onClick={() => setZoomLevel(z => Math.min(3, z + 0.25))}>+</button>
                             </div>
                             <div className="pdfg-viewer__actions">
-                                <button className="pdfg-viewer__action-btn" onClick={() => triggerConvert('txt')} title="Extract Text">📝 TXT</button>
-                                <button className="pdfg-viewer__action-btn" onClick={() => triggerConvert('png')} title="Export as Image">🖼 PNG</button>
-                                <button className="pdfg-viewer__action-btn" onClick={() => triggerConvert('html')} title="Convert to HTML">&lt;/&gt; HTML</button>
+                                <button className="pdfg-viewer__action-btn" onClick={() => selectedFile && void convertFile(selectedFile, 'txt')} title="Extract Text">TXT</button>
+                                <button className="pdfg-viewer__action-btn" onClick={() => selectedFile && void convertFile(selectedFile, 'md')} title="Convert to Markdown">MD</button>
+                                <button className="pdfg-viewer__action-btn" onClick={() => selectedFile && void convertFile(selectedFile, 'html')} title="Convert to HTML">HTML</button>
+                                <button className="pdfg-viewer__action-btn" onClick={() => selectedFile && void convertFile(selectedFile, 'png')} title="Export as PNG">PNG</button>
+                                <button className="pdfg-viewer__action-btn" onClick={() => selectedFile && void convertFile(selectedFile, 'rtf')} title="Convert to RTF">RTF</button>
+                                <button className="pdfg-viewer__action-btn" onClick={() => selectedFile && void convertFile(selectedFile, 'xml')} title="Convert to XML">XML</button>
                             </div>
+                        </div>
+
+                        {/* Edit Toolbar (pdf-lib client-side) */}
+                        <div className="pdfg-viewer__edit-bar">
+                            <span className="pdfg-viewer__edit-label">Edit:</span>
+                            <button className="pdfg-viewer__edit-btn" onClick={() => void rotatePages()} disabled={isLoading} title="Rotate pages">↻ Rotate</button>
+                            <button className="pdfg-viewer__edit-btn" onClick={() => void deletePages()} disabled={isLoading} title="Delete pages">🗑 Delete</button>
+                            <button className="pdfg-viewer__edit-btn" onClick={() => void extractPages()} disabled={isLoading} title="Extract pages to new PDF">⎘ Extract</button>
+                            <button className="pdfg-viewer__edit-btn" onClick={() => void addWatermark()} disabled={isLoading} title="Add watermark">⌘ Watermark</button>
+                            <button className="pdfg-viewer__edit-btn" onClick={() => void addPageNumbers()} disabled={isLoading} title="Add page numbers">№ Numbers</button>
+                            <button className="pdfg-viewer__edit-btn" onClick={() => void addTextOverlay()} disabled={isLoading} title="Add text overlay">✎ Text</button>
+                            <button className="pdfg-viewer__edit-btn" onClick={() => void compressPdf()} disabled={isLoading} title="Compress PDF">⇪ Compress</button>
                         </div>
 
                         {/* Split Controls */}

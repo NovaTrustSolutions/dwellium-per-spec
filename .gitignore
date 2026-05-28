@@ -22,3 +22,21 @@ qualia-shell/cdp_probe_task_*.cjs
 # Alt-dist directory from external build contexts (session-local)
 qualia-shell/dist-external/
 .vercel
+
+# RR v7 framework-mode build output + cache (Phase-9+ Task 9.5 carry-forward)
+qualia-shell/build/
+qualia-shell/.react-router/
+
+# Session-local capture configs (preview/debug shell screenshots)
+qualia-shell/_debug-*.config.ts
+qualia-shell/_preview-capture*.config.ts
+qualia-shell/_shell-recapture.config.ts
+qualia-shell/e2e/_debug-*.ts
+qualia-shell/e2e/_preview-capture*.ts
+qualia-shell/e2e/_shell-recapture.ts
+Docs/preview-screenshots/
+Docs/preview-screenshots-backend/
+
+# Transient PR creation scratch (session-local)
+.create-pr.sh
+.pr-body.md

@@ -506,3 +506,38 @@
 }
 
 .scribe-ara-panel__send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ARA mini-panel context-window warning */
+.scribe-ara-ctx-warn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 8px 0 8px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+}
+
+.scribe-ara-ctx-warn--warn {
+    background: rgba(251, 191, 36, 0.10);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    color: #fbbf24;
+}
+
+.scribe-ara-ctx-warn--danger {
+    background: rgba(239, 68, 68, 0.10);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+}
+
+.scribe-ara-ctx-warn-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: inherit;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.scribe-ara-ctx-warn-btn:hover { background: rgba(255, 255, 255, 0.12); }

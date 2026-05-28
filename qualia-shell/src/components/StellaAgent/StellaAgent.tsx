@@ -10,6 +10,7 @@ import { renderSafeMarkdown, sanitizeSvg } from '../../utils/safeMarkdown';
 import { getAuthToken, UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { buildContextWarning, sumTokens } from '../../lib/contextWindow';
 import {
     dreamStore,
     dreamUserIdHolder,
@@ -1379,6 +1380,26 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         )}
                         <div ref={messagesEndRef} />
                     </div>
+                    {/* Context-window warning at 80% / 95% — start a new chat to avoid truncation. */}
+                    {(() => {
+                        const STELLA_SYSTEM = 'You are Stella, a helpful personal AI assistant inside the Dwellium property-management app.';
+                        const tokens = sumTokens([STELLA_SYSTEM, ...messages.map(m => m.content)]);
+                        const w = buildContextWarning(tokens, integrations.llm);
+                        if (w.level === 'ok') return null;
+                        return (
+                            <div className={`stella__ctx-warn stella__ctx-warn--${w.level}`}>
+                                <span>{w.level === 'warn' ? '⚠️' : '🛑'}</span>
+                                <span style={{ flex: 1 }}>{w.message}</span>
+                                <button
+                                    className="stella__ctx-warn-btn"
+                                    onClick={() => setMessages([])}
+                                    title="Start a fresh conversation"
+                                >
+                                    New chat
+                                </button>
+                            </div>
+                        );
+                    })()}
                     {/* Self-diagnosing banner: when Stella has no path to answer (no backend AND no LLM key),
                         show a clear CTA to fix it. Replaces silent disabled input. */}
                     {status !== 'online' && !hasActiveLlm(integrations.llm) && (

@@ -2219,3 +2219,38 @@
 }
 
 .stella__diagnose-cta:hover { background: #e8ff7a; }
+
+/* ── Context-window warning ── */
+.stella__ctx-warn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.stella__ctx-warn--warn {
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    color: #fbbf24;
+}
+
+.stella__ctx-warn--danger {
+    background: rgba(239, 68, 68, 0.10);
+    border: 1px solid rgba(239, 68, 68, 0.32);
+    color: #fca5a5;
+}
+
+.stella__ctx-warn-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: inherit;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.stella__ctx-warn-btn:hover { background: rgba(255, 255, 255, 0.14); }

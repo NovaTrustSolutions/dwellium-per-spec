@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { buildContextWarning, sumTokens } from '../../lib/contextWindow';
 
 interface Msg {
     id: string;
@@ -142,6 +143,24 @@ export function AraMiniPanel() {
                     ✕
                 </button>
             </div>
+            {(() => {
+                const tokens = sumTokens([SYSTEM_PROMPT, ...messages.map(m => m.content)]);
+                const w = buildContextWarning(tokens, integrations.llm);
+                if (w.level === 'ok') return null;
+                return (
+                    <div className={`scribe-ara-ctx-warn scribe-ara-ctx-warn--${w.level}`}>
+                        <span>{w.level === 'warn' ? '⚠️' : '🛑'}</span>
+                        <span style={{ flex: 1 }}>{w.message}</span>
+                        <button
+                            className="scribe-ara-ctx-warn-btn"
+                            onClick={() => setMessages([])}
+                            title="Start a fresh ARA chat"
+                        >
+                            New
+                        </button>
+                    </div>
+                );
+            })()}
             <div className="scribe-ara-panel__messages">
                 {messages.length === 0 && !busy && (
                     <p className="scribe-ara-panel__empty">

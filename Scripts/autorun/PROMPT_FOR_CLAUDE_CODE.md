@@ -1,5 +1,6 @@
 # feat/workspace-widget — Cycle 1 — Phase A (SETUP)
 **Generated:** 2026-05-28 by Cowork autorun fire #9 after both PR #93 (Scribe) and PR #94 (File Explorer) merged to main
+**Base-SHA refresh:** 2026-05-28 autorun fire #11 — main has advanced to `2eb59f8` via 11 total of Ilya's manual commits since PR #94 (PDF Gear backend + client edit suite, Terminal backend route, NotebookLM Calendar reuse, Sidebar flatten + a11y, ARA Humanize toggle, ARA TTS, ThoughtWeaver local-first, Honcho dream mode, Stella self-diagnose + Scribe floating ARA + Legal Shield LLM reconnect). Substantive prompt unchanged.
 **Scope:** ONE cycle. Branch creation + Holocron source file inventory + push to origin. **DO NOT port any code in this cycle.**
 
 ---
@@ -18,7 +19,7 @@
 ## Context — what just shipped
 - PR #93 `feat/scribe-widget` merged to `main` as `d5fbc2f` (Scribe markdown editor, ~3,700 LOC)
 - PR #94 `feat/file-explorer-enhanced` merged to `main` as `9b929a6` (Dual-mode file explorer with hierarchy lock)
-- Main HEAD now: `9b929a6`
+- Main HEAD now: `2eb59f8` (11 commits beyond `9b929a6` from Ilya's manual work after PRs #93+#94 merged — PDF Gear backend conversion + LibreOffice + client edit suite, Terminal backend route, NotebookLM Google email reuse, Sidebar flatten + a11y page-alignment, ARA Humanize toggle, ARA TTS direct-browser with 10-voice picker, ThoughtWeaver local-first persistence + daily To-do list, Honcho dream mode + browser-interaction recorder, Stella self-diagnose + Scribe floating ARA + Legal Shield LLM reconnect). Branch off whatever HEAD is at the moment you run Step 1 — do NOT hard-code `2eb59f8`.
 - The subtree `Docs/holocron-reference/` was carried into main with PR #93 — **DO NOT subtree-add again.** It's already there.
 - `feat/workspace-widget` branch does NOT yet exist locally or on origin. You will create it in this cycle.
 
@@ -33,7 +34,7 @@ git status --short
 git rev-parse HEAD
 ```
 
-**Expected:** zero untracked/modified files; HEAD on `main` at `9b929a6` (or a child of it if Ilya did more work). If you see uncommitted changes, **STOP** and ask Ilya before continuing.
+**Expected:** zero untracked/modified files; HEAD on `main` at `2eb59f8` (or a child of it if Ilya did more work). If you see uncommitted changes, **STOP** and ask Ilya before continuing.
 
 ### Step 2 — Make sure local main matches origin/main (ETA ~10 s)
 ```bash
@@ -115,10 +116,10 @@ git status --short
 cd qualia-shell && npx tsc -b && npx vitest run && npx react-router build && VITE_APPFOLIO_SEEDS=false npx react-router build && cd .. && node Scripts/verify_no_pii_leak.mjs && SMOKE_TEST_SKIP_BUILD=true node Scripts/smoke_test_ssr_phase8.mjs
 ```
 
-**Acceptance: 6/6 green.** vitest must report `278 passed | 39 skipped` (baseline from end of Phase-9+). If anything goes red:
+**Acceptance: 6/6 green.** vitest baseline: `278 passed | 39 skipped` from end of Phase-9+ — Ilya's 7 manual commits on top of `9b929a6` may have nudged this (especially PDF Gear + Terminal backend route additions); if vitest is green with a different pass count, that's fine, but flag the delta. If anything goes red:
 - **STOP IMMEDIATELY.**
 - Paste the failure output.
-- Do NOT try to "just fix it" — main was green at `9b929a6`, so any failure on a 1-commit-stub branch is highly suspicious (most likely cause: local environment drift, not source code).
+- Do NOT try to "just fix it" — `main` at `34aed49` should still be green (Ilya wouldn't have merged a broken state), so any failure on a 1-commit-stub branch is highly suspicious (most likely cause: local environment drift, not source code).
 
 ### Step 9 — Commit the stub (ETA ~30 s)
 
@@ -130,8 +131,9 @@ Phase A (Setup) cycle. No production code touched. Subtree
 Docs/holocron-reference/ already present from PR #93. Just creates
 the empty WORKSPACE_PORTING_PLAN.md placeholder for Cycle 2 to fill in.
 
-Strict gate green: tsc, vitest 278/39, both react-router builds, PII,
-SSR smoke. Baseline matches main 9b929a6.
+Strict gate green: tsc, vitest, both react-router builds, PII,
+SSR smoke. Baseline matches main (currently 34aed49 — 7 commits beyond
+the post-PR-#94 SHA 9b929a6 from Ilya's manual work).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 

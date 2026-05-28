@@ -18,10 +18,24 @@
 # Re-runnable: skips steps whose post-conditions are already satisfied. Each
 # phase prints a banner so the operator (or Claude Code) can see progress.
 #
-# Usage on a fresh machine:
-#   curl -fsSL https://raw.githubusercontent.com/NovaTrustSolutions/dwellium-per-spec/main/Scripts/bootstrap-new-machine.sh | bash
-# OR, after cloning the repo:
-#   bash Scripts/bootstrap-new-machine.sh
+# Usage on a fresh machine (PRIVATE REPO — pick one):
+#
+#   Option A — with GitHub CLI (easiest, requires `gh` installed and logged in):
+#     brew install gh && gh auth login
+#     gh repo clone NovaTrustSolutions/dwellium-per-spec ~/dwellium && bash ~/dwellium/Scripts/bootstrap-new-machine.sh
+#
+#   Option B — with a Personal Access Token in the env:
+#     export GITHUB_TOKEN=<your-PAT-with-repo-read>
+#     curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
+#       https://raw.githubusercontent.com/NovaTrustSolutions/dwellium-per-spec/main/Scripts/bootstrap-new-machine.sh | bash
+#
+#   Option C — with SSH (if your machine has an SSH key registered on GitHub):
+#     git clone git@github.com:NovaTrustSolutions/dwellium-per-spec.git ~/dwellium
+#     bash ~/dwellium/Scripts/bootstrap-new-machine.sh
+#
+# IMPORTANT: this repo is private, so the classic anonymous `curl | bash`
+# DOES NOT WORK. You'll see a 400/404 from raw.githubusercontent.com if you
+# try. Use one of the three options above.
 #
 # Environment overrides:
 #   REPO_URL          (default https://github.com/NovaTrustSolutions/dwellium-per-spec)
@@ -81,12 +95,73 @@ ok "npm: $(npm --version)"
 
 # ─── Phase 2: Clone or update the repo ───────────────────────────────────────
 phase "2. Clone / update Dwellium repo"
+#
+# The repo is PRIVATE. Anonymous HTTPS clone returns 404/400 depending on the
+# git+curl combo. We try four auth paths in order:
+#   1. gh CLI if it's installed and logged in (fastest, no manual setup)
+#   2. SSH if ~/.ssh/id_* exists and is registered on GitHub
+#   3. GITHUB_TOKEN env var (caller-provided PAT)
+#   4. Bare HTTPS — only works if the user has cached creds via osxkeychain
+# A clear actionable error message is printed if all four fail.
+#
+clone_private_repo() {
+    local target="$1"
+    local repo_path="NovaTrustSolutions/dwellium-per-spec"
+
+    # 1. gh cli
+    if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+        echo "  → using gh CLI"
+        gh repo clone "$repo_path" "$target" && return 0
+    fi
+
+    # 2. SSH (if any key is present and registered)
+    if [[ -f "$HOME/.ssh/id_ed25519" || -f "$HOME/.ssh/id_rsa" ]] && ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+        echo "  → using SSH"
+        git clone "git@github.com:${repo_path}.git" "$target" && return 0
+    fi
+
+    # 3. GITHUB_TOKEN env
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        echo "  → using GITHUB_TOKEN env var"
+        git clone "https://${GITHUB_TOKEN}@github.com/${repo_path}.git" "$target" && return 0
+    fi
+
+    # 4. Plain HTTPS — last resort
+    echo "  → trying plain HTTPS (will use macOS Keychain creds if present)"
+    if git clone "https://github.com/${repo_path}.git" "$target" 2>/tmp/dwellium-clone.err; then
+        return 0
+    fi
+
+    echo
+    echo -e "${RED}════════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}✗ Cannot clone the private repo.${NC} GitHub returned:"
+    sed 's/^/    /' /tmp/dwellium-clone.err 2>/dev/null || true
+    echo
+    echo "Pick ONE of these and re-run this script:"
+    echo
+    echo "  Option A — install GitHub CLI and log in (recommended):"
+    echo "      brew install gh"
+    echo "      gh auth login         # follow the browser prompts"
+    echo
+    echo "  Option B — set up SSH on your Mac:"
+    echo "      ssh-keygen -t ed25519 -C \"\$(whoami)@\$(hostname)\""
+    echo "      cat ~/.ssh/id_ed25519.pub  # add this to github.com → Settings → SSH keys"
+    echo "      ssh -T git@github.com     # should say 'successfully authenticated'"
+    echo
+    echo "  Option C — export a Personal Access Token:"
+    echo "      Create one at https://github.com/settings/tokens (Fine-grained, repo: Read)"
+    echo "      export GITHUB_TOKEN=<paste it here>"
+    echo "      bash $(basename "$0")"
+    echo -e "${RED}════════════════════════════════════════════════════════════════════════${NC}"
+    exit 1
+}
+
 if [[ -d "$INSTALL_ROOT/.git" ]]; then
     ok "Repo already at $INSTALL_ROOT; running git pull"
     git -C "$INSTALL_ROOT" pull --ff-only origin main || warn "git pull failed; continuing with current HEAD"
 else
     mkdir -p "$(dirname "$INSTALL_ROOT")"
-    git clone "$REPO_URL" "$INSTALL_ROOT"
+    clone_private_repo "$INSTALL_ROOT"
 fi
 ok "HEAD: $(git -C "$INSTALL_ROOT" rev-parse --short HEAD)"
 

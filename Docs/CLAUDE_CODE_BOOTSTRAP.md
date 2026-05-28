@@ -29,11 +29,38 @@ export SKIP_NOTEBOOKLM_AUTH=0       # set to 1 to defer auth
 
 ## Step 1 — Run the one-shot bootstrap
 
-The repo ships a single idempotent installer that handles every step below. Run it first; if any step fails it will exit non-zero and the agent can drop into the matching numbered step manually.
+> **🔴 The repo is PRIVATE.** Anonymous `curl | bash` from `raw.githubusercontent.com` will return **HTTP 400 / 404** because GitHub does not serve raw files from private repos to unauthenticated requests. **Pick one of the three options below** to get past Step 1. The script itself, once running, then handles every later step idempotently.
+
+### Option A — GitHub CLI (recommended, fewest commands)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NovaTrustSolutions/dwellium-per-spec/main/Scripts/bootstrap-new-machine.sh -o /tmp/bootstrap.sh
-chmod +x /tmp/bootstrap.sh
+brew install gh
+gh auth login                                # follow the browser prompts
+gh repo clone NovaTrustSolutions/dwellium-per-spec ~/dwellium
+bash ~/dwellium/Scripts/bootstrap-new-machine.sh
+```
+
+### Option B — SSH (if your Mac has an SSH key registered on GitHub)
+
+```bash
+ls ~/.ssh/id_ed25519.pub || ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)"
+# Add ~/.ssh/id_ed25519.pub to github.com → Settings → SSH and GPG keys (if not already there)
+ssh -T git@github.com                        # should say "successfully authenticated"
+git clone git@github.com:NovaTrustSolutions/dwellium-per-spec.git ~/dwellium
+bash ~/dwellium/Scripts/bootstrap-new-machine.sh
+```
+
+### Option C — Personal Access Token
+
+```bash
+# 1. Create a fine-grained PAT at https://github.com/settings/tokens
+#    Resource: NovaTrustSolutions/dwellium-per-spec
+#    Permissions: Contents → Read
+# 2. Export it before running:
+export GITHUB_TOKEN=<paste-PAT-here>
+curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
+  https://raw.githubusercontent.com/NovaTrustSolutions/dwellium-per-spec/main/Scripts/bootstrap-new-machine.sh \
+  -o /tmp/bootstrap.sh
 bash /tmp/bootstrap.sh
 ```
 
@@ -46,7 +73,9 @@ Frontend health: OK
 
 If you see those two greens, **you are done**. Open http://localhost:5173/ and the app is live.
 
-If anything is red, read the per-phase output and address the failure using the steps below.
+If you see a 400 / 404 / "Repository not found" at Phase 2, the bootstrap printed exactly which auth option to use — pick one of A/B/C and re-run.
+
+If anything else is red, read the per-phase output and address the failure using the steps below.
 
 ---
 
@@ -213,6 +242,8 @@ open http://localhost:5173/
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| **HTTP 400 / 404 during git clone or `curl \| bash`** | Repo is private; anonymous fetch is blocked by GitHub. Older curl + git surface this as 400 instead of 404. | Use Option A (gh CLI), B (SSH), or C (GITHUB_TOKEN) in Step 1 above. The bootstrap script also prints the same three options when it fails at Phase 2. |
+| `remote: Repository not found.` during git clone | Same as above — your terminal has no GitHub credentials | Same fix |
 | `better-sqlite3 NODE_MODULE_VERSION` mismatch | Backend was built against a different Node version | `cd ~/dwellium-backend/ai-dashboard369-file-manager && npm_config_build_from_source=true npm rebuild better-sqlite3` |
 | Backend `Operation not permitted` on `~/Downloads` | macOS TCC blocks launchd-run scripts in `~/Downloads/~/Desktop/~/Documents` | Move repo to `~/dwellium` (default in this playbook), NOT `~/Downloads/…` |
 | `npm: command not found` inside launchd | nvm isn't loaded in non-interactive launchd shells | The plists already source nvm. If you wrote a custom plist, see `Scripts/_rebuild-with-nvm.sh` for the pattern. |

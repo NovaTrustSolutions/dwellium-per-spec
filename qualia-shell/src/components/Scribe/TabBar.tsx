@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useScribeStore, type OpenFile } from './scribeStore';
+import { useScribeLayout } from './useScribeLayout';
 
 export function TabBar() {
     const openFiles = useScribeStore((s) => s.openFiles);
@@ -7,6 +8,7 @@ export function TabBar() {
     const setActiveFile = useScribeStore((s) => s.setActiveFile);
     const closeFile = useScribeStore((s) => s.closeFile);
     const createFile = useScribeStore((s) => s.createFile);
+    const { tabBarHeight } = useScribeLayout();
 
     // 2026-05-27 fix: window.prompt() is silently blocked in many contexts.
     // Replace with inline input toggled via local state.
@@ -42,7 +44,7 @@ export function TabBar() {
             overflowX: 'auto',
             padding: '6px 8px 0',
             gap: 2,
-            height: 38,
+            height: tabBarHeight,
             background: '#0a0a0a',
             borderBottom: '1px solid #222',
         }}>

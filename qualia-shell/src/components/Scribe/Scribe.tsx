@@ -18,10 +18,14 @@ import { CommentEditor } from './CommentEditor';
 import { Minimap } from './Minimap';
 import { ContextMenu } from './ContextMenu';
 import { useScribeTheme } from './useScribeTheme';
+import { useScribeLayout } from './useScribeLayout';
+import { Splitter } from './Splitter';
+import { TOC_MIN, TOC_MAX, MINIMAP_MIN, MINIMAP_MAX } from './scribeLayoutStore';
 import './Scribe.css';
 
 export default function Scribe() {
     useScribeTheme();
+    const layout = useScribeLayout();
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const activeFilepath = useScribeStore((s) => s.activeFilepath);
@@ -91,6 +95,14 @@ export default function Scribe() {
     return (
         <div className="scribe">
             <TabBar />
+            <Splitter
+                orientation="horizontal"
+                direction="positive"
+                onResize={(delta) => {
+                    const next = Math.max(28, Math.min(80, layout.tabBarHeight + delta));
+                    layout.setTabBarHeight(next);
+                }}
+            />
             <DocumentToolbar />
             {loading && <div className="scribe__status">Loading...</div>}
             {error && <div className="scribe__status scribe__status--error">{error}</div>}
@@ -98,8 +110,36 @@ export default function Scribe() {
             <div className="scribe__editor-area">
                 <div className="scribe__editor" ref={containerRef} />
                 <RedlineNavigator getView={() => viewRef.current} />
-                {minimapVisible && <Minimap getView={() => viewRef.current} />}
-                {tocVisible && <TableOfContents getView={() => viewRef.current} />}
+                {minimapVisible && (
+                    <>
+                        <Splitter
+                            orientation="vertical"
+                            direction="negative"
+                            onResize={(delta) => {
+                                const next = Math.max(MINIMAP_MIN, Math.min(MINIMAP_MAX, layout.minimapWidth + delta));
+                                layout.setMinimapWidth(next);
+                            }}
+                        />
+                        <div className="scribe__minimap-wrap" style={{ width: layout.minimapWidth, flexShrink: 0 }}>
+                            <Minimap getView={() => viewRef.current} />
+                        </div>
+                    </>
+                )}
+                {tocVisible && (
+                    <>
+                        <Splitter
+                            orientation="vertical"
+                            direction="negative"
+                            onResize={(delta) => {
+                                const next = Math.max(TOC_MIN, Math.min(TOC_MAX, layout.tocWidth + delta));
+                                layout.setTocWidth(next);
+                            }}
+                        />
+                        <div className="scribe__toc-wrap" style={{ width: layout.tocWidth, flexShrink: 0 }}>
+                            <TableOfContents getView={() => viewRef.current} />
+                        </div>
+                    </>
+                )}
             </div>
             <SelectionToolbar />
             <CommentEditor getView={() => viewRef.current} />

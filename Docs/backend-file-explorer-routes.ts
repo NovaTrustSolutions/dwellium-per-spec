@@ -140,6 +140,28 @@ router.post('/mkdir', authenticate, async (req: Request, res: Response) => {
     }
 });
 
+// ── GET /read ─ read file content (path via ?path= query) ────────────
+
+router.get('/read', authenticate, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        const rel = (req.query.path as string) || '';
+        const root = getUserRoot(userId);
+        const r = resolveAndGuard(root, rel);
+        if ('error' in r) return res.status(400).json({ success: false, error: r.error });
+        let stat;
+        try { stat = await fs.stat(r.resolved); }
+        catch { return res.status(404).json({ success: false, error: 'File not found' }); }
+        if (stat.isDirectory()) return res.status(400).json({ success: false, error: 'Path is a directory' });
+        // Read as text. For binary files (images), Cycle 6+ will add a separate /bytes endpoint.
+        const content = await fs.readFile(r.resolved, 'utf-8');
+        res.json({ success: true, path: rel, content, size: stat.size, modified: stat.mtime.toISOString() });
+    } catch (err: any) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // ── POST /touch ─ create an empty file (or no-op if it exists) ────────
 
 router.post('/touch', authenticate, async (req: Request, res: Response) => {

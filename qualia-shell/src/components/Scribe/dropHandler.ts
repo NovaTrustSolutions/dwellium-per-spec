@@ -25,6 +25,7 @@ const DEBUG = true;
 if (DEBUG) console.log('[Scribe DnD] dropHandler.ts module loaded');
 
 const DWELLIUM_WIDGET_MIME = 'application/x-dwellium-widget';
+const DWELLIUM_PATH_MIME = 'application/x-dwellium-path';
 const TEXT_FILE_EXTS = ['.md', '.markdown', '.txt', '.json', '.csv', '.tsv', '.yaml', '.yml', '.log', '.html'];
 const IMAGE_FILE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.avif'];
 const MAX_TEXT_FILE_BYTES = 1024 * 1024; // 1 MB
@@ -129,6 +130,46 @@ async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
             return true;
         } catch {
             // malformed payload — fall through to other handlers
+        }
+    }
+
+    // ── File Explorer path drop (Cycle 5) ────────────────────────────
+    //   Source: FileExplorerCell.onDragStart sets application/x-dwellium-path
+    //   = JSON {name, path, tier}. Files insert their content as markdown;
+    //   folder/domain/project/thread tiers insert a reference link.
+    const pathRaw = dt.getData(DWELLIUM_PATH_MIME);
+    if (pathRaw) {
+        try {
+            const payload = JSON.parse(pathRaw) as { name: string; path: string; tier: string };
+            if (payload.tier === 'file') {
+                // Insert placeholder, fetch content, replace
+                const placeholder = `\n[Loading ${payload.name}…]()\n`;
+                const { from, to } = insertAt(view, dropPos, placeholder);
+                try {
+                    const res = await fetch(`${API_BASE}/api/file-explorer/read?path=${encodeURIComponent(payload.path)}`, {
+                        headers: getAuthHeaders(),
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.success && typeof data.content === 'string') {
+                        const ext = fileExt(payload.name);
+                        const text = ext === '.md' || ext === '.markdown'
+                            ? data.content
+                            : `\`\`\`${ext.slice(1) || ''}\n${data.content}\n\`\`\`\n`;
+                        view.dispatch({ changes: { from, to, insert: text } });
+                    } else {
+                        view.dispatch({ changes: { from, to, insert: `_(failed to read ${payload.name}: ${data.error ?? 'HTTP ' + res.status})_\n` } });
+                    }
+                } catch (e: any) {
+                    view.dispatch({ changes: { from, to, insert: `_(failed to read ${payload.name}: ${e?.message ?? e})_\n` } });
+                }
+            } else {
+                // Folder/tier: insert a markdown reference link
+                const tierLabel = payload.tier.charAt(0).toUpperCase() + payload.tier.slice(1);
+                insertAt(view, dropPos, `\n📁 **${payload.name}** _(${tierLabel} — ${payload.path})_\n`);
+            }
+            return true;
+        } catch {
+            // malformed payload — fall through
         }
     }
 

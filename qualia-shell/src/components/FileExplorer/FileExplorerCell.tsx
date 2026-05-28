@@ -125,9 +125,32 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
         : entry.tier === 'folder' ? (isExpanded ? FolderOpen : Folder)
         : FileText;
 
+    // Cycle 5: drag source. Files (and folders) are draggable when not locked.
+    // Sets three MIME types so receivers can pick whichever they understand:
+    //   application/x-dwellium-path  → JSON {name, path, tier} for intra-app handlers (Scribe)
+    //   text/uri-list                → API URL so external browsers/apps can fetch via http
+    //   text/plain                   → just the filename, last-resort fallback
+    const handleDragStart = (e: React.DragEvent) => {
+        if (locked || renaming) {
+            e.preventDefault();
+            return;
+        }
+        try {
+            const payload = { name: entry.name, path: entry.path, tier: entry.tier };
+            e.dataTransfer.setData('application/x-dwellium-path', JSON.stringify(payload));
+            // URL pointing at the read endpoint — Scribe's URL drop fallback would hit /api/file-explorer/read
+            const url = `${window.location.origin}/api/file-explorer/read?path=${encodeURIComponent(entry.path)}`;
+            e.dataTransfer.setData('text/uri-list', url);
+            e.dataTransfer.setData('text/plain', entry.name);
+            e.dataTransfer.effectAllowed = 'copyMove';
+        } catch { /* sandboxed contexts */ }
+    };
+
     return (
         <>
             <div
+                draggable={!locked && !renaming}
+                onDragStart={handleDragStart}
                 onClick={handleClick}
                 onContextMenu={handleContextMenu}
                 onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}

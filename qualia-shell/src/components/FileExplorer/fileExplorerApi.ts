@@ -36,6 +36,11 @@ export async function touch(path: string, content = ''): Promise<void> {
     await call('/touch', { method: 'POST', body: JSON.stringify({ path, content }) });
 }
 
+export async function readFile(path: string): Promise<{ content: string; size: number; modified: string }> {
+    const data = await call<{ content: string; size: number; modified: string }>(`/read?path=${encodeURIComponent(path)}`);
+    return { content: data.content, size: data.size, modified: data.modified };
+}
+
 export async function rename(fromPath: string, toName: string): Promise<{ fromPath: string; toPath: string }> {
     return call<{ fromPath: string; toPath: string }>('/rename', {
         method: 'POST',

@@ -338,6 +338,163 @@
     margin-top: 24px;
 }
 
+.tw-recent__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.tw-clear-local-btn {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.22);
+    color: #fca5a5;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.tw-clear-local-btn:hover {
+    background: rgba(239, 68, 68, 0.16);
+}
+
+.tw-local-badge {
+    background: rgba(214, 254, 81, 0.12);
+    color: #d6fe51;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+/* ── Today tab ── */
+.tw-today { padding: 6px 4px; }
+
+.tw-today__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.tw-today__actions { display: flex; gap: 8px; }
+
+.tw-today__sync-btn,
+.tw-today__clear-btn {
+    background: rgba(214, 254, 81, 0.08);
+    border: 1px solid rgba(214, 254, 81, 0.22);
+    color: #d6fe51;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.tw-today__sync-btn:hover,
+.tw-today__clear-btn:hover {
+    background: rgba(214, 254, 81, 0.18);
+}
+
+.tw-today__clear-btn {
+    background: rgba(156, 163, 175, 0.08);
+    border-color: rgba(156, 163, 175, 0.22);
+    color: #9ca3af;
+}
+
+.tw-today__add {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.tw-today__input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 7px 12px;
+    color: #e5e7eb;
+    font-size: 13px;
+}
+
+.tw-today__input::placeholder { color: #6b7280; }
+
+.tw-today__add-btn {
+    background: #d6fe51;
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.tw-today__add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.tw-today__group { margin-bottom: 18px; }
+
+.tw-today__group-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tw-today__group-count {
+    font-size: 10px;
+    color: #6b7280;
+    margin-left: auto;
+}
+
+.tw-today__group--high .tw-today__group-title { color: #f97316; }
+.tw-today__group--medium .tw-today__group-title { color: #fbbf24; }
+.tw-today__group--low .tw-today__group-title { color: #6b7280; }
+
+.tw-todo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    margin-bottom: 4px;
+    transition: background 0.15s;
+}
+
+.tw-todo:hover { background: rgba(255, 255, 255, 0.05); }
+
+.tw-todo--done .tw-todo__text {
+    text-decoration: line-through;
+    color: #6b7280;
+}
+
+.tw-todo__checkbox {
+    accent-color: #d6fe51;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.tw-todo__text { flex: 1; color: #e5e7eb; font-size: 13px; }
+
+.tw-todo__source {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
 .tw-recent__title {
     font-size: 13px;
     font-weight: 800;

@@ -1,12 +1,67 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useContext, useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { API_BASE } from '../../config';
+import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import {
+    thoughtWeaverStore,
+    thoughtWeaverUserIdHolder,
+    appendLocalCapture,
+    deleteLocalCapture,
+    clearLocalCaptures,
+} from './thoughtWeaverStore';
+import type { LocalCapture } from './thoughtWeaverStore';
+import {
+    todoStore,
+    todoUserIdHolder,
+    addTodo,
+    syncTodosFromCaptures,
+    toggleTodo,
+    deleteTodo,
+    clearDoneTodos,
+} from './todoStore';
+import type { TodoItem } from './todoStore';
 import './ThoughtWeaver.css';
+
+// ── Daily to-do synthesis ────────────────────────────────────────────
+// Without an LLM we still want to surface actionable items: split captures
+// into sentences, keep ones with action verbs at the front. Admin-bucket
+// captures get priority='high', needs_review='medium', everything else='low'.
+const ACTION_VERBS = [
+    'call', 'email', 'reach', 'send', 'reply', 'write', 'draft', 'review', 'check', 'schedule',
+    'book', 'pay', 'order', 'buy', 'pick', 'finish', 'complete', 'submit', 'file', 'sign',
+    'meet', 'ask', 'tell', 'remind', 'follow', 'plan', 'prepare', 'fix', 'update', 'create',
+    'add', 'remove', 'delete', 'install', 'set', 'organize', 'clean', 'pick', 'pickup',
+    'do', 'need', 'must', 'should', 'todo', 'task',
+];
+
+function isActionable(text: string): boolean {
+    const lower = text.trim().toLowerCase();
+    if (!lower) return false;
+    const firstWord = lower.split(/\s+/)[0].replace(/[^a-z]/g, '');
+    if (ACTION_VERBS.includes(firstWord)) return true;
+    // "I need to / I have to / Don't forget to / Remember to" patterns
+    if (/\b(need to|have to|don'?t forget|remember to|by (tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next week|eod|cob))\b/.test(lower)) return true;
+    return false;
+}
+
+function synthesizeTodosFromCaptures(captures: CaptureEntry[]): Array<Omit<TodoItem, 'id' | 'done' | 'createdAt' | 'completedAt'>> {
+    const out: Array<Omit<TodoItem, 'id' | 'done' | 'createdAt' | 'completedAt'>> = [];
+    for (const c of captures) {
+        const sentences = c.original_text.split(/(?<=[.!?])\s+|\n+/).map(s => s.trim()).filter(Boolean);
+        for (const s of sentences) {
+            if (!isActionable(s) && c.filed_to !== 'admin') continue;
+            const priority: TodoItem['priority'] = c.filed_to === 'admin' ? 'high'
+                : c.filed_to === 'needs_review' ? 'medium' : 'low';
+            out.push({ text: s.length > 200 ? s.slice(0, 197) + '…' : s, sourceCaptureId: c.id, priority });
+        }
+    }
+    return out;
+}
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type TabId = 'capture' | 'dashboard' | 'timeline';
+type TabId = 'capture' | 'today' | 'dashboard' | 'timeline';
 type BucketId = 'people' | 'projects' | 'ideas' | 'admin';
 
 interface Stats {
@@ -26,6 +81,8 @@ interface CaptureEntry {
     destination_name: string | null;
     status: string;
     createdAt: string;
+    /** 'local' = persisted in this browser (user-only-delete). 'backend' = server-side. */
+    source?: 'local' | 'backend';
 }
 
 interface BucketItem {
@@ -46,6 +103,7 @@ interface BucketItem {
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
     { id: 'capture', label: 'Capture', icon: '📝' },
+    { id: 'today', label: 'Today', icon: '✅' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'timeline', label: 'Timeline', icon: '🕐' },
 ];
@@ -111,6 +169,28 @@ function bucketIcon(bucket: string): string {
 
 export default function ThoughtWeaver() {
     const { integrations } = useIntegrations();
+
+    // ── Per-user local persistence (Phase-8+ Task 8.10 Option β dynamic-key) ──
+    // Read UserContext directly (NOT useUser()) so anonymous/test envs degrade
+    // gracefully to the `_anonymous` namespace — matches useIntegrations pattern.
+    const userCtx = useContext(UserContext);
+    const userId = userCtx?.user?.id ?? null;
+    // Update holder DURING render BEFORE useSyncExternalStore reads — factory
+    // cache invalidates automatically when the key resolver returns a fresh value.
+    thoughtWeaverUserIdHolder.current = userId;
+    todoUserIdHolder.current = userId;
+    const localCaptures: LocalCapture[] = useSyncExternalStore(
+        thoughtWeaverStore.subscribe,
+        thoughtWeaverStore.getSnapshot,
+        thoughtWeaverStore.getServerSnapshot,
+    );
+    const todos: TodoItem[] = useSyncExternalStore(
+        todoStore.subscribe,
+        todoStore.getSnapshot,
+        todoStore.getServerSnapshot,
+    );
+    const [newTodoText, setNewTodoText] = useState('');
+
     const [activeTab, setActiveTab] = useState<TabId>('capture');
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
@@ -181,6 +261,19 @@ export default function ThoughtWeaver() {
         const thoughtText = text.trim();
         setLoading(true);
 
+        // Common: persist locally FIRST (always-persistent ask). Whatever
+        // happens with the LLM / backend, the user keeps their thought.
+        const persistLocally = (filed_to: string, confidence: number, destination_name: string | null) => {
+            appendLocalCapture({
+                id: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+                text: thoughtText,
+                filed_to,
+                confidence,
+                destination_name,
+                createdAt: new Date().toISOString(),
+            });
+        };
+
         // ── 1) Try user-configured LLM first ──
         // 2026-05-26: when the user has a personal LLM key in Settings → API Keys,
         // route the categorization through that provider directly. Falls back to
@@ -203,18 +296,18 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                 }, integrations.llm);
                 if (llmRes) {
                     const parsed = JSON.parse(llmRes.text);
-                    setLastResult({
-                        filed_to: parsed.filed_to || 'needs_review',
-                        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
-                        destination_name: parsed.destination_name || null,
-                    });
+                    const filed_to = parsed.filed_to || 'needs_review';
+                    const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0.5;
+                    const destination_name = parsed.destination_name || null;
+                    setLastResult({ filed_to, confidence, destination_name });
+                    persistLocally(filed_to, confidence, destination_name);
                     setText('');
                     setLoading(false);
                     // Best-effort: also POST to backend so other consumers stay in sync.
                     fetch(`${API}/capture`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ text: thoughtText }),
-                    }).then(() => { fetchCaptures(); fetchStats(); }).catch(() => { /* backend down — OK */ });
+                    }).then(() => { fetchCaptures(); fetchStats(); }).catch(() => { /* backend down — local copy is canonical */ });
                     return;
                 }
             } catch {
@@ -231,11 +324,20 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             const json = await res.json();
             if (json.success) {
                 setLastResult({ filed_to: json.data.filed_to, confidence: json.data.confidence, destination_name: json.data.destination_name });
+                persistLocally(json.data.filed_to, json.data.confidence, json.data.destination_name);
                 setText('');
                 fetchCaptures();
                 fetchStats();
+                setLoading(false);
+                return;
             }
-        } catch { /* silent — backend offline and no LLM configured */ }
+        } catch { /* backend offline AND no LLM configured — still persist locally */ }
+
+        // ── 3) Both LLM and backend unavailable: still keep the thought ──
+        // The user said: "make it always persistent". Treat as needs_review.
+        persistLocally('needs_review', 0, null);
+        setLastResult({ filed_to: 'needs_review', confidence: 0, destination_name: null });
+        setText('');
         setLoading(false);
     };
 
@@ -273,6 +375,45 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
     const applyTemplate = (template: string) => { setText(template); };
 
     // ── Computed ─────────────────────────────────────────────────────
+
+    // Merge backend captures with local ones (local-first, dedupe by id).
+    // Local entries always carry source: 'local' so the delete button can
+    // be gated on user-owned records.
+    const mergedCaptures = useMemo<CaptureEntry[]>(() => {
+        const local: CaptureEntry[] = localCaptures.map(c => ({
+            id: c.id,
+            original_text: c.text,
+            filed_to: c.filed_to,
+            confidence: c.confidence,
+            destination_name: c.destination_name,
+            status: c.filed_to === 'needs_review' ? 'needs_review' : 'filed',
+            createdAt: c.createdAt,
+            source: 'local' as const,
+        }));
+        const backend: CaptureEntry[] = captures.map(c => ({ ...c, source: 'backend' as const }));
+        const seen = new Set<string>();
+        const out: CaptureEntry[] = [];
+        for (const c of [...local, ...backend]) {
+            if (seen.has(c.id)) continue;
+            seen.add(c.id);
+            out.push(c);
+        }
+        // Most recent first
+        return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [localCaptures, captures]);
+
+    // Local delete handler — backend records can't be removed from here.
+    const handleLocalDelete = useCallback((id: string) => {
+        deleteLocalCapture(id);
+    }, []);
+
+    const handleClearAllLocal = useCallback(() => {
+        if (localCaptures.length === 0) return;
+        const ok = typeof window !== 'undefined' && window.confirm(
+            `Delete all ${localCaptures.length} of YOUR captures from this browser? Backend records will remain.`
+        );
+        if (ok) clearLocalCaptures();
+    }, [localCaptures.length]);
 
     const allBucketItems = useMemo(() => {
         if (activeBucket === 'all') return Object.entries(bucketItems).flatMap(([type, items]) => items.map(i => ({ ...i, type })));
@@ -365,17 +506,28 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                         <button className="tw-seed-btn" onClick={handleSeed}>🌱 Seed demo thoughts</button>
                     )}
 
-                    {/* Recent captures */}
+                    {/* Recent captures (merged: local + backend) */}
                     <div className="tw-recent">
-                        <h3 className="tw-section-title">Recent Captures</h3>
-                        {captures.length === 0 ? (
+                        <div className="tw-recent__header">
+                            <h3 className="tw-section-title">Recent Captures</h3>
+                            {localCaptures.length > 0 && (
+                                <button
+                                    className="tw-clear-local-btn"
+                                    onClick={handleClearAllLocal}
+                                    title={`Delete YOUR ${localCaptures.length} local captures`}
+                                >
+                                    🗑 Clear my captures ({localCaptures.length})
+                                </button>
+                            )}
+                        </div>
+                        {mergedCaptures.length === 0 ? (
                             <div className="tw-empty">
                                 <span className="tw-empty__icon">🧠</span>
                                 <p>No thoughts yet. Start capturing!</p>
                             </div>
                         ) : (
                             <div className="tw-captures-list">
-                                {captures.map(c => (
+                                {mergedCaptures.map(c => (
                                     <div key={c.id} className="tw-capture-card" style={{ borderLeftColor: bucketColor(c.filed_to) }}>
                                         <p className="tw-capture-card__text">{c.original_text}</p>
                                         <div className="tw-capture-card__meta">
@@ -383,7 +535,10 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                 {bucketIcon(c.filed_to)} {c.filed_to === 'needs_review' ? 'Review' : c.filed_to}
                                             </span>
                                             <span className="tw-confidence-mini">{Math.round(c.confidence * 100)}%</span>
-                                            {c.status === 'needs_review' && (
+                                            {c.source === 'local' && (
+                                                <span className="tw-local-badge" title="Stored in this browser — only you can delete it">💾 local</span>
+                                            )}
+                                            {c.status === 'needs_review' && c.source !== 'local' && (
                                                 resolveId === c.id ? (
                                                     <div className="tw-resolve-picker">
                                                         {BUCKETS.map(b => (
@@ -398,12 +553,122 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                 )
                                             )}
                                             <span className="tw-time">{timeAgo(c.createdAt)}</span>
+                                            {c.source === 'local' && (
+                                                <button
+                                                    className="tw-delete-btn"
+                                                    onClick={() => handleLocalDelete(c.id)}
+                                                    title="Delete this capture (local only — backend records can't be removed from here)"
+                                                >
+                                                    🗑
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
+                </div>
+            )}
+
+            {/* ─── TODAY TAB ─── */}
+            {activeTab === 'today' && (
+                <div className="tw-today">
+                    <div className="tw-today__header">
+                        <h3 className="tw-section-title">Today's List</h3>
+                        <div className="tw-today__actions">
+                            <button
+                                className="tw-today__sync-btn"
+                                onClick={() => {
+                                    const generated = synthesizeTodosFromCaptures(mergedCaptures);
+                                    const added = syncTodosFromCaptures(generated);
+                                    if (typeof window !== 'undefined') {
+                                        // light feedback through lastResult-style banner reuse
+                                        setLastResult(null);
+                                    }
+                                    // eslint-disable-next-line no-console
+                                    console.log(`[ThoughtWeaver] Synced ${added} new to-do(s) from captures`);
+                                }}
+                                title="Pull actionable items from your captures"
+                            >
+                                ↻ Sync from captures
+                            </button>
+                            {todos.some(t => t.done) && (
+                                <button className="tw-today__clear-btn" onClick={clearDoneTodos}>
+                                    🧹 Clear done ({todos.filter(t => t.done).length})
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Quick-add */}
+                    <div className="tw-today__add">
+                        <input
+                            type="text"
+                            className="tw-today__input"
+                            placeholder="Add a to-do..."
+                            value={newTodoText}
+                            onChange={e => setNewTodoText(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && newTodoText.trim()) {
+                                    addTodo({ text: newTodoText.trim(), sourceCaptureId: null, priority: 'medium' });
+                                    setNewTodoText('');
+                                }
+                            }}
+                        />
+                        <button
+                            className="tw-today__add-btn"
+                            disabled={!newTodoText.trim()}
+                            onClick={() => {
+                                addTodo({ text: newTodoText.trim(), sourceCaptureId: null, priority: 'medium' });
+                                setNewTodoText('');
+                            }}
+                        >
+                            + Add
+                        </button>
+                    </div>
+
+                    {/* List */}
+                    {todos.length === 0 ? (
+                        <div className="tw-empty">
+                            <span className="tw-empty__icon">✅</span>
+                            <p>Nothing here yet. Click "Sync from captures" or add an item.</p>
+                        </div>
+                    ) : (
+                        (['high', 'medium', 'low'] as TodoItem['priority'][]).map(pri => {
+                            const bucket = todos.filter(t => t.priority === pri);
+                            if (bucket.length === 0) return null;
+                            return (
+                                <div key={pri} className={`tw-today__group tw-today__group--${pri}`}>
+                                    <h4 className="tw-today__group-title">
+                                        {pri === 'high' ? '🔥' : pri === 'medium' ? '⚡' : '💭'} {pri.toUpperCase()}
+                                        <span className="tw-today__group-count">{bucket.filter(t => !t.done).length}/{bucket.length}</span>
+                                    </h4>
+                                    {bucket.map(t => (
+                                        <div key={t.id} className={`tw-todo ${t.done ? 'tw-todo--done' : ''}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={t.done}
+                                                onChange={() => toggleTodo(t.id)}
+                                                className="tw-todo__checkbox"
+                                            />
+                                            <span className="tw-todo__text">{t.text}</span>
+                                            {t.sourceCaptureId && (
+                                                <span className="tw-todo__source" title="From a capture">📝</span>
+                                            )}
+                                            <button
+                                                className="tw-delete-btn"
+                                                onClick={() => deleteTodo(t.id)}
+                                                title="Delete to-do"
+                                            >
+                                                🗑
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
             )}
 

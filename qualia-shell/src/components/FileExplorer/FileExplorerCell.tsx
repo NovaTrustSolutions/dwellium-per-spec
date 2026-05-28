@@ -11,7 +11,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFileExplorer } from './useFileExplorer';
 import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, Globe, FolderTree, MessageSquare } from 'lucide-react';
-import { rename as apiRename, deleteEntry as apiDelete } from './fileExplorerApi';
+import { rename as apiRename, deleteEntry as apiDelete, move as apiMove, touch as apiTouch } from './fileExplorerApi';
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB cap on dropped file content
 
 /**
  * 3-tier Holocron hierarchy model (per Ilya 2026-05-28 lock):
@@ -54,6 +56,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
     const [renaming, setRenaming] = useState(false);
     const [draftName, setDraftName] = useState(entry.name);
     const [ctx, setCtx] = useState<ContextMenuState | null>(null);
+    const [dragOver, setDragOver] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -125,6 +128,77 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
         : entry.tier === 'folder' ? (isExpanded ? FolderOpen : Folder)
         : FileText;
 
+    // ── Cycle 6: drop target ─────────────────────────────────────────
+    // Folder-like rows accept drops. Drop sources:
+    //   application/x-dwellium-path → intra-app file/folder move (alt = copy)
+    //   dataTransfer.files          → external upload (Finder → /touch)
+    // Drops on file leaves are ignored (no nesting under files).
+    const handleDragOver = (e: React.DragEvent) => {
+        if (locked || !isFolder) return;
+        // Refuse drop if source is THIS row or one of its ancestors (path-self/loop check happens at drop)
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = e.altKey ? 'copy' : 'move';
+        if (!dragOver) setDragOver(true);
+    };
+
+    const handleDragLeave = () => {
+        if (dragOver) setDragOver(false);
+    };
+
+    const handleDrop = async (e: React.DragEvent) => {
+        if (locked || !isFolder) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOver(false);
+
+        // 1) Intra-app path payload — move or copy
+        const pathRaw = e.dataTransfer.getData('application/x-dwellium-path');
+        if (pathRaw) {
+            try {
+                const payload = JSON.parse(pathRaw) as { name: string; path: string; tier: string };
+                const sourcePath = payload.path;
+                if (!sourcePath || sourcePath === entry.path) return; // self-drop = no-op
+                // Loop guard: can't move a folder into itself or its descendant
+                if (entry.path === sourcePath || entry.path.startsWith(sourcePath + '/')) {
+                    alert("Can't move a folder into itself or one of its descendants.");
+                    return;
+                }
+                const destPath = `${entry.path}/${payload.name}`;
+                await apiMove(sourcePath, destPath, e.altKey);
+                onChange?.();
+                return;
+            } catch (err: any) {
+                alert(`Move failed: ${err?.message ?? err}`);
+                return;
+            }
+        }
+
+        // 2) External files (Finder drop) — upload via /touch
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files);
+            for (const f of files) {
+                if (f.size > MAX_UPLOAD_BYTES) {
+                    const ok = confirm(`"${f.name}" is ${(f.size / 1024 / 1024).toFixed(1)} MB. Upload anyway?`);
+                    if (!ok) continue;
+                }
+                try {
+                    const text = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+                        reader.onerror = () => reject(reader.error);
+                        reader.readAsText(f);
+                    });
+                    await apiTouch(`${entry.path}/${f.name}`, text);
+                } catch (err: any) {
+                    alert(`Upload "${f.name}" failed: ${err?.message ?? err}`);
+                }
+            }
+            onChange?.();
+            return;
+        }
+    };
+
     // Cycle 5: drag source. Files (and folders) are draggable when not locked.
     // Sets three MIME types so receivers can pick whichever they understand:
     //   application/x-dwellium-path  → JSON {name, path, tier} for intra-app handlers (Scribe)
@@ -151,6 +225,9 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
             <div
                 draggable={!locked && !renaming}
                 onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => void handleDrop(e)}
                 onClick={handleClick}
                 onContextMenu={handleContextMenu}
                 onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
@@ -167,17 +244,21 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                     paddingLeft: 8 + depth * 14,
                     fontSize: 12,
                     color: isSelected ? '#D6FE51' : '#ccc',
-                    background: isSelected ? 'rgba(214,254,81,0.08)' : 'transparent',
+                    background: dragOver
+                        ? 'rgba(214,254,81,0.18)'
+                        : isSelected ? 'rgba(214,254,81,0.08)' : 'transparent',
+                    boxShadow: dragOver ? 'inset 0 0 0 1px #D6FE51' : 'none',
                     cursor: 'pointer',
                     userSelect: 'none',
                     borderRadius: 4,
                     outline: 'none',
+                    transition: 'background 80ms, box-shadow 80ms',
                 }}
                 onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = '#1a1a1a';
+                    if (!isSelected && !dragOver) e.currentTarget.style.background = '#1a1a1a';
                 }}
                 onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.background = 'transparent';
+                    if (!isSelected && !dragOver) e.currentTarget.style.background = 'transparent';
                 }}
             >
                 {isFolder ? (

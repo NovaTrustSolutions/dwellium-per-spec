@@ -20,7 +20,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus } from 'lucide-react';
 import { FileExplorerCell, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
-import { fetchTree, mkdir, touch } from './fileExplorerApi';
+import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
 
 interface NewEntryState {
     parentPath: string; // '' for root
@@ -109,6 +109,50 @@ export default function FileExplorer() {
     const displayedEntries = viewMode === 'flat' ? flattenTree(entries) : entries;
     const fileCount = flattenTree(entries).length;
 
+    // Root-level drop target: drop OUTSIDE any folder row → place at root
+    const [rootDragOver, setRootDragOver] = useState(false);
+    const handleRootDragOver = (e: React.DragEvent) => {
+        if (locked) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = e.altKey ? 'copy' : 'move';
+        if (!rootDragOver) setRootDragOver(true);
+    };
+    const handleRootDragLeave = (e: React.DragEvent) => {
+        // Only clear when we actually leave the panel (not when crossing into a child row)
+        if (e.currentTarget === e.target) setRootDragOver(false);
+    };
+    const handleRootDrop = async (e: React.DragEvent) => {
+        if (locked) return;
+        e.preventDefault();
+        setRootDragOver(false);
+        const pathRaw = e.dataTransfer.getData('application/x-dwellium-path');
+        if (pathRaw) {
+            try {
+                const payload = JSON.parse(pathRaw) as { name: string; path: string };
+                if (!payload.path || !payload.path.includes('/')) return; // already at root
+                await apiMove(payload.path, payload.name, e.altKey);
+                await refresh();
+            } catch (err: any) {
+                alert(`Move to root failed: ${err?.message ?? err}`);
+            }
+            return;
+        }
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            for (const f of Array.from(e.dataTransfer.files)) {
+                try {
+                    const text = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+                        reader.onerror = () => reject(reader.error);
+                        reader.readAsText(f);
+                    });
+                    await touch(f.name, text);
+                } catch { /* ignore individual failures */ }
+            }
+            await refresh();
+        }
+    };
+
     return (
         <div style={{
             display: 'flex', flexDirection: 'column',
@@ -191,10 +235,20 @@ export default function FileExplorer() {
             </div>
 
             {/* Tree body */}
-            <div style={{
-                flex: 1, overflowY: 'auto', overflowX: 'hidden',
-                padding: '4px 0',
-            }} role="tree" aria-label="File explorer">
+            <div
+                onDragOver={handleRootDragOver}
+                onDragLeave={handleRootDragLeave}
+                onDrop={(e) => void handleRootDrop(e)}
+                style={{
+                    flex: 1, overflowY: 'auto', overflowX: 'hidden',
+                    padding: '4px 0',
+                    background: rootDragOver ? 'rgba(214,254,81,0.04)' : 'transparent',
+                    boxShadow: rootDragOver ? 'inset 0 0 0 2px rgba(214,254,81,0.4)' : 'none',
+                    transition: 'background 80ms, box-shadow 80ms',
+                }}
+                role="tree"
+                aria-label="File explorer"
+            >
                 {error ? (
                     <div style={{
                         padding: '16px', color: '#ff4d6d', fontSize: 11, lineHeight: 1.6,

@@ -1,11 +1,41 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
+import { useIntegrations } from '../../hooks/useIntegrations';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
+
+// ── TTS voice catalog (Cycle 1 of ARA voice arc — 2026-05-28) ────────────
+// Two tiers: OpenAI TTS (high quality, 6 voices, requires the user's OpenAI
+// key) and browser SpeechSynthesis enhanced macOS voices (fallback when no
+// OpenAI key is configured). Each entry's `id` is what we persist in
+// localStorage["dwellium-ara-voice"]; the speakText resolver picks the path.
+interface TtsVoiceOption {
+    id: string;                          // canonical key persisted per-user
+    label: string;                       // user-facing label in the picker
+    description: string;                 // one-liner the picker tooltip / row shows
+    provider: 'openai' | 'browser';
+    openaiVoice?: 'alloy' | 'echo' | 'fable' | 'nova' | 'onyx' | 'shimmer';
+    browserVoiceMatch?: string[];        // case-sensitive substring match in voice.name (first hit wins)
+}
+
+const TTS_VOICE_CATALOG: TtsVoiceOption[] = [
+    { id: 'openai-alloy',   label: 'Alloy',   description: 'OpenAI — warm, neutral, balanced',           provider: 'openai', openaiVoice: 'alloy' },
+    { id: 'openai-nova',    label: 'Nova',    description: 'OpenAI — bright, energetic female',         provider: 'openai', openaiVoice: 'nova' },
+    { id: 'openai-shimmer', label: 'Shimmer', description: 'OpenAI — soft, breathy female',             provider: 'openai', openaiVoice: 'shimmer' },
+    { id: 'openai-fable',   label: 'Fable',   description: 'OpenAI — British, expressive storyteller',  provider: 'openai', openaiVoice: 'fable' },
+    { id: 'openai-echo',    label: 'Echo',    description: 'OpenAI — calm, conversational male',        provider: 'openai', openaiVoice: 'echo' },
+    { id: 'openai-onyx',    label: 'Onyx',    description: 'OpenAI — deep, authoritative male',         provider: 'openai', openaiVoice: 'onyx' },
+    { id: 'browser-samantha', label: 'Samantha (macOS)', description: 'Apple — Siri-quality enhanced female', provider: 'browser', browserVoiceMatch: ['Samantha (Enhanced)', 'Samantha'] },
+    { id: 'browser-karen',    label: 'Karen (macOS)',    description: 'Apple — natural Australian female',    provider: 'browser', browserVoiceMatch: ['Karen (Enhanced)', 'Karen'] },
+    { id: 'browser-daniel',   label: 'Daniel (macOS)',   description: 'Apple — calm British male',            provider: 'browser', browserVoiceMatch: ['Daniel (Enhanced)', 'Daniel'] },
+    { id: 'browser-system',   label: 'System default',   description: 'Whatever your OS picks',                provider: 'browser' },
+];
+
+const OPENAI_TTS_ENDPOINT = 'https://api.openai.com/v1/audio/speech';
 
 const API_ARA = `${API_BASE}/api/ara`;
 const TRANSCRIBE_API = `${API_BASE}/api/transcribe`;
@@ -207,6 +237,18 @@ function getSafetyNotice(text: string, mode: string): string | null {
 export default function ARAConsole() {
     const { authFetch, isAuthenticated } = useUser();
     const { selectedId, getSelectedItem, getBreadcrumb } = useHierarchy();
+    const { integrations } = useIntegrations();
+    // OpenAI key from per-user integrations (set in Settings → API Keys).
+    // When present, ARA TTS routes through OpenAI's /audio/speech instead of
+    // dropping to the robotic browser SpeechSynthesis fallback.
+    const openaiApiKey = useMemo(() => {
+        // The integrations bundle shape (per per-user-integrations arc 2026-05-26):
+        //   integrations.llm.openai.apiKey  ← canonical path
+        // Older builds may have used .providers.openai.apiKey — kept as a fallback.
+        return integrations?.llm?.openai?.apiKey
+            ?? (integrations?.llm as any)?.providers?.openai?.apiKey
+            ?? '';
+    }, [integrations]);
     const [modes, setModes] = useState<ARAMode[]>([]);
     const [activeMode, setActiveMode] = useState<string>('chief-of-staff');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -530,69 +572,87 @@ export default function ARAConsole() {
 
         setIsSpeaking(true);
 
-        try {
-            // Try Chatterbox backend TTS first
-            console.log('[ARA TTS] Requesting backend speech...');
-            const res = await authFetch(`${API_ARA}/speak`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: cleaned, voice: activeVoice }),
-            });
+        // Resolve the active voice option from the catalog. Backward compat:
+        // legacy values 'female' / 'male' (pre-Cycle-1 voice arc) map to
+        // alloy / onyx so existing localStorage doesn't break.
+        const legacyMap: Record<string, string> = { female: 'openai-alloy', male: 'openai-onyx' };
+        const resolvedId = legacyMap[activeVoice] ?? activeVoice;
+        const option = TTS_VOICE_CATALOG.find(v => v.id === resolvedId) ?? TTS_VOICE_CATALOG[0];
 
-            const ct = res.headers.get('content-type') || '';
-            const provider = res.headers.get('x-audio-provider') || 'unknown';
-            console.log(`[ARA TTS] Response: status=${res.status}, content-type=${ct}, provider=${provider}`);
-
-            if (res.ok && ct.includes('audio')) {
-                const blob = await res.blob();
-                console.log(`[ARA TTS] ✅ Playing backend audio: ${blob.size} bytes, type=${blob.type}, provider=${provider}`);
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                currentAudioRef.current = audio;
-                audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null; };
-                audio.onerror = (e) => {
-                    console.error('[ARA TTS] ❌ Audio playback error:', e);
-                    setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null;
-                };
-                try {
+        // ── Path A: OpenAI TTS via direct browser fetch (preferred) ─────
+        // Same browser-direct pattern as llmClient.ts for Anthropic. Key comes
+        // from the per-user integrations bundle; no server proxy required.
+        if (option.provider === 'openai' && openaiApiKey) {
+            try {
+                console.log(`[ARA TTS] Requesting OpenAI TTS — voice=${option.openaiVoice}`);
+                const res = await fetch(OPENAI_TTS_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${openaiApiKey}`,
+                    },
+                    body: JSON.stringify({
+                        model: 'tts-1',
+                        input: cleaned.length > 4000 ? cleaned.slice(0, 4000) : cleaned,
+                        voice: option.openaiVoice,
+                        response_format: 'mp3',
+                    }),
+                });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const audio = new Audio(url);
+                    currentAudioRef.current = audio;
+                    audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null; };
+                    audio.onerror = (e) => {
+                        console.error('[ARA TTS] ❌ OpenAI audio playback error:', e);
+                        setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null;
+                    };
                     await audio.play();
-                    console.log('[ARA TTS] ▶️ Audio playing successfully');
-                } catch (playErr) {
-                    console.error('[ARA TTS] ❌ audio.play() rejected:', playErr);
-                    // If audio play fails, don't fall through — the audio format is the issue
-                    setIsSpeaking(false);
-                    URL.revokeObjectURL(url);
-                    currentAudioRef.current = null;
+                    console.log(`[ARA TTS] ▶️ OpenAI ${option.openaiVoice} playing (${blob.size} bytes)`);
+                    return;
                 }
-                return;
+                const errText = await res.text().catch(() => '');
+                console.warn(`[ARA TTS] OpenAI returned HTTP ${res.status}: ${errText.slice(0, 200)} — falling back to browser TTS`);
+            } catch (err) {
+                console.error('[ARA TTS] ❌ OpenAI TTS fetch failed — falling back:', err);
             }
-
-            console.warn(`[ARA TTS] Backend returned non-audio: status=${res.status}, ct=${ct}`);
-        } catch (err) {
-            console.error('[ARA TTS] ❌ Backend TTS fetch failed:', err);
+        } else if (option.provider === 'openai' && !openaiApiKey) {
+            console.warn('[ARA TTS] No OpenAI API key configured — falling back to browser SpeechSynthesis. Open Settings → API Keys to add one.');
         }
 
-        // Fallback: browser SpeechSynthesis (tuned for natural human delivery)
-        console.log('[ARA TTS] ⚠️ Falling back to browser SpeechSynthesis');
+        // ── Path B: Browser SpeechSynthesis with the chosen voice ───────
         const utterance = new SpeechSynthesisUtterance(cleaned);
         utterance.rate = 0.92;
         utterance.pitch = 1.06;
         const voices = window.speechSynthesis.getVoices();
-        const preferred =
-            voices.find(v => v.name.includes('Samantha (Enhanced)')) ||
-            voices.find(v => v.name.includes('Karen (Enhanced)')) ||
-            voices.find(v => v.name.includes('Zoe (Enhanced)')) ||
-            voices.find(v => v.name.includes('Samantha')) ||
-            voices.find(v => v.name.includes('Karen')) ||
-            voices.find(v => v.name.includes('Zoe')) ||
-            voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) ||
-            voices.find(v => v.lang.startsWith('en-US') && v.localService) ||
-            voices.find(v => v.lang.startsWith('en'));
+        // If the active option is a browser voice, try its match list first.
+        let preferred: SpeechSynthesisVoice | undefined;
+        if (option.provider === 'browser' && option.browserVoiceMatch) {
+            for (const needle of option.browserVoiceMatch) {
+                preferred = voices.find(v => v.name.includes(needle));
+                if (preferred) break;
+            }
+        }
+        // Fall back to the universal high-quality preference chain
+        if (!preferred) {
+            preferred =
+                voices.find(v => v.name.includes('Samantha (Enhanced)')) ||
+                voices.find(v => v.name.includes('Karen (Enhanced)')) ||
+                voices.find(v => v.name.includes('Zoe (Enhanced)')) ||
+                voices.find(v => v.name.includes('Samantha')) ||
+                voices.find(v => v.name.includes('Karen')) ||
+                voices.find(v => v.name.includes('Zoe')) ||
+                voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) ||
+                voices.find(v => v.lang.startsWith('en-US') && v.localService) ||
+                voices.find(v => v.lang.startsWith('en'));
+        }
         if (preferred) utterance.voice = preferred;
         utterance.onend = () => setIsSpeaking(false);
         utterance.onerror = () => setIsSpeaking(false);
         window.speechSynthesis.speak(utterance);
-    }, [stripMarkdown, authFetch, activeVoice]);
+        console.log(`[ARA TTS] 🔊 Browser SpeechSynthesis — voice=${preferred?.name ?? 'default'}`);
+    }, [stripMarkdown, activeVoice, openaiApiKey]);
 
     const stopSpeaking = useCallback(() => {
         if (currentAudioRef.current) {
@@ -1711,32 +1771,83 @@ export default function ARAConsole() {
                         </div>
                     ) : null}
 
-                    {/* Active Voice */}
+                    {/* TTS Voice Picker (2026-05-28 ARA voice arc Cycle 1) ──────
+                        10-voice catalog: 6 OpenAI TTS voices + 3 enhanced macOS
+                        SpeechSynthesis voices + System Default. OpenAI voices
+                        require an OpenAI API key in Settings → API Keys; gated
+                        with a visual hint when no key present. */}
                     <div className="ara-voice-section">
-                        <h5>Active Voice</h5>
+                        <h5>Voice Type</h5>
+                        {!openaiApiKey && (
+                            <div style={{
+                                padding: '6px 10px',
+                                background: 'rgba(245, 158, 11, 0.08)',
+                                border: '1px solid rgba(245, 158, 11, 0.25)',
+                                borderRadius: 4,
+                                color: '#f59e0b',
+                                fontSize: 11,
+                                marginBottom: 8,
+                            }}>
+                                ⚠ OpenAI voices need a key. Open Settings → API Keys to add one. Browser voices below work without a key.
+                            </div>
+                        )}
                         <div className="ara-voice-list">
-                            {clonedVoices.map(v => (
-                                <div key={v.id} className={`ara-voice-item ${v.id === activeVoice ? 'ara-voice-item--active' : ''}`}>
-                                    <button
-                                        className="ara-voice-item-select"
-                                        onClick={() => selectVoice(v.id)}
-                                    >
-                                        <span className="ara-voice-item-radio">{v.id === activeVoice ? '◉' : '○'}</span>
-                                        <span className="ara-voice-item-name">{v.id === 'default' ? '🎭 Default (Chatterbox)' : `🎤 ${v.id}`}</span>
-                                    </button>
-                                    {v.id !== 'default' && (
+                            {TTS_VOICE_CATALOG.map((v) => {
+                                const isActive = activeVoice === v.id
+                                    || (activeVoice === 'female' && v.id === 'openai-alloy')
+                                    || (activeVoice === 'male' && v.id === 'openai-onyx');
+                                const disabled = v.provider === 'openai' && !openaiApiKey;
+                                return (
+                                    <div key={v.id} className={`ara-voice-item ${isActive ? 'ara-voice-item--active' : ''}`} style={disabled ? { opacity: 0.45 } : undefined}>
                                         <button
-                                            className="ara-voice-item-delete"
-                                            onClick={() => deleteVoice(v.id)}
-                                            title={`Delete ${v.id}`}
+                                            className="ara-voice-item-select"
+                                            onClick={() => selectVoice(v.id)}
+                                            disabled={disabled}
+                                            title={disabled ? 'Requires OpenAI API key' : v.description}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left' }}
                                         >
-                                            🗑️
+                                            <span className="ara-voice-item-radio">{isActive ? '◉' : '○'}</span>
+                                            <span style={{ flex: 1, display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
+                                                <span className="ara-voice-item-name">
+                                                    {v.provider === 'openai' ? '🌐' : '💻'} {v.label}
+                                                </span>
+                                                <span style={{ fontSize: 10, color: '#888' }}>{v.description}</span>
+                                            </span>
                                         </button>
-                                    )}
-                                </div>
-                            ))}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
+
+                    {/* Cloned voices (legacy Chatterbox backend) — only shown if any beyond default exist */}
+                    {clonedVoices.length > 1 && (
+                        <div className="ara-voice-section">
+                            <h5>Cloned Voices</h5>
+                            <div className="ara-voice-list">
+                                {clonedVoices.map(v => (
+                                    <div key={v.id} className={`ara-voice-item ${v.id === activeVoice ? 'ara-voice-item--active' : ''}`}>
+                                        <button
+                                            className="ara-voice-item-select"
+                                            onClick={() => selectVoice(v.id)}
+                                        >
+                                            <span className="ara-voice-item-radio">{v.id === activeVoice ? '◉' : '○'}</span>
+                                            <span className="ara-voice-item-name">{v.id === 'default' ? '🎭 Default (Chatterbox)' : `🎤 ${v.id}`}</span>
+                                        </button>
+                                        {v.id !== 'default' && (
+                                            <button
+                                                className="ara-voice-item-delete"
+                                                onClick={() => deleteVoice(v.id)}
+                                                title={`Delete ${v.id}`}
+                                            >
+                                                🗑️
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Clone Voice */}
                     <div className="ara-voice-section">

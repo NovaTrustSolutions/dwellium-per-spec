@@ -16,12 +16,16 @@
  *
  * See Scripts/autorun/FILE_EXPLORER_PORTING_PLAN.md for full breakdown.
  */
-import { useEffect, useState, useCallback } from 'react';
-import { Lock, Unlock, List, ListTree, RefreshCw } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus } from 'lucide-react';
 import { FileExplorerCell, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
-import { API_BASE } from '../../config';
-import { getAuthHeaders } from '../../context/UserContext';
+import { fetchTree, mkdir, touch } from './fileExplorerApi';
+
+interface NewEntryState {
+    parentPath: string; // '' for root
+    type: 'file' | 'folder';
+}
 
 // Flatten a nested tree depth-first into a single array (used for flat view).
 function flattenTree(entries: FileEntry[]): FileEntry[] {
@@ -42,16 +46,16 @@ export default function FileExplorer() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [newEntry, setNewEntry] = useState<NewEntryState | null>(null);
+    const [newName, setNewName] = useState('');
+    const newInputRef = useRef<HTMLInputElement>(null);
+
     const refresh = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API_BASE}/api/file-explorer/tree`, {
-                headers: getAuthHeaders(),
-            });
-            const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
-            setEntries(Array.isArray(data.data) ? data.data as FileEntry[] : []);
+            const list = await fetchTree();
+            setEntries(list);
         } catch (err: any) {
             setError(err?.message ?? 'Failed to load file tree');
             setEntries([]);
@@ -59,6 +63,44 @@ export default function FileExplorer() {
             setLoading(false);
         }
     }, []);
+
+    useEffect(() => {
+        if (newEntry) newInputRef.current?.focus();
+    }, [newEntry]);
+
+    const requestNewEntry = useCallback((parentPath: string, type: 'file' | 'folder') => {
+        if (locked) return;
+        setNewEntry({ parentPath, type });
+        setNewName('');
+    }, [locked]);
+
+    const cancelNewEntry = useCallback(() => {
+        setNewEntry(null);
+        setNewName('');
+    }, []);
+
+    const commitNewEntry = useCallback(async () => {
+        if (!newEntry) return;
+        const name = newName.trim();
+        if (!name) { cancelNewEntry(); return; }
+        const relPath = newEntry.parentPath ? `${newEntry.parentPath}/${name}` : name;
+        try {
+            if (newEntry.type === 'folder') {
+                await mkdir(relPath);
+            } else {
+                // Default new-file extension: .md (matches Scribe's primary file type).
+                // If the user already provided an extension, respect it.
+                const filename = name.includes('.') ? name : `${name}.md`;
+                const fileRel = newEntry.parentPath ? `${newEntry.parentPath}/${filename}` : filename;
+                await touch(fileRel);
+            }
+            cancelNewEntry();
+            await refresh();
+        } catch (err: any) {
+            alert(`Create failed: ${err?.message ?? err}`);
+            cancelNewEntry();
+        }
+    }, [newEntry, newName, cancelNewEntry, refresh]);
 
     useEffect(() => {
         void refresh();
@@ -86,6 +128,30 @@ export default function FileExplorer() {
                     textTransform: 'uppercase', color: '#808080',
                     flex: 1,
                 }}>Files</span>
+
+                {/* + New File (at root) */}
+                <button
+                    onClick={() => requestNewEntry('', 'file')}
+                    title="New file at root"
+                    disabled={locked}
+                    style={iconBtn(false, locked)}
+                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = '#D6FE51'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? '#333' : '#666'; }}
+                >
+                    <FilePlus size={14} strokeWidth={1.75} />
+                </button>
+
+                {/* + New Folder/Domain (at root) */}
+                <button
+                    onClick={() => requestNewEntry('', 'folder')}
+                    title="New domain (folder at root)"
+                    disabled={locked}
+                    style={iconBtn(false, locked)}
+                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.color = '#D6FE51'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = locked ? '#333' : '#666'; }}
+                >
+                    <FolderPlus size={14} strokeWidth={1.75} />
+                </button>
 
                 {/* Refresh button — reloads from /api/file-explorer/tree */}
                 <button
@@ -165,9 +231,48 @@ export default function FileExplorer() {
                         </div>
                     </div>
                 ) : (
-                    displayedEntries.map((entry) => (
-                        <FileExplorerCell key={entry.path} entry={entry} />
-                    ))
+                    <>
+                        {/* Inline new-entry form at root (when active) */}
+                        {newEntry && newEntry.parentPath === '' && (
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '4px 8px',
+                                background: 'rgba(214,254,81,0.04)',
+                                borderLeft: '2px solid #D6FE51',
+                            }}>
+                                <span style={{ width: 12 }} />
+                                <span style={{ fontSize: 11, color: '#D6FE51', opacity: 0.6 }}>{newEntry.type === 'folder' ? '📁' : '📄'}</span>
+                                <input
+                                    ref={newInputRef}
+                                    value={newName}
+                                    onChange={(e) => setNewName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') void commitNewEntry();
+                                        else if (e.key === 'Escape') cancelNewEntry();
+                                    }}
+                                    onBlur={() => void commitNewEntry()}
+                                    placeholder={newEntry.type === 'folder' ? 'Domain name' : 'filename.md'}
+                                    style={{
+                                        flex: 1, minWidth: 0,
+                                        background: '#000', color: '#fff',
+                                        border: '1px solid #D6FE51', borderRadius: 3,
+                                        padding: '2px 6px', fontSize: 12, fontFamily: 'inherit',
+                                        outline: 'none',
+                                    }}
+                                />
+                            </div>
+                        )}
+                        {displayedEntries.map((entry) => (
+                            <FileExplorerCell
+                                key={entry.path}
+                                entry={entry}
+                                onChange={refresh}
+                                onRequestNewEntry={requestNewEntry}
+                            />
+                        ))}
+                        {/* Inline new-entry form when target is a folder/tier — shown right after the parent */}
+                        {/* Render is handled inside FileExplorerCell.children for nested cases; root-level handled above. */}
+                    </>
                 )}
             </div>
 
@@ -186,15 +291,16 @@ export default function FileExplorer() {
     );
 }
 
-function iconBtn(active: boolean): React.CSSProperties {
+function iconBtn(active: boolean, disabled = false): React.CSSProperties {
     return {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         width: 24, height: 24, padding: 0,
         background: active ? 'rgba(214,254,81,0.08)' : 'transparent',
         border: '1px solid ' + (active ? 'rgba(214,254,81,0.4)' : '#222'),
         borderRadius: 4,
-        color: active ? '#D6FE51' : '#666',
-        cursor: 'pointer',
+        color: disabled ? '#333' : (active ? '#D6FE51' : '#666'),
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
         transition: 'background 100ms, color 100ms, border-color 100ms',
     };
 }

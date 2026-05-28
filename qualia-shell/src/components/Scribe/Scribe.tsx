@@ -121,11 +121,28 @@ function EmptyState() {
         }).catch(() => setFetched(true));
     }, []);
 
-    const handleNew = () => {
-        const name = prompt('New file name (e.g. notes.md):');
-        if (!name?.trim()) return;
-        const filepath = name.trim().endsWith('.md') ? name.trim() : `${name.trim()}.md`;
+    // 2026-05-27 fix: window.prompt() is silently blocked in many browser /
+    // Electron contexts. Replace with inline input toggled via local state.
+    const [creating, setCreating] = useState(false);
+    const [draftName, setDraftName] = useState('');
+
+    const startCreate = () => {
+        setDraftName('');
+        setCreating(true);
+    };
+
+    const confirmCreate = () => {
+        const name = draftName.trim();
+        if (!name) { setCreating(false); return; }
+        const filepath = name.endsWith('.md') ? name : `${name}.md`;
         void createFile(filepath);
+        setCreating(false);
+        setDraftName('');
+    };
+
+    const cancelCreate = () => {
+        setCreating(false);
+        setDraftName('');
     };
 
     return (
@@ -149,11 +166,30 @@ function EmptyState() {
                 </div>
             )}
 
-            <button className="scribe__new-btn" onClick={handleNew}>
-                + New File
-            </button>
+            {creating ? (
+                <div className="scribe__new-form">
+                    <input
+                        type="text"
+                        autoFocus
+                        className="scribe__new-input"
+                        placeholder="filename.md"
+                        value={draftName}
+                        onChange={(e) => setDraftName(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') confirmCreate();
+                            else if (e.key === 'Escape') cancelCreate();
+                        }}
+                    />
+                    <button className="scribe__new-btn" onClick={confirmCreate} disabled={!draftName.trim()}>Create</button>
+                    <button className="scribe__new-cancel" onClick={cancelCreate}>Cancel</button>
+                </div>
+            ) : (
+                <button className="scribe__new-btn" onClick={startCreate}>
+                    + New File
+                </button>
+            )}
 
-            {fetched && files.length === 0 && (
+            {fetched && files.length === 0 && !creating && (
                 <p className="scribe__muted">No files yet. Create one to get started.</p>
             )}
         </div>

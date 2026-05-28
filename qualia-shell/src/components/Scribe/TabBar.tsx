@@ -8,12 +8,29 @@ export function TabBar() {
     const closeFile = useScribeStore((s) => s.closeFile);
     const createFile = useScribeStore((s) => s.createFile);
 
-    const handleNew = useCallback(() => {
-        const name = prompt('New file name (e.g. notes.md):');
-        if (!name?.trim()) return;
-        const filepath = name.trim().endsWith('.md') ? name.trim() : `${name.trim()}.md`;
+    // 2026-05-27 fix: window.prompt() is silently blocked in many contexts.
+    // Replace with inline input toggled via local state.
+    const [creating, setCreating] = useState(false);
+    const [draftName, setDraftName] = useState('');
+
+    const startCreate = useCallback(() => {
+        setDraftName('');
+        setCreating(true);
+    }, []);
+
+    const confirmCreate = useCallback(() => {
+        const name = draftName.trim();
+        if (!name) { setCreating(false); return; }
+        const filepath = name.endsWith('.md') ? name : `${name}.md`;
         void createFile(filepath);
-    }, [createFile]);
+        setCreating(false);
+        setDraftName('');
+    }, [draftName, createFile]);
+
+    const cancelCreate = useCallback(() => {
+        setCreating(false);
+        setDraftName('');
+    }, []);
 
     if (openFiles.length === 0) return <></>;
 
@@ -41,22 +58,51 @@ export function TabBar() {
                     }}
                 />
             ))}
-            <button
-                onClick={handleNew}
-                title="Create new file"
-                style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 28, height: 28, marginLeft: 4,
-                    background: 'transparent', border: '1px solid #333',
-                    borderRadius: 4, color: '#808080', cursor: 'pointer',
-                    fontSize: 16, lineHeight: 1, fontFamily: 'inherit',
-                    flexShrink: 0, transition: 'color 100ms, border-color 100ms',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; e.currentTarget.style.borderColor = '#D6FE51'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#808080'; e.currentTarget.style.borderColor = '#333'; }}
-            >
-                +
-            </button>
+            {creating ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
+                    <input
+                        type="text"
+                        autoFocus
+                        placeholder="filename.md"
+                        value={draftName}
+                        onChange={(e) => setDraftName(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') confirmCreate();
+                            else if (e.key === 'Escape') cancelCreate();
+                        }}
+                        onBlur={cancelCreate}
+                        style={{
+                            height: 28,
+                            padding: '0 8px',
+                            background: '#000',
+                            border: '1px solid #D6FE51',
+                            borderRadius: 4,
+                            color: '#fff',
+                            fontSize: 12,
+                            fontFamily: 'inherit',
+                            outline: 'none',
+                            width: 160,
+                        }}
+                    />
+                </div>
+            ) : (
+                <button
+                    onClick={startCreate}
+                    title="Create new file"
+                    style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 28, height: 28, marginLeft: 4,
+                        background: 'transparent', border: '1px solid #333',
+                        borderRadius: 4, color: '#808080', cursor: 'pointer',
+                        fontSize: 16, lineHeight: 1, fontFamily: 'inherit',
+                        flexShrink: 0, transition: 'color 100ms, border-color 100ms',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; e.currentTarget.style.borderColor = '#D6FE51'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#808080'; e.currentTarget.style.borderColor = '#333'; }}
+                >
+                    +
+                </button>
+            )}
         </div>
     );
 }

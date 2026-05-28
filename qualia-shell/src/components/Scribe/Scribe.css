@@ -100,6 +100,54 @@
     font-size: 12px !important;
 }
 
+.scribe__new-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.scribe__new-input {
+    height: 38px;
+    padding: 0 12px;
+    background: #000;
+    border: 1px solid #D6FE51;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    width: 220px;
+}
+
+.scribe__new-input::placeholder {
+    color: #555;
+}
+
+.scribe__new-cancel {
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #808080;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 100ms, border-color 100ms;
+}
+
+.scribe__new-cancel:hover {
+    color: #fff;
+    border-color: #555;
+}
+
+.scribe__new-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: transparent;
+    color: #D6FE51;
+}
+
 .scribe__new-btn {
     margin-top: 8px;
     padding: 10px 24px;

@@ -217,11 +217,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     // ═══════════════════════════════════════
     //  FILING — File & Document Management
     // ═══════════════════════════════════════
+    // Cycle 11 FileManager merge (per Ilya design lock #2): the legacy FileManager
+    // widget is aliased to FileExplorer so old dock items / saved layouts referencing
+    // 'file-manager' open the new unified widget. Both registry entries point at the
+    // same component; the FileManager.tsx source remains in the tree for now (will be
+    // removed in a follow-up once we're sure no other code imports it).
     'file-manager': {
         id: 'file-manager',
         label: 'File Manager',
         icon: 'folder-open',
-        component: lazyWithReload(() => import('../components/FileManager/FileManager')),
+        component: lazyWithReload(() => import('../components/FileExplorer/FileExplorer')),
         category: 'filing',
     },
     'doc-viewer': {
@@ -262,6 +267,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         icon: 'pen-tool',
         component: lazyWithReload(() => import('../components/Scribe/Scribe')),
         category: 'tools',
+    },
+    'file-explorer': {
+        id: 'file-explorer',
+        label: 'File Explorer',
+        icon: 'folder-tree',
+        component: lazyWithReload(() => import('../components/FileExplorer/FileExplorer')),
+        category: 'filing',
+        minWidth: 320,
+        minHeight: 400,
     },
     'terminal': {
         id: 'terminal',

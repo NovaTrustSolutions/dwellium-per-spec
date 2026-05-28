@@ -45,9 +45,11 @@ interface Props {
     depth?: number;
     onChange?: () => void;
     onRequestNewEntry?: (parentPath: string, type: 'file' | 'folder') => void;
+    /** Show full path as secondary line under filename (used in flat view). */
+    showFullPath?: boolean;
 }
 
-export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry }: Props) {
+export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry, showFullPath = false }: Props) {
     const { expanded, selectedPath, locked, setSelectedPath, toggleFolder } = useFileExplorer();
     const isExpanded = !!expanded[entry.path];
     const isSelected = selectedPath === entry.path;
@@ -290,9 +292,21 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                     />
                 ) : (
                     <>
-                        <span style={{
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
-                        }}>{entry.name}</span>
+                        <div style={{
+                            flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+                            lineHeight: 1.15,
+                        }}>
+                            <span style={{
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>{entry.name}</span>
+                            {showFullPath && entry.path !== entry.name && (
+                                <span style={{
+                                    fontSize: 9, color: '#555',
+                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    marginTop: 1,
+                                }}>{entry.path.slice(0, entry.path.length - entry.name.length - 1)}</span>
+                            )}
+                        </div>
                         {entry.tier !== 'file' && entry.tier !== 'folder' && (
                             <span style={{
                                 fontSize: 9, color: '#555', textTransform: 'uppercase',

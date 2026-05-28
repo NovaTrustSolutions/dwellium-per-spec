@@ -11,12 +11,14 @@ import {
     toggleFolderExpanded,
     type FileExplorerState,
     type ViewMode,
+    type FlatSort,
 } from './fileExplorerStore';
 
 export function useFileExplorer(): FileExplorerState & {
     setSelectedPath: (path: string | null) => void;
     setLocked: (locked: boolean) => void;
     setViewMode: (mode: ViewMode) => void;
+    setFlatSort: (sort: FlatSort) => void;
     toggleFolder: (path: string) => void;
 } {
     const userCtx = useContext(UserContext);
@@ -33,6 +35,7 @@ export function useFileExplorer(): FileExplorerState & {
         setSelectedPath: (path) => saveFileExplorer({ selectedPath: path }),
         setLocked: (locked) => saveFileExplorer({ locked }),
         setViewMode: (mode) => saveFileExplorer({ viewMode: mode }),
+        setFlatSort: (sort) => saveFileExplorer({ flatSort: sort }),
         toggleFolder: (path) => toggleFolderExpanded(path),
     };
 }

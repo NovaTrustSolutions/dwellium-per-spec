@@ -9,6 +9,8 @@
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 
 export type ViewMode = 'tree' | 'flat';
+/** Sort order applied in flat view. Tree view uses backend sort (folders first, then a→z). */
+export type FlatSort = 'modified-desc' | 'name-asc' | 'size-desc';
 
 export interface FileExplorerState {
     /** Map of folder path → expanded boolean. Persisted per-user. */
@@ -19,6 +21,8 @@ export interface FileExplorerState {
     locked: boolean;
     /** Tree view (folders + children) vs Flat view (all files sorted by date). */
     viewMode: ViewMode;
+    /** Sort order for flat view (Cycle 10). Ignored in tree mode. */
+    flatSort: FlatSort;
 }
 
 export const DEFAULT_STATE: FileExplorerState = {
@@ -26,6 +30,7 @@ export const DEFAULT_STATE: FileExplorerState = {
     selectedPath: null,
     locked: false,
     viewMode: 'tree',
+    flatSort: 'modified-desc',
 };
 
 export const fileExplorerUserIdHolder: { current: string | null } = { current: null };
@@ -38,6 +43,9 @@ function resolveKey(): string {
 function normalize(raw: unknown): FileExplorerState {
     if (!raw || typeof raw !== 'object') return DEFAULT_STATE;
     const obj = raw as Record<string, unknown>;
+    const flatSort = obj.flatSort === 'name-asc' || obj.flatSort === 'size-desc'
+        ? obj.flatSort
+        : 'modified-desc';
     return {
         expanded: typeof obj.expanded === 'object' && obj.expanded !== null
             ? obj.expanded as Record<string, boolean>
@@ -45,6 +53,7 @@ function normalize(raw: unknown): FileExplorerState {
         selectedPath: typeof obj.selectedPath === 'string' ? obj.selectedPath : null,
         locked: typeof obj.locked === 'boolean' ? obj.locked : false,
         viewMode: obj.viewMode === 'flat' ? 'flat' : 'tree',
+        flatSort: flatSort as FlatSort,
     };
 }
 

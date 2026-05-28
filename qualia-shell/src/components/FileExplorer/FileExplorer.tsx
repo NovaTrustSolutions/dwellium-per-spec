@@ -54,13 +54,19 @@ function flattenTree(entries: FileEntry[]): FileEntry[] {
         e.children?.forEach(walk);
     };
     entries.forEach(walk);
-    // Sort flat view by modified desc (most recent first)
-    out.sort((a, b) => (b.modified ?? '').localeCompare(a.modified ?? ''));
     return out;
 }
 
+function sortFlat(entries: FileEntry[], sort: 'modified-desc' | 'name-asc' | 'size-desc'): FileEntry[] {
+    const copy = entries.slice();
+    if (sort === 'name-asc') copy.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sort === 'size-desc') copy.sort((a, b) => (b.size ?? 0) - (a.size ?? 0));
+    else copy.sort((a, b) => (b.modified ?? '').localeCompare(a.modified ?? ''));
+    return copy;
+}
+
 export default function FileExplorer() {
-    const { locked, viewMode, selectedPath, setLocked, setViewMode } = useFileExplorer();
+    const { locked, viewMode, selectedPath, flatSort, setLocked, setViewMode, setFlatSort } = useFileExplorer();
     const [entries, setEntries] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -87,6 +93,18 @@ export default function FileExplorer() {
     useEffect(() => {
         if (newEntry) newInputRef.current?.focus();
     }, [newEntry]);
+
+    // Cycle 10: Cmd+/ (or Cmd+\) toggles tree ↔ flat
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && (e.key === '/' || e.key === '\\')) {
+                e.preventDefault();
+                setViewMode(viewMode === 'tree' ? 'flat' : 'tree');
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [viewMode, setViewMode]);
 
     // Cycle 8: Cmd+V screenshot-paste. Image bytes upload to /api/scribe/images
     // (reused per Ilya design lock #4); a small .md reference file is created
@@ -176,7 +194,7 @@ export default function FileExplorer() {
         void refresh();
     }, [refresh]);
 
-    const displayedEntries = viewMode === 'flat' ? flattenTree(entries) : entries;
+    const displayedEntries = viewMode === 'flat' ? sortFlat(flattenTree(entries), flatSort) : entries;
     const fileCount = flattenTree(entries).length;
 
     // Root-level drop target: drop OUTSIDE any folder row → place at root
@@ -290,10 +308,30 @@ export default function FileExplorer() {
                     }} />
                 </button>
 
+                {/* Sort dropdown — visible only in flat view */}
+                {viewMode === 'flat' && (
+                    <select
+                        value={flatSort}
+                        onChange={(e) => setFlatSort(e.target.value as 'modified-desc' | 'name-asc' | 'size-desc')}
+                        title="Sort flat view"
+                        style={{
+                            background: '#0a0a0a', color: '#ccc',
+                            border: '1px solid #222', borderRadius: 4,
+                            padding: '2px 4px', fontSize: 10,
+                            fontFamily: 'inherit', cursor: 'pointer',
+                            outline: 'none',
+                        }}
+                    >
+                        <option value="modified-desc">↓ Modified</option>
+                        <option value="name-asc">↑ Name</option>
+                        <option value="size-desc">↓ Size</option>
+                    </select>
+                )}
+
                 {/* Dual-mode toggle: tree ↔ flat */}
                 <button
                     onClick={() => setViewMode(viewMode === 'tree' ? 'flat' : 'tree')}
-                    title={viewMode === 'tree' ? 'Switch to flat view' : 'Switch to tree view'}
+                    title={(viewMode === 'tree' ? 'Switch to flat view' : 'Switch to tree view') + ' (⌘/)'}
                     style={iconBtn(viewMode === 'flat')}
                     onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.color = viewMode === 'flat' ? '#D6FE51' : '#666'; }}
@@ -427,6 +465,7 @@ export default function FileExplorer() {
                                 entry={entry}
                                 onChange={refresh}
                                 onRequestNewEntry={requestNewEntry}
+                                showFullPath={viewMode === 'flat'}
                             />
                         ))}
                         {/* Inline new-entry form when target is a folder/tier — shown right after the parent */}

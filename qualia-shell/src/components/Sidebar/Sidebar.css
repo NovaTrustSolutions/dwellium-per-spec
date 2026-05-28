@@ -1466,26 +1466,27 @@
    WIDGET GROUP — Baby Blue Theme (17-24)
    ============================================ */
 
-/* [17] Baby blue background + [23] rounded + [18] left accent */
+/* 2026-05-28 — Flattened per Ilya. Removed pill/bubble background, border-radius,
+   left accent stripe, margin, and hover transform/shadow. Headers are now bare
+   text-only rows like the DOMAINS section. */
 .sidebar__widget-group-header {
-    background: rgba(100, 180, 255, 0.08);
-    border-radius: 8px;
-    margin: 2px 4px;
+    background: transparent;
+    border-radius: 0;
+    margin: 0;
     padding: 6px 8px;
-    border-left: 3px solid rgba(100, 180, 255, 0.25);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: none;
+    transition: color 0.15s ease;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-/* [19] Hover lift */
 .sidebar__widget-group-header:hover {
-    background: rgba(100, 180, 255, 0.12);
-    transform: translateY(-1px);
-    border-left-color: rgba(100, 180, 255, 0.5);
-    box-shadow: 0 2px 8px rgba(100, 180, 255, 0.08);
+    background: transparent;
+    transform: none;
+    border-left: none;
+    box-shadow: none;
 }
 
 /* [20] Group label letter-spacing */

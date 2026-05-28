@@ -412,15 +412,20 @@ export default function Sidebar() {
         document.addEventListener('mouseup', onUp);
     }, [splitRatio]);
 
-    // --- Widget launcher ---
+    // --- Widget launcher (click-to-toggle per Ilya 2026-05-28) ---
+    // Click an unopened widget → opens it.
+    // Click an already-open widget → closes it.
+    // Click a minimized widget → restores it (treats minimized as "open but hidden").
     const handleWidgetClick = useCallback((component: string, label: string, icon: string) => {
         const existing = windows.find(w => w.component === component);
-        if (existing && existing.minimized) {
+        if (!existing) {
+            openWindow(component, label, icon);
+        } else if (existing.minimized) {
             restoreWindow(existing.id);
         } else {
-            openWindow(component, label, icon);
+            closeWindow(existing.id);
         }
-    }, [windows, openWindow, restoreWindow]);
+    }, [windows, openWindow, restoreWindow, closeWindow]);
 
     // --- Widget drag-to-reorder ---
     const onWidgetDragStart = useCallback((e: DragEvent, id: string, group: string | undefined, index: number) => {

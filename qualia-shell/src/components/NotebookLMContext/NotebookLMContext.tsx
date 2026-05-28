@@ -3,14 +3,21 @@ import { getAuthToken } from '../../context/UserContext';
  * NotebookLMContext.tsx
  *
  * Dwellium widget for managing NotebookLM notebooks as AI context sources.
- * - List all notebooks registered for context
- * - Toggle notebooks on/off as ARA/Honcho context sources
- * - Add notebooks by ID + title
- * - Shows which notebooks are actively feeding into ARA
+ *
+ * 2026-05-28 update (per Ilya): NotebookLM has NO public API. This widget
+ * cannot "fetch your notebooks" automatically — Google doesn't expose them.
+ * What it CAN do:
+ *   • Reuse the Google email you already connected for Calendar/Gmail
+ *   • Open notebooklm.google.com with ?authuser=<email> so you land in
+ *     the right Google account
+ *   • Track notebook IDs/URLs you register manually as ARA/Honcho context
+ *   • Persist the list per-user in localStorage (backend bridge service
+ *     optional; widget no longer panics when /api/v1/notebooklm is missing)
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { API_BASE } from '../../config';
+import { useIntegrations } from '../../hooks/useIntegrations';
 import './NotebookLMContext.css';
 
 interface NLMNotebook {
@@ -22,7 +29,8 @@ interface NLMNotebook {
     updatedAt?: string;
 }
 
-// getAuthToken imported from UserContext (line 1)
+const LS_KEY_NOTEBOOKS = 'dwellium-notebooklm-notebooks';
+const LS_KEY_EMAIL_OVERRIDE = 'dwellium-notebooklm-email-override';
 
 function authHeaders() {
     const token = getAuthToken();
@@ -31,8 +39,58 @@ function authHeaders() {
     return h;
 }
 
+// Parse "https://notebooklm.google.com/notebook/<id>" or bare ID
+// into the notebook ID. Returns null if input is empty.
+function parseNotebookInput(raw: string): { id: string; sourceUrl?: string } | null {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    // URL form
+    try {
+        const url = new URL(trimmed);
+        // notebooklm.google.com/notebook/<id> OR notebooklm.google.com/?authuser=…&notebook=<id>
+        const pathMatch = url.pathname.match(/\/notebook\/([a-zA-Z0-9_-]+)/);
+        if (pathMatch) return { id: pathMatch[1], sourceUrl: trimmed };
+        const queryId = url.searchParams.get('notebook');
+        if (queryId) return { id: queryId, sourceUrl: trimmed };
+    } catch { /* not a URL — fall through to bare-ID branch */ }
+    // Bare ID — accept anything ≥ 8 chars of [-A-Za-z0-9_]
+    if (/^[a-zA-Z0-9_-]{8,}$/.test(trimmed)) return { id: trimmed };
+    return null;
+}
+
+function loadLocalNotebooks(): NLMNotebook[] {
+    try {
+        const raw = localStorage.getItem(LS_KEY_NOTEBOOKS);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+}
+
+function saveLocalNotebooks(list: NLMNotebook[]): void {
+    try { localStorage.setItem(LS_KEY_NOTEBOOKS, JSON.stringify(list)); } catch { /* sandboxed */ }
+}
+
 export default function NotebookLMContext() {
-    const [notebooks, setNotebooks] = useState<NLMNotebook[]>([]);
+    const { integrations } = useIntegrations();
+
+    // Google account email — pulled from the SAME bundle used for Calendar +
+    // Gmail. Priority: explicit user override → Calendar email → Gmail email.
+    const googleEmail = useMemo(() => {
+        try {
+            const override = localStorage.getItem(LS_KEY_EMAIL_OVERRIDE);
+            if (override && override.trim()) return override.trim();
+        } catch { /* sandboxed */ }
+        return integrations?.google?.calendar?.email
+            ?? integrations?.google?.gmail?.email
+            ?? '';
+    }, [integrations]);
+    const [emailInput, setEmailInput] = useState(googleEmail);
+    useEffect(() => { setEmailInput(googleEmail); }, [googleEmail]);
+    const [emailEditing, setEmailEditing] = useState(false);
+
+    // Notebook list — localStorage first, backend bridge as opt-in upgrade
+    const [notebooks, setNotebooks] = useState<NLMNotebook[]>(() => loadLocalNotebooks());
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [adding, setAdding] = useState(false);
@@ -41,39 +99,42 @@ export default function NotebookLMContext() {
     const [newDesc, setNewDesc] = useState('');
     const [saveStatus, setSaveStatus] = useState('');
     const [toggling, setToggling] = useState<Set<string>>(new Set());
+    const [bridgeAvailable, setBridgeAvailable] = useState<boolean | null>(null);
 
     const loadNotebooks = useCallback(async () => {
         setLoading(true);
         setError('');
+        // Always reflect the localStorage snapshot immediately so the UI is responsive
+        setNotebooks(loadLocalNotebooks());
         try {
             const res = await fetch(`${API_BASE}/api/v1/notebooklm/notebooks`, {
                 headers: authHeaders(),
             });
-            // 404 / non-JSON means backend A doesn't mount /api/v1/notebooklm.
-            // The pre-M3 catch said "Backend unreachable — is the server
-            // running?" which is misleading: the server IS up, this widget's
-            // bridge service just isn't connected.
-            if (res.status === 404) {
-                setError('NotebookLM not connected — requires the NotebookLM bridge service mounted at /api/v1/notebooklm.');
-                return;
-            }
             const ct = res.headers.get('content-type') || '';
-            if (!ct.includes('application/json')) {
-                setError('NotebookLM not connected — requires the NotebookLM bridge service mounted at /api/v1/notebooklm.');
+            if (res.status === 404 || !ct.includes('application/json')) {
+                // Backend bridge service not present — that's normal now. We
+                // operate purely on localStorage. No error UI needed.
+                setBridgeAvailable(false);
                 return;
             }
             const json = await res.json();
             if (json.success) {
-                setNotebooks(json.data || []);
-            } else {
-                setError(json.error || 'Failed to load notebooks');
+                setBridgeAvailable(true);
+                // Backend wins if it has any notebooks; otherwise local wins.
+                if (Array.isArray(json.data) && json.data.length > 0) {
+                    setNotebooks(json.data);
+                    saveLocalNotebooks(json.data);
+                }
             }
-        } catch (e: any) {
-            setError('NotebookLM not connected — requires the NotebookLM bridge service.');
+        } catch { /* offline / non-JSON — fall through to localStorage */
+            setBridgeAvailable(false);
         } finally {
             setLoading(false);
         }
     }, []);
+
+    // Persist any local mutation
+    useEffect(() => { saveLocalNotebooks(notebooks); }, [notebooks]);
 
     useEffect(() => {
         loadNotebooks();
@@ -81,86 +142,162 @@ export default function NotebookLMContext() {
 
     async function toggleNotebook(nb: NLMNotebook) {
         setToggling((prev) => new Set(prev).add(nb.id));
-        try {
-            const res = await fetch(`${API_BASE}/api/v1/notebooklm/enabled`, {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify({
-                    notebookId: nb.id,
-                    title: nb.title,
-                    description: nb.description || '',
-                    enabled: !nb.enabled,
-                }),
-            });
-            const json = await res.json();
-            if (json.success) {
-                setNotebooks((prev) =>
-                    prev.map((n) => (n.id === nb.id ? { ...n, enabled: !n.enabled } : n))
-                );
-                setSaveStatus(`✓ ${nb.title} ${!nb.enabled ? 'enabled' : 'disabled'} as context source`);
-                setTimeout(() => setSaveStatus(''), 3000);
-            }
-        } catch (_e) {
-            setError('Toggle failed');
-        } finally {
-            setToggling((prev) => {
-                const next = new Set(prev);
-                next.delete(nb.id);
-                return next;
-            });
+        // Optimistic local update — survives whether or not the bridge service answers
+        setNotebooks((prev) =>
+            prev.map((n) => (n.id === nb.id ? { ...n, enabled: !n.enabled } : n))
+        );
+        if (bridgeAvailable) {
+            try {
+                await fetch(`${API_BASE}/api/v1/notebooklm/enabled`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        notebookId: nb.id,
+                        title: nb.title,
+                        description: nb.description || '',
+                        enabled: !nb.enabled,
+                    }),
+                });
+            } catch { /* local state already updated; bridge is best-effort */ }
         }
+        setSaveStatus(`✓ ${nb.title} ${!nb.enabled ? 'enabled' : 'disabled'} as ARA context`);
+        setTimeout(() => setSaveStatus(''), 3000);
+        setToggling((prev) => {
+            const next = new Set(prev);
+            next.delete(nb.id);
+            return next;
+        });
     }
 
     async function addNotebook(e: React.FormEvent) {
         e.preventDefault();
         if (!newId.trim() || !newTitle.trim()) return;
-
-        try {
-            const res = await fetch(`${API_BASE}/api/v1/notebooklm/enabled`, {
-                method: 'POST',
-                headers: authHeaders(),
-                body: JSON.stringify({
-                    notebookId: newId.trim(),
-                    title: newTitle.trim(),
-                    description: newDesc.trim(),
-                    enabled: true,
-                }),
-            });
-            const json = await res.json();
-            if (json.success) {
-                setSaveStatus(`✓ "${newTitle}" added and enabled`);
-                setTimeout(() => setSaveStatus(''), 3000);
-                setNewId('');
-                setNewTitle('');
-                setNewDesc('');
-                setAdding(false);
-                loadNotebooks();
-            } else {
-                setError(json.error || 'Failed to add notebook');
-            }
-        } catch (_e) {
-            setError('Failed to add notebook');
+        // Parse: accept either a NotebookLM URL or a bare notebook ID
+        const parsed = parseNotebookInput(newId);
+        if (!parsed) {
+            setError('Could not parse notebook ID/URL. Paste the full URL from notebooklm.google.com/notebook/… or the ID after /notebook/.');
+            return;
         }
+        const nb: NLMNotebook = {
+            id: parsed.id,
+            title: newTitle.trim(),
+            enabled: true,
+            description: newDesc.trim() || undefined,
+            updatedAt: new Date().toISOString(),
+        };
+        // Local upsert (replace any existing with same ID)
+        setNotebooks((prev) => {
+            const without = prev.filter((n) => n.id !== nb.id);
+            return [nb, ...without];
+        });
+        if (bridgeAvailable) {
+            try {
+                await fetch(`${API_BASE}/api/v1/notebooklm/enabled`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        notebookId: nb.id,
+                        title: nb.title,
+                        description: nb.description || '',
+                        enabled: true,
+                    }),
+                });
+            } catch { /* bridge optional */ }
+        }
+        setSaveStatus(`✓ "${nb.title}" added and enabled`);
+        setTimeout(() => setSaveStatus(''), 3000);
+        setNewId('');
+        setNewTitle('');
+        setNewDesc('');
+        setAdding(false);
     }
 
     async function removeNotebook(id: string) {
-        try {
-            await fetch(`${API_BASE}/api/v1/notebooklm/notebooks/${encodeURIComponent(id)}`, {
-                method: 'DELETE',
-                headers: authHeaders(),
-            });
-            setNotebooks((prev) => prev.filter((n) => n.id !== id));
-            setSaveStatus('✓ Notebook removed');
-            setTimeout(() => setSaveStatus(''), 3000);
-        } catch (_e) {
-            setError('Remove failed');
+        setNotebooks((prev) => prev.filter((n) => n.id !== id));
+        if (bridgeAvailable) {
+            try {
+                await fetch(`${API_BASE}/api/v1/notebooklm/notebooks/${encodeURIComponent(id)}`, {
+                    method: 'DELETE',
+                    headers: authHeaders(),
+                });
+            } catch { /* bridge optional */ }
         }
+        setSaveStatus('✓ Notebook removed');
+        setTimeout(() => setSaveStatus(''), 3000);
+    }
+
+    // Open notebooklm.google.com forcing the correct Google account if email is known.
+    // ?authuser=<email> tells Google's auth system which session to use when the user
+    // is signed into multiple Google accounts in the same browser.
+    function openNotebookLM(notebookId?: string) {
+        const base = notebookId
+            ? `https://notebooklm.google.com/notebook/${encodeURIComponent(notebookId)}`
+            : 'https://notebooklm.google.com';
+        const url = googleEmail
+            ? `${base}${base.includes('?') ? '&' : '?'}authuser=${encodeURIComponent(googleEmail)}`
+            : base;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    function commitEmailOverride() {
+        try {
+            const v = emailInput.trim();
+            if (v) localStorage.setItem(LS_KEY_EMAIL_OVERRIDE, v);
+            else localStorage.removeItem(LS_KEY_EMAIL_OVERRIDE);
+        } catch { /* sandboxed */ }
+        setEmailEditing(false);
     }
 
     const enabledCount = notebooks.filter((n) => n.enabled).length;
 
     return (
         <div className="nlm-widget">
+            {/* Connected Google account — read-only when set via Calendar/Gmail,
+                editable inline if the user wants to override or use a different
+                Google account for NotebookLM than for Calendar. */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 14px', background: '#0a0a0a',
+                borderBottom: '1px solid #222', fontSize: 12,
+            }}>
+                <span style={{ color: '#666', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.6 }}>Google</span>
+                {emailEditing ? (
+                    <>
+                        <input
+                            value={emailInput}
+                            onChange={(e) => setEmailInput(e.target.value)}
+                            placeholder="you@gmail.com"
+                            onKeyDown={(e) => { if (e.key === 'Enter') commitEmailOverride(); else if (e.key === 'Escape') { setEmailInput(googleEmail); setEmailEditing(false); } }}
+                            autoFocus
+                            style={{
+                                flex: 1, padding: '4px 8px', minWidth: 0,
+                                background: '#000', color: '#fff',
+                                border: '1px solid #D6FE51', borderRadius: 4,
+                                fontSize: 12, fontFamily: 'inherit', outline: 'none',
+                            }}
+                        />
+                        <button onClick={commitEmailOverride} style={{
+                            padding: '4px 10px', background: '#D6FE51', color: '#000',
+                            border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: 11,
+                        }}>Save</button>
+                    </>
+                ) : (
+                    <>
+                        <span style={{ color: googleEmail ? '#D6FE51' : '#888', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {googleEmail || 'No Google account connected — set up Calendar/Gmail in Settings → API Keys, or paste an email here.'}
+                        </span>
+                        <button onClick={() => setEmailEditing(true)} title="Edit Google email" style={{
+                            padding: '4px 8px', background: 'transparent', color: '#888',
+                            border: '1px solid #333', borderRadius: 4, cursor: 'pointer', fontSize: 11,
+                        }}>{googleEmail ? 'Change' : 'Set'}</button>
+                        <button onClick={() => openNotebookLM()} title="Open notebooklm.google.com in a new tab" style={{
+                            padding: '4px 10px', background: '#D6FE51', color: '#000',
+                            border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: 11,
+                        }}>Open NotebookLM ↗</button>
+                    </>
+                )}
+            </div>
+
             {/* Header */}
             <div className="nlm-header">
                 <div className="nlm-header-left">
@@ -231,6 +368,17 @@ export default function NotebookLMContext() {
                                 </div>
                             </div>
                             <div className="nlm-item-actions">
+                                {/* Open this specific notebook in NotebookLM with the right Google account */}
+                                <button
+                                    onClick={() => openNotebookLM(nb.id)}
+                                    title={googleEmail ? `Open "${nb.title}" in NotebookLM as ${googleEmail}` : `Open "${nb.title}" in NotebookLM`}
+                                    style={{
+                                        padding: '4px 8px', fontSize: 11,
+                                        background: 'transparent', color: '#D6FE51',
+                                        border: '1px solid rgba(214,254,81,0.4)', borderRadius: 4,
+                                        cursor: 'pointer',
+                                    }}
+                                >Open ↗</button>
                                 {/* Toggle switch */}
                                 <button
                                     className={`nlm-toggle ${nb.enabled ? 'nlm-toggle--on' : ''}`}
@@ -263,17 +411,18 @@ export default function NotebookLMContext() {
                     <form className="nlm-add-form" onSubmit={addNotebook}>
                         <h3 className="nlm-add-heading">Add NotebookLM Notebook</h3>
                         <p className="nlm-add-hint">
-                            Get the notebook ID from NotebookLM URL:{' '}
-                            <code>notebooklm.google.com/notebooklm?corpus=<strong>[ID]</strong></code>
+                            Paste the full URL from a notebook page:{' '}
+                            <code>notebooklm.google.com/notebook/<strong>[ID]</strong></code>
+                            {' '}— or just the ID after <code>/notebook/</code>. We'll parse either.
                         </p>
 
                         <div className="nlm-form-group">
-                            <label className="nlm-form-label">Notebook ID *</label>
+                            <label className="nlm-form-label">Notebook URL or ID *</label>
                             <input
                                 className="nlm-form-input"
                                 value={newId}
                                 onChange={(e) => setNewId(e.target.value)}
-                                placeholder="e.g. AHkbfAU3Jdn7K9…"
+                                placeholder="https://notebooklm.google.com/notebook/abc123… or just abc123…"
                                 required
                             />
                         </div>

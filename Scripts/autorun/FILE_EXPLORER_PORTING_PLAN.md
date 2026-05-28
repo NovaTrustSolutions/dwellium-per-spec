@@ -69,13 +69,13 @@ Mirrors how Scribe was structured (12 cycles total). File-explorer scope is comp
 
 **Total estimate:** ~2500 LOC across ~12 commits.
 
-## 5. Risks / open questions for Ilya
+## 5. Risks / open questions for Ilya — ANSWERED 2026-05-28
 
-1. **Hierarchy decision:** Holocron has domains → projects → threads. Dwellium has DOMAINS as a flat list. Do we keep Dwellium's flat domain model, or import the full 3-tier hierarchy? (Sub-decision: if 3-tier, do projects/threads get their own backend storage?)
-2. **Replace or augment FileManager widget?** Should the new FileExplorer fully replace the existing `FileManager.tsx` popup widget, or live alongside it (left-rail = navigation, FileManager popup = bulk operations)?
-3. **What does "lock the hierarchy" mean operationally?** Two interpretations: (a) UI-only — disable drag/rename when locked but allow new files; (b) Backend-enforced — read-only mode on the entire `/api/files/*` namespace.
-4. **Screenshot-paste backend:** Reuse `/api/scribe/images` (already exists from Scribe DnD Phase B) or add a separate `/api/files/upload-screenshot`?
-5. **Domain vs project paths:** Holocron uses absolute disk paths. Dwellium's `/api/files/*` namespace is server-relative. We'll use `~/.dwellium/files/<userId>/...` as the user's root and represent all paths as relative-to-root strings.
+1. **Hierarchy decision:** ✅ **Import Holocron's full 3-tier** (domains → projects → threads). Dwellium's existing flat DOMAINS becomes the top tier; projects + threads are new tiers below. Sub-decision: projects/threads get backend storage under `~/.dwellium/files/<userId>/<domain>/<project>/<thread>/`. Existing DOMAINS-as-flat-list code in Sidebar continues to work as the top-tier view — FileExplorer adds the nested tiers.
+2. **FileManager merge:** ✅ **Merge so one widget has all features of both.** New FileExplorer absorbs FileManager's upload/search/tag/sync features. Old FileManager.tsx gets deleted (or aliased to FileExplorer) once FileExplorer reaches feature parity. Cycle 11 owns this merge.
+3. **Hierarchy lock semantics:** ✅ **UI-only.** Disable drag/rename/move when locked, but allow new file creation. Backend remains writeable; the lock is a soft guard against accidental tree restructuring.
+4. **Screenshot-paste backend:** ✅ **Reuse `/api/scribe/images`.** Verify via screenshot proof during Cycle 8 acceptance.
+5. **Path namespace:** ✅ **`~/.dwellium/files/<userId>/`** as user's root. All paths are server-relative strings. Holocron's absolute-path code is rewritten to relative.
 
 ## 6. Acceptance criteria (Cycle 12)
 

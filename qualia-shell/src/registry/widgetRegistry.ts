@@ -263,6 +263,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         component: lazyWithReload(() => import('../components/Scribe/Scribe')),
         category: 'tools',
     },
+    'file-explorer': {
+        id: 'file-explorer',
+        label: 'File Explorer',
+        icon: 'folder-tree',
+        component: lazyWithReload(() => import('../components/FileExplorer/FileExplorer')),
+        category: 'filing',
+        minWidth: 320,
+        minHeight: 400,
+    },
     'terminal': {
         id: 'terminal',
         label: 'Terminal',

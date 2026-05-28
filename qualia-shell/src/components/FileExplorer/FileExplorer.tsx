@@ -16,15 +16,56 @@
  *
  * See Scripts/autorun/FILE_EXPLORER_PORTING_PLAN.md for full breakdown.
  */
-import { Lock, Unlock, List, ListTree } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Lock, Unlock, List, ListTree, RefreshCw } from 'lucide-react';
 import { FileExplorerCell, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
+import { API_BASE } from '../../config';
+import { getAuthHeaders } from '../../context/UserContext';
 
-// Cycle 2 placeholder — Cycle 3 will replace with /api/files/tree fetch
-const PLACEHOLDER_ENTRIES: FileEntry[] = [];
+// Flatten a nested tree depth-first into a single array (used for flat view).
+function flattenTree(entries: FileEntry[]): FileEntry[] {
+    const out: FileEntry[] = [];
+    const walk = (e: FileEntry) => {
+        if (e.tier === 'file') out.push(e);
+        e.children?.forEach(walk);
+    };
+    entries.forEach(walk);
+    // Sort flat view by modified desc (most recent first)
+    out.sort((a, b) => (b.modified ?? '').localeCompare(a.modified ?? ''));
+    return out;
+}
 
 export default function FileExplorer() {
     const { locked, viewMode, setLocked, setViewMode } = useFileExplorer();
+    const [entries, setEntries] = useState<FileEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const refresh = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch(`${API_BASE}/api/file-explorer/tree`, {
+                headers: getAuthHeaders(),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+            setEntries(Array.isArray(data.data) ? data.data as FileEntry[] : []);
+        } catch (err: any) {
+            setError(err?.message ?? 'Failed to load file tree');
+            setEntries([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void refresh();
+    }, [refresh]);
+
+    const displayedEntries = viewMode === 'flat' ? flattenTree(entries) : entries;
+    const fileCount = flattenTree(entries).length;
 
     return (
         <div style={{
@@ -45,6 +86,20 @@ export default function FileExplorer() {
                     textTransform: 'uppercase', color: '#808080',
                     flex: 1,
                 }}>Files</span>
+
+                {/* Refresh button — reloads from /api/file-explorer/tree */}
+                <button
+                    onClick={() => void refresh()}
+                    title="Refresh tree"
+                    disabled={loading}
+                    style={iconBtn(false)}
+                    onMouseEnter={(e) => { if (!loading) e.currentTarget.style.color = '#D6FE51'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#666'; }}
+                >
+                    <RefreshCw size={14} strokeWidth={1.75} style={{
+                        animation: loading ? 'spin 0.9s linear infinite' : undefined,
+                    }} />
+                </button>
 
                 {/* Dual-mode toggle: tree ↔ flat */}
                 <button
@@ -74,7 +129,30 @@ export default function FileExplorer() {
                 flex: 1, overflowY: 'auto', overflowX: 'hidden',
                 padding: '4px 0',
             }} role="tree" aria-label="File explorer">
-                {PLACEHOLDER_ENTRIES.length === 0 ? (
+                {error ? (
+                    <div style={{
+                        padding: '16px', color: '#ff4d6d', fontSize: 11, lineHeight: 1.6,
+                        background: 'rgba(255,77,109,0.05)', margin: 8, borderRadius: 4,
+                        border: '1px solid rgba(255,77,109,0.2)',
+                    }}>
+                        <strong>Failed to load file tree</strong>
+                        <div style={{ marginTop: 4, color: '#bbb' }}>{error}</div>
+                        <button
+                            onClick={() => void refresh()}
+                            style={{
+                                marginTop: 8, padding: '4px 10px', fontSize: 11,
+                                background: 'transparent', color: '#D6FE51',
+                                border: '1px solid #D6FE51', borderRadius: 4,
+                                cursor: 'pointer',
+                            }}
+                        >Retry</button>
+                    </div>
+                ) : loading && displayedEntries.length === 0 ? (
+                    <div style={{
+                        padding: '24px 16px', textAlign: 'center',
+                        color: '#555', fontSize: 11,
+                    }}>Loading…</div>
+                ) : displayedEntries.length === 0 ? (
                     <div style={{
                         padding: '24px 16px', textAlign: 'center',
                         color: '#555', fontSize: 11, lineHeight: 1.6,
@@ -82,13 +160,12 @@ export default function FileExplorer() {
                         <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>📁</div>
                         <div style={{ color: '#888', marginBottom: 4 }}>No files yet</div>
                         <div style={{ fontSize: 10 }}>
-                            Cycle 3 will wire <code style={{ color: '#aaa' }}>/api/files/tree</code> here.
-                            <br />
-                            Drag files in (Cycle 6) or create new (Cycle 4).
+                            Drop a file from Finder here, or create a domain folder
+                            in <code style={{ color: '#aaa' }}>~/.dwellium/files/&lt;userId&gt;/</code>
                         </div>
                     </div>
                 ) : (
-                    PLACEHOLDER_ENTRIES.map((entry) => (
+                    displayedEntries.map((entry) => (
                         <FileExplorerCell key={entry.path} entry={entry} />
                     ))
                 )}
@@ -102,8 +179,9 @@ export default function FileExplorer() {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
                 <span>{viewMode === 'tree' ? 'Tree view' : 'Flat view'}</span>
-                <span>{locked ? '🔒 Locked' : '0 items'}</span>
+                <span>{locked ? '🔒 Locked · ' : ''}{fileCount} file{fileCount === 1 ? '' : 's'}</span>
             </div>
+            <style>{`@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 }

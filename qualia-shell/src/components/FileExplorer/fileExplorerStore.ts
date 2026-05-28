@@ -15,8 +15,10 @@ export type FlatSort = 'modified-desc' | 'name-asc' | 'size-desc';
 export interface FileExplorerState {
     /** Map of folder path → expanded boolean. Persisted per-user. */
     expanded: Record<string, boolean>;
-    /** Currently selected file/folder path. Null = nothing selected. */
+    /** Currently active/focused path. Used as anchor for Shift+range and for visual focus. */
     selectedPath: string | null;
+    /** Cycle 11: multi-selection set (paths). selectedPath is always included if not null. */
+    selectedPaths: string[];
     /** UI-only hierarchy lock — prevents drag/rename/move when true. Backend NOT enforced (Cycle 2 default per Ilya). */
     locked: boolean;
     /** Tree view (folders + children) vs Flat view (all files sorted by date). */
@@ -28,6 +30,7 @@ export interface FileExplorerState {
 export const DEFAULT_STATE: FileExplorerState = {
     expanded: {},
     selectedPath: null,
+    selectedPaths: [],
     locked: false,
     viewMode: 'tree',
     flatSort: 'modified-desc',
@@ -51,6 +54,9 @@ function normalize(raw: unknown): FileExplorerState {
             ? obj.expanded as Record<string, boolean>
             : {},
         selectedPath: typeof obj.selectedPath === 'string' ? obj.selectedPath : null,
+        selectedPaths: Array.isArray(obj.selectedPaths)
+            ? (obj.selectedPaths as unknown[]).filter((x): x is string => typeof x === 'string')
+            : (typeof obj.selectedPath === 'string' ? [obj.selectedPath] : []),
         locked: typeof obj.locked === 'boolean' ? obj.locked : false,
         viewMode: obj.viewMode === 'flat' ? 'flat' : 'tree',
         flatSort: flatSort as FlatSort,

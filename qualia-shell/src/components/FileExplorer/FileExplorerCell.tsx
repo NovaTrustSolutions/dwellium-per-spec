@@ -49,10 +49,18 @@ interface Props {
     showFullPath?: boolean;
 }
 
+// All-paths-in-DOM-order accumulator. Cells push into this ref-shaped list as they
+// render so range-select (Shift+click) can resolve "between A and B" without
+// walking the tree again. Reset at the start of each render pass by the parent.
+const visiblePathsRef: { current: string[] } = { current: [] };
+export function resetVisiblePaths() { visiblePathsRef.current = []; }
+export function pushVisiblePath(p: string) { visiblePathsRef.current.push(p); }
+
 export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry, showFullPath = false }: Props) {
-    const { expanded, selectedPath, locked, setSelectedPath, toggleFolder } = useFileExplorer();
+    const { expanded, selectedPath, selectedPaths, locked, setSelectedPath, toggleSelected, selectRange, toggleFolder } = useFileExplorer();
     const isExpanded = !!expanded[entry.path];
-    const isSelected = selectedPath === entry.path;
+    const isSelected = selectedPaths.includes(entry.path) || selectedPath === entry.path;
+    pushVisiblePath(entry.path);
     const isFolder = entry.tier !== 'file';
 
     const [renaming, setRenaming] = useState(false);
@@ -80,7 +88,19 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
         };
     }, [ctx]);
 
-    const handleClick = () => {
+    const handleClick = (e: React.MouseEvent) => {
+        // Cycle 11: modifier-aware selection
+        if (e.metaKey || e.ctrlKey) {
+            // Cmd/Ctrl+click toggles this path in/out of the multi-selection
+            toggleSelected(entry.path);
+            return;
+        }
+        if (e.shiftKey) {
+            // Shift+click selects the range between anchor (selectedPath) and this entry
+            selectRange(selectedPath, entry.path, visiblePathsRef.current);
+            return;
+        }
+        // Plain click: replace selection + expand folder
         setSelectedPath(entry.path);
         if (isFolder) toggleFolder(entry.path);
     };
@@ -154,7 +174,30 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
         e.stopPropagation();
         setDragOver(false);
 
-        // 1) Intra-app path payload — move or copy
+        // 1a) Multi-path payload (Cycle 11) — move/copy each in the set
+        const pathsRaw = e.dataTransfer.getData('application/x-dwellium-paths');
+        if (pathsRaw) {
+            try {
+                const payloads = JSON.parse(pathsRaw) as Array<{ name: string; path: string }>;
+                const copy = e.altKey;
+                let moved = 0;
+                for (const p of payloads) {
+                    if (!p.path || p.path === entry.path) continue;
+                    if (entry.path === p.path || entry.path.startsWith(p.path + '/')) continue; // loop guard
+                    try {
+                        await apiMove(p.path, `${entry.path}/${p.name}`, copy);
+                        moved++;
+                    } catch { /* skip individual failures */ }
+                }
+                if (moved > 0) onChange?.();
+                return;
+            } catch (err: any) {
+                alert(`Multi-move failed: ${err?.message ?? err}`);
+                return;
+            }
+        }
+
+        // 1b) Intra-app single-path payload — move or copy
         const pathRaw = e.dataTransfer.getData('application/x-dwellium-path');
         if (pathRaw) {
             try {
@@ -212,12 +255,35 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
             return;
         }
         try {
+            // If this entry is part of a multi-selection, drag the whole set; else drag just this one
+            const inSet = selectedPaths.includes(entry.path);
+            const dragPaths = inSet && selectedPaths.length > 1 ? selectedPaths : [entry.path];
+
+            if (dragPaths.length > 1) {
+                // Cycle 11: multi-drag. Custom MIME carries the full array; single-path MIME stays single (anchor entry).
+                const arrayPayload = dragPaths.map((p) => ({
+                    name: p.split('/').pop() ?? p,
+                    path: p,
+                    // tier is not authoritative here; resolved server-side by /move
+                    tier: 'file',
+                }));
+                e.dataTransfer.setData('application/x-dwellium-paths', JSON.stringify(arrayPayload));
+
+                // Build a ghost drag-image showing the count
+                const ghost = document.createElement('div');
+                ghost.textContent = `📎 ${dragPaths.length} items`;
+                ghost.style.cssText = 'position:absolute;top:-1000px;padding:4px 10px;background:#1a1a1a;color:#D6FE51;border:1px solid #D6FE51;border-radius:4px;font:600 11px Inter,sans-serif;';
+                document.body.appendChild(ghost);
+                e.dataTransfer.setDragImage(ghost, -10, -10);
+                requestAnimationFrame(() => { if (document.body.contains(ghost)) document.body.removeChild(ghost); });
+            }
+
+            // Single-entry payload always present (the anchor)
             const payload = { name: entry.name, path: entry.path, tier: entry.tier };
             e.dataTransfer.setData('application/x-dwellium-path', JSON.stringify(payload));
-            // URL pointing at the read endpoint — Scribe's URL drop fallback would hit /api/file-explorer/read
             const url = `${window.location.origin}/api/file-explorer/read?path=${encodeURIComponent(entry.path)}`;
             e.dataTransfer.setData('text/uri-list', url);
-            e.dataTransfer.setData('text/plain', entry.name);
+            e.dataTransfer.setData('text/plain', dragPaths.length > 1 ? dragPaths.join('\n') : entry.name);
             e.dataTransfer.effectAllowed = 'copyMove';
         } catch { /* sandboxed contexts */ }
     };

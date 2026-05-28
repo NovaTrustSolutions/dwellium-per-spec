@@ -18,7 +18,7 @@
  */
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus } from 'lucide-react';
-import { FileExplorerCell, type FileEntry } from './FileExplorerCell';
+import { FileExplorerCell, resetVisiblePaths, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
 import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
 import { API_BASE } from '../../config';
@@ -196,6 +196,8 @@ export default function FileExplorer() {
 
     const displayedEntries = viewMode === 'flat' ? sortFlat(flattenTree(entries), flatSort) : entries;
     const fileCount = flattenTree(entries).length;
+    // Cycle 11: reset the visible-paths accumulator each render so Shift+range-click can resolve.
+    resetVisiblePaths();
 
     // Root-level drop target: drop OUTSIDE any folder row → place at root
     const [rootDragOver, setRootDragOver] = useState(false);
@@ -213,6 +215,26 @@ export default function FileExplorer() {
         if (locked) return;
         e.preventDefault();
         setRootDragOver(false);
+
+        // Cycle 11: multi-path drop to root
+        const pathsRaw = e.dataTransfer.getData('application/x-dwellium-paths');
+        if (pathsRaw) {
+            try {
+                const payloads = JSON.parse(pathsRaw) as Array<{ name: string; path: string }>;
+                const copy = e.altKey;
+                let moved = 0;
+                for (const p of payloads) {
+                    if (!p.path || !p.path.includes('/')) continue; // already at root
+                    try { await apiMove(p.path, p.name, copy); moved++; } catch { /* skip */ }
+                }
+                if (moved > 0) await refresh();
+                return;
+            } catch (err: any) {
+                alert(`Multi-move to root failed: ${err?.message ?? err}`);
+                return;
+            }
+        }
+
         const pathRaw = e.dataTransfer.getData('application/x-dwellium-path');
         if (pathRaw) {
             try {

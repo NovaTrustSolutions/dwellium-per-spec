@@ -1379,6 +1379,26 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         )}
                         <div ref={messagesEndRef} />
                     </div>
+                    {/* Self-diagnosing banner: when Stella has no path to answer (no backend AND no LLM key),
+                        show a clear CTA to fix it. Replaces silent disabled input. */}
+                    {status !== 'online' && !hasActiveLlm(integrations.llm) && (
+                        <div className="stella__diagnose-banner">
+                            <span className="stella__diagnose-icon">⚠️</span>
+                            <div className="stella__diagnose-body">
+                                <strong>Stella can't answer right now</strong>
+                                <p>Backend is offline and no LLM key is configured. Add a key in Settings → API Keys to chat with Stella.</p>
+                            </div>
+                            <button
+                                className="stella__diagnose-cta"
+                                onClick={() => {
+                                    // Best-effort: emit a custom event the shell can handle to open Settings.
+                                    window.dispatchEvent(new CustomEvent('dwellium:open-widget', { detail: { widgetId: 'control-panel', label: 'Settings' } }));
+                                }}
+                            >
+                                Open Settings
+                            </button>
+                        </div>
+                    )}
                     <div className="stella__input-area">
                         <FileUploadButton
                             size="sm"

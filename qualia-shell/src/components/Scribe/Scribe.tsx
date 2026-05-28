@@ -13,6 +13,7 @@ import { TabBar } from './TabBar';
 import { DocumentToolbar } from './DocumentToolbar';
 import { TableOfContents } from './TableOfContents';
 import { SelectionToolbar } from './SelectionToolbar';
+import { AraMiniPanel } from './AraMiniPanel';
 import { RedlineNavigator } from './RedlineNavigator';
 import { CommentEditor } from './CommentEditor';
 import { Minimap } from './Minimap';
@@ -144,6 +145,7 @@ export default function Scribe() {
             <SelectionToolbar />
             <CommentEditor getView={() => viewRef.current} />
             <ContextMenu getView={() => viewRef.current} />
+            <AraMiniPanel />
         </div>
     );
 }

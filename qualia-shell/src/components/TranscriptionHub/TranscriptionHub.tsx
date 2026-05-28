@@ -2,6 +2,26 @@ import { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from '
 import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
 import './TranscriptionHub.css';
 import { API_BASE } from '../../config';
+import { useIntegrations } from '../../hooks/useIntegrations';
+import { scanSegmentsViaLlm, buildNotebookLmQuery } from './legalShieldClient';
+import type { LegalScanResult as LegalScanResultLlm } from './legalShieldClient';
+
+// Open the user's NotebookLM (preferring their Calendar Google email) with a
+// pre-filled query. Mirrors NotebookLMContext.openNotebookLM but inline here so
+// we don't need a hook. If no email is configured falls back to base URL.
+function openNotebookLmWithQuery(googleEmail: string | null, query: string): void {
+    const url = googleEmail
+        ? `https://notebooklm.google.com/?authuser=${encodeURIComponent(googleEmail)}`
+        : 'https://notebooklm.google.com/';
+    try {
+        if (typeof window !== 'undefined' && navigator?.clipboard?.writeText) {
+            // Best-effort: copy query to clipboard since NotebookLM has no
+            // ?q= param. User pastes into the chat box on landing.
+            void navigator.clipboard.writeText(query);
+        }
+    } catch { /* clipboard blocked — that's fine */ }
+    if (typeof window !== 'undefined') window.open(url, '_blank', 'noopener,noreferrer');
+}
 
 // Web Speech API types (vendor-prefixed in Chrome)
 interface SpeechRecognitionEvent extends Event {
@@ -302,6 +322,10 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
 }
 
 export default function TranscriptionHub() {
+    // Per-user integrations (LLM + Google email used for NotebookLM deep-link)
+    const { integrations } = useIntegrations();
+    const googleEmail: string | null = integrations?.google?.calendar?.email ?? null;
+
     // --- Tab state ---
     const [activeTab, setActiveTab] = useState<TabView>('recorder');
 
@@ -553,6 +577,11 @@ export default function TranscriptionHub() {
     }, [factCheckQueue, factCheckEnabled, factCheckRunning]);
 
     // ---- Legal Shield Queue Processing ----
+    // 2026-05-28: previously POSTed to a non-existent /api/georgia-code/legal-scan
+    // route (silent 404). Reconnected to the user's configured LLM via the
+    // shared llmClient with a Georgia-code-aware system prompt — works the
+    // moment a key is added in Settings → API Keys. NotebookLM is still
+    // reachable as a manual deep-consult via the "Consult NotebookLM" button.
     useEffect(() => {
         if (!legalShieldEnabled || legalScanRunning || legalScanQueue.length === 0) return;
 
@@ -562,26 +591,58 @@ export default function TranscriptionHub() {
             setLegalScanQueue([]);
 
             try {
-                const res = await fetch(`${API_GEORGIA_CODE}/legal-scan`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ segments })
-                });
-                const json = await res.json();
-                if (json.success && json.data.results) {
+                // Path A: LLM client (preferred — works without backend)
+                const llmResult = await scanSegmentsViaLlm(
+                    segments.map(s => ({ segment: typeof s === 'string' ? s : (s as any).segment || String(s) })),
+                    integrations.llm,
+                );
+                let scanResults: LegalScanResult[] | null = null;
+                let scanTimeMs = llmResult?.scanTimeMs ?? 0;
+                if (llmResult && llmResult.results.length > 0) {
+                    // Adapt LLM-shape (code_ref, summary, suggested_action) →
+                    // local-shape (statute, advice, matchedStatutes). Map
+                    // alert "caution"/"violation"/"clear" through unchanged;
+                    // the local type also supports "legal_risk" which we don't
+                    // produce — that's fine.
+                    scanResults = llmResult.results.map((r: LegalScanResultLlm): LegalScanResult => ({
+                        segment: r.segment,
+                        alert: r.alert,
+                        statute: r.code_ref ?? '',
+                        advice: r.suggested_action ?? r.summary ?? '',
+                        matchedStatutes: r.code_ref
+                            ? [{ volumeId: r.code_ref, similarity: 1, excerpt: r.summary ?? '' }]
+                            : [],
+                    }));
+                } else {
+                    // Path B: legacy backend (in case a future route reappears)
+                    try {
+                        const res = await fetch(`${API_GEORGIA_CODE}/legal-scan`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ segments })
+                        });
+                        const json = await res.json();
+                        if (json.success && json.data?.results) {
+                            scanResults = json.data.results as LegalScanResult[];
+                            scanTimeMs = json.data.scanTimeMs ?? 0;
+                        }
+                    } catch { /* backend not available — that's fine */ }
+                }
+
+                if (scanResults && scanResults.length > 0) {
                     setLegalAlerts(prev => {
                         const next = new Map(prev);
                         const currentFlags: string[] = [];
-                        for (const r of json.data.results as LegalScanResult[]) {
+                        for (const r of scanResults!) {
                             if (r.alert !== 'clear') {
                                 next.set(r.segment, r);
-                                currentFlags.push(r.alert); // Collect flags for UI badge
+                                currentFlags.push(r.alert);
                             }
                         }
-                        setLegalFlags(currentFlags); // Update legal flags state
+                        setLegalFlags(currentFlags);
                         return next;
                     });
-                    console.log(`[LegalShield] Scan complete: ${json.data.scanTimeMs}ms, ${json.data.results.length} segments`);
+                    console.log(`[LegalShield] Scan complete: ${scanTimeMs}ms, ${scanResults.length} segments`);
                 }
             } catch (err) {
                 console.warn('[LegalShield] Scan failed:', err);
@@ -592,7 +653,7 @@ export default function TranscriptionHub() {
 
         const timer = setTimeout(processLegalQueue, 500); // 500ms debounce
         return () => clearTimeout(timer);
-    }, [legalScanQueue, legalShieldEnabled, legalScanRunning]);
+    }, [legalScanQueue, legalShieldEnabled, legalScanRunning, integrations.llm]);
 
     // --- Contradiction Detection Queue ---
     useEffect(() => {
@@ -2015,6 +2076,20 @@ export default function TranscriptionHub() {
                             >
                                 ⚖️ {legalShieldEnabled ? 'Legal Shield ON' : 'Legal Shield OFF'}
                                 {legalScanRunning && <span className="th-legal-spinner">⟳</span>}
+                            </button>
+                            <button
+                                className="th-legal-toggle"
+                                onClick={() => {
+                                    // Build a query from the most-recent ~12 segments — empty array if none yet
+                                    const recent = segments.slice(-12).map(s => ({ segment: (s as any).text || '' })).filter(s => s.segment);
+                                    const q = buildNotebookLmQuery(recent.length > 0 ? recent : [{ segment: 'Georgia landlord-tenant law: summarize the most-cited statutes for property managers in 2026.' }]);
+                                    openNotebookLmWithQuery(googleEmail, q);
+                                }}
+                                title={googleEmail
+                                    ? `Open ${googleEmail}'s NotebookLM with this transcript queued (copied to clipboard)`
+                                    : 'Open NotebookLM (configure Google Calendar email in Settings to auto-route to your account)'}
+                            >
+                                📚 Consult NotebookLM
                             </button>
                             <button
                                 className={`th-live-toggle ${cloudSTTEnabled ? 'th-live-toggle--on' : ''}`}

@@ -2168,3 +2168,54 @@
     color: #6b7280;
     font-size: 10px;
 }
+
+/* ── Self-diagnosing banner (Stella offline + no LLM) ── */
+.stella__diagnose-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 8px 12px;
+    padding: 12px 14px;
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    border-radius: 8px;
+}
+
+.stella__diagnose-icon {
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+.stella__diagnose-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.stella__diagnose-body strong {
+    display: block;
+    color: #fbbf24;
+    font-size: 13px;
+    margin-bottom: 3px;
+}
+
+.stella__diagnose-body p {
+    margin: 0;
+    color: #d1d5db;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.stella__diagnose-cta {
+    background: #d6fe51;
+    color: #000;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.stella__diagnose-cta:hover { background: #e8ff7a; }

@@ -443,6 +443,21 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
+    // ── Cross-widget intent bus ──────────────────────────────────────
+    // Any widget can fire `dwellium:open-widget` with detail { widgetId, label?, icon? }
+    // and the shell will open/restore that widget. Used by Stella's
+    // self-diagnose CTA ("Open Settings") and the Scribe → ARA send button.
+    useEffect(() => {
+        const handler = (ev: Event) => {
+            const detail = (ev as CustomEvent).detail || {};
+            const { widgetId, label, icon } = detail;
+            if (!widgetId) return;
+            try { openWindow(widgetId, label || widgetId, icon || ''); } catch { /* ignore */ }
+        };
+        window.addEventListener('dwellium:open-widget', handler);
+        return () => window.removeEventListener('dwellium:open-widget', handler);
+    }, [openWindow]);
+
     return (
         <WindowContext.Provider value={{
             windows, dockItems,

@@ -45,6 +45,17 @@ export function SelectionToolbar() {
         useScribeStore.getState().setSelectionToolbar(null);
     };
 
+    const handleSendToAra = () => {
+        // Fire the cross-component event the AraMiniPanel listens for.
+        window.dispatchEvent(new CustomEvent('scribe:send-to-ara', {
+            detail: {
+                text,
+                preface: 'Please review this passage and tell me what you think:',
+            },
+        }));
+        useScribeStore.getState().setSelectionToolbar(null);
+    };
+
     const handleSendToAgent = async () => {
         if (!llmReady || redlineLoading) return;
         useScribeStore.getState().setSelectionToolbar(null);
@@ -135,6 +146,26 @@ export function SelectionToolbar() {
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ccc'; }}
             >
                 💬 Comment
+            </button>
+            <button
+                title="Send this selection to ARA in the floating panel"
+                onClick={handleSendToAra}
+                style={{
+                    background: 'transparent',
+                    border: '1px solid #444',
+                    color: '#9ad7ff',
+                    cursor: 'pointer',
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    transition: 'background 100ms, color 100ms',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#1a2530'; e.currentTarget.style.color = '#cfe9ff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ad7ff'; }}
+            >
+                🤖 Send to ARA
             </button>
             <button
                 title={llmReady ? 'Send selection to AI for editing suggestions' : 'Configure an LLM in Settings → API Keys'}

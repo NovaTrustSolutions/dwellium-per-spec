@@ -1989,3 +1989,182 @@
     border-radius: 3px;
     color: #D6FE51;
 }
+
+/* ── Honcho Dream + Interactions sections ── */
+.stella__honcho-dream-header,
+.stella__honcho-interactions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.stella__honcho-dream-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stella__honcho-dream-btn,
+.stella__honcho-interactions-btn {
+    background: rgba(214, 254, 81, 0.12);
+    color: #d6fe51;
+    border: 1px solid rgba(214, 254, 81, 0.22);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.stella__honcho-dream-btn:hover:not(:disabled),
+.stella__honcho-interactions-btn:hover {
+    background: rgba(214, 254, 81, 0.22);
+}
+
+.stella__honcho-dream-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.stella__honcho-interactions-btn--on {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+}
+
+.stella__honcho-dream-auto {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.stella__honcho-dream-auto input { accent-color: #d6fe51; }
+
+.stella__honcho-dream-clear {
+    background: rgba(156, 163, 175, 0.08);
+    border: 1px solid rgba(156, 163, 175, 0.22);
+    color: #9ca3af;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.stella__honcho-dream-desc {
+    color: #9ca3af;
+    font-size: 12px;
+    line-height: 1.55;
+    margin-bottom: 14px;
+}
+
+.stella__honcho-empty {
+    text-align: center;
+    color: #6b7280;
+    padding: 30px 10px;
+}
+
+.stella__honcho-empty span {
+    font-size: 32px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.stella__honcho-dreams {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stella__honcho-dream-card {
+    background: rgba(59, 130, 246, 0.06);
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    border-left: 3px solid #60a5fa;
+    border-radius: 6px;
+    padding: 12px 14px;
+}
+
+.stella__honcho-dream-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.stella__honcho-dream-card-header strong {
+    flex: 1;
+    color: #e5e7eb;
+    font-size: 13px;
+}
+
+.stella__honcho-dream-time {
+    font-size: 10px;
+    color: #9ca3af;
+}
+
+.stella__honcho-dream-del {
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.stella__honcho-dream-del:hover { color: #fca5a5; }
+
+.stella__honcho-dream-text {
+    color: #d1d5db;
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    margin: 0 0 6px 0;
+}
+
+.stella__honcho-dream-sources {
+    font-size: 10px;
+    color: #6b7280;
+    font-style: italic;
+    margin: 0;
+}
+
+.stella__honcho-interactions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.stella__honcho-interaction-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.stella__honcho-interaction-row:hover { background: rgba(255, 255, 255, 0.05); }
+
+.stella__honcho-interaction-label {
+    flex: 1;
+    color: #e5e7eb;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stella__honcho-interaction-widget {
+    color: #60a5fa;
+    font-size: 10px;
+    background: rgba(59, 130, 246, 0.1);
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+
+.stella__honcho-interaction-time {
+    color: #6b7280;
+    font-size: 10px;
+}

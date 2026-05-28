@@ -2,14 +2,22 @@
  * Stella Assistant — Personal AI assistant widget for Dwellium
  * Integrates Stella (Python/AgentScope) into the Qualia shell.
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useContext, useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import './StellaAgent.css';
 import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
 import { renderSafeMarkdown, sanitizeSvg } from '../../utils/safeMarkdown';
-import { getAuthToken } from '../../context/UserContext';
+import { getAuthToken, UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import {
+    dreamStore,
+    dreamUserIdHolder,
+    appendDream,
+    deleteDream,
+    clearDreams,
+} from './honchoDreamStore';
+import type { DreamEntry } from './honchoDreamStore';
 
 const API_BASE = '/api/stella';
 
@@ -195,6 +203,29 @@ const TAB_CONFIG: { id: Tab; label: string; icon: string }[] = [
 
 export default function StellaAgent() {
     const { integrations } = useIntegrations();
+    // Per-user dream store — pattern matches ThoughtWeaver/integrations
+    const userCtx = useContext(UserContext);
+    const userIdForDreams = userCtx?.user?.id ?? null;
+    dreamUserIdHolder.current = userIdForDreams;
+    const dreams: DreamEntry[] = useSyncExternalStore(
+        dreamStore.subscribe,
+        dreamStore.getSnapshot,
+        dreamStore.getServerSnapshot,
+    );
+    const [dreaming, setDreaming] = useState(false);
+    const [dreamAutoEnabled, setDreamAutoEnabled] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        try { return localStorage.getItem('honcho-dream-auto') === '1'; } catch { return false; }
+    });
+    const dreamAutoRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Browser-interaction recorder — captures clicks at #widgets / titlebars / buttons
+    const [interactionsEnabled, setInteractionsEnabled] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        try { return localStorage.getItem('honcho-interactions-on') === '1'; } catch { return false; }
+    });
+    const [interactionsLog, setInteractionsLog] = useState<Array<{ id: string; label: string; widget: string | null; ts: string }>>([]);
+
     const [tab, setTab] = useState<Tab>('chat');
     const [status, setStatus] = useState<ConnectionStatus>('loading');
     const [version, setVersion] = useState<string>('');
@@ -261,7 +292,7 @@ export default function StellaAgent() {
     const [editMemoryDraft, setEditMemoryDraft] = useState('');
 
     // ─── HONCHO STATE ─────────────────────────────────
-    type HonchoSection = 'memory-explorer' | 'memory-network' | 'peers-sessions' | 'chat' | 'data-ingestion' | 'ambient' | 'setup' | 'search' | 'memory-map';
+    type HonchoSection = 'memory-explorer' | 'memory-network' | 'peers-sessions' | 'chat' | 'data-ingestion' | 'ambient' | 'setup' | 'search' | 'memory-map' | 'dream' | 'interactions';
     const [honchoSection, setHonchoSection] = useState<HonchoSection>('memory-explorer');
     const [honchoMemories, setHonchoMemories] = useState<any[]>([]);
     const [honchoStats, setHonchoStats] = useState<any>(null);
@@ -1118,6 +1149,136 @@ export default function StellaAgent() {
         }
     }, [honchoLearnActive]);
 
+    // ─── Dream mode (LLM reflection over recent memories + captures) ───
+    // Composes a short prompt from the last 12 memories + ThoughtWeaver captures
+    // and asks the user's configured LLM to find a pattern, a connection, or
+    // an unsurfaced to-do. Results land in dreamStore (per-user persistent).
+    const runDream = useCallback(async () => {
+        if (dreaming) return;
+        setDreaming(true);
+        try {
+            const recent = honchoMemories.slice(0, 12);
+            let twCaptures: string[] = [];
+            try {
+                // Read any per-user TW captures already in localStorage (without
+                // re-importing the TW store from here — read by key directly).
+                const twKey = userIdForDreams ? `thought-weaver:captures:${userIdForDreams}` : 'thought-weaver:captures:_anonymous';
+                const raw = localStorage.getItem(twKey);
+                if (raw) {
+                    const arr = JSON.parse(raw);
+                    if (Array.isArray(arr)) twCaptures = arr.slice(0, 10).map((c: any) => c.text).filter(Boolean);
+                }
+            } catch { /* sandboxed / no TW yet */ }
+
+            const memoryText = recent.length === 0
+                ? '(no Honcho memories yet)'
+                : recent.map((m: any, i: number) => `${i + 1}. [${m.memoryType || 'fact'}] ${m.content || ''}`).join('\n');
+            const captureText = twCaptures.length === 0
+                ? '(no recent captures)'
+                : twCaptures.map((c, i) => `${i + 1}. ${c}`).join('\n');
+
+            const prompt = `You are the user's dream loop. Reflect over the following inputs and surface ONE non-obvious connection, pattern, or to-do the user may not have noticed. Be concise (1-2 short paragraphs). Output JSON only.
+
+Recent Honcho memories:
+${memoryText}
+
+Recent ThoughtWeaver captures:
+${captureText}
+
+Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflection" }`;
+
+            if (hasActiveLlm(integrations.llm)) {
+                const res = await callLlm({
+                    systemPrompt: 'You are an introspective assistant looking for patterns across memories and captures. Respond JSON only.',
+                    prompt,
+                    responseFormat: 'json',
+                    maxTokens: 400,
+                    temperature: 0.7,
+                }, integrations.llm);
+                if (res) {
+                    try {
+                        const parsed = JSON.parse(res.text);
+                        appendDream({
+                            title: parsed.title || 'Untitled dream',
+                            text: parsed.text || res.text,
+                            sources: recent.map((m: any) => m.id).filter(Boolean),
+                        });
+                    } catch {
+                        // LLM returned non-JSON — store the raw text
+                        appendDream({ title: 'Reflection', text: res.text, sources: [] });
+                    }
+                }
+            } else {
+                // No LLM configured — store a stub so the user sees something
+                appendDream({
+                    title: 'Configure an LLM to dream',
+                    text: 'Add an OpenAI/Anthropic key in Settings → API Keys, then click "Dream now" again. Dream mode runs the model over recent Honcho memories + ThoughtWeaver captures to surface patterns.',
+                    sources: [],
+                });
+            }
+        } finally {
+            setDreaming(false);
+        }
+    }, [dreaming, honchoMemories, integrations.llm, userIdForDreams]);
+
+    // Optional auto-dream every 10 minutes
+    useEffect(() => {
+        if (dreamAutoEnabled) {
+            localStorage.setItem('honcho-dream-auto', '1');
+            dreamAutoRef.current = setInterval(() => { void runDream(); }, 10 * 60 * 1000);
+            return () => { if (dreamAutoRef.current) clearInterval(dreamAutoRef.current); };
+        } else {
+            try { localStorage.setItem('honcho-dream-auto', '0'); } catch { /* sandboxed */ }
+            if (dreamAutoRef.current) { clearInterval(dreamAutoRef.current); dreamAutoRef.current = null; }
+        }
+    }, [dreamAutoEnabled, runDream]);
+
+    // ─── Browser interaction recorder ───
+    // Captures clicks within the Dwellium shell — button labels, widget context,
+    // route changes. Stores in-memory + per-user localStorage rolling buffer
+    // (200 events). Source for Dream + Mind-map enrichment.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try { localStorage.setItem('honcho-interactions-on', interactionsEnabled ? '1' : '0'); } catch { /* sandboxed */ }
+        if (!interactionsEnabled) return;
+
+        const onClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (!target) return;
+            // Best-effort label resolution
+            const label = (target.getAttribute('aria-label')
+                || (target.textContent || '').trim().slice(0, 80)
+                || target.tagName.toLowerCase()) ?? '(unlabeled)';
+            const widgetEl = target.closest('[data-widget-id], [data-dwellium-widget]') as HTMLElement | null;
+            const widget = widgetEl?.getAttribute('data-widget-id') ?? widgetEl?.getAttribute('data-dwellium-widget') ?? null;
+            const entry = { id: `int-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, label, widget, ts: new Date().toISOString() };
+            setInteractionsLog(prev => [entry, ...prev].slice(0, 200));
+            // Persist rolling buffer
+            try {
+                const key = userIdForDreams ? `honcho:interactions:${userIdForDreams}` : 'honcho:interactions:_anonymous';
+                const raw = localStorage.getItem(key);
+                const arr = raw ? JSON.parse(raw) : [];
+                const next = [entry, ...(Array.isArray(arr) ? arr : [])].slice(0, 200);
+                localStorage.setItem(key, JSON.stringify(next));
+            } catch { /* sandboxed */ }
+        };
+        window.addEventListener('click', onClick, true);
+        return () => { window.removeEventListener('click', onClick, true); };
+    }, [interactionsEnabled, userIdForDreams]);
+
+    // Restore interactions log on mount
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const key = userIdForDreams ? `honcho:interactions:${userIdForDreams}` : 'honcho:interactions:_anonymous';
+            const raw = localStorage.getItem(key);
+            if (raw) {
+                const arr = JSON.parse(raw);
+                if (Array.isArray(arr)) setInteractionsLog(arr.slice(0, 200));
+            }
+        } catch { /* sandboxed */ }
+    }, [userIdForDreams]);
+
     const filteredHonchoMemories = honchoMemories.filter(m => {
         if (honchoTypeFilter !== 'all' && m.memoryType !== honchoTypeFilter) return false;
         if (honchoFilter && !m.content?.toLowerCase().includes(honchoFilter.toLowerCase())) return false;
@@ -1277,6 +1438,8 @@ export default function StellaAgent() {
                             { id: 'ambient', label: 'Ambient', icon: '🌊' },
                             { id: 'search', label: 'Semantic Search', icon: '🔍' },
                             { id: 'memory-map', label: 'Memory Map', icon: '🗺️' },
+                            { id: 'dream', label: 'Dream', icon: '🌙' },
+                            { id: 'interactions', label: 'Interactions', icon: '🖱️' },
                             { id: 'setup', label: 'Setup', icon: '⚙️' },
                         ] as { id: typeof honchoSection; label: string; icon: string }[]).map(s => (
                             <button key={s.id} className={`stella__honcho-nav-item ${honchoSection === s.id ? 'stella__honcho-nav-item--active' : ''}`}
@@ -1543,6 +1706,99 @@ export default function StellaAgent() {
                                 }} />
                             </>);
                         })()}
+
+                        {honchoSection === 'dream' && (<>
+                            <div className="stella__honcho-dream-header">
+                                <h5 className="stella__skill-hub-title">🌙 Dream Mode</h5>
+                                <div className="stella__honcho-dream-actions">
+                                    <button
+                                        className="stella__honcho-dream-btn"
+                                        onClick={() => void runDream()}
+                                        disabled={dreaming}
+                                        title="Run LLM reflection over recent memories + captures"
+                                    >
+                                        {dreaming ? '⏳ Dreaming…' : '✨ Dream now'}
+                                    </button>
+                                    <label className="stella__honcho-dream-auto">
+                                        <input
+                                            type="checkbox"
+                                            checked={dreamAutoEnabled}
+                                            onChange={e => setDreamAutoEnabled(e.target.checked)}
+                                        />
+                                        <span>Auto every 10 min</span>
+                                    </label>
+                                    {dreams.length > 0 && (
+                                        <button
+                                            className="stella__honcho-dream-clear"
+                                            onClick={() => { if (window.confirm(`Clear all ${dreams.length} dreams?`)) clearDreams(); }}
+                                        >
+                                            🗑 Clear all
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <p className="stella__honcho-dream-desc">
+                                Dream synthesizes patterns from your recent Honcho memories + ThoughtWeaver captures. Each dream is saved per user — only you can delete it.
+                            </p>
+                            {dreams.length === 0 ? (
+                                <div className="stella__honcho-empty">
+                                    <span>🌙</span>
+                                    <p>No dreams yet. Click "Dream now" to surface a pattern.</p>
+                                </div>
+                            ) : (
+                                <div className="stella__honcho-dreams">
+                                    {dreams.map(d => (
+                                        <div key={d.id} className="stella__honcho-dream-card">
+                                            <div className="stella__honcho-dream-card-header">
+                                                <strong>{d.title}</strong>
+                                                <span className="stella__honcho-dream-time">{new Date(d.createdAt).toLocaleString()}</span>
+                                                <button className="stella__honcho-dream-del" onClick={() => deleteDream(d.id)} title="Delete">✕</button>
+                                            </div>
+                                            <p className="stella__honcho-dream-text">{d.text}</p>
+                                            {d.sources.length > 0 && (
+                                                <p className="stella__honcho-dream-sources">based on {d.sources.length} memor{d.sources.length === 1 ? 'y' : 'ies'}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>)}
+
+                        {honchoSection === 'interactions' && (<>
+                            <div className="stella__honcho-interactions-header">
+                                <h5 className="stella__skill-hub-title">🖱️ Desktop Interactions</h5>
+                                <button
+                                    className={`stella__honcho-interactions-btn ${interactionsEnabled ? 'stella__honcho-interactions-btn--on' : ''}`}
+                                    onClick={() => setInteractionsEnabled(!interactionsEnabled)}
+                                >
+                                    {interactionsEnabled ? '⏹ Stop recording' : '▶ Start recording'}
+                                </button>
+                            </div>
+                            <p className="stella__honcho-dream-desc">
+                                Records every click within Dwellium — button labels + the widget you were in. Last 200 events stored per user. Source for Dream reflections + Mind Map enrichment.
+                                {' '}
+                                {interactionsEnabled
+                                    ? <strong style={{ color: '#d6fe51' }}>● Recording</strong>
+                                    : <span style={{ color: '#9ca3af' }}>○ Stopped</span>}
+                            </p>
+                            {interactionsLog.length === 0 ? (
+                                <div className="stella__honcho-empty">
+                                    <span>🖱️</span>
+                                    <p>No interactions captured yet. Start recording, then click around.</p>
+                                </div>
+                            ) : (
+                                <div className="stella__honcho-interactions-list">
+                                    {interactionsLog.slice(0, 60).map(e => (
+                                        <div key={e.id} className="stella__honcho-interaction-row">
+                                            <span className="stella__honcho-interaction-label">{e.label}</span>
+                                            {e.widget && <span className="stella__honcho-interaction-widget">in {e.widget}</span>}
+                                            <span className="stella__honcho-interaction-time">{new Date(e.ts).toLocaleTimeString()}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>)}
+
                         {honchoSection === 'setup' && (<>
                             <h5 className="stella__skill-hub-title">⚙️ Setup</h5>
                             <div className="stella__settings"><div className="stella__settings-status">

@@ -4,6 +4,7 @@ import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
+import ScribeSettings from '../Scribe/ScribeSettings';
 import './ControlPanel.css';
 
 const ACCENT_PRESETS = [
@@ -424,6 +425,9 @@ export default function ControlPanel() {
 
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />
+
+            {/* Scribe editor theme picker — Cycle 10 */}
+            <ScribeSettings />
 
             <section className="cp-section">
                 <h3 className="cp-section__title">Integrations (Backend)</h3>

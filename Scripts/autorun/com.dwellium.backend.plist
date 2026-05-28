@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dwellium.backend</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/ilyaklipinitser/Library/Application Support/Dwellium/start-backend.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/ilyaklipinitser/dwellium-backend/ai-dashboard369-file-manager</string>
+
+    <!-- Start when the agent is loaded (at every login + immediately after launchctl bootstrap) -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Auto-restart on crash. SuccessfulExit=false means "only restart on non-zero exit" -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <!-- Don't slam launchd with restarts if the process is failing repeatedly -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- Logs (tail with `tail -f ~/Library/Logs/dwellium-backend.{out,err}.log`) -->
+    <key>StandardOutPath</key>
+    <string>/Users/ilyaklipinitser/Library/Logs/dwellium-backend.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/ilyaklipinitser/Library/Logs/dwellium-backend.err.log</string>
+
+    <!-- Inherit a sane env. The launcher script also re-exports PATH explicitly -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_ENV</key>
+        <string>development</string>
+        <key>HOME</key>
+        <string>/Users/ilyaklipinitser</string>
+    </dict>
+
+    <!-- Process type "Interactive" so it's allowed full CPU + UI access -->
+    <key>ProcessType</key>
+    <string>Interactive</string>
+</dict>
+</plist>

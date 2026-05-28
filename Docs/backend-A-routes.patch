@@ -1,5 +1,5 @@
 diff --git a/ai-dashboard369-file-manager/src/app.ts b/ai-dashboard369-file-manager/src/app.ts
-index 4988593..2c81b92 100644
+index 4988593..aba3935 100644
 --- a/ai-dashboard369-file-manager/src/app.ts
 +++ b/ai-dashboard369-file-manager/src/app.ts
 @@ -16,6 +16,7 @@ import thoughtWeaverRoutes from './routes/thoughtWeaverRoutes';
@@ -10,7 +10,15 @@ index 4988593..2c81b92 100644
  import gmailSendRoute from './routes/gmailSendRoute';
  import intelligenceRoutes from './routes/intelligenceRoutes';
  import accountingRoutes from './routes/accountingRoutes';
-@@ -105,6 +106,7 @@ app.use('/api/settings', settingsRoutes);
+@@ -26,6 +27,7 @@ import featureRoutes from './routes/featureRoutes';
+ import tenantRoutes from './routes/tenantRoutes';
+ import maintenanceAgentRoutes from './routes/maintenanceAgentRoutes';
+ import browserInternRoutes from './routes/browserInternRoutes';
++import scribeRoutes from './routes/scribeRoutes';
+ import { seedDefaultUsers } from './services/authService';
+ import { seedRecurringTasks, startScheduler } from './services/agentScheduler';
+ import { seedLessons } from './services/lessonsLearnedService';
+@@ -105,6 +107,7 @@ app.use('/api/settings', settingsRoutes);
  
  // Dwellium Data Foundation
  app.use('/api/auth', authRoutes);
@@ -18,6 +26,14 @@ index 4988593..2c81b92 100644
  app.use('/api/dwellium', dwelliumRoutes);
  app.use('/api/gmail', gmailSendRoute);
  app.use('/api/intelligence', intelligenceRoutes);
+@@ -116,6 +119,7 @@ app.use('/api/features', featureRoutes);
+ app.use('/api/tenant', tenantRoutes);
+ app.use('/api/maintenance', maintenanceAgentRoutes);
+ app.use('/api/interns/browser', browserInternRoutes);
++app.use('/api/scribe', scribeRoutes);
+ 
+ // Error handling middleware
+ app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
 diff --git a/ai-dashboard369-file-manager/src/routes/dwelliumRoutes.ts b/ai-dashboard369-file-manager/src/routes/dwelliumRoutes.ts
 index 4aa15ed..b03d57d 100644
 --- a/ai-dashboard369-file-manager/src/routes/dwelliumRoutes.ts
@@ -38,6 +54,264 @@ index 4aa15ed..b03d57d 100644
 +});
 +
  export default router;
+diff --git a/ai-dashboard369-file-manager/src/routes/scribeRoutes.ts b/ai-dashboard369-file-manager/src/routes/scribeRoutes.ts
+new file mode 100644
+index 0000000..25fade1
+--- /dev/null
++++ b/ai-dashboard369-file-manager/src/routes/scribeRoutes.ts
+@@ -0,0 +1,252 @@
++/**
++ * Scribe Routes — per-user markdown file CRUD for the Scribe editor widget.
++ *
++ * All files sandboxed to ~/.dwellium/scribe/<userId>/. Path traversal
++ * guarded: rejects '..', absolute paths, and any resolved path outside
++ * the user's base directory.
++ */
++
++import { Router, Request, Response } from 'express';
++import fs from 'fs/promises';
++import path from 'path';
++import os from 'os';
++import { authenticate } from '../services/authMiddleware';
++
++const router = Router();
++
++function getUserBase(userId: string): string {
++    return path.join(os.homedir(), '.dwellium', 'scribe', userId);
++}
++
++function validateFilepath(filepath: string): string | null {
++    if (!filepath || typeof filepath !== 'string') return 'filepath is required';
++    if (filepath.includes('..')) return 'path traversal not allowed';
++    if (path.isAbsolute(filepath)) return 'absolute paths not allowed';
++    return null;
++}
++
++function resolveAndGuard(base: string, filepath: string): { resolved: string } | { error: string } {
++    const err = validateFilepath(filepath);
++    if (err) return { error: err };
++    const resolved = path.resolve(base, filepath);
++    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
++        return { error: 'path traversal not allowed' };
++    }
++    return { resolved };
++}
++
++// ── POST /files — create a new file ──────────────────────────────────────
++
++router.post('/files', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const { filepath, content } = req.body;
++        const base = getUserBase(userId);
++        const result = resolveAndGuard(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++        await fs.mkdir(path.dirname(result.resolved), { recursive: true });
++        try {
++            await fs.stat(result.resolved);
++            return res.status(409).json({ success: false, error: 'File already exists' });
++        } catch { /* does not exist — good */ }
++        await fs.writeFile(result.resolved, content ?? '', 'utf-8');
++        return res.json({ success: true, filepath });
++    } catch (err: any) {
++        console.error('[Scribe] create error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── GET /files — list all files under user's scribe dir ──────────────────
++
++router.get('/files', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const base = getUserBase(userId);
++        try { await fs.stat(base); } catch {
++            await fs.mkdir(base, { recursive: true });
++            return res.json({ success: true, files: [] });
++        }
++        const files: Array<{ filepath: string; size: number; modified: string }> = [];
++        async function walk(dir: string): Promise<void> {
++            const entries = await fs.readdir(dir, { withFileTypes: true });
++            for (const entry of entries) {
++                if (entry.name.startsWith('.')) continue;
++                const full = path.join(dir, entry.name);
++                if (entry.isDirectory()) {
++                    await walk(full);
++                } else {
++                    const stat = await fs.stat(full);
++                    files.push({
++                        filepath: path.relative(base, full),
++                        size: stat.size,
++                        modified: stat.mtime.toISOString(),
++                    });
++                }
++            }
++        }
++        await walk(base);
++        files.sort((a, b) => a.filepath.localeCompare(b.filepath));
++        return res.json({ success: true, files });
++    } catch (err: any) {
++        console.error('[Scribe] list error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── GET /files/* — read file content ─────────────────────────────────────
++
++router.get('/files/*', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const filepath = (req.params as any)[0];
++        const base = getUserBase(userId);
++        const result = resolveAndGuard(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++        const content = await fs.readFile(result.resolved, 'utf-8');
++        return res.json({ success: true, content, filepath });
++    } catch (err: any) {
++        if (err.code === 'ENOENT') return res.status(404).json({ success: false, error: 'File not found' });
++        console.error('[Scribe] read error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── PUT /files/* — save file content ─────────────────────────────────────
++
++router.put('/files/*', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const filepath = (req.params as any)[0];
++        const base = getUserBase(userId);
++        const result = resolveAndGuard(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++        const { content } = req.body;
++        if (typeof content !== 'string') return res.status(400).json({ success: false, error: 'content must be a string' });
++        await fs.mkdir(path.dirname(result.resolved), { recursive: true });
++        await fs.writeFile(result.resolved, content, 'utf-8');
++        return res.json({ success: true });
++    } catch (err: any) {
++        console.error('[Scribe] write error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── DELETE /files/* — delete file ────────────────────────────────────────
++
++router.delete('/files/*', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const filepath = (req.params as any)[0];
++        const base = getUserBase(userId);
++        const result = resolveAndGuard(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++        await fs.unlink(result.resolved);
++        return res.json({ success: true });
++    } catch (err: any) {
++        if (err.code === 'ENOENT') return res.status(404).json({ success: false, error: 'File not found' });
++        console.error('[Scribe] delete error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── GET /comments/* — read comment sidecar ───────────────────────────────
++
++function getCommentSidecarPath(base: string, filepath: string): { resolved: string } | { error: string } {
++    const err = validateFilepath(filepath);
++    if (err) return { error: err };
++    const commentsDir = path.join(base, '.comments');
++    const resolved = path.resolve(commentsDir, filepath + '.json');
++    if (!resolved.startsWith(commentsDir + path.sep) && resolved !== commentsDir) {
++        return { error: 'path traversal not allowed' };
++    }
++    return { resolved };
++}
++
++router.get('/comments/*', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const filepath = (req.params as any)[0];
++        const base = getUserBase(userId);
++        const result = getCommentSidecarPath(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++        try {
++            const raw = await fs.readFile(result.resolved, 'utf-8');
++            return res.json({ success: true, comments: JSON.parse(raw) });
++        } catch (err: any) {
++            if (err.code === 'ENOENT') return res.json({ success: true, comments: [] });
++            throw err;
++        }
++    } catch (err: any) {
++        console.error('[Scribe] comments read error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── PUT /comments/* — save comment sidecar ───────────────────────────────
++
++router.put('/comments/*', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const filepath = (req.params as any)[0];
++        const base = getUserBase(userId);
++        const result = getCommentSidecarPath(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++        const { comments } = req.body;
++        if (!Array.isArray(comments)) return res.status(400).json({ success: false, error: 'comments must be an array' });
++        await fs.mkdir(path.dirname(result.resolved), { recursive: true });
++        const tmp = result.resolved + '.tmp';
++        await fs.writeFile(tmp, JSON.stringify(comments, null, 2), 'utf-8');
++        await fs.rename(tmp, result.resolved);
++        return res.json({ success: true });
++    } catch (err: any) {
++        console.error('[Scribe] comments write error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++// ── POST /version — create a versioned snapshot ──────────────────────────
++
++router.post('/version', authenticate, async (req: Request, res: Response) => {
++    try {
++        const userId = req.user?.id;
++        if (!userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
++        const { filepath } = req.body;
++        const base = getUserBase(userId);
++        const result = resolveAndGuard(base, filepath);
++        if ('error' in result) return res.status(400).json({ success: false, error: result.error });
++
++        const content = await fs.readFile(result.resolved, 'utf-8');
++        const dir = path.dirname(result.resolved);
++        const ext = path.extname(filepath);
++        const stem = filepath.slice(0, -ext.length || undefined);
++        const baseStem = stem.replace(/_v\d+$/, '');
++
++        const entries = await fs.readdir(dir);
++        const re = new RegExp(`^${baseStem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_v(\\d+)${ext.replace('.', '\\.')}$`);
++        let maxN = 0;
++        for (const e of entries) {
++            const m = re.exec(e);
++            if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
++        }
++
++        const newName = `${baseStem}_v${maxN + 1}${ext}`;
++        const newResolved = path.join(dir, path.basename(newName));
++        await fs.writeFile(newResolved, content, 'utf-8');
++        const newFilepath = path.relative(base, newResolved);
++        return res.json({ success: true, newFilepath });
++    } catch (err: any) {
++        if ((err as any).code === 'ENOENT') return res.status(404).json({ success: false, error: 'File not found' });
++        console.error('[Scribe] version error:', err.message);
++        return res.status(500).json({ success: false, error: err.message });
++    }
++});
++
++export default router;
 diff --git a/ai-dashboard369-file-manager/src/routes/tenantAdminRoutes.ts b/ai-dashboard369-file-manager/src/routes/tenantAdminRoutes.ts
 new file mode 100644
 index 0000000..c640ead

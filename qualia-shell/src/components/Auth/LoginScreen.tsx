@@ -172,6 +172,9 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     )}
 
                                     <input
+                                        id="login-gate-password"
+                                        name="gate-password"
+                                        autoComplete="current-password"
                                         type="password"
                                         value={gatePassword}
                                         onChange={e => setGatePassword(e.target.value)}

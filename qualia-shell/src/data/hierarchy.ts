@@ -40,6 +40,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-inbox', label: 'Inbox', icon: 'inbox', component: 'inbox', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-files', label: 'Files', icon: 'folder-open', component: 'file-manager', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-notepad', label: 'Notepad', icon: 'file-edit', component: 'notepad', pinned: true, group: 'Filing Cabinet' },
+   { id: 'dock-scribe', label: 'Scribe', icon: 'pen-tool', component: 'scribe', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-docs', label: 'Docs', icon: 'file-text', component: 'doc-viewer', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-pdf-gear', label: 'PDF Gear', icon: 'file-stack', component: 'pdf-gear', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-terminal', label: 'Terminal', icon: 'terminal', component: 'terminal', pinned: true, group: 'Filing Cabinet' },

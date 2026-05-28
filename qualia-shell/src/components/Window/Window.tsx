@@ -283,6 +283,48 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                 <div className="window__titlebar-left">
                     <span className="window__icon" style={{ display: 'inline-flex', alignItems: 'center' }}>{(() => { const Icon = getIcon(state.icon); return Icon ? <Icon size={14} strokeWidth={1.75} /> : state.icon; })()}</span>
                     <span className="window__title">{state.title}</span>
+                    {/* Drag-grip — drag into Scribe to insert a markdown reference (Phase D DnD bridge) */}
+                    <span
+                        className="window__drag-grip"
+                        draggable
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onDragStart={(e) => {
+                            const payload = {
+                                widgetId: state.id,
+                                widgetType: state.component,
+                                title: state.title,
+                                state: {
+                                    icon: state.icon,
+                                    component: state.component,
+                                },
+                            };
+                            try {
+                                e.dataTransfer.setData('application/x-dwellium-widget', JSON.stringify(payload));
+                                e.dataTransfer.setData('text/plain', `📎 ${state.title}`);
+                                e.dataTransfer.effectAllowed = 'copy';
+                            } catch { /* sandboxed */ }
+                        }}
+                        title="Drag into Scribe to insert a reference to this widget"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginLeft: 8,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 4,
+                            cursor: 'grab',
+                            color: '#666',
+                            fontSize: 12,
+                            lineHeight: 1,
+                            userSelect: 'none',
+                            transition: 'color 100ms, background 100ms',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; e.currentTarget.style.background = 'rgba(214,254,81,0.08)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#666'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                        ⤴
+                    </span>
                 </div>
                 {/* AI loading shimmer bar */}
                 {state.isLoading && <div className="window__loading-bar" />}

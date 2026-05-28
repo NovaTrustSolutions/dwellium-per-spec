@@ -1,0 +1,254 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Neon Hacker Palette ─────────────────────────────────────────────────── */
+:root {
+  /* Background layers */
+  --bg-base:        #000000;
+  --bg-panel:       #0a0a0a;
+  --bg-card:        #111111;
+  --bg-card-hover:  #161616;
+  --bg-selected:    #1a1a2e;
+
+  /* Borders */
+  --border-subtle:  #1e1e1e;
+  --border-default: #2a2a2a;
+  --border-bright:  #3a3a3a;
+
+  /* Neon accents */
+  --neon-blue:   #00d4ff;
+  --neon-green:  #00ff88;
+  --neon-pink:   #ff2d78;
+  --neon-orange: #ff6b00;
+  --neon-purple: #bf5af2;
+  --neon-yellow: #ffd60a;
+
+  /* Text */
+  --text-primary:   #ffffff;
+  --text-secondary: #8a8a9a;
+  --text-dim:       #4a4a5a;
+
+  /* Kept for chat bubbles */
+  --apple-blue: #0a84ff;
+
+  /* ── Structural tokens (do not change per theme) ──────────────────────── */
+  /* Inspired by fey.com's design system: refined, minimal, low-noise. */
+
+  /* Border radius — fey 4-step scale (sm 4 / md 8 / lg 12 / xl 16 / full pill) */
+  --radius-sm:    4px;   /* small inputs, icon buttons, badges */
+  --radius-md:    8px;   /* standard buttons, cards, modals at small size */
+  --radius-lg:    12px;  /* large modals, panel surfaces */
+  --radius-xl:    16px;  /* hero surfaces, prominent cards */
+  --radius-2xl:   24px;  /* very large surfaces */
+  --radius-pill:  999px; /* pills, tag chips */
+
+  /* Spacing — 4px base scale */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  28px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Typography — desktop-app scale (fey scaled down for high-density UI) */
+  --font-2xs:  10px;   /* tiny monospace labels (SECTION HEADER caps) */
+  --font-xs:   11px;   /* secondary labels, meta */
+  --font-sm:   12px;   /* small body, button text */
+  --font-base: 13px;   /* default body */
+  --font-md:   14px;   /* slight emphasis */
+  --font-lg:   16px;   /* h3 */
+  --font-xl:   18px;   /* h2 */
+  --font-2xl:  22px;   /* h1 */
+
+  --leading-tight:  1.3;
+  --leading-normal: 1.5;
+  --leading-loose:  1.7;
+
+  --tracking-tight:  -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.04em;
+  --tracking-caps:   0.12em;  /* fey-style uppercase labels */
+
+  /* Elevation — fey is famous for: a hairline border + a soft drop in one shadow stack */
+  --shadow-xs: 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-sm: 0 0 0 1px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 0 0 1px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.45);
+  --shadow-lg: 0 0 0 1px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.3);
+  --shadow-xl: 0 0 0 1px rgba(0,0,0,0.6), 0 24px 64px rgba(0,0,0,0.7),  0 8px 16px rgba(0,0,0,0.4);
+
+  /* Inset shadows for inner surfaces / pressed states */
+  --shadow-inset-sm: inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.4);
+
+  /* Easing — fey's named curves */
+  --ease-in:     cubic-bezier(0.55, 0.085, 0.68, 0.53);
+  --ease-out:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-in-out: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+
+  /* Legacy aliases — kept so untouched components (ChatPane, Settings, etc.) continue to work */
+  --bg-0: #000000;
+  --bg-1: #0a0a0a;
+  --bg-2: #111111;
+  --bg-3: #1a1a1a;
+  --bg-4: rgba(255,255,255,0.03);
+  --border-1: #1e1e1e;
+  --border-2: #2a2a2a;
+  --text-1: #ffffff;
+  --text-2: #a0a0b0;
+  --text-3: #8a8a9a;
+  --text-4: #4a4a5a;
+  --text-5: #2a2a3a;
+  --accent: #0a84ff;
+  --accent-green: #00ff88;
+  --accent-orange: #ff6b00;
+  --accent-pink: #ff2d78;
+  --accent-yellow: #ffd60a;
+  --accent-cyan: #00d4ff;
+  --accent-red: #ff2d78;
+  --scrollbar: #2a2a2a;
+}
+
+@keyframes neon-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root, body, #root {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--scrollbar); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+.cm-editor   { height: 100%; }
+.cm-scroller { overflow: auto; }
+
+/* ── Codex preview markdown — scoped to the wiki/synthesis/cross-thread
+      preview surface. react-markdown emits raw semantic tags; these rules
+      give them legible typography, theme-aware colors, and tight spacing
+      for a knowledge-base reading mode. Scribe uses CodeMirror with its
+      own theme; do not bleed these into editable surfaces. ───────────── */
+/* The app shell sets user-select:none on its root (Shell.tsx) so chrome
+   doesn't get accidentally selected during drags. CodeMirror overrides it
+   for editing surfaces; the CodexPreview body is read-only chrome by
+   default but users still want to copy quotes from wiki pages. Re-enable
+   selection on the markdown body specifically. */
+.codex-preview-md {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.codex-preview-md > :first-child { margin-top: 0; }
+.codex-preview-md > :last-child  { margin-bottom: 0; }
+
+.codex-preview-md h1,
+.codex-preview-md h2,
+.codex-preview-md h3,
+.codex-preview-md h4,
+.codex-preview-md h5,
+.codex-preview-md h6 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1.4em 0 0.5em;
+}
+.codex-preview-md h1 { font-size: 1.6em; margin-top: 0; }
+.codex-preview-md h2 {
+  font-size: 1.3em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.codex-preview-md h3 { font-size: 1.1em; }
+.codex-preview-md h4,
+.codex-preview-md h5,
+.codex-preview-md h6 { font-size: 1em; }
+
+.codex-preview-md p { margin: 0.75em 0; }
+
+.codex-preview-md ul,
+.codex-preview-md ol { margin: 0.6em 0; padding-left: 1.6em; }
+.codex-preview-md ul { list-style: disc; }
+.codex-preview-md ol { list-style: decimal; }
+.codex-preview-md li { margin: 0.25em 0; }
+.codex-preview-md li > p { margin: 0.25em 0; }
+
+.codex-preview-md blockquote {
+  margin: 0.8em 0;
+  padding: 0.2em 0 0.2em 0.9em;
+  border-left: 3px solid var(--border-default);
+  color: var(--text-secondary);
+}
+
+.codex-preview-md code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  background: var(--bg-subtle);
+  border-radius: 3px;
+  color: var(--text-primary);
+}
+.codex-preview-md pre {
+  margin: 0.8em 0;
+  padding: 0.7em 0.9em;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+.codex-preview-md pre code {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  font-size: 0.85em;
+}
+
+.codex-preview-md a {
+  color: var(--neon-blue);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.codex-preview-md a:hover {
+  border-bottom-color: var(--neon-blue);
+}
+
+.codex-preview-md hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 1.5em 0;
+}
+
+.codex-preview-md strong { font-weight: 700; color: var(--text-primary); }
+.codex-preview-md em     { font-style: italic; }
+
+.codex-preview-md table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 0.95em;
+}
+.codex-preview-md th,
+.codex-preview-md td {
+  border: 1px solid var(--border-subtle);
+  padding: 0.4em 0.7em;
+  text-align: left;
+}
+.codex-preview-md th { background: var(--bg-subtle); font-weight: 600; }

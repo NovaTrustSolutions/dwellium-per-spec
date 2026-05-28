@@ -684,11 +684,21 @@ export default function Desktop() {
     }, []);
 
     // Drag and Drop Files
+    // Bail when the drop target is inside a CodeMirror editor (Scribe) or any
+    // element marked with [data-dwellium-drop-zone] — those have their own
+    // handlers that need first-class access to the event.
+    const isInsideOwnDropZone = (target: EventTarget | null): boolean => {
+        if (!(target instanceof Element)) return false;
+        return !!target.closest('.cm-editor, [data-dwellium-drop-zone]');
+    };
+
     const handleDragOver = (e: React.DragEvent) => {
+        if (isInsideOwnDropZone(e.target)) return; // let the inner zone handle it
         e.preventDefault();
     };
 
     const handleDrop = (e: React.DragEvent) => {
+        if (isInsideOwnDropZone(e.target)) return; // inner zone owns this drop
         e.preventDefault();
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {

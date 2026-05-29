@@ -1353,6 +1353,8 @@ export default function ARAConsole() {
                                                             setExpandedTooltipId(isExpanded ? null : mode.id);
                                                         }}
                                                         title="Show details"
+                                                        aria-label={isExpanded ? `Hide ${mode.name} details` : `Show ${mode.name} details`}
+                                                        aria-expanded={isExpanded}
                                                     >
                                                         {isExpanded ? '▾' : 'ⓘ'}
                                                     </button>
@@ -1431,7 +1433,7 @@ export default function ARAConsole() {
                             🛡️ Entity Guardian
                         </span>
                     )}
-                    <button className="ara-clear-btn" onClick={clearChat} title="Clear conversation">
+                    <button className="ara-clear-btn" onClick={clearChat} title="Clear conversation" aria-label="Clear conversation">
                         ⟳
                     </button>
                 </div>
@@ -1474,6 +1476,7 @@ export default function ARAConsole() {
                                     className={`ara-speak-btn ${isSpeaking ? 'ara-speak-btn--active' : ''}`}
                                     onClick={() => isSpeaking ? stopSpeaking() : speakText(msg.content)}
                                     title={isSpeaking ? 'Stop speaking' : 'Read aloud'}
+                                    aria-label={isSpeaking ? 'Stop speaking' : 'Read message aloud'}
                                 >
                                     {isSpeaking ? '⏹' : '🔊'}
                                 </button>
@@ -1789,6 +1792,8 @@ export default function ARAConsole() {
                     onClick={toggleMic}
                     disabled={micTranscribing || isLoading}
                     title={micActive ? 'Stop recording' : micTranscribing ? 'Transcribing…' : 'Voice input'}
+                    aria-label={micActive ? 'Stop recording' : micTranscribing ? 'Transcribing voice input' : 'Start voice input'}
+                    aria-pressed={micActive}
                 >
                     {micTranscribing ? '⏳' : micActive ? '⏹' : '🎙️'}
                 </button>
@@ -1796,6 +1801,8 @@ export default function ARAConsole() {
                     className={`ara-tts-btn ${ttsEnabled ? 'ara-tts-btn--on' : ''}`}
                     onClick={toggleTts}
                     title={ttsEnabled ? 'Disable auto-read replies (TTS on)' : 'Enable auto-read replies (TTS off)'}
+                    aria-label={ttsEnabled ? 'Disable auto-read replies' : 'Enable auto-read replies'}
+                    aria-pressed={ttsEnabled}
                 >
                     {ttsEnabled ? '🔊' : '🔇'}
                 </button>
@@ -1807,6 +1814,8 @@ export default function ARAConsole() {
                     title={humanizeEnabled
                         ? 'Humanize ON — replies are warm + conversational. Click to turn off.'
                         : 'Humanize OFF — replies use ARA default tone. Click to turn on.'}
+                    aria-label={humanizeEnabled ? 'Turn off humanized replies' : 'Turn on humanized replies'}
+                    aria-pressed={humanizeEnabled}
                     style={{ fontSize: 14 }}
                 >
                     {humanizeEnabled ? '💬' : '🤖'}
@@ -1816,6 +1825,7 @@ export default function ARAConsole() {
                         className="ara-mute-btn"
                         onClick={muteAra}
                         title="Mute — stop ARA speaking"
+                        aria-label="Mute — stop ARA speaking"
                     >
                         ⏹
                     </button>
@@ -1824,6 +1834,8 @@ export default function ARAConsole() {
                     className={`ara-avatar-btn ${avatarEnabled ? 'ara-avatar-btn--active' : ''}`}
                     onClick={handleAvatarToggle}
                     title={avatarEnabled ? 'Disable AI Avatar' : 'Enable AI Avatar (requires password)'}
+                    aria-label={avatarEnabled ? 'Disable AI Avatar' : 'Enable AI Avatar'}
+                    aria-pressed={avatarEnabled}
                 >
                     {avatarEnabled ? '🧑‍💻' : '👤'}
                 </button>
@@ -1831,6 +1843,8 @@ export default function ARAConsole() {
                     className={`ara-voice-settings-btn ${voiceSettingsOpen ? 'ara-voice-settings-btn--active' : ''}`}
                     onClick={() => { setVoiceSettingsOpen(!voiceSettingsOpen); if (!voiceSettingsOpen) fetchVoices(); }}
                     title="Voice Settings"
+                    aria-label="Voice settings"
+                    aria-expanded={voiceSettingsOpen}
                 >
                     ⚙️
                 </button>
@@ -1844,6 +1858,7 @@ export default function ARAConsole() {
                         localStorage.setItem('dwellium-ara-voice', next);
                     }}
                     title={`Voice: ${voiceGender === 'female' ? 'Female' : 'Male'} — click to switch`}
+                    aria-label={`Voice gender: ${voiceGender === 'female' ? 'female' : 'male'}. Click to switch.`}
                 >
                     <span className={`ara-gender-option ${voiceGender === 'female' ? 'ara-gender-option--active' : ''}`}>♀</span>
                     <span className={`ara-gender-option ${voiceGender === 'male' ? 'ara-gender-option--active' : ''}`}>♂</span>
@@ -1875,6 +1890,8 @@ export default function ARAConsole() {
                     className="ara-send-btn"
                     onClick={sendMessage}
                     disabled={!input.trim() || isLoading}
+                    title="Send message"
+                    aria-label="Send message"
                 >
                     ➤
                 </button>
@@ -1885,7 +1902,7 @@ export default function ARAConsole() {
                 <div className="ara-voice-panel">
                     <div className="ara-voice-panel-header">
                         <h4>🎙️ Voice Settings</h4>
-                        <button className="ara-voice-panel-close" onClick={() => setVoiceSettingsOpen(false)}>✕</button>
+                        <button className="ara-voice-panel-close" onClick={() => setVoiceSettingsOpen(false)} title="Close voice settings" aria-label="Close voice settings">✕</button>
                     </div>
 
                     {/* Provider Status */}
@@ -1973,6 +1990,7 @@ export default function ARAConsole() {
                                                 className="ara-voice-item-delete"
                                                 onClick={() => deleteVoice(v.id)}
                                                 title={`Delete ${v.id}`}
+                                                aria-label={`Delete cloned voice ${v.id}`}
                                             >
                                                 🗑️
                                             </button>
@@ -2049,7 +2067,7 @@ export default function ARAConsole() {
                             {avatarStatus === 'error' && '⚠ Error'}
                             {avatarStatus === 'idle' && '○ Idle'}
                         </span>
-                        <button className="ara-avatar-panel-close" onClick={handleAvatarToggle}>✕</button>
+                        <button className="ara-avatar-panel-close" onClick={handleAvatarToggle} title="Close avatar panel" aria-label="Close avatar panel">✕</button>
                     </div>
                     <div className="ara-avatar-video-wrap">
                         {(avatarStatus === 'error' || avatarStatus === 'disconnected') && avatarError ? (

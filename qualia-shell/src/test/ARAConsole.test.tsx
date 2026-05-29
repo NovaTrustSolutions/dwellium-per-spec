@@ -177,7 +177,7 @@ describe('ARAConsole', () => {
 
         const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
         await user.type(textbox, 'What should I do next?');
-        await user.click(screen.getByRole('button', { name: '➤' }));
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
 
         await screen.findByText('I can help with that.');
         expect(await screen.findByText('Inbox · 2')).toBeInTheDocument();
@@ -206,7 +206,7 @@ describe('ARAConsole', () => {
 
         const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
         await user.type(textbox, 'Create follow-up tasks');
-        await user.click(screen.getByRole('button', { name: '➤' }));
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
         await screen.findByText('I can help with that.');
 
         await user.click(screen.getByRole('button', { name: 'Save As Note' }));
@@ -267,7 +267,7 @@ describe('ARAConsole', () => {
 
         const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
         await user.type(textbox, 'What should I do next?');
-        await user.click(screen.getByRole('button', { name: '➤' }));
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
 
         // Error banner + inline [Error] assistant message; no LLM fallback attempted.
         expect(await screen.findByText(/Last request failed:/)).toBeInTheDocument();
@@ -284,12 +284,27 @@ describe('ARAConsole', () => {
 
         const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
         await user.type(textbox, 'What should I do next?');
-        await user.click(screen.getByRole('button', { name: '➤' }));
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
 
         // LLM reply shown; success status confirms the offline route; no error banner.
         expect(await screen.findByText('Offline LLM reply.')).toBeInTheDocument();
         expect(await screen.findByText(/Backend offline — answered via your/)).toBeInTheDocument();
         expect(screen.queryByText(/Last request failed:/)).not.toBeInTheDocument();
         expect(callLlmMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('exposes accessible names on icon-only control-bar buttons (Cycle 9 a11y)', async () => {
+        render(<ARAConsole />);
+
+        // Wait for the input bar to render (modes resolved).
+        await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+
+        // The send button previously had NO accessible name (bare ➤ glyph).
+        expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Start voice input' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Clear conversation' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Voice settings' })).toBeInTheDocument();
+        // TTS seeded off in beforeEach → "Enable auto-read replies".
+        expect(screen.getByRole('button', { name: 'Enable auto-read replies' })).toBeInTheDocument();
     });
 });

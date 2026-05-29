@@ -1563,7 +1563,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                     <option value="all">All Types</option><option value="fact">📋 Facts</option><option value="preference">⭐ Preferences</option>
                                     <option value="decision">🔨 Decisions</option><option value="observation">👁️ Observations</option><option value="insight">💡 Insights</option>
                                 </select>
-                                <button className="stella__btn-sm" onClick={() => setShowAddHonchoMemory(!showAddHonchoMemory)}>{showAddHonchoMemory ? '✕' : '+ Add'}</button>
+                                <button className="stella__btn-sm" aria-label={showAddHonchoMemory ? 'Cancel adding memory' : 'Add memory'} aria-expanded={showAddHonchoMemory} onClick={() => setShowAddHonchoMemory(!showAddHonchoMemory)}>{showAddHonchoMemory ? '✕' : '+ Add'}</button>
                             </div>
                             {showAddHonchoMemory && (<div className="stella__honcho-add-form">
                                 <textarea className="stella__honcho-textarea" placeholder="What should Honcho remember?" value={newHonchoMemory.content} onChange={e => setNewHonchoMemory({ ...newHonchoMemory, content: e.target.value })} rows={3} />
@@ -1585,7 +1585,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                         <span className="stella__honcho-source">{m.source}</span></div>
                                     <p className="stella__honcho-content">{m.content}</p>
                                     <div className="stella__honcho-meta"><span>{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : ''}</span>
-                                        <button className="stella__btn-sm stella__btn-sm--danger" onClick={() => deleteHonchoMemory(m.id)}>🗑️</button></div>
+                                        <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete memory" onClick={() => deleteHonchoMemory(m.id)}>🗑️</button></div>
                                 </div>))}</div>
                         </>)}
                         {honchoSection === 'memory-network' && (<>
@@ -1631,7 +1631,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             </div>
                             <div className="stella__input-area"><textarea className="stella__input" value={honchoChatInput} onChange={e => setHonchoChatInput(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); honchoChatSend(); } }} placeholder="Ask about your memories…" rows={1} />
-                                <button className="stella__send-btn" onClick={honchoChatSend} disabled={!honchoChatInput.trim() || honchoChatLoading}>▶</button></div>
+                                <button className="stella__send-btn" aria-label="Send" onClick={honchoChatSend} disabled={!honchoChatInput.trim() || honchoChatLoading}>▶</button></div>
                         </>)}
                         {honchoSection === 'data-ingestion' && (<>
                             <h5 className="stella__skill-hub-title">📥 Data Ingestion</h5>
@@ -1671,7 +1671,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             <h5 className="stella__skill-hub-title">🔍 Semantic Search</h5>
                             <div className="stella__hermes-delegate-row"><input className="stella__hermes-input" placeholder="Semantic search across workspace…"
                                 value={honchoSearchQuery} onChange={e => setHonchoSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && honchoSemanticSearch()} />
-                                <button className="stella__send-btn" onClick={honchoSemanticSearch} disabled={!honchoSearchQuery.trim()}>🔍</button></div>
+                                <button className="stella__send-btn" aria-label="Search" onClick={honchoSemanticSearch} disabled={!honchoSearchQuery.trim()}>🔍</button></div>
                             <div className="stella__honcho-list">{honchoSearchResults.length === 0 ? (
                                 <div className="stella__empty"><span className="stella__empty-icon">🔍</span><p className="stella__empty-text">Enter a query to search.</p></div>
                             ) : honchoSearchResults.map((r: any, i: number) => (
@@ -1853,7 +1853,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             <div className="stella__honcho-dream-card-header">
                                                 <strong>{d.title}</strong>
                                                 <span className="stella__honcho-dream-time">{new Date(d.createdAt).toLocaleString()}</span>
-                                                <button className="stella__honcho-dream-del" onClick={() => deleteDream(d.id)} title="Delete">✕</button>
+                                                <button className="stella__honcho-dream-del" onClick={() => deleteDream(d.id)} title="Delete" aria-label="Delete dream">✕</button>
                                             </div>
                                             <p className="stella__honcho-dream-text">{d.text}</p>
                                             {d.sources.length > 0 && (
@@ -2059,6 +2059,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             className="stella__btn-sm stella__btn-sm--danger"
                                             onClick={() => uninstallSkill(skill.name)}
                                             title="Uninstall"
+                                            aria-label="Uninstall skill"
                                         >🗑️</button>
                                     )}
                                 </div>
@@ -2236,7 +2237,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                         <button className="stella__btn-sm" onClick={async () => {
                                             await fetch(`${API_BASE}/cron/jobs/${job.id}/run`, { method: 'POST', headers: getAuthHeaders() });
                                         }} disabled={!permissions?.canManageAutomation}>▶▶ Run Now</button>
-                                        <button className="stella__btn-sm stella__btn-sm--danger" onClick={async () => {
+                                        <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete job" onClick={async () => {
                                             if (!confirm(`Delete job "${job.name}"?`)) return;
                                             await fetch(`${API_BASE}/cron/jobs/${job.id}`, { method: 'DELETE', headers: getAuthHeaders() });
                                             await loadCronJobs();
@@ -2285,7 +2286,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             await fetch(`${API_BASE}/mcp/${encodeURIComponent(srv.key)}/toggle`, { method: 'PATCH', headers: getAuthHeaders() });
                                             await loadMcpServers();
                                         }} disabled={!permissions?.canManageMCP}>{srv.enabled ? '⏸️ Disable' : '▶️ Enable'}</button>
-                                        <button className="stella__btn-sm stella__btn-sm--danger" onClick={async () => {
+                                        <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete MCP server" onClick={async () => {
                                             if (!confirm(`Delete MCP server "${srv.name}"?`)) return;
                                             await fetch(`${API_BASE}/mcp/${encodeURIComponent(srv.key)}`, { method: 'DELETE', headers: getAuthHeaders() });
                                             await loadMcpServers();

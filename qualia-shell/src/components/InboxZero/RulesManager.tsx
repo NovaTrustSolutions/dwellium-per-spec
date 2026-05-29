@@ -334,7 +334,7 @@ export default function RulesManager() {
             {error && (
                 <div className="iz-alert" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: 'var(--text-primary)' }}>⚠️ {error}</span>
-                    <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '1.1rem' }}>×</button>
+                    <button aria-label="Dismiss error" onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '1.1rem' }}>×</button>
                 </div>
             )}
             {success && (
@@ -476,12 +476,13 @@ export default function RulesManager() {
                                     {/* Actions */}
                                     <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
                                         <button onClick={() => handleToggleRule(rule.id)} title={rule.enabled ? 'Disable' : 'Enable'}
+                                            aria-label={rule.enabled ? 'Disable rule' : 'Enable rule'} aria-pressed={rule.enabled}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem' }}>
                                             {rule.enabled ? '✅' : '⬜'}
                                         </button>
-                                        <button onClick={() => startEdit(rule)} title="Edit"
+                                        <button onClick={() => startEdit(rule)} title="Edit" aria-label="Edit rule"
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>✏️</button>
-                                        <button onClick={() => handleDeleteRule(rule.id)} title="Delete"
+                                        <button onClick={() => handleDeleteRule(rule.id)} title="Delete" aria-label="Delete rule"
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>🗑️</button>
                                     </div>
                                 </div>
@@ -625,7 +626,7 @@ export default function RulesManager() {
                                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{k.title}</span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{k.charCount} chars</span>
-                                            <button onClick={() => handleDeleteKnowledge(k.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}>🗑️</button>
+                                            <button aria-label="Delete knowledge entry" onClick={() => handleDeleteKnowledge(k.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}>🗑️</button>
                                         </div>
                                     </div>
                                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap', maxHeight: '4rem', overflow: 'hidden' }}>{k.content}</p>

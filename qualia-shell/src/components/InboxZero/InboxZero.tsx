@@ -723,6 +723,7 @@ export default function InboxZero() {
                                         className="iz-toolbar__search-clear"
                                         onClick={() => { setSearchQuery(''); setDebouncedSearch(''); }}
                                         title="Clear search"
+                                        aria-label="Clear search"
                                     >✕</button>
                                 )}
                             </div>
@@ -1434,7 +1435,7 @@ export default function InboxZero() {
                                                 <span className="iz-viewer__date">{new Date(viewerEmail.createdAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                         </div>
-                                        <button className="iz-viewer__close" onClick={() => setViewerEmail(null)} title="Close (Esc)">✕</button>
+                                        <button className="iz-viewer__close" onClick={() => setViewerEmail(null)} title="Close (Esc)" aria-label="Close email">✕</button>
                                     </div>
 
                                     {/* Badges */}

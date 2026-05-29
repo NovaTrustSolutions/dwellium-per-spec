@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, beforeEach, expect } from 'vitest';
 import type { ReactNode } from 'react';
@@ -144,5 +144,28 @@ describe('InboxZero', () => {
         // The hardened error message surfaces the status, and a retry affordance exists.
         expect(screen.getByText(/Inbox items fetch failed \(500\)/)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Retry/ })).toBeInTheDocument();
+    });
+
+    // Cycle 9 a11y — icon-only controls must expose a discernible accessible name
+    // (WCAG 2.0 AA 4.1.2 button-name). The search-clear "✕" is the icon-only button
+    // reachable from the default triage view; it renders only once the query is set.
+    it('gives the icon-only search-clear button an accessible name (WCAG 4.1.2)', async () => {
+        authFetch.mockImplementation(
+            routeFetch(() => jsonResponse({ success: true, data: [ITEM], pagination: { hasMore: false } }))
+        );
+
+        renderInbox();
+
+        const search = await screen.findByPlaceholderText('Search emails…');
+        // No query yet → no clear button.
+        expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
+
+        fireEvent.change(search, { target: { value: 'lease' } });
+
+        // Once a query exists, the "✕" clear button appears WITH an accessible name
+        // (queryable by role+name only because aria-label is present — proves the fix).
+        const clear = await screen.findByRole('button', { name: 'Clear search' });
+        expect(clear).toBeInTheDocument();
+        expect(clear).toHaveTextContent('✕');
     });
 });

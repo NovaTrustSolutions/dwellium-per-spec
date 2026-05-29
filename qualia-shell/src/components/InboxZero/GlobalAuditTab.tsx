@@ -188,7 +188,7 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                                 <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff' }}>{viewItem.subject}</div>
                                 <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>From: {viewItem.sender}</div>
                             </div>
-                            <button onClick={() => setViewItem(null)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}>×</button>
+                            <button aria-label="Close preview" onClick={() => setViewItem(null)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}>×</button>
                         </div>
                         <div style={{ flex: 1, position: 'relative', background: '#fff' }}>
                             <iframe 

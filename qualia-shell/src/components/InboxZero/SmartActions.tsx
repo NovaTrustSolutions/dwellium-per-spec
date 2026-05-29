@@ -442,7 +442,7 @@ export default function SmartActions() {
                                     )}
                                     <div style={{ ...styles.row, marginTop: '10px' }}>
                                         <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={() => editTemplate(t)}>✏️ Edit</button>
-                                        <button style={{ ...styles.btn, ...styles.btnDanger }} onClick={() => handleDeleteTemplate(t.id)}>🗑️</button>
+                                        <button aria-label="Delete template" style={{ ...styles.btn, ...styles.btnDanger }} onClick={() => handleDeleteTemplate(t.id)}>🗑️</button>
                                     </div>
                                 </div>
                             ))}

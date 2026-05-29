@@ -148,3 +148,37 @@ Legend: ✅ done+committed · 🚧 in progress (continue next iteration) · ⬜ 
 - **Next:** Cycle 6 — Operations panels: Maintenance work-order queue + Lease-expirations + Vendor/
   contract status, each from the existing modules' data with a filter + drill-down handoff (reuse
   `openStrataModule('maintenance'|'leasing'|'vendors')`). FULL gate.
+
+## Iteration 6 — 2026-05-29 — Cycle 6 (Operations panels: Maintenance + Leases + Vendors) ✅
+- **Commit `e387b9e`.** Three new exec operations panels wired to real Strata data + filter + drill-down.
+- `dashboardData.ts`: + `fetchMaintenanceQueue` (`/workitems` domain=maintenance, open-only, priority-rank
+  then soonest-due; client-side domain re-filter so static/param-blind mode stays correct; +age label)
+  + `fetchLeaseExpirations` (`/units` with `leaseEnd`, soonest-first incl. expired holdovers at top,
+  tenant fallback `—`, synthetic `unit-${i}` id, `daysUntil`) + `fetchVendorStatus`
+  (`/vendor-associations` joined to `/entities`?type=vendor name map; suspended/expired/terminated/pending
+  first via `vendorStatusRank`, then soonest contract end; raw-id fallback when no name join). All three
+  joined into `loadDashboardData` (existing per-section settle/[] isolation). + exported
+  `workitemPriorityRank` (critical<urgent<high<medium/normal<low) + `vendorStatusRank` helpers.
+  Extended `UnitRow` (+id,+unitNumber,+currentTenantId,+leaseEnd) + new `VendorAssociationRow` /
+  `VendorEntityRow` raw types. Source ground truth verified: workitems maintenance = `domain:'maintenance'`
+  (type `work_order`, 382 rows) NOT `type:'maintenance'`; units carry `leaseEnd` (31 dated / 187 occupied);
+  vendor_associations (1 seeded row) joins to entities `entityType:'vendor'` (3218) by `vendorId`.
+- `AstraDashboard.tsx`: `MaintenanceQueue` (priority All/Urgent toggle), `LeaseExpirations` (30/60/90/All
+  segmented window, default 90), `VendorStatusPanel` (All/Needs-attention toggle) — shared `.a-ops-*` row
+  idiom mirroring Cycle-5 trackers; status/priority badges, clickable rows → `openStrataModule`, "Open"
+  header button via widened `DrillToStrata` (`DrillModule` now compliance|legal|maintenance|leasing|vendors).
+  Registered in `PANEL_META` + `renderPanel`. Each filter is panel-local `useState` (no store coupling).
+- `dashboardLayoutStore.ts`: `DEFAULT_LAYOUT` grows `maintenance`+`leases` (center) + `vendors` (right);
+  `reconcileLayout` grafts them onto returning users' stored layouts by construction (schema-drift safe).
+  Left column kept `[heatmap, finance, domains]` UNCHANGED — layout test asserts its exact order at
+  movePanelIn up/down. Existing dashboardLayout test passes unchanged (reads DEFAULT_LAYOUT dynamically).
+- CSS appended (~150 L): `.a-ops-list/row/title/age/due/arrow`, `.a-lease-unit` chip, `.a-vendor-status` +
+  `.a-vstatus-*` tones, `.a-panel-filter`(--on) toggle, `.a-panel-segctl/.a-panel-seg`(--on) segmented
+  control, all with focus-visible rings (Cycle-9 a11y groundwork).
+- Tests: +8 data-layer (`dashboardData.test.ts`: rank-helper pinning ×2, maintenance sort+filter+age+empty,
+  lease sort+tenant-fallback+empty, vendor name-join+suspended-first+raw-id-fallback+empty).
+- **GATE 6/6 GREEN:** tsc ✓ · vitest **439 passed / 55 files** (baseline 431/55 → **+8**) ✓ · build
+  seeds=true ✓ · build seeds=false ✓ · PII clean (51 files, 0 leaks) ✓ · SSR smoke PASS @ :3458
+  (200, 5949 B, 0 console errors/warnings, 0 page errors) ✓.
+- **Next:** Cycle 7 — Finance + Risk panels: NOI/delinquencies/budget-vs-actual snapshot (Forecast/
+  Accounting) + a risk register (Incident/Insurance). Date-range filter on finance. FULL gate.

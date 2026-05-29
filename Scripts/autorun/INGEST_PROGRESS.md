@@ -21,3 +21,13 @@ Gate (source cycles): `tsc -b` + `vitest run` + 2× `react-router build` + PII v
 - SSR-safe: zero module-eval localStorage/window/fetch. Smoke-test PASS confirms.
 - **GATE 6/6 GREEN:** tsc ✓ | vitest **474/57** (baseline 459/56 → +15 tests / +1 file) ✓ | react-router build ✓ | seeds=false build ✓ | PII clean (51 files) ✓ | SSR smoke PASS (0 console errors / 0 warnings / 0 page errors).
 - **Next: Cycle 3 — Backend ingest route CONTRACT (`Docs/backend-ingest-routes.ts`, docs-only).**
+
+### Cycle 3 — Backend ingest route CONTRACT (docs-only) ✅ DONE
+- NEW `Docs/backend-ingest-routes.ts` — Express route contract mirroring `backend-file-explorer-routes.ts` shape (`Router` + `authenticate` + `{ success, data }` envelope). 4 endpoints matching `ingestionApi.ts` byte-for-byte on shape:
+  - `POST /api/ingest/watch` `{ sourcePath, destPath, label? }` → `{ success, data: WatchedFolder }` — register a source→dest pair with the always-on daemon (chokidar reference); idempotent on (sourcePath, destPath); persists to per-user `~/.dwellium/ingest/<userId>/watches.json` ledger.
+  - `GET /api/ingest/status` → `{ success, data: IngestStatus }` — `{ watching[], lastRunAt, queueDepth }`.
+  - `POST /api/ingest/convert` `{ sourcePath, destPath }` → `{ success, data: BackendConvertedFile }` — server-side pdf/docx/xlsx/pptx/rtf/odt → md. **REUSE directive:** delegate binary→html to the soffice path in `backend-docs-convert-routes.ts`, then run htmlToMarkdown (server port) — do NOT re-implement binary conversion. Currently returns `501` with a "not implemented — see backend-docs-convert-routes.ts" message (the shape the FE expects once it lands is in a comment).
+  - `GET /api/ingest/converted` → `{ success, data: BackendConvertedFile[] }`.
+- Scope boundary documented at the top: browser handles html/txt/md in-app (Cycles 4-5, no contract needed); this contract covers ONLY the two things a browser structurally cannot do — always-on watching + binary-format conversion — and is OUT OF SCOPE for this branch (sibling backend / Electron implements it). FE client already shipped against this exact shape (Cycle 2), degrades gracefully (typed throw) until routes exist.
+- Docs-only cycle → `Docs/**` outside parity-gate paths filter; no source gate. `git status` confirms only `Docs/backend-ingest-routes.ts` new.
+- **Next: Cycle 4 — Folder-picker UI in Scribe (File System Access API, event-handler-gated, SSR-safe; FULL gate).**

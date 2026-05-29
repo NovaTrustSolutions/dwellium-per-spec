@@ -1238,4 +1238,30 @@
     font-size: 13px;
     color: rgba(255, 255, 255, 0.82);
     line-height: 1.5;
+    flex: 1 1 auto;
 }
+/* Cross-widget handoff controls (Cycle 15: TW ↔ ARA ↔ Honcho). */
+.tw-insight__actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    align-self: center;
+}
+.tw-insight__action,
+.tw-reports__handoff-btn {
+    background: rgba(96, 165, 250, 0.10);
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    color: #93c5fd;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.tw-reports__handoff-btn { font-size: 12px; padding: 5px 12px; }
+.tw-insight__action:hover:not(:disabled),
+.tw-reports__handoff-btn:hover:not(:disabled) {
+    background: rgba(96, 165, 250, 0.20);
+}
+.tw-reports__handoff-btn:disabled { opacity: 0.5; cursor: not-allowed; }

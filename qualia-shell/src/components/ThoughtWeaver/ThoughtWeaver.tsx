@@ -38,6 +38,13 @@ import {
 import type { GenerateOptions, GenerateContext, ReportSink } from './reportEngine';
 import { weekStartOf } from './insights';
 import type { InsightCapture } from './insights';
+import {
+    sendToAra,
+    saveToHonchoMemory,
+    composeInsightContext,
+    insightToHonchoSeed,
+    buildTwContextDigest,
+} from './thoughtWeaverLinkage';
 import './ThoughtWeaver.css';
 
 // ── Daily to-do synthesis ────────────────────────────────────────────
@@ -216,6 +223,7 @@ export default function ThoughtWeaver() {
     const [newTodoText, setNewTodoText] = useState('');
     const [generating, setGenerating] = useState(false);
     const [genMsg, setGenMsg] = useState<string | null>(null);
+    const [handoffMsg, setHandoffMsg] = useState<string | null>(null);
     const didCatchUp = useRef(false);
     const llmReady = hasActiveLlm(integrations.llm);
 
@@ -511,6 +519,29 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         if (ok) { clearReports(); setGenMsg(null); }
     }, [reports.dailyReports.length, reports.weeklySummaries.length, reports.insights.length]);
 
+    // ── Cross-widget handoffs (Cycle 15: TW ↔ ARA ↔ Honcho) ──────────────
+    // All decoupled via the existing buses: ARA reuses `scribe:send-to-ara`
+    // (zero ARA change); Honcho saves to its LOCAL dreamStore. Pure logic lives
+    // in thoughtWeaverLinkage.ts; these are the thin call sites.
+    const handleInsightToAra = useCallback((insight: { text: string; kind: 'pattern' | 'connection' | 'suggestion' }) => {
+        const ok = sendToAra(composeInsightContext(insight));
+        setHandoffMsg(ok ? 'Sent insight to ARA.' : 'Nothing to send.');
+    }, []);
+
+    const handleInsightToHoncho = useCallback((insight: { id: string; text: string; kind: 'pattern' | 'connection' | 'suggestion' }) => {
+        const saved = saveToHonchoMemory(insightToHonchoSeed(insight));
+        setHandoffMsg(saved ? 'Saved to Honcho memory.' : 'Nothing to save.');
+    }, []);
+
+    const handleDigestToAra = useCallback(() => {
+        const digest = buildTwContextDigest(
+            mergedCaptures.map(c => ({ text: c.original_text, filed_to: c.filed_to })),
+            reports.insights,
+        );
+        const ok = sendToAra(digest ? { text: digest, preface: 'Here is a digest of my recent notes for context:' } : null);
+        setHandoffMsg(ok ? 'Sent recent-notes digest to ARA.' : 'No notes to share yet.');
+    }, [mergedCaptures, reports.insights]);
+
     const allBucketItems = useMemo(() => {
         if (activeBucket === 'all') return Object.entries(bucketItems).flatMap(([type, items]) => items.map(i => ({ ...i, type })));
         return bucketItems[activeBucket].map(i => ({ ...i, type: activeBucket }));
@@ -783,6 +814,14 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             >
                                 {generating ? '⏳ Generating…' : '✨ Generate now'}
                             </button>
+                            <button
+                                className="tw-reports__handoff-btn"
+                                onClick={handleDigestToAra}
+                                disabled={mergedCaptures.length === 0}
+                                title="Send a digest of recent captures + insights to ARA as context"
+                            >
+                                → ARA context
+                            </button>
                             {(reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length) > 0 && (
                                 <button className="tw-reports__clear-btn" onClick={handleClearReports} disabled={generating}>
                                     🧹 Clear reports
@@ -793,6 +832,9 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
 
                     {genMsg && (
                         <p className="tw-reports__msg" role="status" aria-live="polite">{genMsg}</p>
+                    )}
+                    {handoffMsg && (
+                        <p className="tw-reports__msg" role="status" aria-live="polite">{handoffMsg}</p>
                     )}
                     {!llmReady && (
                         <p className="tw-reports__hint" role="note">
@@ -820,6 +862,24 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                         <div key={i.id} className={`tw-insight tw-insight--${i.kind}`}>
                                             <span className="tw-insight__kind">{i.kind}</span>
                                             <span className="tw-insight__text">{i.text}</span>
+                                            <div className="tw-insight__actions">
+                                                <button
+                                                    className="tw-insight__action"
+                                                    onClick={() => handleInsightToAra(i)}
+                                                    title="Discuss this insight with ARA"
+                                                    aria-label="Send insight to ARA"
+                                                >
+                                                    → ARA
+                                                </button>
+                                                <button
+                                                    className="tw-insight__action"
+                                                    onClick={() => handleInsightToHoncho(i)}
+                                                    title="Save this insight to Honcho memory"
+                                                    aria-label="Save insight to Honcho memory"
+                                                >
+                                                    🧠 Honcho
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </section>

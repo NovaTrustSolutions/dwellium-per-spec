@@ -1,6 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useIngestion } from '../Scribe/ingestion/useIngestion';
+import {
+    dreamStore,
+    dreamUserIdHolder,
+    appendDream,
+    deleteDream,
+    clearDreams,
+} from '../StellaAgent/honchoDreamStore';
 import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
 import {
     arrangeMarkdownFiles,
@@ -62,10 +69,23 @@ const TYPE_COLORS: Record<string, string> = {
 };
 const IMPORTANCE_LABELS = ['Low', 'Medium', 'High', 'Critical'];
 
-type TabId = 'memory' | 'hermes' | 'agents' | 'graph' | 'files';
+type TabId = 'memory' | 'dreams' | 'hermes' | 'agents' | 'graph' | 'files';
 
 export default function HonchoHermesPanel() {
     const { user, authFetch } = useUser();
+
+    /* ─── DREAMS TAB STATE (per-user dream/reflection abilities) ─── */
+    // Update the dynamic-key holder DURING render before the store read, so the
+    // useSyncExternalStore snapshot resolves to this user's dreams (mirrors the
+    // useIngestion / WindowContext savedLayouts dynamic-key pattern).
+    dreamUserIdHolder.current = user?.id ?? null;
+    const dreams = useSyncExternalStore(
+        dreamStore.subscribe,
+        dreamStore.getSnapshot,
+        dreamStore.getServerSnapshot,
+    );
+    const [newDream, setNewDream] = useState({ title: '', text: '' });
+    const [showAddDream, setShowAddDream] = useState(false);
     const [activeTab, setActiveTab] = useState<TabId>('memory');
     const [loading, setLoading] = useState(true);
 
@@ -306,6 +326,7 @@ export default function HonchoHermesPanel() {
             <div className="hhp__tabs">
                 {([
                     ['memory', '🧠 Memory'],
+                    ['dreams', '🌙 Dreams'],
                     ['hermes', '⚡ Hermes'],
                     ['agents', '🤖 Agents'],
                     ['graph', '🕸️ Graph'],
@@ -406,6 +427,109 @@ export default function HonchoHermesPanel() {
                                     <div className="hhp__memory-meta">
                                         <span className="hhp__memory-time">{formatTime(m.createdAt)}</span>
                                         <button className="hhp__memory-delete" onClick={() => deleteMemory(m.id)} title="Delete">🗑️</button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ═══ DREAMS TAB ═══ */}
+            {!loading && activeTab === 'dreams' && (
+                <div className="hhp__panel">
+                    <h3 className="hhp__section-title">🌙 Dreams</h3>
+                    <p className="hhp__hint">
+                        Short reflections Honcho synthesizes over your memories — patterns,
+                        connections, and unsurfaced to-dos. Stored locally, per user.
+                    </p>
+
+                    {/* Toolbar */}
+                    <div className="hhp__toolbar">
+                        <button
+                            className="hhp__add-btn"
+                            aria-label={showAddDream ? 'Cancel new dream' : 'Add a dream'}
+                            onClick={() => setShowAddDream(v => !v)}
+                        >
+                            {showAddDream ? '✕ Cancel' : '+ Add Dream'}
+                        </button>
+                        {dreams.length > 0 && (
+                            <button
+                                className="hhp__btn"
+                                aria-label="Clear all dreams"
+                                onClick={() => clearDreams()}
+                            >
+                                🗑️ Clear all
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Add Form */}
+                    {showAddDream && (
+                        <div className="hhp__add-form">
+                            <input
+                                className="hhp__search"
+                                placeholder="Dream title (e.g. 'Pattern: meetings cluster Wednesdays')"
+                                aria-label="Dream title"
+                                value={newDream.title}
+                                onChange={e => setNewDream({ ...newDream, title: e.target.value })}
+                            />
+                            <textarea
+                                className="hhp__add-textarea"
+                                placeholder="The reflection / synthesis…"
+                                aria-label="Dream text"
+                                value={newDream.text}
+                                onChange={e => setNewDream({ ...newDream, text: e.target.value })}
+                                rows={3}
+                            />
+                            <div className="hhp__add-row">
+                                <button
+                                    className="hhp__add-submit"
+                                    disabled={!newDream.title.trim() || !newDream.text.trim()}
+                                    onClick={() => {
+                                        appendDream({
+                                            title: newDream.title.trim(),
+                                            text: newDream.text.trim(),
+                                            sources: [],
+                                        });
+                                        setNewDream({ title: '', text: '' });
+                                        setShowAddDream(false);
+                                    }}
+                                >
+                                    Save Dream
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Dream List */}
+                    <div className="hhp__memory-list">
+                        {dreams.length === 0 ? (
+                            <div className="hhp__empty">
+                                <span>🌙</span>
+                                <p>No dreams yet. Honcho will surface reflections as it learns — or add one manually.</p>
+                            </div>
+                        ) : (
+                            dreams.map(d => (
+                                <div key={d.id} className="hhp__memory-card"
+                                    style={{ '--accent': '#8b5cf6' } as React.CSSProperties}>
+                                    <div className="hhp__memory-top">
+                                        <span className="hhp__memory-type">🌙 {d.title}</span>
+                                        {d.sources.length > 0 && (
+                                            <div className="hhp__memory-badges">
+                                                <span className="hhp__memory-source">{d.sources.length} sources</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="hhp__memory-content">{d.text}</p>
+                                    <div className="hhp__memory-meta">
+                                        <span className="hhp__memory-time">{formatTime(d.createdAt)}</span>
+                                        <button
+                                            className="hhp__memory-delete"
+                                            aria-label={`Delete dream ${d.title}`}
+                                            title="Delete"
+                                            onClick={() => deleteDream(d.id)}
+                                        >🗑️</button>
                                     </div>
                                 </div>
                             ))

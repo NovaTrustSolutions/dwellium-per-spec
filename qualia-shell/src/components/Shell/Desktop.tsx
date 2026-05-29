@@ -10,6 +10,7 @@ import Window from '../Window/Window';
 
 // Widget Registry — single source of truth for all widget components
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS } from '../../registry/widgetRegistry';
+import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAutoOpenHoncho } from './honchoAutoOpen';
 
 import QuickLook from '../QuickLook/QuickLook';
 import './Desktop.css';
@@ -589,6 +590,19 @@ export default function Desktop() {
         };
         window.addEventListener('qualia-open-widget', handleOpenWidget);
         return () => window.removeEventListener('qualia-open-widget', handleOpenWidget);
+    }, [openWindow]);
+
+    // ── Honcho "always-on by default" one-time auto-open (Cycle 8, D-5) ──
+    // Opens the standalone Honcho widget once on the first ready Desktop, then
+    // records a localStorage flag so it never reopens against a user who closed
+    // it. SSR-safe: localStorage is touched only here, inside an effect.
+    useEffect(() => {
+        try {
+            if (shouldAutoOpenHoncho(localStorage.getItem(HONCHO_AUTO_OPEN_KEY))) {
+                localStorage.setItem(HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE);
+                openWindow(HONCHO_COMPONENT, 'Honcho', 'brain-circuit');
+            }
+        } catch { /* sandboxed / disabled storage — skip auto-open */ }
     }, [openWindow]);
 
     // ── Auto-assign new windows to the correct layout region ──

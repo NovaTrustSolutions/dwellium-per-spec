@@ -419,6 +419,13 @@
     margin: 0 0 12px;
 }
 
+.hhp__hint {
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+
 /* ── Tools Grid ── */
 .hhp__tools-section {
     margin-bottom: 20px;

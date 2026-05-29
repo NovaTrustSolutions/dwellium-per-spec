@@ -264,3 +264,14 @@ Bumped both to the repo's established `--text-tertiary` value `#808080` (≈5.01
 ≈4.82:1 on `#101010` — passes AA on both surfaces; sister to the functionality-bringup
 `#808080` calibration). `#888` (5.58:1) and the `#666` icon-only UI buttons (3.45:1, ≥3:1
 non-text-contrast bar) already pass and were left unchanged.
+
+**C11-D1 — Workspace icon = `layers` (new lucide import).** No existing iconMap key fit the
+organizational Domaine→Project→Thread hierarchy. Added `Layers` from lucide-react +
+`'layers' → Layers`. Reversible — one import line + one map line. (Alternatives `folder-kanban`/
+`boxes` not yet imported either; `layers` best conveys the layered drill-down.)
+
+**C11-D2 — register in Filing Cabinet (not a new group), minWidth 380 / minHeight 420.** Per
+plan D7, the Workspace dock row joins the Filing Cabinet group beside `file-explorer`/`scribe`
+rather than introducing a new top-level concept. Min sizes chosen for the single-column
+card-grid + drill-down list layout (narrower-tolerant than file-explorer's 320×400 tree+preview;
+bumped to 380×420 so domaine cards don't crush). Reversible — edit the registry entry.

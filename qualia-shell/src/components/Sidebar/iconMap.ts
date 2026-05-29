@@ -39,6 +39,7 @@ import {
     Archive,
     Diamond,
     LayoutGrid,
+    Layers,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -70,6 +71,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
     // ── Filing Cabinet ──
     'folder-tree':    FolderTree,
+    'layers':         Layers,
     'check-square':   CheckSquare,
     'inbox':          Inbox,
     'folder-open':    FolderOpen,

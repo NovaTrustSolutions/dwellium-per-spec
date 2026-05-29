@@ -294,3 +294,32 @@ EXIT=0):
 **Next:** Cycle 11 — widget registration (`widgetRegistry.ts` + `hierarchy.ts` Filing Cabinet
 row), full strict gate, screenshot/axe baselines, closure doc. Touches source ⇒ full strict
 gate (`SMOKE_TEST_PORT=3458`).
+
+## 2026-05-29 — Cycle 11 — widget registration + final strict gate + closure ✅ DONE
+
+**Scope:** Plan §11 Cycle 11 (FINAL) — make the Workspace widget reachable (it existed but was
+orphaned: no registry entry, no dock row), run the full strict gate, write the arc closure doc.
+
+- **Registration (3 minimal edits):**
+  - `src/components/Sidebar/iconMap.ts` — import `Layers` (lucide) + map `'layers' → Layers`.
+  - `src/registry/widgetRegistry.ts` — new `'workspace'` entry beside `file-explorer`:
+    `lazyWithReload(() => import('../components/Workspace/Workspace'))`, `category: 'filing'`,
+    `minWidth: 380`, `minHeight: 420`. (`Desktop.tsx` `WINDOW_COMPONENTS` spreads
+    `REGISTRY_COMPONENTS` ⇒ one entry auto-wires Desktop + Sidebar + CommandPalette + PopupShell.)
+  - `src/data/hierarchy.ts` — new `dock-workspace` row in the **Filing Cabinet** group (per D7),
+    after `dock-file-explorer`. (Edited `defaultDockItems`, NOT `defaultHierarchy` which is `[]`;
+    no count-asserting test exists for it.)
+- **Reachability proof:** Workspace chunk now in the build graph —
+  `build/client/assets/Workspace-R6ODW2Z6.js 26.53 kB / gzip 6.86 kB` +
+  `build/server/assets/Workspace-C5mt_Rw_.js 56.02 kB` (was orphaned pre-C11).
+- Decisions C11-D1 (icon=`layers`) + C11-D2 (Filing Cabinet, 380×420) logged to DECISIONS.md.
+- Closure doc written: `Docs/Workspace_Arc_Closure_Report.md` (cycle ledger, gate proof, open items, push cmds).
+
+**Verified — FULL strict gate 6/6 GREEN** (log `Scripts/autorun/logs/gate_c11_1780027796.log`):
+- `tsc -b` ✓ EXIT=0 · `vitest` ✓ **47 files / 348 passed / 0 failed** (unchanged vs C10 —
+  registration-only, no new tests) · `react-router build` seeds=true ✓ + seeds=false ✓
+  (4 "✓ built in" markers) · PII ✓ (51 files / 2 roots / 0 leaks) · SSR smoke
+  (`SMOKE_TEST_PORT=3458`) ✓ **PASS** (200 / 5949 B · 0 console / 0 page / 0 ReferenceError /
+  0 hydration warnings).
+
+**Next:** ARC COMPLETE. All 11 cycles done + gate green. Writing closure summary + ALL_DONE.

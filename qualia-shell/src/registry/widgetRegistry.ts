@@ -277,6 +277,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 320,
         minHeight: 400,
     },
+    'workspace': {
+        id: 'workspace',
+        label: 'Workspace',
+        icon: 'layers',
+        component: lazyWithReload(() => import('../components/Workspace/Workspace')),
+        category: 'filing',
+        minWidth: 380,
+        minHeight: 420,
+    },
     'terminal': {
         id: 'terminal',
         label: 'Terminal',

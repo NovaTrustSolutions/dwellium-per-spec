@@ -76,3 +76,46 @@ seeded schedules don't overstate AR risk.
 components; drop `financials`/`risk` from DEFAULT_LAYOUT; remove `fetchFinanceSnapshot`/
 `fetchRiskRegister` + the two `DashboardData` fields. reconcileLayout drops unknown ids by
 construction, so stored layouts self-heal.
+
+---
+
+## Cycle 9 (2026-05-29) — Global filters, a11y, keyboard nav
+
+**Fork: how to implement the "global portfolio/date filter" the spec asks for.**
+**Decision:** Ship a GLOBAL FILTER BAR (Dashboard tab only) with two cross-panel
+controls, applied centrally via a pure `applyGlobalFilters(data, filters)` in
+`dashboardFilters.ts` BEFORE data reaches the panels — NOT a per-panel rewrite.
+- **Text quick-filter (`query`)** — case-insensitive substring across each panel's
+  primary display text (title / property / entity / tenant / vendor / label …).
+  Works reliably on every list panel.
+- **"Attention only" toggle** — keeps only rows a PM-exec would act on
+  (priority critical/high/urgent · compliance expired/missing/warning · overdue
+  daysUntil<0 · lease ≤30d · vendor suspended/expired/terminated/pending ·
+  risk severity high · heatmap delinquency>5/maint>10/occ<85). No-op for panels
+  with no action axis (calendar, agent log).
+- Both default OFF → `applyGlobalFilters` returns the SAME reference (zero churn);
+  the unfiltered dashboard is byte-identical = fully reversible.
+- Match count (`N of M items`) + Clear affordance in the bar.
+
+**Deliberately NOT shipped — true portfolio DROPDOWN filter (logged, deferred).**
+The heatmap keys properties by display `name`; the ops panels key by `propertyId`;
+the data layer exposes no shared id↔name map. A dropdown would silently fail to
+filter ~half the panels (misleading). The `query` field covers the honest subset
+(type a property name to narrow the panels that surface it). A real dropdown is
+deferred to a Cycle-2-altitude data-layer change adding a canonical property list.
+A global *date-range* filter is likewise heterogeneous across panels; the Financial
+Snapshot already owns its own 3/6/12/24-mo horizon control (Cycle 7), which is the
+honest home for date-windowing. Both deferrals carried to DASH_CLOSURE.
+
+**a11y / keyboard nav.** Promoted the top tab row to a WAI-ARIA tablist:
+`role="tablist"` wrapper + each tab `role="tab"` + `aria-selected` + roving
+`tabIndex` (active=0, others=-1) + Arrow/Home/End key nav (activation-follows-focus);
+content region is `role="tabpanel"` with `aria-labelledby`. Added `:focus-visible`
+accent rings on tabs + all filter-bar controls. Edit/Refresh buttons kept OUTSIDE
+the tablist (they are not tabs). Loading/empty/error UI was already unified via
+`PanelStatus` since Cycle 3 — no change needed there.
+
+**Back out:** delete `dashboardFilters.ts` + its test; revert the AstraDashboard.tsx
+import, `filters` state, `applyGlobalFilters` call, `<GlobalFilterBar>`, and the
+tablist/tabpanel role markup back to the plain `.a-tab` buttons; drop the Cycle-9
+CSS block. No data-layer or store changes were made.

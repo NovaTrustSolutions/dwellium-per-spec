@@ -3,7 +3,7 @@
  * Watchdog List, Financial Quick-viz, Compliance Calendar, AI Agent Log.
  * Houses 5 tabs: Dashboard, Workspace, Channels, Intelligence, Observability.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { API_BASE } from '../../config';
 import {
     LayoutDashboard, Wrench, MessageSquare,
@@ -32,6 +32,10 @@ import {
     DASHBOARD_COLUMNS,
     type DashboardColumn, type DashboardLayout, type MoveDirection,
 } from './dashboardLayoutStore';
+import {
+    applyGlobalFilters, filtersActive, visibleRowCount,
+    EMPTY_FILTERS, type GlobalFilters,
+} from './dashboardFilters';
 import type {
     HeatmapProperty, WatchdogItem, FinancialCard,
     DashCalendarEvent, AgentLogEntry, ActiveWorkitem, DomainSnapshot,
@@ -1221,6 +1225,76 @@ function DashboardContent({ data, loading, error, layout, editing, onMove, onHid
     );
 }
 
+/* ═══════════════════════════  GLOBAL FILTER BAR (Cycle 9)  ═══════════ */
+
+/**
+ * Dashboard-wide filter bar: a text quick-filter + an "Attention only" toggle
+ * that narrow EVERY list panel at once (applied centrally via
+ * `applyGlobalFilters` in the parent). Both default to a no-op so the bar is
+ * fully reversible. A live match count + Clear affordance keep the active
+ * filter state legible. All controls carry discernible text / aria-labels for
+ * WCAG 2.0 AA 4.1.2 (axe `button-name` / labelled input).
+ */
+function GlobalFilterBar({ filters, onChange, matchCount, totalCount }: {
+    filters: GlobalFilters;
+    onChange: (next: GlobalFilters) => void;
+    matchCount: number;
+    totalCount: number;
+}) {
+    const active = filtersActive(filters);
+    return (
+        <div className="a-filterbar" role="search" aria-label="Filter dashboard panels">
+            <div className="a-filterbar-field">
+                <Search size={14} className="a-filterbar-icon" aria-hidden="true" />
+                <label htmlFor="a-global-filter" className="a-sr-only">Filter panels by keyword</label>
+                <input
+                    id="a-global-filter"
+                    className="a-filterbar-input"
+                    type="text"
+                    value={filters.query}
+                    placeholder="Filter all panels — property, tenant, vendor, matter…"
+                    onChange={(e) => onChange({ ...filters, query: e.target.value })}
+                />
+                {filters.query && (
+                    <button
+                        type="button"
+                        className="a-filterbar-clearq"
+                        onClick={() => onChange({ ...filters, query: '' })}
+                        aria-label="Clear keyword filter"
+                        title="Clear keyword"
+                    >
+                        <X size={13} />
+                    </button>
+                )}
+            </div>
+            <button
+                type="button"
+                className={`a-filterbar-toggle ${filters.attentionOnly ? 'a-filterbar-toggle--on' : ''}`}
+                onClick={() => onChange({ ...filters, attentionOnly: !filters.attentionOnly })}
+                aria-pressed={filters.attentionOnly}
+                title="Show only items needing attention (high priority, at-risk, overdue)"
+            >
+                <AlertTriangle size={13} /> Attention only
+            </button>
+            {active && (
+                <>
+                    <span className="a-filterbar-count" role="status" aria-live="polite">
+                        {matchCount} of {totalCount} items
+                    </span>
+                    <button
+                        type="button"
+                        className="a-filterbar-clear"
+                        onClick={() => onChange(EMPTY_FILTERS)}
+                        aria-label="Clear all dashboard filters"
+                    >
+                        Clear
+                    </button>
+                </>
+            )}
+        </div>
+    );
+}
+
 const TABS: { id: AstraTab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
     { id: 'workspace', label: 'Workspace', icon: <Wrench size={16} /> },
@@ -1232,14 +1306,34 @@ const TABS: { id: AstraTab; label: string; icon: React.ReactNode }[] = [
 export default function AstraDashboard() {
     const [activeTab, setActiveTab] = useState<AstraTab>('dashboard');
     const [editing, setEditing] = useState(false);
+    const [filters, setFilters] = useState<GlobalFilters>(EMPTY_FILTERS);
     const { data, loading, error, reload } = useDashboardData();
     const { layout, hidePanel, showPanel, movePanel } = useDashboardLayout();
+
+    // Centrally narrow the data for every panel; a no-op (same reference) when
+    // no filter is active, so the unfiltered dashboard is byte-identical.
+    const filteredData = applyGlobalFilters(data, filters);
+
+    // Roving-focus refs for the WAI-ARIA tablist keyboard pattern.
+    const tabRefs = useRef<Partial<Record<AstraTab, HTMLButtonElement | null>>>({});
+    const onTabKeyDown = (e: React.KeyboardEvent, index: number) => {
+        let next = index;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (index + 1) % TABS.length;
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (index - 1 + TABS.length) % TABS.length;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = TABS.length - 1;
+        else return;
+        e.preventDefault();
+        const nextId = TABS[next].id;
+        setActiveTab(nextId);
+        tabRefs.current[nextId]?.focus();
+    };
 
     const renderTab = () => {
         switch (activeTab) {
             case 'dashboard': return (
                 <DashboardContent
-                    data={data} loading={loading} error={error}
+                    data={filteredData} loading={loading} error={error}
                     layout={layout} editing={editing}
                     onMove={movePanel} onHide={hidePanel} onShow={showPanel}
                 />
@@ -1260,16 +1354,25 @@ export default function AstraDashboard() {
                     <span className="a-brand-tag">Executive Layer</span>
                 </div>
                 <div className="a-topbar-tabs">
-                    {TABS.map(tab => (
-                        <button
-                            key={tab.id}
-                            className={`a-tab ${activeTab === tab.id ? 'a-tab-active' : ''}`}
-                            onClick={() => setActiveTab(tab.id)}
-                        >
-                            {tab.icon}
-                            <span>{tab.label}</span>
-                        </button>
-                    ))}
+                    <div className="a-tablist" role="tablist" aria-label="Astra dashboard views">
+                        {TABS.map((tab, i) => (
+                            <button
+                                key={tab.id}
+                                ref={(el) => { tabRefs.current[tab.id] = el; }}
+                                id={`a-tab-${tab.id}`}
+                                role="tab"
+                                aria-selected={activeTab === tab.id}
+                                aria-controls="a-tabpanel"
+                                tabIndex={activeTab === tab.id ? 0 : -1}
+                                className={`a-tab ${activeTab === tab.id ? 'a-tab-active' : ''}`}
+                                onClick={() => setActiveTab(tab.id)}
+                                onKeyDown={(e) => onTabKeyDown(e, i)}
+                            >
+                                {tab.icon}
+                                <span>{tab.label}</span>
+                            </button>
+                        ))}
+                    </div>
                     {activeTab === 'dashboard' && (
                         <button
                             className={`a-tab a-tab-edit ${editing ? 'a-tab-active' : ''}`}
@@ -1295,7 +1398,15 @@ export default function AstraDashboard() {
                     )}
                 </div>
             </div>
-            <div className="a-content">
+            {activeTab === 'dashboard' && (
+                <GlobalFilterBar
+                    filters={filters}
+                    onChange={setFilters}
+                    matchCount={visibleRowCount(filteredData)}
+                    totalCount={visibleRowCount(data)}
+                />
+            )}
+            <div className="a-content" id="a-tabpanel" role="tabpanel" aria-labelledby={`a-tab-${activeTab}`}>
                 {renderTab()}
             </div>
         </div>

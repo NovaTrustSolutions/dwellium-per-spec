@@ -2250,3 +2250,136 @@
     color: var(--a-text-dim);
     opacity: 0.8;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   GLOBAL FILTER BAR + TABLIST KEYBOARD NAV (Cycle 9)
+   ══════════════════════════════════════════════════════════════════ */
+.astra-dashboard .a-tablist {
+    display: flex;
+    gap: 4px;
+}
+
+/* Keyboard-focus ring for the tablist + edit/refresh tabs (a11y). */
+.astra-dashboard .a-tab:focus-visible {
+    outline: 2px solid var(--a-accent);
+    outline-offset: 1px;
+}
+
+.astra-dashboard .a-filterbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: var(--a-surface);
+    border-bottom: 1px solid var(--a-border);
+    flex-wrap: wrap;
+}
+
+.astra-dashboard .a-filterbar-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 220px;
+    max-width: 480px;
+}
+
+.astra-dashboard .a-filterbar-icon {
+    position: absolute;
+    left: 10px;
+    color: var(--a-text-dim);
+    pointer-events: none;
+}
+
+.astra-dashboard .a-filterbar-input {
+    width: 100%;
+    padding: 6px 30px 6px 30px;
+    background: var(--a-surface-2);
+    border: 1px solid var(--a-border);
+    border-radius: 8px;
+    color: var(--a-text);
+    font-size: 12px;
+}
+
+.astra-dashboard .a-filterbar-input::placeholder {
+    color: var(--a-text-dim);
+}
+
+.astra-dashboard .a-filterbar-input:focus-visible {
+    outline: 2px solid var(--a-accent);
+    outline-offset: 1px;
+    border-color: transparent;
+}
+
+.astra-dashboard .a-filterbar-clearq {
+    position: absolute;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--a-text-dim);
+    cursor: pointer;
+}
+
+.astra-dashboard .a-filterbar-clearq:hover {
+    color: var(--a-text);
+    background: var(--a-surface);
+}
+
+.astra-dashboard .a-filterbar-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--a-surface-2);
+    border: 1px solid var(--a-border);
+    border-radius: 8px;
+    color: var(--a-text-dim);
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.astra-dashboard .a-filterbar-toggle:hover {
+    color: var(--a-text);
+}
+
+.astra-dashboard .a-filterbar-toggle--on {
+    color: var(--a-accent);
+    background: rgba(214, 254, 81, 0.1);
+    border-color: rgba(214, 254, 81, 0.3);
+}
+
+.astra-dashboard .a-filterbar-toggle:focus-visible,
+.astra-dashboard .a-filterbar-clearq:focus-visible,
+.astra-dashboard .a-filterbar-clear:focus-visible {
+    outline: 2px solid var(--a-accent);
+    outline-offset: 1px;
+}
+
+.astra-dashboard .a-filterbar-count {
+    font-size: 11px;
+    color: var(--a-text-dim);
+    white-space: nowrap;
+}
+
+.astra-dashboard .a-filterbar-clear {
+    padding: 4px 10px;
+    background: transparent;
+    border: 1px solid var(--a-border);
+    border-radius: 8px;
+    color: var(--a-text-dim);
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s;
+}
+
+.astra-dashboard .a-filterbar-clear:hover {
+    color: var(--a-text);
+    background: var(--a-surface-2);
+}

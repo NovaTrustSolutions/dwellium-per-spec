@@ -257,3 +257,41 @@ Legend: ✅ done+committed · 🚧 in progress (continue next iteration) · ⬜ 
 - **Next:** Cycle 9 — Interactivity + a11y + polish: global filters (portfolio/date),
   consistent loading/empty/error UI across panels, WCAG AA control labels, keyboard nav.
   FULL gate.
+
+## Iteration 9 — 2026-05-29 — Cycle 9 (Interactivity + a11y + polish) ✅
+- NEW `dashboardFilters.ts` — pure `applyGlobalFilters(data, filters)` narrows EVERY
+  list panel at once from a global filter bar, applied centrally BEFORE data reaches the
+  panels. Two controls, both default-OFF (no-op = same reference returned → unfiltered
+  dashboard byte-identical, fully reversible):
+  - **Text quick-filter** (`query`): case-insensitive substring across each panel's
+    primary display text. Works on all 13 list panels. Aggregates (financeSnapshot, hr)
+    left intact.
+  - **"Attention only"** toggle: per-panel needs-attention predicate (priority hot /
+    compliance at-risk / overdue / lease ≤30d / vendor flagged / risk high / heatmap
+    delinq>5·maint>10·occ<85). No-op for calendar + agent log (no action axis).
+  - Helpers `filtersActive` + `visibleRowCount` + `EMPTY_FILTERS` exported.
+- `AstraDashboard.tsx`: +`GlobalFilterBar` component (search input + attention toggle +
+  live `N of M items` count + Clear; all controls labelled for WCAG 4.1.2). Main component
+  threads `filters` state → `applyGlobalFilters(data, filters)` → `filteredData` to panels;
+  bar shown on Dashboard tab only.
+- **a11y / keyboard nav:** top tab row promoted to WAI-ARIA tablist — `role="tablist"`
+  wrapper + `role="tab"` + `aria-selected` + roving `tabIndex` + Arrow/Home/End key nav
+  (activation-follows-focus via tabRefs); content = `role="tabpanel"` + `aria-labelledby`.
+  Edit/Refresh kept OUTSIDE the tablist. `:focus-visible` accent rings on tabs + filter-bar
+  controls. Loading/empty/error UI already unified via `PanelStatus` since Cycle 3.
+- **Deferred (logged in DASH_DECISIONS):** true portfolio DROPDOWN (needs shared id↔name
+  map the data layer lacks — query covers the honest subset) + global date-range (Financial
+  Snapshot owns its own 3/6/12/24-mo horizon). Carried to DASH_CLOSURE.
+- CSS: +`.a-filterbar*` (field/input/clearq/toggle/count/clear) + `.a-tablist` +
+  `.a-tab:focus-visible`. Reuses existing `--a-*` tokens + `.a-sr-only`.
+- Tests (+10, +1 file): `dashboardFilters.test.ts` — EMPTY_FILTERS no-op (same ref) +
+  null passthrough + query substring (all panels, case-insensitive) + no-match empties +
+  attentionOnly per-panel predicates + no-action-axis no-op + query∧attention compose +
+  filtersActive (whitespace-only=false) + visibleRowCount (null=0; 13×2=26; narrows).
+- **GATE 6/6 GREEN:** tsc exit 0 ✓ · vitest **459 passed / 56 files** (baseline 449/55 →
+  **+10 tests, +1 file**) ✓ · build seeds=true (852ms) ✓ · build seeds=false (763ms) ✓ ·
+  PII clean (51 files, 0 leaks) ✓ · SSR smoke PASS @ :3458 (200, 5949 B, 0 console
+  errors/warnings, 0 page errors) ✓.
+- **Next:** Cycle 10 — CLOSURE: write `DASH_CLOSURE.md` (commit SHAs, panel→source table,
+  composability/persistence summary, deferred items incl. portfolio-dropdown + global
+  date-range, push commands). Re-run FULL gate at closure HEAD. `touch ALL_DONE`.

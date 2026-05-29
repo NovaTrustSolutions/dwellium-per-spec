@@ -13,8 +13,10 @@ import {
     ClipboardList, ArrowUpRight, Globe, RefreshCw,
     ChevronUp, ChevronDown, ChevronLeft, X, Plus, Settings2,
     Shield, Scale, ExternalLink, Truck, KeyRound,
-    Landmark, ShieldAlert,
+    Landmark, ShieldAlert, Users, Sparkles, Search, Settings,
 } from 'lucide-react';
+import { useIntegrations } from '../../hooks/useIntegrations';
+import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { openStrataModule } from '../StrataDashboard/strataDeepLink';
 import AstraWorkspace from './AstraWorkspace';
 import ThreadChannels from './ThreadChannels';
@@ -22,7 +24,10 @@ import IntelligenceDashboard from './IntelligenceDashboard';
 import ObservabilityPanel from './ObservabilityPanel';
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout } from './useDashboardLayout';
-import { fetchFinanceSnapshot } from './dashboardData';
+import {
+    fetchFinanceSnapshot,
+    buildResearchPrompt, RESEARCH_TOPICS, RESEARCH_SYSTEM_PROMPT,
+} from './dashboardData';
 import {
     DASHBOARD_COLUMNS,
     type DashboardColumn, type DashboardLayout, type MoveDirection,
@@ -32,7 +37,7 @@ import type {
     DashCalendarEvent, AgentLogEntry, ActiveWorkitem, DomainSnapshot,
     ComplianceSummaryItem, LegalMatter,
     MaintenanceWorkOrder, LeaseExpiration, VendorStatus,
-    FinanceSnapshot, RiskRegisterItem,
+    FinanceSnapshot, RiskRegisterItem, HrSnapshot,
 } from './dashboardData';
 import './AstraDashboard.css';
 import './IntelligenceDashboard.css';
@@ -740,6 +745,172 @@ function RiskRegisterPanel({ items, loading, error }: PanelProps & { items: Risk
     );
 }
 
+/* ═══════════════════════════  HR SNAPSHOT  ═══════════════════════ */
+
+/** HR snapshot — headcount / open roles / incidents + per-department roll-up.
+ *  Clearly MOCK-labeled: no HR endpoint exists in the app today (Cycle-1 audit). */
+function HrSnapshotPanel({ snapshot }: { snapshot: HrSnapshot | null }) {
+    const hr = snapshot;
+    return (
+        <div className="a-panel a-hr">
+            <div className="a-panel-header">
+                <Users size={16} />
+                <span>HR Snapshot</span>
+                <MockBadge />
+            </div>
+            {hr === null ? (
+                <div className="a-panel-state a-panel-state--empty">No HR data</div>
+            ) : (
+                <>
+                    <div className="a-finance-cards a-hr-cards">
+                        <div className="a-finance-card">
+                            <span className="a-finance-label">Headcount</span>
+                            <span className="a-finance-value">{hr.headcount}</span>
+                        </div>
+                        <div className="a-finance-card">
+                            <span className="a-finance-label">Open Roles</span>
+                            <span className="a-finance-value">{hr.openRoles}</span>
+                        </div>
+                        <div className="a-finance-card">
+                            <span className="a-finance-label">Incidents</span>
+                            <span className="a-finance-value">{hr.incidents}</span>
+                        </div>
+                        <div className="a-finance-card">
+                            <span className="a-finance-label">Turnover (12mo)</span>
+                            <span className="a-finance-value">{hr.turnoverRate}%</span>
+                        </div>
+                    </div>
+                    <ul className="a-hr-depts">
+                        {hr.departments.map(d => (
+                            <li key={d.name} className="a-hr-dept">
+                                <span className="a-hr-dept-name">{d.name}</span>
+                                <span className="a-hr-dept-count">{d.headcount}</span>
+                                {d.open > 0 && (
+                                    <span className="a-hr-dept-open" title={`${d.open} open role${d.open === 1 ? '' : 's'}`}>
+                                        +{d.open} open
+                                    </span>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            )}
+        </div>
+    );
+}
+
+/* ═══════════════════════════  RESEARCH FEED (LLM)  ════════════════ */
+
+/** Research feed — runs a market/regulatory briefing through the user's own
+ *  LLM (per-user integrations). Graceful no-LLM state points to Settings.
+ *  `runLlm` is injectable for tests (defaults to the real callLlm router). */
+function ResearchFeedPanel({
+    runLlm,
+}: {
+    runLlm?: (prompt: string, llm: ReturnType<typeof useIntegrations>['integrations']['llm']) => Promise<string | null>;
+}) {
+    const { integrations } = useIntegrations();
+    const llmReady = hasActiveLlm(integrations.llm);
+    const [topic, setTopic] = useState('');
+    const [result, setResult] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const invoke = runLlm ?? (async (prompt, llm) => {
+        const res = await callLlm(
+            { prompt, systemPrompt: RESEARCH_SYSTEM_PROMPT, maxTokens: 700, temperature: 0.4 },
+            llm,
+        );
+        return res?.text ?? null;
+    });
+
+    const run = (rawTopic: string) => {
+        const t = rawTopic.trim();
+        if (!t || busy || !llmReady) return;
+        setTopic(t);
+        setBusy(true);
+        setError(null);
+        setResult(null);
+        invoke(buildResearchPrompt(t), integrations.llm)
+            .then((text) => {
+                if (text && text.trim()) setResult(text.trim());
+                else setError('The LLM returned no content. Try a different topic.');
+            })
+            .catch(() => setError('Research request failed. Check your LLM key in Settings → API Keys.'))
+            .finally(() => setBusy(false));
+    };
+
+    return (
+        <div className="a-panel a-research">
+            <div className="a-panel-header">
+                <Sparkles size={16} />
+                <span>Research Feed</span>
+                {llmReady
+                    ? <span className="a-badge a-badge-ok">{integrations.llm.active}</span>
+                    : <span className="a-badge a-badge-mock">No LLM</span>}
+            </div>
+
+            {!llmReady ? (
+                <div className="a-research-nokey">
+                    <Settings size={20} />
+                    <p>Connect your own AI provider to run market &amp; regulatory research.</p>
+                    <p className="a-research-hint">Open <strong>Settings → API Keys</strong> and enable a provider (Anthropic, OpenAI, Gemini, or a local model).</p>
+                </div>
+            ) : (
+                <>
+                    <form
+                        className="a-research-form"
+                        onSubmit={(e) => { e.preventDefault(); run(topic); }}
+                    >
+                        <label htmlFor="a-research-input" className="a-sr-only">Research topic</label>
+                        <input
+                            id="a-research-input"
+                            className="a-research-input"
+                            type="text"
+                            value={topic}
+                            placeholder="Ask about a market, regulation, or trend…"
+                            onChange={(e) => setTopic(e.target.value)}
+                            disabled={busy}
+                        />
+                        <button
+                            type="submit"
+                            className="a-research-go"
+                            disabled={busy || !topic.trim()}
+                            aria-label="Run research"
+                        >
+                            {busy ? <Clock size={14} /> : <Search size={14} />}
+                        </button>
+                    </form>
+
+                    <div className="a-research-topics" role="group" aria-label="Suggested research topics">
+                        {RESEARCH_TOPICS.map((qt) => (
+                            <button
+                                key={qt}
+                                className="a-research-chip"
+                                onClick={() => run(qt)}
+                                disabled={busy}
+                                title={qt}
+                            >
+                                {qt.length > 38 ? `${qt.slice(0, 38)}…` : qt}
+                            </button>
+                        ))}
+                    </div>
+
+                    {busy && <div className="a-panel-state a-panel-state--loading">Researching…</div>}
+                    {error && <div className="a-panel-state a-panel-state--error">{error}</div>}
+                    {result && !busy && (
+                        <div className="a-research-result">
+                            <div className="a-research-result-topic">{topic}</div>
+                            <p className="a-research-result-body">{result}</p>
+                            <span className="a-research-disclaimer">AI-generated via your {integrations.llm.active} key — verify before acting.</span>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
+
 /* ═══════════════════════════  ACTIVE WORKITEMS  ═══════════════════ */
 
 function ActiveWorkitems({ items, loading, error }: PanelProps & { items: ActiveWorkitem[] }) {
@@ -939,6 +1110,8 @@ const PANEL_META: Record<string, string> = {
     compliance: 'Compliance Tracker',
     financials: 'Financial Snapshot',
     risk: 'Risk Register',
+    hr: 'HR Snapshot',
+    research: 'Research Feed',
     agentlog: 'AI Agent Activity',
     arbitrage: '90-Day Quick Arbitrage',
 };
@@ -961,6 +1134,8 @@ function renderPanel(id: string, data: DashData, loading: boolean, error: string
         case 'compliance': return <ComplianceTracker items={data?.complianceItems ?? []} loading={loading} error={error} />;
         case 'financials': return <FinancialSnapshotPanel snapshot={data?.financeSnapshot ?? null} loading={loading} error={error} />;
         case 'risk': return <RiskRegisterPanel items={data?.riskRegister ?? []} loading={loading} error={error} />;
+        case 'hr': return <HrSnapshotPanel snapshot={data?.hr ?? null} />;
+        case 'research': return <ResearchFeedPanel />;
         case 'calendar': return <ComplianceCalendar events={data?.calendarEvents ?? []} loading={loading} error={error} />;
         case 'agentlog': return <AIAgentLog entries={data?.agentLog ?? []} loading={loading} error={error} />;
         case 'arbitrage': return <QuickArbitrage />;

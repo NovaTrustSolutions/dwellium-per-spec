@@ -222,3 +222,38 @@ Legend: ✅ done+committed · 🚧 in progress (continue next iteration) · ⬜ 
   @ :3458 (200, 5949 B, 0 console errors/warnings, 0 page errors) ✓.
 - **Next:** Cycle 8 — HR + Research panels: HR snapshot (mock-labeled, no HR endpoint) +
   Research feed via `callLlm` (per-user LLM, graceful no-LLM state). FULL gate.
+
+## Iteration 8 — 2026-05-29 — Cycle 8 (HR + Research panels) ✅
+- Two NEW exec panels: `hr` (right col, after risk) + `research` (center col, after
+  financials). DEFAULT_LAYOUT extended; reconcileLayout grafts both onto returning users
+  by construction. Left column UNCHANGED (movePanel test pins its order).
+- **HR Snapshot (`hr`) — clearly MOCK-labeled** (no HR endpoint exists; Cycle-1 audit):
+  `dashboardData.ts::fetchHrSnapshot()` upgraded from all-zero stub → representative
+  sample org for a mid-size PM company. NEW types `HrDept` + extended `HrSnapshot`
+  (+turnoverRate +departments). 6 departments (Property Mgmt 18/+2, Maintenance&Ops 24/+3,
+  Leasing 9/+1, Accounting 7, Legal&Compliance 4/+1, Admin 5) → headcount 67, openRoles 7,
+  incidents 2, turnover 12%. Dept headcounts/opens SUM to the top-line totals (honest
+  roll-up math even for sample data). Panel `HrSnapshotPanel` (4 stat cards + dept list w/
+  open-role pills) carries the existing `<MockBadge/>` ("Sample").
+- **Research Feed (`research`) — per-user LLM, graceful no-LLM state:** `ResearchFeedPanel`
+  uses `useIntegrations` + `hasActiveLlm` + `callLlm` (mirrors ThoughtWeaver/FactCheck
+  pattern). No-LLM → Settings→API Keys call-to-action (no input shown). LLM-ready → free-text
+  topic input + 5 quick-pick topic chips (`RESEARCH_TOPICS`) + result card with provider
+  disclaimer ("verify before acting"). Pure helpers extracted for testability:
+  `buildResearchPrompt(topic)` (trim + whitespace-collapse + exec framing) +
+  `RESEARCH_SYSTEM_PROMPT` (concise exec-briefing system prompt) + `RESEARCH_TOPICS`.
+  `runLlm` is injectable (defaults to real callLlm router) → testable without timers.
+- `AstraDashboard.tsx`: +imports (Users/Sparkles/Search/Settings icons, useIntegrations,
+  callLlm/hasActiveLlm, HrSnapshot type). Registered `hr`+`research` in PANEL_META +
+  renderPanel. CSS: +`.a-hr-*` (cards/dept list/open pill) + `.a-research-*` (nokey CTA,
+  form, topic chips, result card, disclaimer) + `.a-badge-ok` + `.a-sr-only` +
+  `.a-panel-state--loading`. Reuses `.a-finance-cards` grid idiom for HR stat cards.
+- Tests (+4): HR dept-sum invariant (headcount/openRoles == dept sums; turnover 0-100) +
+  buildResearchPrompt (whitespace-collapse + exec framing + nullish-guard) + RESEARCH_TOPICS
+  non-empty. Existing `hr: toMatchObject({mock:true})` still green (shape extended, not broken).
+- **GATE 6/6 GREEN:** tsc exit 0 ✓ · vitest **449 passed / 55 files** (baseline 445/55 → **+4**) ✓ ·
+  build seeds=true (854ms) ✓ · build seeds=false (840ms) ✓ · PII clean (51 files, 0 leaks) ✓ ·
+  SSR smoke PASS @ :3458 (200, 5949 B, 0 console errors/warnings, 0 page errors) ✓.
+- **Next:** Cycle 9 — Interactivity + a11y + polish: global filters (portfolio/date),
+  consistent loading/empty/error UI across panels, WCAG AA control labels, keyboard nav.
+  FULL gate.

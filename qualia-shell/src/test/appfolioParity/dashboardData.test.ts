@@ -44,6 +44,8 @@ import {
     vendorStatusRank,
     riskSeverityRank,
     daysUntil,
+    buildResearchPrompt,
+    RESEARCH_TOPICS,
     loadDashboardData,
     type DashboardDataDeps,
 } from '../../components/AstraDashboard/dashboardData';
@@ -214,6 +216,31 @@ describe('dashboardData — fetchDomainSnapshots', () => {
 describe('dashboardData — fetchHrSnapshot (mock-labeled)', () => {
     it('carries mock: true (DASH-D5)', () => {
         expect(fetchHrSnapshot()).toMatchObject({ mock: true });
+    });
+    it('department headcounts + opens sum to the top-line totals (Cycle 8)', () => {
+        const hr = fetchHrSnapshot();
+        expect(hr.departments.length).toBeGreaterThan(0);
+        const hcSum = hr.departments.reduce((s, d) => s + d.headcount, 0);
+        const openSum = hr.departments.reduce((s, d) => s + d.open, 0);
+        expect(hr.headcount).toBe(hcSum);
+        expect(hr.openRoles).toBe(openSum);
+        expect(hr.turnoverRate).toBeGreaterThanOrEqual(0);
+        expect(hr.turnoverRate).toBeLessThanOrEqual(100);
+    });
+});
+
+describe('dashboardData — research prompt (Cycle 8)', () => {
+    it('frames the topic for the exec audience and collapses whitespace', () => {
+        expect(buildResearchPrompt('  rent   growth\n trends ')).toBe('Brief me on: rent growth trends');
+    });
+    it('tolerates empty/nullish input without throwing', () => {
+        expect(buildResearchPrompt('')).toBe('Brief me on: ');
+        // @ts-expect-error — exercising the runtime guard
+        expect(() => buildResearchPrompt(undefined)).not.toThrow();
+    });
+    it('ships a non-empty quick-pick topic list', () => {
+        expect(RESEARCH_TOPICS.length).toBeGreaterThan(0);
+        expect(RESEARCH_TOPICS.every(t => typeof t === 'string' && t.length > 0)).toBe(true);
     });
 });
 

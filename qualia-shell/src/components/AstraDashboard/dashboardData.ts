@@ -203,11 +203,18 @@ export interface RiskRegisterItem {
 }
 
 /** HR has no backend endpoint today (Cycle-1 audit) → clearly-labeled mock. */
+export interface HrDept {
+    name: string;
+    headcount: number;
+    open: number;
+}
 export interface HrSnapshot {
     mock: true;
     headcount: number;
     openRoles: number;
-    incidents: number;
+    incidents: number;        // workplace/HR incidents (safety, grievances)
+    turnoverRate: number;     // trailing-12-month attrition, 0-100 (%)
+    departments: HrDept[];    // breakdown; headcounts sum to `headcount`
 }
 
 /* ──────────────────────────── raw row types ───────────────────────── */
@@ -432,6 +439,34 @@ export function riskSeverityRank(severity: string | undefined): number {
     return RISK_SEVERITY_RANK[String(severity ?? '').toLowerCase()] ?? 3;
 }
 
+/* ──────────────────────── research feed (LLM) ─────────────────────── */
+
+/** Quick-pick research topics for the exec research feed. */
+export const RESEARCH_TOPICS: string[] = [
+    'Regulatory changes affecting US residential property management this quarter',
+    'Rental market rent-growth and vacancy trends',
+    'Fair-housing & tenant-screening compliance updates',
+    'Property insurance cost and coverage trends',
+    'Multifamily operating-expense and maintenance cost outlook',
+];
+
+export const RESEARCH_SYSTEM_PROMPT =
+    'You are a research analyst briefing a property-management executive. ' +
+    'Give a concise, decision-useful briefing in plain prose. Lead with a 1-sentence ' +
+    'takeaway, then 3-5 short bullet points of the most material facts, trends, or ' +
+    'risks. Be specific and balanced; if you are uncertain or lack recent data, say so ' +
+    'explicitly rather than inventing figures. Do not use markdown headings.';
+
+/**
+ * Build the user-prompt for a research query. Trims + collapses whitespace
+ * and frames the topic for the exec audience. Pure + exported for tests —
+ * the LLM call itself lives in the panel (depends on per-user integrations).
+ */
+export function buildResearchPrompt(topic: string): string {
+    const clean = String(topic ?? '').replace(/\s+/g, ' ').trim();
+    return `Brief me on: ${clean}`;
+}
+
 /* ──────────────────────────── fetchers ────────────────────────────── */
 
 /**
@@ -611,12 +646,25 @@ export async function fetchDomainSnapshots(
 
 /**
  * HR snapshot — clearly-labeled MOCK (DASH-D5). No HR endpoint exists in
- * the app today (Cycle-1 audit). Carries `mock: true` so the panel can
- * render a visible "Sample data" badge. Replace with a real fetcher if/
- * when an HR endpoint lands.
+ * the app today (Cycle-1 audit), so this returns a representative sample
+ * org for a mid-size property-management company. Carries `mock: true` so
+ * the panel renders a visible "Sample" badge. Department headcounts sum to
+ * the top-line `headcount` and `open` counts sum to `openRoles` (kept
+ * consistent so the panel's roll-up math is honest about the sample).
+ * Replace with a real fetcher if/when an HR endpoint lands.
  */
 export function fetchHrSnapshot(): HrSnapshot {
-    return { mock: true, headcount: 0, openRoles: 0, incidents: 0 };
+    const departments: HrDept[] = [
+        { name: 'Property Management', headcount: 18, open: 2 },
+        { name: 'Maintenance & Ops', headcount: 24, open: 3 },
+        { name: 'Leasing', headcount: 9, open: 1 },
+        { name: 'Accounting & Finance', headcount: 7, open: 0 },
+        { name: 'Legal & Compliance', headcount: 4, open: 1 },
+        { name: 'Administration', headcount: 5, open: 0 },
+    ];
+    const headcount = departments.reduce((s, d) => s + d.headcount, 0);
+    const openRoles = departments.reduce((s, d) => s + d.open, 0);
+    return { mock: true, headcount, openRoles, incidents: 2, turnoverRate: 12, departments };
 }
 
 /**

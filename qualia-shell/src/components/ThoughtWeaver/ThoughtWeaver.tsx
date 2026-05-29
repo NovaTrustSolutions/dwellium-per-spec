@@ -768,6 +768,99 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                 </div>
             )}
 
+            {/* ─── REPORTS TAB ─── */}
+            {activeTab === 'reports' && (
+                <div className="tw-reports">
+                    <div className="tw-reports__header">
+                        <h3 className="tw-section-title">Reports &amp; Insights</h3>
+                        <div className="tw-reports__actions">
+                            <button
+                                className="tw-reports__gen-btn"
+                                onClick={() => runGenerate()}
+                                disabled={generating || mergedCaptures.length === 0}
+                                aria-busy={generating}
+                                title="Draft today's report, refresh to-dos, roll up the week, and surface insights"
+                            >
+                                {generating ? '⏳ Generating…' : '✨ Generate now'}
+                            </button>
+                            {(reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length) > 0 && (
+                                <button className="tw-reports__clear-btn" onClick={handleClearReports} disabled={generating}>
+                                    🧹 Clear reports
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {genMsg && (
+                        <p className="tw-reports__msg" role="status" aria-live="polite">{genMsg}</p>
+                    )}
+                    {!llmReady && (
+                        <p className="tw-reports__hint" role="note">
+                            Add an LLM key in Settings → API Keys for richer reports and non-obvious insights. Without
+                            it, reports use a built-in heuristic and the insights pass stays empty.
+                        </p>
+                    )}
+
+                    {(reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length) === 0 ? (
+                        <div className="tw-empty">
+                            <span className="tw-empty__icon">📈</span>
+                            <p>
+                                {mergedCaptures.length === 0
+                                    ? 'Capture a few thoughts first, then come back to generate a report.'
+                                    : 'No reports yet. Click "Generate now" to draft today\'s report and surface insights.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Non-obvious insights */}
+                            {reports.insights.length > 0 && (
+                                <section className="tw-reports__section" aria-label="Insights">
+                                    <h4 className="tw-reports__section-title">💡 Insights</h4>
+                                    {reports.insights.map(i => (
+                                        <div key={i.id} className={`tw-insight tw-insight--${i.kind}`}>
+                                            <span className="tw-insight__kind">{i.kind}</span>
+                                            <span className="tw-insight__text">{i.text}</span>
+                                        </div>
+                                    ))}
+                                </section>
+                            )}
+
+                            {/* Daily reports */}
+                            {reports.dailyReports.length > 0 && (
+                                <section className="tw-reports__section" aria-label="Daily reports">
+                                    <h4 className="tw-reports__section-title">📅 Daily Reports</h4>
+                                    {reports.dailyReports.map(r => (
+                                        <article key={r.id} className="tw-report-card">
+                                            <header className="tw-report-card__head">
+                                                <span className="tw-report-card__date">{r.date}</span>
+                                                <span className="tw-report-card__count">{r.captureCount} capture{r.captureCount === 1 ? '' : 's'}</span>
+                                            </header>
+                                            <p className="tw-report-card__body">{r.summary}</p>
+                                        </article>
+                                    ))}
+                                </section>
+                            )}
+
+                            {/* Weekly summaries */}
+                            {reports.weeklySummaries.length > 0 && (
+                                <section className="tw-reports__section" aria-label="Weekly summaries">
+                                    <h4 className="tw-reports__section-title">🗓️ Weekly Summaries</h4>
+                                    {reports.weeklySummaries.map(w => (
+                                        <article key={w.id} className="tw-report-card">
+                                            <header className="tw-report-card__head">
+                                                <span className="tw-report-card__date">Week of {w.weekStart}</span>
+                                                <span className="tw-report-card__count">{w.captureCount} capture{w.captureCount === 1 ? '' : 's'}</span>
+                                            </header>
+                                            <p className="tw-report-card__body">{w.summary}</p>
+                                        </article>
+                                    ))}
+                                </section>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+
             {/* ─── DASHBOARD TAB ─── */}
             {activeTab === 'dashboard' && (
                 <div className="tw-dashboard">

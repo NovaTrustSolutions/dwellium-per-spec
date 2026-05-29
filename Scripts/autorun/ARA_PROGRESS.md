@@ -208,3 +208,39 @@ data layer so failures surface meaningful messages.
 LINKAGE.md (e.g. SmartActions → open relevant widget via `dwellium:open-widget`; audit/
 toast events). Mirror the `araLinkage.ts` / `stellaLinkage.ts` injectable-deps pattern.
 Add a linkage unit test. FULL gate.
+
+## 2026-05-29 02:26 EDT — Iteration 7 — Cycle 7 (INBOX ZERO LINKAGE) ✅
+
+**Did:** Wired Inbox Zero into the cross-widget `dwellium:open-widget` bus (LINKAGE gaps
+I2 + I3). Inbox handoffs are ACTION-driven (not reply-scanning like ARA/Stella): once
+SmartActions generates an AI reply draft, the operator can take it into an assistant/editor.
+
+- **NEW `src/components/InboxZero/inboxLinkage.ts`** — pure/injectable, mirrors
+  araLinkage.ts + stellaLinkage.ts exactly. `DRAFT_HANDOFF_TARGETS` = Scribe / ARA / Stella
+  (LIVE registry ids verified: scribe L265, ara-console L157, stella-agent L166).
+  `getDraftHandoffs(draft)` returns targets only for a draft with a usable body (empty/
+  whitespace-safe; returns fresh copies so callers can't mutate the catalog).
+  `openWidgetHandoff(h, deps?)` reuses `workspaceScribe.dispatchOpenWidget` (no new plumbing).
+- **SmartActions.tsx** — additive only: import + an "Open in:" handoff row of ghost-button
+  chips rendered INSIDE the existing `draftResult` box (after the draft body). aria-label +
+  title on each chip. No existing markup removed.
+- **Calendar handoff (Extract Events) — 🚫 BLOCKED**: no calendar widget in
+  widgetRegistry.ts (grep-verified). Marked blocked-with-reason in LINKAGE.md §3.
+- **LINKAGE.md §3** — I2 + I3 rows flipped ❌ → ✅ with mechanism; added the blocked
+  calendar row.
+- **Tests +6** in NEW `src/test/InboxLinkage.test.ts`: targets for real draft / LIVE-ids /
+  empty-safe (null/undefined/no-body/empty/whitespace) / immutability / injected-dep
+  dispatch / default `dwellium:open-widget` bus dispatch.
+
+**Proof (FULL gate, 6/6 green):**
+- `npx tsc -b` ✓ (TSC_OK)
+- `npx vitest run` → **51 files / 383 passed** (+6 vs 377 at Cycle 6)
+- `npx react-router build` ✓ (BUILD1_OK)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓ (BUILD2_OK)
+- `node Scripts/verify_no_pii_leak.mjs` ✓ (51 files, 0 leaks)
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (0 errors/warnings/page-errors; 200; 5949 B)
+- Commit: `01e8283`
+
+**Next:** Cycle 8 — Cross-feature linkage verification + LINKAGE.md finalize. Re-run the
+audit; confirm every intended ARA/Stella/InboxZero link is ✅ (or blocked-with-reason) and
+backed by a test/commit. FULL gate.

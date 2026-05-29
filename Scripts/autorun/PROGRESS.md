@@ -141,3 +141,45 @@ file-explorer tree (D3) + back-nav (plan §11). ✅ DONE.
 surface (status/stage badges via `fetchThreadMeta`). Replace the `view==='project'`
 placeholder with a thread list (tree `tier==='thread'` children) + per-thread status/stage.
 Touches source ⇒ full strict gate (`SMOKE_TEST_PORT=3458`).
+
+---
+
+## 2026-05-28 — Cycle 7 (source): Threads drill-down (project view)
+
+**Cycle:** C7 — drill into a project to see its THREADS, derived from the shared
+file-explorer tree (C7-D1), each enriched with `.thread.json` sidecar metadata
+(status/stage badges) fetched best-effort (C7-D2/D3). ✅ DONE.
+
+**Did:**
+- `workspaceStore.ts` — added `threadMetas` map + `threadMetaLoading` flag; the pure
+  `threadsForProject(path)` selector (walks domain → project, returns the project node's
+  `tier === 'thread'` children); the `loadThreadMetas(paths)` thunk (Promise.allSettled over
+  `fetchThreadMeta`, caches only fulfilled metas keyed by path — best-effort, swallows
+  per-thread errors). Imports `fetchThreadMeta` + `ThreadMeta` from workspaceApi. reset()
+  covers the new fields. (C7-D1/D2)
+- `Workspace.tsx` — replaced the `view==='project'` placeholder with the THREAD view: thread
+  card list (MessageSquare + name + status badge [active=acid-lime / ✓ complete=green] +
+  stage pill + "N files" hint), with treeError+Retry / treeLoading / empty states (reuses the
+  shared tree status since threads derive from the tree). Lazy `loadThreadMetas()` effect on
+  entering project view, keyed on the joined thread-path set. Lazy tree-load effect extended
+  to fire for any non-index view. Toolbar now 3-way: title/back already resolved project name;
+  added a `sortThread` `<select>` (Modified default + Name) and "Refresh threads" RefreshCw
+  target with matching aria-labels. `sortProjects` generalised → `sortEntries` (shared by
+  project + thread lists). (C7-D1/D3/D4)
+- `src/test/Workspace.threadMetas.test.ts` (NEW) — 8 tests, `vi.mock` of BOTH fileExplorerApi
+  (fetchTree) and workspaceApi (fetchThreadMeta/fetchDomaines): threadsForProject
+  (thread-tier only / ignores files / empty for childless / empty for unknown) +
+  loadThreadMetas (caches by path / best-effort skip on reject / empty-list no-op / merges
+  into existing).
+- Decisions C7-D1..D4 logged to DECISIONS.md.
+
+**Verified — FULL strict gate 6/6 GREEN** (log `Scripts/autorun/logs/gate_c7_1780026114.log`,
+exit 0):
+- `tsc -b` ✓ (exit 0) · `vitest` ✓ **43 files / 310 passed / 0 failed** (+1 file, +8 tests
+  vs Cycle-6 42 files / 302 passed) · `react-router build` seeds=true ✓ + seeds=false ✓
+  (4 "built in" markers) · PII ✓ (51 files, 0 leaks) · SSR smoke (`SMOKE_TEST_PORT=3458`)
+  ✓ PASS (200 / 5949 B, 0 console/page/ReferenceError).
+
+**Next:** Cycle 8 — mutations: create/rename/move/delete domaine·project·thread over the
+existing file-explorer routes (+ metadata sidecars via workspaceApi.putDomaine/putThreadMeta).
+Touches source ⇒ full strict gate (`SMOKE_TEST_PORT=3458`).

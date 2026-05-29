@@ -134,3 +134,52 @@ button swap their target by `view` (domaines vs projects), with matching aria-la
 - Why: reuses the existing per-user UI store fields; one toolbar that adapts avoids duplicate
   controls. `position-asc` isn't offered for projects (tree nodes carry no position) → name.
 - Reversibility: per-view branches in the toolbar are isolated `view === …` blocks.
+
+---
+
+## Cycle 7 (2026-05-28) — Threads drill-down (project view)
+
+**C7-D1 — Threads are DERIVED from the cached tree, not a new endpoint.** A pure
+`threadsForProject(path)` selector walks the cached file-explorer tree (domain → project)
+and returns the matching project node's `tier === 'thread'` children — sister to
+`projectsForDomaine` (C6-D1, decision D3: one source of truth for per-user structure). No
+`/api/workspace/threads` route is added; no extra tree fetch (the tree is already loaded
+when the user drills through the domaine view).
+- Why: D3 already shares `GET /api/file-explorer/tree`; the backend tier-classifies nodes,
+  so threads fall out of the tree for free. Avoids a redundant endpoint + contract surface.
+- Reversibility: trivial — `threadsForProject` is one pure method; swapping it for a
+  dedicated fetch later is mechanical and contained to the store.
+
+**C7-D2 — Thread metadata (status/stage) is fetched BEST-EFFORT and is purely additive.**
+`loadThreadMetas(paths)` fetches each thread's `.thread.json` sidecar via
+`workspaceApi.fetchThreadMeta()` using `Promise.allSettled`, caching only the fulfilled ones
+into a `threadMetas` map keyed by path. The thread LIST always renders from the tree; a
+missing/erroring sidecar (e.g. the sibling backend `/api/workspace/thread-meta` route not
+implemented yet) simply yields a thread card with no badge.
+- Why: metadata is enrichment, not the list itself — the navigation MVP must work before the
+  metadata backend lands (rule 4: never a dead end; matches the FactCheck/Postgres
+  "backend not implemented yet" graceful-degradation precedent). `allSettled` means one bad
+  thread never blocks the rest.
+- Reversibility: `threadMetas` + `threadMetaLoading` are two additive store fields; the
+  badge rendering is a single `meta &&` block in the card. Removing leaves the list intact.
+
+**C7-D3 — Metas load lazily on entering the project view, keyed on the thread-path set.**
+An effect fires `loadThreadMetas()` when `view === 'project'` and threads are visible, keyed
+on the joined thread-path string (stable) so it re-runs on a thread-set change, not on every
+render. `threadMetaLoading` is independent of `treeLoading`/`loading`.
+- Why: don't pay the meta fetches until the user drills into a project; the path-set key
+  avoids effect thrash from array identity churn.
+- Reversibility: move the call into a different effect / prefetch alongside the tree — one
+  line; contained to the widget.
+
+**C7-D4 — Thread sort offers Modified (default) + Name; toolbar sort/refresh now 3-way.**
+The project view uses the per-user `sortThread` pref (`modified-desc` default — threads carry
+`lastModified`, unlike domaines/projects). The single toolbar sort `<select>` and RefreshCw
+button gain a third (thread) target by `view`, with matching aria-labels ("Sort threads" /
+"Refresh threads"). The `sortProjects` helper was generalised to `sortEntries` (shared by
+the project + thread lists — identical tree-node sort logic).
+- Why: reuses the existing per-user UI store field (`sortThread` already existed since C4);
+  one adaptive toolbar avoids duplicate controls; `position-asc` isn't offered (tree nodes
+  carry no position).
+- Reversibility: per-view branches are isolated `view === …` blocks; `sortEntries` is a
+  pure rename of `sortProjects`.

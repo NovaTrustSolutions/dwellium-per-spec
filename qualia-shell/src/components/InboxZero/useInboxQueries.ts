@@ -35,6 +35,25 @@ export const inboxKeys = {
 
 type AuthFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
+/**
+ * Parse a fetch Response as JSON, but turn transport-level failures into clear
+ * Error messages instead of an opaque `SyntaxError` from `.json()`. A non-2xx
+ * response that returns HTML (proxy error page, 502, etc.) would otherwise throw
+ * "Unexpected token <" — useless to the operator. We surface the status instead.
+ */
+async function parseJson(res: Response, label: string): Promise<any> {
+    if (!res.ok) {
+        // Best-effort to read a structured error body; fall back to status text.
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || `${label} failed (${res.status})`);
+    }
+    try {
+        return await res.json();
+    } catch {
+        throw new Error(`${label}: invalid response`);
+    }
+}
+
 // ─── Items ─────────────────────────────────────────────
 export function useInboxItems(
     authFetch: AuthFetch,
@@ -54,7 +73,7 @@ export function useInboxItems(
             params.set('offset', String(offset));
             params.set('limit', String(limit));
             const res = await authFetch(`${INBOX_API}?${params.toString()}`);
-            const data = await res.json();
+            const data = await parseJson(res, 'Inbox items fetch');
             if (!data.success) throw new Error(data.error || 'Failed to fetch items');
             return {
                 items: (data.data || []) as InboxItem[],
@@ -72,7 +91,7 @@ export function useInboxStats(authFetch: AuthFetch) {
         queryKey: inboxKeys.stats(),
         queryFn: async () => {
             const res = await authFetch(`${INBOX_API}/stats`);
-            const data = await res.json();
+            const data = await parseJson(res, 'Stats fetch');
             if (!data.success) throw new Error('Stats fetch failed');
             return data.data as InboxStats;
         },
@@ -86,7 +105,7 @@ export function useNewsletters(authFetch: AuthFetch, enabled = true) {
         queryKey: inboxKeys.newsletters(),
         queryFn: async () => {
             const res = await authFetch(`${INBOX_API}/newsletters`);
-            const data = await res.json();
+            const data = await parseJson(res, 'Newsletter fetch');
             if (!data.success) throw new Error('Newsletter fetch failed');
             return data.data as NewsletterSender[];
         },
@@ -102,7 +121,7 @@ export function useEmailBody(authFetch: AuthFetch, emailId: string | null) {
         queryFn: async () => {
             if (!emailId) throw new Error('No email ID');
             const res = await authFetch(`${INBOX_API}/${emailId}/body`);
-            const data = await res.json();
+            const data = await parseJson(res, 'Body fetch');
             if (!data.success) throw new Error('Body fetch failed');
             return data.data as { body: string; subject: string; sender: string };
         },
@@ -117,7 +136,7 @@ export function useOperatorMetrics(authFetch: AuthFetch) {
         queryKey: inboxKeys.metrics(),
         queryFn: async () => {
             const res = await authFetch(`${INBOX_API}/metrics`);
-            const data = await res.json();
+            const data = await parseJson(res, 'Metrics fetch');
             if (!data.success) throw new Error('Metrics fetch failed');
             return data.data as OperatorMetrics;
         },
@@ -131,7 +150,7 @@ export function useSettings(authFetch: AuthFetch, enabled = true) {
         queryKey: inboxKeys.settings(),
         queryFn: async () => {
             const res = await authFetch(`${API_BASE}/api/settings`);
-            const data = await res.json();
+            const data = await parseJson(res, 'Settings fetch');
             if (!data.success) throw new Error('Settings fetch failed');
             return data.data as AgentSettings;
         },

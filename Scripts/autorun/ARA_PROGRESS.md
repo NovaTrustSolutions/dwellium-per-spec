@@ -171,3 +171,40 @@ another widget. PROTECTED widget: strictly additive, NO restyle/restructure.
 **Next:** Cycle 6 — Inbox Zero correctness (~15 files). Fix most-impactful real issues
 (loading/empty/error states, broken tabs, `useInboxQueries` failure handling). Add NEW
 `src/test/InboxZero.test.tsx` covering main view + one failure path. FULL gate.
+
+## 2026-05-29 02:21 EDT — Iteration 6 — Cycle 6 (INBOX ZERO CORRECTNESS) ✅
+
+**Did:** Fixed the most-impactful real correctness bug in Inbox Zero — the **false
+"Inbox Zero!" celebratory empty state shown on a failed fetch** — plus hardened the
+data layer so failures surface meaningful messages.
+
+- **InboxZero.tsx** — when `itemsQuery.isError` the UI previously fell through to the
+  `pendingItems.length === 0` branch and rendered "🎉 Inbox Zero! All caught up", lying
+  to the operator that nothing was pending. Added `itemsError` / `itemsErrorMessage`
+  bridge vars; new `role="alert"` error block ("⚠️ Couldn’t load inbox" + message + a
+  `iz-action iz-action--retry` Retry button calling `itemsQuery.refetch()`). Empty +
+  section-header branches now gated on `!itemsError`. Additive only — no markup removed.
+- **useInboxQueries.ts** — added `parseJson(res, label)` helper: checks `res.ok` and
+  catches `.json()` parse failures, so a non-2xx HTML/empty body becomes a clear
+  `"<label> failed (<status>)"` instead of an opaque `SyntaxError: Unexpected token <`.
+  Applied to all 6 query fns (items / stats / newsletters / body / metrics / settings).
+  Mutations left untouched — verified **unused** (`grep` shows zero consumers; dead code,
+  out of bounded scope).
+- **Tests +3** in NEW `src/test/InboxZero.test.tsx`: (1) happy path — pending cards render
+  + no false-empty/error; (2) genuine empty — "Inbox Zero!" only on real zero-item
+  success; (3) failure path — error block + status message + Retry, and NO "Inbox Zero!"
+  (regression guard). Mocks UserContext + ThemeContext (value-exports preserved), stubs
+  jsdom-missing `EventSource`, real retry-disabled QueryClientProvider.
+
+**Proof (FULL gate, 6/6 green):**
+- `npx tsc -b` ✓ (TSC_EXIT=0)
+- `npx vitest run` → **50 files / 377 passed** (+3 vs 374 at Cycle 5)
+- `npx react-router build` ✓ (BUILD1_OK)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓ (BUILD2_OK)
+- `node Scripts/verify_no_pii_leak.mjs` ✓ (51 files, 0 leaks)
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (0 errors/warnings/page-errors; 200; 5949 B)
+
+**Next:** Cycle 7 — Inbox Zero linkage. Wire InboxZero into the cross-widget buses per
+LINKAGE.md (e.g. SmartActions → open relevant widget via `dwellium:open-widget`; audit/
+toast events). Mirror the `araLinkage.ts` / `stellaLinkage.ts` injectable-deps pattern.
+Add a linkage unit test. FULL gate.

@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '../../context/UserContext';
+import { useIngestion } from '../Scribe/ingestion/useIngestion';
+import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
+import {
+    arrangeMarkdownFiles,
+    displayName,
+    formatBytes,
+    DEFAULT_ARRANGE,
+    type MdSortKey,
+    type MdSortDir,
+} from './markdownArrange';
 import './HonchoHermesPanel.css';
 
 /* ─── Types ─── */
@@ -52,7 +62,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 const IMPORTANCE_LABELS = ['Low', 'Medium', 'High', 'Critical'];
 
-type TabId = 'memory' | 'hermes' | 'agents' | 'graph';
+type TabId = 'memory' | 'hermes' | 'agents' | 'graph' | 'files';
 
 export default function HonchoHermesPanel() {
     const { user, authFetch } = useUser();
@@ -82,6 +92,17 @@ export default function HonchoHermesPanel() {
 
     /* ─── GRAPH TAB STATE ─── */
     const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[] } | null>(null);
+
+    /* ─── FILES TAB STATE (Markdown arrange/filter view) ─── */
+    const ingestion = useIngestion();
+    const [fileSortKey, setFileSortKey] = useState<MdSortKey>(DEFAULT_ARRANGE.sortKey);
+    const [fileSortDir, setFileSortDir] = useState<MdSortDir>(DEFAULT_ARRANGE.sortDir);
+    const [fileFilter, setFileFilter] = useState<string>(DEFAULT_ARRANGE.filterText);
+    const arrangedFiles = arrangeMarkdownFiles(ingestion.converted, {
+        sortKey: fileSortKey,
+        sortDir: fileSortDir,
+        filterText: fileFilter,
+    });
 
     /* ═══ DATA FETCHING ═══ */
     const fetchMemories = useCallback(async () => {
@@ -288,6 +309,7 @@ export default function HonchoHermesPanel() {
                     ['hermes', '⚡ Hermes'],
                     ['agents', '🤖 Agents'],
                     ['graph', '🕸️ Graph'],
+                    ['files', '📄 Files'],
                 ] as [TabId, string][]).map(([id, label]) => (
                     <button key={id} className={`hhp__tab ${activeTab === id ? 'active' : ''}`}
                         onClick={() => {
@@ -555,6 +577,79 @@ export default function HonchoHermesPanel() {
                                 })}
                             </svg>
                         </div>
+                    )}
+                </div>
+            )}
+
+            {/* ═══ FILES TAB — Markdown arrange/filter view ═══ */}
+            {!loading && activeTab === 'files' && (
+                <div className="hhp__panel">
+                    <h3 className="hhp__section-title">📄 Converted Markdown</h3>
+
+                    {/* Arrange / filter toolbar */}
+                    <div className="hhp__toolbar">
+                        <input
+                            className="hhp__search"
+                            placeholder="Filter files by name..."
+                            aria-label="Filter Markdown files by name"
+                            value={fileFilter}
+                            onChange={e => setFileFilter(e.target.value)}
+                        />
+                        <select
+                            className="hhp__type-filter"
+                            aria-label="Sort Markdown files by"
+                            value={fileSortKey}
+                            onChange={e => setFileSortKey(e.target.value as MdSortKey)}
+                        >
+                            <option value="date">Date</option>
+                            <option value="name">Name</option>
+                            <option value="size">Size</option>
+                        </select>
+                        <button
+                            className="hhp__btn"
+                            aria-label={`Sort ${fileSortDir === 'asc' ? 'ascending' : 'descending'} — toggle direction`}
+                            title={fileSortDir === 'asc' ? 'Ascending' : 'Descending'}
+                            onClick={() => setFileSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+                        >
+                            {fileSortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
+                        </button>
+                    </div>
+
+                    {arrangedFiles.length === 0 ? (
+                        <div className="hhp__empty">
+                            <span>📄</span>
+                            <p>
+                                {ingestion.converted.length === 0
+                                    ? 'No converted Markdown files yet. Use Scribe → Choose folders → Convert now to populate this view.'
+                                    : 'No files match the current filter.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <ul className="hhp__file-list" aria-label="Converted Markdown files">
+                            {arrangedFiles.map((f, i) => (
+                                <li key={`${f.sourceName}-${i}`} className="hhp__file-row">
+                                    <button
+                                        className="hhp__file-open"
+                                        aria-label={`Open ${displayName(f)} in Scribe`}
+                                        title="Open in Scribe"
+                                        onClick={() => dispatchOpenWidget('scribe', 'Scribe', '📝')}
+                                    >
+                                        <span className="hhp__file-name">📝 {displayName(f)}</span>
+                                        <span className="hhp__file-meta">
+                                            <span className="hhp__file-size">{formatBytes(f.bytes)}</span>
+                                            {f.convertedAt && (
+                                                <span className="hhp__file-date">
+                                                    {f.convertedAt.slice(0, 10)}
+                                                </span>
+                                            )}
+                                            {f.status === 'passthrough' && (
+                                                <span className="hhp__file-badge">passthrough</span>
+                                            )}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
                     )}
                 </div>
             )}

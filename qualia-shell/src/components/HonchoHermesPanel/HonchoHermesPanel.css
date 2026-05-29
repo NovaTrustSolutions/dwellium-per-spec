@@ -795,3 +795,80 @@
 .hhp__panel::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.15);
 }
+
+/* ── Files tab — Markdown arrange/filter view (Cycle 7) ── */
+.hhp__btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary, #e2e8f0);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.hhp__btn:hover {
+    background: rgba(214, 254, 81, 0.15);
+    border-color: rgba(214, 254, 81, 0.3);
+}
+
+.hhp__file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hhp__file-row {
+    margin: 0;
+}
+
+.hhp__file-open {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    color: var(--text-primary, #e2e8f0);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+}
+
+.hhp__file-open:hover {
+    border-color: rgba(214, 254, 81, 0.35);
+    background: rgba(214, 254, 81, 0.05);
+}
+
+.hhp__file-name {
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hhp__file-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--text-tertiary, #808080);
+}
+
+.hhp__file-badge {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(214, 254, 81, 0.12);
+    color: #D6FE51;
+    font-size: 10px;
+}

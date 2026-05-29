@@ -22,6 +22,12 @@ import type { DreamEntry } from './honchoDreamStore';
 import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
 import { hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
 import { parseHermesCommand, spawnHermesFromStella } from './stellaHermesSpawn';
+import {
+    filterTools,
+    groupByCategory,
+    toolCount,
+    type StellaTool,
+} from './stellaToolCatalog';
 
 const API_BASE = '/api/stella';
 
@@ -297,6 +303,8 @@ export default function StellaAgent() {
     const [skillSearchResults, setSkillSearchResults] = useState<SkillSearchResult[]>([]);
     const [skillSearching, setSkillSearching] = useState(false);
     const [installingSkill, setInstallingSkill] = useState<string | null>(null);
+    // Tool-catalog filter (Cycle 18 — Stella's organized tool library)
+    const [toolCatalogQuery, setToolCatalogQuery] = useState('');
 
     // Memory editing state
     const [editingMemory, setEditingMemory] = useState<string | null>(null);
@@ -738,6 +746,23 @@ export default function StellaAgent() {
     const handleHandoffClick = useCallback((handoff: WidgetHandoff) => {
         openWidgetHandoff(handoff);
     }, []);
+
+    // Run a tool-catalog entry via an EXISTING Stella mechanism (Cycle 18). No new plumbing:
+    // chat-command → prefill the composer + jump to chat; open-widget → the open-widget
+    // intent bus (same path as suggested handoffs); info → switch to the owning tab.
+    const runCatalogTool = useCallback((tool: StellaTool) => {
+        const a = tool.action;
+        if (a.kind === 'chat-command' && a.command) {
+            setTab('chat');
+            setInput(a.command);
+            requestAnimationFrame(() => inputRef.current?.focus());
+        } else if (a.kind === 'open-widget' && a.widgetId) {
+            openWidgetHandoff({ widgetId: a.widgetId, label: a.widgetLabel ?? tool.name, icon: a.widgetIcon ?? '' });
+        } else if (a.kind === 'info' && a.tab) {
+            setTab(a.tab as Tab);
+        }
+    }, []);
+    const catalogGroups = useMemo(() => groupByCategory(filterTools(toolCatalogQuery)), [toolCatalogQuery]);
 
     // ─── Skills ───────────────────────────────────────
     const loadSkills = useCallback(async () => {
@@ -2071,6 +2096,52 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             ))}
                         </div>
                     )}
+
+                    {/* Stella Tool Catalog (Cycle 18) — broad, organized library of
+                        built-in capabilities; each entry runs via an existing mechanism.
+                        Additive section, always available (independent of backend skills). */}
+                    <div className="stella__tool-catalog" role="region" aria-label="Stella tool catalog">
+                        <h5 className="stella__skill-hub-title">🛠️ Tool Catalog ({toolCount()})</h5>
+                        <div className="stella__skill-search">
+                            <input
+                                className="stella__skill-search-input"
+                                type="text"
+                                placeholder="Filter tools…"
+                                aria-label="Filter Stella tools"
+                                value={toolCatalogQuery}
+                                onChange={e => setToolCatalogQuery(e.target.value)}
+                            />
+                        </div>
+                        {catalogGroups.length === 0 ? (
+                            <div className="stella__empty">
+                                <span className="stella__empty-icon">🛠️</span>
+                                <p className="stella__empty-text">No tools match “{toolCatalogQuery}”.</p>
+                            </div>
+                        ) : (
+                            catalogGroups.map(group => (
+                                <div key={group.category} className="stella__tool-cat-group">
+                                    <div className="stella__tool-cat-label">{group.category}</div>
+                                    {group.tools.map(tool => (
+                                        <button
+                                            key={tool.id}
+                                            type="button"
+                                            className="stella__tool-card"
+                                            onClick={() => runCatalogTool(tool)}
+                                            aria-label={`Run ${tool.name}`}
+                                            title={tool.description}
+                                        >
+                                            <span className="stella__tool-icon" aria-hidden="true">{tool.icon}</span>
+                                            <span className="stella__tool-info">
+                                                <span className="stella__tool-name">{tool.name}</span>
+                                                <span className="stella__tool-desc">{tool.description}</span>
+                                            </span>
+                                            <span className="stella__tool-go" aria-hidden="true">↗</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            ))
+                        )}
+                    </div>
 
                     <h5 className="stella__skill-hub-title">🧩 Installed Skills</h5>
                     {skillsLoading ? (

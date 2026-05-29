@@ -4,21 +4,31 @@
  * Cycle 5: the DOMAINES INDEX view (fetch + card grid + loading/empty/error + sort).
  * Cycle 6: the DOMAINE view — drill into a domaine to see its PROJECTS, derived from the
  *   SHARED file-explorer tree (decision D3) via the pure projectsForDomaine() selector.
- * Cycle 7 (this edit): the PROJECT view — drill into a project to see its THREADS, again
+ * Cycle 7: the PROJECT view — drill into a project to see its THREADS, again
  *   derived from the cached tree (threadsForProject() selector), each ENRICHED with its
  *   `.thread.json` sidecar metadata (status / stage badges) fetched best-effort via
  *   loadThreadMetas(). Metadata is purely additive: the thread list always renders from the
  *   tree, and a missing/erroring sidecar (e.g. the sibling backend route not yet implemented)
- *   simply yields a thread card with no badges. The toolbar's sort `<select>` + RefreshCw
- *   gain a third (thread) target. The drill chain index → domaine → project is now fully
- *   navigable end-to-end.
+ *   simply yields a thread card with no badges.
+ * Cycle 8 (this edit): MUTATIONS. A toolbar "+ New" reveals an inline create row that adds a
+ *   domaine / project / thread at the current altitude (createEntry → mkdir over the shared
+ *   file-explorer route, then refetch). Each domaine/project/thread card grows an inline
+ *   rename (Pencil → input) and a two-step delete (Trash → confirm) plus, for threads, a
+ *   mark-complete / reopen toggle (setThreadStatus → putThreadMeta). Mutation errors surface
+ *   in a dismissible banner separate from the load/empty/error states. Cards became
+ *   `role="listitem"` wrappers around a `role="button"` open-target so the action buttons can
+ *   nest validly (no button-in-button). Move + domaine-metadata editing ship as tested store
+ *   thunks; their UI is deferred (DECISIONS C8-D2/C8-D3).
  *
  * Patterns mirror FileExplorer: inline styles (fey.com black + acid-lime #D6FE51),
  * useContext(UserContext)-based per-user state via useWorkspaceUi, RefreshCw refresh
  * convention with aria-label, SSR-safe stores. See WORKSPACE_PORTING_PLAN.md §11.
  */
-import { useEffect, useMemo } from 'react';
-import { RefreshCw, ChevronLeft, FolderOpen, Folder, MessageSquare, FileText } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+    RefreshCw, ChevronLeft, FolderOpen, Folder, MessageSquare, FileText,
+    Plus, Pencil, Trash2, Check, X, CheckCircle2, RotateCcw,
+} from 'lucide-react';
 import { useWorkspaceStore } from './workspaceStore';
 import { useWorkspaceUi } from './useWorkspaceUi';
 import type { DomaineMeta } from './workspaceApi';
@@ -26,6 +36,21 @@ import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import type { WorkspaceSort } from './workspaceUiStore';
 
 const ACCENT = '#D6FE51';
+const DANGER = '#ff4d6d';
+
+/** Shared inline style for the small icon-only action buttons on cards + editor rows. */
+const iconBtn: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'transparent', border: 'none', color: '#888',
+    cursor: 'pointer', padding: 3, borderRadius: 4, flexShrink: 0,
+};
+
+/** Shared inline style for the create + rename text inputs. */
+const editInput: React.CSSProperties = {
+    flex: 1, minWidth: 0, background: '#0a0a0a', color: '#f0f0f0',
+    border: '1px solid #333', borderRadius: 4, padding: '4px 8px',
+    fontSize: 12, fontFamily: 'inherit', outline: 'none',
+};
 
 function sortDomaines(list: DomaineMeta[], sort: WorkspaceSort): DomaineMeta[] {
     const copy = list.slice();
@@ -76,6 +101,13 @@ export default function Workspace() {
     const openDomaine = useWorkspaceStore((s) => s.openDomaine);
     const openProject = useWorkspaceStore((s) => s.openProject);
     const goBack = useWorkspaceStore((s) => s.goBack);
+    const mutating = useWorkspaceStore((s) => s.mutating);
+    const mutationError = useWorkspaceStore((s) => s.mutationError);
+    const clearMutationError = useWorkspaceStore((s) => s.clearMutationError);
+    const createEntry = useWorkspaceStore((s) => s.createEntry);
+    const renameEntry = useWorkspaceStore((s) => s.renameEntry);
+    const removeEntry = useWorkspaceStore((s) => s.removeEntry);
+    const setThreadStatus = useWorkspaceStore((s) => s.setThreadStatus);
 
     const {
         sortDomaine, setSortDomaine,
@@ -83,6 +115,13 @@ export default function Workspace() {
         sortThread, setSortThread,
         setLastActiveDomainePath,
     } = useWorkspaceUi();
+
+    // Transient inline-editor state for mutations (client-only — never persisted).
+    const [creating, setCreating] = useState(false);
+    const [createName, setCreateName] = useState('');
+    const [renamingPath, setRenamingPath] = useState<string | null>(null);
+    const [renameName, setRenameName] = useState('');
+    const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
 
     // Fetch the domaines list once on mount (effect-time = SSR-safe).
     useEffect(() => {
@@ -126,10 +165,103 @@ export default function Workspace() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [view, threadPathsKey, loadThreadMetas]);
 
+    // Close any open inline editor whenever we change altitude (navigation resets transient UI).
+    useEffect(() => {
+        setCreating(false); setCreateName('');
+        setRenamingPath(null); setRenameName('');
+        setConfirmDeletePath(null);
+    }, [view, activeDomainePath, activeProjectPath]);
+
     const handleOpenDomaine = (d: DomaineMeta) => {
         setLastActiveDomainePath(d.path);
         openDomaine(d.path);
     };
+
+    // The tier + parent path a "+ New" create targets at the current altitude.
+    const childTier = view === 'index' ? 'domaine' : view === 'domaine' ? 'project' : 'thread';
+    const createParent = view === 'index' ? null : view === 'domaine' ? activeDomainePath : activeProjectPath;
+
+    const handleCreate = async () => {
+        if (createParent === undefined) return; // active path not resolved yet
+        const ok = await createEntry(createParent ?? null, createName);
+        if (ok) { setCreating(false); setCreateName(''); }
+    };
+    const startRename = (path: string, currentName: string) => {
+        setRenamingPath(path); setRenameName(currentName); setConfirmDeletePath(null);
+    };
+    const submitRename = async (path: string) => {
+        const ok = await renameEntry(path, renameName);
+        if (ok) { setRenamingPath(null); setRenameName(''); }
+    };
+    const submitDelete = async (path: string) => {
+        const ok = await removeEntry(path);
+        if (ok) setConfirmDeletePath(null);
+    };
+
+    /** Per-card action cluster: rename (Pencil) + two-step delete (Trash → confirm). */
+    const cardActions = (path: string, name: string) => (
+        <div style={{ display: 'flex', gap: 1, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+            <button
+                type="button" aria-label={`Rename ${name}`} title="Rename"
+                onClick={(e) => { e.stopPropagation(); startRename(path, name); }}
+                style={iconBtn}
+                onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#888'; }}
+            ><Pencil size={12} strokeWidth={1.75} /></button>
+            {confirmDeletePath === path ? (
+                <>
+                    <button
+                        type="button" aria-label={`Confirm delete ${name}`} title="Confirm delete"
+                        onClick={(e) => { e.stopPropagation(); void submitDelete(path); }}
+                        disabled={mutating} style={{ ...iconBtn, color: DANGER }}
+                    ><Check size={12} strokeWidth={2} /></button>
+                    <button
+                        type="button" aria-label="Cancel delete" title="Cancel"
+                        onClick={(e) => { e.stopPropagation(); setConfirmDeletePath(null); }}
+                        style={iconBtn}
+                    ><X size={12} strokeWidth={2} /></button>
+                </>
+            ) : (
+                <button
+                    type="button" aria-label={`Delete ${name}`} title="Delete"
+                    onClick={(e) => { e.stopPropagation(); setConfirmDeletePath(path); setRenamingPath(null); }}
+                    style={iconBtn}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = DANGER; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#888'; }}
+                ><Trash2 size={12} strokeWidth={1.75} /></button>
+            )}
+        </div>
+    );
+
+    /** Inline rename editor row, shown in place of a card while renamingPath === path. */
+    const renameRow = (path: string) => (
+        <div
+            key={path} role="listitem"
+            style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: 8,
+                borderRadius: 8, background: '#101010', border: `1px solid ${ACCENT}`,
+            }}
+        >
+            <input
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus value={renameName} aria-label="New name"
+                onChange={(e) => setRenameName(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') void submitRename(path);
+                    if (e.key === 'Escape') { setRenamingPath(null); setRenameName(''); }
+                }}
+                style={editInput}
+            />
+            <button type="button" aria-label="Confirm rename" title="Save" disabled={mutating}
+                onClick={() => void submitRename(path)} style={{ ...iconBtn, color: ACCENT }}>
+                <Check size={14} strokeWidth={2} />
+            </button>
+            <button type="button" aria-label="Cancel rename" title="Cancel"
+                onClick={() => { setRenamingPath(null); setRenameName(''); }} style={iconBtn}>
+                <X size={14} strokeWidth={2} />
+            </button>
+        </div>
+    );
 
     // Display labels for the toolbar/back-nav (resolve domaine display name from metadata).
     const domaineName = activeDomainePath
@@ -245,6 +377,24 @@ export default function Workspace() {
                 )}
 
                 <button
+                    type="button"
+                    onClick={() => { setCreating((c) => !c); setCreateName(''); clearMutationError(); }}
+                    title={`New ${childTier}`}
+                    aria-label={`New ${childTier}`}
+                    aria-pressed={creating}
+                    style={{
+                        display: 'flex', alignItems: 'center',
+                        background: 'transparent', border: 'none',
+                        color: creating ? ACCENT : '#666', cursor: 'pointer', padding: 2,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = creating ? ACCENT : '#666'; }}
+                >
+                    <Plus size={15} strokeWidth={2} />
+                </button>
+
+                <button
+                    type="button"
                     onClick={refresh}
                     title={refreshLabel}
                     aria-label={refreshLabel}
@@ -265,6 +415,56 @@ export default function Workspace() {
 
             {/* Body */}
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 12 }}>
+                {mutationError && (
+                    <div
+                        role="alert"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+                            padding: '8px 12px', fontSize: 11, color: DANGER,
+                            background: 'rgba(255,77,109,0.06)', borderRadius: 6,
+                            border: '1px solid rgba(255,77,109,0.25)',
+                        }}
+                    >
+                        <span style={{ flex: 1 }}>{mutationError}</span>
+                        <button
+                            type="button" aria-label="Dismiss error" title="Dismiss"
+                            onClick={clearMutationError} style={{ ...iconBtn, color: DANGER }}
+                        ><X size={13} strokeWidth={2} /></button>
+                    </div>
+                )}
+
+                {creating && (
+                    <div
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
+                            padding: 8, borderRadius: 8, background: '#101010',
+                            border: `1px solid ${ACCENT}`,
+                        }}
+                    >
+                        <input
+                            // eslint-disable-next-line jsx-a11y/no-autofocus
+                            autoFocus value={createName}
+                            placeholder={`New ${childTier} name`}
+                            aria-label={`New ${childTier} name`}
+                            onChange={(e) => setCreateName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') void handleCreate();
+                                if (e.key === 'Escape') { setCreating(false); setCreateName(''); }
+                            }}
+                            style={editInput}
+                        />
+                        <button type="button" aria-label={`Create ${childTier}`} title="Create"
+                            disabled={mutating} onClick={() => void handleCreate()}
+                            style={{ ...iconBtn, color: ACCENT }}>
+                            <Check size={14} strokeWidth={2} />
+                        </button>
+                        <button type="button" aria-label="Cancel create" title="Cancel"
+                            onClick={() => { setCreating(false); setCreateName(''); }} style={iconBtn}>
+                            <X size={14} strokeWidth={2} />
+                        </button>
+                    </div>
+                )}
+
                 {view === 'project' ? (
                     treeError ? (
                         <div
@@ -306,6 +506,7 @@ export default function Workspace() {
                             style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
                         >
                             {sortedThreads.map((t) => {
+                                if (renamingPath === t.path) return renameRow(t.path);
                                 const meta = threadMetas[t.path];
                                 const files = fileCount(t);
                                 const isComplete = meta?.status === 'complete';
@@ -358,6 +559,23 @@ export default function Workspace() {
                                                     {files === 1 ? '1 file' : `${files} files`}
                                                 </span>
                                             )}
+                                            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <button
+                                                    type="button"
+                                                    aria-label={isComplete ? `Reopen ${t.name}` : `Mark ${t.name} complete`}
+                                                    title={isComplete ? 'Reopen thread' : 'Mark complete'}
+                                                    disabled={mutating}
+                                                    onClick={() => void setThreadStatus(t.path, isComplete ? 'active' : 'complete')}
+                                                    style={{ ...iconBtn, color: isComplete ? '#8fbf9a' : '#888' }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.color = isComplete ? '#8fbf9a' : '#888'; }}
+                                                >
+                                                    {isComplete
+                                                        ? <RotateCcw size={12} strokeWidth={1.75} />
+                                                        : <CheckCircle2 size={12} strokeWidth={1.75} />}
+                                                </button>
+                                                {cardActions(t.path, t.name)}
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -409,49 +627,58 @@ export default function Workspace() {
                             }}
                         >
                             {sortedProjects.map((p) => {
+                                if (renamingPath === p.path) return renameRow(p.path);
                                 const threads = threadCount(p);
                                 return (
-                                    <button
-                                        key={p.path}
-                                        role="listitem"
-                                        onClick={() => openProject(p.path)}
-                                        title={p.path}
-                                        style={{
-                                            display: 'flex', flexDirection: 'column', gap: 6,
-                                            textAlign: 'left', cursor: 'pointer',
-                                            padding: 12, borderRadius: 8,
-                                            background: '#101010',
-                                            border: '1px solid #1e1e1e',
-                                            borderLeft: '3px solid #2a2a2a',
-                                            color: '#e8e8e8', fontFamily: 'inherit',
-                                            transition: 'border-color 100ms, background 100ms',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#161616';
-                                            e.currentTarget.style.borderColor = '#333';
-                                            e.currentTarget.style.borderLeftColor = ACCENT;
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = '#101010';
-                                            e.currentTarget.style.borderColor = '#1e1e1e';
-                                            e.currentTarget.style.borderLeftColor = '#2a2a2a';
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <Folder size={14} strokeWidth={1.75} style={{ color: '#9a9a9a', flexShrink: 0 }} />
+                                    <div key={p.path} role="listitem" style={{ position: 'relative' }}>
+                                        <div
+                                            role="button" tabIndex={0}
+                                            onClick={() => openProject(p.path)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p.path); }
+                                            }}
+                                            title={p.path}
+                                            style={{
+                                                display: 'flex', flexDirection: 'column', gap: 6,
+                                                textAlign: 'left', cursor: 'pointer',
+                                                padding: 12, borderRadius: 8,
+                                                background: '#101010',
+                                                border: '1px solid #1e1e1e',
+                                                borderLeft: '3px solid #2a2a2a',
+                                                color: '#e8e8e8', fontFamily: 'inherit',
+                                                transition: 'border-color 100ms, background 100ms',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = '#161616';
+                                                e.currentTarget.style.borderColor = '#333';
+                                                e.currentTarget.style.borderLeftColor = ACCENT;
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = '#101010';
+                                                e.currentTarget.style.borderColor = '#1e1e1e';
+                                                e.currentTarget.style.borderLeftColor = '#2a2a2a';
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 30 }}>
+                                                <Folder size={14} strokeWidth={1.75} style={{ color: '#9a9a9a', flexShrink: 0 }} />
+                                                <span style={{
+                                                    flex: 1, minWidth: 0,
+                                                    fontSize: 12, fontWeight: 600, color: '#f0f0f0',
+                                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                }}>{p.name}</span>
+                                            </div>
                                             <span style={{
-                                                fontSize: 12, fontWeight: 600, color: '#f0f0f0',
-                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                            }}>{p.name}</span>
+                                                display: 'flex', alignItems: 'center', gap: 4,
+                                                fontSize: 10, color: '#777',
+                                            }}>
+                                                <MessageSquare size={11} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                                                {threads === 1 ? '1 thread' : `${threads} threads`}
+                                            </span>
                                         </div>
-                                        <span style={{
-                                            display: 'flex', alignItems: 'center', gap: 4,
-                                            fontSize: 10, color: '#777',
-                                        }}>
-                                            <MessageSquare size={11} strokeWidth={1.75} style={{ flexShrink: 0 }} />
-                                            {threads === 1 ? '1 thread' : `${threads} threads`}
-                                        </span>
-                                    </button>
+                                        <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                                            {cardActions(p.path, p.name)}
+                                        </div>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -499,49 +726,60 @@ export default function Workspace() {
                             gap: 10,
                         }}
                     >
-                        {sortedDomaines.map((d) => (
-                            <button
-                                key={d.path}
-                                role="listitem"
-                                onClick={() => handleOpenDomaine(d)}
-                                title={d.description || d.name}
-                                style={{
-                                    display: 'flex', flexDirection: 'column', gap: 6,
-                                    textAlign: 'left', cursor: 'pointer',
-                                    padding: 12, borderRadius: 8,
-                                    background: '#101010',
-                                    border: '1px solid #1e1e1e',
-                                    borderLeft: `3px solid ${d.color || ACCENT}`,
-                                    color: '#e8e8e8', fontFamily: 'inherit',
-                                    transition: 'border-color 100ms, background 100ms',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#161616';
-                                    e.currentTarget.style.borderColor = '#333';
-                                    e.currentTarget.style.borderLeftColor = d.color || ACCENT;
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = '#101010';
-                                    e.currentTarget.style.borderColor = '#1e1e1e';
-                                    e.currentTarget.style.borderLeftColor = d.color || ACCENT;
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <FolderOpen size={14} strokeWidth={1.75} style={{ color: d.color || ACCENT, flexShrink: 0 }} />
-                                    <span style={{
-                                        fontSize: 12, fontWeight: 600, color: '#f0f0f0',
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                    }}>{d.name}</span>
+                        {sortedDomaines.map((d) => {
+                            if (renamingPath === d.path) return renameRow(d.path);
+                            return (
+                                <div key={d.path} role="listitem" style={{ position: 'relative' }}>
+                                    <div
+                                        role="button" tabIndex={0}
+                                        onClick={() => handleOpenDomaine(d)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpenDomaine(d); }
+                                        }}
+                                        title={d.description || d.name}
+                                        style={{
+                                            display: 'flex', flexDirection: 'column', gap: 6,
+                                            textAlign: 'left', cursor: 'pointer',
+                                            padding: 12, borderRadius: 8,
+                                            background: '#101010',
+                                            border: '1px solid #1e1e1e',
+                                            borderLeft: `3px solid ${d.color || ACCENT}`,
+                                            color: '#e8e8e8', fontFamily: 'inherit',
+                                            transition: 'border-color 100ms, background 100ms',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = '#161616';
+                                            e.currentTarget.style.borderColor = '#333';
+                                            e.currentTarget.style.borderLeftColor = d.color || ACCENT;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = '#101010';
+                                            e.currentTarget.style.borderColor = '#1e1e1e';
+                                            e.currentTarget.style.borderLeftColor = d.color || ACCENT;
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 30 }}>
+                                            <FolderOpen size={14} strokeWidth={1.75} style={{ color: d.color || ACCENT, flexShrink: 0 }} />
+                                            <span style={{
+                                                flex: 1, minWidth: 0,
+                                                fontSize: 12, fontWeight: 600, color: '#f0f0f0',
+                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                            }}>{d.name}</span>
+                                        </div>
+                                        {d.description && (
+                                            <span style={{
+                                                fontSize: 10, color: '#888', lineHeight: 1.5,
+                                                display: '-webkit-box', WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                                            }}>{d.description}</span>
+                                        )}
+                                    </div>
+                                    <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                                        {cardActions(d.path, d.name)}
+                                    </div>
                                 </div>
-                                {d.description && (
-                                    <span style={{
-                                        fontSize: 10, color: '#888', lineHeight: 1.5,
-                                        display: '-webkit-box', WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                                    }}>{d.description}</span>
-                                )}
-                            </button>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

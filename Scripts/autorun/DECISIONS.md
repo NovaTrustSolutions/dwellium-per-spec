@@ -183,3 +183,27 @@ the project + thread lists — identical tree-node sort logic).
   carry no position).
 - Reversibility: per-view branches are isolated `view === …` blocks; `sortEntries` is a
   pure rename of `sortProjects`.
+
+## Cycle 8 — mutations (2026-05-28)
+
+- **C8-D1: Mutation routing.** Structure mutations (create/rename/move/delete domaine·
+  project·thread) go over the SHARED file-explorer routes (`mkdir`/`rename`/`move`/`entry`
+  in `fileExplorerApi`) per plan D1/D3 — NO parallel `/api/workspace/*` structure routes.
+  Metadata mutations go over the workspace sidecar routes (`putDomaine`/`putThreadMeta`).
+  Each structure mutation refetches the affected cache on success (`loadTree`; plus
+  `loadDomaines` when a depth-1 domaine folder changed) — refetch-on-mutation, mirroring
+  FileExplorer (no live watcher). Reversible: thunks are additive; no schema lock-in.
+- **C8-D2: Move UI deferred.** `moveEntry` ships as a tested store thunk, but its UI (a
+  destination-picker / drag-drop) is deferred to a later polish cycle. Rationale: a
+  cross-parent destination picker is its own coherent UI unit; deferring keeps Cycle 8
+  bounded + gate-green. The thunk is ready for that UI to call.
+- **C8-D3: Domaine metadata-edit UI deferred.** `saveDomaineMeta` (color/description/
+  position via `putDomaine`) ships as a tested store thunk; the edit FORM UI is deferred
+  to the same polish cycle as the DomaineBadge work (plan Cycle 9). Thread mark-complete
+  (`setThreadStatus`) DID get UI this cycle (one-button toggle, high-value + trivial).
+- **C8-D4: Card markup → listitem+role=button.** Domaine + project cards changed from a
+  single `<button role="listitem">` to a `<div role="listitem">` wrapping an inner
+  `<div role="button" tabIndex=0 onKeyDown>` open-target, so the per-card rename/delete
+  action `<button>`s can nest as valid HTML (no button-in-button). Thread cards were
+  already `<div>`s. No render test depended on the old markup (workspace tests are
+  store-level), so this is low-risk + reversible.

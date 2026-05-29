@@ -183,3 +183,43 @@ exit 0):
 **Next:** Cycle 8 — mutations: create/rename/move/delete domaine·project·thread over the
 existing file-explorer routes (+ metadata sidecars via workspaceApi.putDomaine/putThreadMeta).
 Touches source ⇒ full strict gate (`SMOKE_TEST_PORT=3458`).
+
+---
+
+### Cycle 8 — mutations (create/rename/move/delete + metadata) — 2026-05-28 23:54:06
+
+**Did:** Shipped the Workspace MUTATION layer.
+- `workspaceStore.ts` — added the `mutating`/`mutationError` pair + `clearMutationError`,
+  and six thunks: `createEntry(parentPath|null, name)` (mkdir; reloads tree, +domaines for a
+  depth-1 domaine), `renameEntry(path, toName)`, `removeEntry(path)` (both refetch + reload
+  domaines for depth-1; rename/remove defensively follow/step-out of the active node),
+  `moveEntry(fromPath, toPath)` (cross-parent), `saveDomaineMeta(path, patch)` (putDomaine
+  + reload domaines), `setThreadStatus(threadPath, status)` (putThreadMeta + optimistic
+  merge into threadMetas). Names validated client-side to match the backend rename guard
+  (no empty / `/` / `\\` / `..`). New imports: mkdir/rename/move/deleteEntry from
+  fileExplorerApi; putDomaine/putThreadMeta + DomainePatch from workspaceApi. reset() covers
+  the new fields. (C8-D1)
+- `Workspace.tsx` — toolbar "+ New" toggles an inline create row (domaine/project/thread by
+  altitude → createEntry). Each card grew inline rename (Pencil → input, Enter/Esc) and
+  two-step delete (Trash → Check/X confirm); thread cards also get a mark-complete / reopen
+  toggle (setThreadStatus). Dismissible mutation-error banner, separate from load/empty/error.
+  Domaine + project cards restructured from `<button>` to `<div role=listitem>` wrapping an
+  inner `<div role=button tabIndex=0 onKeyDown>` so action buttons nest validly (C8-D4).
+  Navigation resets all inline-editor state. Move UI + domaine-metadata-edit UI deferred
+  (C8-D2/C8-D3) — those thunks ship tested, UI-less.
+- `src/test/Workspace.mutations.test.ts` (NEW) — 25 tests across all six thunks: create
+  (domaine vs child path, trim, empty/separator rejection, error), rename (depth-1 vs project
+  reload scope, active-path follow, invalid, error), remove (reload scope, step-out × 2,
+  error), move (reload scope × 2, error), saveDomaineMeta (reload, error), setThreadStatus
+  (merge, preserve-existing, error-leaves-cache), clearMutationError + reset.
+- Decisions C8-D1..D4 logged to DECISIONS.md.
+
+**Verified — FULL strict gate 6/6 GREEN** (log `Scripts/autorun/logs/gate_c8_1780026778.log`):
+- `tsc -b` ✓ (exit 0) · `vitest` ✓ **44 files / 335 passed / 0 failed** (+1 file, +25 tests
+  vs Cycle-7 43 files / 310 passed) · `react-router build` seeds=true ✓ + seeds=false ✓
+  (4 "built in" markers) · PII ✓ (51 files, 0 leaks) · SSR smoke (`SMOKE_TEST_PORT=3458`)
+  ✓ PASS (200 / 5949 B, 0 console/page/ReferenceError).
+
+**Next:** Cycle 9 — Scribe "open in Scribe" handoff (D4) + DomaineBadge component (and the
+deferred move UI / domaine-metadata-edit form, C8-D2/C8-D3, fold in here). Touches source ⇒
+full strict gate (`SMOKE_TEST_PORT=3458`).

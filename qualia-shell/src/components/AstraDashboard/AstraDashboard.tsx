@@ -3,35 +3,72 @@
  * Watchdog List, Financial Quick-viz, Compliance Calendar, AI Agent Log.
  * Houses 5 tabs: Dashboard, Workspace, Channels, Intelligence, Observability.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { API_BASE } from '../../config';
 import {
     LayoutDashboard, Wrench, MessageSquare,
     Building2, AlertTriangle, DollarSign,
     CalendarCheck, Bot, ChevronRight, Clock,
     TrendingUp, TrendingDown, Activity, Brain, Eye,
-    ClipboardList, ArrowUpRight, Globe, Layers
+    ClipboardList, ArrowUpRight, Globe, RefreshCw
 } from 'lucide-react';
 import AstraWorkspace from './AstraWorkspace';
 import ThreadChannels from './ThreadChannels';
 import IntelligenceDashboard from './IntelligenceDashboard';
 import ObservabilityPanel from './ObservabilityPanel';
+import { useDashboardData } from './useDashboardData';
+import type {
+    HeatmapProperty, WatchdogItem, FinancialCard,
+    DashCalendarEvent, AgentLogEntry, ActiveWorkitem, DomainSnapshot,
+} from './dashboardData';
 import './AstraDashboard.css';
 import './IntelligenceDashboard.css';
 
 type AstraTab = 'dashboard' | 'workspace' | 'channels' | 'intelligence' | 'observability';
 
-/* ═══════════════════════════  MOCK DATA  ═══════════════════════════ */
+/* ═══════════════════════════  PANEL STATE  ═══════════════════════════ */
 
-const HEATMAP_PROPERTIES: { name: string; occupancy: number; delinquency: number; maintenance: number }[] = [];
+/**
+ * Shared loading / error / empty placeholder for a panel body. Returns
+ * `null` once real rows are ready so the panel renders its own content.
+ * (Cycle 9 will unify this styling across every panel; Cycle 3 wires the
+ * three states consistently for the seven real-data panels.)
+ */
+function PanelStatus({ loading, error, empty, emptyLabel }: {
+    loading: boolean;
+    error: string | null;
+    empty: boolean;
+    emptyLabel?: string;
+}) {
+    if (loading) {
+        return (
+            <div className="a-panel-state" role="status">
+                <RefreshCw size={13} className="a-panel-state-spin" /> Loading…
+            </div>
+        );
+    }
+    if (error) {
+        return (
+            <div className="a-panel-state a-panel-state--error" role="alert">
+                Couldn’t load data — {error}
+            </div>
+        );
+    }
+    if (empty) {
+        return <div className="a-panel-state a-panel-state--empty">{emptyLabel ?? 'No data yet'}</div>;
+    }
+    return null;
+}
 
-const WATCHDOG_ITEMS: { id: string; title: string; priority: string; due: string; status: string; property: string }[] = [];
+/** Small badge marking a panel whose data is sample/not-yet-wired (DASH-D5). */
+function MockBadge() {
+    return <span className="a-badge a-badge-mock" title="Sample data — not yet wired to a live source">Sample</span>;
+}
 
-const FINANCIAL_CARDS: { label: string; value: string; change: string; trend: 'up' | 'down' }[] = [];
-
-const CALENDAR_EVENTS: { day: number; type: string; label: string }[] = [];
-
-const AGENT_LOG: { time: string; agent: string; action: string; type: string }[] = [];
+interface PanelProps {
+    loading: boolean;
+    error: string | null;
+}
 
 /* ═══════════════════════════  HELPERS  ═══════════════════════════ */
 
@@ -54,92 +91,108 @@ function heatColor(value: number, metric: 'occupancy' | 'delinquency' | 'mainten
 
 /* ═══════════════════════════  PANELS  ═══════════════════════════ */
 
-function PortfolioHeatmap() {
+function PortfolioHeatmap({ properties, loading, error }: PanelProps & { properties: HeatmapProperty[] }) {
+    const ready = !loading && !error && properties.length > 0;
     return (
         <div className="a-panel a-heatmap">
             <div className="a-panel-header">
                 <Building2 size={16} />
                 <span>Portfolio Heatmap</span>
             </div>
-            <div className="a-heatmap-grid">
-                <div className="a-heatmap-header">
-                    <span className="a-heatmap-label">Property</span>
-                    <span className="a-heatmap-metric">Occupancy</span>
-                    <span className="a-heatmap-metric">Delinq.</span>
-                    <span className="a-heatmap-metric">Maint.</span>
-                </div>
-                {HEATMAP_PROPERTIES.map(p => (
-                    <div key={p.name} className="a-heatmap-row">
-                        <span className="a-heatmap-name">{p.name}</span>
-                        <span className="a-heatmap-cell" style={{ background: heatColor(p.occupancy, 'occupancy') }}>
-                            {p.occupancy}%
-                        </span>
-                        <span className="a-heatmap-cell" style={{ background: heatColor(p.delinquency, 'delinquency') }}>
-                            {p.delinquency}%
-                        </span>
-                        <span className="a-heatmap-cell" style={{ background: heatColor(p.maintenance, 'maintenance') }}>
-                            {p.maintenance}
-                        </span>
+            <PanelStatus loading={loading} error={error} empty={properties.length === 0} emptyLabel="No properties to show" />
+            {ready && (
+                <div className="a-heatmap-grid">
+                    <div className="a-heatmap-header">
+                        <span className="a-heatmap-label">Property</span>
+                        <span className="a-heatmap-metric">Occupancy</span>
+                        <span className="a-heatmap-metric">Delinq.</span>
+                        <span className="a-heatmap-metric">Maint.</span>
                     </div>
-                ))}
-            </div>
+                    {properties.map(p => (
+                        <div key={p.name} className="a-heatmap-row">
+                            <span className="a-heatmap-name">{p.name}</span>
+                            <span className="a-heatmap-cell" style={{ background: heatColor(p.occupancy, 'occupancy') }}>
+                                {p.occupancy}%
+                            </span>
+                            <span className="a-heatmap-cell" style={{ background: heatColor(p.delinquency, 'delinquency') }}>
+                                {p.delinquency}%
+                            </span>
+                            <span className="a-heatmap-cell" style={{ background: heatColor(p.maintenance, 'maintenance') }}>
+                                {p.maintenance}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
 
-function WatchdogList() {
+function WatchdogList({ items, loading, error }: PanelProps & { items: WatchdogItem[] }) {
+    const ready = !loading && !error && items.length > 0;
+    const criticalCount = items.filter(w => w.priority === 'critical').length;
     return (
         <div className="a-panel a-watchdog">
             <div className="a-panel-header">
                 <AlertTriangle size={16} />
                 <span>Watchdog List</span>
-                <span className="a-badge a-badge-critical">{WATCHDOG_ITEMS.filter(w => w.priority === 'critical').length} Critical</span>
+                {ready && <span className="a-badge a-badge-critical">{criticalCount} Critical</span>}
             </div>
-            <div className="a-watchdog-list">
-                {WATCHDOG_ITEMS.map(item => (
-                    <div key={item.id} className={`a-watchdog-item a-priority-${item.priority}`}>
-                        <div className="a-watchdog-main">
-                            <span className={`a-priority-dot a-dot-${item.priority}`} />
-                            <span className="a-watchdog-title">{item.title}</span>
+            <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No high-priority items" />
+            {ready && (
+                <div className="a-watchdog-list">
+                    {items.map(item => (
+                        <div key={item.id} className={`a-watchdog-item a-priority-${item.priority}`}>
+                            <div className="a-watchdog-main">
+                                <span className={`a-priority-dot a-dot-${item.priority}`} />
+                                <span className="a-watchdog-title">{item.title}</span>
+                            </div>
+                            <div className="a-watchdog-meta">
+                                <span className={`a-watchdog-due ${item.due.includes('overdue') ? 'a-overdue' : ''}`}>
+                                    <Clock size={12} /> {item.due}
+                                </span>
+                                <span className="a-watchdog-property">{item.property}</span>
+                                <ChevronRight size={14} className="a-watchdog-arrow" />
+                            </div>
                         </div>
-                        <div className="a-watchdog-meta">
-                            <span className={`a-watchdog-due ${item.due.includes('overdue') ? 'a-overdue' : ''}`}>
-                                <Clock size={12} /> {item.due}
-                            </span>
-                            <span className="a-watchdog-property">{item.property}</span>
-                            <ChevronRight size={14} className="a-watchdog-arrow" />
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
 
-function FinancialQuickViz() {
+function FinancialQuickViz({ cards, loading, error }: PanelProps & { cards: FinancialCard[] }) {
+    const ready = !loading && !error && cards.length > 0;
     return (
         <div className="a-panel a-finance">
             <div className="a-panel-header">
                 <DollarSign size={16} />
                 <span>Financial Quick-viz</span>
             </div>
-            <div className="a-finance-cards">
-                {FINANCIAL_CARDS.map(card => (
-                    <div key={card.label} className="a-finance-card">
-                        <span className="a-finance-label">{card.label}</span>
-                        <span className="a-finance-value">{card.value}</span>
-                        <span className={`a-finance-change a-trend-${card.trend}`}>
-                            {card.trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                            {card.change}
-                        </span>
-                    </div>
-                ))}
-            </div>
+            <PanelStatus loading={loading} error={error} empty={cards.length === 0} emptyLabel="No financial projection yet" />
+            {ready && (
+                <div className="a-finance-cards">
+                    {cards.map(card => (
+                        <div key={card.label} className="a-finance-card">
+                            <span className="a-finance-label">{card.label}</span>
+                            <span className="a-finance-value">{card.value}</span>
+                            {card.change && (
+                                <span className={`a-finance-change a-trend-${card.trend}`}>
+                                    {card.trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                    {card.change}
+                                </span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
 
-function ComplianceCalendar() {
+function ComplianceCalendar({ events, loading, error }: PanelProps & { events: DashCalendarEvent[] }) {
+    const ready = !loading && !error;
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
@@ -165,12 +218,15 @@ function ComplianceCalendar() {
                 <span>Compliance Calendar</span>
                 <span className="a-calendar-month">{monthName}</span>
             </div>
+            <PanelStatus loading={loading} error={error} empty={false} />
+            {ready && (
+            <>
             <div className="a-calendar-grid">
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
                     <span key={i} className="a-cal-day-label">{d}</span>
                 ))}
                 {cells.map((day, i) => {
-                    const evts = day ? CALENDAR_EVENTS.filter(e => e.day === day) : [];
+                    const evts = day ? events.filter(e => e.day === day) : [];
                     return (
                         <span
                             key={i}
@@ -197,11 +253,14 @@ function ComplianceCalendar() {
                     </span>
                 ))}
             </div>
+            </>
+            )}
         </div>
     );
 }
 
-function AIAgentLog() {
+function AIAgentLog({ entries, loading, error }: PanelProps & { entries: AgentLogEntry[] }) {
+    const ready = !loading && !error && entries.length > 0;
     const typeIcons: Record<string, string> = {
         alert: '🚨', route: '📨', create: '📄', filter: '🗑️', check: '✅',
     };
@@ -212,30 +271,32 @@ function AIAgentLog() {
                 <span>AI Agent Activity</span>
                 <span className="a-agent-live"><Activity size={12} /> Live</span>
             </div>
-            <div className="a-agent-feed">
-                {AGENT_LOG.map((entry, i) => (
-                    <div key={i} className="a-agent-entry">
-                        <span className="a-agent-icon">{typeIcons[entry.type] || '•'}</span>
-                        <div className="a-agent-body">
-                            <span className="a-agent-action">{entry.action}</span>
-                            <span className="a-agent-meta">
-                                <span className="a-agent-name">{entry.agent}</span>
-                                <span className="a-agent-time">{entry.time}</span>
-                            </span>
+            <PanelStatus loading={loading} error={error} empty={entries.length === 0} emptyLabel="No recent agent activity" />
+            {ready && (
+                <div className="a-agent-feed">
+                    {entries.map((entry, i) => (
+                        <div key={i} className="a-agent-entry">
+                            <span className="a-agent-icon">{typeIcons[entry.type] || '•'}</span>
+                            <div className="a-agent-body">
+                                <span className="a-agent-action">{entry.action}</span>
+                                <span className="a-agent-meta">
+                                    <span className="a-agent-name">{entry.agent}</span>
+                                    <span className="a-agent-time">{entry.time}</span>
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
 
 /* ═══════════════════════════  ACTIVE WORKITEMS  ═══════════════════ */
 
-const ACTIVE_WORKITEMS: { id: string; title: string; priority: string; domain: string; age: string }[] = [];
-
-function ActiveWorkitems() {
+function ActiveWorkitems({ items, loading, error }: PanelProps & { items: ActiveWorkitem[] }) {
     const [promoting, setPromoting] = useState<string | null>(null);
+    const ready = !loading && !error && items.length > 0;
 
     const handlePromote = async (id: string) => {
         setPromoting(id);
@@ -249,10 +310,12 @@ function ActiveWorkitems() {
         <div className="a-card">
             <div className="a-card-header">
                 <ClipboardList size={16} /> Active Workitems
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#D6FE51', fontWeight: 700 }}>{ACTIVE_WORKITEMS.length}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#D6FE51', fontWeight: 700 }}>{items.length}</span>
             </div>
+            <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No open workitems" />
+            {ready && (
             <div className="a-card-body" style={{ padding: 0 }}>
-                {ACTIVE_WORKITEMS.map(wi => (
+                {items.map(wi => (
                     <div key={wi.id} style={{
                         padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.04)',
                         display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
@@ -285,23 +348,25 @@ function ActiveWorkitems() {
                     </div>
                 ))}
             </div>
+            )}
         </div>
     );
 }
 
 /* ═══════════════════════════  CROSS DOMAIN SNAPSHOTS  ═══════════════════ */
 
-const DOMAIN_SNAPSHOTS: { domain: string; count: number; critical: number; color: string }[] = [];
-
-function CrossDomainSnapshots() {
-    const maxCount = DOMAIN_SNAPSHOTS.length > 0 ? Math.max(...DOMAIN_SNAPSHOTS.map(d => d.count)) : 1;
+function CrossDomainSnapshots({ snapshots, loading, error }: PanelProps & { snapshots: DomainSnapshot[] }) {
+    const ready = !loading && !error && snapshots.length > 0;
+    const maxCount = snapshots.length > 0 ? Math.max(...snapshots.map(d => d.count)) : 1;
     return (
         <div className="a-card">
             <div className="a-card-header">
                 <Globe size={16} /> Cross-Domain Snapshots
             </div>
+            <PanelStatus loading={loading} error={error} empty={snapshots.length === 0} emptyLabel="No open items by domain" />
+            {ready && (
             <div className="a-card-body" style={{ padding: '8px 14px' }}>
-                {DOMAIN_SNAPSHOTS.map(d => (
+                {snapshots.map(d => (
                     <div key={d.domain} style={{
                         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 12,
                     }}>
@@ -322,6 +387,7 @@ function CrossDomainSnapshots() {
                     </div>
                 ))}
             </div>
+            )}
         </div>
     );
 }
@@ -337,7 +403,7 @@ const ARB_COLORS: Record<string, string> = {
 function QuickArbitrage() {
     return (
         <div className="a-panel a-panel--glass">
-            <h3 className="a-panel__title">⚡ 90-Day Quick Arbitrage</h3>
+            <h3 className="a-panel__title">⚡ 90-Day Quick Arbitrage <MockBadge /></h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {ARBITRAGE_OPPORTUNITIES.map(opp => (
                     <div key={opp.id} style={{
@@ -382,7 +448,7 @@ const DOMAIN_VIEWS: { id: string; name: string; module: string; filters: Record<
 function DomainViews() {
     return (
         <div className="a-panel a-panel--glass">
-            <h3 className="a-panel__title">🔍 Saved Domain Views</h3>
+            <h3 className="a-panel__title">🔍 Saved Domain Views <MockBadge /></h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 {DOMAIN_VIEWS.map(view => (
                     <div key={view.id} style={{
@@ -409,22 +475,26 @@ function DomainViews() {
 
 /* ═══════════════════════════  MAIN COMPONENT  ═══════════════════ */
 
-function DashboardContent() {
+function DashboardContent({ data, loading, error }: {
+    data: ReturnType<typeof useDashboardData>['data'];
+    loading: boolean;
+    error: string | null;
+}) {
     return (
         <div className="a-dashboard-grid">
             <div className="a-grid-left">
-                <PortfolioHeatmap />
-                <FinancialQuickViz />
-                <CrossDomainSnapshots />
+                <PortfolioHeatmap properties={data?.heatmap ?? []} loading={loading} error={error} />
+                <FinancialQuickViz cards={data?.financialCards ?? []} loading={loading} error={error} />
+                <CrossDomainSnapshots snapshots={data?.domainSnapshots ?? []} loading={loading} error={error} />
             </div>
             <div className="a-grid-center">
-                <WatchdogList />
-                <ActiveWorkitems />
+                <WatchdogList items={data?.watchdog ?? []} loading={loading} error={error} />
+                <ActiveWorkitems items={data?.activeWorkitems ?? []} loading={loading} error={error} />
                 <DomainViews />
             </div>
             <div className="a-grid-right">
-                <ComplianceCalendar />
-                <AIAgentLog />
+                <ComplianceCalendar events={data?.calendarEvents ?? []} loading={loading} error={error} />
+                <AIAgentLog entries={data?.agentLog ?? []} loading={loading} error={error} />
                 <QuickArbitrage />
             </div>
         </div>
@@ -441,10 +511,11 @@ const TABS: { id: AstraTab; label: string; icon: React.ReactNode }[] = [
 
 export default function AstraDashboard() {
     const [activeTab, setActiveTab] = useState<AstraTab>('dashboard');
+    const { data, loading, error, reload } = useDashboardData();
 
     const renderTab = () => {
         switch (activeTab) {
-            case 'dashboard': return <DashboardContent />;
+            case 'dashboard': return <DashboardContent data={data} loading={loading} error={error} />;
             case 'workspace': return <AstraWorkspace />;
             case 'channels': return <ThreadChannels />;
             case 'intelligence': return <IntelligenceDashboard />;
@@ -471,6 +542,17 @@ export default function AstraDashboard() {
                             <span>{tab.label}</span>
                         </button>
                     ))}
+                    {activeTab === 'dashboard' && (
+                        <button
+                            className="a-tab a-tab-refresh"
+                            onClick={reload}
+                            disabled={loading}
+                            aria-label="Refresh dashboard data"
+                            title="Refresh dashboard data"
+                        >
+                            <RefreshCw size={16} className={loading ? 'a-panel-state-spin' : undefined} />
+                        </button>
+                    )}
                 </div>
             </div>
             <div className="a-content">

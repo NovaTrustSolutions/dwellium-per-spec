@@ -1627,3 +1627,47 @@
     width: 48px;
     opacity: 1;
 }
+
+/* ───────────────────────  Panel load/empty/error states (DASH Cycle 3)  ─────────────────────── */
+.astra-dashboard .a-panel-state {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 18px 14px;
+    font-size: 12px;
+    color: var(--a-text-dim);
+    justify-content: center;
+    text-align: center;
+}
+.astra-dashboard .a-panel-state--error {
+    color: #ef4444;
+}
+.astra-dashboard .a-panel-state--empty {
+    color: var(--a-text-dim);
+    opacity: 0.75;
+}
+.astra-dashboard .a-panel-state-spin {
+    animation: a-panel-spin 0.9s linear infinite;
+}
+@keyframes a-panel-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Sample/mock data badge (DASH-D5: clearly label non-live panels). */
+.astra-dashboard .a-badge-mock {
+    margin-left: 6px;
+    background: rgba(136, 146, 168, 0.18);
+    color: var(--a-text-dim);
+    border: 1px solid rgba(136, 146, 168, 0.3);
+    vertical-align: middle;
+}
+
+/* Dashboard refresh button in the topbar tab row. */
+.astra-dashboard .a-tab-refresh {
+    margin-left: 4px;
+}
+.astra-dashboard .a-tab-refresh:disabled {
+    opacity: 0.55;
+    cursor: default;
+}

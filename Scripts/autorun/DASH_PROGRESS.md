@@ -57,3 +57,31 @@ Legend: ✅ done+committed · 🚧 in progress (continue next iteration) · ⬜ 
 - No UI touched this cycle (Cycle 3 wires these fetchers into the panels).
 - **Next:** Cycle 3 — replace AstraDashboard's 9 empty mock arrays with the Cycle-2 fetchers via a
   loader hook + loading/empty/error states; keep arbitrage/domain-views labeled mock where no source.
+
+## Iteration 3 — 2026-05-29 — Cycle 3 (wire AstraDashboard sections to real data) ✅
+- Created `src/components/AstraDashboard/useDashboardData.ts` — SSR-safe loader hook wrapping
+  Cycle-2 `loadDashboardData`. Fetch lives in `useEffect` (effect-time SAFE per repo SSR taxonomy →
+  no-op on server, fills in on client). Returns `{ data, loading, error, reload }`; `deps` injectable
+  via a ref (excluded from effect deps so an inline-object `deps` can't retrigger fetches); `reload()`
+  bumps a nonce to refetch.
+- Refactored `AstraDashboard.tsx`: deleted the 7 empty mock arrays (HEATMAP_PROPERTIES, WATCHDOG_ITEMS,
+  FINANCIAL_CARDS, CALENDAR_EVENTS, AGENT_LOG, ACTIVE_WORKITEMS, DOMAIN_SNAPSHOTS); made those 7 panels
+  prop-driven and added a shared `<PanelStatus>` (loading spinner / error `role=alert` / empty label).
+  DashboardContent now calls `useDashboardData()` and threads `data?.<section> ?? []` + loading + error
+  into each. Calendar renders its grid whenever not loading/error (empty events = no dots, still useful).
+- The 2 panels with NO real source (QuickArbitrage, DomainViews) keep their empty arrays + got a visible
+  `<MockBadge>` ("Sample" pill) in their titles (DASH-D5 — clearly label non-live data). HR stays mock
+  (not rendered until Cycle 8 HR panel).
+- Added topbar Refresh button (dashboard tab only) → `reload()`, `aria-label="Refresh dashboard data"`,
+  disabled+spinning while loading (mirrors the 6-instance RefreshCw ghost-button a11y convention).
+- CSS: appended `.a-panel-state` (+`--error`/`--empty`), `@keyframes a-panel-spin`, `.a-badge-mock`,
+  `.a-tab-refresh` to AstraDashboard.css (uses existing `--a-text-dim`/`--a-accent` vars).
+- Added `src/test/appfolioParity/useDashboardData.test.tsx` (3 tests, renderHook + waitFor, REAL clock —
+  no fake timers per React-19 scheduler anti-pattern): initial-loading→resolved-populated-sections,
+  `reload()` refetch (endpoint-read count doubles), graceful per-section degradation on a throwing `get`.
+- **GATE 6/6 GREEN:** tsc ✓ · vitest **401 passed / 53 files** (baseline 398/52 → **+3 / +1 file** = the
+  new hook test) ✓ · build seeds=true ✓ · build seeds=false ✓ · PII clean (51 files, 0 leaks) ✓ ·
+  SSR smoke PASS @ :3458 (200, 5949 B, 0 console errors/warnings, 0 page errors) ✓.
+- **Next:** Cycle 4 — composable panel grid + per-user persistence (add/remove/rearrange panels;
+  `dashboardLayoutStore` via `createLocalStorageStore` dynamic per-user key, mirror savedLayoutsStore);
+  persist shown-panels + order; add a test. FULL gate.

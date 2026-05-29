@@ -31,6 +31,16 @@ function getAuthHeaders(extra?: Record<string, string>): Record<string, string> 
     };
 }
 
+/**
+ * Backend is reachable for chat when the agent reports `online` OR `degraded`.
+ * A degraded agent is still up and answering /status (e.g. circuit-breaker
+ * tripped or a provider is impaired) — chat may still succeed, so we don't
+ * hard-block it the way a true `offline`/`starting`/`loading` state does.
+ */
+function isBackendReachable(s: ConnectionStatus): boolean {
+    return s === 'online' || s === 'degraded';
+}
+
 /** Markdown → HTML via DOMPurify-protected utility (XSS-safe) */
 function renderMarkdown(text: string): string { return renderSafeMarkdown(text); }
 function _renderMarkdown_DEPRECATED(text: string): string {
@@ -428,11 +438,22 @@ export default function StellaAgent() {
     const checkStatus = useCallback(async () => {
         try {
             const resp = await fetch(`${API_BASE}/status`, { headers: getAuthHeaders() });
+            // Guard non-2xx before parsing — a 5xx with an HTML/empty body would
+            // otherwise throw in resp.json() and only be caught as a generic offline.
+            if (!resp.ok) { setStatus('offline'); return; }
             const data = await resp.json();
             if (data.success && data.data) {
                 const d = data.data;
                 const live = d.liveCheck;
-                setStatus(live?.ok ? 'online' : d.status === 'starting' ? 'starting' : 'offline');
+                // Honor a backend-reported `degraded` state (process up + answering
+                // /status but a health signal is impaired). The status dot + label
+                // already style this distinctly; collapsing it to `offline` lost it.
+                setStatus(
+                    live?.ok ? 'online'
+                        : d.status === 'degraded' ? 'degraded'
+                            : d.status === 'starting' ? 'starting'
+                                : 'offline'
+                );
                 setVersion(live?.version || d.version || '');
                 setHealthMs(live?.ms ?? null);
                 setPid(d.pid ?? null);
@@ -496,7 +517,7 @@ export default function StellaAgent() {
         // Stella backend can be offline AND the chat still works via the user's
         // personal LLM key (Settings → API Keys).
         const llmReady = hasActiveLlm(integrations.llm);
-        if (!text || isTyping || (status !== 'online' && !llmReady)) return;
+        if (!text || isTyping || (!isBackendReachable(status) && !llmReady)) return;
 
         const userMsg: ChatMessage = {
             id: `user-${Date.now()}`,
@@ -532,8 +553,8 @@ export default function StellaAgent() {
                     return;
                 }
             } catch (err) {
-                // LLM call failed — surface to UI only if backend is also offline.
-                if (status !== 'online') {
+                // LLM call failed — surface to UI only if backend is also unreachable.
+                if (!isBackendReachable(status)) {
                     setMessages(prev => [...prev, {
                         id: `error-${Date.now()}`,
                         role: 'system',
@@ -1323,7 +1344,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
             {/* Status Bar */}
             <div className="stella__status-bar">
                 <span className={`stella__status-dot stella__status-dot--${status}`} />
-                <span>Stella {status === 'online' ? 'Online' : status === 'loading' ? 'Connecting…' : status === 'starting' ? 'Starting…' : 'Offline'}</span>
+                <span>Stella {status === 'online' ? 'Online' : status === 'degraded' ? 'Degraded' : status === 'loading' ? 'Connecting…' : status === 'starting' ? 'Starting…' : 'Offline'}</span>
                 {version && <span className="stella__version">v{version}</span>}
                 {healthMs !== null && status === 'online' && <span className="stella__latency">{healthMs}ms</span>}
                 {pid && <span className="stella__pid">PID {pid}</span>}
@@ -1353,6 +1374,12 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                 <div className="stella__offline-banner" style={{ background: 'rgba(214,254,81,0.08)', borderColor: 'rgba(214,254,81,0.3)' }}>
                     💡 Stella's Python agent is offline — chat is using your personal LLM ({integrations.llm.active}) instead. Skills/memory tabs require the agent.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry agent</button>
+                </div>
+            )}
+            {status === 'degraded' && (
+                <div className="stella__offline-banner" style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.3)' }}>
+                    ⚠️ Stella agent is degraded — it's reachable, but a health signal is impaired. Chat still works; some replies may be slower or fall back.
+                    <button className="stella__retry-btn" onClick={checkStatus}>Retry</button>
                 </div>
             )}
 
@@ -1402,7 +1429,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                     })()}
                     {/* Self-diagnosing banner: when Stella has no path to answer (no backend AND no LLM key),
                         show a clear CTA to fix it. Replaces silent disabled input. */}
-                    {status !== 'online' && !hasActiveLlm(integrations.llm) && (
+                    {!isBackendReachable(status) && !hasActiveLlm(integrations.llm) && (
                         <div className="stella__diagnose-banner">
                             <span className="stella__diagnose-icon">⚠️</span>
                             <div className="stella__diagnose-body">
@@ -1442,17 +1469,17 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={
-                                status === 'online' ? 'Ask Stella anything…' :
+                                isBackendReachable(status) ? 'Ask Stella anything…' :
                                 hasActiveLlm(integrations.llm) ? `Ask anything (via ${integrations.llm.active})…` :
                                 'Stella is offline — configure an LLM in Settings'
                             }
-                            disabled={status !== 'online' && !hasActiveLlm(integrations.llm)}
+                            disabled={!isBackendReachable(status) && !hasActiveLlm(integrations.llm)}
                             rows={1}
                         />
                         <button
                             className="stella__send-btn"
                             onClick={sendMessage}
-                            disabled={!input.trim() || isTyping || (status !== 'online' && !hasActiveLlm(integrations.llm))}
+                            disabled={!input.trim() || isTyping || (!isBackendReachable(status) && !hasActiveLlm(integrations.llm))}
                             title="Send"
                         >
                             ➤

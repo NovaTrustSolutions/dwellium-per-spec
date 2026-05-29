@@ -137,3 +137,37 @@ PROTECTED widget, NO redesign/restyle.
 handoff when Stella references another widget (Inbox / ARA / Files / DocViewer), reusing
 the existing bus + `araLinkage`-style detector. NO cosmetic/structural change. Add a
 linkage test. FULL gate.
+
+## 2026-05-29 02:15 EDT — Iteration 5 — Cycle 5 (STELLA LINKAGE, fix-only/additive) ✅
+
+**Did:** Closed gap **S2** — additive `dwellium:open-widget` handoff when Stella references
+another widget. PROTECTED widget: strictly additive, NO restyle/restructure.
+
+- **NEW `src/components/StellaAgent/stellaLinkage.ts`** — pure, injectable detector +
+  dispatcher mirroring ARA's Cycle-3 `araLinkage.ts` exactly. `detectWidgetHandoffs(reply)`
+  scans for widget keywords (word-boundary, deduped, capped at 3); `openWidgetHandoff`
+  fires the existing `dwellium:open-widget` bus via `workspaceScribe.dispatchOpenWidget`
+  (no new plumbing). Catalog: inbox / file-manager / doc-viewer / scribe / **ara-console**
+  (sibling assistant, NOT self `stella-agent`). Targets LIVE `inbox`, never deprecated
+  `inbox-zero`.
+- **StellaAgent.tsx** — additive only: import + `useMemo` of last assistant reply →
+  `suggestedHandoffs`, `handleHandoffClick`, and an "Open:" `stella__handoff-row` rendered
+  above the existing input area. No existing markup changed.
+- **StellaAgent.css** — additive `.stella__handoff-row/-label/-btn` mirroring ARA's
+  `.ara-handoff-row` (acid-lime chip styling consistent with `.stella__diagnose-cta`).
+- **Tests +9** in NEW `src/test/StellaLinkage.test.ts` (mirrors ARAConsole.linkage.test.ts):
+  inbox detect, live-vs-deprecated id, ARA-sibling handoff, multi/cap/dedupe/word-boundary,
+  empty-safe, injected-dep dispatch, default `dwellium:open-widget` bus dispatch.
+
+**Proof (FULL gate, 6/6 green):**
+- `npx tsc -b` ✓ (TSC_OK)
+- `npx vitest run` → **49 files / 374 passed** (+9 vs 365 at Cycle 4)
+- `npx react-router build` ✓ (BUILD1_OK)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓ (BUILD2_OK)
+- `node Scripts/verify_no_pii_leak.mjs` ✓ (51 files, 0 leaks)
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (0 errors/warnings/page-errors; 200)
+- Commit: `0701d91`
+
+**Next:** Cycle 6 — Inbox Zero correctness (~15 files). Fix most-impactful real issues
+(loading/empty/error states, broken tabs, `useInboxQueries` failure handling). Add NEW
+`src/test/InboxZero.test.tsx` covering main view + one failure path. FULL gate.

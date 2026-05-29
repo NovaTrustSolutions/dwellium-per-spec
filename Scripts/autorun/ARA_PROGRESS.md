@@ -66,3 +66,37 @@ for "open in Inbox/Files/DocViewer" handoffs) + **A3** (ARAConsole receives a
 selection/context payload). Mirror `workspaceScribe.ts` injectable-deps pattern; add a
 linkage unit test. FULL gate.
 
+
+## 2026-05-29 02:04 EDT — Iteration 3 — Cycle 3 (ARA LINKAGE) ✅
+
+**Did:** Wired ARAConsole into the cross-widget buses, closing gaps **A2** + **A3**.
+
+- **A2 (ARA → widgets).** New `src/components/ARAConsole/araLinkage.ts` with
+  `detectWidgetHandoffs(replyText)` — word-boundary keyword scan over a tight catalog
+  (inbox / file-manager / doc-viewer / scribe / stella-agent), deduped by widgetId,
+  catalog-ordered, capped at `MAX_HANDOFFS=3`, empty-safe. ARAConsole computes
+  `suggestedHandoffs` (useMemo over the latest assistant message) and renders an
+  `Open: <widget>` chip row in the Conversation Actions panel; clicking calls
+  `openWidgetHandoff` → reuses `workspaceScribe.dispatchOpenWidget` to fire the shared
+  `dwellium:open-widget` bus (NO new plumbing, per D2). **Inbox handoff targets the
+  LIVE `inbox` id, NOT the @deprecated `inbox-zero`** (verified in widgetRegistry.ts).
+- **A3 (ARA ← selection).** ARAConsole now listens for `scribe:send-to-ara` (previously
+  only the Scribe-embedded AraMiniPanel did). `composeAraPrompt(detail)` mirrors
+  AraMiniPanel's exact contract (preface + blockquoted text), then `sendPrompt(composed)`.
+- CSS: minimal `.ara-handoff-row/-label/-btn` matching existing `.ara-action-btn` styling.
+- Tests: `src/test/ARAConsole.linkage.test.ts` — 12 unit tests (keyword detection,
+  dedupe, cap, word-boundary no-false-positive, empty-safe; injected-dep + default-bus
+  dispatch; composeAraPrompt blockquote / bare / null). Mirrors Workspace.scribe.test.ts.
+
+**Proof (FULL gate, 6/6 green):**
+- `npx tsc -b` ✓ (exit 0, no output)
+- `npx vitest run` → **48 files / 362 passed** (+12 vs 350 at Cycle 2; ARAConsole.linkage 12/12)
+- `npx react-router build` ✓ (build/client emitted)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓
+- `node Scripts/verify_no_pii_leak.mjs` ✓ (51 files, 0 leaks)
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (0 errors/warnings/page-errors; status 200)
+- Commit: `0fec701`
+
+**Next:** Cycle 4 — Stella correctness (PROTECTED, fix-only). Review connection-status
+handling, LLM-ready offline path (`hasActiveLlm`), failed `/api/stella` resilience (gap
+S1). Extend `StellaAgent.test.tsx`. NO restyle/restructure. FULL gate.

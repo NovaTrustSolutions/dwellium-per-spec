@@ -295,3 +295,24 @@ Legend: ✅ done+committed · 🚧 in progress (continue next iteration) · ⬜ 
 - **Next:** Cycle 10 — CLOSURE: write `DASH_CLOSURE.md` (commit SHAs, panel→source table,
   composability/persistence summary, deferred items incl. portfolio-dropdown + global
   date-range, push commands). Re-run FULL gate at closure HEAD. `touch ALL_DONE`.
+
+## Iteration 10 — 2026-05-29 — Cycle 10 (CLOSURE) ✅ — ARC COMPLETE
+- Wrote `Scripts/autorun/DASH_CLOSURE.md`: commit ledger (Cycles 1-9 SHAs 94b237f→2b6f415),
+  final 16-row panel→data-source table (15 real / 1 labeled-mock HR), composability +
+  per-user persistence summary (`dashboardLayoutStore`, key `qualia_dashboard_panels_${user.id}`),
+  interactivity summary (global filter bar + per-panel filters + drill-down + tablist a11y),
+  test delta (385/51 base → 459/56 = +74 tests / +5 files), 4 deferred items
+  (portfolio dropdown · global date-range · module-target deep-link · /incidents real data),
+  push commands (NOT executed).
+- **FRESH FULL GATE 6/6 GREEN at closure HEAD** (proof, captured /tmp/dash_gate.log, EXIT=0):
+  - `TSC_OK` — tsc -b exit 0 ✓
+  - vitest **459 passed / 56 files** ✓ (baseline 385/51 → +74 tests, +5 files)
+  - `BUILD_TRUE_OK` (seeds=true) ✓ · `BUILD_FALSE_OK` (seeds=false, 758ms) ✓
+  - `PII_OK` — 51 files / 2 roots, 0 leaks ✓
+  - `SMOKE_OK` — SSR @ :3458, status 200, 5949 B, 0 console errors, 0 console warnings,
+    0 page errors, Result ✓ PASS
+- Docs-only cycle (only `Scripts/autorun/**` touched) — gate not source-gated, but re-run
+  fresh at closure HEAD per Cycle-10 spec; all 6 stages green.
+- **ALL 10 CYCLES DONE. Arc COMPLETE.** `touch Scripts/autorun/ALL_DONE`.
+- **Push (Ilya runs, NOT auto-pushed):** `git push -u origin feat/pm-exec-dashboard`
+  then open PR → `main`. Zero commits to `main` in this arc.

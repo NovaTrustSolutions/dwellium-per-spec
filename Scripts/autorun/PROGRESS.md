@@ -68,3 +68,40 @@ FULL strict gate (with `SMOKE_TEST_PORT=3458`).
 **Next:** Cycle 5 — Domaines index view in `Workspace.tsx`: wire `fetchDomaines()` into a
 `loadDomaines()` action on `workspaceStore`, render domaine cards, with loading/empty/error
 states. Touches source ⇒ full strict gate (`SMOKE_TEST_PORT=3458`).
+
+---
+
+## 2026-05-28 — Cycle 5 (source): Domaines index view
+
+**Cycle:** C5 — Domaines index view in `Workspace.tsx`: wire `fetchDomaines()` → store
+thunk, render card grid, loading/empty/error states + per-user sort (plan §11). ✅ DONE.
+
+**Did:**
+- `workspaceStore.ts` — added async `loadDomaines()` thunk (imports `fetchDomaines` from
+  `workspaceApi`): sets `loading:true,error:null` → `setDomaines` on success / captures
+  message on failure → always clears `loading`. (C5-D1)
+- `useWorkspaceUi.ts` (NEW) — per-user UI-prefs hook, sister to `useFileExplorer`: sets
+  `workspaceUserIdHolder.current` from `useContext(UserContext)` during render, then
+  `useSyncExternalStore` over `workspaceUiStore`; exposes sort/lastActive/expanded setters.
+  SSR-safe + test-resilient (no auth provider needed). (C5-D3)
+- `Workspace.tsx` (NEW) — default-export widget. `useEffect(loadDomaines)` on mount;
+  renders a `repeat(auto-fill,minmax(180px,1fr))` card grid (color-swatch left border +
+  FolderOpen icon + name + 2-line description clamp). Toolbar: Position/Name sort select
+  (C5-D4) + RefreshCw refresh (aria-label per convention). Card click → `openDomaine` +
+  persists `lastActiveDomainePath`. States: `role="alert"` error + Retry, "Loading domaines…",
+  empty-state, `role="list"`/`role="listitem"` grid. Non-index view = placeholder + back
+  (ChevronLeft) affordance (C5-D2). fey.com black + acid-lime `#D6FE51` inline styles.
+- `src/test/Workspace.loadDomaines.test.ts` (NEW) — 4 tests, `vi.mock` of `workspaceApi`:
+  happy path, error path, stale-error-cleared-on-reload, non-Error-rejection fallback.
+- Decisions C5-D1..D4 logged to DECISIONS.md. NOT registered in widgetRegistry/hierarchy yet
+  (plan §11 — Cycle 11). Widget is built but not yet mounted anywhere.
+
+**Verified — FULL strict gate 6/6 GREEN** (log `Scripts/autorun/logs/gate_c5_1780025245.log`):
+- `tsc -b` ✓ (exit 0) · `vitest` ✓ **41 files / 294 passed / 0 skipped** (+1 file, +4 tests
+  vs Cycle-4 40 files / 290 passed) · `react-router build` seeds=true ✓ (built 4.58s client +
+  732ms server) · seeds=false ✓ (4.60s + 725ms) · PII ✓ (51 files, 0 leaks) · SSR smoke
+  (`SMOKE_TEST_PORT=3458`) ✓ PASS (0 console/page errors, 0 ReferenceError, pre-hydration 200 / 5949 B).
+
+**Next:** Cycle 6 — drill-down to Projects: replace the non-index placeholder with a project
+list for the active domaine (derive projects from `/api/file-explorer/tree` depth-2 folders
+per D3) + back-nav already in place. Touches source ⇒ full strict gate (`SMOKE_TEST_PORT=3458`).

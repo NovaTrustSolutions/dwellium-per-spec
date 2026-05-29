@@ -64,3 +64,33 @@ scaffold (no fetch wiring yet) + unit tests". Two forks resolved:
   `fileExplorerStore`). Server data is cached in the transient store, never persisted.
 - Reversibility: the split is conventional (sister to Scribe's zustand + FileExplorer's
   factory store); merging or moving fields later is mechanical.
+
+## Cycle 5 (2026-05-28) — Domaines index view
+
+**C5-D1 — `loadDomaines()` lives on the transient zustand `workspaceStore`, not in the
+component.** The async fetch thunk sets `{loading, error, domaines}` on the store so any
+future view (drill-down, mutations) shares one source of truth and one in-flight flag.
+- Why: mirrors how the store already owns the fetch-status triplet (Cycle 4 setters); keeps
+  `Workspace.tsx` a thin renderer. Tests `vi.mock` the api module for determinism.
+- Reversibility: trivial — the thunk is one method; moving it to a hook later is mechanical.
+
+**C5-D2 — Non-index views render a minimal placeholder + back affordance this cycle.**
+Clicking a domaine card calls `openDomaine(path)` (sets `view='domaine'`), but the
+domaine/project body is a "arrives next cycle" placeholder with a ChevronLeft back button.
+- Why: keeps Cycle 5 strictly the index view per plan §11 while never leaving the widget in
+  a dead end (rule 4 — always usable + green). Cycle 6 replaces the placeholder with the
+  real project list.
+- Reversibility: the placeholder branch is a single `view !== 'index'` block, deleted whole.
+
+**C5-D3 — `useWorkspaceUi` hook (sister to `useFileExplorer`) owns the holder wiring.**
+Reads `UserContext` via `useContext` (not `useUser()`), sets `workspaceUserIdHolder.current`
+during render, then `useSyncExternalStore` over `workspaceUiStore`. Exposes sort setters.
+- Why: established per-user-store consumption pattern; test-resilient (no auth provider needed).
+- Reversibility: pure convenience wrapper; inlining is mechanical.
+
+**C5-D4 — `modified-desc` domaine sort falls through to position-asc.** Domaines have no
+folder-level timestamp in the metadata contract yet, so only Position + Name are offered in
+the index sort control; the stored `sortDomaine` default stays `position-asc`.
+- Why: honest — no timestamp data to sort by. Threads (which DO carry `lastModified`) keep
+  `modified-desc` as their default in the UI store.
+- Reversibility: add the option back the moment a domaine timestamp exists in the contract.

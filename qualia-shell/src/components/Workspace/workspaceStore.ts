@@ -6,13 +6,14 @@
  * (sort modes, last-active domaine) live separately in workspaceUiStore (localStorage);
  * server DATA (the domaines list) is cached here, not persisted, because it's fetched.
  *
- * Cycle 4 scaffold: state shape + pure synchronous setters only. The async
- * `loadDomaines()` action that calls workspaceApi.fetchDomaines() is deliberately
- * NOT wired this cycle (plan §11 — Cycle 5 adds fetch + the index view). Keeping the
- * fetch out of this cycle keeps the unit tests pure and the gate fast.
+ * Cycle 4 scaffold: state shape + pure synchronous setters only.
+ * Cycle 5 (this edit): adds the async `loadDomaines()` thunk that calls
+ * workspaceApi.fetchDomaines() and drives the loading/error/domaines triplet —
+ * consumed by the Workspace index view. Tests mock the api module (vi.mock) so
+ * this stays deterministic.
  */
 import { create } from 'zustand';
-import type { DomaineMeta } from './workspaceApi';
+import { fetchDomaines, type DomaineMeta } from './workspaceApi';
 
 /** Which drill-down altitude the widget is showing. */
 export type WorkspaceView = 'index' | 'domaine' | 'project';
@@ -48,6 +49,9 @@ interface WorkspaceState {
 
     /** Resolve a project's parent domaine path from the path prefix (web analog of useDomaineForProject). */
     domaineForProject: (projectPath: string) => DomaineMeta | null;
+
+    /** Fetch the domaines list from the backend, driving loading/error/domaines (Cycle 5). */
+    loadDomaines: () => Promise<void>;
 
     /** Reset all transient state to initial (test-friendly + logout-friendly). */
     reset: () => void;
@@ -92,6 +96,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         const firstSeg = projectPath.split('/').filter(Boolean)[0];
         if (!firstSeg) return null;
         return get().domaines.find((d) => d.path === firstSeg) ?? null;
+    },
+
+    loadDomaines: async () => {
+        set({ loading: true, error: null });
+        try {
+            const list = await fetchDomaines();
+            set({ domaines: list, loading: false });
+        } catch (err) {
+            set({
+                error: err instanceof Error ? err.message : 'Failed to load domaines',
+                loading: false,
+            });
+        }
     },
 
     reset: () => set({ ...INITIAL }),

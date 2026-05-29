@@ -352,3 +352,29 @@ already pass button-name via text content.
 **Next:** Cycle 10 — CLOSURE. Write `Scripts/autorun/ARA_CLOSURE.md` (every commit SHA,
 final LINKAGE.md state, gate proof, open items for Ilya, push commands). Re-run the FULL
 gate fresh at closure HEAD. `touch Scripts/autorun/ALL_DONE`.
+
+---
+
+## Iteration (Cycle 10 — CLOSURE) — 2026-05-29
+
+**Did:** Wrote `Scripts/autorun/ARA_CLOSURE.md` — full end-of-arc ledger (17-row commit
+table base `15a2c4b` → HEAD `ac47094`, final 8-gap RESOLVED matrix, Cycle 9 a11y summary,
+4 deferred open items for Ilya, push commands). Re-ran the FULL gate fresh at closure HEAD.
+
+**Proof (FRESH FULL gate, 6/6 green at HEAD `ac47094`):**
+- `npx tsc -b` ✓
+- `npx vitest run` → **51 files / 385 passed** (+37 vs branch base 348)
+- `npx react-router build` ✓ (built in 737ms)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓ (built in 747ms)
+- `node Scripts/verify_no_pii_leak.mjs` → **0 leaks, 51 files, 2 roots** ✓
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (200; 5949 B; 0/0/0)
+- Gate log: `Scripts/autorun/logs/ara_gate_closure_1780037261.log`
+
+**🎯 ARC COMPLETE — all 10 cycles done, all 8 linkage gaps (A1–A3, S1–S2, I1–I3) RESOLVED,
+final gate 6/6 green. `Scripts/autorun/ALL_DONE` touched.**
+
+**Push commands (Ilya runs manually — driver never pushes):**
+```bash
+git push origin main
+git push -u origin feat/ara-stella-inbox-linkage
+```

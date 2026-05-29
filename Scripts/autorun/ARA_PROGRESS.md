@@ -100,3 +100,40 @@ linkage unit test. FULL gate.
 **Next:** Cycle 4 — Stella correctness (PROTECTED, fix-only). Review connection-status
 handling, LLM-ready offline path (`hasActiveLlm`), failed `/api/stella` resilience (gap
 S1). Extend `StellaAgent.test.tsx`. NO restyle/restructure. FULL gate.
+
+
+## 2026-05-29 02:09 EDT — Iteration 4 — Cycle 4 (STELLA CORRECTNESS, fix-only) ✅
+
+**Did:** Closed gap **S1** (connection-status / failed-`/api/stella` resilience) — fix-only,
+PROTECTED widget, NO redesign/restyle.
+
+- **`degraded` was a dead state.** `ConnectionStatus` type + `.stella__status-dot--degraded`
+  CSS both existed, but `checkStatus` never set it (collapsed a backend-reported
+  `degraded` → `offline`) and the status-bar label rendered "Offline" for it.
+  `checkStatus` now maps `d.status === 'degraded'` → `'degraded'`, and the label
+  reads "Degraded".
+- **`resp.ok` guard.** `checkStatus` parsed `/status` JSON without checking `resp.ok`;
+  a 5xx with a parseable `{success:true}` body could be trusted as online. Added an
+  early `if (!resp.ok) { setStatus('offline'); return; }`.
+- **`degraded` is chat-reachable.** New module-level `isBackendReachable(s)` = online||degraded.
+  Wired into the `sendMessage` send-gate, the LLM-error fall-through, the chat input/send
+  `disabled`, and the placeholder so a degraded (reachable) agent isn't hard-blocked.
+- **Additive soft degraded banner** mirroring the existing LLM-fallback banner styling
+  (inline rgba like the sister banner — additive UI, not a restyle).
+- **Tests +3** in `StellaAgent.test.tsx`: degraded distinct-from-offline + input stays
+  enabled; non-2xx `/status` → offline (resp.ok guard); backend chat-call failure surfaces
+  the system error message.
+
+**Proof (FULL gate, 6/6 green):**
+- `npx tsc -b` ✓ (exit 0)
+- `npx vitest run` → **48 files / 365 passed** (+3 vs 362 at Cycle 3)
+- `npx react-router build` ✓ (BUILD1_OK)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓ (BUILD2_OK)
+- `node Scripts/verify_no_pii_leak.mjs` ✓ (51 files, 0 leaks)
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (0 errors/warnings/page-errors; 200)
+- Commit: `2ba81c3`
+
+**Next:** Cycle 5 — Stella linkage (fix-only, gap **S2**). Additive `dwellium:open-widget`
+handoff when Stella references another widget (Inbox / ARA / Files / DocViewer), reusing
+the existing bus + `araLinkage`-style detector. NO cosmetic/structural change. Add a
+linkage test. FULL gate.

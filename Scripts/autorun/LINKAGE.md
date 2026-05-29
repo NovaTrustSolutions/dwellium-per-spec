@@ -69,8 +69,9 @@ ARA has **two** surfaces: the full **ARAConsole** widget (`ARAConsole.tsx`, 2029
 | InboxZero ← SSE `inbox:new` / `inbox:status-change` | EventSource `/stream` (L330) | ✅ present | real-time cache invalidation (GAP-01 already done) |
 | InboxZero ← `qualia-inbox-focus-item` | `addEventListener` (L377) | ✅ present | CommandPalette emits → focus item |
 | InboxZero → `qualia-toast` | `dispatchEvent` (multiple) | ✅ present | |
-| InboxZero / SmartActions → `dwellium:open-widget` (open relevant widget on action) | — | ❌ missing-but-expected | SmartActions (`SmartActions.tsx`) only calls `/api/inbox/actions`; no widget handoff. Cycle 7 target. |
-| InboxZero → ARA / Stella ("draft reply with ARA/Stella") | — | ❌ missing-but-expected | no handoff to the two assistants. Cycle 7 target (open assistant via bus). |
+| InboxZero / SmartActions → `dwellium:open-widget` (open relevant widget on action) | `inboxLinkage.openWidgetHandoff` (SmartActions draft "Open in:" row) | ✅ present | **Cycle 7 (I2):** after AI Auto-Draft, SmartActions renders Scribe/ARA/Stella chips firing `dwellium:open-widget`. |
+| InboxZero → ARA / Stella ("draft reply with ARA/Stella") | `inboxLinkage.getDraftHandoffs` | ✅ present | **Cycle 7 (I3):** draft hands off to `ara-console` + `stella-agent` via the same row. |
+| SmartActions "Extract Events" → calendar widget | — | 🚫 blocked | no calendar widget exists in `widgetRegistry.ts` (verified Cycle 7); cannot hand off. Re-open if a calendar widget is added. |
 | GlobalAuditTab → `qualia-toast` (recover/audit feedback) | `dispatchEvent` | ✅ present | |
 
 **InboxZero gaps for later cycles:** (I1) loading/empty/error + `useInboxQueries` failure handling review [Cycle 6 correctness]; (I2) SmartActions → `dwellium:open-widget` handoff [Cycle 7]; (I3) InboxZero → open ARA/Stella assistant handoff [Cycle 7].

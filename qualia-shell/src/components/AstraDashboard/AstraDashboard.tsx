@@ -13,6 +13,7 @@ import {
     ClipboardList, ArrowUpRight, Globe, RefreshCw,
     ChevronUp, ChevronDown, ChevronLeft, X, Plus, Settings2,
     Shield, Scale, ExternalLink, Truck, KeyRound,
+    Landmark, ShieldAlert,
 } from 'lucide-react';
 import { openStrataModule } from '../StrataDashboard/strataDeepLink';
 import AstraWorkspace from './AstraWorkspace';
@@ -21,6 +22,7 @@ import IntelligenceDashboard from './IntelligenceDashboard';
 import ObservabilityPanel from './ObservabilityPanel';
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout } from './useDashboardLayout';
+import { fetchFinanceSnapshot } from './dashboardData';
 import {
     DASHBOARD_COLUMNS,
     type DashboardColumn, type DashboardLayout, type MoveDirection,
@@ -30,6 +32,7 @@ import type {
     DashCalendarEvent, AgentLogEntry, ActiveWorkitem, DomainSnapshot,
     ComplianceSummaryItem, LegalMatter,
     MaintenanceWorkOrder, LeaseExpiration, VendorStatus,
+    FinanceSnapshot, RiskRegisterItem,
 } from './dashboardData';
 import './AstraDashboard.css';
 import './IntelligenceDashboard.css';
@@ -305,7 +308,7 @@ function AIAgentLog({ entries, loading, error }: PanelProps & { entries: AgentLo
 /* ═══════════════════════════  COMPLIANCE TRACKER  ═══════════════════ */
 
 /** Small "Open in Strata" drill-down button reused by the Cycle-5/6 panels. */
-type DrillModule = 'compliance' | 'legal' | 'maintenance' | 'leasing' | 'vendors';
+type DrillModule = 'compliance' | 'legal' | 'maintenance' | 'leasing' | 'vendors' | 'forecast' | 'incidents';
 function DrillToStrata({ module, label }: { module: DrillModule; label: string }) {
     return (
         <button
@@ -572,6 +575,171 @@ function VendorStatusPanel({ items, loading, error }: PanelProps & { items: Vend
     );
 }
 
+/* ═══════════════════════════  FINANCE + RISK PANELS (Cycle 7)  ═══════ */
+
+/** Compact USD formatter for the finance snapshot (K / M abbreviation). */
+function fmtMoney(n: number): string {
+    const abs = Math.abs(n);
+    const sign = n < 0 ? '-' : '';
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}K`;
+    return `${sign}$${abs.toFixed(0)}`;
+}
+
+const FINANCE_WINDOWS: { label: string; months: number }[] = [
+    { label: '3mo', months: 3 },
+    { label: '6mo', months: 6 },
+    { label: '12mo', months: 12 },
+    { label: '24mo', months: 24 },
+];
+
+/**
+ * Financial Snapshot — NOI / revenue / expenses / occupancy over a horizon,
+ * plus budget-vs-actual and AR delinquency. The date-range segmented control
+ * re-fetches `fetchFinanceSnapshot` with the selected month window (forecast
+ * figures scale with it); the 12-month view reuses the aggregate snapshot so
+ * no extra fetch fires on first paint. `fetchSnapshot` is injectable for tests.
+ */
+function FinancialSnapshotPanel({
+    snapshot, loading, error,
+    fetchSnapshot = (m: number) => fetchFinanceSnapshot(undefined, m),
+}: PanelProps & {
+    snapshot: FinanceSnapshot | null;
+    fetchSnapshot?: (months: number) => Promise<FinanceSnapshot>;
+}) {
+    const [months, setMonths] = useState(12);
+    const [override, setOverride] = useState<FinanceSnapshot | null>(null);
+    const [busy, setBusy] = useState(false);
+    const view = override ?? snapshot;
+    const ready = !loading && !error && view !== null;
+
+    const selectWindow = (m: number) => {
+        setMonths(m);
+        if (m === 12) { setOverride(null); return; } // aggregate already = 12mo
+        setBusy(true);
+        fetchSnapshot(m)
+            .then((s) => setOverride(s))
+            .catch(() => { /* keep prior view on error */ })
+            .finally(() => setBusy(false));
+    };
+
+    const variancePositive = (view?.budgetVariance ?? 0) >= 0;
+    return (
+        <div className="a-panel a-financials">
+            <div className="a-panel-header">
+                <Landmark size={16} />
+                <span>Financial Snapshot</span>
+                {ready && view!.delinquentCount > 0 && (
+                    <span className="a-badge a-badge-critical">{view!.delinquentCount} delinquent</span>
+                )}
+                {ready && (
+                    <div className="a-panel-segctl" role="group" aria-label="Finance horizon">
+                        {FINANCE_WINDOWS.map(w => (
+                            <button
+                                key={w.months}
+                                className={`a-panel-seg ${months === w.months ? 'a-panel-seg--on' : ''}`}
+                                onClick={() => selectWindow(w.months)}
+                                aria-pressed={months === w.months}
+                                disabled={busy}
+                                title={`Forecast over the next ${w.months} months`}
+                            >
+                                {w.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <DrillToStrata module="forecast" label="Forecast" />
+            </div>
+            <PanelStatus loading={loading} error={error} empty={view === null} emptyLabel="No financial projection yet" />
+            {ready && (
+                <div className="a-finance-cards">
+                    <div className="a-finance-card">
+                        <span className="a-finance-label">NOI ({view!.months}mo)</span>
+                        <span className="a-finance-value">{fmtMoney(view!.noi)}</span>
+                        <span className={`a-finance-change a-trend-${view!.noi >= 0 ? 'up' : 'down'}`}>
+                            {view!.noi >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                            net
+                        </span>
+                    </div>
+                    <div className="a-finance-card">
+                        <span className="a-finance-label">Revenue</span>
+                        <span className="a-finance-value">{fmtMoney(view!.revenue)}</span>
+                        <span className="a-finance-change">{view!.occupancy}% occ</span>
+                    </div>
+                    <div className="a-finance-card">
+                        <span className="a-finance-label">Expenses</span>
+                        <span className="a-finance-value">{fmtMoney(view!.expenses)}</span>
+                    </div>
+                    <div className="a-finance-card">
+                        <span className="a-finance-label">Budget vs Actual /mo</span>
+                        <span className="a-finance-value">{fmtMoney(view!.bookedMonthlyRent)}</span>
+                        <span className={`a-finance-change a-trend-${variancePositive ? 'up' : 'down'}`}>
+                            {variancePositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                            {fmtMoney(view!.budgetVariance)} vs plan
+                        </span>
+                    </div>
+                    <div className="a-finance-card">
+                        <span className="a-finance-label">Delinquency</span>
+                        <span className="a-finance-value">{fmtMoney(view!.delinquentAmount)}</span>
+                        <span className="a-finance-change">{view!.delinquentCount} charge{view!.delinquentCount === 1 ? '' : 's'}</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** Risk Register — insurance lapses/expirations + incidents, severity-filterable. */
+function RiskRegisterPanel({ items, loading, error }: PanelProps & { items: RiskRegisterItem[] }) {
+    const [onlyHigh, setOnlyHigh] = useState(false);
+    const shown = onlyHigh ? items.filter(r => r.severity === 'high') : items;
+    const ready = !loading && !error && items.length > 0;
+    const highCount = items.filter(r => r.severity === 'high').length;
+    return (
+        <div className="a-panel a-risk">
+            <div className="a-panel-header">
+                <ShieldAlert size={16} />
+                <span>Risk Register</span>
+                {ready && highCount > 0 && <span className="a-badge a-badge-critical">{highCount} high</span>}
+                {ready && (
+                    <button
+                        className={`a-panel-filter ${onlyHigh ? 'a-panel-filter--on' : ''}`}
+                        onClick={() => setOnlyHigh(v => !v)}
+                        aria-pressed={onlyHigh}
+                        title="Show only high-severity risks"
+                    >
+                        {onlyHigh ? 'High only' : 'All risks'}
+                    </button>
+                )}
+                <DrillToStrata module="incidents" label="Incidents" />
+            </div>
+            <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No active risks" />
+            {ready && (
+                <div className="a-ops-list">
+                    {shown.length === 0 && <div className="a-panel-state a-panel-state--empty">No high-severity risks</div>}
+                    {shown.map(r => {
+                        const due = r.date ? dueLabel(r.daysUntil) : { text: '', cls: '' };
+                        return (
+                            <button
+                                key={r.id}
+                                className="a-ops-row"
+                                onClick={() => openStrataModule(r.category === 'incident' ? 'incidents' : 'compliance')}
+                                title={`${r.title} — ${r.severity} (${r.status})`}
+                            >
+                                <span className={`a-risk-sev a-sev-${r.severity}`}>{r.severity}</span>
+                                <span className="a-ops-title">{r.title}</span>
+                                <span className="a-risk-status">{r.status}</span>
+                                {due.text && <span className={`a-ops-due ${due.cls}`}>{due.text}</span>}
+                                <ChevronRight size={13} className="a-ops-arrow" />
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 /* ═══════════════════════════  ACTIVE WORKITEMS  ═══════════════════ */
 
 function ActiveWorkitems({ items, loading, error }: PanelProps & { items: ActiveWorkitem[] }) {
@@ -769,6 +937,8 @@ const PANEL_META: Record<string, string> = {
     vendors: 'Vendor & Contract Status',
     calendar: 'Compliance Calendar',
     compliance: 'Compliance Tracker',
+    financials: 'Financial Snapshot',
+    risk: 'Risk Register',
     agentlog: 'AI Agent Activity',
     arbitrage: '90-Day Quick Arbitrage',
 };
@@ -789,6 +959,8 @@ function renderPanel(id: string, data: DashData, loading: boolean, error: string
         case 'leases': return <LeaseExpirations items={data?.leaseExpirations ?? []} loading={loading} error={error} />;
         case 'vendors': return <VendorStatusPanel items={data?.vendorStatus ?? []} loading={loading} error={error} />;
         case 'compliance': return <ComplianceTracker items={data?.complianceItems ?? []} loading={loading} error={error} />;
+        case 'financials': return <FinancialSnapshotPanel snapshot={data?.financeSnapshot ?? null} loading={loading} error={error} />;
+        case 'risk': return <RiskRegisterPanel items={data?.riskRegister ?? []} loading={loading} error={error} />;
         case 'calendar': return <ComplianceCalendar events={data?.calendarEvents ?? []} loading={loading} error={error} />;
         case 'agentlog': return <AIAgentLog entries={data?.agentLog ?? []} loading={loading} error={error} />;
         case 'arbitrage': return <QuickArbitrage />;

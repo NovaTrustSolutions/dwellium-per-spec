@@ -2091,3 +2091,28 @@
     outline: 2px solid var(--a-accent);
     outline-offset: 1px;
 }
+.astra-dashboard .a-panel-seg:disabled { opacity: 0.5; cursor: progress; }
+
+/* Risk register — severity badge + status (Cycle 7), mirrors a-vendor-status. */
+.astra-dashboard .a-risk-sev {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    min-width: 52px;
+    text-align: center;
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+.astra-dashboard .a-sev-high { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.astra-dashboard .a-sev-medium { background: rgba(245, 158, 11, 0.18); color: #f59e0b; }
+.astra-dashboard .a-sev-low { background: rgba(34, 197, 94, 0.13); color: #22c55e; }
+.astra-dashboard .a-risk-status {
+    flex-shrink: 0;
+    font-size: 10px;
+    text-transform: capitalize;
+    color: var(--a-text-dim);
+}

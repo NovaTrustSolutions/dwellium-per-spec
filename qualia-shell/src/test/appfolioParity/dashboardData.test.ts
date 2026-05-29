@@ -37,9 +37,12 @@ import {
     fetchMaintenanceQueue,
     fetchLeaseExpirations,
     fetchVendorStatus,
+    fetchFinanceSnapshot,
+    fetchRiskRegister,
     complianceStatusRank,
     workitemPriorityRank,
     vendorStatusRank,
+    riskSeverityRank,
     daysUntil,
     loadDashboardData,
     type DashboardDataDeps,
@@ -364,6 +367,75 @@ describe('dashboardData — fetchVendorStatus (Cycle 6)', () => {
     });
 });
 
+describe('dashboardData — riskSeverityRank', () => {
+    it('ranks high < medium < low < unknown', () => {
+        expect(riskSeverityRank('high')).toBeLessThan(riskSeverityRank('medium'));
+        expect(riskSeverityRank('medium')).toBeLessThan(riskSeverityRank('low'));
+        expect(riskSeverityRank('low')).toBeLessThan(riskSeverityRank('???'));
+        expect(riskSeverityRank(undefined)).toBe(riskSeverityRank('???'));
+    });
+});
+
+describe('dashboardData — fetchFinanceSnapshot', () => {
+    it('derives NOI / budget-vs-actual / delinquency from forecast + recurring charges', async () => {
+        const deps = fakeDeps({
+            '/forecast': { summary: { totalRevenue: 120000, totalExpenses: 48000, totalNet: 72000, avgOccupancy: 92 } },
+            '/recurring-charges': [
+                { amount: 1595, previousStatus: 'PAID', endDate: null },        // active, paid
+                { amount: 1200, previousStatus: 'late', endDate: null },         // active, delinquent
+                { amount: 900, previousStatus: null, endDate: '2026-01-01' },    // ended before NOW → excluded
+                { amount: 800, previousStatus: 'overdue', endDate: '2026-12-31' }, // active, delinquent
+            ],
+        });
+        const out = await fetchFinanceSnapshot(deps, 12, NOW);
+        expect(out).toMatchObject({ months: 12, noi: 72000, revenue: 120000, expenses: 48000, occupancy: 92 });
+        expect(out.projectedMonthlyRevenue).toBe(10000);      // 120000 / 12
+        expect(out.bookedMonthlyRent).toBe(3595);             // 1595 + 1200 + 800 (ended 900 excluded)
+        expect(out.budgetVariance).toBe(-6405);               // 3595 − 10000
+        expect(out.delinquentCount).toBe(2);                  // late + overdue
+        expect(out.delinquentAmount).toBe(2000);              // 1200 + 800
+    });
+
+    it('clamps the months window and forwards it to /forecast', async () => {
+        const deps = fakeDeps({ '/forecast': { summary: { totalRevenue: 36000 } }, '/recurring-charges': [] });
+        const out = await fetchFinanceSnapshot(deps, 99, NOW); // clamps to 36
+        expect(out.months).toBe(36);
+        expect(deps.get).toHaveBeenCalledWith('/forecast', { months: '36' });
+    });
+
+    it('tolerates an empty seed (no forecast) with zeroed figures', async () => {
+        const out = await fetchFinanceSnapshot(fakeDeps({}), 6, NOW);
+        expect(out).toMatchObject({ months: 6, noi: 0, revenue: 0, bookedMonthlyRent: 0, delinquentCount: 0 });
+    });
+});
+
+describe('dashboardData — fetchRiskRegister', () => {
+    it('surfaces lapsed/expiring insurance + incidents, filters healthy, sorts by severity', async () => {
+        const deps = fakeDeps({
+            '/insurance-policies': [
+                { id: 'p-lapsed', policyType: 'flood', carrier: 'FEMA', enforcementStatus: 'lapsed', expirationDate: '2025-01-01' },
+                { id: 'p-expiring', policyType: 'property', carrier: 'State Farm', enforcementStatus: 'fulfilled', expirationDate: '2026-05-30' },
+                { id: 'p-healthy', policyType: 'liability', enforcementStatus: 'fulfilled', expirationDate: '2027-01-01' },
+                { id: 'p-required', policyType: 'umbrella', enforcementStatus: 'required', expirationDate: '2027-06-01' },
+            ],
+            '/incidents': [
+                { id: 'i1', title: 'Fire', severity: 'critical', status: 'open', incidentDate: '2026-05-10' },
+            ],
+        });
+        const out = await fetchRiskRegister(deps, 20, NOW);
+        // healthy filtered out; high (lapsed, then incident by date) → medium → low(required).
+        expect(out.map(r => r.id)).toEqual(['p-lapsed', 'i1', 'p-expiring', 'p-required']);
+        expect(out[0]).toMatchObject({ category: 'insurance', severity: 'high', status: 'lapsed' });
+        expect(out[1]).toMatchObject({ category: 'incident', severity: 'high', title: 'Fire' });
+        expect(out[2]).toMatchObject({ severity: 'medium', status: 'expiring' });
+        expect(out.find(r => r.id === 'p-healthy')).toBeUndefined();
+    });
+
+    it('tolerates an empty seed', async () => {
+        expect(await fetchRiskRegister(fakeDeps({}), 10, NOW)).toEqual([]);
+    });
+});
+
 describe('dashboardData — loadDashboardData', () => {
     it('aggregates all sections and isolates per-section failures', async () => {
         // /forecast throws → financialCards degrades to [], rest still load.
@@ -384,6 +456,8 @@ describe('dashboardData — loadDashboardData', () => {
         expect(data.financialCards).toEqual([]); // isolated failure
         expect(data.watchdog).toHaveLength(1); // still loaded
         expect(data.heatmap[0]).toMatchObject({ name: 'P1', occupancy: 100 });
+        expect(data.financeSnapshot).toMatchObject({ noi: 0, months: 12 }); // /forecast failure → zeroed snapshot
+        expect(Array.isArray(data.riskRegister)).toBe(true);
         expect(data.hr).toMatchObject({ mock: true });
     });
 });

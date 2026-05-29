@@ -182,3 +182,43 @@ Legend: ✅ done+committed · 🚧 in progress (continue next iteration) · ⬜ 
   (200, 5949 B, 0 console errors/warnings, 0 page errors) ✓.
 - **Next:** Cycle 7 — Finance + Risk panels: NOI/delinquencies/budget-vs-actual snapshot (Forecast/
   Accounting) + a risk register (Incident/Insurance). Date-range filter on finance. FULL gate.
+
+## Iteration 7 — 2026-05-29 — Cycle 7 (Finance + Risk panels) ✅
+- Two NEW exec panels wired to real Strata data; existing `finance` Quick-viz untouched (DASH-D7).
+- `dashboardData.ts`: + `fetchFinanceSnapshot(deps, months=12, now)` — `/forecast?months=N`
+  (NaN-safe + clamped [1,36]; revenue/expenses scale with the window = the date-range filter)
+  joined to `/recurring-charges` for booked monthly rent (active = endDate null or ≥ now) +
+  AR delinquency (counts only known-unpaid `previousStatus`: late/overdue/unpaid/past_due/
+  partial/failed/delinquent — `null`/`PAID` are NOT delinquent so fresh schedules don't
+  overstate AR). Returns NOI/revenue/expenses/occupancy + projectedMonthlyRevenue +
+  bookedMonthlyRent + budgetVariance + delinquentCount/Amount. + `fetchRiskRegister(deps,
+  limit, now)` — `/insurance-policies` (real, 6 seeded) + `/incidents` (empty today →
+  degrades): lapsed/expired→high, expiring≤30d→medium, healthy fulfilled/not-required
+  filtered out, `required` kept as low; incidents map critical/high→high; sorted by
+  severity then soonest date. + exported `riskSeverityRank` helper + `UNPAID_STATUSES`.
+  New raw types RecurringChargeRow/InsurancePolicyRow/IncidentRow. Both joined into
+  `loadDashboardData` (financeSnapshot default 12mo via EMPTY_FINANCE_SNAPSHOT fallback;
+  riskRegister []). `DashboardData` + `+financeSnapshot` + `riskRegister`.
+  Source ground truth verified: forecast.summary = {totalRevenue,totalExpenses,totalNet,
+  avgOccupancy} (units×rentAmount projection); recurring_charges = 3 rows ($1595 rent,
+  previousStatus 1 PAID/2 null); insurance_policies = 6 (enforcementStatus fulfilled/lapsed/
+  required/not-required + expirationDate); incidents/incident_logs empty.
+- `AstraDashboard.tsx`: `FinancialSnapshotPanel` (3/6/12/24-mo segmented control re-fetches
+  via injectable `fetchSnapshot`; 12mo reuses aggregate → no extra first-paint fetch; 5 cards
+  NOI/Revenue/Expenses/Budget-vs-Actual/Delinquency w/ trend arrows) + `RiskRegisterPanel`
+  (All/High-only filter, severity badge + status, clickable rows → `openStrataModule`). Both
+  use shared `.a-finance-cards`/`.a-ops-*` idiom + widened `DrillToStrata` (`DrillModule` now
+  +forecast +incidents). Registered in PANEL_META + renderPanel. Local `fmtMoney` (K/M).
+- `dashboardLayoutStore.ts`: DEFAULT_LAYOUT center +`financials`, right +`risk`; left
+  `[heatmap,finance,domains]` UNCHANGED (layout test asserts its exact order). reconcileLayout
+  grafts both onto returning users by construction.
+- CSS: + `.a-risk-sev`/`.a-sev-high|medium|low` (mirror `.a-vstatus-*`) + `.a-risk-status` +
+  `.a-panel-seg:disabled`.
+- Tests: +6 data-layer (riskSeverityRank pin; finance derive+clamp/forward+empty; risk
+  surface/filter/sort+empty) + extended loadDashboardData assertion (financeSnapshot zeroed
+  on /forecast failure + riskRegister array).
+- **GATE 6/6 GREEN:** tsc ✓ · vitest **445 passed / 55 files** (baseline 439/55 → **+6**) ✓ ·
+  build seeds=true ✓ · build seeds=false ✓ · PII clean (51 files, 0 leaks) ✓ · SSR smoke PASS
+  @ :3458 (200, 5949 B, 0 console errors/warnings, 0 page errors) ✓.
+- **Next:** Cycle 8 — HR + Research panels: HR snapshot (mock-labeled, no HR endpoint) +
+  Research feed via `callLlm` (per-user LLM, graceful no-LLM state). FULL gate.

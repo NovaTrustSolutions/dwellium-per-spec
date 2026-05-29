@@ -54,3 +54,25 @@ The holder+event pair covers both cold and warm cases without changing the open-
 contract. StrataDashboard touch is ~8 lines, fully additive/removable.
 **Back out:** delete `strataDeepLink.ts`; revert the StrataDashboard `useState` initializer to
 `'overview'` and remove the effect. Panels fall back to opening the Strata window (DASH-D4).
+
+## DASH-D7 — Finance + Risk as NEW additive panels (Cycle 7)
+**Decision:** Cycle 7 adds two NEW panels (`financials` = Financial Snapshot, `risk` =
+Risk Register) rather than mutating the Cycle-3 `finance` (Financial Quick-viz) panel.
+- **Financial Snapshot:** NOI / revenue / expenses / occupancy + budget-vs-actual
+  (forecast projected monthly revenue vs booked monthly rent from `/recurring-charges`)
+  + AR delinquency tally. A segmented date-range control (3/6/12/24 mo) re-fetches
+  `fetchFinanceSnapshot(months)` — the 12-mo view reuses the aggregate snapshot so no
+  extra fetch fires on first paint. Drill → `forecast` module.
+- **Risk Register:** insurance lapses/expirations (`/insurance-policies`, real) + logged
+  incidents (`/incidents`, empty today → degrades). Healthy fulfilled/not-required policies
+  filtered out; severity high/medium/low; All/High-only filter. Drill → `incidents` module
+  (insurance rows → `compliance`, the engine that tracks insurance enforcement).
+**Rationale:** Plan §2 lists Cycle-3 Financial Quick-viz and Cycle-7 NOI/delinquency/budget
+as SEPARATE rows. Additive panels mirror the Cycle-5/6 pattern (new panel + reconcileLayout
+graft) and are maximally reversible (no existing panel touched). Delinquency counts only
+known-unpaid `previousStatus` (late/overdue/…); `null`/`PAID` are NOT delinquent so freshly
+seeded schedules don't overstate AR risk.
+**Back out:** remove the two `renderPanel` cases + PANEL_META entries + the two panel
+components; drop `financials`/`risk` from DEFAULT_LAYOUT; remove `fetchFinanceSnapshot`/
+`fetchRiskRegister` + the two `DashboardData` fields. reconcileLayout drops unknown ids by
+construction, so stored layouts self-heal.

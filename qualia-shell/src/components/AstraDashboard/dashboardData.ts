@@ -160,6 +160,48 @@ export interface VendorStatus {
     property: string;
 }
 
+/** Finance snapshot: NOI / delinquency / budget-vs-actual over a horizon (Cycle 7). */
+export interface FinanceSnapshot {
+    /** Forecast horizon in months that produced these figures (the date-range filter). */
+    months: number;
+    /** Net operating income over the horizon (forecast totalNet). */
+    noi: number;
+    /** Projected revenue over the horizon. */
+    revenue: number;
+    /** Projected expenses over the horizon. */
+    expenses: number;
+    /** Average occupancy % from the forecast. */
+    occupancy: number;
+    /** Projected monthly revenue = forecast revenue / months. */
+    projectedMonthlyRevenue: number;
+    /** Actual booked monthly rent = sum of active recurring-charge amounts. */
+    bookedMonthlyRent: number;
+    /** bookedMonthlyRent − projectedMonthlyRevenue (positive = ahead of plan). */
+    budgetVariance: number;
+    /** Recurring charges whose previous cycle is unpaid (delinquent). */
+    delinquentCount: number;
+    /** Sum of delinquent charge amounts. */
+    delinquentAmount: number;
+}
+
+/** Risk register row: an insurance lapse/expiry or a logged incident (Cycle 7). */
+export interface RiskRegisterItem {
+    id: string;
+    /** insurance | incident */
+    category: string;
+    title: string;
+    /** high | medium | low */
+    severity: string;
+    /** lapsed | expired | expiring | open | … (human status). */
+    status: string;
+    /** propertyId (drill-down handoff) or ''. */
+    property: string;
+    /** related date (policy expiration / incident date) or ''. */
+    date: string;
+    /** days from `now` to `date`; negative = past; null = none. */
+    daysUntil: number | null;
+}
+
 /** HR has no backend endpoint today (Cycle-1 audit) → clearly-labeled mock. */
 export interface HrSnapshot {
     mock: true;
@@ -232,6 +274,31 @@ interface ForecastResultLike {
         totalNet?: number;
         avgOccupancy?: number;
     };
+}
+interface RecurringChargeRow {
+    id?: string;
+    amount?: number | string;
+    account?: string;
+    endDate?: string | null;
+    previousStatus?: string | null;
+}
+interface InsurancePolicyRow {
+    id?: string;
+    propertyId?: string;
+    policyType?: string;
+    carrier?: string;
+    status?: string;
+    enforcementStatus?: string;
+    expirationDate?: string | null;
+}
+interface IncidentRow {
+    id?: string;
+    title?: string;
+    propertyId?: string;
+    severity?: string;
+    status?: string;
+    incidentDate?: string | null;
+    createdAt?: string | null;
 }
 
 /* ──────────────────────────── helpers ─────────────────────────────── */
@@ -350,6 +417,19 @@ export function daysUntil(date: string | null | undefined, now: number): number 
     const d = parseLocalDate(date);
     if (Number.isNaN(d.getTime())) return null;
     return Math.round((d.getTime() - now) / 86_400_000);
+}
+
+/**
+ * Recurring-charge previous-cycle statuses that mark a charge as delinquent.
+ * `null`/empty (no prior cycle yet) and `paid` are NOT delinquent — counting
+ * those would overstate AR risk on freshly-seeded schedules (Cycle 7).
+ */
+const UNPAID_STATUSES = new Set(['late', 'unpaid', 'overdue', 'past_due', 'partial', 'failed', 'delinquent']);
+
+/** Risk severity rank (lower = surfaced first). Unknown sinks. Exported for test pinning (Cycle 7). */
+const RISK_SEVERITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+export function riskSeverityRank(severity: string | undefined): number {
+    return RISK_SEVERITY_RANK[String(severity ?? '').toLowerCase()] ?? 3;
 }
 
 /* ──────────────────────────── fetchers ────────────────────────────── */
@@ -699,7 +779,138 @@ export async function fetchVendorStatus(
     return rows.slice(0, limit);
 }
 
+/**
+ * Finance snapshot (Cycle 7): NOI / revenue / expenses / occupancy from
+ * `/forecast` over a `months` horizon (the panel's date-range filter sends
+ * the window; forecast revenue/expenses scale linearly with it), plus a
+ * budget-vs-actual line (projected monthly revenue vs booked monthly rent
+ * from `/recurring-charges`) and an AR delinquency tally. `months` is
+ * NaN-safe + clamped to [1, 36] to mirror the static forecast handler.
+ */
+export async function fetchFinanceSnapshot(
+    deps: DashboardDataDeps = defaultDeps,
+    months = 12,
+    now: number = Date.now(),
+): Promise<FinanceSnapshot> {
+    const safeMonths = Math.min(Math.max(Math.round(months) || 12, 1), 36);
+    const [forecastRes, chargesRes] = await Promise.all([
+        deps.get<ForecastResultLike>('/forecast', { months: String(safeMonths) }),
+        deps.get<unknown>('/recurring-charges'),
+    ]);
+    const s = forecastRes?.summary;
+    const revenue = s?.totalRevenue ?? 0;
+    const expenses = s?.totalExpenses ?? 0;
+    const noi = s?.totalNet ?? revenue - expenses;
+    const occupancy = s?.avgOccupancy ?? 0;
+    const projectedMonthlyRevenue = Math.round(revenue / safeMonths);
+
+    let bookedMonthlyRent = 0;
+    let delinquentCount = 0;
+    let delinquentAmount = 0;
+    for (const c of asArray<RecurringChargeRow>(chargesRes)) {
+        const amount = Number(c.amount) || 0;
+        const ended = c.endDate ? parseLocalDate(String(c.endDate)).getTime() < now : false;
+        if (!ended) bookedMonthlyRent += amount;
+        if (UNPAID_STATUSES.has(String(c.previousStatus ?? '').toLowerCase())) {
+            delinquentCount += 1;
+            delinquentAmount += amount;
+        }
+    }
+
+    return {
+        months: safeMonths,
+        noi,
+        revenue,
+        expenses,
+        occupancy,
+        projectedMonthlyRevenue,
+        bookedMonthlyRent: Math.round(bookedMonthlyRent),
+        budgetVariance: Math.round(bookedMonthlyRent - projectedMonthlyRevenue),
+        delinquentCount,
+        delinquentAmount: Math.round(delinquentAmount),
+    };
+}
+
+/**
+ * Risk register (Cycle 7): insurance lapses/expirations from
+ * `/insurance-policies` + logged incidents from `/incidents`. Insurance rows
+ * are surfaced only when they represent a risk — lapsed/expired (high),
+ * expiring within 30 days (medium), or an open requirement; healthy
+ * fulfilled/not-required policies are filtered out so the register stays
+ * exec-relevant. Incidents map severity → high/medium/low. Sorted by
+ * severity then soonest date. Limited to `limit` rows.
+ */
+export async function fetchRiskRegister(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 20,
+    now: number = Date.now(),
+): Promise<RiskRegisterItem[]> {
+    const [insRes, incRes] = await Promise.all([
+        deps.get<unknown>('/insurance-policies'),
+        deps.get<unknown>('/incidents'),
+    ]);
+    const items: RiskRegisterItem[] = [];
+
+    asArray<InsurancePolicyRow>(insRes).forEach((p, i) => {
+        const enforcement = String(p.enforcementStatus ?? '').toLowerCase();
+        const du = daysUntil(p.expirationDate, now);
+        let severity = 'low';
+        let status = enforcement || String(p.status ?? 'active').toLowerCase();
+        if (enforcement === 'lapsed' || (du !== null && du < 0)) {
+            severity = 'high';
+            status = enforcement === 'lapsed' ? 'lapsed' : 'expired';
+        } else if (du !== null && du <= 30) {
+            severity = 'medium';
+            status = 'expiring';
+        }
+        // Only surface policies that are an actual risk; skip healthy ones.
+        if (severity === 'low' && enforcement !== 'required') return;
+        items.push({
+            id: p.id ?? `policy-${i}`,
+            category: 'insurance',
+            title: `${p.policyType ?? 'Policy'}${p.carrier ? ` — ${p.carrier}` : ''}`,
+            severity,
+            status,
+            property: p.propertyId ?? '',
+            date: p.expirationDate ?? '',
+            daysUntil: du,
+        });
+    });
+
+    asArray<IncidentRow>(incRes).forEach((inc, i) => {
+        const sev = String(inc.severity ?? 'medium').toLowerCase();
+        const severity = sev === 'critical' || sev === 'high' ? 'high' : sev === 'low' ? 'low' : 'medium';
+        const date = inc.incidentDate ?? inc.createdAt ?? '';
+        items.push({
+            id: inc.id ?? `incident-${i}`,
+            category: 'incident',
+            title: inc.title ?? 'Incident',
+            severity,
+            status: String(inc.status ?? 'open').toLowerCase(),
+            property: inc.propertyId ?? '',
+            date: date ? String(date) : '',
+            daysUntil: daysUntil(date, now),
+        });
+    });
+
+    items.sort((a, b) => {
+        const bySev = riskSeverityRank(a.severity) - riskSeverityRank(b.severity);
+        if (bySev !== 0) return bySev;
+        const da = a.daysUntil ?? Number.POSITIVE_INFINITY;
+        const db = b.daysUntil ?? Number.POSITIVE_INFINITY;
+        return da - db;
+    });
+    return items.slice(0, limit);
+}
+
 /* ──────────────────────────── aggregate loader ────────────────────── */
+
+/** Zeroed finance snapshot — the per-section fallback when `/forecast` fails. */
+const EMPTY_FINANCE_SNAPSHOT: FinanceSnapshot = {
+    months: 12, noi: 0, revenue: 0, expenses: 0, occupancy: 0,
+    projectedMonthlyRevenue: 0, bookedMonthlyRent: 0, budgetVariance: 0,
+    delinquentCount: 0, delinquentAmount: 0,
+};
 
 export interface DashboardData {
     heatmap: HeatmapProperty[];
@@ -714,6 +925,8 @@ export interface DashboardData {
     maintenanceQueue: MaintenanceWorkOrder[];
     leaseExpirations: LeaseExpiration[];
     vendorStatus: VendorStatus[];
+    financeSnapshot: FinanceSnapshot;
+    riskRegister: RiskRegisterItem[];
     hr: HrSnapshot;
 }
 
@@ -747,6 +960,8 @@ export async function loadDashboardData(
         maintenanceQueue,
         leaseExpirations,
         vendorStatus,
+        financeSnapshot,
+        riskRegister,
     ] = await Promise.all([
         settle(fetchHeatmap(deps), []),
         settle(fetchWatchdog(deps), []),
@@ -760,6 +975,8 @@ export async function loadDashboardData(
         settle(fetchMaintenanceQueue(deps, undefined, now), []),
         settle(fetchLeaseExpirations(deps, undefined, now), []),
         settle(fetchVendorStatus(deps, undefined, now), []),
+        settle(fetchFinanceSnapshot(deps, 12, now), EMPTY_FINANCE_SNAPSHOT),
+        settle(fetchRiskRegister(deps, undefined, now), []),
     ]);
     return {
         heatmap,
@@ -774,6 +991,8 @@ export async function loadDashboardData(
         maintenanceQueue,
         leaseExpirations,
         vendorStatus,
+        financeSnapshot,
+        riskRegister,
         hr: fetchHrSnapshot(),
     };
 }

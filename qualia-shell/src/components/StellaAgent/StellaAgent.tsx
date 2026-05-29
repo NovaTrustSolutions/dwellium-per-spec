@@ -20,6 +20,8 @@ import {
 } from './honchoDreamStore';
 import type { DreamEntry } from './honchoDreamStore';
 import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
+import { hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
+import { parseHermesCommand, spawnHermesFromStella } from './stellaHermesSpawn';
 
 const API_BASE = '/api/stella';
 
@@ -219,6 +221,9 @@ export default function StellaAgent() {
     const userCtx = useContext(UserContext);
     const userIdForDreams = userCtx?.user?.id ?? null;
     dreamUserIdHolder.current = userIdForDreams;
+    // Per-user Hermes learning store key (dynamic-key holder discipline) — Stella-
+    // spawned runs record into the SAME local store the standalone widget uses.
+    hermesLearningUserIdHolder.current = userIdForDreams;
     const dreams: DreamEntry[] = useSyncExternalStore(
         dreamStore.subscribe,
         dreamStore.getSnapshot,
@@ -247,7 +252,7 @@ export default function StellaAgent() {
         {
             id: 'welcome',
             role: 'system',
-            content: '⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more.',
+            content: '⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more. Tip: type `/hermes <task>` to spawn the Hermes agent.',
             timestamp: Date.now(),
         },
     ]);
@@ -512,13 +517,56 @@ export default function StellaAgent() {
     }, [messages, isTyping]);
 
     // ─── Chat ─────────────────────────────────────────
+    // ── Stella → Hermes first-class spawn (Cycle 17B) ──
+    // Dispatch the ONE shared self-improving Hermes run path (hermesRunner via
+    // stellaHermesSpawn) and surface the result in chat. Few-shot injection +
+    // proven-tool weighting + record-back into the LOCAL per-user learning store
+    // all live in the shared runner — Stella adds no second fetch path.
+    const runStellaHermes = async (task: string, originalText: string) => {
+        setMessages(prev => [...prev, {
+            id: `user-${Date.now()}`, role: 'user', content: originalText, timestamp: Date.now(),
+        }]);
+        setInput('');
+        if (!task) {
+            setMessages(prev => [...prev, {
+                id: `system-${Date.now()}`, role: 'system',
+                content: 'Usage: `/hermes <task>` — e.g. `/hermes summarize the latest maintenance reports`.',
+                timestamp: Date.now(),
+            }]);
+            return;
+        }
+        setIsTyping(true);
+        const authFetch = (url: string, init?: RequestInit) => fetch(url, {
+            ...init,
+            headers: getAuthHeaders({ 'Content-Type': 'application/json', ...((init?.headers as Record<string, string>) ?? {}) }),
+        });
+        try {
+            const { reply } = await spawnHermesFromStella(task, {
+                authFetch,
+                toolNames: hermesTools.map((t: any) => t.name),
+            });
+            setMessages(prev => [...prev, {
+                id: `assistant-${Date.now()}`, role: 'assistant', content: reply, timestamp: Date.now(),
+            }]);
+        } finally {
+            setIsTyping(false);
+        }
+    };
+
     const sendMessage = async () => {
         const text = input.trim();
+        if (!text || isTyping) return;
+
+        // Stella → Hermes spawn intercept (`/hermes <task>`). Hermes is independent
+        // of the Stella backend + personal LLM, so it runs even when both are down.
+        const hermesCmd = parseHermesCommand(text);
+        if (hermesCmd.isHermes) { await runStellaHermes(hermesCmd.task, text); return; }
+
         // 2026-05-26: relax `status !== 'online'` gate when user has LLM configured.
         // Stella backend can be offline AND the chat still works via the user's
         // personal LLM key (Settings → API Keys).
         const llmReady = hasActiveLlm(integrations.llm);
-        if (!text || isTyping || (!isBackendReachable(status) && !llmReady)) return;
+        if (!isBackendReachable(status) && !llmReady) return;
 
         const userMsg: ChatMessage = {
             id: `user-${Date.now()}`,

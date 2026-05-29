@@ -85,3 +85,35 @@ Legend: ✅ done+committed · 🚧 in progress (continue next iteration) · ⬜ 
 - **Next:** Cycle 4 — composable panel grid + per-user persistence (add/remove/rearrange panels;
   `dashboardLayoutStore` via `createLocalStorageStore` dynamic per-user key, mirror savedLayoutsStore);
   persist shown-panels + order; add a test. FULL gate.
+
+## Iteration 4 — 2026-05-29 — Cycle 4 (composable panel grid + per-user persistence) ✅
+- Created `src/components/AstraDashboard/dashboardLayoutStore.ts` — per-user dynamic-key store
+  (`qualia_dashboard_panels_${user.id}`, DASH-D2) via `createLocalStorageStore` object signature,
+  mirroring `integrationsStore`/`savedLayoutsStore`. Persists `{ columns: {left,center,right}, hidden }`.
+  Exports PURE transforms `reconcileLayout` / `hidePanelIn` / `showPanelIn` / `movePanelIn` (total,
+  never-throw) so the store is unit-testable without React. `reconcileLayout` drops unknown ids,
+  de-dups (first wins), and grafts known-but-missing ids onto their default column → forward/backward
+  schema-drift safe. SSR-safe by construction (`getServerSnapshot` → DEFAULT_LAYOUT; no render-path read).
+- Created `src/components/AstraDashboard/useDashboardLayout.ts` — thin React adapter mirroring
+  `useIntegrations` exactly: raw `useContext(UserContext)` (degrades to `_anonymous`, no provider throw),
+  updates the id holder DURING render before `useSyncExternalStore`, returns `{ layout, hidePanel,
+  showPanel, movePanel, replace, reset }`.
+- Refactored `AstraDashboard.tsx`: added a `PANEL_META` title map + `renderPanel(id,…)` registry switch
+  over the 9 panels; `DashboardContent` now renders `DASHBOARD_COLUMNS.map` from the persisted layout.
+  New `<PanelFrame>` wraps each panel; in **edit mode** overlays move (←↑↓→) + hide (×) controls
+  (buttons, NOT drag-drop → keyboard-accessible, zero new deps, more reversible — Cycle 9 a11y groundwork).
+  Topbar gains an **Edit/Done** toggle (`Settings2`, `aria-pressed`) beside Refresh (dashboard tab only),
+  and an "Hidden panels" add-bar (`+ <title>`) appears while editing. Default (non-edit) UX is unchanged.
+- CSS: appended `.a-tab-edit`, `.a-panel-frame`, `.a-panel-controls`/`.a-panel-ctrl`(+`--hide`),
+  `.a-layout-addbar`(+label/empty/btn), `.a-grid-empty` to AstraDashboard.css (reuses `--a-accent`/
+  `--a-text-dim`/`--a-border`).
+- Added `src/test/appfolioParity/dashboardLayout.test.ts` (21 tests, pure — no React/fake timers per the
+  React-19 scheduler convention; `.reset()` in `beforeEach` per v2.72.1): pins reconcile (seed/drop/
+  de-dup/graft/garbage), hide/show round-trip, move up/down/left/right + all no-op edges + universe
+  preservation, and store SSR/persistence/per-user-isolation(Andy≠Lisa)/corrupt-JSON/reset.
+- **GATE 6/6 GREEN:** tsc ✓ · vitest **422 passed / 54 files** (baseline 401/53 → **+21 / +1 file** = the
+  new layout test) ✓ · build seeds=true ✓ · build seeds=false ✓ · PII clean (51 files, 0 leaks) ✓ ·
+  SSR smoke PASS @ :3458 (200, 5949 B, 0 console errors/warnings, 0 page errors) ✓.
+- **Next:** Cycle 5 — Compliance + Legal/Litigation panels: compliance calendar (filings/inspections/
+  certs/due dates) + litigation matter tracker (status/deadlines/counsel) from ComplianceEngine/
+  LegalModule data; drill-down opens the relevant module via `dwellium:open-widget`. FULL gate.

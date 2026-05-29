@@ -10,13 +10,19 @@ import {
     Building2, AlertTriangle, DollarSign,
     CalendarCheck, Bot, ChevronRight, Clock,
     TrendingUp, TrendingDown, Activity, Brain, Eye,
-    ClipboardList, ArrowUpRight, Globe, RefreshCw
+    ClipboardList, ArrowUpRight, Globe, RefreshCw,
+    ChevronUp, ChevronDown, ChevronLeft, X, Plus, Settings2,
 } from 'lucide-react';
 import AstraWorkspace from './AstraWorkspace';
 import ThreadChannels from './ThreadChannels';
 import IntelligenceDashboard from './IntelligenceDashboard';
 import ObservabilityPanel from './ObservabilityPanel';
 import { useDashboardData } from './useDashboardData';
+import { useDashboardLayout } from './useDashboardLayout';
+import {
+    DASHBOARD_COLUMNS,
+    type DashboardColumn, type DashboardLayout, type MoveDirection,
+} from './dashboardLayoutStore';
 import type {
     HeatmapProperty, WatchdogItem, FinancialCard,
     DashCalendarEvent, AgentLogEntry, ActiveWorkitem, DomainSnapshot,
@@ -473,31 +479,114 @@ function DomainViews() {
     );
 }
 
+/* ═══════════════════════════  PANEL REGISTRY  ═══════════════════ */
+
+/** Human-readable title per panel id (controls + add-bar labels). */
+const PANEL_META: Record<string, string> = {
+    heatmap: 'Portfolio Heatmap',
+    finance: 'Financial Quick-viz',
+    domains: 'Cross-Domain Snapshots',
+    watchdog: 'Watchdog List',
+    workitems: 'Active Workitems',
+    domainviews: 'Saved Domain Views',
+    calendar: 'Compliance Calendar',
+    agentlog: 'AI Agent Activity',
+    arbitrage: '90-Day Quick Arbitrage',
+};
+
+type DashData = ReturnType<typeof useDashboardData>['data'];
+
+/** Render a panel by its registry id, threading data + loading/error. */
+function renderPanel(id: string, data: DashData, loading: boolean, error: string | null): React.ReactNode {
+    switch (id) {
+        case 'heatmap': return <PortfolioHeatmap properties={data?.heatmap ?? []} loading={loading} error={error} />;
+        case 'finance': return <FinancialQuickViz cards={data?.financialCards ?? []} loading={loading} error={error} />;
+        case 'domains': return <CrossDomainSnapshots snapshots={data?.domainSnapshots ?? []} loading={loading} error={error} />;
+        case 'watchdog': return <WatchdogList items={data?.watchdog ?? []} loading={loading} error={error} />;
+        case 'workitems': return <ActiveWorkitems items={data?.activeWorkitems ?? []} loading={loading} error={error} />;
+        case 'domainviews': return <DomainViews />;
+        case 'calendar': return <ComplianceCalendar events={data?.calendarEvents ?? []} loading={loading} error={error} />;
+        case 'agentlog': return <AIAgentLog entries={data?.agentLog ?? []} loading={loading} error={error} />;
+        case 'arbitrage': return <QuickArbitrage />;
+        default: return null;
+    }
+}
+
+/* ═══════════════════════════  COMPOSABILITY  ═══════════════════ */
+
+/**
+ * Wraps a panel; in edit mode overlays move (←↑↓→) + hide controls. In normal
+ * mode renders the panel bare (default UX is byte-unchanged from Cycle 3).
+ * Buttons (not drag-drop) keep the feature keyboard-accessible + dependency-
+ * free (Cycle 9 a11y groundwork).
+ */
+function PanelFrame({ id, column, editing, layout, onMove, onHide, children }: {
+    id: string;
+    column: DashboardColumn;
+    editing: boolean;
+    layout: DashboardLayout;
+    onMove: (id: string, dir: MoveDirection) => void;
+    onHide: (id: string) => void;
+    children: React.ReactNode;
+}) {
+    if (!editing) return <>{children}</>;
+    const col = layout.columns[column];
+    const idx = col.indexOf(id);
+    const title = PANEL_META[id] ?? id;
+    return (
+        <div className="a-panel-frame">
+            <div className="a-panel-controls" role="group" aria-label={`Layout controls for ${title}`}>
+                <button className="a-panel-ctrl" disabled={column === 'left'} aria-label={`Move ${title} to previous column`} title="Move left" onClick={() => onMove(id, 'left')}><ChevronLeft size={13} /></button>
+                <button className="a-panel-ctrl" disabled={idx <= 0} aria-label={`Move ${title} up`} title="Move up" onClick={() => onMove(id, 'up')}><ChevronUp size={13} /></button>
+                <button className="a-panel-ctrl" disabled={idx >= col.length - 1} aria-label={`Move ${title} down`} title="Move down" onClick={() => onMove(id, 'down')}><ChevronDown size={13} /></button>
+                <button className="a-panel-ctrl" disabled={column === 'right'} aria-label={`Move ${title} to next column`} title="Move right" onClick={() => onMove(id, 'right')}><ChevronRight size={13} /></button>
+                <button className="a-panel-ctrl a-panel-ctrl--hide" aria-label={`Hide ${title}`} title="Hide panel" onClick={() => onHide(id)}><X size={13} /></button>
+            </div>
+            {children}
+        </div>
+    );
+}
+
 /* ═══════════════════════════  MAIN COMPONENT  ═══════════════════ */
 
-function DashboardContent({ data, loading, error }: {
-    data: ReturnType<typeof useDashboardData>['data'];
+function DashboardContent({ data, loading, error, layout, editing, onMove, onHide, onShow }: {
+    data: DashData;
     loading: boolean;
     error: string | null;
+    layout: DashboardLayout;
+    editing: boolean;
+    onMove: (id: string, dir: MoveDirection) => void;
+    onHide: (id: string) => void;
+    onShow: (id: string) => void;
 }) {
     return (
-        <div className="a-dashboard-grid">
-            <div className="a-grid-left">
-                <PortfolioHeatmap properties={data?.heatmap ?? []} loading={loading} error={error} />
-                <FinancialQuickViz cards={data?.financialCards ?? []} loading={loading} error={error} />
-                <CrossDomainSnapshots snapshots={data?.domainSnapshots ?? []} loading={loading} error={error} />
+        <>
+            {editing && (
+                <div className="a-layout-addbar" role="group" aria-label="Hidden panels">
+                    <span className="a-layout-addbar-label">Hidden panels:</span>
+                    {layout.hidden.length === 0 && <span className="a-layout-addbar-empty">none</span>}
+                    {layout.hidden.map(id => (
+                        <button key={id} className="a-layout-addbtn" onClick={() => onShow(id)} aria-label={`Add ${PANEL_META[id] ?? id} to dashboard`}>
+                            <Plus size={12} /> {PANEL_META[id] ?? id}
+                        </button>
+                    ))}
+                </div>
+            )}
+            <div className="a-dashboard-grid">
+                {DASHBOARD_COLUMNS.map(col => (
+                    <div key={col} className={`a-grid-${col}`}>
+                        {layout.columns[col].map(id => (
+                            <PanelFrame key={id} id={id} column={col} editing={editing} layout={layout} onMove={onMove} onHide={onHide}>
+                                {renderPanel(id, data, loading, error)}
+                            </PanelFrame>
+                        ))}
+                        {editing && layout.columns[col].length === 0 && (
+                            <div className="a-grid-empty">Empty — move a panel here</div>
+                        )}
+                    </div>
+                ))}
             </div>
-            <div className="a-grid-center">
-                <WatchdogList items={data?.watchdog ?? []} loading={loading} error={error} />
-                <ActiveWorkitems items={data?.activeWorkitems ?? []} loading={loading} error={error} />
-                <DomainViews />
-            </div>
-            <div className="a-grid-right">
-                <ComplianceCalendar events={data?.calendarEvents ?? []} loading={loading} error={error} />
-                <AIAgentLog entries={data?.agentLog ?? []} loading={loading} error={error} />
-                <QuickArbitrage />
-            </div>
-        </div>
+        </>
     );
 }
 
@@ -511,11 +600,19 @@ const TABS: { id: AstraTab; label: string; icon: React.ReactNode }[] = [
 
 export default function AstraDashboard() {
     const [activeTab, setActiveTab] = useState<AstraTab>('dashboard');
+    const [editing, setEditing] = useState(false);
     const { data, loading, error, reload } = useDashboardData();
+    const { layout, hidePanel, showPanel, movePanel } = useDashboardLayout();
 
     const renderTab = () => {
         switch (activeTab) {
-            case 'dashboard': return <DashboardContent data={data} loading={loading} error={error} />;
+            case 'dashboard': return (
+                <DashboardContent
+                    data={data} loading={loading} error={error}
+                    layout={layout} editing={editing}
+                    onMove={movePanel} onHide={hidePanel} onShow={showPanel}
+                />
+            );
             case 'workspace': return <AstraWorkspace />;
             case 'channels': return <ThreadChannels />;
             case 'intelligence': return <IntelligenceDashboard />;
@@ -542,6 +639,18 @@ export default function AstraDashboard() {
                             <span>{tab.label}</span>
                         </button>
                     ))}
+                    {activeTab === 'dashboard' && (
+                        <button
+                            className={`a-tab a-tab-edit ${editing ? 'a-tab-active' : ''}`}
+                            onClick={() => setEditing(e => !e)}
+                            aria-pressed={editing}
+                            aria-label={editing ? 'Finish editing dashboard layout' : 'Edit dashboard layout'}
+                            title="Add, remove or rearrange panels"
+                        >
+                            <Settings2 size={16} />
+                            <span>{editing ? 'Done' : 'Edit'}</span>
+                        </button>
+                    )}
                     {activeTab === 'dashboard' && (
                         <button
                             className="a-tab a-tab-refresh"

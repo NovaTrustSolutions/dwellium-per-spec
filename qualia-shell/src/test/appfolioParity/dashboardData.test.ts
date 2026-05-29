@@ -1,0 +1,230 @@
+/**
+ * PM-exec dashboard data-layer test (DASH arc, Cycle 2).
+ *
+ * Exercises `dashboardData.ts` — the typed fetchers that compose the
+ * existing Strata endpoints into AstraDashboard's panel shapes. The one
+ * side effect (the network read) is injected as `deps.get`, so these
+ * tests assert the normalization + composition logic against a fake
+ * `get` without a backend, a vi.mock of the module graph, or a real
+ * `strataGet`. Mirrors `workspaceScribe.ts`'s injectable-deps testability.
+ *
+ * Contract pinned here:
+ *   - `asArray` normalizes `T[]` | `{ data }` | `{ entries }` | nullish.
+ *   - occupancy = occupied units / total units, per property.
+ *   - watchdog = open AND high-priority work-items, due-date ascending.
+ *   - financial cards derive from the `/forecast` summary.
+ *   - calendar events filter compliance items to a given month.
+ *   - agent log reads the `{ entries }` audit shape.
+ *   - domain snapshots group open work-items by domain with critical-count.
+ *   - HR is clearly-labeled mock (`mock: true`).
+ *   - `loadDashboardData` isolates per-section failures (one bad endpoint
+ *     degrades that section to [], not the whole dashboard).
+ */
+import { describe, it, expect, vi } from 'vitest';
+import {
+    asArray,
+    ageLabel,
+    fetchHeatmap,
+    fetchWatchdog,
+    fetchFinancialCards,
+    fetchCalendarEvents,
+    fetchAgentLog,
+    fetchActiveWorkitems,
+    fetchDomainSnapshots,
+    fetchHrSnapshot,
+    loadDashboardData,
+    type DashboardDataDeps,
+} from '../../components/AstraDashboard/dashboardData';
+
+/** A fake `get` that resolves a fixed value per endpoint path. */
+function fakeDeps(routes: Record<string, unknown>): DashboardDataDeps {
+    return {
+        get: vi.fn(async (path: string) => {
+            if (!(path in routes)) return [] as unknown;
+            return routes[path];
+        }) as DashboardDataDeps['get'],
+    };
+}
+
+// Deterministic clock anchor for age/calendar tests (2026-05-15 12:00 local).
+const NOW = new Date(2026, 4, 15, 12, 0, 0).getTime();
+
+describe('dashboardData — asArray normalizer', () => {
+    it('handles plain arrays, { data }, { entries }, and nullish', () => {
+        expect(asArray<number>([1, 2, 3])).toEqual([1, 2, 3]);
+        expect(asArray<number>({ data: [4, 5] })).toEqual([4, 5]);
+        expect(asArray<number>({ entries: [6], total: 1 })).toEqual([6]);
+        expect(asArray<number>(null)).toEqual([]);
+        expect(asArray<number>(undefined)).toEqual([]);
+        expect(asArray<number>({ nope: true })).toEqual([]);
+    });
+});
+
+describe('dashboardData — ageLabel', () => {
+    it('renders hours under a day and days beyond', () => {
+        const threeHoursAgo = new Date(NOW - 3 * 3_600_000).toISOString();
+        const twoDaysAgo = new Date(NOW - 2 * 86_400_000).toISOString();
+        expect(ageLabel(threeHoursAgo, NOW)).toBe('3h');
+        expect(ageLabel(twoDaysAgo, NOW)).toBe('2d');
+        expect(ageLabel(undefined, NOW)).toBe('—');
+        expect(ageLabel('not-a-date', NOW)).toBe('—');
+    });
+});
+
+describe('dashboardData — fetchHeatmap', () => {
+    it('computes occupancy % and open-maintenance count per property', async () => {
+        const deps = fakeDeps({
+            '/properties': [
+                { id: 'p1', name: 'Buena Vista' },
+                { id: 'p2', name: 'Maple Court' },
+            ],
+            '/units': [
+                { propertyId: 'p1', status: 'occupied' },
+                { propertyId: 'p1', status: 'occupied' },
+                { propertyId: 'p1', status: 'vacant' },
+                { propertyId: 'p2', status: 'vacant' },
+            ],
+            '/workitems': [
+                { id: 'w1', type: 'maintenance', status: 'open', propertyId: 'p1' },
+                { id: 'w2', type: 'maintenance', status: 'resolved', propertyId: 'p1' },
+            ],
+        });
+        const rows = await fetchHeatmap(deps);
+        expect(rows).toHaveLength(2);
+        expect(rows[0]).toMatchObject({ name: 'Buena Vista', occupancy: 67, maintenance: 1, delinquency: 0 });
+        expect(rows[1]).toMatchObject({ name: 'Maple Court', occupancy: 0, maintenance: 0 });
+    });
+
+    it('respects the row limit and tolerates empty seeds', async () => {
+        const deps = fakeDeps({ '/properties': [], '/units': [], '/workitems': [] });
+        expect(await fetchHeatmap(deps)).toEqual([]);
+    });
+});
+
+describe('dashboardData — fetchWatchdog', () => {
+    it('keeps only open high-priority items, sorted by due date asc', async () => {
+        const deps = fakeDeps({
+            '/workitems': [
+                { id: 'a', title: 'Roof leak', status: 'open', priority: 'critical', dueDate: '2026-06-10', propertyId: 'p1' },
+                { id: 'b', title: 'Resolved thing', status: 'resolved', priority: 'critical', dueDate: '2026-06-01' },
+                { id: 'c', title: 'Low thing', status: 'open', priority: 'low', dueDate: '2026-06-02' },
+                { id: 'd', title: 'Boiler', status: 'open', priority: 'high', dueDate: '2026-06-05', propertyId: 'p2' },
+            ],
+        });
+        const rows = await fetchWatchdog(deps);
+        expect(rows.map((r) => r.id)).toEqual(['d', 'a']); // high(6/5) before critical(6/10)
+        expect(rows[0]).toMatchObject({ title: 'Boiler', priority: 'high', property: 'p2' });
+    });
+});
+
+describe('dashboardData — fetchFinancialCards', () => {
+    it('derives NOI/revenue/expense/occupancy cards from the forecast summary', async () => {
+        const deps = fakeDeps({
+            '/forecast': { summary: { totalRevenue: 2_400_000, totalExpenses: 840_000, totalNet: 1_560_000, avgOccupancy: 94 } },
+        });
+        const cards = await fetchFinancialCards(deps);
+        expect(cards).toHaveLength(4);
+        expect(cards[0]).toMatchObject({ label: 'Net Operating Income', value: '$1.6M', trend: 'up' });
+        expect(cards[3]).toMatchObject({ label: 'Avg Occupancy', value: '94%', trend: 'up' });
+    });
+
+    it('returns [] when the forecast has no summary', async () => {
+        const deps = fakeDeps({ '/forecast': {} });
+        expect(await fetchFinancialCards(deps)).toEqual([]);
+    });
+});
+
+describe('dashboardData — fetchCalendarEvents', () => {
+    it('filters compliance items to the reference month (0-based) by expirationDate', async () => {
+        const deps = fakeDeps({
+            '/compliance': [
+                { label: 'Fire cert', itemType: 'inspection', expirationDate: '2026-05-20' }, // in month (May = 4)
+                { label: 'Next month', itemType: 'license', expirationDate: '2026-06-03' }, // out
+                { label: 'No date', itemType: 'cert' }, // skipped
+            ],
+        });
+        const events = await fetchCalendarEvents(deps, undefined, undefined, NOW);
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({ day: 20, type: 'inspection', label: 'Fire cert' });
+    });
+});
+
+describe('dashboardData — fetchAgentLog', () => {
+    it('reads the { entries } audit shape and maps agent/action/type', async () => {
+        const deps = fakeDeps({
+            '/audit': {
+                entries: [
+                    { userName: 'Andy', action: 'updated compliance', entityType: 'Compliance', createdAt: '2026-05-15T09:05:00Z' },
+                ],
+                total: 1,
+            },
+        });
+        const log = await fetchAgentLog(deps);
+        expect(log).toHaveLength(1);
+        expect(log[0]).toMatchObject({ agent: 'Andy', action: 'updated compliance', type: 'compliance' });
+        expect(log[0].time).toMatch(/^\d{2}:\d{2}$/);
+    });
+});
+
+describe('dashboardData — fetchActiveWorkitems', () => {
+    it('keeps open items newest-first with an age label', async () => {
+        const deps = fakeDeps({
+            '/workitems': [
+                { id: 'old', title: 'Old', status: 'open', domain: 'maintenance', createdAt: new Date(NOW - 5 * 86_400_000).toISOString() },
+                { id: 'new', title: 'New', status: 'open', domain: 'legal', createdAt: new Date(NOW - 2 * 3_600_000).toISOString() },
+                { id: 'done', title: 'Done', status: 'resolved', createdAt: new Date(NOW).toISOString() },
+            ],
+        });
+        const rows = await fetchActiveWorkitems(deps, 15, NOW);
+        expect(rows.map((r) => r.id)).toEqual(['new', 'old']);
+        expect(rows[0]).toMatchObject({ domain: 'legal', age: '2h' });
+        expect(rows[1]).toMatchObject({ age: '5d' });
+    });
+});
+
+describe('dashboardData — fetchDomainSnapshots', () => {
+    it('groups open work-items by domain with critical-count, total desc', async () => {
+        const deps = fakeDeps({
+            '/workitems': [
+                { id: '1', status: 'open', domain: 'maintenance', priority: 'critical' },
+                { id: '2', status: 'open', domain: 'maintenance', priority: 'normal' },
+                { id: '3', status: 'open', domain: 'legal', priority: 'critical' },
+                { id: '4', status: 'resolved', domain: 'legal' },
+            ],
+        });
+        const snaps = await fetchDomainSnapshots(deps);
+        expect(snaps[0]).toMatchObject({ domain: 'maintenance', count: 2, critical: 1 });
+        expect(snaps[1]).toMatchObject({ domain: 'legal', count: 1, critical: 1 });
+        expect(snaps[0].color).toBeTruthy();
+    });
+});
+
+describe('dashboardData — fetchHrSnapshot (mock-labeled)', () => {
+    it('carries mock: true (DASH-D5)', () => {
+        expect(fetchHrSnapshot()).toMatchObject({ mock: true });
+    });
+});
+
+describe('dashboardData — loadDashboardData', () => {
+    it('aggregates all sections and isolates per-section failures', async () => {
+        // /forecast throws → financialCards degrades to [], rest still load.
+        const deps: DashboardDataDeps = {
+            get: vi.fn(async (path: string) => {
+                if (path === '/forecast') throw new Error('backend down');
+                if (path === '/workitems') {
+                    return [{ id: 'w', status: 'open', priority: 'critical', domain: 'maintenance', title: 'X', dueDate: '2026-06-01', createdAt: '2026-05-14T00:00:00Z' }];
+                }
+                if (path === '/properties') return [{ id: 'p1', name: 'P1' }];
+                if (path === '/units') return [{ propertyId: 'p1', status: 'occupied' }];
+                if (path === '/audit') return { entries: [], total: 0 };
+                if (path === '/compliance') return [];
+                return [];
+            }) as DashboardDataDeps['get'],
+        };
+        const data = await loadDashboardData(deps, NOW);
+        expect(data.financialCards).toEqual([]); // isolated failure
+        expect(data.watchdog).toHaveLength(1); // still loaded
+        expect(data.heatmap[0]).toMatchObject({ name: 'P1', occupancy: 100 });
+        expect(data.hr).toMatchObject({ mock: true });
+    });
+});

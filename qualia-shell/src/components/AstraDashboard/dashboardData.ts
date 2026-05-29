@@ -1,0 +1,469 @@
+/**
+ * dashboardData — the PM-exec dashboard's data layer (DASH-D3).
+ *
+ * AstraDashboard's panels historically rendered from empty mock arrays
+ * (`HEATMAP_PROPERTIES = []`, `WATCHDOG_ITEMS = []`, …). This module
+ * replaces those stubs with typed fetchers that COMPOSE the existing
+ * Strata data endpoints via `strataGet` — no fetch logic is duplicated
+ * here, and the same call works in backend OR static mode (strataApi
+ * routes transparently), so the offline CI gate stays green.
+ *
+ * Each fetcher returns a shape that maps 1:1 onto the panel array it
+ * feeds, so Cycle 3 can drop the result straight into the existing
+ * render code. Endpoints with no real source (HR) return a
+ * clearly-labeled `{ mock: true, … }` shape (DASH-D5) instead of
+ * pretending to be real.
+ *
+ * Testability (mirrors `workspaceScribe.ts`): the one side effect —
+ * the network read — is injected as `deps.get`, defaulting to the real
+ * `strataGet`. Unit tests pass a fake `get` and assert the normalization
+ * + composition logic without a backend or a vi.mock of the module graph.
+ *
+ * Response-shape defensiveness (Cycle-1 plan §5 risk): Strata endpoints
+ * variously return `T[]`, `{ data: T[] }`, or `{ entries, total }`.
+ * `asArray` normalizes all three; every fetcher tolerates an empty seed
+ * (invoices/incidents ship empty today) by degrading to an empty panel.
+ */
+import { strataGet } from '../StrataDashboard/strataApi';
+
+/* ──────────────────────────── injectable deps ─────────────────────── */
+
+export interface DashboardDataDeps {
+    /** Read a Strata endpoint. Defaults to the real `strataGet`. */
+    get: <T>(path: string, params?: Record<string, string>) => Promise<T>;
+}
+
+const defaultDeps: DashboardDataDeps = { get: strataGet };
+
+/* ──────────────────────────── panel shapes ────────────────────────── */
+/* These mirror the array element types in AstraDashboard.tsx so Cycle 3
+ * can consume them without an adapter layer. */
+
+export interface HeatmapProperty {
+    name: string;
+    /** 0–100 occupancy %. */
+    occupancy: number;
+    /** 0–100 delinquency %. */
+    delinquency: number;
+    /** open maintenance work-item count. */
+    maintenance: number;
+}
+
+export interface WatchdogItem {
+    id: string;
+    title: string;
+    priority: string;
+    due: string;
+    status: string;
+    property: string;
+}
+
+export interface FinancialCard {
+    label: string;
+    value: string;
+    change: string;
+    trend: 'up' | 'down';
+}
+
+export interface DashCalendarEvent {
+    day: number;
+    type: string;
+    label: string;
+}
+
+export interface AgentLogEntry {
+    time: string;
+    agent: string;
+    action: string;
+    type: string;
+}
+
+export interface ActiveWorkitem {
+    id: string;
+    title: string;
+    priority: string;
+    domain: string;
+    age: string;
+}
+
+export interface DomainSnapshot {
+    domain: string;
+    count: number;
+    critical: number;
+    color: string;
+}
+
+/** HR has no backend endpoint today (Cycle-1 audit) → clearly-labeled mock. */
+export interface HrSnapshot {
+    mock: true;
+    headcount: number;
+    openRoles: number;
+    incidents: number;
+}
+
+/* ──────────────────────────── raw row types ───────────────────────── */
+/* Minimal field subsets of the seed shapes we actually read (verified
+ * against public/data/*.json in Cycle 2). Kept local — the dashboard
+ * only needs these fields, and a narrow type keeps the normalizers honest. */
+
+interface PropertyRow {
+    id: string;
+    name?: string;
+}
+interface UnitRow {
+    propertyId?: string;
+    status?: string;
+    rentAmount?: number | string;
+}
+interface WorkitemRow {
+    id: string;
+    title?: string;
+    status?: string;
+    priority?: string;
+    domain?: string;
+    type?: string;
+    propertyId?: string;
+    dueDate?: string;
+    createdAt?: string;
+}
+interface AuditRow {
+    userName?: string;
+    userRole?: string;
+    action?: string;
+    entityType?: string;
+    createdAt?: string;
+}
+interface ComplianceRow {
+    label?: string;
+    itemType?: string;
+    status?: string;
+    expirationDate?: string;
+}
+interface ForecastResultLike {
+    summary?: {
+        totalRevenue?: number;
+        totalExpenses?: number;
+        totalNet?: number;
+        avgOccupancy?: number;
+    };
+}
+
+/* ──────────────────────────── helpers ─────────────────────────────── */
+
+/** Normalize `T[]` | `{ data: T[] }` | `{ entries: T[] }` | nullish → `T[]`. */
+export function asArray<T>(res: unknown): T[] {
+    if (Array.isArray(res)) return res as T[];
+    if (res && typeof res === 'object') {
+        const obj = res as Record<string, unknown>;
+        if (Array.isArray(obj.data)) return obj.data as T[];
+        if (Array.isArray(obj.entries)) return obj.entries as T[];
+    }
+    return [];
+}
+
+const OPEN_STATUSES = new Set(['open', 'in_progress', 'pending', 'active', 'new', 'triage']);
+function isOpen(status?: string): boolean {
+    if (!status) return true;
+    return OPEN_STATUSES.has(String(status).toLowerCase());
+}
+
+const HIGH_PRIORITIES = new Set(['critical', 'high', 'urgent']);
+function isHighPriority(priority?: string): boolean {
+    return HIGH_PRIORITIES.has(String(priority ?? '').toLowerCase());
+}
+
+/** Coarse "Nd" / "Nh" age label from an ISO created timestamp, vs `now`. */
+export function ageLabel(createdAt: string | undefined, now: number): string {
+    if (!createdAt) return '—';
+    const t = Date.parse(createdAt);
+    if (Number.isNaN(t)) return '—';
+    const ms = Math.max(0, now - t);
+    const hours = Math.floor(ms / 3_600_000);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+}
+
+/** "HH:MM" clock label from an ISO timestamp (audit-log style). */
+function timeLabel(createdAt: string | undefined): string {
+    if (!createdAt) return '—';
+    const d = new Date(createdAt);
+    if (Number.isNaN(d.getTime())) return '—';
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * Parse a date string to a local Date. Date-only `YYYY-MM-DD` strings
+ * are constructed in LOCAL time (not UTC midnight) so the day-of-month
+ * is stable regardless of the runner's timezone — compliance seed dates
+ * are date-only, and the calendar grid is keyed on local day-of-month.
+ */
+function parseLocalDate(s: string): Date {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return new Date(s);
+}
+
+function money(n: number): string {
+    const abs = Math.abs(n);
+    if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+    return `$${n.toFixed(0)}`;
+}
+
+const DOMAIN_COLORS: Record<string, string> = {
+    maintenance: '#f59e0b',
+    compliance: '#ef4444',
+    legal: '#8b5cf6',
+    leasing: '#10b981',
+    finance: '#3b82f6',
+    operations: '#6b7280',
+};
+function domainColor(domain: string): string {
+    return DOMAIN_COLORS[domain.toLowerCase()] ?? '#6b7280';
+}
+
+/* ──────────────────────────── fetchers ────────────────────────────── */
+
+/**
+ * Portfolio heatmap: one row per property with occupancy % (occupied
+ * units / total units), open-maintenance count, and delinquency %
+ * (placeholder 0 until an invoices/delinquency endpoint carries real
+ * data — invoices seed is empty today; kept as a real field so Cycle 7
+ * can light it up without a shape change). Limited to `limit` rows.
+ */
+export async function fetchHeatmap(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 12,
+): Promise<HeatmapProperty[]> {
+    const [propsRes, unitsRes, workitemsRes] = await Promise.all([
+        deps.get<unknown>('/properties'),
+        deps.get<unknown>('/units'),
+        deps.get<unknown>('/workitems', { type: 'maintenance' }),
+    ]);
+    const properties = asArray<PropertyRow>(propsRes);
+    const units = asArray<UnitRow>(unitsRes);
+    const maintenance = asArray<WorkitemRow>(workitemsRes).filter((w) => isOpen(w.status));
+
+    return properties.slice(0, limit).map((p) => {
+        const propUnits = units.filter((u) => u.propertyId === p.id);
+        const occupied = propUnits.filter((u) => String(u.status).toLowerCase() === 'occupied').length;
+        const occupancy = propUnits.length > 0 ? Math.round((occupied / propUnits.length) * 100) : 0;
+        const maint = maintenance.filter((w) => w.propertyId === p.id).length;
+        return {
+            name: p.name ?? p.id,
+            occupancy,
+            delinquency: 0,
+            maintenance: maint,
+        };
+    });
+}
+
+/**
+ * Watchdog list: open, high-priority work-items needing exec attention,
+ * newest-due first. Property column carries the propertyId until a name
+ * join is wired (Cycle 6 drill-down). Limited to `limit` rows.
+ */
+export async function fetchWatchdog(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 20,
+): Promise<WatchdogItem[]> {
+    const res = await deps.get<unknown>('/workitems');
+    const items = asArray<WorkitemRow>(res)
+        .filter((w) => isOpen(w.status) && isHighPriority(w.priority))
+        .sort((a, b) => Date.parse(a.dueDate ?? '') - Date.parse(b.dueDate ?? ''));
+    return items.slice(0, limit).map((w) => ({
+        id: w.id,
+        title: w.title ?? '(untitled)',
+        priority: String(w.priority ?? 'normal').toLowerCase(),
+        due: w.dueDate ?? '',
+        status: String(w.status ?? 'open').toLowerCase(),
+        property: w.propertyId ?? '',
+    }));
+}
+
+/**
+ * Financial quick-viz cards from the `/forecast` projection summary:
+ * NOI, revenue, expenses, occupancy. Trend is derived from the sign of
+ * each metric (positive net → up). Returns [] if the projection is empty.
+ */
+export async function fetchFinancialCards(
+    deps: DashboardDataDeps = defaultDeps,
+): Promise<FinancialCard[]> {
+    const res = await deps.get<ForecastResultLike>('/forecast');
+    const s = res?.summary;
+    if (!s) return [];
+    const net = s.totalNet ?? 0;
+    const revenue = s.totalRevenue ?? 0;
+    const expenses = s.totalExpenses ?? 0;
+    const occupancy = s.avgOccupancy ?? 0;
+    return [
+        { label: 'Net Operating Income', value: money(net), change: '', trend: net >= 0 ? 'up' : 'down' },
+        { label: 'Projected Revenue', value: money(revenue), change: '', trend: 'up' },
+        { label: 'Projected Expenses', value: money(expenses), change: '', trend: 'down' },
+        { label: 'Avg Occupancy', value: `${occupancy}%`, change: '', trend: occupancy >= 90 ? 'up' : 'down' },
+    ];
+}
+
+/**
+ * Compliance calendar events for a given month: compliance items whose
+ * `expirationDate` falls in (`year`, `month0`) become a due-date marker
+ * keyed by day-of-month. `month0` is 0-based (Jan = 0) to match
+ * `Date.getMonth()` and AstraDashboard's calendar grid.
+ */
+export async function fetchCalendarEvents(
+    deps: DashboardDataDeps = defaultDeps,
+    year?: number,
+    month0?: number,
+    now: number = Date.now(),
+): Promise<DashCalendarEvent[]> {
+    const ref = new Date(now);
+    const y = year ?? ref.getFullYear();
+    const m = month0 ?? ref.getMonth();
+    const res = await deps.get<unknown>('/compliance');
+    const rows = asArray<ComplianceRow>(res);
+    const events: DashCalendarEvent[] = [];
+    for (const r of rows) {
+        if (!r.expirationDate) continue;
+        const d = parseLocalDate(r.expirationDate);
+        if (Number.isNaN(d.getTime())) continue;
+        if (d.getFullYear() !== y || d.getMonth() !== m) continue;
+        events.push({
+            day: d.getDate(),
+            type: String(r.itemType ?? 'compliance').toLowerCase(),
+            label: r.label ?? r.itemType ?? 'Compliance item',
+        });
+    }
+    return events;
+}
+
+/**
+ * AI agent log from the `/audit` trail (returns `{ entries, total }`).
+ * Newest first, limited to `limit` rows; "agent" is the acting user,
+ * "type" the entity touched.
+ */
+export async function fetchAgentLog(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 12,
+): Promise<AgentLogEntry[]> {
+    const res = await deps.get<unknown>('/audit', { limit: String(limit) });
+    const rows = asArray<AuditRow>(res);
+    return rows.slice(0, limit).map((r) => ({
+        time: timeLabel(r.createdAt),
+        agent: r.userName ?? r.userRole ?? 'system',
+        action: r.action ?? '',
+        type: String(r.entityType ?? 'event').toLowerCase(),
+    }));
+}
+
+/**
+ * Active work-items list (all open items, any priority), newest first,
+ * with a coarse age label. Limited to `limit` rows.
+ */
+export async function fetchActiveWorkitems(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 15,
+    now: number = Date.now(),
+): Promise<ActiveWorkitem[]> {
+    const res = await deps.get<unknown>('/workitems');
+    const items = asArray<WorkitemRow>(res)
+        .filter((w) => isOpen(w.status))
+        .sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''));
+    return items.slice(0, limit).map((w) => ({
+        id: w.id,
+        title: w.title ?? '(untitled)',
+        priority: String(w.priority ?? 'normal').toLowerCase(),
+        domain: String(w.domain ?? 'operations').toLowerCase(),
+        age: ageLabel(w.createdAt, now),
+    }));
+}
+
+/**
+ * Cross-domain snapshots: open work-items grouped by `domain`, with a
+ * critical-count and a stable per-domain color. Sorted by total desc.
+ */
+export async function fetchDomainSnapshots(
+    deps: DashboardDataDeps = defaultDeps,
+): Promise<DomainSnapshot[]> {
+    const res = await deps.get<unknown>('/workitems');
+    const items = asArray<WorkitemRow>(res).filter((w) => isOpen(w.status));
+    const byDomain = new Map<string, { count: number; critical: number }>();
+    for (const w of items) {
+        const domain = String(w.domain ?? 'operations').toLowerCase();
+        const agg = byDomain.get(domain) ?? { count: 0, critical: 0 };
+        agg.count += 1;
+        if (String(w.priority ?? '').toLowerCase() === 'critical') agg.critical += 1;
+        byDomain.set(domain, agg);
+    }
+    return Array.from(byDomain.entries())
+        .map(([domain, agg]) => ({ domain, count: agg.count, critical: agg.critical, color: domainColor(domain) }))
+        .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * HR snapshot — clearly-labeled MOCK (DASH-D5). No HR endpoint exists in
+ * the app today (Cycle-1 audit). Carries `mock: true` so the panel can
+ * render a visible "Sample data" badge. Replace with a real fetcher if/
+ * when an HR endpoint lands.
+ */
+export function fetchHrSnapshot(): HrSnapshot {
+    return { mock: true, headcount: 0, openRoles: 0, incidents: 0 };
+}
+
+/* ──────────────────────────── aggregate loader ────────────────────── */
+
+export interface DashboardData {
+    heatmap: HeatmapProperty[];
+    watchdog: WatchdogItem[];
+    financialCards: FinancialCard[];
+    calendarEvents: DashCalendarEvent[];
+    agentLog: AgentLogEntry[];
+    activeWorkitems: ActiveWorkitem[];
+    domainSnapshots: DomainSnapshot[];
+    hr: HrSnapshot;
+}
+
+/**
+ * Load every dashboard section in parallel with per-section error
+ * isolation: a failing endpoint degrades that section to empty rather
+ * than failing the whole dashboard (Cycle-3 panels render their own
+ * empty state). `now` is injectable for deterministic tests.
+ */
+export async function loadDashboardData(
+    deps: DashboardDataDeps = defaultDeps,
+    now: number = Date.now(),
+): Promise<DashboardData> {
+    const settle = async <T>(p: Promise<T>, fallback: T): Promise<T> => {
+        try {
+            return await p;
+        } catch {
+            return fallback;
+        }
+    };
+    const [
+        heatmap,
+        watchdog,
+        financialCards,
+        calendarEvents,
+        agentLog,
+        activeWorkitems,
+        domainSnapshots,
+    ] = await Promise.all([
+        settle(fetchHeatmap(deps), []),
+        settle(fetchWatchdog(deps), []),
+        settle(fetchFinancialCards(deps), []),
+        settle(fetchCalendarEvents(deps, undefined, undefined, now), []),
+        settle(fetchAgentLog(deps), []),
+        settle(fetchActiveWorkitems(deps, undefined, now), []),
+        settle(fetchDomainSnapshots(deps), []),
+    ]);
+    return {
+        heatmap,
+        watchdog,
+        financialCards,
+        calendarEvents,
+        agentLog,
+        activeWorkitems,
+        domainSnapshots,
+        hr: fetchHrSnapshot(),
+    };
+}

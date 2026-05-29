@@ -39,8 +39,8 @@ export interface DashboardLayout {
 export const DEFAULT_LAYOUT: DashboardLayout = {
     columns: {
         left: ['heatmap', 'finance', 'domains'],
-        center: ['watchdog', 'workitems', 'domainviews'],
-        right: ['calendar', 'agentlog', 'arbitrage'],
+        center: ['watchdog', 'litigation', 'workitems', 'domainviews'],
+        right: ['calendar', 'compliance', 'agentlog', 'arbitrage'],
     },
     hidden: [],
 };

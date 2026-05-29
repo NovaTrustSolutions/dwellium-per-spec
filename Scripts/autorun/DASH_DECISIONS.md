@@ -39,3 +39,18 @@ deferred enhancement.
 **Decision:** Panels with no real endpoint render a "Sample data" badge and carry `mock: true`.
 **Rationale:** Arc requires clearly-labeled mock only where the app lacks real data (HR).
 **Back out:** n/a.
+
+## DASH-D6 — Strata module-target deep-link (Cycle 5; refines DASH-D4)
+**Decision:** Implement the module-target drill-down DASH-D4 deferred. New
+`src/components/StrataDashboard/strataDeepLink.ts` exports `openStrataModule(module, deps?)`:
+sets a module-level holder `pendingStrataModule`, fires `dwellium:open-widget` for
+`strata-dashboard` (surfaces the window), then emits a `dwellium:strata-module` CustomEvent.
+StrataDashboard gets a single additive `useEffect`: it `consumePendingStrataModule()` on mount
+(cold-open lands on the deep-linked module) AND listens for `dwellium:strata-module`
+(warm-focus when the window is already open). Helper is pure + injectable → unit-tested
+without a DOM listener (mirrors araLinkage/workspaceScribe).
+**Rationale:** The GOAL emphasises drill-down; opening only the overview was a weak handoff.
+The holder+event pair covers both cold and warm cases without changing the open-widget bus
+contract. StrataDashboard touch is ~8 lines, fully additive/removable.
+**Back out:** delete `strataDeepLink.ts`; revert the StrataDashboard `useState` initializer to
+`'overview'` and remove the effect. Panels fall back to opening the Strata window (DASH-D4).

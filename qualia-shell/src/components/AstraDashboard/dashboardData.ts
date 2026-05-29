@@ -93,6 +93,30 @@ export interface DomainSnapshot {
     color: string;
 }
 
+export interface ComplianceSummaryItem {
+    id: string;
+    label: string;
+    itemType: string;
+    /** valid | tracked | warning | expired | missing | scheduled */
+    status: string;
+    entity: string;
+    /** expirationDate (ISO/date-only) or '' when unknown. */
+    due: string;
+    /** Whole days from `now` to `due`; negative = overdue; null = no date. */
+    daysUntil: number | null;
+}
+
+export interface LegalMatter {
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    /** dueDate (ISO/date-only) or '' — the matter deadline. */
+    deadline: string;
+    /** assignedTo (counsel) or '—'. */
+    counsel: string;
+}
+
 /** HR has no backend endpoint today (Cycle-1 audit) → clearly-labeled mock. */
 export interface HrSnapshot {
     mock: true;
@@ -123,6 +147,7 @@ interface WorkitemRow {
     domain?: string;
     type?: string;
     propertyId?: string;
+    assignedTo?: string | null;
     dueDate?: string;
     createdAt?: string;
 }
@@ -134,10 +159,12 @@ interface AuditRow {
     createdAt?: string;
 }
 interface ComplianceRow {
+    id?: string;
     label?: string;
     itemType?: string;
     status?: string;
-    expirationDate?: string;
+    entityName?: string | null;
+    expirationDate?: string | null;
 }
 interface ForecastResultLike {
     summary?: {
@@ -220,6 +247,26 @@ const DOMAIN_COLORS: Record<string, string> = {
 };
 function domainColor(domain: string): string {
     return DOMAIN_COLORS[domain.toLowerCase()] ?? '#6b7280';
+}
+
+/**
+ * Compliance status urgency rank (lower = more urgent) so the tracker
+ * surfaces expired/missing items above healthy ones. Unknown statuses
+ * sort last. Exported for the panel's sort + test pinning.
+ */
+const COMPLIANCE_STATUS_RANK: Record<string, number> = {
+    expired: 0, missing: 1, warning: 2, scheduled: 3, tracked: 4, valid: 5,
+};
+export function complianceStatusRank(status: string | undefined): number {
+    return COMPLIANCE_STATUS_RANK[String(status ?? '').toLowerCase()] ?? 9;
+}
+
+/** Whole days from `now` to a date-only/ISO string; negative = overdue; null = no/invalid date. */
+export function daysUntil(date: string | null | undefined, now: number): number | null {
+    if (!date) return null;
+    const d = parseLocalDate(date);
+    if (Number.isNaN(d.getTime())) return null;
+    return Math.round((d.getTime() - now) / 86_400_000);
 }
 
 /* ──────────────────────────── fetchers ────────────────────────────── */
@@ -409,6 +456,68 @@ export function fetchHrSnapshot(): HrSnapshot {
     return { mock: true, headcount: 0, openRoles: 0, incidents: 0 };
 }
 
+/**
+ * Compliance tracker: filings / inspections / certs from `/compliance`,
+ * most-urgent first (expired → missing → warning → …, then soonest
+ * expiration). Each row carries a `daysUntil` for the panel's due badge.
+ * Synthesises a stable id when the row lacks one. Limited to `limit` rows.
+ */
+export async function fetchComplianceItems(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 20,
+    now: number = Date.now(),
+): Promise<ComplianceSummaryItem[]> {
+    const res = await deps.get<unknown>('/compliance');
+    const rows = asArray<ComplianceRow>(res);
+    const items = rows.map((r, i) => ({
+        id: r.id ?? `compliance-${i}`,
+        label: r.label ?? r.itemType ?? 'Compliance item',
+        itemType: String(r.itemType ?? 'compliance').toLowerCase(),
+        status: String(r.status ?? 'tracked').toLowerCase(),
+        entity: r.entityName ?? '',
+        due: r.expirationDate ?? '',
+        daysUntil: daysUntil(r.expirationDate, now),
+    }));
+    items.sort((a, b) => {
+        const byRank = complianceStatusRank(a.status) - complianceStatusRank(b.status);
+        if (byRank !== 0) return byRank;
+        // Within a status, soonest expiration first; undated rows sink.
+        const da = a.daysUntil ?? Number.POSITIVE_INFINITY;
+        const db = b.daysUntil ?? Number.POSITIVE_INFINITY;
+        return da - db;
+    });
+    return items.slice(0, limit);
+}
+
+/**
+ * Litigation / matter tracker: open legal work-items from `/workitems`
+ * (domain = legal). The domain param is sent for backends that filter
+ * server-side AND re-applied client-side so static-mode (param-blind)
+ * reads stay correct. Earliest-deadline first; undated matters sink.
+ * `counsel` is the assignee. Limited to `limit` rows.
+ */
+export async function fetchLegalMatters(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 20,
+): Promise<LegalMatter[]> {
+    const res = await deps.get<unknown>('/workitems', { domain: 'legal', limit: '500' });
+    const items = asArray<WorkitemRow>(res)
+        .filter((w) => String(w.domain ?? '').toLowerCase() === 'legal' && isOpen(w.status))
+        .sort((a, b) => {
+            const da = a.dueDate ? Date.parse(a.dueDate) : Number.POSITIVE_INFINITY;
+            const db = b.dueDate ? Date.parse(b.dueDate) : Number.POSITIVE_INFINITY;
+            return da - db;
+        });
+    return items.slice(0, limit).map((w) => ({
+        id: w.id,
+        title: w.title ?? '(untitled matter)',
+        status: String(w.status ?? 'open').toLowerCase(),
+        priority: String(w.priority ?? 'normal').toLowerCase(),
+        deadline: w.dueDate ?? '',
+        counsel: w.assignedTo ? String(w.assignedTo) : '—',
+    }));
+}
+
 /* ──────────────────────────── aggregate loader ────────────────────── */
 
 export interface DashboardData {
@@ -419,6 +528,8 @@ export interface DashboardData {
     agentLog: AgentLogEntry[];
     activeWorkitems: ActiveWorkitem[];
     domainSnapshots: DomainSnapshot[];
+    complianceItems: ComplianceSummaryItem[];
+    legalMatters: LegalMatter[];
     hr: HrSnapshot;
 }
 
@@ -447,6 +558,8 @@ export async function loadDashboardData(
         agentLog,
         activeWorkitems,
         domainSnapshots,
+        complianceItems,
+        legalMatters,
     ] = await Promise.all([
         settle(fetchHeatmap(deps), []),
         settle(fetchWatchdog(deps), []),
@@ -455,6 +568,8 @@ export async function loadDashboardData(
         settle(fetchAgentLog(deps), []),
         settle(fetchActiveWorkitems(deps, undefined, now), []),
         settle(fetchDomainSnapshots(deps), []),
+        settle(fetchComplianceItems(deps, undefined, now), []),
+        settle(fetchLegalMatters(deps), []),
     ]);
     return {
         heatmap,
@@ -464,6 +579,8 @@ export async function loadDashboardData(
         agentLog,
         activeWorkitems,
         domainSnapshots,
+        complianceItems,
+        legalMatters,
         hr: fetchHrSnapshot(),
     };
 }

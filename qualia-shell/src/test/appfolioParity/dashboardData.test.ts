@@ -32,6 +32,10 @@ import {
     fetchActiveWorkitems,
     fetchDomainSnapshots,
     fetchHrSnapshot,
+    fetchComplianceItems,
+    fetchLegalMatters,
+    complianceStatusRank,
+    daysUntil,
     loadDashboardData,
     type DashboardDataDeps,
 } from '../../components/AstraDashboard/dashboardData';
@@ -202,6 +206,71 @@ describe('dashboardData — fetchDomainSnapshots', () => {
 describe('dashboardData — fetchHrSnapshot (mock-labeled)', () => {
     it('carries mock: true (DASH-D5)', () => {
         expect(fetchHrSnapshot()).toMatchObject({ mock: true });
+    });
+});
+
+describe('dashboardData — daysUntil + complianceStatusRank (Cycle 5)', () => {
+    it('computes whole-day deltas (negative = overdue) and nulls for missing/invalid', () => {
+        const inFive = new Date(2026, 4, 20).getTime(); // 2026-05-20, date-only
+        expect(daysUntil('2026-05-20', NOW)).toBe(5);
+        expect(daysUntil('2026-05-10', NOW)).toBe(-5); // overdue
+        expect(daysUntil(null, NOW)).toBeNull();
+        expect(daysUntil('not-a-date', NOW)).toBeNull();
+        expect(inFive).toBeGreaterThan(NOW); // sanity on the anchor
+    });
+
+    it('ranks expired/missing/warning above healthy statuses; unknown sinks', () => {
+        expect(complianceStatusRank('expired')).toBeLessThan(complianceStatusRank('warning'));
+        expect(complianceStatusRank('warning')).toBeLessThan(complianceStatusRank('valid'));
+        expect(complianceStatusRank('mystery')).toBe(9);
+        expect(complianceStatusRank(undefined)).toBe(9);
+    });
+});
+
+describe('dashboardData — fetchComplianceItems (Cycle 5)', () => {
+    it('sorts most-urgent first, derives daysUntil, and synthesises ids', async () => {
+        const deps = fakeDeps({
+            '/compliance': [
+                { label: 'COI — Acme Roofing', itemType: 'coi', status: 'valid', entityName: 'Acme Roofing', expirationDate: '2026-08-01' },
+                { id: 'c-exp', label: 'EPA cert', itemType: 'epa_certification', status: 'expired', expirationDate: '2026-05-01' },
+                { label: 'Pool permit', itemType: 'pool_permit', status: 'warning', expirationDate: '2026-05-20' },
+            ],
+        });
+        const out = await fetchComplianceItems(deps, 10, NOW);
+        // expired (rank 0) → warning (rank 2) → valid (rank 5).
+        expect(out.map(i => i.status)).toEqual(['expired', 'warning', 'valid']);
+        expect(out[0].id).toBe('c-exp');
+        expect(out[2].id).toBe('compliance-0'); // synthetic id for the row without one
+        expect(out[0].daysUntil).toBe(-14); // 2026-05-01 vs 2026-05-15
+        expect(out[1].daysUntil).toBe(5);   // 2026-05-20
+    });
+
+    it('respects the limit and tolerates an empty seed', async () => {
+        expect(await fetchComplianceItems(fakeDeps({}), 5, NOW)).toEqual([]);
+        const many = Array.from({ length: 30 }, (_, i) => ({ label: `c${i}`, status: 'tracked', expirationDate: '2026-06-01' }));
+        expect(await fetchComplianceItems(fakeDeps({ '/compliance': many }), 8, NOW)).toHaveLength(8);
+    });
+});
+
+describe('dashboardData — fetchLegalMatters (Cycle 5)', () => {
+    it('keeps open legal matters, earliest-deadline first, with counsel + fallbacks', async () => {
+        const deps = fakeDeps({
+            '/workitems': [
+                { id: 'm2', domain: 'legal', status: 'open', priority: 'high', title: 'Eviction — Unit 4B', assignedTo: 'J. Counsel', dueDate: '2026-07-01' },
+                { id: 'm1', domain: 'legal', status: 'in_progress', priority: 'critical', title: 'Slip & fall claim', dueDate: '2026-06-01' },
+                { id: 'm3', domain: 'legal', status: 'completed', title: 'Closed matter', dueDate: '2026-05-01' }, // closed → dropped
+                { id: 'w9', domain: 'maintenance', status: 'open', title: 'Leak' }, // non-legal → dropped
+            ],
+        });
+        const out = await fetchLegalMatters(deps, 10);
+        expect(out.map(m => m.id)).toEqual(['m1', 'm2']); // earliest deadline first, closed + non-legal removed
+        expect(out[0].counsel).toBe('—');        // missing assignee fallback
+        expect(out[1].counsel).toBe('J. Counsel');
+        expect(out[1].deadline).toBe('2026-07-01');
+    });
+
+    it('tolerates an empty seed', async () => {
+        expect(await fetchLegalMatters(fakeDeps({}), 5)).toEqual([]);
     });
 });
 

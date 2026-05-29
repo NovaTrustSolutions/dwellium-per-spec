@@ -12,7 +12,9 @@ import {
     TrendingUp, TrendingDown, Activity, Brain, Eye,
     ClipboardList, ArrowUpRight, Globe, RefreshCw,
     ChevronUp, ChevronDown, ChevronLeft, X, Plus, Settings2,
+    Shield, Scale, ExternalLink,
 } from 'lucide-react';
+import { openStrataModule } from '../StrataDashboard/strataDeepLink';
 import AstraWorkspace from './AstraWorkspace';
 import ThreadChannels from './ThreadChannels';
 import IntelligenceDashboard from './IntelligenceDashboard';
@@ -26,6 +28,7 @@ import {
 import type {
     HeatmapProperty, WatchdogItem, FinancialCard,
     DashCalendarEvent, AgentLogEntry, ActiveWorkitem, DomainSnapshot,
+    ComplianceSummaryItem, LegalMatter,
 } from './dashboardData';
 import './AstraDashboard.css';
 import './IntelligenceDashboard.css';
@@ -298,6 +301,106 @@ function AIAgentLog({ entries, loading, error }: PanelProps & { entries: AgentLo
     );
 }
 
+/* ═══════════════════════════  COMPLIANCE TRACKER  ═══════════════════ */
+
+/** Small "Open in Strata" drill-down button reused by the Cycle-5 panels. */
+function DrillToStrata({ module, label }: { module: 'compliance' | 'legal'; label: string }) {
+    return (
+        <button
+            className="a-drill-btn"
+            onClick={() => openStrataModule(module)}
+            aria-label={`Open ${label} in Strata Dashboard`}
+            title={`Open ${label} in Strata Dashboard`}
+        >
+            <ExternalLink size={12} /> Open
+        </button>
+    );
+}
+
+/** Due-date label + tone: overdue / due-soon / future, from a daysUntil value. */
+function dueLabel(daysUntil: number | null): { text: string; cls: string } {
+    if (daysUntil === null) return { text: 'No date', cls: '' };
+    if (daysUntil < 0) return { text: `${Math.abs(daysUntil)}d overdue`, cls: 'a-due-overdue' };
+    if (daysUntil === 0) return { text: 'Due today', cls: 'a-due-soon' };
+    if (daysUntil <= 30) return { text: `${daysUntil}d`, cls: 'a-due-soon' };
+    return { text: `${daysUntil}d`, cls: '' };
+}
+
+function ComplianceTracker({ items, loading, error }: PanelProps & { items: ComplianceSummaryItem[] }) {
+    const ready = !loading && !error && items.length > 0;
+    const atRisk = items.filter(i => i.status === 'expired' || i.status === 'missing' || i.status === 'warning').length;
+    return (
+        <div className="a-panel a-compliance">
+            <div className="a-panel-header">
+                <Shield size={16} />
+                <span>Compliance Tracker</span>
+                {ready && atRisk > 0 && <span className="a-badge a-badge-critical">{atRisk} at risk</span>}
+                <DrillToStrata module="compliance" label="Compliance" />
+            </div>
+            <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No compliance items tracked" />
+            {ready && (
+                <div className="a-compliance-list">
+                    {items.map(item => {
+                        const due = dueLabel(item.daysUntil);
+                        return (
+                            <button
+                                key={item.id}
+                                className="a-compliance-row"
+                                onClick={() => openStrataModule('compliance')}
+                                title={`${item.label} — ${item.status}`}
+                            >
+                                <span className={`a-comply-status a-comply-${item.status}`}>{item.status}</span>
+                                <span className="a-comply-label">{item.label}</span>
+                                {item.entity && <span className="a-comply-entity">{item.entity}</span>}
+                                <span className={`a-comply-due ${due.cls}`}>{due.text}</span>
+                                <ChevronRight size={13} className="a-comply-arrow" />
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ═══════════════════════════  LITIGATION TRACKER  ═══════════════════ */
+
+function LitigationTracker({ matters, loading, error }: PanelProps & { matters: LegalMatter[] }) {
+    const ready = !loading && !error && matters.length > 0;
+    return (
+        <div className="a-panel a-litigation">
+            <div className="a-panel-header">
+                <Scale size={16} />
+                <span>Litigation &amp; Matters</span>
+                {ready && <span className="a-badge a-badge-count">{matters.length}</span>}
+                <DrillToStrata module="legal" label="Legal" />
+            </div>
+            <PanelStatus loading={loading} error={error} empty={matters.length === 0} emptyLabel="No open legal matters" />
+            {ready && (
+                <div className="a-litigation-list">
+                    {matters.map(m => {
+                        const due = m.deadline ? dueLabel(Math.round((Date.parse(m.deadline) - Date.now()) / 86_400_000)) : { text: 'No deadline', cls: '' };
+                        return (
+                            <button
+                                key={m.id}
+                                className="a-litigation-row"
+                                onClick={() => openStrataModule('legal')}
+                                title={`${m.title} — ${m.status}`}
+                            >
+                                <span className={`a-priority-dot a-dot-${m.priority}`} />
+                                <span className="a-litigation-title">{m.title}</span>
+                                <span className="a-litigation-counsel" title="Assigned counsel">{m.counsel}</span>
+                                <span className={`a-litigation-status a-status-${m.status}`}>{m.status.replace('_', ' ')}</span>
+                                <span className={`a-litigation-due ${due.cls}`}>{due.text}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 /* ═══════════════════════════  ACTIVE WORKITEMS  ═══════════════════ */
 
 function ActiveWorkitems({ items, loading, error }: PanelProps & { items: ActiveWorkitem[] }) {
@@ -489,7 +592,9 @@ const PANEL_META: Record<string, string> = {
     watchdog: 'Watchdog List',
     workitems: 'Active Workitems',
     domainviews: 'Saved Domain Views',
+    litigation: 'Litigation & Matters',
     calendar: 'Compliance Calendar',
+    compliance: 'Compliance Tracker',
     agentlog: 'AI Agent Activity',
     arbitrage: '90-Day Quick Arbitrage',
 };
@@ -505,6 +610,8 @@ function renderPanel(id: string, data: DashData, loading: boolean, error: string
         case 'watchdog': return <WatchdogList items={data?.watchdog ?? []} loading={loading} error={error} />;
         case 'workitems': return <ActiveWorkitems items={data?.activeWorkitems ?? []} loading={loading} error={error} />;
         case 'domainviews': return <DomainViews />;
+        case 'litigation': return <LitigationTracker matters={data?.legalMatters ?? []} loading={loading} error={error} />;
+        case 'compliance': return <ComplianceTracker items={data?.complianceItems ?? []} loading={loading} error={error} />;
         case 'calendar': return <ComplianceCalendar events={data?.calendarEvents ?? []} loading={loading} error={error} />;
         case 'agentlog': return <AIAgentLog entries={data?.agentLog ?? []} loading={loading} error={error} />;
         case 'arbitrage': return <QuickArbitrage />;

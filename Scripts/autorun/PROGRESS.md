@@ -354,3 +354,26 @@ PII 0 leaks ✓ · SSR smoke PASS (200/5949 B, 0 errors) ✓. Workspace chunk no
 git push origin main
 git push -u origin feat/workspace-widget
 ```
+
+═══════════════════════════════════════════════════════════════════════════════
+## ✅ ARC FINALIZED — ALL_DONE (2026-05-29)
+═══════════════════════════════════════════════════════════════════════════════
+Re-ran the FULL strict gate at closure HEAD `834c1c0` to produce fresh end-of-arc
+proof before marking ALL_DONE (prior green gate was at C11 `e54ae94`).
+
+**Gate 6/6 GREEN** (log `Scripts/autorun/logs/gate_alldone_1780028095.log`,
+SMOKE_TEST_PORT=3458):
+- `tsc -b` ✓ 0 errors
+- `vitest run` ✓ 47 files / 348 passed / 0 failed (unchanged vs C11 baseline)
+- `react-router build` seeds=true ✓ + seeds=false ✓ (4 "built in" markers)
+- PII ✓ 0 leaks (51 files / 2 roots)
+- SSR smoke ✓ PASS (HTTP 200 / 5949 B / 0 console / 0 page / 0 ReferenceError / 0 hydration warnings)
+
+Working tree clean of source/docs; `feat/workspace-widget` at `834c1c0`.
+`Scripts/autorun/ALL_DONE` touched. Nothing further started beyond the arc.
+
+**Ilya pushes (this arc never pushed):**
+```
+git push origin main
+git push -u origin feat/workspace-widget
+```

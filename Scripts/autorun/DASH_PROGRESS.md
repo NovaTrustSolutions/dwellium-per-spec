@@ -117,3 +117,34 @@ Legend: ✅ done+committed · 🚧 in progress (continue next iteration) · ⬜ 
 - **Next:** Cycle 5 — Compliance + Legal/Litigation panels: compliance calendar (filings/inspections/
   certs/due dates) + litigation matter tracker (status/deadlines/counsel) from ComplianceEngine/
   LegalModule data; drill-down opens the relevant module via `dwellium:open-widget`. FULL gate.
+
+## Iteration 5 — 2026-05-29 — Cycle 5 (Compliance + Litigation panels + Strata drill-down) ✅
+- **Commit `2e1df63`.** Two new exec panels wired to real Strata data + module-target drill-down.
+- `dashboardData.ts`: + `fetchComplianceItems` (`/compliance`, urgency-ranked expired→missing→
+  warning→scheduled→tracked→valid then soonest expiry; `daysUntil` + synthetic ids when a row lacks
+  one) + `fetchLegalMatters` (`/workitems` domain=legal, open-only, earliest-deadline-first, counsel
+  = `assignedTo`, client-side domain re-filter so static/param-blind mode stays correct). Both joined
+  into `loadDashboardData` (existing per-section settle/[] isolation). + `complianceStatusRank` /
+  `daysUntil` exported helpers. Extended `ComplianceRow` (+id,+entityName) + `WorkitemRow` (+assignedTo).
+- `strataDeepLink.ts` (NEW, DASH-D6): `openStrataModule(module, deps?)` stages a module-level holder
+  `pendingStrataModule` (cold-open) + fires `dwellium:open-widget` for `strata-dashboard` + emits a
+  `dwellium:strata-module` CustomEvent (warm-focus). Pure + injectable (mirrors araLinkage/
+  workspaceScribe). `consumePendingStrataModule` reads-and-clears (idempotent, StrictMode-safe).
+- `StrataDashboard.tsx`: ONE additive mount `useEffect` — consumes the holder on mount (cold lands on
+  the deep-linked module, not overview) + listens for `dwellium:strata-module` (warm). ~8 lines; fully
+  removable. No bus-contract change.
+- `AstraDashboard.tsx`: `ComplianceTracker` + `LitigationTracker` panels (status badges, overdue/
+  due-soon tones, clickable rows → `openStrataModule`, "Open in Strata" header button via
+  `DrillToStrata`). Registered in `PANEL_META` + `renderPanel`. `DEFAULT_LAYOUT` grows `litigation`
+  (center) + `compliance` (right) — `reconcileLayout` grafts them onto returning users' stored layouts
+  by construction (schema-drift safe; existing layout test passes unchanged — it reads DEFAULT_LAYOUT
+  dynamically). CSS appended (rows/status/due + focus-visible rings).
+- Tests: +6 data-layer (`dashboardData.test.ts`: rank, daysUntil, compliance sort+limit+synthetic-id,
+  legal filter+sort+counsel-fallback) + 3 new `strataDeepLink.test.ts` (injected deps, consume
+  idempotency, real default-emit dispatch).
+- **GATE 6/6 GREEN:** tsc ✓ · vitest **431 passed / 55 files** (baseline 422/54 → **+9 / +1 file**) ✓ ·
+  build seeds=true ✓ · build seeds=false ✓ · PII clean (51 files, 0 leaks) ✓ · SSR smoke PASS @ :3458
+  (200, 5949 B, 0 console errors/warnings, 0 page errors) ✓.
+- **Next:** Cycle 6 — Operations panels: Maintenance work-order queue + Lease-expirations + Vendor/
+  contract status, each from the existing modules' data with a filter + drill-down handoff (reuse
+  `openStrataModule('maintenance'|'leasing'|'vendors')`). FULL gate.

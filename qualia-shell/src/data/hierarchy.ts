@@ -34,6 +34,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-hydra-ai', label: 'Hydra AI', icon: 'network', component: 'hydra-ai', pinned: true, group: 'AI Tools' },
    { id: 'dock-ara', label: 'ARA', icon: 'cpu', component: 'ara-console', pinned: true, group: 'AI Tools' },
    { id: 'dock-stella', label: 'Stella', icon: 'sparkles', component: 'stella-agent', pinned: true, group: 'AI Tools' },
+   { id: 'dock-honcho', label: 'Honcho', icon: 'brain-circuit', component: 'honcho', pinned: true, group: 'AI Tools' },
    // ── Filing Cabinet ──
    { id: 'dock-hierarchy', label: 'Explorer', icon: 'folder-tree', component: 'hierarchy-browser', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-tasks', label: 'Tasks', icon: 'check-square', component: 'tasks', pinned: true, group: 'Filing Cabinet' },

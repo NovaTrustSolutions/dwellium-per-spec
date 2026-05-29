@@ -171,6 +171,23 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 400,
         category: 'ai',
     },
+    // ─────────────────────────────────────────────────────────────────
+    //  Honcho — standalone always-on memory + Hermes agent widget.
+    //  Promoted out of Stella's inline `honcho` tab (Scribe-ingestion arc
+    //  Cycle 6, 2026-05-29) into its own registered widget. Renders the
+    //  SHARED HonchoHermesPanel — Stella's inline tab is UNTOUCHED (it has
+    //  its own inline honcho/hermes code), so this is a zero-Stella-touch
+    //  promotion; both surfaces can coexist.
+    // ─────────────────────────────────────────────────────────────────
+    'honcho': {
+        id: 'honcho',
+        label: 'Honcho',
+        icon: 'brain-circuit',
+        component: lazyWithReload(() => import('../components/HonchoHermesPanel/HonchoHermesPanel')),
+        minWidth: 600,
+        minHeight: 400,
+        category: 'ai',
+    },
     'hydra-ai': {
         id: 'hydra-ai',
         label: 'Hydra AI',

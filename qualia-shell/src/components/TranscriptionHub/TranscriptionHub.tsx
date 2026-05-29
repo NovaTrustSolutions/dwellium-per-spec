@@ -4,6 +4,8 @@ import './TranscriptionHub.css';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { scanSegmentsViaLlm, buildNotebookLmQuery } from './legalShieldClient';
+import { hasActiveLlm } from '../../lib/llmClient';
+import { buildMatchedStatutes, dedupMatchedStatutes, formatSimilarity } from './statuteMatch';
 import type { LegalScanResult as LegalScanResultLlm } from './legalShieldClient';
 
 // Open the user's NotebookLM (preferring their Calendar Google email) with a
@@ -609,9 +611,10 @@ export default function TranscriptionHub() {
                         alert: r.alert,
                         statute: r.code_ref ?? '',
                         advice: r.suggested_action ?? r.summary ?? '',
-                        matchedStatutes: r.code_ref
-                            ? [{ volumeId: r.code_ref, similarity: 1, excerpt: r.summary ?? '' }]
-                            : [],
+                        // Cycle 9: extract ALL cited O.C.G.A. sections (primary
+                        // from code_ref @ similarity 1, secondary from summary @
+                        // 0.6), normalized + de-duped — was single-statute@1.
+                        matchedStatutes: buildMatchedStatutes(r),
                     }));
                 } else {
                     // Path B: legacy backend (in case a future route reappears)
@@ -623,7 +626,11 @@ export default function TranscriptionHub() {
                         });
                         const json = await res.json();
                         if (json.success && json.data?.results) {
-                            scanResults = json.data.results as LegalScanResult[];
+                            // Cycle 9: de-dupe backend-supplied matchedStatutes too.
+                            scanResults = (json.data.results as LegalScanResult[]).map(r => ({
+                                ...r,
+                                matchedStatutes: dedupMatchedStatutes(r.matchedStatutes),
+                            }));
                             scanTimeMs = json.data.scanTimeMs ?? 0;
                         }
                     } catch { /* backend not available — that's fine */ }
@@ -2077,6 +2084,11 @@ export default function TranscriptionHub() {
                                 ⚖️ {legalShieldEnabled ? 'Legal Shield ON' : 'Legal Shield OFF'}
                                 {legalScanRunning && <span className="th-legal-spinner">⟳</span>}
                             </button>
+                            {legalShieldEnabled && !hasActiveLlm(integrations.llm) && (
+                                <span className="th-legal-hint" role="status">
+                                    ⚖️ Add an LLM key in Settings → API Keys to enable statute matching.
+                                </span>
+                            )}
                             <button
                                 className="th-legal-toggle"
                                 onClick={() => {
@@ -2275,8 +2287,26 @@ export default function TranscriptionHub() {
                                                         title={`${la.statute}: ${la.advice}`}
                                                     >
                                                         {alertCfg.icon} {alertCfg.label}
-                                                        {la.statute !== 'N/A' && <span className="th-segment__legal-statute">{la.statute}</span>}
+                                                        {la.statute !== 'N/A' && la.statute !== '' && <span className="th-segment__legal-statute">{la.statute}</span>}
                                                     </span>
+                                                )}
+
+                                                {/* Cycle 9: matched-statute detail — similarity + excerpt */}
+                                                {la && la.matchedStatutes && la.matchedStatutes.length > 0 && (
+                                                    <ul className="th-segment__legal-matches" aria-label="Matched Georgia statutes">
+                                                        {la.matchedStatutes.map((ms, mi) => (
+                                                            <li key={`${ms.volumeId}-${mi}`} className="th-segment__legal-match" title={ms.excerpt || undefined}>
+                                                                <span className="th-segment__legal-match-id">{ms.volumeId}</span>
+                                                                <span
+                                                                    className="th-segment__legal-match-sim"
+                                                                    aria-label={`Match confidence ${formatSimilarity(ms.similarity)}`}
+                                                                >
+                                                                    {formatSimilarity(ms.similarity)}
+                                                                </span>
+                                                                {ms.excerpt && <span className="th-segment__legal-match-excerpt">{ms.excerpt}</span>}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
                                                 )}
 
                                                 {/* Inline contradiction badge */}

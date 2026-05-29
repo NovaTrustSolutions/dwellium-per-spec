@@ -8,9 +8,10 @@
  * disabled. The panel is self-contained + SSR-safe (all FS-API access is
  * event-handler-gated via useIngestion).
  *
- * a11y: every control carries discernible text (icon-free here, but explicit
- * aria-labels are added in the Cycle-10 polish pass). Picker errors surface in a
- * dedicated status region (role="status").
+ * a11y (Cycle-10 polish): every control carries discernible text (buttons are
+ * text-labelled; no icon-only controls here). Picker + conversion errors surface
+ * in assertive alert regions (role="alert"); the sync-status line is a polite
+ * live region (role="status") so "Last sync" updates are announced.
  */
 import { useState } from 'react';
 import { useIngestion } from './useIngestion';
@@ -98,7 +99,7 @@ export default function IngestionPanel({ onConvert, converting = false, convertE
             </div>
 
             {pickError && (
-                <p className="scribe-ingest__error" role="status">{pickError}</p>
+                <p className="scribe-ingest__error" role="alert">{pickError}</p>
             )}
 
             <div className="scribe-ingest__actions">
@@ -119,10 +120,10 @@ export default function IngestionPanel({ onConvert, converting = false, convertE
             </div>
 
             {convertError && (
-                <p className="scribe-ingest__error" role="status">{convertError}</p>
+                <p className="scribe-ingest__error" role="alert">{convertError}</p>
             )}
 
-            <p className="scribe-ingest__status" data-testid="ingest-status">
+            <p className="scribe-ingest__status" data-testid="ingest-status" role="status">
                 {ingestion.lastSyncAt
                     ? `Last sync: ${ingestion.lastSyncAt} · ${ingestion.converted.length} file(s) in index`
                     : 'No conversions yet.'}

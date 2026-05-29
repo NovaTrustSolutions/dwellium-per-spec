@@ -121,6 +121,22 @@ describe('IngestionPanel — supported browser', () => {
         expect(onConvert).toHaveBeenCalledTimes(1);
     });
 
+    it('a11y (Cycle 10): sync-status is a polite live region and a picker error is an assertive alert', async () => {
+        // Status line announces politely.
+        render(<IngestionPanel />);
+        const status = screen.getByTestId('ingest-status');
+        expect(status).toHaveAttribute('role', 'status');
+        expect(status).toHaveTextContent('No conversions yet.');
+
+        // A failed (non-abort) picker surfaces in a role="alert" region.
+        (window as WinWithPicker).showDirectoryPicker = vi.fn().mockRejectedValue(
+            new Error('disk on fire'),
+        );
+        fireEvent.click(screen.getByText(/Choose source folder/i));
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('disk on fire');
+    });
+
     it('disables Convert when no onConvert is provided even with both folders', async () => {
         (window as WinWithPicker).showDirectoryPicker = vi.fn()
             .mockResolvedValueOnce(fakeDirHandle('Src'))

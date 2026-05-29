@@ -343,7 +343,7 @@ export default function HonchoHermesPanel() {
                 ))}
             </div>
 
-            {loading && <div className="hhp__loading">Loading intelligence systems...</div>}
+            {loading && <div className="hhp__loading" role="status" aria-live="polite">Loading intelligence systems...</div>}
 
             {/* ═══ MEMORY TAB ═══ */}
             {!loading && activeTab === 'memory' && (
@@ -360,9 +360,9 @@ export default function HonchoHermesPanel() {
 
                     {/* Toolbar */}
                     <div className="hhp__toolbar">
-                        <input className="hhp__search" placeholder="Search memories..." value={memoryFilter}
+                        <input className="hhp__search" placeholder="Search memories..." aria-label="Search memories" value={memoryFilter}
                             onChange={e => { setMemoryFilter(e.target.value); }} />
-                        <select className="hhp__type-filter" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                        <select className="hhp__type-filter" aria-label="Filter memories by type" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
                             <option value="all">All Types</option>
                             <option value="fact">📋 Facts</option>
                             <option value="preference">⭐ Preferences</option>
@@ -378,10 +378,10 @@ export default function HonchoHermesPanel() {
                     {/* Add Form */}
                     {showAddMemory && (
                         <div className="hhp__add-form">
-                            <textarea className="hhp__add-textarea" placeholder="What should I remember?"
+                            <textarea className="hhp__add-textarea" placeholder="What should I remember?" aria-label="Memory content"
                                 value={newMemory.content} onChange={e => setNewMemory({ ...newMemory, content: e.target.value })} rows={3} />
                             <div className="hhp__add-row">
-                                <select className="hhp__add-type" value={newMemory.memoryType}
+                                <select className="hhp__add-type" aria-label="Memory type" value={newMemory.memoryType}
                                     onChange={e => setNewMemory({ ...newMemory, memoryType: e.target.value })}>
                                     <option value="fact">📋 Fact</option>
                                     <option value="preference">⭐ Preference</option>
@@ -426,7 +426,7 @@ export default function HonchoHermesPanel() {
                                     <p className="hhp__memory-content">{m.content}</p>
                                     <div className="hhp__memory-meta">
                                         <span className="hhp__memory-time">{formatTime(m.createdAt)}</span>
-                                        <button className="hhp__memory-delete" onClick={() => deleteMemory(m.id)} title="Delete">🗑️</button>
+                                        <button className="hhp__memory-delete" onClick={() => deleteMemory(m.id)} aria-label="Delete memory" title="Delete">🗑️</button>
                                     </div>
                                 </div>
                             ))
@@ -567,7 +567,7 @@ export default function HonchoHermesPanel() {
                     <div className="hhp__delegate-section">
                         <h3 className="hhp__section-title">🎯 Delegate Task</h3>
                         <div className="hhp__delegate-row">
-                            <input className="hhp__delegate-input" placeholder="Ask Hermes to investigate, search, or analyze..."
+                            <input className="hhp__delegate-input" placeholder="Ask Hermes to investigate, search, or analyze..." aria-label="Hermes task prompt"
                                 value={hermesPrompt} onChange={e => setHermesPrompt(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && delegateToHermes()}
                                 disabled={!hermesOnline || hermesRunning} />

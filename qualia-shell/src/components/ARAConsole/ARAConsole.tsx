@@ -3,6 +3,7 @@ import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -1040,6 +1041,40 @@ export default function ARAConsole() {
         });
     }, [isLoading, lastRequest, sendPrompt]);
 
+    // ── A3: receive a selection handoff (LINKAGE gap A3) ──────────────────
+    // The Scribe-embedded AraMiniPanel listens for `scribe:send-to-ara`; until now
+    // the full ARAConsole widget was blind to it. Mirror the exact contract
+    // (preface + blockquoted text via composeAraPrompt) so a selection sent to ARA
+    // is answered by whichever ARA surface is open. Pure composition lives in
+    // araLinkage.ts; this effect is the thin DOM-listener wiring.
+    useEffect(() => {
+        const handler = (ev: Event) => {
+            const detail = (ev as CustomEvent).detail || {};
+            const composed = composeAraPrompt(detail);
+            if (!composed) return;
+            void sendPrompt(composed);
+        };
+        window.addEventListener('scribe:send-to-ara', handler);
+        return () => window.removeEventListener('scribe:send-to-ara', handler);
+    }, [sendPrompt]);
+
+    // ── A2: suggest "open in <widget>" handoffs from ARA's latest reply ───
+    // ARA can answer about the inbox / files / docs; these chips let the user
+    // jump to the referenced widget via the shared `dwellium:open-widget` bus.
+    const suggestedHandoffs = useMemo(() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'assistant') {
+                return detectWidgetHandoffs(messages[i].content);
+            }
+        }
+        return [];
+    }, [messages]);
+
+    const handleHandoffClick = useCallback((handoff: { widgetId: string; label: string; icon: string }) => {
+        openWidgetHandoff(handoff);
+        setActionStatus({ kind: 'success', message: `Opening ${handoff.label}…` });
+    }, []);
+
     const toggleMeta = useCallback((messageId: string) => {
         setExpandedMeta(prev => ({ ...prev, [messageId]: !prev[messageId] }));
     }, []);
@@ -1564,6 +1599,23 @@ export default function ARAConsole() {
                             Retry Last Prompt
                         </button>
                     </div>
+
+                    {suggestedHandoffs.length > 0 && (
+                        <div className="ara-handoff-row" role="group" aria-label="Open referenced widget">
+                            <span className="ara-handoff-label">Open:</span>
+                            {suggestedHandoffs.map((h) => (
+                                <button
+                                    key={h.widgetId}
+                                    type="button"
+                                    className="ara-action-btn ara-handoff-btn"
+                                    onClick={() => handleHandoffClick(h)}
+                                    aria-label={`Open ${h.label}`}
+                                >
+                                    {h.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {workspaceContext && (
                         <div className="ara-action-feedback ara-action-feedback--context">

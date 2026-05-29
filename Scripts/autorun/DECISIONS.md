@@ -94,3 +94,43 @@ the index sort control; the stored `sortDomaine` default stays `position-asc`.
 - Why: honest — no timestamp data to sort by. Threads (which DO carry `lastModified`) keep
   `modified-desc` as their default in the UI store.
 - Reversibility: add the option back the moment a domaine timestamp exists in the contract.
+
+---
+
+## Cycle 6 (2026-05-28) — Projects drill-down (domaine view)
+
+**C6-D1 — Projects are DERIVED from the shared file-explorer tree, not a new endpoint.**
+`loadTree()` calls `fetchTree()` from `../FileExplorer/fileExplorerApi` (decision D3 — one
+source of truth for per-user structure); the pure `projectsForDomaine(path)` selector reads
+the cached `tree` and returns the matching domain node's `tier === 'project'` children. No
+`/api/workspace/projects` route is added.
+- Why: D3 already chose to share `GET /api/file-explorer/tree`; the backend tier-classifies
+  nodes, so projects fall out of the tree for free. Avoids a redundant endpoint + a second
+  contract surface to keep in sync.
+- Reversibility: trivial — `projectsForDomaine` is one pure method; swapping it for a
+  dedicated fetch later is mechanical and contained to the store.
+
+**C6-D2 — Tree fetched LAZILY on entering the domaine view, with its own loading/error pair.**
+An effect keyed on `view === 'domaine' && tree.length === 0` triggers `loadTree()` once;
+`treeLoading`/`treeError` are independent of the index view's `loading`/`error`.
+- Why: don't pay the tree fetch until the user drills in; keeping the status pair separate
+  means a projects-fetch failure never colours the domaines index (and vice-versa).
+- Reversibility: to prefetch alongside domaines instead, move the call into the mount effect —
+  one line. To merge the status pairs, delete the tree* fields — contained to the store.
+
+**C6-D3 — Project card shows a thread-count hint; click drills to the (placeholder) thread view.**
+Each project card renders `Folder` + name + "N threads" (count of `tier === 'thread'`
+children). Clicking calls `openProject(path)` → `view='project'`, which still shows the
+"Thread view arrives next cycle" placeholder (Cycle 7 fills it).
+- Why: gives the project list a useful at-a-glance signal now without pulling thread metadata
+  (that's Cycle 7); keeps the drill chain navigable end-to-end (rule 4 — never a dead end).
+- Reversibility: the count is a one-line `threadCount()` helper; the placeholder branch is a
+  single `view === 'project'` block, replaced wholesale in Cycle 7.
+
+**C6-D4 — Project sort offers Name (default) + Modified; toolbar sort/refresh are view-aware.**
+The domaine view uses the per-user `sortProject` pref (`name-asc` default, `modified-desc`
+option over the tree node's `modified`). The single toolbar sort `<select>` and RefreshCw
+button swap their target by `view` (domaines vs projects), with matching aria-labels.
+- Why: reuses the existing per-user UI store fields; one toolbar that adapts avoids duplicate
+  controls. `position-asc` isn't offered for projects (tree nodes carry no position) → name.
+- Reversibility: per-view branches in the toolbar are isolated `view === …` blocks.

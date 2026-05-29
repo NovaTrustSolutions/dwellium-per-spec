@@ -105,3 +105,39 @@ thunk, render card grid, loading/empty/error states + per-user sort (plan §11).
 **Next:** Cycle 6 — drill-down to Projects: replace the non-index placeholder with a project
 list for the active domaine (derive projects from `/api/file-explorer/tree` depth-2 folders
 per D3) + back-nav already in place. Touches source ⇒ full strict gate (`SMOKE_TEST_PORT=3458`).
+
+---
+
+## 2026-05-28 — Cycle 6 (source): Projects drill-down (domaine view)
+
+**Cycle:** C6 — drill into a domaine to see its PROJECTS, derived from the shared
+file-explorer tree (D3) + back-nav (plan §11). ✅ DONE.
+
+**Did:**
+- `workspaceStore.ts` — added cached `tree` + `treeLoading` + `treeError` state (independent
+  of the index `loading`/`error`), `setTree`, the async `loadTree()` thunk (imports
+  `fetchTree` from `../FileExplorer/fileExplorerApi` per D3), and the pure
+  `projectsForDomaine(path)` selector (matches the depth-1 domain node, returns its
+  `tier === 'project'` children). (C6-D1/D2)
+- `Workspace.tsx` — added the DOMAINE (projects) view: lazy `loadTree()` effect on entering
+  `view==='domaine'`; project card grid (Folder icon + name + "N threads" hint from
+  `tier==='thread'` children) with treeLoading / treeError+Retry / empty states; click →
+  `openProject` (→ placeholder thread view, Cycle 7). Toolbar is now view-aware: title +
+  back-label resolve the domaine display name, sort `<select>` swaps domaine⇄project sort,
+  RefreshCw swaps domaines⇄projects target — all with matching aria-labels (RefreshCw convention).
+  Index branch unchanged. (C6-D3/D4)
+- `src/test/Workspace.loadTree.test.ts` (NEW) — 8 tests, `vi.mock` of `fileExplorerApi`:
+  loadTree happy/error/stale-cleared/non-Error-fallback + projectsForDomaine
+  (only project-tier children / ignores files / empty for childless / empty for unknown path).
+- Decisions C6-D1..D4 logged to DECISIONS.md.
+
+**Verified — FULL strict gate 6/6 GREEN** (log `Scripts/autorun/logs/gate_c6_1780025678.log`):
+- `tsc -b` ✓ (exit 0) · `vitest` ✓ **42 files / 302 passed / 0 skipped** (+1 file, +8 tests
+  vs Cycle-5 41 files / 294 passed) · `react-router build` seeds=true ✓ + seeds=false ✓
+  (4 "built in" markers, 0 errors) · PII ✓ (51 files, 0 leaks) · SSR smoke
+  (`SMOKE_TEST_PORT=3458`) ✓ PASS (200 / 5949 B, 0 console/page/ReferenceError).
+
+**Next:** Cycle 7 — drill into a project to see its THREADS + `ThreadInfo`/`ThreadMeta`
+surface (status/stage badges via `fetchThreadMeta`). Replace the `view==='project'`
+placeholder with a thread list (tree `tier==='thread'` children) + per-thread status/stage.
+Touches source ⇒ full strict gate (`SMOKE_TEST_PORT=3458`).

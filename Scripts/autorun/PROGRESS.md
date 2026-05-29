@@ -223,3 +223,38 @@ Touches source ⇒ full strict gate (`SMOKE_TEST_PORT=3458`).
 **Next:** Cycle 9 — Scribe "open in Scribe" handoff (D4) + DomaineBadge component (and the
 deferred move UI / domaine-metadata-edit form, C8-D2/C8-D3, fold in here). Touches source ⇒
 full strict gate (`SMOKE_TEST_PORT=3458`).
+
+---
+
+## 2026-05-29 — Cycle 9 — Scribe "open in Scribe" handoff (D4) + DomaineBadge ✅ DONE
+
+**Scope:** Wire the Workspace→Scribe handoff (plan §8 / D4) and port Holocron's DomaineBadge.
+
+- `src/components/Workspace/workspaceScribe.ts` (NEW) — pure handoff helpers with injected
+  side effects: `threadFiles`/`threadHasFiles` (filter file-tier children), `openThreadInScribe`
+  (opens every thread file via injected `openFile`, then surfaces Scribe via injected
+  `openWidget`; returns file count, no-ops on a fileless thread), `dispatchOpenWidget` (fires
+  the `dwellium:open-widget` intent bus). Decoupled — no `useWindows`/WindowProvider needed.
+- `src/components/Workspace/DomaineBadge.tsx` (NEW) — presentational color-tinted pill
+  (chip/dot variants) taking a resolved `DomaineMeta`; renders null when absent. Holocron's
+  namespace/id resolution hooks dropped (no namespace model in Dwellium's tree-derived view).
+- `Workspace.tsx` — imports the above + `useScribeStore`. Thread cards gained an
+  ExternalLink "Open in Scribe" button (only when `threadHasFiles`), wired to
+  `handleOpenInScribe` (injects `useScribeStore.getState().openFile` + `dispatchOpenWidget`).
+  Toolbar now renders a `<DomaineBadge variant="chip">` of the active domaine in the
+  domaine + project views. Added `activeDomaine` lookup (domaineName now derives from it).
+- `src/test/Workspace.scribe.test.ts` (NEW, 5 tests) — threadFiles filtering, open-all-then-
+  surface, fileless no-op, intent-bus dispatch shape.
+- `src/test/DomaineBadge.test.tsx` (NEW, 4 tests) — null→nothing, chip name+label, dot
+  label-without-text, color tint + accent fallback (rgb-normalized assertions).
+- Decisions C9-D1 + C9-D2 logged to DECISIONS.md.
+
+**Verified — FULL strict gate 6/6 GREEN** (log `Scripts/autorun/logs/gate_c9_*.log`):
+- `tsc -b` ✓ (exit 0) · `vitest` ✓ **46 files / 344 passed / 0 failed** (+2 files, +9 tests
+  vs Cycle-8 44 files / 335 passed) · `react-router build` seeds=true ✓ + seeds=false ✓
+  (4 "built in" markers) · PII ✓ (51 files, 0 leaks) · SSR smoke (`SMOKE_TEST_PORT=3458`)
+  ✓ PASS (200 / 5949 B, 0 console/page/ReferenceError).
+
+**Next:** Cycle 10 — per-user persistence polish (sort prefs, active domaine), a11y pass
+(aria-labels per the RefreshCw/Section conventions), WCAG AA contrast. Touches source ⇒
+full strict gate (`SMOKE_TEST_PORT=3458`).

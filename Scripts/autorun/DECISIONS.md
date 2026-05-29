@@ -207,3 +207,32 @@ the project + thread lists — identical tree-node sort logic).
   action `<button>`s can nest as valid HTML (no button-in-button). Thread cards were
   already `<div>`s. No render test depended on the old markup (workspace tests are
   store-level), so this is low-risk + reversible.
+
+---
+
+## Cycle 9 — Scribe handoff (D4) + DomaineBadge
+
+**C9-D1 — Scribe "open in Scribe" handoff via the cross-widget intent bus + direct store import.**
+A thread is a folder, so "open in Scribe" opens each file-tier child as a Scribe tab
+(`useScribeStore.getState().openFile(child.path)` — idempotent dedupe), then surfaces the
+Scribe widget by dispatching the existing `dwellium:open-widget` CustomEvent
+(WindowContext.tsx:447) rather than consuming `useWindows()`. Rationale: (a) keeps Workspace
+free of a WindowProvider dependency so it stays test-friendly (existing Workspace tests are
+provider-less `.ts` store tests); (b) the event bus is the established cross-widget pattern
+(Stella self-diagnose CTA, Scribe→ARA send button already use it); (c) maximally REVERSIBLE —
+the whole handoff is one helper module + one button. Side effects are injected as `deps` into
+the pure `openThreadInScribe()` helper so it unit-tests without a real store or DOM listener.
+Path-namespace assumption (file-explorer tree path == scribe file path on the shared per-user
+fs) documented in `workspaceScribe.ts`; a mismatch degrades gracefully via Scribe's own error
+state. The "Open in Scribe" button (ExternalLink icon) shows on a thread card only when the
+thread has ≥1 file (`threadHasFiles`).
+
+**C9-D2 — DomaineBadge ported as a PURELY PRESENTATIONAL component.** Holocron's DomaineBadge
+resolved a domaine three ways (pre-resolved object / by id / by project-name→namespace lookup
+via `useDomaineForProject` + `useDomainesStore`). Dwellium derives its tree from the shared
+file-explorer endpoint and has NO namespace→domaine mapping, so the port drops the resolution
+hooks and takes an already-resolved `DomaineMeta` (Workspace always knows the active domaine
+from its drill state). Keeps it SSR-safe + dependency-free. Rendered as a `chip` next to the
+toolbar title in the domaine + project views to surface the active domaine's color tint (the
+plain text title lacks color); `dot` variant retained for tight contexts. Reversible: pure
+component, removable without touching store/data.

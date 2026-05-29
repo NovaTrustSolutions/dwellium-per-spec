@@ -27,10 +27,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
     RefreshCw, ChevronLeft, FolderOpen, Folder, MessageSquare, FileText,
-    Plus, Pencil, Trash2, Check, X, CheckCircle2, RotateCcw,
+    Plus, Pencil, Trash2, Check, X, CheckCircle2, RotateCcw, ExternalLink,
 } from 'lucide-react';
 import { useWorkspaceStore } from './workspaceStore';
 import { useWorkspaceUi } from './useWorkspaceUi';
+import { useScribeStore } from '../Scribe/scribeStore';
+import { DomaineBadge } from './DomaineBadge';
+import { openThreadInScribe, threadHasFiles, dispatchOpenWidget } from './workspaceScribe';
 import type { DomaineMeta } from './workspaceApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import type { WorkspaceSort } from './workspaceUiStore';
@@ -177,6 +180,15 @@ export default function Workspace() {
         openDomaine(d.path);
     };
 
+    // Open every file in a thread as a Scribe tab, then surface the Scribe widget
+    // (decision C9-D1). openFile/dispatchOpenWidget are the injected side effects.
+    const handleOpenInScribe = (thread: FileEntry) => {
+        openThreadInScribe(thread, {
+            openFile: (fp) => useScribeStore.getState().openFile(fp),
+            openWidget: dispatchOpenWidget,
+        });
+    };
+
     // The tier + parent path a "+ New" create targets at the current altitude.
     const childTier = view === 'index' ? 'domaine' : view === 'domaine' ? 'project' : 'thread';
     const createParent = view === 'index' ? null : view === 'domaine' ? activeDomainePath : activeProjectPath;
@@ -264,9 +276,10 @@ export default function Workspace() {
     );
 
     // Display labels for the toolbar/back-nav (resolve domaine display name from metadata).
-    const domaineName = activeDomainePath
-        ? domaines.find((d) => d.path === activeDomainePath)?.name ?? activeDomainePath
-        : '';
+    const activeDomaine = activeDomainePath
+        ? domaines.find((d) => d.path === activeDomainePath) ?? null
+        : null;
+    const domaineName = activeDomaine?.name ?? activeDomainePath ?? '';
     const projectName = activeProjectPath?.split('/').filter(Boolean).pop() ?? '';
     const title = view === 'index' ? 'Domaines' : view === 'domaine' ? domaineName : projectName;
     const backLabel = view === 'project' ? domaineName : 'Domaines';
@@ -321,6 +334,10 @@ export default function Workspace() {
                 }}>
                     {title}
                 </span>
+
+                {view !== 'index' && activeDomaine && (
+                    <DomaineBadge domaine={activeDomaine} variant="chip" />
+                )}
 
                 {view === 'index' && (
                     <select
@@ -560,6 +577,17 @@ export default function Workspace() {
                                                 </span>
                                             )}
                                             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                {threadHasFiles(t) && (
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Open ${t.name} in Scribe`}
+                                                        title="Open in Scribe"
+                                                        onClick={() => handleOpenInScribe(t)}
+                                                        style={iconBtn}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.color = '#888'; }}
+                                                    ><ExternalLink size={12} strokeWidth={1.75} /></button>
+                                                )}
                                                 <button
                                                     type="button"
                                                     aria-label={isComplete ? `Reopen ${t.name}` : `Mark ${t.name} complete`}

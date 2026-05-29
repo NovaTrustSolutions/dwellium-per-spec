@@ -23,6 +23,7 @@ import { useScribeLayout } from './useScribeLayout';
 import { Splitter } from './Splitter';
 import { TOC_MIN, TOC_MAX, MINIMAP_MIN, MINIMAP_MAX } from './scribeLayoutStore';
 import IngestionPanel from './ingestion/IngestionPanel';
+import { useIngestion } from './ingestion/useIngestion';
 import './Scribe.css';
 
 export default function Scribe() {
@@ -156,6 +157,7 @@ function EmptyState() {
     const [fetched, setFetched] = useState(false);
     const openFile = useScribeStore((s) => s.openFile);
     const createFile = useScribeStore((s) => s.createFile);
+    const { convert, converting, convertError } = useIngestion();
 
     useEffect(() => {
         void useScribeStore.getState().listFiles().then((f) => {
@@ -236,7 +238,7 @@ function EmptyState() {
                 <p className="scribe__muted">No files yet. Create one to get started.</p>
             )}
 
-            <IngestionPanel />
+            <IngestionPanel onConvert={convert} converting={converting} convertError={convertError} />
         </div>
     );
 }

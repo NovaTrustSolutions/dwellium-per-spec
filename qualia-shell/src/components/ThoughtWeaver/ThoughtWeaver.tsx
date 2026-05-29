@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -21,6 +21,23 @@ import {
     clearDoneTodos,
 } from './todoStore';
 import type { TodoItem } from './todoStore';
+import {
+    reportStore,
+    reportUserIdHolder,
+    addDailyReport,
+    addWeeklySummary,
+    setInsights,
+    clearReports,
+} from './reportStore';
+import type { ReportData } from './reportStore';
+import {
+    generateReports,
+    isDailyReportDue,
+    isWeeklyReportDue,
+} from './reportEngine';
+import type { GenerateOptions, GenerateContext, ReportSink } from './reportEngine';
+import { weekStartOf } from './insights';
+import type { InsightCapture } from './insights';
 import './ThoughtWeaver.css';
 
 // ── Daily to-do synthesis ────────────────────────────────────────────
@@ -61,7 +78,7 @@ function synthesizeTodosFromCaptures(captures: CaptureEntry[]): Array<Omit<TodoI
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type TabId = 'capture' | 'today' | 'dashboard' | 'timeline';
+type TabId = 'capture' | 'today' | 'reports' | 'dashboard' | 'timeline';
 type BucketId = 'people' | 'projects' | 'ideas' | 'admin';
 
 interface Stats {
@@ -104,6 +121,7 @@ interface BucketItem {
 const TABS: { id: TabId; label: string; icon: string }[] = [
     { id: 'capture', label: 'Capture', icon: '📝' },
     { id: 'today', label: 'Today', icon: '✅' },
+    { id: 'reports', label: 'Reports', icon: '📈' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'timeline', label: 'Timeline', icon: '🕐' },
 ];
@@ -179,6 +197,7 @@ export default function ThoughtWeaver() {
     // cache invalidates automatically when the key resolver returns a fresh value.
     thoughtWeaverUserIdHolder.current = userId;
     todoUserIdHolder.current = userId;
+    reportUserIdHolder.current = userId;
     const localCaptures: LocalCapture[] = useSyncExternalStore(
         thoughtWeaverStore.subscribe,
         thoughtWeaverStore.getSnapshot,
@@ -189,7 +208,16 @@ export default function ThoughtWeaver() {
         todoStore.getSnapshot,
         todoStore.getServerSnapshot,
     );
+    const reports: ReportData = useSyncExternalStore(
+        reportStore.subscribe,
+        reportStore.getSnapshot,
+        reportStore.getServerSnapshot,
+    );
     const [newTodoText, setNewTodoText] = useState('');
+    const [generating, setGenerating] = useState(false);
+    const [genMsg, setGenMsg] = useState<string | null>(null);
+    const didCatchUp = useRef(false);
+    const llmReady = hasActiveLlm(integrations.llm);
 
     const [activeTab, setActiveTab] = useState<TabId>('capture');
     const [text, setText] = useState('');
@@ -414,6 +442,74 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         );
         if (ok) clearLocalCaptures();
     }, [localCaptures.length]);
+
+    // ── Reports + insights generation (Cycle 13) ──────────────────────
+    // Build the local-first sink + injectable LLM, then drive the pure engine.
+    // All persistence stays in the per-user reportStore / todoStore (no backend).
+    const runGenerate = useCallback(async (opts?: GenerateOptions) => {
+        if (generating) return;
+        setGenerating(true);
+        setGenMsg(null);
+        try {
+            const now = new Date();
+            const insightCaptures: InsightCapture[] = mergedCaptures.map(c => ({
+                id: c.id,
+                text: c.original_text,
+                filed_to: c.filed_to,
+                destination_name: c.destination_name,
+                createdAt: c.createdAt,
+            }));
+            const ctx: GenerateContext = {
+                captures: insightCaptures,
+                today: now.toISOString().slice(0, 10),
+                nowIso: now.toISOString(),
+                llm: (req) => callLlm(req, integrations.llm),
+            };
+            const sink: ReportSink = {
+                addDailyReport,
+                addWeeklySummary,
+                setInsights,
+                syncTodos: (seeds) => syncTodosFromCaptures(seeds),
+            };
+            const r = await generateReports(ctx, sink, opts);
+            const wantInsights = opts === undefined || opts.insights === true;
+            const parts: string[] = [];
+            if (r.ranDaily) parts.push('daily report');
+            if (r.ranWeekly) parts.push('weekly summary');
+            if (r.todosAdded > 0) parts.push(`${r.todosAdded} to-do${r.todosAdded === 1 ? '' : 's'}`);
+            if (wantInsights) parts.push(`${r.insightCount} insight${r.insightCount === 1 ? '' : 's'}`);
+            setGenMsg(parts.length ? `Generated ${parts.join(', ')}.` : 'Nothing new to generate yet.');
+        } catch {
+            setGenMsg('Generation hit a snag — your captures are safe.');
+        } finally {
+            setGenerating(false);
+        }
+    }, [generating, mergedCaptures, integrations.llm]);
+
+    // On-open catch-up: once captures are available, if a daily report hasn't
+    // been generated for today, draft it + refresh to-dos (and the weekly
+    // summary if that's also due). Insights are LLM-only, so they stay behind
+    // the explicit "Generate now" button rather than spending tokens on open.
+    // Runs once per mount (ref-guarded); client-only by virtue of useEffect.
+    useEffect(() => {
+        if (didCatchUp.current) return;
+        if (mergedCaptures.length === 0) return;
+        didCatchUp.current = true;
+        const today = new Date().toISOString().slice(0, 10);
+        const snap = reportStore.getSnapshot();
+        if (!isDailyReportDue(snap.lastDailyReportDate, today)) return;
+        const weekDue = isWeeklyReportDue(snap.lastWeeklyReportWeek, weekStartOf(today));
+        runGenerate({ daily: true, todos: true, weekly: weekDue });
+    }, [mergedCaptures.length, runGenerate]);
+
+    const handleClearReports = useCallback(() => {
+        const total = reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length;
+        if (total === 0) return;
+        const ok = typeof window !== 'undefined' && window.confirm(
+            `Clear all ${total} generated report${total === 1 ? '' : 's'}/insight${total === 1 ? '' : 's'}? Your captures + to-dos are kept.`
+        );
+        if (ok) { clearReports(); setGenMsg(null); }
+    }, [reports.dailyReports.length, reports.weeklySummaries.length, reports.insights.length]);
 
     const allBucketItems = useMemo(() => {
         if (activeBucket === 'all') return Object.entries(bucketItems).flatMap(([type, items]) => items.map(i => ({ ...i, type })));

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -963,6 +964,43 @@ export default function ARAConsole() {
             const message = err instanceof Error
                 ? err.message
                 : 'Backend unreachable. Is the server running on port 3000?';
+
+            // ── LLM-ready offline fallback (gap A1) ──
+            // ARA's backend carries deep domain context (modes, entity guardian,
+            // observability, ruVector retrieval), so we try it FIRST and only
+            // fall back to the user's personal LLM key when the backend is
+            // unreachable — unlike Stella, which routes LLM-first. This keeps the
+            // rich backend path primary while still answering when it's down.
+            if (hasActiveLlm(integrations.llm)) {
+                try {
+                    const llmRes = await callLlm({
+                        systemPrompt:
+                            `You are ARA, an AI chief-of-staff inside the Dwellium property-management app, ` +
+                            `currently operating in "${modeToUse}" mode${jurisdictionToUse ? ` (jurisdiction: ${jurisdictionToUse})` : ''}. ` +
+                            `The ARA backend is offline, so deep context retrieval is unavailable — answer from general knowledge, ` +
+                            `be concise and direct, and note when a question would need live property data. Use Markdown when helpful.`,
+                        prompt: outgoingMessage,
+                        maxTokens: 1024,
+                        temperature: 0.4,
+                    }, integrations.llm);
+                    if (llmRes) {
+                        setActionStatus({
+                            kind: 'success',
+                            message: `Backend offline — answered via your ${integrations.llm.active} key.`,
+                        });
+                        setMessages(prev => [...prev, createChatMessage({
+                            role: 'assistant',
+                            content: llmRes.text,
+                            mode: modeToUse,
+                        })]);
+                        return;
+                    }
+                } catch (llmErr) {
+                    // Fall through to the standard error surface below.
+                    console.warn('[ARA] LLM fallback failed:', llmErr);
+                }
+            }
+
             setRequestError(message);
             setMessages(prev => [...prev, createChatMessage({
                 role: 'assistant',
@@ -985,6 +1023,7 @@ export default function ARAConsole() {
         stripMarkdown,
         ttsEnabled,
         humanizeEnabled,
+        integrations.llm,
     ]);
 
     const sendMessage = useCallback(async () => {

@@ -5,7 +5,7 @@ vitest baseline at branch base: **348 passed / 0 failed / 47 files**.
 
 Cycle ledger (✅ done / ▶ in progress / ◻ todo):
 - ✅ Cycle 1 — Linkage audit (docs-only) → `LINKAGE.md`
-- ◻ Cycle 2 — ARA correctness + test hardening
+- ✅ Cycle 2 — ARA correctness + test hardening
 - ◻ Cycle 3 — ARA linkage
 - ◻ Cycle 4 — Stella correctness (protected, fix-only)
 - ◻ Cycle 5 — Stella linkage (fix-only)
@@ -32,3 +32,37 @@ Cycle ledger (✅ done / ▶ in progress / ◻ todo):
 - New files only under `Scripts/autorun/` (outside parity-gate paths filter) → no source touched → no tsc/vitest/build needed this cycle.
 
 **Next:** Cycle 2 — ARA correctness. Fix ARAConsole error/empty/loading + failed-fetch + integrations-not-configured paths; evaluate A1 (LLM-ready offline chat path); extend `ARAConsole.test.tsx` with happy + one failure path. FULL gate.
+
+## 2026-05-29 01:58 EDT — Iteration 2 — Cycle 2 (ARA CORRECTNESS) ✅
+
+**Did:** Closed gap **A1** — ARAConsole chat now has an LLM-ready offline path.
+In `sendPrompt`'s catch block, when the backend `/api/ara/chat` call fails AND the
+user has an active per-user LLM (`hasActiveLlm(integrations.llm)`), ARA falls back to
+`callLlm(...)` and shows the reply + a success status ("Backend offline — answered via
+your <provider> key."). Backend is tried FIRST (preserves ARA's deep context: modes,
+entity guardian, observability, ruVector) — the ARA-correct inversion of Stella's
+LLM-first ordering, per the LINKAGE note that ARA's backend context shouldn't be
+dropped by naive wiring. Imported `callLlm`/`hasActiveLlm` from `lib/llmClient`; added
+`integrations.llm` to the `sendPrompt` deps.
+
+Test hardening: `ARAConsole.test.tsx` 3 → 5 tests. Added module mock for
+`../lib/llmClient` (mutable `llmActive` + `callLlmMock`, defaulting to no-LLM so the
+existing 3 tests are unaffected) and a `chatShouldThrow` switch on the `/chat` mock.
+New tests: (1) backend fails + no LLM → "Last request failed:" banner + `[Error]`
+message, `callLlm` NOT called; (2) backend fails + LLM active → "Offline LLM reply."
+shown + "answered via your" status + no error banner, `callLlm` called once.
+
+**Proof (FULL gate, 6/6 green; log Scripts/autorun/logs/ara_gate_*.log):**
+- `npx tsc -b` ✓ (no output / exit 0)
+- `npx vitest run` → **47 files / 350 passed** (+2 vs 348 baseline; ARAConsole 5/5)
+- `npx react-router build` ✓ (3373 modules; build/client emitted)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓
+- `node Scripts/verify_no_pii_leak.mjs` ✓ (chained && reached smoke)
+- `SMOKE_TEST_PORT=3458 ... smoke_test_ssr_phase8.mjs` → **✓ PASS** (0 console errors / 0 warnings / 0 page errors; status 200)
+- Commit: `51b01bb`
+
+**Next:** Cycle 3 — ARA linkage. Wire gaps **A2** (ARAConsole emits `dwellium:open-widget`
+for "open in Inbox/Files/DocViewer" handoffs) + **A3** (ARAConsole receives a
+selection/context payload). Mirror `workspaceScribe.ts` injectable-deps pattern; add a
+linkage unit test. FULL gate.
+

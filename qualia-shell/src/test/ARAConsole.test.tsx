@@ -4,12 +4,16 @@ import { vi, describe, it, beforeEach, expect } from 'vitest';
 
 const authFetch = vi.fn();
 
-vi.mock('../context/UserContext', () => ({
-    useUser: () => ({
-        authFetch,
-        isAuthenticated: true,
-    }),
-}));
+vi.mock('../context/UserContext', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../context/UserContext')>();
+    return {
+        ...actual,
+        useUser: () => ({
+            authFetch,
+            isAuthenticated: true,
+        }),
+    };
+});
 
 vi.mock('../context/HierarchyContext', () => ({
     useHierarchy: () => ({

@@ -258,3 +258,39 @@ full strict gate (`SMOKE_TEST_PORT=3458`).
 **Next:** Cycle 10 — per-user persistence polish (sort prefs, active domaine), a11y pass
 (aria-labels per the RefreshCw/Section conventions), WCAG AA contrast. Touches source ⇒
 full strict gate (`SMOKE_TEST_PORT=3458`).
+
+---
+
+## 2026-05-29 — Cycle 10 — per-user persistence polish + a11y + WCAG AA ✅ DONE
+
+**Scope:** Plan §11 Cycle 10 — close the last-active-domaine persistence loop, finish the
+a11y pass, and remediate WCAG AA contrast on Workspace tertiary text.
+
+- **Persistence (C10-D1):** `lastActiveDomainePath` was already PERSISTED but never restored.
+  Added a restore-once `useEffect` (guarded by `restoredRef`) in `Workspace.tsx` that re-opens
+  the persisted domaine after the domaines list settles — never overriding live navigation,
+  firing at most once per instance. Extracted the decision logic to a PURE exported helper
+  `pickRestoreDomaine(domaines, path)` (restores only when the domaine still exists; stale
+  path → index). Imported `useRef`; destructured `lastActiveDomainePath` from `useWorkspaceUi`.
+- **WCAG AA (C10-D2):** audited every text color vs composited bg. Bumped the two failing
+  tertiary grays to the repo's `#808080`: `#555` empty/loading text (≈2.65:1 → ≈5.01:1, 6 sites)
+  + `#777` file-count/project-meta text (≈4.25:1 → ≈4.82:1 on cards, 2 sites). `#888` (5.58:1)
+  and `#666` icon-only UI buttons (3.45:1 ≥ 3:1) already pass — left unchanged.
+- **a11y:** verified the pass is complete — back-nav, sort `<select>`s, +New, RefreshCw (repo
+  convention), error dismiss, create/rename/delete, open-in-Scribe, complete-toggle all carry
+  `aria-label`; lists carry `role`/`aria-label`. Workspace uses drill-down nav (no `<Section>`
+  accordions) so the `aria-controls`/`id` convention does not apply.
+- `src/test/Workspace.restore.test.ts` (NEW, 4 tests) — pickRestoreDomaine: null path, existing
+  path, stale path → null, empty list → null. Pure sync (no render/fake timers).
+- Decisions C10-D1 + C10-D2 logged to DECISIONS.md.
+
+**Verified — FULL strict gate 6/6 GREEN** (log `Scripts/autorun/logs/gate_c10_1780027545.log`,
+EXIT=0):
+- `tsc -b` ✓ · `vitest` ✓ **47 files / 348 passed / 0 failed** (+1 file, +4 tests vs Cycle-9
+  46/344) · `react-router build` seeds=true ✓ + seeds=false ✓ (4 "built in" markers) · PII ✓
+  (51 files, 0 leaks) · SSR smoke (`SMOKE_TEST_PORT=3458`) ✓ PASS (200 / 5949 B, 0
+  console/page/ReferenceError).
+
+**Next:** Cycle 11 — widget registration (`widgetRegistry.ts` + `hierarchy.ts` Filing Cabinet
+row), full strict gate, screenshot/axe baselines, closure doc. Touches source ⇒ full strict
+gate (`SMOKE_TEST_PORT=3458`).

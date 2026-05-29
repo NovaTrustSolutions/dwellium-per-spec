@@ -236,3 +236,31 @@ from its drill state). Keeps it SSR-safe + dependency-free. Rendered as a `chip`
 toolbar title in the domaine + project views to surface the active domaine's color tint (the
 plain text title lacks color); `dot` variant retained for tight contexts. Reversible: pure
 component, removable without touching store/data.
+
+---
+
+## Cycle 10 — per-user persistence polish + a11y + WCAG AA (2026-05-29)
+
+**C10-D1 — Restore the last-active domaine on first mount.** The per-user UI store already
+PERSISTED `lastActiveDomainePath` (set on `handleOpenDomaine`) since Cycle 4/5 but never READ
+it back — the widget always opened at the Domaines index. Cycle 10 closes the loop: a
+restore-once `useEffect` (guarded by a `restoredRef`) opens the persisted domaine after the
+domaines list settles. Decision points + rationale:
+- **Restore vs. always-index.** Chose RESTORE (mirrors Holocron's `domainesStore` active-domaine
+  restore behavior; matches "active domaine" in the Cycle-10 plan scope). Reversible — delete the
+  one effect + helper to revert to always-index.
+- **Stale-path safety.** Extracted a PURE `pickRestoreDomaine(domaines, path)` helper (unit-tested
+  in `Workspace.restore.test.ts`) that only restores when the domaine STILL EXISTS in the freshly
+  loaded list; a renamed/deleted domaine falls back to the index. No crash, no empty drill.
+- **Never overrides live navigation.** The effect no-ops if the user already left the index
+  (`view !== 'index' || activeDomainePath`) and fires at most once per widget instance, so
+  navigating back to the index does NOT re-trigger the restore.
+
+**C10-D2 — WCAG AA contrast: bump failing tertiary text from `#555`/`#777` → `#808080`.**
+Audited every Workspace text color against its composited background (`#0a0a0a` panel /
+`#101010` cards). Two tertiary grays failed AA normal-text (4.5:1): `#555` empty/loading-state
+text ≈ 2.65:1 (6 sites) and `#777` thread-file-count + project-meta text ≈ 4.25:1 (2 sites).
+Bumped both to the repo's established `--text-tertiary` value `#808080` (≈5.01:1 on `#0a0a0a`,
+≈4.82:1 on `#101010` — passes AA on both surfaces; sister to the functionality-bringup
+`#808080` calibration). `#888` (5.58:1) and the `#666` icon-only UI buttons (3.45:1, ≥3:1
+non-text-contrast bar) already pass and were left unchanged.

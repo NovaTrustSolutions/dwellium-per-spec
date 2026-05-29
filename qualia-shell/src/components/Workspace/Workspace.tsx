@@ -24,7 +24,7 @@
  * useContext(UserContext)-based per-user state via useWorkspaceUi, RefreshCw refresh
  * convention with aria-label, SSR-safe stores. See WORKSPACE_PORTING_PLAN.md §11.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     RefreshCw, ChevronLeft, FolderOpen, Folder, MessageSquare, FileText,
     Plus, Pencil, Trash2, Check, X, CheckCircle2, RotateCcw, ExternalLink,
@@ -61,6 +61,21 @@ function sortDomaines(list: DomaineMeta[], sort: WorkspaceSort): DomaineMeta[] {
     // 'modified-desc' has no domaine-level timestamp yet → falls through to position
     else copy.sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
     return copy;
+}
+
+/**
+ * Decide which domaine (if any) to restore on first mount from the persisted
+ * `lastActiveDomainePath` (Cycle 10 decision C10-D1). Returns the path to re-open
+ * only when it still exists in the freshly-loaded domaine list — a stale path (the
+ * domaine was renamed/deleted while the widget was closed) restores to the index.
+ * Pure so it can be unit-tested without rendering the widget.
+ */
+export function pickRestoreDomaine(
+    domaines: DomaineMeta[],
+    lastActiveDomainePath: string | null,
+): string | null {
+    if (!lastActiveDomainePath) return null;
+    return domaines.some((d) => d.path === lastActiveDomainePath) ? lastActiveDomainePath : null;
 }
 
 /** Shared tree-node sort for the project + thread lists (tree nodes carry no position). */
@@ -116,7 +131,7 @@ export default function Workspace() {
         sortDomaine, setSortDomaine,
         sortProject, setSortProject,
         sortThread, setSortThread,
-        setLastActiveDomainePath,
+        lastActiveDomainePath, setLastActiveDomainePath,
     } = useWorkspaceUi();
 
     // Transient inline-editor state for mutations (client-only — never persisted).
@@ -130,6 +145,19 @@ export default function Workspace() {
     useEffect(() => {
         void loadDomaines();
     }, [loadDomaines]);
+
+    // Restore the last-active domaine once the list has loaded (per-user persistence
+    // polish, decision C10-D1). Fires at most once per widget instance and never
+    // overrides an in-progress navigation; a stale persisted path falls back to index.
+    const restoredRef = useRef(false);
+    useEffect(() => {
+        if (restoredRef.current) return;
+        if (loading || domaines.length === 0) return; // wait for the fetch to settle
+        if (view !== 'index' || activeDomainePath) return; // user already navigated
+        restoredRef.current = true;
+        const restore = pickRestoreDomaine(domaines, lastActiveDomainePath);
+        if (restore) openDomaine(restore);
+    }, [loading, domaines, view, activeDomainePath, lastActiveDomainePath, openDomaine]);
 
     // Lazily fetch the shared tree the first time we drill below the index (per D3 the tree
     // is the source of project + thread structure). Cheap to re-run; loadTree is idempotent.
@@ -505,11 +533,11 @@ export default function Workspace() {
                             >Retry</button>
                         </div>
                     ) : treeLoading && tree.length === 0 ? (
-                        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#555', fontSize: 11 }}>
+                        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11 }}>
                             Loading threads…
                         </div>
                     ) : sortedThreads.length === 0 ? (
-                        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#555', fontSize: 11, lineHeight: 1.6 }}>
+                        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
                             <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>💬</div>
                             <div style={{ color: '#888', marginBottom: 4 }}>No threads in this project</div>
                             <div style={{ fontSize: 10 }}>
@@ -570,7 +598,7 @@ export default function Workspace() {
                                             {files > 0 && (
                                                 <span style={{
                                                     display: 'flex', alignItems: 'center', gap: 4,
-                                                    fontSize: 10, color: '#777',
+                                                    fontSize: 10, color: '#808080',
                                                 }}>
                                                     <FileText size={11} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                                                     {files === 1 ? '1 file' : `${files} files`}
@@ -633,11 +661,11 @@ export default function Workspace() {
                             >Retry</button>
                         </div>
                     ) : treeLoading && tree.length === 0 ? (
-                        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#555', fontSize: 11 }}>
+                        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11 }}>
                             Loading projects…
                         </div>
                     ) : sortedProjects.length === 0 ? (
-                        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#555', fontSize: 11, lineHeight: 1.6 }}>
+                        <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
                             <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>📂</div>
                             <div style={{ color: '#888', marginBottom: 4 }}>No projects in this domaine</div>
                             <div style={{ fontSize: 10 }}>
@@ -697,7 +725,7 @@ export default function Workspace() {
                                             </div>
                                             <span style={{
                                                 display: 'flex', alignItems: 'center', gap: 4,
-                                                fontSize: 10, color: '#777',
+                                                fontSize: 10, color: '#808080',
                                             }}>
                                                 <MessageSquare size={11} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                                                 {threads === 1 ? '1 thread' : `${threads} threads`}
@@ -733,11 +761,11 @@ export default function Workspace() {
                         >Retry</button>
                     </div>
                 ) : loading && domaines.length === 0 ? (
-                    <div style={{ padding: '24px 16px', textAlign: 'center', color: '#555', fontSize: 11 }}>
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11 }}>
                         Loading domaines…
                     </div>
                 ) : sortedDomaines.length === 0 ? (
-                    <div style={{ padding: '24px 16px', textAlign: 'center', color: '#555', fontSize: 11, lineHeight: 1.6 }}>
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
                         <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>🗂️</div>
                         <div style={{ color: '#888', marginBottom: 4 }}>No domaines yet</div>
                         <div style={{ fontSize: 10 }}>

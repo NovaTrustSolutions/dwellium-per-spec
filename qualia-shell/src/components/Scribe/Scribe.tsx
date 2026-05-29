@@ -22,6 +22,7 @@ import { useScribeTheme } from './useScribeTheme';
 import { useScribeLayout } from './useScribeLayout';
 import { Splitter } from './Splitter';
 import { TOC_MIN, TOC_MAX, MINIMAP_MIN, MINIMAP_MAX } from './scribeLayoutStore';
+import IngestionPanel from './ingestion/IngestionPanel';
 import './Scribe.css';
 
 export default function Scribe() {
@@ -234,6 +235,8 @@ function EmptyState() {
             {fetched && files.length === 0 && !creating && (
                 <p className="scribe__muted">No files yet. Create one to get started.</p>
             )}
+
+            <IngestionPanel />
         </div>
     );
 }

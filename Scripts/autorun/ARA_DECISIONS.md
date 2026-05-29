@@ -25,3 +25,15 @@ Reversible defaults logged at each fork. Branch: `feat/ara-stella-inbox-linkage`
 - **D8. A3 reuses AraMiniPanel's exact `scribe:send-to-ara` contract.** Both ARA surfaces
   now answer a selection handoff; no new event name invented. composeAraPrompt is byte-for-byte
   the same preface+blockquote shape as AraMiniPanel.tsx.
+
+## Iteration 9 (Cycle 9 a11y) — 2026-05-29
+- **Nested `<button>` in `<button>`** at `ARAConsole.tsx` ~L1336 (`ara-mode-option`)
+  containing L1349 (`ara-mode-option-expand`). DECISION: do NOT restructure unattended —
+  the outer button is `switchMode`, inner is expand-details; converting the outer to a
+  div/role would change keyboard activation semantics and risk the mode-dropdown. Added
+  `aria-label` + `aria-expanded` to the inner button as a partial mitigation. Full
+  restructure (e.g. move expand button to a sibling outside the option button) DEFERRED
+  to Ilya. Reversible: revert is just removing the two attrs.
+- **`title` kept alongside `aria-label`** on all touched buttons (title = mouse-hover
+  tooltip; aria-label = accessible name). Intentional, not redundant — preserves existing
+  hover UX while fixing screen-reader naming.

@@ -278,3 +278,34 @@ backed by a test/commit. FULL gate.
 
 **Next:** Cycle 9 — a11y + polish pass (ARA + InboxZero; Stella fix-only). WCAG AA labels on
 icon-only buttons, keyboard nav, focus states, consistent loading/empty/error UI. FULL gate.
+
+## 2026-05-29 02:38 EDT — Iteration 9 — Cycle 9 (1/2) ARA a11y pass ✅ (cycle NOT done — InboxZero next)
+
+**Did:** WCAG 2.0 AA 4.1.2 (button-name) remediation across ARAConsole's icon-only
+control buttons. Send button `➤` had NO accessible name at all → fixed. Added
+`aria-label` (+ `aria-pressed`/`aria-expanded` where stateful) to mic, TTS, humanize,
+mute, avatar, voice-settings, gender, speak, mode-expand, voice-item select/delete, and
+both panel-close `✕` buttons. Extended `.ara-*:focus-visible` outline rule to all
+icon-only control buttons. Updated 4 existing test selectors (`name: '➤'` →
+`name: 'Send message'`) + added a Cycle-9 a11y test asserting accessible names.
+
+**Deferred (logged to ARA_DECISIONS.md):** nested `<button>` inside `<button>`
+(`ara-mode-option-expand` inside `ara-mode-option`, ARAConsole.tsx ~L1336/1349) is an
+HTML-validity / a11y bug, but restructuring risks the mode-dropdown keyboard behavior.
+Added `aria-label`+`aria-expanded` to the inner button for now; full restructure deferred
+to Ilya (not bounded-safe to do unattended).
+
+**Proof (FULL gate, 6/6 green at this HEAD):**
+- `npx tsc -b` ✓
+- `npx vitest run` → **51 files / 384 passed** (+1 vs Cycle 8's 383 — new a11y test)
+- `npx react-router build` ✓ (3376 modules transformed)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓ (`✓ built in 825ms`)
+- `node Scripts/verify_no_pii_leak.mjs` → **0 leaks, 51 files, 2 roots** ✓
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (200; 5949 B; 0/0/0)
+- Commit: `b0ee543`
+- Gate log: `Scripts/autorun/logs/ara_gate_1780036611.log`
+
+**Next:** Cycle 9 (2/2) — a11y pass on InboxZero (~15 files): icon-only button labels,
+keyboard nav, focus states, consistent loading/empty/error UI. Stella = fix-only (no
+cosmetic change), audit Stella icon-only buttons for missing labels only. FULL gate.
+Then mark Cycle 9 done.

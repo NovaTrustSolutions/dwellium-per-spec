@@ -2,7 +2,7 @@
  * Stella Assistant — Personal AI assistant widget for Dwellium
  * Integrates Stella (Python/AgentScope) into the Qualia shell.
  */
-import { useContext, useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
+import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import './StellaAgent.css';
 import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
@@ -19,6 +19,7 @@ import {
     clearDreams,
 } from './honchoDreamStore';
 import type { DreamEntry } from './honchoDreamStore';
+import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
 
 const API_BASE = '/api/stella';
 
@@ -674,6 +675,21 @@ export default function StellaAgent() {
             sendMessage();
         }
     };
+
+    // ─── S2 cross-widget handoffs (additive; LINKAGE gap S2) ───────────────
+    // Scan Stella's latest assistant reply for widget references and offer "Open:" chips
+    // on the existing `dwellium:open-widget` bus. Strictly additive — no restyle.
+    const suggestedHandoffs = useMemo<WidgetHandoff[]>(() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'assistant') {
+                return detectWidgetHandoffs(messages[i].content);
+            }
+        }
+        return [];
+    }, [messages]);
+    const handleHandoffClick = useCallback((handoff: WidgetHandoff) => {
+        openWidgetHandoff(handoff);
+    }, []);
 
     // ─── Skills ───────────────────────────────────────
     const loadSkills = useCallback(async () => {
@@ -1445,6 +1461,23 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             >
                                 Open Settings
                             </button>
+                        </div>
+                    )}
+                    {/* S2: additive cross-widget handoff row (no restyle; mirrors ARA). */}
+                    {suggestedHandoffs.length > 0 && (
+                        <div className="stella__handoff-row" role="group" aria-label="Open referenced widget">
+                            <span className="stella__handoff-label">Open:</span>
+                            {suggestedHandoffs.map((h) => (
+                                <button
+                                    key={h.widgetId}
+                                    type="button"
+                                    className="stella__handoff-btn"
+                                    onClick={() => handleHandoffClick(h)}
+                                    aria-label={`Open ${h.label}`}
+                                >
+                                    {h.label}
+                                </button>
+                            ))}
                         </div>
                     )}
                     <div className="stella__input-area">

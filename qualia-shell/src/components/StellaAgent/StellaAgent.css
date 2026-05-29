@@ -2220,6 +2220,35 @@
 
 .stella__diagnose-cta:hover { background: #e8ff7a; }
 
+/* ── S2 cross-widget handoff row (additive; mirrors ARA's .ara-handoff-row) ── */
+.stella__handoff-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 12px 0;
+}
+
+.stella__handoff-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #94a3b8;
+}
+
+.stella__handoff-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #d6fe51;
+    background: rgba(214, 254, 81, 0.08);
+    border: 1px solid rgba(214, 254, 81, 0.35);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.stella__handoff-btn:hover { background: rgba(214, 254, 81, 0.16); }
+
 /* ── Context-window warning ── */
 .stella__ctx-warn {
     display: flex;

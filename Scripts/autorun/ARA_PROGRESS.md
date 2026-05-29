@@ -244,3 +244,37 @@ SmartActions generates an AI reply draft, the operator can take it into an assis
 **Next:** Cycle 8 — Cross-feature linkage verification + LINKAGE.md finalize. Re-run the
 audit; confirm every intended ARA/Stella/InboxZero link is ✅ (or blocked-with-reason) and
 backed by a test/commit. FULL gate.
+
+## 2026-05-29 02:31 EDT — Iteration 8 — Cycle 8 (CROSS-FEATURE LINKAGE VERIFICATION + FINALIZE) ✅
+
+**Did:** Re-ran the full linkage audit against LIVE source (grep + file read) and finalized
+`LINKAGE.md`. All 8 gaps confirmed RESOLVED in shipped code; no ❌/⚠️-gap rows remain.
+
+- **Verified in source** (not just from progress log): A1 `ARAConsole.tsx:975` hasActiveLlm
+  offline path · A2 `ARAConsole.tsx:1074` openWidgetHandoff + `araLinkage.ts` · A3
+  `ARAConsole.tsx:1057` `scribe:send-to-ara` listener · S1 `StellaAgent.tsx` isBackendReachable
+  + `/status` resp.ok guards · S2 `StellaAgent.tsx:691` openWidgetHandoff + `stellaLinkage.ts` ·
+  I1 InboxZero error-state hardening · I2/I3 `SmartActions.tsx:503/507` getDraftHandoffs +
+  openWidgetHandoff via `inboxLinkage.ts`.
+- **Shared-bus convergence verified:** ARA + Stella + InboxZero all emit "open in <widget>"
+  through the SINGLE `dwellium:open-widget` bus → `WindowContext.tsx:457` sole sink, via
+  `workspaceScribe.dispatchOpenWidget`. No new plumbing invented (D2 honoured). Three linkage
+  modules each pure/injectable + independently unit-tested.
+- **LINKAGE.md finalized:** §1 (ARA) + §2 (Stella) stale Cycle-1 ❌/⚠️ rows flipped to ✅ with
+  commit+test citations; added **§5 final verification table** (gap → commit → source anchor →
+  test) + blocked-with-reason (calendar widget absent) + accepted-as-is notes (inline status
+  banners; Stella context-via-fetch).
+- **Cannot-complete (blocked):** SmartActions "Extract Events" → calendar widget — no calendar
+  widget in `widgetRegistry.ts` (grep-verified). Missing-widget gap, NOT a linkage gap. No
+  sibling-backend dependency. Re-open if a calendar widget is added.
+
+**Proof (FULL gate, 6/6 green — fresh at this HEAD):**
+- `npx tsc -b` ✓ (TSC_OK)
+- `npx vitest run` → **51 files / 383 passed** (unchanged vs Cycle 7 — verification cycle, no new src)
+- `npx react-router build` ✓ (BUILD1_OK)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓ (BUILD2_OK)
+- `node Scripts/verify_no_pii_leak.mjs` ✓ (51 files, 0 leaks)
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (200; 5949 B; 0 errors/warnings/page-errors)
+
+**Next:** Cycle 9 — a11y + polish pass (ARA + InboxZero; Stella fix-only). WCAG AA labels on
+icon-only buttons, keyboard nav, focus states, consistent loading/empty/error UI. FULL gate.

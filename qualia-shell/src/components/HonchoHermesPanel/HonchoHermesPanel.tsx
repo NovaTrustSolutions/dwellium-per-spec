@@ -9,6 +9,8 @@ import {
     clearDreams,
 } from '../StellaAgent/honchoDreamStore';
 import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
+import { hermesLearningUserIdHolder, rateRun } from './hermesLearningStore';
+import { runHermes } from './hermesRunner';
 import {
     arrangeMarkdownFiles,
     displayName,
@@ -79,6 +81,10 @@ export default function HonchoHermesPanel() {
     // useSyncExternalStore snapshot resolves to this user's dreams (mirrors the
     // useIngestion / WindowContext savedLayouts dynamic-key pattern).
     dreamUserIdHolder.current = user?.id ?? null;
+    // Same dynamic-key holder discipline for the Hermes self-improvement store
+    // (Cycle 16): set BEFORE any learning-store read so few-shot recall +
+    // tool-weighting resolve to this user's run history.
+    hermesLearningUserIdHolder.current = user?.id ?? null;
     const dreams = useSyncExternalStore(
         dreamStore.subscribe,
         dreamStore.getSnapshot,
@@ -104,6 +110,11 @@ export default function HonchoHermesPanel() {
     const [hermesSteps, setHermesSteps] = useState<HermesStep[]>([]);
     const [hermesRunning, setHermesRunning] = useState(false);
     const [hermesResult, setHermesResult] = useState<string>('');
+    // Cycle 17: self-improvement — id of the run just recorded (enables the
+    // 👍/👎 rating control) + the rating already given for it.
+    const [lastRunId, setLastRunId] = useState<string | null>(null);
+    const [lastRating, setLastRating] = useState<number | null>(null);
+    const [fewShotInjected, setFewShotInjected] = useState(0);
     const stepsEndRef = useRef<HTMLDivElement>(null);
 
     /* ─── AGENTS TAB STATE ─── */
@@ -225,59 +236,47 @@ export default function HonchoHermesPanel() {
 
     const delegateToHermes = async () => {
         if (!hermesPrompt.trim() || hermesRunning) return;
+        const task = hermesPrompt;               // captured: cleared below
         setHermesRunning(true);
         setHermesResult('');
         setHermesSteps([]);
+        setLastRunId(null);
+        setLastRating(null);
 
-        // Add initial thinking step
-        setHermesSteps(prev => [...prev, {
-            type: 'thought', content: `Processing: "${hermesPrompt}"`, timestamp: new Date().toISOString(),
-        }]);
+        // Delegate to the ONE shared self-improving run path (hermesRunner):
+        // few-shot injection (mechanism a) + proven-tool weighting (mechanism b)
+        // + record-back into the LOCAL learning store all live there.
+        const run = await runHermes(task, {
+            authFetch,
+            toolNames: hermesTools.map(t => t.name),
+        });
 
-        try {
-            const res = await authFetch('/api/hermes/delegate', {
+        setHermesSteps(run.steps);
+        setFewShotInjected(run.fewShotCount);
+        if (run.recordId) setLastRunId(run.recordId);
+        if (run.outcome === 'success') {
+            setHermesResult(run.result || 'Done');
+            // Write Honcho memory after task completion (Phase 6: HM-4)
+            authFetch('/api/honcho/memories', {
                 method: 'POST',
-                body: JSON.stringify({ task: hermesPrompt, context: '' }),
-            });
-            const data = await res.json();
-
-            if (data.success && data.data) {
-                // Parse steps from response
-                const steps: HermesStep[] = [];
-                if (data.data.thought) steps.push({ type: 'thought', content: data.data.thought, timestamp: new Date().toISOString() });
-                if (data.data.action) steps.push({ type: 'action', content: data.data.action, timestamp: new Date().toISOString() });
-                if (data.data.observation) steps.push({ type: 'observation', content: data.data.observation, timestamp: new Date().toISOString() });
-                steps.push({ type: 'final_answer', content: data.data.answer || data.data.result || 'Task completed.', timestamp: new Date().toISOString() });
-                setHermesSteps(steps);
-                setHermesResult(data.data.answer || data.data.result || 'Done');
-
-                // Write memory after task completion (Phase 6: HM-4)
-                if (data.data.answer || data.data.result) {
-                    authFetch('/api/honcho/memories', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            userId: user?.email || 'default',
-                            content: `Hermes completed task: "${hermesPrompt}" → ${(data.data.answer || data.data.result || '').substring(0, 200)}`,
-                            memoryType: 'observation',
-                            source: 'agent',
-                            importance: 0.6,
-                            metadata: { agent: 'hermes', task: hermesPrompt },
-                        }),
-                    }).catch(() => {});
-                }
-            } else {
-                setHermesSteps(prev => [...prev, {
-                    type: 'final_answer', content: data.error || 'Task failed.', timestamp: new Date().toISOString(),
-                }]);
-            }
-        } catch (err: any) {
-            setHermesSteps(prev => [...prev, {
-                type: 'final_answer', content: `Error: ${err.message}`, timestamp: new Date().toISOString(),
-            }]);
-        } finally {
-            setHermesRunning(false);
-            setHermesPrompt('');
+                body: JSON.stringify({
+                    userId: user?.email || 'default',
+                    content: `Hermes completed task: "${task}" → ${run.result.substring(0, 200)}`,
+                    memoryType: 'observation',
+                    source: 'agent',
+                    importance: 0.6,
+                    metadata: { agent: 'hermes', task },
+                }),
+            }).catch(() => {});
         }
+        setHermesRunning(false);
+        setHermesPrompt('');
+    };
+
+    /** Rate the last recorded run (+1 👍 / -1 👎); feeds few-shot ranking. */
+    const handleRateRun = (rating: number) => {
+        if (!lastRunId) return;
+        try { rateRun(lastRunId, rating); setLastRating(rating); } catch { /* silent */ }
     };
 
     /* ═══ HELPERS ═══ */
@@ -577,6 +576,13 @@ export default function HonchoHermesPanel() {
                             </button>
                         </div>
 
+                        {/* Self-improvement: surface how many past successes informed this run */}
+                        {fewShotInjected > 0 && (
+                            <p className="hhp__fewshot-note" role="note">
+                                🧠 Learning from {fewShotInjected} similar past {fewShotInjected === 1 ? 'run' : 'runs'}.
+                            </p>
+                        )}
+
                         {/* ReAct Steps Trace */}
                         {hermesSteps.length > 0 && (
                             <div className="hhp__steps-trace">
@@ -605,6 +611,25 @@ export default function HonchoHermesPanel() {
                             <div className="hhp__result">
                                 <h4>📋 Result</h4>
                                 <pre className="hhp__result-content">{hermesResult}</pre>
+                                {/* Rating control (Cycle 17): feedback re-weights few-shot recall */}
+                                {lastRunId && (
+                                    <div className="hhp__rate-row" role="group" aria-label="Rate this Hermes run">
+                                        <span className="hhp__rate-label">Was this helpful?</span>
+                                        <button
+                                            className={`hhp__rate-btn ${lastRating === 1 ? 'is-active' : ''}`}
+                                            onClick={() => handleRateRun(1)}
+                                            aria-pressed={lastRating === 1}
+                                            aria-label="Mark this run helpful">👍</button>
+                                        <button
+                                            className={`hhp__rate-btn ${lastRating === -1 ? 'is-active' : ''}`}
+                                            onClick={() => handleRateRun(-1)}
+                                            aria-pressed={lastRating === -1}
+                                            aria-label="Mark this run unhelpful">👎</button>
+                                        {lastRating !== null && (
+                                            <span className="hhp__rate-thanks" role="status">Thanks — Hermes will remember.</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

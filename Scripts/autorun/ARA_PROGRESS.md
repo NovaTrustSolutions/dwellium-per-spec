@@ -309,3 +309,46 @@ to Ilya (not bounded-safe to do unattended).
 keyboard nav, focus states, consistent loading/empty/error UI. Stella = fix-only (no
 cosmetic change), audit Stella icon-only buttons for missing labels only. FULL gate.
 Then mark Cycle 9 done.
+
+## 2026-05-29 02:51 EDT — Iteration 10 — Cycle 9 (2/2) InboxZero + Stella a11y ✅ — CYCLE 9 DONE
+
+**Did:** WCAG 2.0 AA 4.1.2 (button-name) + 2.4.7 (focus-visible) remediation across
+InboxZero (~15-file tree) + Stella icon-only buttons (Stella = fix-only audit, no
+cosmetic/structural change).
+
+- **InboxZero:** added `aria-label` to every icon-only button — search-clear `✕` +
+  viewer-close `✕` (InboxZero.tsx); GlobalAuditTab close `×`; RulesManager
+  dismiss-error `×`, rule toggle (`✅`/`⬜`, +`aria-pressed`) / edit `✏️` / delete `🗑️`,
+  delete-knowledge `🗑️`; ReplyTracker `✓`/`💤`/`✕` triplet in BOTH overdue + on-track
+  tables; SmartActions delete-template `🗑️`. Added a `:focus-visible` outline rule for
+  InboxZero icon-only + action buttons (`.iz-action`, `.iz-toolbar__search-clear`,
+  `.iz-viewer__close`, `.iz-batch__*`) in InboxZero.css.
+- **Stella (PROTECTED, fix-only):** `aria-label` on icon-only buttons ONLY — add/cancel
+  memory `✕`/`+ Add` (+`aria-expanded`), delete memory `🗑️`, honcho chat send `▶`,
+  semantic search `🔍`, delete dream `✕`, uninstall skill `🗑️`, delete cron job `🗑️`,
+  delete MCP server `🗑️`. No restyle, no restructure — additive a11y attrs only.
+- **Test:** extended `InboxZero.test.tsx` with a WCAG 4.1.2 assertion — types into the
+  search box and asserts the icon-only clear `✕` is queryable by role+name
+  ("Clear search"), which only passes because `aria-label` is present.
+
+**Note:** buttons that already had `title=` (axe-core accepts `title` as a button-name
+source) were ALSO given matching `aria-label` for screen-reader robustness + repo
+convention consistency (matches the ARA Cycle-9 part-1 approach). Multi-line buttons with
+visible text ("📥 Archive", "🗑️ Delete", "🔄 Refresh", etc.) were left unchanged — they
+already pass button-name via text content.
+
+**Proof (FULL gate, 6/6 green at HEAD `d2489b3`):**
+- `npx tsc -b` ✓
+- `npx vitest run` → **51 files / 385 passed** (+1 vs Cycle 9 part-1's 384 — new a11y test)
+- `npx react-router build` ✓ (`✓ built in 823ms`)
+- `VITE_APPFOLIO_SEEDS=false npx react-router build` ✓
+- `node Scripts/verify_no_pii_leak.mjs` → **0 leaks, 51 files, 2 roots** ✓
+- `SMOKE_TEST_PORT=3458 … smoke_test_ssr_phase8.mjs` → **✓ PASS** (200; 5949 B; 0/0/0)
+- Commit: `d2489b3`
+- Gate log: `Scripts/autorun/logs/ara_gate_1780037074.log`
+
+**Cycle 9 (a11y + polish) is now COMPLETE** (part 1 ARA `b0ee543` + part 2 InboxZero/Stella `d2489b3`).
+
+**Next:** Cycle 10 — CLOSURE. Write `Scripts/autorun/ARA_CLOSURE.md` (every commit SHA,
+final LINKAGE.md state, gate proof, open items for Ilya, push commands). Re-run the FULL
+gate fresh at closure HEAD. `touch Scripts/autorun/ALL_DONE`.

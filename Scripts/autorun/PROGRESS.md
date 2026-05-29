@@ -323,3 +323,34 @@ orphaned: no registry entry, no dock row), run the full strict gate, write the a
   0 hydration warnings).
 
 **Next:** ARC COMPLETE. All 11 cycles done + gate green. Writing closure summary + ALL_DONE.
+
+═══════════════════════════════════════════════════════════════════════════════
+## 🎯 END OF ARC — Workspace widget port COMPLETE (2026-05-29)
+═══════════════════════════════════════════════════════════════════════════════
+
+All 11 cycles done; final strict gate 6/6 GREEN; tree committed + clean.
+
+**Commit SHAs (branch `feat/workspace-widget`):**
+- C1  `c813394` plan stub · C2 `45586c7` discovery+plan · C3 `4dd8c63` route contract
+- C4  `219fd3a` api+stores scaffold · C5 `71dda87` domaines index · C6 `5a85647` projects drill
+- C7  `47b200f` threads drill · C8 `c81cc90` mutations · C9 `3db02b6` Scribe handoff+badge
+- C10 `0e1593f` restore+a11y+WCAG · **C11 `e54ae94` registration + arc closure (FINAL)**
+
+**Final gate (log `Scripts/autorun/logs/gate_c11_1780027796.log`, SMOKE_TEST_PORT=3458):**
+tsc -b ✓ · vitest 47 files/348 passed ✓ · react-router build seeds={true,false} ✓ ·
+PII 0 leaks ✓ · SSR smoke PASS (200/5949 B, 0 errors) ✓. Workspace chunk now in build graph.
+
+**Closure doc:** `Docs/Workspace_Arc_Closure_Report.md`.
+
+**Open items for Ilya (none blocking):**
+1. Backend `/api/workspace/*` routes — contract only (`Docs/backend-workspace-routes.ts`);
+   implement in sibling repo `ai-dashboard369-file-manager`. Widget degrades gracefully until then.
+2. No Workspace-specific Playwright screenshot baseline (widgets aren't standalone parity routes;
+   Scribe/FileExplorer siblings have none either). Add via the Linux-baseline dispatch workflow if desired.
+3. Deferred per plan: Thread↔Honcho binding (D5) + live file-watch (D6) — post-MVP add-ons.
+
+**PUSH COMMANDS (Ilya pushes — this arc never pushed):**
+```
+git push origin main
+git push -u origin feat/workspace-widget
+```

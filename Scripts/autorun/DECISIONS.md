@@ -36,3 +36,31 @@ option — sidecars/reuse can be swapped for a dedicated table later without cli
 - Create/rename/move/delete of domaine/project/thread FOLDERS reuses the existing
   file-explorer routes (`/mkdir`, `/rename`, `/move`, `/entry`). Documented in the contract header.
 - Why: avoids duplicating path-traversal-guarded folder CRUD; keeps the new backend surface minimal.
+
+---
+
+## Cycle 4 (2026-05-28) — store/api split + "no fetch yet" interpretation
+
+Plan §11 scopes Cycle 4 as "`workspaceApi.ts` + `workspaceStore.ts` + `workspaceUiStore.ts`
+scaffold (no fetch wiring yet) + unit tests". Two forks resolved:
+
+### C4-D1 — meaning of "no fetch wiring yet"
+- Chosen: **define the real HTTP client surface in `workspaceApi.ts`, but leave it
+  unconsumed** — the drill-down store (`workspaceStore.ts`) gets state + pure synchronous
+  setters only, with NO async `loadDomaines()` action this cycle.
+- Why: a "HTTP client" file whose functions are stubs would be pointless; mirroring
+  `fileExplorerApi.ts` (which is a pure fetch wrapper) is the established pattern. Keeping
+  the *stores* fetch-free is what "no fetch yet" actually buys — pure, fast unit tests and
+  no live-backend dependency in the gate. Cycle 5 wires `fetchDomaines()` into the index view.
+- Reversibility: adding the async action in Cycle 5 is purely additive; nothing here locks in.
+
+### C4-D2 — two stores, not one (transient nav vs persisted prefs)
+- Chosen: **`workspaceStore.ts` = plain zustand** (transient drill-down: `view`,
+  `activeDomainePath`, `activeProjectPath`, cached `domaines[]`, `loading`, `error`) +
+  **`workspaceUiStore.ts` = `createLocalStorageStore`** dynamic-key `workspace:${uid}`
+  (per-user persisted prefs: sort modes, `lastActiveDomainePath`, `expanded`).
+- Why: matches plan §7 exactly (transient view state in plain zustand mirroring Holocron's
+  `domainesStore`; per-user-persisted bits through the SSR-safe factory like
+  `fileExplorerStore`). Server data is cached in the transient store, never persisted.
+- Reversibility: the split is conventional (sister to Scribe's zustand + FileExplorer's
+  factory store); merging or moving fields later is mechanical.

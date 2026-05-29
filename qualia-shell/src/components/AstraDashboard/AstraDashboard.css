@@ -1947,3 +1947,147 @@
     min-width: 56px;
     text-align: right;
 }
+
+/* ════════════════ Operations panels (Cycle 6) ════════════════ */
+/* Maintenance queue, lease expirations, vendor/contract status —
+ * a shared row idiom (.a-ops-*) mirroring the Cycle-5 compliance/
+ * litigation trackers, plus per-panel filter controls. */
+
+.astra-dashboard .a-ops-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    flex: 1;
+}
+.astra-dashboard .a-ops-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    padding: 8px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: var(--a-surface-2);
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+    transition: border-color 0.2s, background 0.2s;
+}
+.astra-dashboard .a-ops-row:hover { border-color: rgba(100, 120, 180, 0.3); }
+.astra-dashboard .a-ops-row:focus-visible {
+    outline: 2px solid var(--a-accent);
+    outline-offset: 1px;
+}
+.astra-dashboard .a-ops-row .a-priority-dot { margin-top: 0; }
+.astra-dashboard .a-ops-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary, #e2e8f0);
+}
+.astra-dashboard .a-ops-age {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--a-text-dim);
+    min-width: 24px;
+    text-align: right;
+}
+.astra-dashboard .a-ops-due {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--a-text-dim);
+    min-width: 56px;
+    text-align: right;
+}
+.astra-dashboard .a-ops-arrow { color: var(--a-text-dim); flex-shrink: 0; }
+
+/* Lease unit chip */
+.astra-dashboard .a-lease-unit {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    min-width: 38px;
+    text-align: center;
+}
+
+/* Vendor status badge */
+.astra-dashboard .a-vendor-status {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: capitalize;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    min-width: 60px;
+    text-align: center;
+}
+.astra-dashboard .a-vstatus-active { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.astra-dashboard .a-vstatus-suspended,
+.astra-dashboard .a-vstatus-terminated { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.astra-dashboard .a-vstatus-expired { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.astra-dashboard .a-vstatus-pending { background: rgba(245, 158, 11, 0.18); color: #f59e0b; }
+
+/* Per-panel filter toggle (maintenance / vendors) */
+.astra-dashboard .a-panel-filter {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--a-surface-2);
+    color: var(--a-text-dim);
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.astra-dashboard .a-panel-filter:hover { border-color: rgba(100, 120, 180, 0.4); color: var(--text-primary, #e2e8f0); }
+.astra-dashboard .a-panel-filter--on {
+    background: rgba(214, 254, 81, 0.14);
+    border-color: rgba(214, 254, 81, 0.4);
+    color: #D6FE51;
+}
+.astra-dashboard .a-panel-filter:focus-visible {
+    outline: 2px solid var(--a-accent);
+    outline-offset: 1px;
+}
+
+/* Segmented control (lease window) — a-drill-btn sits after it. */
+.astra-dashboard .a-panel-segctl {
+    margin-left: auto;
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 6px;
+    background: var(--a-surface-2);
+}
+.astra-dashboard .a-panel-seg {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--a-text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.astra-dashboard .a-panel-seg:hover { color: var(--text-primary, #e2e8f0); }
+.astra-dashboard .a-panel-seg--on {
+    background: rgba(214, 254, 81, 0.16);
+    color: #D6FE51;
+}
+.astra-dashboard .a-panel-seg:focus-visible {
+    outline: 2px solid var(--a-accent);
+    outline-offset: 1px;
+}

@@ -117,6 +117,49 @@ export interface LegalMatter {
     counsel: string;
 }
 
+export interface MaintenanceWorkOrder {
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+    /** dueDate (ISO/date-only) or '' — when the work order is due. */
+    due: string;
+    /** Whole days from `now` to `due`; negative = overdue; null = no date. */
+    daysUntil: number | null;
+    /** propertyId (drill-down handoff target) or ''. */
+    property: string;
+    /** coarse "Nd"/"Nh" age label from createdAt. */
+    age: string;
+}
+
+export interface LeaseExpiration {
+    id: string;
+    /** unit number/label. */
+    unit: string;
+    /** current tenant name or '—'. */
+    tenant: string;
+    /** propertyId (drill-down handoff target) or ''. */
+    property: string;
+    /** leaseEnd (ISO/date-only). */
+    leaseEnd: string;
+    /** Whole days from `now` to `leaseEnd`; negative = expired; null = no date. */
+    daysUntil: number | null;
+}
+
+export interface VendorStatus {
+    id: string;
+    /** vendor entity name (joined from /entities) or the raw id. */
+    vendor: string;
+    /** active | suspended | pending | … (association status). */
+    status: string;
+    /** contractEnd (ISO/date-only) or '' when open-ended/unknown. */
+    contractEnd: string;
+    /** Whole days from `now` to `contractEnd`; negative = expired; null = no date. */
+    daysUntil: number | null;
+    /** propertyId (drill-down handoff target) or ''. */
+    property: string;
+}
+
 /** HR has no backend endpoint today (Cycle-1 audit) → clearly-labeled mock. */
 export interface HrSnapshot {
     mock: true;
@@ -135,9 +178,25 @@ interface PropertyRow {
     name?: string;
 }
 interface UnitRow {
+    id?: string;
     propertyId?: string;
+    unitNumber?: string;
     status?: string;
     rentAmount?: number | string;
+    currentTenantId?: string | null;
+    leaseEnd?: string | null;
+}
+interface VendorAssociationRow {
+    id?: string;
+    propertyId?: string;
+    vendorId?: string;
+    status?: string;
+    contractEnd?: string | null;
+}
+interface VendorEntityRow {
+    id?: string;
+    name?: string;
+    entityType?: string;
 }
 interface WorkitemRow {
     id: string;
@@ -259,6 +318,30 @@ const COMPLIANCE_STATUS_RANK: Record<string, number> = {
 };
 export function complianceStatusRank(status: string | undefined): number {
     return COMPLIANCE_STATUS_RANK[String(status ?? '').toLowerCase()] ?? 9;
+}
+
+/**
+ * Work-item priority urgency rank (lower = more urgent) so the maintenance
+ * queue surfaces critical work orders above routine ones. Unknown sinks.
+ * Exported for the panel's sort + test pinning (Cycle 6).
+ */
+const WORKITEM_PRIORITY_RANK: Record<string, number> = {
+    critical: 0, urgent: 1, high: 2, medium: 3, normal: 3, low: 4,
+};
+export function workitemPriorityRank(priority: string | undefined): number {
+    return WORKITEM_PRIORITY_RANK[String(priority ?? '').toLowerCase()] ?? 5;
+}
+
+/**
+ * Vendor association status rank (lower = needs attention first): suspended /
+ * expired surface above active/pending. Unknown sinks. Exported for test
+ * pinning (Cycle 6).
+ */
+const VENDOR_STATUS_RANK: Record<string, number> = {
+    suspended: 0, expired: 0, terminated: 0, pending: 1, active: 2,
+};
+export function vendorStatusRank(status: string | undefined): number {
+    return VENDOR_STATUS_RANK[String(status ?? '').toLowerCase()] ?? 3;
 }
 
 /** Whole days from `now` to a date-only/ISO string; negative = overdue; null = no/invalid date. */
@@ -518,6 +601,104 @@ export async function fetchLegalMatters(
     }));
 }
 
+/**
+ * Maintenance work-order queue: open `domain = maintenance` work-items from
+ * `/workitems`, most-urgent first (priority rank, then soonest due date).
+ * The domain param is sent for server-side filtering AND re-applied
+ * client-side so static-mode (param-blind) reads stay correct (mirrors
+ * fetchLegalMatters). Each row carries `daysUntil` + an age label. Limited
+ * to `limit` rows.
+ */
+export async function fetchMaintenanceQueue(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 20,
+    now: number = Date.now(),
+): Promise<MaintenanceWorkOrder[]> {
+    const res = await deps.get<unknown>('/workitems', { domain: 'maintenance', limit: '500' });
+    const items = asArray<WorkitemRow>(res)
+        .filter((w) => String(w.domain ?? '').toLowerCase() === 'maintenance' && isOpen(w.status))
+        .sort((a, b) => {
+            const byPrio = workitemPriorityRank(a.priority) - workitemPriorityRank(b.priority);
+            if (byPrio !== 0) return byPrio;
+            const da = a.dueDate ? Date.parse(a.dueDate) : Number.POSITIVE_INFINITY;
+            const db = b.dueDate ? Date.parse(b.dueDate) : Number.POSITIVE_INFINITY;
+            return da - db;
+        });
+    return items.slice(0, limit).map((w) => ({
+        id: w.id,
+        title: w.title ?? '(untitled work order)',
+        priority: String(w.priority ?? 'normal').toLowerCase(),
+        status: String(w.status ?? 'open').toLowerCase(),
+        due: w.dueDate ?? '',
+        daysUntil: daysUntil(w.dueDate, now),
+        property: w.propertyId ?? '',
+        age: ageLabel(w.createdAt, now),
+    }));
+}
+
+/**
+ * Lease expirations: units carrying a `leaseEnd` date, soonest-first (already
+ * expired holdovers sort to the top — they're the most exec-relevant). The
+ * panel applies a window filter (next 30/60/90 days / all) on `daysUntil`.
+ * Synthesises a stable id when a unit lacks one. Limited to `limit` rows.
+ */
+export async function fetchLeaseExpirations(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 20,
+    now: number = Date.now(),
+): Promise<LeaseExpiration[]> {
+    const res = await deps.get<unknown>('/units');
+    const items = asArray<UnitRow>(res)
+        .filter((u) => Boolean(u.leaseEnd) && !Number.isNaN(parseLocalDate(String(u.leaseEnd)).getTime()))
+        .sort((a, b) => parseLocalDate(String(a.leaseEnd)).getTime() - parseLocalDate(String(b.leaseEnd)).getTime());
+    return items.slice(0, limit).map((u, i) => ({
+        id: u.id ?? `unit-${i}`,
+        unit: u.unitNumber ?? u.id ?? '—',
+        tenant: u.currentTenantId ? String(u.currentTenantId) : '—',
+        property: u.propertyId ?? '',
+        leaseEnd: u.leaseEnd ?? '',
+        daysUntil: daysUntil(u.leaseEnd, now),
+    }));
+}
+
+/**
+ * Vendor / contract status: vendor associations from `/vendor-associations`,
+ * joined to the vendor entity name via `/entities` (type = vendor). Sorted
+ * by status urgency (suspended/expired first) then soonest contract end.
+ * Synthesises a stable id when a row lacks one. Limited to `limit` rows.
+ */
+export async function fetchVendorStatus(
+    deps: DashboardDataDeps = defaultDeps,
+    limit = 20,
+    now: number = Date.now(),
+): Promise<VendorStatus[]> {
+    const [assocRes, entitiesRes] = await Promise.all([
+        deps.get<unknown>('/vendor-associations'),
+        deps.get<unknown>('/entities', { type: 'vendor' }),
+    ]);
+    const assocs = asArray<VendorAssociationRow>(assocRes);
+    const nameById = new Map<string, string>();
+    for (const e of asArray<VendorEntityRow>(entitiesRes)) {
+        if (e.id && e.name) nameById.set(e.id, e.name);
+    }
+    const rows = assocs.map((a, i) => ({
+        id: a.id ?? `vendor-assoc-${i}`,
+        vendor: (a.vendorId && nameById.get(a.vendorId)) || a.vendorId || '(unknown vendor)',
+        status: String(a.status ?? 'unknown').toLowerCase(),
+        contractEnd: a.contractEnd ?? '',
+        daysUntil: daysUntil(a.contractEnd, now),
+        property: a.propertyId ?? '',
+    }));
+    rows.sort((a, b) => {
+        const byRank = vendorStatusRank(a.status) - vendorStatusRank(b.status);
+        if (byRank !== 0) return byRank;
+        const da = a.daysUntil ?? Number.POSITIVE_INFINITY;
+        const db = b.daysUntil ?? Number.POSITIVE_INFINITY;
+        return da - db;
+    });
+    return rows.slice(0, limit);
+}
+
 /* ──────────────────────────── aggregate loader ────────────────────── */
 
 export interface DashboardData {
@@ -530,6 +711,9 @@ export interface DashboardData {
     domainSnapshots: DomainSnapshot[];
     complianceItems: ComplianceSummaryItem[];
     legalMatters: LegalMatter[];
+    maintenanceQueue: MaintenanceWorkOrder[];
+    leaseExpirations: LeaseExpiration[];
+    vendorStatus: VendorStatus[];
     hr: HrSnapshot;
 }
 
@@ -560,6 +744,9 @@ export async function loadDashboardData(
         domainSnapshots,
         complianceItems,
         legalMatters,
+        maintenanceQueue,
+        leaseExpirations,
+        vendorStatus,
     ] = await Promise.all([
         settle(fetchHeatmap(deps), []),
         settle(fetchWatchdog(deps), []),
@@ -570,6 +757,9 @@ export async function loadDashboardData(
         settle(fetchDomainSnapshots(deps), []),
         settle(fetchComplianceItems(deps, undefined, now), []),
         settle(fetchLegalMatters(deps), []),
+        settle(fetchMaintenanceQueue(deps, undefined, now), []),
+        settle(fetchLeaseExpirations(deps, undefined, now), []),
+        settle(fetchVendorStatus(deps, undefined, now), []),
     ]);
     return {
         heatmap,
@@ -581,6 +771,9 @@ export async function loadDashboardData(
         domainSnapshots,
         complianceItems,
         legalMatters,
+        maintenanceQueue,
+        leaseExpirations,
+        vendorStatus,
         hr: fetchHrSnapshot(),
     };
 }

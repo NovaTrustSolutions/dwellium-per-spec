@@ -34,7 +34,12 @@ import {
     fetchHrSnapshot,
     fetchComplianceItems,
     fetchLegalMatters,
+    fetchMaintenanceQueue,
+    fetchLeaseExpirations,
+    fetchVendorStatus,
     complianceStatusRank,
+    workitemPriorityRank,
+    vendorStatusRank,
     daysUntil,
     loadDashboardData,
     type DashboardDataDeps,
@@ -271,6 +276,91 @@ describe('dashboardData — fetchLegalMatters (Cycle 5)', () => {
 
     it('tolerates an empty seed', async () => {
         expect(await fetchLegalMatters(fakeDeps({}), 5)).toEqual([]);
+    });
+});
+
+describe('dashboardData — rank helpers (Cycle 6)', () => {
+    it('workitemPriorityRank orders critical < high < normal; unknown sinks', () => {
+        expect(workitemPriorityRank('critical')).toBeLessThan(workitemPriorityRank('high'));
+        expect(workitemPriorityRank('high')).toBeLessThan(workitemPriorityRank('normal'));
+        expect(workitemPriorityRank('mystery')).toBe(5);
+        expect(workitemPriorityRank(undefined)).toBe(5);
+    });
+
+    it('vendorStatusRank surfaces suspended/expired above active; unknown sinks', () => {
+        expect(vendorStatusRank('suspended')).toBeLessThan(vendorStatusRank('active'));
+        expect(vendorStatusRank('expired')).toBeLessThan(vendorStatusRank('pending'));
+        expect(vendorStatusRank('active')).toBeLessThan(vendorStatusRank('mystery'));
+        expect(vendorStatusRank(undefined)).toBe(3);
+    });
+});
+
+describe('dashboardData — fetchMaintenanceQueue (Cycle 6)', () => {
+    it('keeps open maintenance items, priority then due-date order, with age + property', async () => {
+        const deps = fakeDeps({
+            '/workitems': [
+                { id: 'mq2', domain: 'maintenance', status: 'open', priority: 'high', title: 'Boiler', dueDate: '2026-06-10', propertyId: 'p1', createdAt: new Date(NOW - 3 * 86_400_000).toISOString() },
+                { id: 'mq1', domain: 'maintenance', status: 'in_progress', priority: 'critical', title: 'Gas leak', dueDate: '2026-06-20', propertyId: 'p2', createdAt: new Date(NOW - 5 * 3_600_000).toISOString() },
+                { id: 'done', domain: 'maintenance', status: 'resolved', priority: 'critical', title: 'Closed' }, // closed → dropped
+                { id: 'leg', domain: 'legal', status: 'open', priority: 'critical', title: 'Non-maint' }, // non-maintenance → dropped
+            ],
+        });
+        const out = await fetchMaintenanceQueue(deps, 10, NOW);
+        expect(out.map(w => w.id)).toEqual(['mq1', 'mq2']); // critical before high
+        expect(out[0]).toMatchObject({ title: 'Gas leak', priority: 'critical', property: 'p2', age: '5h' });
+        expect(out[1]).toMatchObject({ age: '3d' });
+        expect(out[0].daysUntil).toBeGreaterThan(0);
+    });
+
+    it('tolerates an empty seed', async () => {
+        expect(await fetchMaintenanceQueue(fakeDeps({}), 5, NOW)).toEqual([]);
+    });
+});
+
+describe('dashboardData — fetchLeaseExpirations (Cycle 6)', () => {
+    it('keeps units with a lease end, soonest-first, with tenant fallback + daysUntil', async () => {
+        const deps = fakeDeps({
+            '/units': [
+                { id: 'u-late', unitNumber: 'B12', currentTenantId: 'Smith, J.', propertyId: 'p1', leaseEnd: '2026-08-01' },
+                { id: 'u-soon', unitNumber: 'A01', propertyId: 'p2', leaseEnd: '2026-05-20' }, // no tenant
+                { id: 'u-none', unitNumber: 'C03', propertyId: 'p3', leaseEnd: null }, // no end → dropped
+            ],
+        });
+        const out = await fetchLeaseExpirations(deps, 10, NOW);
+        expect(out.map(l => l.unit)).toEqual(['A01', 'B12']); // 2026-05-20 before 2026-08-01
+        expect(out[0]).toMatchObject({ tenant: '—', property: 'p2', daysUntil: 5 });
+        expect(out[1]).toMatchObject({ tenant: 'Smith, J.' });
+    });
+
+    it('tolerates an empty seed', async () => {
+        expect(await fetchLeaseExpirations(fakeDeps({}), 5, NOW)).toEqual([]);
+    });
+});
+
+describe('dashboardData — fetchVendorStatus (Cycle 6)', () => {
+    it('joins vendor names, surfaces suspended first, derives daysUntil', async () => {
+        const deps = fakeDeps({
+            '/vendor-associations': [
+                { id: 'va1', vendorId: 'v-act', status: 'active', contractEnd: '2026-12-01', propertyId: 'p1' },
+                { id: 'va2', vendorId: 'v-sus', status: 'suspended', contractEnd: '2026-06-01', propertyId: 'p2' },
+                { id: 'va3', vendorId: 'v-unknown', status: 'active', contractEnd: null }, // no name join, no term
+            ],
+            '/entities': [
+                { id: 'v-act', name: 'Acme Roofing', entityType: 'vendor' },
+                { id: 'v-sus', name: 'Bob Plumbing', entityType: 'vendor' },
+            ],
+        });
+        const out = await fetchVendorStatus(deps, 10, NOW);
+        expect(out[0]).toMatchObject({ id: 'va2', vendor: 'Bob Plumbing', status: 'suspended' }); // suspended first
+        expect(out[0].daysUntil).toBeGreaterThan(0);
+        const act = out.find(v => v.id === 'va1');
+        expect(act).toMatchObject({ vendor: 'Acme Roofing' });
+        const unk = out.find(v => v.id === 'va3');
+        expect(unk).toMatchObject({ vendor: 'v-unknown', contractEnd: '', daysUntil: null }); // raw id fallback
+    });
+
+    it('tolerates an empty seed', async () => {
+        expect(await fetchVendorStatus(fakeDeps({}), 5, NOW)).toEqual([]);
     });
 });
 

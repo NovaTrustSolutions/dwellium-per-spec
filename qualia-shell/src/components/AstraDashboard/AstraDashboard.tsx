@@ -12,7 +12,7 @@ import {
     TrendingUp, TrendingDown, Activity, Brain, Eye,
     ClipboardList, ArrowUpRight, Globe, RefreshCw,
     ChevronUp, ChevronDown, ChevronLeft, X, Plus, Settings2,
-    Shield, Scale, ExternalLink,
+    Shield, Scale, ExternalLink, Truck, KeyRound,
 } from 'lucide-react';
 import { openStrataModule } from '../StrataDashboard/strataDeepLink';
 import AstraWorkspace from './AstraWorkspace';
@@ -29,6 +29,7 @@ import type {
     HeatmapProperty, WatchdogItem, FinancialCard,
     DashCalendarEvent, AgentLogEntry, ActiveWorkitem, DomainSnapshot,
     ComplianceSummaryItem, LegalMatter,
+    MaintenanceWorkOrder, LeaseExpiration, VendorStatus,
 } from './dashboardData';
 import './AstraDashboard.css';
 import './IntelligenceDashboard.css';
@@ -303,8 +304,9 @@ function AIAgentLog({ entries, loading, error }: PanelProps & { entries: AgentLo
 
 /* ═══════════════════════════  COMPLIANCE TRACKER  ═══════════════════ */
 
-/** Small "Open in Strata" drill-down button reused by the Cycle-5 panels. */
-function DrillToStrata({ module, label }: { module: 'compliance' | 'legal'; label: string }) {
+/** Small "Open in Strata" drill-down button reused by the Cycle-5/6 panels. */
+type DrillModule = 'compliance' | 'legal' | 'maintenance' | 'leasing' | 'vendors';
+function DrillToStrata({ module, label }: { module: DrillModule; label: string }) {
     return (
         <button
             className="a-drill-btn"
@@ -392,6 +394,175 @@ function LitigationTracker({ matters, loading, error }: PanelProps & { matters: 
                                 <span className="a-litigation-counsel" title="Assigned counsel">{m.counsel}</span>
                                 <span className={`a-litigation-status a-status-${m.status}`}>{m.status.replace('_', ' ')}</span>
                                 <span className={`a-litigation-due ${due.cls}`}>{due.text}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ═══════════════════════════  OPERATIONS PANELS (Cycle 6)  ═══════════════════ */
+
+/** Maintenance work-order queue — open maintenance items, priority filterable. */
+function MaintenanceQueue({ items, loading, error }: PanelProps & { items: MaintenanceWorkOrder[] }) {
+    const [onlyUrgent, setOnlyUrgent] = useState(false);
+    const shown = onlyUrgent
+        ? items.filter(w => w.priority === 'critical' || w.priority === 'high' || w.priority === 'urgent')
+        : items;
+    const ready = !loading && !error && items.length > 0;
+    const criticalCount = items.filter(w => w.priority === 'critical').length;
+    return (
+        <div className="a-panel a-maintenance">
+            <div className="a-panel-header">
+                <Wrench size={16} />
+                <span>Maintenance Queue</span>
+                {ready && criticalCount > 0 && <span className="a-badge a-badge-critical">{criticalCount} crit</span>}
+                {ready && (
+                    <button
+                        className={`a-panel-filter ${onlyUrgent ? 'a-panel-filter--on' : ''}`}
+                        onClick={() => setOnlyUrgent(v => !v)}
+                        aria-pressed={onlyUrgent}
+                        title="Show only critical/high/urgent work orders"
+                    >
+                        {onlyUrgent ? 'Urgent only' : 'All priorities'}
+                    </button>
+                )}
+                <DrillToStrata module="maintenance" label="Maintenance" />
+            </div>
+            <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No open work orders" />
+            {ready && (
+                <div className="a-ops-list">
+                    {shown.length === 0 && <div className="a-panel-state a-panel-state--empty">No urgent work orders</div>}
+                    {shown.map(w => {
+                        const due = dueLabel(w.daysUntil);
+                        return (
+                            <button
+                                key={w.id}
+                                className="a-ops-row"
+                                onClick={() => openStrataModule('maintenance')}
+                                title={`${w.title} — ${w.priority}`}
+                            >
+                                <span className={`a-priority-dot a-dot-${w.priority}`} />
+                                <span className="a-ops-title">{w.title}</span>
+                                <span className="a-ops-age">{w.age}</span>
+                                <span className={`a-ops-due ${due.cls}`}>{due.text}</span>
+                                <ChevronRight size={13} className="a-ops-arrow" />
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+const LEASE_WINDOWS: { label: string; days: number }[] = [
+    { label: '30d', days: 30 },
+    { label: '60d', days: 60 },
+    { label: '90d', days: 90 },
+    { label: 'All', days: 0 },
+];
+
+/** Lease-expirations — units by lease end date, windowed (30/60/90/all). */
+function LeaseExpirations({ items, loading, error }: PanelProps & { items: LeaseExpiration[] }) {
+    const [windowDays, setWindowDays] = useState(90);
+    const shown = windowDays === 0
+        ? items
+        : items.filter(l => l.daysUntil !== null && l.daysUntil <= windowDays);
+    const ready = !loading && !error && items.length > 0;
+    return (
+        <div className="a-panel a-leases">
+            <div className="a-panel-header">
+                <KeyRound size={16} />
+                <span>Lease Expirations</span>
+                {ready && <span className="a-badge a-badge-count">{shown.length}</span>}
+                {ready && (
+                    <div className="a-panel-segctl" role="group" aria-label="Lease expiry window">
+                        {LEASE_WINDOWS.map(w => (
+                            <button
+                                key={w.days}
+                                className={`a-panel-seg ${windowDays === w.days ? 'a-panel-seg--on' : ''}`}
+                                onClick={() => setWindowDays(w.days)}
+                                aria-pressed={windowDays === w.days}
+                                title={w.days === 0 ? 'All upcoming + expired leases' : `Leases ending within ${w.days} days`}
+                            >
+                                {w.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <DrillToStrata module="leasing" label="Leasing" />
+            </div>
+            <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No leases with an end date" />
+            {ready && (
+                <div className="a-ops-list">
+                    {shown.length === 0 && <div className="a-panel-state a-panel-state--empty">No leases in this window</div>}
+                    {shown.map(l => {
+                        const due = dueLabel(l.daysUntil);
+                        return (
+                            <button
+                                key={l.id}
+                                className="a-ops-row"
+                                onClick={() => openStrataModule('leasing')}
+                                title={`Unit ${l.unit} — ${l.tenant}`}
+                            >
+                                <span className="a-lease-unit">{l.unit}</span>
+                                <span className="a-ops-title">{l.tenant}</span>
+                                <span className={`a-ops-due ${due.cls}`}>{due.text}</span>
+                                <ChevronRight size={13} className="a-ops-arrow" />
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** Vendor / contract status — associations by status, attention-filterable. */
+function VendorStatusPanel({ items, loading, error }: PanelProps & { items: VendorStatus[] }) {
+    const [onlyAttention, setOnlyAttention] = useState(false);
+    const needsAttention = (s: string) => s === 'suspended' || s === 'expired' || s === 'terminated' || s === 'pending';
+    const shown = onlyAttention ? items.filter(v => needsAttention(v.status)) : items;
+    const ready = !loading && !error && items.length > 0;
+    const flagged = items.filter(v => needsAttention(v.status)).length;
+    return (
+        <div className="a-panel a-vendors">
+            <div className="a-panel-header">
+                <Truck size={16} />
+                <span>Vendor &amp; Contract Status</span>
+                {ready && flagged > 0 && <span className="a-badge a-badge-critical">{flagged} flagged</span>}
+                {ready && (
+                    <button
+                        className={`a-panel-filter ${onlyAttention ? 'a-panel-filter--on' : ''}`}
+                        onClick={() => setOnlyAttention(v => !v)}
+                        aria-pressed={onlyAttention}
+                        title="Show only vendors needing attention"
+                    >
+                        {onlyAttention ? 'Needs attention' : 'All vendors'}
+                    </button>
+                )}
+                <DrillToStrata module="vendors" label="Vendors" />
+            </div>
+            <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No vendor associations" />
+            {ready && (
+                <div className="a-ops-list">
+                    {shown.length === 0 && <div className="a-panel-state a-panel-state--empty">No flagged vendors</div>}
+                    {shown.map(v => {
+                        const due = v.contractEnd ? dueLabel(v.daysUntil) : { text: 'No term', cls: '' };
+                        return (
+                            <button
+                                key={v.id}
+                                className="a-ops-row"
+                                onClick={() => openStrataModule('vendors')}
+                                title={`${v.vendor} — ${v.status}`}
+                            >
+                                <span className={`a-vendor-status a-vstatus-${v.status}`}>{v.status}</span>
+                                <span className="a-ops-title">{v.vendor}</span>
+                                <span className={`a-ops-due ${due.cls}`}>{due.text}</span>
+                                <ChevronRight size={13} className="a-ops-arrow" />
                             </button>
                         );
                     })}
@@ -593,6 +764,9 @@ const PANEL_META: Record<string, string> = {
     workitems: 'Active Workitems',
     domainviews: 'Saved Domain Views',
     litigation: 'Litigation & Matters',
+    maintenance: 'Maintenance Queue',
+    leases: 'Lease Expirations',
+    vendors: 'Vendor & Contract Status',
     calendar: 'Compliance Calendar',
     compliance: 'Compliance Tracker',
     agentlog: 'AI Agent Activity',
@@ -611,6 +785,9 @@ function renderPanel(id: string, data: DashData, loading: boolean, error: string
         case 'workitems': return <ActiveWorkitems items={data?.activeWorkitems ?? []} loading={loading} error={error} />;
         case 'domainviews': return <DomainViews />;
         case 'litigation': return <LitigationTracker matters={data?.legalMatters ?? []} loading={loading} error={error} />;
+        case 'maintenance': return <MaintenanceQueue items={data?.maintenanceQueue ?? []} loading={loading} error={error} />;
+        case 'leases': return <LeaseExpirations items={data?.leaseExpirations ?? []} loading={loading} error={error} />;
+        case 'vendors': return <VendorStatusPanel items={data?.vendorStatus ?? []} loading={loading} error={error} />;
         case 'compliance': return <ComplianceTracker items={data?.complianceItems ?? []} loading={loading} error={error} />;
         case 'calendar': return <ComplianceCalendar events={data?.calendarEvents ?? []} loading={loading} error={error} />;
         case 'agentlog': return <AIAgentLog entries={data?.agentLog ?? []} loading={loading} error={error} />;

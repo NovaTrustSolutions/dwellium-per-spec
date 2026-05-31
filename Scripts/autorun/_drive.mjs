@@ -680,7 +680,12 @@ async function runAction(page, action, res) {
         res.pass = false; res.note = 'astra-responsive: .astra-dashboard not mounted';
         return res.note;
       }
-      await page.evaluate((w) => {
+      // DRIVE_WIN_W lets us force the OS-window narrow INDEPENDENTLY of the
+      // viewport — this is the real-world defect case: wide monitor (viewport
+      // 1440) but the user has dragged the Astra window down to ~680px. Pure
+      // viewport @media queries do NOT fire here; only a container query does.
+      const winW = parseInt(process.env.DRIVE_WIN_W || '0', 10);
+      await page.evaluate(([w, forced]) => {
         const dash = document.querySelector('.astra-dashboard');
         let win = dash.closest('[class*="window"]');
         while (win && getComputedStyle(win).position !== 'absolute' && getComputedStyle(win).position !== 'fixed') {
@@ -688,11 +693,11 @@ async function runAction(page, action, res) {
           if (!win || win === document.body) break;
         }
         if (win && win !== document.body) {
-          win.style.width = Math.max(360, Math.min(w - 40, 1340)) + 'px';
+          win.style.width = (forced > 0 ? forced : Math.max(360, Math.min(w - 40, 1340))) + 'px';
           win.style.left = '20px';
           win.style.maxWidth = 'none';
         }
-      }, vw);
+      }, [vw, winW]);
       await page.waitForTimeout(700);
       const diag = await page.evaluate(() => {
         const root = document.querySelector('.astra-dashboard');

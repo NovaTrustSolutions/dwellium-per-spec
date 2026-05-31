@@ -433,3 +433,48 @@ workspace-drilldown offline=true domaines=3 firstDomaine="Property Operations…
 ### Cycle status
 - Cycle 9 (Workspace drill-down): ✅ DONE — verified navigating at runtime offline.
 - Next: Cycle 10 (Dashboard UI Pass 1 — Astra/PM-exec layout + responsiveness).
+
+═══════════════════════════════════════════════════════════════════════════════
+## Cycle 10 — DASHBOARD UI PASS 1: layout + responsiveness (Astra/PM-exec)
+**Date:** 2026-05-31 · Branch `feat/scribe-ingestion-honcho`
+
+### The break (runtime-proven, not theoretical)
+Astra renders inside a draggable/resizable **shell window**. Its responsive rules were
+**viewport `@media (max-width:900px)`** — but a viewport query NEVER fires when a user
+shrinks the *window* on a wide monitor. Probed it: viewport 1440 + window forced to **680px**
+→ the 3-col grid stayed 3-col (`116px 345px 292px`) and panels overflowed the window by
+**152px** (`a-grid-right`, `a-calendar`, `a-compliance`, `a-vendors`, `a-risk` all +152).
+This is exactly the window-vs-viewport mismatch CLAUDE.md says Strata solved with container
+queries. (The prior iteration's topbar `flex-wrap` fixed the *viewport*-narrow case only;
+the window-narrow case was still broken.)
+
+### Fix (repo convention — container queries, mirrors Strata `.s-module`)
+`qualia-shell/src/components/AstraDashboard/AstraDashboard.css`:
+- `.a-content` (the window-width-bound scroll region wrapping every tab) → `container-type:
+  inline-size; container-name: astra-content;`.
+- Replaced the single viewport `@media (max-width:900px)` collapse with **container** queries
+  on `.a-content`: `@container astra-content (max-width:1080px)` → 2-col; `(max-width:820px)`
+  → 1-col (+ the workspace/channels split-views stack). Kept a slim `@media (max-width:820px)`
+  legacy fallback for no-container-query contexts.
+
+Driver: added `DRIVE_WIN_W` to `_drive.mjs` `astra-responsive` so the OS-window width can be
+forced INDEPENDENTLY of the viewport (this is what exposed the real defect).
+
+### Runtime proof (served build :3460, real backend :3000)
+| viewport | window | grid cols | rootOverflow | maxChildOverflow | deadButtons |
+|---------:|-------:|-----------|-------------:|-----------------:|------------:|
+| 1440 | **680** | **1** (`614px`) | 0 | **0** (was 152) | 0 |
+| 1440 | 950 | 2 (`435 435`) | 0 | 0 | 0 |
+| 1440 | 1440 | 3 (`448 448 448`) | 0 | 0 | 0 |
+
+Shots: `cleanup-shots/c10-fixed-win680.png` (clean 1-col stack, nothing clipped),
+`c10-fixed-win950.png`, `c10-fixed-win1440.png`. Defect baseline: `c10-defect-win680.png`.
+
+### Gate (green)
+- `tsc -b` rc=0 ✓ · `vitest run` **667/667** (76 files) ✓ · `react-router build` ✓ ·
+  SSR smoke (`SMOKE_TEST_PORT=3458`) **PASS** (0 console / 0 warnings / 0 page errors) ✓.
+
+### Cycle status
+- Cycle 10 (Dashboard UI Pass 1 — layout + responsiveness): ✅ DONE — grid now reflows on
+  WINDOW width 3→2→1 col with zero overflow at every size; runtime-verified.
+- Next: Cycle 11 (Dashboard UI Pass 2 — loading/empty/error states, a11y, zero console errors).

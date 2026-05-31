@@ -127,6 +127,43 @@ if (actionArg === 'scribe-ingest') {
   });
 }
 
+// Statute matching (Cycle 8): the Legal Shield scan routes through the user's
+// configured LLM (llmClient → local provider → POST {baseUrl}/v1/chat/completions).
+// Intercept that call and return a canned Georgia-code legal-scan result so the
+// REAL scanSegmentsViaLlm → buildMatchedStatutes → matched-statute render path
+// runs end-to-end. The driver also seeds a `local` LLM provider (below) so
+// hasActiveLlm() is true; ONLY the network call is stubbed — extraction,
+// normalization, de-dupe, similarity weighting + render are all real.
+if (actionArg === 'statute-match') {
+  await page.route('**/v1/chat/completions', async (route) => {
+    let texts = [];
+    try {
+      const body = JSON.parse(route.request().postData() || '{}');
+      const userMsg = (body.messages || []).find((m) => m.role === 'user')?.content || '';
+      texts = userMsg.split('\n').map((l) => l.replace(/^\s*\d+\.\s*/, '').trim()).filter(Boolean);
+    } catch { /* fall through to empty */ }
+    const results = texts.map((t) => {
+      if (/lock/i.test(t)) return {
+        segment: t, alert: 'violation',
+        code_ref: 'O.C.G.A. § 44-7-14, O.C.G.A. § 44-7-7',
+        summary: 'Self-help eviction by changing locks is barred; proper notice under § 44-7-7.',
+        suggested_action: 'File a dispossessory warrant; never change the locks yourself.',
+      };
+      if (/deposit/i.test(t)) return {
+        segment: t, alert: 'caution',
+        code_ref: 'O.C.G.A. § 44-7-30',
+        summary: 'Security deposit handling is governed by § 44-7-30; itemize damages per § 44-7-34.',
+        suggested_action: 'Return or itemize the deposit within 30 days.',
+      };
+      return { segment: t, alert: 'clear', code_ref: null, summary: null, suggested_action: null };
+    });
+    return route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ choices: [{ message: { content: JSON.stringify(results) } }] }),
+    });
+  });
+}
+
 async function login(page) {
   const overlay = page.locator('.login-start-overlay');
   await overlay.waitFor({ state: 'visible', timeout: 15_000 });
@@ -492,6 +529,82 @@ async function runAction(page, action, res) {
         + `convertEnabled=${convertEnabled} indexed=${indexed} writes=[${writes.join(',')}] `
         + `persisted=${persisted ? `${persisted.key}(n=${persisted.n},statuses=[${persisted.statuses.join(',')}])` : 'NONE'}`;
       return `ingest: picked=${/AutorunSource/.test(sourceName) && /AutorunBackup/.test(backupName)} indexed=${indexed} wroteMd=${wroteMd} persisted=${!!persisted}`;
+    }
+
+    case 'statute-match': {
+      // Statute matching: seed a saved transcript + an active `local` LLM, load
+      // the transcript from the Log tab, and PROVE matched Georgia statutes
+      // render with similarity + excerpt. The LLM call is stubbed (route above);
+      // the extract → normalize → de-dupe → similarity → render path is REAL.
+      // Recover the logged-in user id (per-user integrations key suffix) — same
+      // recovery the honcho-files action uses.
+      const uid = await page.evaluate(() => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i) || '';
+          const m = k.match(/^qualia_saved_layouts_(.+)$/) || k.match(/^honcho:memories:(.+)$/) || k.match(/^integrations:(.+)$/);
+          if (m && m[1] !== '_anonymous') return m[1];
+        }
+        try { return JSON.parse(localStorage.getItem('dwellium-user') || 'null')?.id ?? null; } catch { return null; }
+      });
+      // Two segments: one self-help-lockout (violation → 2 statutes @100%), one
+      // security-deposit (caution → primary @100% + summary-only @60%).
+      const seedSegs = [
+        { id: 'seg-lock', text: "If you don't pay by Friday I will change the locks myself", start: 0, end: 4, speaker: 'Landlord', confidence: 0.95 },
+        { id: 'seg-dep', text: 'We still need to sort out the security deposit return next week', start: 5, end: 9, speaker: 'Tenant', confidence: 0.95 },
+      ];
+      await page.evaluate(({ uid, seedSegs }) => {
+        // 1) Saved transcription log (read by TranscriptionHub on mount).
+        const entry = {
+          id: 'autorun-statute', title: 'Autorun — statute matching',
+          segments: seedSegs, factChecks: [], duration: 9, wordCount: 24,
+          createdAt: 1748000000000, summaryStatus: 'draft',
+        };
+        localStorage.setItem('dwellium-transcription-log', JSON.stringify([entry]));
+        // 2) Per-user integrations bundle with an ACTIVE local LLM so the Legal
+        //    Shield scan path runs (the network call itself is route-stubbed).
+        const key = uid ? `integrations:${uid}` : 'integrations:_anonymous';
+        localStorage.setItem(key, JSON.stringify({
+          llm: { active: 'local', local: { baseUrl: 'http://127.0.0.1:9911', model: 'autorun-mock', enabled: true } },
+          google: {}, tests: {},
+        }));
+      }, { uid, seedSegs });
+      // Reload so both stores are read fresh, then re-open Transcribe.
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await login(page);
+      await openWidget(page, 'Transcribe');
+      // Maximize the Transcribe window — at quadrant-spawn width the log list
+      // collapses (flex min-height:0 + overflow:hidden), leaving entries
+      // zero-height/hidden. Double-click the titlebar of the window that owns
+      // the Transcribe tabs.
+      const twWindow = page.locator('.window', { has: page.locator('.th-tabs') }).first();
+      await twWindow.locator('.window__titlebar').first().dblclick().catch(() => {});
+      await page.waitForTimeout(500);
+      // Go to the Log tab and load the seeded transcript.
+      const logTab = page.locator('.th-tabs__btn', { hasText: /Log/i }).first();
+      await logTab.waitFor({ state: 'visible', timeout: 10_000 });
+      await logTab.click();
+      await page.waitForTimeout(400);
+      const entryMain = page.locator('.th-log__entry-main').first();
+      await entryMain.waitFor({ state: 'visible', timeout: 8_000 });
+      await entryMain.click();
+      // loadTranscription → recorder tab + (after the fix) enqueues a legal scan.
+      // Scan is async (route-stubbed LLM): give it room to resolve + render.
+      await page.waitForTimeout(4000);
+      const matchLists = await page.locator('.th-segment__legal-matches').count();
+      const ids = await page.locator('.th-segment__legal-match-id').allTextContents();
+      const sims = await page.locator('.th-segment__legal-match-sim').allTextContents();
+      const excerpts = await page.locator('.th-segment__legal-match-excerpt').count();
+      const idSet = ids.map((s) => s.trim());
+      const simSet = sims.map((s) => s.trim());
+      const hasLockStatutes = idSet.includes('O.C.G.A. § 44-7-14') && idSet.includes('O.C.G.A. § 44-7-7');
+      const hasDepositStatutes = idSet.includes('O.C.G.A. § 44-7-30') && idSet.includes('O.C.G.A. § 44-7-34');
+      const has100 = simSet.includes('100%');
+      const has60 = simSet.includes('60%'); // summary-only secondary match (similarity 0.6)
+      const pass = matchLists >= 2 && hasLockStatutes && hasDepositStatutes && has100 && has60 && excerpts > 0;
+      res.pass = pass;
+      res.note = `statute-match lists=${matchLists} ids=[${idSet.join(', ')}] sims=[${simSet.join(',')}] excerpts=${excerpts} `
+        + `lockStatutes=${hasLockStatutes} depositStatutes=${hasDepositStatutes} has100=${has100} has60=${has60}`;
+      return `statutes: lists=${matchLists} ids=${idSet.length} 100%=${has100} 60%=${has60} excerpts=${excerpts}`;
     }
 
     default:

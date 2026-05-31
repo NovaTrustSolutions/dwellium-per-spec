@@ -318,3 +318,58 @@ scribe-ingest source="AutorunSource" backup="AutorunBackup" convertEnabled=true 
 - Cycle 7 (Scribe ingestion — pickers + Convert now): ✅ DONE — verified working; harness
   unblocked for Scribe.
 - Next: Cycle 8 (Statute matching — render matched statutes w/ similarity/excerpt).
+
+---
+
+## Cycle 8 — Statute matching reachable on loaded transcripts (FIXED + runtime-verified)
+
+**Feature:** Georgia O.C.G.A. statute matching inside Transcribe → Legal Shield.
+
+### The break (renders-but-dead — classic "compiles ≠ works")
+Statute matching is computed by the Legal Shield scan: `scanSegmentsViaLlm` →
+`buildMatchedStatutes` (`statuteMatch.ts`) extracts every cited O.C.G.A. section from the
+LLM result, normalizes to `O.C.G.A. § …`, de-dupes, weights primary (cited in `code_ref`,
+similarity 1) vs secondary (summary-only, similarity 0.6), and renders each with a
+similarity badge + excerpt at `TranscriptionHub.tsx:2295`. The render path + unit tests were
+already correct. **But the scan was only ever enqueued during LIVE mic transcription** (the
+moonshine `:1166` and cloud-STT `:938` paths push each new segment onto `legalScanQueue`).
+`loadTranscription` (`:1374`) — the ONLY non-mic way to get segments into the view — set the
+segments but never queued a scan. So anyone REVIEWING a saved transcript saw zero matched
+statutes: the feature was structurally unreachable outside a live microphone.
+
+### Fix (production source — `TranscriptionHub.tsx` `loadTranscription`)
+After loading a saved transcript's segments, enqueue their texts for a legal scan (same
+`text.length > 15` gate the live path uses) when Legal Shield is on. The existing scan
+effect drains the queue and only calls the LLM when a provider is active — so it's a no-op
+offline (correct: no false alerts without an LLM). 8 lines; mirrors the live-path enqueue.
+
+### Runtime proof (PASS, exit 0; served build :3460)
+Harness action `statute-match` (`_drive.mjs`): seeds a saved transcript (2 segments) + an
+active `local` LLM bundle in the per-user `integrations:<uid>` store, route-stubs ONLY the
+`/v1/chat/completions` network call (echoing a canned Georgia-code legal-scan keyed off the
+segment text), then drives the REAL flow — open Transcribe → maximize → Log tab → click the
+entry → `loadTranscription` enqueues → scan resolves → matched statutes render.
+```
+statute-match lists=2 ids=[O.C.G.A. § 44-7-14, O.C.G.A. § 44-7-7, O.C.G.A. § 44-7-30, O.C.G.A. § 44-7-34] \
+  sims=[100%,100%,100%,60%] excerpts=4 lockStatutes=true depositStatutes=true has100=true has60=true
+```
+- Lockout segment ("…change the locks myself") → **violation**, `§ 44-7-14` + `§ 44-7-7`
+  both **100%** (both in `code_ref` = primary).
+- Deposit segment ("…security deposit return…") → **caution**, `§ 44-7-30` **100%**
+  (primary) + `§ 44-7-34` **60%** (named only in the summary = secondary weight).
+- 4 excerpts rendered. Screenshot `cleanup-shots/statute-match.png` shows both segments with
+  similarity badges + excerpt text — the feature actually does the thing.
+- Extraction/normalize/de-dupe/similarity/render are ALL real; only the LLM HTTP call is
+  stubbed (no live key in this env). Proves both the wiring AND the reachability fix.
+
+**Harness note:** at quadrant-spawn width the Transcribe log list collapses to zero height
+(`flex min-height:0 + overflow:hidden`) → entries are `hidden`; the driver now maximizes the
+window (titlebar double-click) before reading the log. Reusable for future Transcribe cycles.
+
+### Gate (green)
+- `tsc -b` rc=0 ✓ · `vitest run` **661/661** (75 files) ✓ · `react-router build` rc=0 ✓ ·
+  SSR smoke (`SMOKE_TEST_PORT=3458`) **PASS** (0 console / 0 warnings / 0 page errors) ✓.
+
+### Cycle status
+- Cycle 8 (Statute matching): ✅ DONE — verified working at runtime; reachability fixed.
+- Next: Cycle 9 (Workspace — Domaine→Project→Thread drill-down; currently ❌ domaines 404).

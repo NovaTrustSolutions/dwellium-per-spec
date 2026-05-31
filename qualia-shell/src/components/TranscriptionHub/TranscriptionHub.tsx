@@ -1376,6 +1376,21 @@ export default function TranscriptionHub() {
         setFactChecks(new Map(entry.factChecks));
         setElapsed(entry.duration);
         setActiveTab('recorder');
+        // Cycle 8: re-run Legal Shield on a LOADED transcript so matched statutes
+        // are reachable when REVIEWING a saved recording. Previously the legal
+        // scan only fired during live mic transcription (the moonshine / cloud-STT
+        // segment paths enqueued each new segment) — opening a past transcript set
+        // the segments but never queued a scan, leaving the matched-statute UI
+        // permanently dead for the review flow. Enqueue the segment texts using
+        // the SAME length gate as the live path (text.length > 15). The scan
+        // effect drains the queue and only calls the LLM when Legal Shield is on
+        // AND a provider is active, so this is a no-op offline (correct).
+        if (legalShieldEnabled) {
+            const texts = entry.segments
+                .map(s => s.text)
+                .filter(t => typeof t === 'string' && t.trim().length > 15);
+            if (texts.length > 0) setLegalScanQueue(prev => [...prev, ...texts]);
+        }
     };
 
     // ---- DELETE TRANSCRIPTION ----

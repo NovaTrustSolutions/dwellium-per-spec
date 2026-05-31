@@ -111,8 +111,10 @@ export default function Workspace() {
     const treeLoading = useWorkspaceStore((s) => s.treeLoading);
     const treeError = useWorkspaceStore((s) => s.treeError);
     const threadMetas = useWorkspaceStore((s) => s.threadMetas);
+    const offline = useWorkspaceStore((s) => s.offline);
     const loadDomaines = useWorkspaceStore((s) => s.loadDomaines);
     const loadTree = useWorkspaceStore((s) => s.loadTree);
+    const useLocalWorkspace = useWorkspaceStore((s) => s.useLocalWorkspace);
     const loadThreadMetas = useWorkspaceStore((s) => s.loadThreadMetas);
     const projectsForDomaine = useWorkspaceStore((s) => s.projectsForDomaine);
     const threadsForProject = useWorkspaceStore((s) => s.threadsForProject);
@@ -141,9 +143,15 @@ export default function Workspace() {
     const [renameName, setRenameName] = useState('');
     const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
 
-    // Fetch the domaines list once on mount (effect-time = SSR-safe).
+    // Fetch the domaines list once on mount (effect-time = SSR-safe). If the backend route
+    // is unreachable (no backend / 404), fall back to the local sample workspace so the
+    // Domaine→Project→Thread drill-down stays reachable offline (Cycle 9).
     useEffect(() => {
-        void loadDomaines();
+        void (async () => {
+            await loadDomaines();
+            const s = useWorkspaceStore.getState();
+            if (s.error && s.domaines.length === 0) s.useLocalWorkspace();
+        })();
     }, [loadDomaines]);
 
     // Restore the last-active domaine once the list has loaded (per-user persistence
@@ -163,7 +171,11 @@ export default function Workspace() {
     // is the source of project + thread structure). Cheap to re-run; loadTree is idempotent.
     useEffect(() => {
         if (view !== 'index' && tree.length === 0 && !treeLoading && !treeError) {
-            void loadTree();
+            void (async () => {
+                await loadTree();
+                const s = useWorkspaceStore.getState();
+                if (s.treeError && s.tree.length === 0) s.useLocalWorkspace();
+            })();
         }
     }, [view, tree.length, treeLoading, treeError, loadTree]);
 
@@ -312,7 +324,19 @@ export default function Workspace() {
     const title = view === 'index' ? 'Domaines' : view === 'domaine' ? domaineName : projectName;
     const backLabel = view === 'project' ? domaineName : 'Domaines';
 
-    const refresh = () => { if (view === 'index') void loadDomaines(); else void loadTree(); };
+    const refresh = () => {
+        void (async () => {
+            if (view === 'index') {
+                await loadDomaines();
+                const s = useWorkspaceStore.getState();
+                if (s.error && s.domaines.length === 0) useLocalWorkspace();
+            } else {
+                await loadTree();
+                const s = useWorkspaceStore.getState();
+                if (s.treeError && s.tree.length === 0) useLocalWorkspace();
+            }
+        })();
+    };
     const refreshBusy = view === 'index' ? loading : treeLoading;
     const refreshLabel = view === 'index'
         ? 'Refresh domaines'
@@ -460,6 +484,23 @@ export default function Workspace() {
 
             {/* Body */}
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 12 }}>
+                {offline && (
+                    <div
+                        role="status"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+                            padding: '8px 12px', fontSize: 11, color: '#d6b25a',
+                            background: 'rgba(245,158,11,0.06)', borderRadius: 6,
+                            border: '1px solid rgba(245,158,11,0.25)', lineHeight: 1.5,
+                        }}
+                    >
+                        <span style={{ flex: 1 }}>
+                            Backend unavailable — showing a local sample workspace. Drill-down
+                            works; creating/renaming folders needs the backend.
+                        </span>
+                    </div>
+                )}
+
                 {mutationError && (
                     <div
                         role="alert"

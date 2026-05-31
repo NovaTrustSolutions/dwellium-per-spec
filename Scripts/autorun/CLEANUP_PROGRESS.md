@@ -373,3 +373,63 @@ window (titlebar double-click) before reading the log. Reusable for future Trans
 ### Cycle status
 - Cycle 8 (Statute matching): ✅ DONE — verified working at runtime; reachability fixed.
 - Next: Cycle 9 (Workspace — Domaine→Project→Thread drill-down; currently ❌ domaines 404).
+
+---
+
+## Cycle 9 — Workspace Domaine→Project→Thread drill-down reachable offline (FIXED + runtime-verified)
+
+**Feature:** Workspace widget drill-down (Domaines index → Projects → Threads).
+
+### The break (renders-but-dead — classic "compiles ≠ works")
+Workspace is a pure METADATA + STRUCTURE view over two backend routes:
+`GET /api/workspace/domaines` (domaine sidecars) and `GET /api/file-explorer/tree`
+(folder structure → tier-classified Domaine/Project/Thread). Both 404 with no backend
+filesystem in this env, so the index view dead-ended at **"Failed to load domaines —
+HTTP 404" + Retry** with nothing to drill into. The drill-down LOGIC was already correct
+and unit-tested (`openDomaine`/`openProject`/`goBack` + the pure `projectsForDomaine`/
+`threadsForProject` selectors) — but it was **structurally unreachable** offline because
+there was no data to derive from.
+
+### Fix (local-first fallback — mirrors Cycle 5/6 "reachable offline" theme)
+- NEW `workspaceLocalSeed.ts` — a tiny, self-consistent in-memory sample workspace
+  (3 domaines → projects → threads → files) where every `DomaineMeta.path` matches a
+  top-level tree node, so the existing pure selectors derive projects/threads unchanged.
+- `workspaceStore.ts` — added `offline` flag + `useLocalWorkspace()` action (loads seed
+  into domaines+tree together, flips `offline`, clears load errors). Successful real loads
+  set `offline:false` so a backend coming online auto-replaces the seed. **Thunks' tested
+  error contract is UNCHANGED** (existing `loadDomaines` error-path tests still pass) — the
+  fallback is wired at the component layer.
+- `Workspace.tsx` — the mount/drill load effects + manual Refresh now fall back to
+  `useLocalWorkspace()` when a load errors with an empty list, and an honest amber banner
+  ("Backend unavailable — showing a local sample workspace. Drill-down works; creating/
+  renaming folders needs the backend.") surfaces in offline mode. Read-only: structure
+  mutations still require the backend (honest mutation error offline).
+- 7 NEW tests (`Workspace.localFallback.test.ts`): action populates domaines+tree+offline,
+  seed self-consistency, selectors derive projects+threads off the seed, nav altitude
+  transitions, offline-cleared-on-successful-load, reset clears offline.
+
+### Runtime proof (PASS, exit 0; served build :3460, real backend :3000 → 404s = offline path)
+Harness action `workspace-drilldown` (`_drive.mjs`): opens Workspace, maximizes the window,
+then drives the REAL drill-down end-to-end and asserts each altitude + back-nav.
+```
+workspace-drilldown offline=true domaines=3 firstDomaine="Property Operations…" \
+  projects=2 threads=2 back→projects=true back→index=true
+```
+- Backend domaines/tree routes 404 → `useLocalWorkspace` fires → **offline banner shown**.
+- Index: **3 domaines**. Click "Property Operations" → **2 projects** render (openDomaine →
+  projectsForDomaine off the seeded tree). Click first project → **2 threads** render
+  (openProject → threadsForProject). Back button → projects list returns; back again →
+  domaines index returns (goBack steps project→domaine→index). Screenshot
+  `cleanup-shots/workspace-drilldown.png`.
+- The 7 console 404s are the EXPECTED backend-absent fetch failures that TRIGGER the
+  fallback — not JS crashes. The navigation logic + selectors are the real code; only the
+  data source is the offline seed (there is no backend filesystem in this env).
+
+### Gate (green)
+- `tsc -b` rc=0 ✓ · `vitest run` **667/667** (76 files; +6 net) ✓ · `react-router build`
+  rc=0 ✓ · SSR smoke (`SMOKE_TEST_PORT=3458`) **PASS** (0 console / 0 warnings / 0 page
+  errors) ✓.
+
+### Cycle status
+- Cycle 9 (Workspace drill-down): ✅ DONE — verified navigating at runtime offline.
+- Next: Cycle 10 (Dashboard UI Pass 1 — Astra/PM-exec layout + responsiveness).

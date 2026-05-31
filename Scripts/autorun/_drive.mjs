@@ -607,6 +607,58 @@ async function runAction(page, action, res) {
       return `statutes: lists=${matchLists} ids=${idSet.length} 100%=${has100} 60%=${has60} excerpts=${excerpts}`;
     }
 
+    case 'workspace-drilldown': {
+      // The backend domaines (/api/workspace/domaines) + tree (/api/file-explorer/tree)
+      // routes 404 in this env → the store falls back to the local sample workspace
+      // (offline flag + banner). PROVE the Domaine→Project→Thread drill-down navigates
+      // AND that back-nav steps back up. The drill-down logic (openDomaine/openProject/
+      // goBack + projectsForDomaine/threadsForProject) is the REAL code; only the data
+      // source is the offline seed (because there is no backend filesystem here).
+      // Maximize the Workspace window — quadrant-spawn width can clip the grid.
+      const wsWindow = page.locator('.window', { has: page.locator('[aria-label="Sort domaines"]') }).first();
+      await wsWindow.locator('.window__titlebar').first().dblclick().catch(() => {});
+      await page.waitForTimeout(700); // loadDomaines 404 → useLocalWorkspace → seed render
+
+      // Index altitude: honest offline banner + a domaines grid.
+      const offlineBanner = await page.locator('[role="status"]', { hasText: /local sample workspace/i }).count();
+      const domaineList = page.locator('[role="list"][aria-label="Domaines"]').first();
+      await domaineList.waitFor({ state: 'visible', timeout: 10_000 });
+      const domaineCards = domaineList.locator('[role="button"]');
+      const nDomaines = await domaineCards.count();
+      const firstDomaine = (await domaineCards.first().textContent() || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+
+      // Drill 1: domaine → projects.
+      await domaineCards.first().click();
+      await page.waitForTimeout(900); // openDomaine → loadTree (already seeded) → projects derive
+      const projectList = page.locator('[role="list"][aria-label^="Projects in"]').first();
+      await projectList.waitFor({ state: 'visible', timeout: 8_000 });
+      const projectCards = projectList.locator('[role="button"]');
+      const nProjects = await projectCards.count();
+
+      // Drill 2: project → threads.
+      await projectCards.first().click();
+      await page.waitForTimeout(900);
+      const threadList = page.locator('[role="list"][aria-label^="Threads in"]').first();
+      await threadList.waitFor({ state: 'visible', timeout: 8_000 });
+      const nThreads = await threadList.locator('[role="listitem"]').count();
+
+      // Back-nav: project → domaine (the toolbar back button), then domaine → index.
+      const backBtn = page.locator('button[aria-label^="Back to"]').first();
+      await backBtn.click();
+      await page.waitForTimeout(500);
+      const backToProjects = await page.locator('[role="list"][aria-label^="Projects in"]').count();
+      await page.locator('button[aria-label^="Back to"]').first().click().catch(() => {});
+      await page.waitForTimeout(500);
+      const backToIndex = await page.locator('[role="list"][aria-label="Domaines"]').count();
+
+      const pass = offlineBanner > 0 && nDomaines >= 1 && nProjects >= 1 && nThreads >= 1
+        && backToProjects > 0 && backToIndex > 0;
+      res.pass = pass;
+      res.note = `workspace-drilldown offline=${offlineBanner > 0} domaines=${nDomaines} firstDomaine="${firstDomaine}" `
+        + `projects=${nProjects} threads=${nThreads} back→projects=${backToProjects > 0} back→index=${backToIndex > 0}`;
+      return `drilldown: domaines=${nDomaines} projects=${nProjects} threads=${nThreads} backnav=${backToProjects > 0 && backToIndex > 0}`;
+    }
+
     default:
       res.note = `unknown action "${action}" — opened only`;
       res.pass = res.opened;

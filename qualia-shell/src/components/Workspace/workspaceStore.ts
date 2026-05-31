@@ -42,6 +42,7 @@ import {
 } from './workspaceApi';
 import { fetchTree, mkdir, rename, move, deleteEntry } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
+import { SEED_DOMAINES, SEED_TREE } from './workspaceLocalSeed';
 
 /** Which drill-down altitude the widget is showing. */
 export type WorkspaceView = 'index' | 'domaine' | 'project';
@@ -95,6 +96,14 @@ interface WorkspaceState {
     /** Last mutation error message, or null. Separate from load `error`/`treeError`. */
     mutationError: string | null;
 
+    /**
+     * True when the view is showing the built-in local sample workspace because the
+     * backend domaines/tree routes were unreachable (Cycle 9). Read-only fallback so the
+     * Domaine→Project→Thread drill-down stays reachable offline; the UI shows an honest
+     * banner. Cleared automatically the next time a real fetch succeeds.
+     */
+    offline: boolean;
+
     /** Replace the cached domaines list (Cycle 5 fetch result sink). */
     setDomaines: (domaines: DomaineMeta[]) => void;
     setLoading: (loading: boolean) => void;
@@ -125,6 +134,14 @@ interface WorkspaceState {
 
     /** Fetch the shared file-explorer tree, driving treeLoading/treeError/tree (Cycle 6). */
     loadTree: () => Promise<void>;
+
+    /**
+     * Populate domaines + tree from the built-in local sample workspace and flag `offline`
+     * (Cycle 9). Used by the index/drill-down views as a fallback when the backend routes
+     * are unreachable, so the drill-down is demonstrable offline. Clears load errors +
+     * loading flags. Sets domaines AND tree together so the pure selectors stay consistent.
+     */
+    useLocalWorkspace: () => void;
 
     /** Best-effort enrich the given threads with their sidecar metadata (Cycle 7). */
     loadThreadMetas: (threadPaths: string[]) => Promise<void>;
@@ -172,6 +189,7 @@ const INITIAL = {
     threadMetaLoading: false,
     mutating: false,
     mutationError: null as string | null,
+    offline: false,
 };
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
@@ -232,7 +250,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         set({ loading: true, error: null });
         try {
             const list = await fetchDomaines();
-            set({ domaines: list, loading: false });
+            set({ domaines: list, loading: false, offline: false });
         } catch (err) {
             set({
                 error: err instanceof Error ? err.message : 'Failed to load domaines',
@@ -245,7 +263,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         set({ treeLoading: true, treeError: null });
         try {
             const tree = await fetchTree();
-            set({ tree, treeLoading: false });
+            set({ tree, treeLoading: false, offline: false });
         } catch (err) {
             set({
                 treeError: err instanceof Error ? err.message : 'Failed to load workspace tree',
@@ -253,6 +271,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             });
         }
     },
+
+    useLocalWorkspace: () => set({
+        domaines: SEED_DOMAINES,
+        tree: SEED_TREE,
+        offline: true,
+        loading: false,
+        treeLoading: false,
+        error: null,
+        treeError: null,
+    }),
 
     loadThreadMetas: async (threadPaths) => {
         if (threadPaths.length === 0) return;

@@ -261,6 +261,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    /* Wrap the brand + tab row at narrow widths so the topbar never forces
+       horizontal overflow of the dashboard (the tab row + brand exceed ~826px
+       of usable width when the window is sized down to ~900px). */
+    flex-wrap: wrap;
+    row-gap: 8px;
     padding: 10px 20px;
     background: var(--a-surface);
     backdrop-filter: none;
@@ -299,6 +304,7 @@
 
 .astra-dashboard .a-topbar-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
 }
 

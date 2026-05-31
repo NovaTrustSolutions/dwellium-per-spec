@@ -56,7 +56,11 @@ const result = {
 function log(...a) { console.log(...a); }
 
 const browser = await chromium.launch({ headless: HEADLESS });
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+// Viewport overridable via DRIVE_W/DRIVE_H so responsiveness checks exercise
+// viewport-keyed @media breakpoints (default 1440x900).
+const VIEWPORT_W = parseInt(process.env.DRIVE_W || '1440', 10);
+const VIEWPORT_H = parseInt(process.env.DRIVE_H || '900', 10);
+const ctx = await browser.newContext({ viewport: { width: VIEWPORT_W, height: VIEWPORT_H } });
 
 // Capture console errors (real runtime signal).
 ctx.on('console', (m) => {
@@ -657,6 +661,73 @@ async function runAction(page, action, res) {
       res.note = `workspace-drilldown offline=${offlineBanner > 0} domaines=${nDomaines} firstDomaine="${firstDomaine}" `
         + `projects=${nProjects} threads=${nThreads} back→projects=${backToProjects > 0} back→index=${backToIndex > 0}`;
       return `drilldown: domaines=${nDomaines} projects=${nProjects} threads=${nThreads} backnav=${backToProjects > 0 && backToIndex > 0}`;
+    }
+
+    case 'astra-responsive': {
+      // Dashboard UI Pass 1 (Cycle 10): the Astra/PM-exec widget is opened by
+      // the caller. Honcho auto-opens and may sit on top, so first raise the
+      // Astra window to front, then force the owning OS-window to the requested
+      // viewport width (env DRIVE_W) so the responsive grid + topbar are
+      // exercised, then probe the REAL .astra-dashboard for responsiveness
+      // defects (horizontal overflow + which elements overflow).
+      const vw = parseInt(process.env.DRIVE_W || '1440', 10);
+      const astraWin = page.locator('.window', { has: page.locator('.astra-dashboard') }).first();
+      if (await astraWin.count()) {
+        await astraWin.locator('.window__titlebar').first().click().catch(() => {});
+      }
+      await page.waitForTimeout(300);
+      if (!(await page.locator('.astra-dashboard').count())) {
+        res.pass = false; res.note = 'astra-responsive: .astra-dashboard not mounted';
+        return res.note;
+      }
+      await page.evaluate((w) => {
+        const dash = document.querySelector('.astra-dashboard');
+        let win = dash.closest('[class*="window"]');
+        while (win && getComputedStyle(win).position !== 'absolute' && getComputedStyle(win).position !== 'fixed') {
+          win = win.parentElement;
+          if (!win || win === document.body) break;
+        }
+        if (win && win !== document.body) {
+          win.style.width = Math.max(360, Math.min(w - 40, 1340)) + 'px';
+          win.style.left = '20px';
+          win.style.maxWidth = 'none';
+        }
+      }, vw);
+      await page.waitForTimeout(700);
+      const diag = await page.evaluate(() => {
+        const root = document.querySelector('.astra-dashboard');
+        const rootW = root.clientWidth;
+        const rootScrollW = root.scrollWidth;
+        let maxChildOverflow = 0;
+        const culprits = [];
+        const rl = root.getBoundingClientRect().left;
+        root.querySelectorAll('*').forEach((el) => {
+          const o = el.scrollWidth - root.clientWidth;
+          if (o > maxChildOverflow) maxChildOverflow = o;
+          const over = Math.round(el.getBoundingClientRect().right - rl - root.clientWidth);
+          if (over > 2) culprits.push({ cls: (el.className || '').toString().slice(0, 36), tag: el.tagName.toLowerCase(), over });
+        });
+        const topCulprits = culprits.sort((a, b) => b.over - a.over).slice(0, 5);
+        const grids = Array.from(root.querySelectorAll('*')).filter((el) => {
+          const d = getComputedStyle(el).display; return d === 'grid' || d === 'inline-grid';
+        });
+        const gridCols = grids.slice(0, 6).map((g) => {
+          const c = getComputedStyle(g).gridTemplateColumns;
+          return { n: c.split(' ').filter(Boolean).length, css: c.slice(0, 50) };
+        });
+        const buttons = Array.from(root.querySelectorAll('button'));
+        const dead = buttons.filter((b) => ((b.getAttribute('aria-label') || b.textContent || '').trim().length === 0)).length;
+        const disabled = buttons.filter((b) => b.disabled).length;
+        const cards = root.querySelectorAll('[class*="card"],[class*="panel"],section').length;
+        return {
+          rootW, rootOverflow: rootScrollW - rootW, maxChildOverflow, topCulprits,
+          nGrids: grids.length, gridCols, nButtons: buttons.length,
+          deadButtons: dead, disabledButtons: disabled, nCards: cards,
+        };
+      });
+      res.pass = diag.rootOverflow <= 2 && diag.maxChildOverflow <= 2 && diag.deadButtons === 0;
+      res.note = `astra-responsive @${vw} ${JSON.stringify(diag)}`;
+      return res.note;
     }
 
     default:

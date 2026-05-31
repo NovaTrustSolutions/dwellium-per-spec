@@ -85,10 +85,7 @@ await page.addInitScript(() => {
   } catch { /* private mode */ }
 });
 
-try {
-  await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-
-  // ── Login ──────────────────────────────────────────────────────────────
+async function login(page) {
   const overlay = page.locator('.login-start-overlay');
   await overlay.waitFor({ state: 'visible', timeout: 15_000 });
   await overlay.click();
@@ -106,14 +103,35 @@ try {
 
   await page.locator('.sidebar__logo-text', { hasText: 'DWELLIUM' })
     .waitFor({ state: 'visible', timeout: 20_000 });
+}
 
-  // ── Open widget by sidebar label ─────────────────────────────────────────
+async function openWidget(page, label) {
   const widget = page.locator('.sidebar-widget', {
-    has: page.locator('.sidebar-widget__label', { hasText: new RegExp(widgetArg, 'i') }),
+    has: page.locator('.sidebar-widget__label', { hasText: new RegExp(label, 'i') }),
   }).first();
   await widget.waitFor({ state: 'visible', timeout: 12_000 });
   await widget.click();
   await page.waitForTimeout(1200); // window mount + first data fetch
+}
+
+// Ensure a widget's panel (rootSel) is actually mounted. Some widgets (Honcho)
+// AUTO-OPEN once on first Desktop ready, so a blind sidebar click TOGGLES them
+// CLOSED. This clicks only when the panel is absent, and retries.
+async function ensureOpen(page, rootSel, label) {
+  for (let i = 0; i < 4; i++) {
+    if (await page.locator(rootSel).count() > 0) {
+      await page.locator(rootSel).first().waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+      if (await page.locator(rootSel).count() > 0) return true;
+    }
+    await openWidget(page, label);
+  }
+  return (await page.locator(rootSel).count()) > 0;
+}
+
+try {
+  await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  await login(page);
+  await openWidget(page, widgetArg);
   result.opened = true;
 
   // ── Action dispatch ──────────────────────────────────────────────────────
@@ -187,6 +205,87 @@ async function runAction(page, action, res) {
       res.pass = generated;
       res.note = `tw-generate btnDisabled=${wasDisabled} cards=${cards} insights=${insights} msg="${msg.trim().slice(0, 80)}"`;
       return `reports: cards=${cards} insights=${insights} msg=${msg.trim().slice(0, 60)}`;
+    }
+
+    case 'honcho-memory': {
+      // Honcho Memory tab: + Add Memory → type → Save → assert it renders AND
+      // persists to localStorage (local-first store; works with backend offline).
+      const memText = `AUTORUN remember: water the plants ${Date.now().toString(36)}`;
+      await ensureOpen(page, '.hhp', 'Honcho'); // Honcho auto-opens; don't toggle it closed
+      const addBtn = page.locator('.hhp__add-btn').first();
+      await addBtn.waitFor({ state: 'visible', timeout: 8_000 });
+      await addBtn.click();
+      const ta = page.locator('.hhp__add-textarea').first();
+      await ta.waitFor({ state: 'visible', timeout: 5_000 });
+      await ta.fill(memText);
+      await page.locator('.hhp__add-submit').first().click();
+      await page.waitForTimeout(1500);
+      // Rendered?
+      const shown = await page.locator('.hhp__memory-content', { hasText: memText }).count();
+      // Persisted to localStorage under the per-user honcho:memories key?
+      const persisted = await page.evaluate((needle) => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('honcho:memories:') && (localStorage.getItem(k) || '').includes(needle)) return k;
+        }
+        return null;
+      }, memText);
+      const headerTxt = (await page.locator('.hhp__subtitle').first().textContent().catch(() => '')) || '';
+      const pass = shown > 0 && !!persisted;
+      res.pass = pass;
+      res.note = `honcho-memory rendered=${shown} persistedKey=${persisted || 'NONE'} header="${headerTxt.replace(/\s+/g, ' ').trim().slice(0, 50)}"`;
+      return `add memory: rendered=${shown > 0} persisted=${!!persisted}`;
+    }
+
+    case 'honcho-files': {
+      // Honcho Files tab: seed the per-user ingestion store with 3 converted
+      // entries, reload, then prove the sort-direction toggle REORDERS the list.
+      // Recover the logged-in user id from a per-user localStorage key (the
+      // backend-auth path does NOT write `dwellium-user`; the savedLayouts /
+      // honcho:memories stores embed the uid in their key suffix).
+      const uid = await page.evaluate(() => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i) || '';
+          let m = k.match(/^qualia_saved_layouts_(.+)$/) || k.match(/^honcho:memories:(.+)$/);
+          if (m && m[1] !== '_anonymous') return m[1];
+        }
+        try { return JSON.parse(localStorage.getItem('dwellium-user') || 'null')?.id ?? null; } catch { return null; }
+      });
+      const seed = [
+        { sourceName: 'alpha.html', destName: 'alpha.md', status: 'converted', bytes: 100, convertedAt: '2026-05-01T10:00:00.000Z' },
+        { sourceName: 'mike.html', destName: 'mike.md', status: 'converted', bytes: 300, convertedAt: '2026-05-20T10:00:00.000Z' },
+        { sourceName: 'zulu.html', destName: 'zulu.md', status: 'converted', bytes: 200, convertedAt: '2026-05-10T10:00:00.000Z' },
+      ];
+      await page.evaluate(({ uid, seed }) => {
+        const key = uid ? `scribe-ingestion:${uid}` : 'scribe-ingestion:_anonymous';
+        const prev = (() => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; } })();
+        localStorage.setItem(key, JSON.stringify({ ...prev, converted: seed, lastSyncAt: '2026-05-20T10:00:00.000Z' }));
+      }, { uid, seed });
+      // Reload so the store reads the seeded converted index, then re-open Files.
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await login(page);
+      await ensureOpen(page, '.hhp', 'honcho');
+      const filesTab = page.locator('.hhp__tab', { hasText: /Files/i }).first();
+      await filesTab.waitFor({ state: 'visible', timeout: 8_000 });
+      await filesTab.click();
+      // Wait for the Files toolbar's sort select to carry the date/name/size options.
+      await page.locator('.hhp__type-filter option[value="name"]').first()
+        .waitFor({ state: 'attached', timeout: 8_000 });
+      await page.waitForTimeout(300);
+      const rowNames = async () => page.locator('.hhp__file-row').allTextContents();
+      const beforeRows = await rowNames();
+      // Sort by name to get a deterministic order, then toggle direction.
+      const sortSel = page.locator('.hhp__type-filter').first();
+      await sortSel.selectOption('name');
+      await page.waitForTimeout(300);
+      const nameAsc = (await rowNames()).map(t => t.match(/(alpha|mike|zulu)/i)?.[0] || '');
+      await page.locator('.hhp__btn', { hasText: /Asc|Desc/ }).first().click();
+      await page.waitForTimeout(300);
+      const nameToggled = (await rowNames()).map(t => t.match(/(alpha|mike|zulu)/i)?.[0] || '');
+      const reordered = JSON.stringify(nameAsc) !== JSON.stringify(nameToggled) && nameAsc.length === 3;
+      res.pass = beforeRows.length === 3 && reordered;
+      res.note = `honcho-files seeded=${beforeRows.length} order1=${nameAsc.join(',')} order2=${nameToggled.join(',')} reordered=${reordered}`;
+      return `files: rows=${beforeRows.length} reordered=${reordered}`;
     }
 
     default:

@@ -121,3 +121,44 @@ the in-UI hint says exactly this).
 ### Cycle status
 - Cycle 3 (TW Reports/Insights generate): ✅ DONE — runtime-verified working, no fix needed.
 - Next: Cycle 4 (Honcho — Add Memory + Files arrange/filter).
+
+---
+
+## Iteration — Cycle 4 DONE: Honcho Add Memory + Files arrange/filter (runtime-verified + FIXED) (2026-05-31)
+
+**ETA per step:** probe backend honcho routes (~1m) → mirror local-first store pattern (~3m) → wire into panel (~3m) → +unit test (~2m) → driver actions (~3m) → build+drive+debug auto-open toggle (~6m) → gate+commit (~3m).
+
+### The real break I found + fixed
+- `+ Add Memory` POSTed to `/api/honcho/memories`; the live Express backend on :3000 **404s** that route
+  (`curl` confirmed: `Cannot POST /api/honcho/memories`). The catch swallowed it and `fetchMemories`
+  `if(!res.ok) return` left the list empty → **renders-but-dead**: the exact class this arc exists to fix.
+- **Fix (local-first, reuses the established pattern):** new `honchoMemoryStore.ts` mirroring
+  `honchoDreamStore`/`todoStore` (per-user `createLocalStorageStore`, dynamic key `honcho:memories:<userId>`).
+  `addMemory` now persists locally FIRST (shows instantly + survives reload) then best-effort backend POST;
+  `deleteMemory` removes locally + best-effort backend DELETE; list = `[...local, ...backend]` deduped;
+  header count = backend stat + local count. Backend-online behaviour unchanged (additive).
+- Files tab arrange/filter was already wired (`arrangeMarkdownFiles` over `ingestion.converted`); I proved it
+  reorders at runtime (no fix needed — it functions).
+
+### Runtime proof (both PASS, exit 0)
+```
+honcho/honcho-memory — rendered=1 persistedKey=honcho:memories:212089d6-…  header="… · 1 memories"
+honcho/honcho-files  — seeded=3 order1=zulu,mike,alpha order2=alpha,mike,zulu reordered=true
+```
+Screenshots: `cleanup-shots/honcho-memory.png` (memory card "AUTORUN remember: water the plants …", MEDIUM,
+manual, just now; header "1 memories") + `cleanup-shots/honcho-files.png` (Converted Markdown: alpha/mike/zulu).
+
+### Harness improvement (reused next cycles)
+- Extracted `login()` + `openWidget()` helpers and added **`ensureOpen(rootSel,label)`** — discovered Honcho
+  AUTO-OPENS once on first Desktop ready (`honchoAutoOpen.ts`), so a blind sidebar click TOGGLES it CLOSED.
+  `ensureOpen` clicks only when the panel is absent. Also: backend-auth login does NOT write `dwellium-user`,
+  so the uid is recovered from the `qualia_saved_layouts_<uid>` key suffix for per-user seeding.
+- New driver actions: `honcho-memory`, `honcho-files`.
+
+### Gate (green)
+- `tsc -b` ✓ · `vitest run` **661/661** (75 files; +6 new `honchoMemoryStore.test.ts`) ✓ ·
+  `react-router build` rc=0 ✓ · SSR smoke (`SMOKE_TEST_PORT=3458`) **PASS** (0 console/page errors) ✓.
+
+### Cycle status
+- Cycle 4 (Honcho Add Memory + Files): ✅ DONE — Add Memory FIXED (local-first), Files VERIFIED working.
+- Next: Cycle 5 (Stella — tool catalog search + /hermes spawn).

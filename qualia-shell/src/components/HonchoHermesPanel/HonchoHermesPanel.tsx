@@ -10,6 +10,7 @@ import {
 } from '../StellaAgent/honchoDreamStore';
 import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
 import { hermesLearningUserIdHolder, rateRun } from './hermesLearningStore';
+import { memoryStore, memoryUserIdHolder, addLocalMemory, deleteLocalMemory } from './honchoMemoryStore';
 import { runHermes } from './hermesRunner';
 import {
     arrangeMarkdownFiles,
@@ -85,10 +86,20 @@ export default function HonchoHermesPanel() {
     // (Cycle 16): set BEFORE any learning-store read so few-shot recall +
     // tool-weighting resolve to this user's run history.
     hermesLearningUserIdHolder.current = user?.id ?? null;
+    // Local-first Honcho memories (same dynamic-key holder discipline): set BEFORE
+    // the store read so the snapshot resolves to THIS user's persisted memories.
+    // This is what makes "+ Add Memory" actually persist + show when the backend
+    // memory route is offline/404 (which it is in the current Express backend).
+    memoryUserIdHolder.current = user?.id ?? null;
     const dreams = useSyncExternalStore(
         dreamStore.subscribe,
         dreamStore.getSnapshot,
         dreamStore.getServerSnapshot,
+    );
+    const localMemories = useSyncExternalStore(
+        memoryStore.subscribe,
+        memoryStore.getSnapshot,
+        memoryStore.getServerSnapshot,
     );
     const [newDream, setNewDream] = useState({ title: '', text: '' });
     const [showAddDream, setShowAddDream] = useState(false);
@@ -207,31 +218,44 @@ export default function HonchoHermesPanel() {
 
     /* ═══ ACTIONS ═══ */
     const addMemory = async () => {
-        if (!newMemory.content.trim()) return;
+        const content = newMemory.content.trim();
+        if (!content) return;
+        // Local-first: persist immediately so the memory shows + survives reload
+        // even when the backend route is offline (it 404s today). The store read
+        // re-renders the list synchronously — no round-trip required.
+        addLocalMemory({
+            userId: user?.email || user?.id || 'default',
+            content,
+            memoryType: newMemory.memoryType,
+            importance: newMemory.importance,
+            source: 'manual',
+        });
+        setNewMemory({ content: '', memoryType: 'fact', importance: 0.5 });
+        setShowAddMemory(false);
+        // Best-effort backend sync (no-op / 404 swallowed when Honcho is offline).
         try {
             await authFetch('/api/honcho/memories', {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: user?.email || 'default',
-                    content: newMemory.content,
+                    content,
                     memoryType: newMemory.memoryType,
                     importance: newMemory.importance,
                     source: 'manual',
                 }),
             });
-            setNewMemory({ content: '', memoryType: 'fact', importance: 0.5 });
-            setShowAddMemory(false);
             fetchMemories();
             fetchMemoryStats();
-        } catch { /* silent */ }
+        } catch { /* backend offline — local copy already persisted */ }
     };
 
     const deleteMemory = async (id: string) => {
+        // Local store owns user-added memories; drop it there first.
+        const wasLocal = deleteLocalMemory(id);
         try {
             await authFetch(`/api/honcho/memories/${id}`, { method: 'DELETE' });
-            fetchMemories();
-            fetchMemoryStats();
-        } catch { /* silent */ }
+            if (!wasLocal) { fetchMemories(); fetchMemoryStats(); }
+        } catch { /* backend offline — local copy already removed */ }
     };
 
     const delegateToHermes = async () => {
@@ -297,7 +321,21 @@ export default function HonchoHermesPanel() {
         return IMPORTANCE_LABELS[0];
     };
 
-    const filteredMemories = memories.filter(m => {
+    // Combine local-first memories (user-added, offline-persistent) with any
+    // backend-fetched memories. Local first so a just-added memory shows on top;
+    // de-dupe by id in case the backend echoes a synced local copy.
+    const combinedMemories: HonchoMemory[] = (() => {
+        const seen = new Set<string>();
+        const out: HonchoMemory[] = [];
+        for (const m of [...localMemories, ...memories]) {
+            if (seen.has(m.id)) continue;
+            seen.add(m.id);
+            out.push(m as HonchoMemory);
+        }
+        return out;
+    })();
+
+    const filteredMemories = combinedMemories.filter(m => {
         if (typeFilter !== 'all' && m.memoryType !== typeFilter) return false;
         if (memoryFilter && !m.content.toLowerCase().includes(memoryFilter.toLowerCase())) return false;
         return true;
@@ -313,7 +351,7 @@ export default function HonchoHermesPanel() {
                     <div>
                         <h2 className="hhp__title">Honcho + Hermes</h2>
                         <p className="hhp__subtitle">
-                            Memory &amp; Intelligence · {memoryStats?.totalMemories || 0} memories
+                            Memory &amp; Intelligence · {(memoryStats?.totalMemories || 0) + localMemories.length} memories
                             <span className={`hhp__status-dot ${hermesOnline ? 'online' : 'offline'}`} />
                             {hermesOnline ? 'Hermes Online' : 'Hermes Offline'}
                         </p>

@@ -162,3 +162,50 @@ manual, just now; header "1 memories") + `cleanup-shots/honcho-files.png` (Conve
 ### Cycle status
 - Cycle 4 (Honcho Add Memory + Files): ✅ DONE — Add Memory FIXED (local-first), Files VERIFIED working.
 - Next: Cycle 5 (Stella — tool catalog search + /hermes spawn).
+
+---
+
+## Iteration — Cycle 5 DONE: Stella tool-catalog search + /hermes spawn (FIXED) (2026-05-31)
+
+**ETA per step:** read Stella sources (~4m) → find break (~2m) → fix composer enable-logic
+(~2m) → add `stella-skills` + `stella-hermes` driver actions (~5m) → build+serve+drive (~3m)
+→ gate (~5m) → commit (~2m).
+
+### The real break I found + fixed
+- Stella's intro message advertises *"type `/hermes <task>` to spawn the Hermes agent"* and the
+  `sendMessage` comment states Hermes *"is independent of the Stella backend + personal LLM, so
+  it runs even when both are down."* **But** the chat composer `<textarea>` (`stella__input`) AND
+  the send button were `disabled={!isBackendReachable(status) && !hasActiveLlm(integrations.llm)}`
+  — so when Stella is offline with no LLM key (the headless/no-key reality), the composer is dead
+  and the user **cannot type `/hermes` at all**. The advertised, independently-runnable command was
+  structurally unreachable → exactly the renders-but-dead class this arc exists to kill.
+- **Fix (`StellaAgent.tsx`, chat composer):** textarea is now always typeable (so `/hermes` can be
+  entered offline); the send button is enabled when the input is a `/hermes` command via
+  `parseHermesCommand(input).isHermes`, while ordinary chat stays honestly gated offline. Placeholder
+  updated to hint the `/hermes` escape hatch when offline. The Hermes runner already resolves
+  failures gracefully (never throws), so an offline spawn surfaces a rendered "⚡ Hermes could not
+  finish" reply rather than hanging.
+- Tool Catalog search needed NO fix — it's fully client-side; I proved it filters.
+
+### Runtime proof (both PASS, exit 0; served build :3460, real backend :3000)
+```
+stella/stella-skills — total=15 filtered=2 names=[Honcho Memory, Memory Explorer] allMatch=true
+stella/stella-hermes — typeable=true sendEnabled=true userMsg=1 hermesReply=true
+```
+- `stella-skills.png`: Skills tab, Tool Catalog filtered to the 2 Memory tools by the "memory" query.
+- `stella-hermes.png`: offline Stella, `/hermes summarize the latest maintenance reports` typed +
+  sent (composer was enabled), user bubble + a rendered Hermes reply in the message list.
+- The `POST /api/stella/chat → 405` console error persists = correct offline state for *ordinary*
+  chat; the fix only unblocks the backend-independent `/hermes` path.
+
+### Harness improvement
+- New driver actions `stella-skills` (catalog filter narrows + all-match assert) and `stella-hermes`
+  (asserts `typeable` + `sendEnabled` offline + a Hermes reply renders).
+
+### Gate (green)
+- `tsc -b` ✓ · `vitest run` **661/661** (75 files) ✓ · `react-router build` rc=0 ✓ ·
+  SSR smoke (`SMOKE_TEST_PORT=3458`) **PASS** (0 console / 0 page errors) ✓.
+
+### Cycle status
+- Cycle 5 (Stella — tool catalog search + /hermes spawn): ✅ DONE — catalog VERIFIED, /hermes FIXED.
+- Next: Cycle 6 (Hermes learning — rating + record to `hermesLearningStore`).

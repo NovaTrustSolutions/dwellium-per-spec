@@ -288,6 +288,47 @@ async function runAction(page, action, res) {
       return `files: rows=${beforeRows.length} reordered=${reordered}`;
     }
 
+    case 'stella-skills': {
+      // Stella Skills tab → Tool Catalog filter. Catalog is fully client-side
+      // (independent of backend), so it MUST filter even when Stella is offline.
+      await page.locator('.stella__tab', { hasText: /Skills/i }).first().click();
+      const filter = page.getByLabel('Filter Stella tools');
+      await filter.waitFor({ state: 'visible', timeout: 8_000 });
+      const allCards = await page.locator('.stella__tool-card').count();
+      await filter.fill('memory');
+      await page.waitForTimeout(400);
+      const cardNames = await page.locator('.stella__tool-card .stella__tool-name').allTextContents();
+      const filtered = cardNames.length;
+      const allMatch = filtered > 0 && cardNames.every(n => /memory/i.test(n));
+      const narrowed = filtered > 0 && filtered < allCards;
+      res.pass = narrowed && allMatch;
+      res.note = `stella-skills total=${allCards} filtered=${filtered} names=[${cardNames.join(', ')}] allMatch=${allMatch}`;
+      return `tool-catalog filter: ${allCards}→${filtered} (memory) allMatch=${allMatch}`;
+    }
+
+    case 'stella-hermes': {
+      // Stella chat → `/hermes <task>` spawn. The composer + send button MUST be
+      // usable even when the backend + LLM are offline (Hermes is independent),
+      // and the spawn MUST surface a chat reply (success OR graceful failure).
+      const input = page.locator('.stella__input').first();
+      await input.waitFor({ state: 'visible', timeout: 8_000 });
+      const typeable = await input.isEditable();           // fix #1: composer stays typeable offline
+      const task = 'summarize the latest maintenance reports';
+      await input.fill(`/hermes ${task}`);
+      const sendBtn = page.locator('.stella__send-btn').first();
+      const sendEnabled = !(await sendBtn.isDisabled());   // fix #2: /hermes enables send even offline
+      const userBefore = await page.locator('.stella__msg--user').count();
+      if (sendEnabled) await sendBtn.click();
+      // Hermes runner resolves to success OR a rendered failure — never hangs.
+      await page.waitForTimeout(6000);
+      const userMsg = await page.locator('.stella__msg--user', { hasText: task }).count();
+      const body = (await page.locator('.stella__messages').textContent().catch(() => '')) || '';
+      const replied = /Hermes/i.test(body) && (userMsg > userBefore || userMsg > 0);
+      res.pass = typeable && sendEnabled && replied;
+      res.note = `stella-hermes typeable=${typeable} sendEnabled=${sendEnabled} userMsg=${userMsg} hermesReply=${/Hermes/i.test(body)}`;
+      return `/hermes spawn: typeable=${typeable} sendEnabled=${sendEnabled} replied=${replied}`;
+    }
+
     default:
       res.note = `unknown action "${action}" — opened only`;
       res.pass = res.opened;

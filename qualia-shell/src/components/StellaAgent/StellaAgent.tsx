@@ -1577,15 +1577,21 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             placeholder={
                                 isBackendReachable(status) ? 'Ask Stella anything…' :
                                 hasActiveLlm(integrations.llm) ? `Ask anything (via ${integrations.llm.active})…` :
-                                'Stella is offline — configure an LLM in Settings'
+                                'Stella is offline — type /hermes <task> to spawn Hermes, or configure an LLM in Settings'
                             }
-                            disabled={!isBackendReachable(status) && !hasActiveLlm(integrations.llm)}
+                            // Always typeable: Hermes spawn (`/hermes <task>`) is independent of
+                            // the Stella backend + personal LLM, so the composer must stay usable
+                            // offline — otherwise the advertised /hermes tip is a dead affordance.
                             rows={1}
                         />
                         <button
                             className="stella__send-btn"
                             onClick={sendMessage}
-                            disabled={!input.trim() || isTyping || (!isBackendReachable(status) && !hasActiveLlm(integrations.llm))}
+                            disabled={
+                                !input.trim() || isTyping ||
+                                // Offline + no LLM only blocks ordinary chat — never a /hermes spawn.
+                                (!isBackendReachable(status) && !hasActiveLlm(integrations.llm) && !parseHermesCommand(input).isHermes)
+                            }
                             title="Send"
                         >
                             ➤

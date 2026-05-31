@@ -85,6 +85,48 @@ await page.addInitScript(() => {
   } catch { /* private mode */ }
 });
 
+// Scribe ingestion: headless Chromium has NO window.showDirectoryPicker (the OS
+// folder picker can't be automated). Inject a FAKE picker returning in-memory
+// directory handles so the REAL useIngestion → convertFolder → write pipeline is
+// exercised end-to-end (only the OS picker is stubbed; the convert path is real).
+// Source = 3 files: notes.html (→converted), readme.md (→passthrough),
+// budget.csv (→queued-backend). Backup records writes to window.__ingestWrites.
+if (actionArg === 'scribe-ingest') {
+  await page.addInitScript(() => {
+    window.__ingestWrites = [];
+    const makeReadFile = (name, text) => ({
+      kind: 'file', name,
+      async getFile() { return new File([text], name, { type: 'text/plain' }); },
+    });
+    const makeWriteFile = (name) => ({
+      kind: 'file', name,
+      async createWritable() {
+        let buf = '';
+        return {
+          async write(d) { buf += typeof d === 'string' ? d : ''; },
+          async close() { window.__ingestWrites.push({ name, body: buf }); },
+        };
+      },
+    });
+    const sourceFiles = [
+      makeReadFile('notes.html', '<h1>Hello</h1><p>world</p>'),
+      makeReadFile('readme.md', '# Readme\nalready markdown'),
+      makeReadFile('budget.csv', 'a,b,c'),
+    ];
+    const sourceHandle = {
+      kind: 'directory', name: 'AutorunSource',
+      async *values() { for (const f of sourceFiles) yield f; },
+    };
+    const backupHandle = {
+      kind: 'directory', name: 'AutorunBackup',
+      async *values() {},
+      async getFileHandle(name) { return makeWriteFile(name); },
+    };
+    window.showDirectoryPicker = async (options) =>
+      options && options.mode === 'readwrite' ? backupHandle : sourceHandle;
+  });
+}
+
 async function login(page) {
   const overlay = page.locator('.login-start-overlay');
   await overlay.waitFor({ state: 'visible', timeout: 15_000 });
@@ -106,9 +148,22 @@ async function login(page) {
 }
 
 async function openWidget(page, label) {
-  const widget = page.locator('.sidebar-widget', {
-    has: page.locator('.sidebar-widget__label', { hasText: new RegExp(label, 'i') }),
-  }).first();
+  // EXACT-MATCH FIRST: labels carry a leading glyph; "scribe" must resolve to
+  // "Scribe", NOT "Transcribe" (which also contains the substring "scribe").
+  // Compare the label text stripped of leading non-letters, case-insensitively.
+  const labels = page.locator('.sidebar-widget__label');
+  const n = await labels.count();
+  let exactIdx = -1;
+  for (let i = 0; i < n; i++) {
+    const raw = (await labels.nth(i).textContent()) || '';
+    const stripped = raw.replace(/^[^\p{L}]+/u, '').trim().toLowerCase();
+    if (stripped === label.toLowerCase()) { exactIdx = i; break; }
+  }
+  const widget = exactIdx >= 0
+    ? labels.nth(exactIdx).locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " sidebar-widget ")][1]')
+    : page.locator('.sidebar-widget', {
+        has: page.locator('.sidebar-widget__label', { hasText: new RegExp(label, 'i') }),
+      }).first();
   await widget.waitFor({ state: 'visible', timeout: 12_000 });
   await widget.click();
   await page.waitForTimeout(1200); // window mount + first data fetch
@@ -373,6 +428,70 @@ async function runAction(page, action, res) {
       res.pass = pass;
       res.note = `hermes-learning typeable=${typeable} runEnabled=${runEnabled} result=${resultShown} rating=${ratingVisible} thanks=${thanks} persisted=${persisted ? `${persisted.key}(runs=${persisted.count},rated=${persisted.rated})` : 'NONE'}`;
       return `learning loop: result=${!!resultShown} rated=${!!ratingVisible} persisted=${!!persisted}`;
+    }
+
+    case 'scribe-ingest': {
+      // Scribe folder ingestion: pick a source + backup folder (fake picker
+      // injected above), run "Convert now", and PROVE the real convert→write
+      // pipeline ran — files written to backup + the converted index persisted.
+      const panel = page.locator('.scribe-ingest').first();
+      await panel.waitFor({ state: 'visible', timeout: 10_000 });
+      panel.scrollIntoViewIfNeeded?.();
+      // Panel must be in the SUPPORTED state (picker injected) — not the
+      // "unsupported browser" message.
+      const pickBtns = panel.locator('.scribe-ingest__pick');
+      const supported = (await pickBtns.count()) >= 2;
+      if (!supported) {
+        res.pass = false;
+        res.note = 'scribe-ingest panel UNSUPPORTED — no picker buttons (showDirectoryPicker missing?)';
+        return 'ingestion panel unsupported';
+      }
+      // Pick source → assert name shows.
+      await pickBtns.nth(0).click();
+      await page.waitForTimeout(500);
+      const sourceName = (await panel.locator('[data-testid="ingest-source-name"]').textContent().catch(() => '')) || '';
+      // Pick backup → assert name shows.
+      await pickBtns.nth(1).click();
+      await page.waitForTimeout(500);
+      const backupName = (await panel.locator('[data-testid="ingest-backup-name"]').textContent().catch(() => '')) || '';
+      // Convert now must now be enabled.
+      const convertBtn = panel.locator('.scribe-ingest__convert').first();
+      const convertEnabled = !(await convertBtn.isDisabled());
+      if (convertEnabled) await convertBtn.click();
+      await page.waitForTimeout(2500); // enumerate + convert + write
+      const statusTxt = (await panel.locator('[data-testid="ingest-status"]').textContent().catch(() => '')) || '';
+      const indexMatch = statusTxt.match(/(\d+)\s+file\(s\)\s+in\s+index/);
+      const indexed = indexMatch ? Number(indexMatch[1]) : 0;
+      // The backup folder actually received the converted Markdown writes.
+      const writes = await page.evaluate(() => (window.__ingestWrites || []).map((w) => w.name));
+      // The converted index persisted to the per-user scribe-ingestion store.
+      const persisted = await page.evaluate(() => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i) || '';
+          if (!k.startsWith('scribe-ingestion:')) continue;
+          try {
+            const o = JSON.parse(localStorage.getItem(k) || '{}');
+            if (Array.isArray(o.converted) && o.converted.length) {
+              return { key: k, n: o.converted.length, lastSync: o.lastSyncAt || null,
+                statuses: o.converted.map((e) => e.status) };
+            }
+          } catch { /* skip */ }
+        }
+        return null;
+      });
+      const wroteMd = writes.includes('notes.md') && writes.includes('readme.md');
+      const pass = supported
+        && /AutorunSource/.test(sourceName)
+        && /AutorunBackup/.test(backupName)
+        && convertEnabled
+        && indexed === 3
+        && wroteMd
+        && !!persisted && persisted.n === 3;
+      res.pass = pass;
+      res.note = `scribe-ingest source="${sourceName.trim().slice(0, 24)}" backup="${backupName.trim().slice(0, 24)}" `
+        + `convertEnabled=${convertEnabled} indexed=${indexed} writes=[${writes.join(',')}] `
+        + `persisted=${persisted ? `${persisted.key}(n=${persisted.n},statuses=[${persisted.statuses.join(',')}])` : 'NONE'}`;
+      return `ingest: picked=${/AutorunSource/.test(sourceName) && /AutorunBackup/.test(backupName)} indexed=${indexed} wroteMd=${wroteMd} persisted=${!!persisted}`;
     }
 
     default:

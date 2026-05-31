@@ -263,3 +263,58 @@ hermes-learning typeable=true runEnabled=true result=1 rating=1 thanks=1 \
 ### Cycle status
 - Cycle 6 (Hermes learning — rating + record): ✅ DONE — loop was dead offline, now FIXED.
 - Next: Cycle 7 (Scribe ingestion — pickers + Convert now).
+
+---
+
+## Cycle 7 — Scribe ingestion: pickers + Convert now (2026-05-31)
+
+**Goal:** confirm the source/backup folder pickers open and "Convert now" runs the
+convert→write path (or shows the right state without a backend); fix if dead.
+
+### What I found
+- Scribe ingestion (`IngestionPanel` in Scribe's EmptyState, wired `onConvert={convert}`
+  from `useIngestion`) was NEVER runtime-verified — two blockers:
+  1. **Harness collision.** `_drive.mjs` matched the sidebar label by substring, and
+     `scribe` matches **Transcribe** first → the driver opened the wrong widget (Cycle-1
+     baseline flagged this as ⏳ "not isolated yet").
+  2. **No picker headless.** The convert pipeline gates on `window.showDirectoryPicker`
+     (File System Access API), which headless Chromium does NOT expose and whose OS
+     dialog can't be automated → panel renders the honest "unsupported browser" message.
+
+### Fix (harness-only — `Scripts/autorun/_drive.mjs`; ZERO production source changed)
+1. **Exact-label match.** `openWidget` now strips the leading glyph and matches the label
+   by case-insensitive equality FIRST (falls back to substring) → `scribe` deterministically
+   resolves to **Scribe**, never **Transcribe**. Helps every future cycle.
+2. **Injected fake FS picker** (gated on `scribe-ingest` action via `addInitScript`): an
+   in-memory source dir (`notes.html`, `readme.md`, `budget.csv`) + a backup dir that records
+   writes to `window.__ingestWrites`. ONLY the OS picker is stubbed — the real
+   `useIngestion → convertFolder → convertFile → writeMarkdown` pipeline runs unmodified.
+3. **New `scribe-ingest` action**: pick source → pick backup → assert both names render →
+   assert "Convert now" enables → click → assert the converted index, the backup writes,
+   and per-user persistence.
+
+### Runtime proof (PASS, exit 0; served build :3460)
+```
+scribe-ingest source="AutorunSource" backup="AutorunBackup" convertEnabled=true \
+  indexed=3 writes=[notes.md,readme.md] \
+  persisted=scribe-ingestion:212089d6-…(n=3,statuses=[converted,passthrough,queued-backend])
+```
+- Picked both folders → Convert now enabled → ran. `indexed=3` with the EXACT engine
+  statuses: `notes.html`→**converted** (html→md), `readme.md`→**passthrough**,
+  `budget.csv`→**queued-backend** (not browser-convertible, deferred to `/api/ingest/convert`).
+- `writes=[notes.md,readme.md]` — the backup folder ACTUALLY received the converted Markdown;
+  the csv was correctly NOT written (queued, not errored).
+- Index persisted to the per-user `scribe-ingestion:<uid>` store (n=3). (`scribe-ingest.png`)
+- The convert path FUNCTIONS end-to-end — verdict ✅ (no production fix needed; it had simply
+  never been driven at runtime before).
+
+### Gate (green)
+- `tsc -b` rc=0 ✓ · `vitest run` **661/661** (75 files) ✓ · SSR smoke
+  (`SMOKE_TEST_PORT=3458`, existing build) **PASS** (0 console / 0 warnings / 0 page errors) ✓.
+  (No `qualia-shell/src` touched — harness-only change is outside tsc/vitest scope; gate run
+  confirms zero regression.)
+
+### Cycle status
+- Cycle 7 (Scribe ingestion — pickers + Convert now): ✅ DONE — verified working; harness
+  unblocked for Scribe.
+- Next: Cycle 8 (Statute matching — render matched statutes w/ similarity/excerpt).

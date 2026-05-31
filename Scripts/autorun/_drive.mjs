@@ -168,6 +168,27 @@ async function runAction(page, action, res) {
       return `captured "${txt}"; filedSignal=${filed}`;
     }
 
+    case 'tw-generate': {
+      // Thought Weaver Reports tab: click Generate now, assert a report/insight renders.
+      const reportsTab = page.locator('.tw-tab', { hasText: /Reports/i }).first();
+      await reportsTab.waitFor({ state: 'visible', timeout: 8_000 });
+      await reportsTab.click();
+      await page.waitForTimeout(800);
+      const genBtn = page.locator('.tw-reports__gen-btn').first();
+      await genBtn.waitFor({ state: 'visible', timeout: 8_000 });
+      const wasDisabled = await genBtn.isDisabled();
+      if (!wasDisabled) await genBtn.click();
+      // generation runs async (heuristic w/o LLM, or LLM call) — give it room.
+      await page.waitForTimeout(4000);
+      const cards = await page.locator('.tw-report-card').count();
+      const insights = await page.locator('.tw-insight').count();
+      const msg = (await page.locator('.tw-reports__msg').first().textContent().catch(() => '')) || '';
+      const generated = cards > 0 || insights > 0 || /Generated/i.test(msg);
+      res.pass = generated;
+      res.note = `tw-generate btnDisabled=${wasDisabled} cards=${cards} insights=${insights} msg="${msg.trim().slice(0, 80)}"`;
+      return `reports: cards=${cards} insights=${insights} msg=${msg.trim().slice(0, 60)}`;
+    }
+
     default:
       res.note = `unknown action "${action}" — opened only`;
       res.pass = res.opened;

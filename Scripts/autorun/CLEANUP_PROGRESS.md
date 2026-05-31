@@ -87,3 +87,37 @@ capture→categorize actually fire with NO LLM and NO backend):
 - Cycle 1 (harness + FEATURE_STATUS baseline): ✅ DONE.
 - Next: Cycle 3 (TW Reports/Insights generate) — but first **fix Workspace domaines 404**
   is the highest-value real break found; consider pulling it forward, else continue list order.
+
+---
+
+## Iteration — Cycle 3 DONE: ThoughtWeaver Reports + Insights generate (runtime-verified) (2026-05-31)
+
+**ETA per step:** read TW source (~2m) → add `tw-generate` driver action (~1m) → build (~1m) → serve+drive (~1m) → log+commit (~1m).
+
+### What I did
+- Audited the Reports tab path in `ThoughtWeaver.tsx` (`runGenerate` → `reportEngine.generateReports`
+  → local-first `reportStore`/`todoStore`; LLM injected via `callLlm(req, integrations.llm)`).
+  This code shipped in the prior scribe-ingest arc ("Cycle 13"); my job was to PROVE it fires.
+- Added a reusable `tw-generate` action to `Scripts/autorun/_drive.mjs`: open TW → Reports tab →
+  click "✨ Generate now" → assert a `.tw-report-card`/`.tw-insight` renders or genMsg says "Generated".
+
+### Runtime proof (PASS, exit 0)
+```
+DRIVE_RESULT {"widget":"thought","action":"tw-generate","opened":true,
+ "assertion":"reports: cards=2 insights=0 msg=Generated daily report, weekly summary, 0 insights.",
+ "pass":true,"note":"btnDisabled=false cards=2 insights=0 msg=\"Generated daily report, weekly summary, 0 insights.\""}
+```
+Screenshot `cleanup-shots/tw-reports.png` shows **Daily Reports** card (2026-05-25, 1 capture) +
+**Weekly Summaries** card (Week of 2026-05-25, 1 capture) rendered from backend captures.
+`insights=0` is the CORRECT no-LLM state (heuristic-only; insights pass is LLM-gated by design —
+the in-UI hint says exactly this).
+
+### Verification
+- No `qualia-shell/src/**` production source touched → build/tests unaffected; fresh
+  `npx react-router build` rc=0 (logged at /tmp/twbuild.log). Cycle-2 green stands.
+- Cross-cutting `/api/* 404`s persist (missing backend bucket routes) — NOT on the Reports path
+  (Reports is local-first, no backend dependency). Tracked as cross-cutting in FEATURE_STATUS.
+
+### Cycle status
+- Cycle 3 (TW Reports/Insights generate): ✅ DONE — runtime-verified working, no fix needed.
+- Next: Cycle 4 (Honcho — Add Memory + Files arrange/filter).

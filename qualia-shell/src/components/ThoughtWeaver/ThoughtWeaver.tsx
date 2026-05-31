@@ -45,6 +45,7 @@ import {
     insightToHonchoSeed,
     buildTwContextDigest,
 } from './thoughtWeaverLinkage';
+import { localCategorize } from './localCategorizer';
 import './ThoughtWeaver.css';
 
 // ── Daily to-do synthesis ────────────────────────────────────────────
@@ -239,6 +240,9 @@ export default function ThoughtWeaver() {
     const [lastResult, setLastResult] = useState<{ filed_to: string; confidence: number; destination_name: string | null } | null>(null);
     const [seeded, setSeeded] = useState(false);
     const [resolveId, setResolveId] = useState<string | null>(null);
+    // How the most recent capture was sorted — surfaced honestly in the toast
+    // instead of silently swallowing where the result came from.
+    const [captureSource, setCaptureSource] = useState<'llm' | 'backend' | 'local' | null>(null);
 
     // ── Data fetching ────────────────────────────────────────────────
 
@@ -336,6 +340,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0.5;
                     const destination_name = parsed.destination_name || null;
                     setLastResult({ filed_to, confidence, destination_name });
+                    setCaptureSource('llm');
                     persistLocally(filed_to, confidence, destination_name);
                     setText('');
                     setLoading(false);
@@ -360,6 +365,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             const json = await res.json();
             if (json.success) {
                 setLastResult({ filed_to: json.data.filed_to, confidence: json.data.confidence, destination_name: json.data.destination_name });
+                setCaptureSource('backend');
                 persistLocally(json.data.filed_to, json.data.confidence, json.data.destination_name);
                 setText('');
                 fetchCaptures();
@@ -369,10 +375,15 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             }
         } catch { /* backend offline AND no LLM configured — still persist locally */ }
 
-        // ── 3) Both LLM and backend unavailable: still keep the thought ──
-        // The user said: "make it always persistent". Treat as needs_review.
-        persistLocally('needs_review', 0, null);
-        setLastResult({ filed_to: 'needs_review', confidence: 0, destination_name: null });
+        // ── 3) Both LLM and backend unavailable: categorize LOCALLY ──
+        // Offline must not mean "do nothing". Run the deterministic heuristic so
+        // the thought is actually sorted into People/Projects/Ideas/Tasks instead
+        // of being dumped as needs_review/confidence-0. This is the difference
+        // between "saved but dead" and "the feature works with no backend".
+        const local = localCategorize(thoughtText);
+        persistLocally(local.filed_to, local.confidence, local.destination_name);
+        setLastResult({ filed_to: local.filed_to, confidence: local.confidence, destination_name: local.destination_name });
+        setCaptureSource('local');
         setText('');
         setLoading(false);
     };
@@ -623,8 +634,15 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 <span className={`tw-confidence tw-confidence--${confidenceLabel(lastResult.confidence).toLowerCase()}`}>
                                     {confidenceLabel(lastResult.confidence)} ({Math.round(lastResult.confidence * 100)}%)
                                 </span>
+                                {captureSource && (
+                                    <span className="tw-source-badge" title="How this thought was sorted">
+                                        {captureSource === 'llm' ? '✨ via your LLM'
+                                            : captureSource === 'backend' ? '🛰 via backend'
+                                            : '💾 sorted locally · offline'}
+                                    </span>
+                                )}
                             </div>
-                            <button className="tw-result__close" onClick={() => setLastResult(null)}>✕</button>
+                            <button className="tw-result__close" onClick={() => { setLastResult(null); setCaptureSource(null); }}>✕</button>
                         </div>
                     )}
 

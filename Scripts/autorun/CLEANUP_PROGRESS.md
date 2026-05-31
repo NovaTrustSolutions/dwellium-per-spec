@@ -478,3 +478,71 @@ Shots: `cleanup-shots/c10-fixed-win680.png` (clean 1-col stack, nothing clipped)
 - Cycle 10 (Dashboard UI Pass 1 — layout + responsiveness): ✅ DONE — grid now reflows on
   WINDOW width 3→2→1 col with zero overflow at every size; runtime-verified.
 - Next: Cycle 11 (Dashboard UI Pass 2 — loading/empty/error states, a11y, zero console errors).
+
+═══════════════════════════════════════════════════════════════════════════════
+## Cycle 11 — DASHBOARD UI PASS 2: states + a11y + zero console errors
+**Date:** 2026-05-31 · Branch `feat/scribe-ingestion-honcho`
+
+### What I tested (runtime, headless Astra on served build :3460)
+Built a new reusable driver action `astra-a11y` (_drive.mjs): raises the Astra
+window, enters Edit mode (renders the 90 per-panel layout controls), freezes CSS
+transitions for deterministic reads, then **Tab-walks every focusable control**
+recording — per control — focus-ring visibility, branded-vs-UA colour (resolved
+against the live theme `--a-accent`), and `outline-offset`. Also counts JS console
+errors (network 404s from the absent backend are excluded — they're caught by the
+data layer's per-section `settle()` and were documented expected since Cycle 9).
+
+### Findings — most of Pass 2 was ALREADY met (honest baseline)
+- ✅ **Zero JS console errors** (only backend-absent 404s, which degrade gracefully).
+- ✅ **Zero focus-INVISIBLE controls** — every control shows a ring (WCAG 2.4.7 OK).
+- ✅ **Full WAI-ARIA tabs pattern** already present: `role=tablist/tab/tabpanel`,
+  roving `tabIndex`, ArrowLeft/Right/Up/Down + Home/End (`onTabKeyDown`), `aria-selected`,
+  `aria-controls`, `aria-labelledby` (AstraDashboard.tsx:1317-1374).
+- ✅ **0 dead/unlabeled buttons** (all 19 icon buttons carry `aria-label`).
+- ✅ **Consistent loading/empty/error states** — unified `PanelStatus` helper
+  (`role=status` / `role=alert` / empty) used by 14/16 data panels; the 2 exceptions
+  (HR = always-present sample data; Research = LLM panel) reuse the same
+  `a-panel-state` classes inline. Verified in source.
+
+### The ONE real gap (runtime-measured) + fix
+**Focus-ring OFFSET was inconsistent.** Frozen-transition Tab-walk, BEFORE:
+`offsets=["1px","3px"]` — the per-panel layout edit controls (`.a-panel-ctrl`:
+move ◂▴▾▸ + hide ✕) had **no local `:focus-visible` rule**, so they fell back to
+the *global* `styles/global.css:65` ring at `outline-offset: 3px`, while every
+other dashboard control uses `1px`. A keyboard user editing the layout saw a
+looser ring than everywhere else.
+
+Fix — one consolidated rule appended to `AstraDashboard.css` (mirrors the existing
+`var(--a-accent)` 2px-solid pattern), placed last so it harmonises every control:
+```css
+.astra-dashboard :is(button, a[href], input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--a-accent);
+    outline-offset: 1px;
+    border-radius: inherit;
+}
+```
+Keyboard-only by design (`:focus-visible` never fires on mouse click); theme-aware
+(`--a-accent` = `var(--accent, #D6FE51)`, follows the active skin).
+
+### Runtime proof (frozen-transition Tab-walk, same harness, both on rebuilt artifacts)
+| | offsets | branded | focus-invisible | JS errors | verdict |
+|---|---|---|---|---|---|
+| BEFORE | `["1px","3px"]` | all | 0 | 0 | FAIL (mixed offset) |
+| AFTER  | `["1px"]`       | all | 0 | 0 | **PASS** |
+Shots: `cleanup-shots/c11-a11y-before.png`, `c11-a11y-after.png`.
+
+> Honesty note (anchor-bias discipline): my first hypothesis — "controls lacking a
+> local `:focus-visible` rule have INVISIBLE focus" — was REFUTED at runtime (the
+> global rule + UA defaults always render a ring). The real, narrower defect was an
+> offset *inconsistency*, not invisibility. Recorded as found, not as assumed.
+
+### Gate (green)
+- `tsc -b` rc=0 ✓ · `vitest run` **667/667** (76 files; +0 — CSS-only) ✓ ·
+  `react-router build` ✓ · `verify_no_pii_leak` clean ✓ · SSR smoke
+  (`SMOKE_TEST_PORT=3458`) **PASS** (0 console / 0 warnings / 0 page errors) ✓.
+
+### Cycle status
+- Cycle 11 (Dashboard UI Pass 2 — states + a11y + zero console errors): ✅ DONE —
+  states/a11y verified already-solid; focus-ring offset unified 1px/3px → 1px;
+  runtime-verified before/after.
+- Next: Cycle 12 (CLOSURE — CLEANUP_CLOSURE.md per-feature table + ALL_DONE).

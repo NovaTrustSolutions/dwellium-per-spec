@@ -735,6 +735,100 @@ async function runAction(page, action, res) {
       return res.note;
     }
 
+    case 'astra-a11y': {
+      // Dashboard UI Pass 2 (Cycle 11): keyboard focus-visibility audit. Raise
+      // the Astra window, enter Edit mode so the layout controls (a-panel-ctrl /
+      // a-layout-addbtn) render + become focusable, then Tab through every
+      // focusable control and record any whose keyboard-focus indicator is
+      // INVISIBLE (no outline AND no box-shadow under :focus-visible). A keyboard
+      // user can't see where focus is on those — WCAG 2.4.7 fail.
+      const astraWin = page.locator('.window', { has: page.locator('.astra-dashboard') }).first();
+      if (await astraWin.count()) {
+        await astraWin.locator('.window__titlebar').first().click().catch(() => {});
+      }
+      await page.waitForTimeout(300);
+      if (!(await page.locator('.astra-dashboard').count())) {
+        res.pass = false; res.note = 'astra-a11y: .astra-dashboard not mounted';
+        return res.note;
+      }
+      // Enter Edit mode (renders the per-panel layout controls + add-bar).
+      const editBtn = page.locator('.astra-dashboard .a-tab-edit').first();
+      if (await editBtn.count()) { await editBtn.click().catch(() => {}); await page.waitForTimeout(400); }
+
+      const editEngaged = await page.locator('.astra-dashboard .a-panel-ctrl').count();
+      // Freeze CSS transitions so computed outline-offset/colour reads are taken
+      // at the SETTLED focus state, not mid-`transition: all 0.2s` interpolation
+      // (which made offsets flicker 0px↔1px between reads).
+      await page.addStyleTag({ content: '*,*::before,*::after{transition:none !important;animation:none !important}' });
+      // Start the Tab walk from the first tab so focus enters the dashboard.
+      await page.locator('.astra-dashboard #a-tab-dashboard').first().focus().catch(() => {});
+      const invisible = new Map();
+      const visited = new Set();
+      const offsets = new Set();
+      const sig = new Map();
+      let jsErrors = 0;
+      for (const e of res.consoleErrors) {
+        // Network 404s (backend absent) are expected offline; only count real JS errors.
+        if (!/Failed to load resource|404|net::ERR|status of 4\d\d|status of 5\d\d/i.test(e)) jsErrors++;
+      }
+      for (let i = 0; i < 120; i++) {
+        await page.keyboard.press('Tab');
+        const probe = await page.evaluate(() => {
+          const el = document.activeElement;
+          const dash = document.querySelector('.astra-dashboard');
+          if (!el || !dash || !dash.contains(el)) return null;
+          const cs = getComputedStyle(el);
+          const ow = parseFloat(cs.outlineWidth) || 0;
+          const hasOutline = ow > 0 && cs.outlineStyle !== 'none';
+          const hasShadow = cs.boxShadow && cs.boxShadow !== 'none';
+          const focusInvisible = !hasOutline && !hasShadow;
+          // Resolve the dashboard's accent (theme-driven) once, so "branded" is
+          // a colour-match against the LIVE theme rather than a hard-coded hue.
+          const accent = getComputedStyle(dash).getPropertyValue('--a-accent').trim()
+            || getComputedStyle(dash).getPropertyValue('--accent').trim();
+          // Normalise colours via a probe element so #hex and rgb() compare equal.
+          const norm = (c) => { try { const s = new Option().style; s.color = c; return s.color; } catch { return c; } };
+          const accN = norm(accent);
+          const sameColor = norm(cs.outlineColor) === accN;
+          const branded = hasOutline && cs.outlineStyle === 'solid' && sameColor;
+          const cls = (el.className || '').toString().trim().split(/\s+/)[0] || el.tagName.toLowerCase();
+          return {
+            cls, tag: el.tagName.toLowerCase(), focusInvisible, branded,
+            outlineStyle: cs.outlineStyle,
+            outlineOffset: cs.outlineOffset,
+            matchesFV: typeof el.matches === 'function' ? el.matches(':focus-visible') : false,
+          };
+        });
+        if (!probe) {
+          // Focus left the dashboard (or hit a non-dashboard chrome element);
+          // once we've walked a while and fallen out, stop.
+          if (i > 6) break;
+          continue;
+        }
+        visited.add(probe.cls);
+        offsets.add(probe.outlineOffset);
+        // Record per-class focus signature (branded?, offset) for consistency.
+        if (!sig.has(probe.cls)) sig.set(probe.cls, { cls: probe.cls, branded: probe.branded, offset: probe.outlineOffset, invisible: probe.focusInvisible });
+        if (probe.matchesFV && (probe.focusInvisible || !probe.branded)) {
+          const rec = invisible.get(probe.cls) || {
+            cls: probe.cls, tag: probe.tag, count: 0,
+            invisible: probe.focusInvisible, outlineStyle: probe.outlineStyle,
+          };
+          rec.count++;
+          invisible.set(probe.cls, rec);
+        }
+      }
+      const offenders = Array.from(invisible.values());
+      // Consistency: a keyboard user should see the SAME focus-ring offset on
+      // every dashboard control. Mixed offsets (local 1px vs global 3px) read
+      // as visually inconsistent. Flag when >1 distinct offset is in play.
+      const offsetList = Array.from(offsets);
+      const inconsistentOffset = offsetList.length > 1;
+      res.pass = offenders.length === 0 && jsErrors === 0 && !inconsistentOffset;
+      res.note = `astra-a11y jsErrors=${jsErrors} editCtrls=${editEngaged} visited=${visited.size} offsets=${JSON.stringify(offsetList)} unbranded=${JSON.stringify(offenders)} sig=${JSON.stringify(Array.from(sig.values()))}`;
+      return res.note;
+    }
+
     default:
       res.note = `unknown action "${action}" — opened only`;
       res.pass = res.opened;

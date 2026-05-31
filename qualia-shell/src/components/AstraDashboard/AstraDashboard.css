@@ -2426,3 +2426,23 @@
     color: var(--a-text);
     background: var(--a-surface-2);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Unified keyboard focus ring (Cycle 11 — Dashboard UI Pass 2).
+ *
+ * Every interactive control inside the dashboard shares ONE branded
+ * focus-visible affordance: a 2px solid accent ring at a consistent 1px
+ * offset. Previously, controls with an explicit per-control rule got 1px
+ * while rule-less controls (a-panel-ctrl, a-layout-addbtn, a-research-chip,
+ * a-research-go) fell back to the global :focus-visible offset of 3px — so
+ * a keyboard user saw three different ring offsets (1px / 0px / 3px,
+ * runtime-measured) while tabbing through the same surface. This single
+ * rule, placed last, harmonises them. Keyboard-only by design
+ * (:focus-visible never fires on mouse click).
+ * ═══════════════════════════════════════════════════════════════════════ */
+.astra-dashboard
+    :is(button, a[href], input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--a-accent);
+    outline-offset: 1px;
+    border-radius: inherit;
+}

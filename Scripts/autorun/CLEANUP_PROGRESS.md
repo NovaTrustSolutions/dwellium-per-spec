@@ -209,3 +209,57 @@ stella/stella-hermes — typeable=true sendEnabled=true userMsg=1 hermesReply=tr
 ### Cycle status
 - Cycle 5 (Stella — tool catalog search + /hermes spawn): ✅ DONE — catalog VERIFIED, /hermes FIXED.
 - Next: Cycle 6 (Hermes learning — rating + record to `hermesLearningStore`).
+
+---
+
+## Cycle 6 — Hermes learning: rating + record to `hermesLearningStore` ✅ FIXED + VERIFIED
+
+ETA recap: audit (~3m) → fix (~3m) → build+drive (~4m) → gate (~5m) → commit (~2m).
+
+### The real break I found + fixed (same renders-but-dead class as Cycle 5)
+The store (`hermesLearningStore.ts`) + runner (`hermesRunner.ts`) are well-built and
+unit-tested — but the **only UI path that feeds them was unreachable offline**:
+- `HonchoHermesPanel` "⚡ Hermes" tab: the delegate input + Run button were
+  `disabled={!hermesOnline || hermesRunning}`. `hermesOnline` = `/api/hermes/status`'s
+  `ollamaOnline`, which is `false` in this env (python/Ollama agent down) → **you could
+  never delegate a task → `recordRun` never fired → the 👍/👎 control never appeared →
+  the entire Cycle-6 learning loop was structurally dead offline.**
+- Even if you forced a run, `delegateToHermes` only set `hermesResult` on
+  `outcome === 'success'`; an offline run fails → no result → and the rating control is
+  nested inside the `{hermesResult && ...}` block → still no rating control.
+
+### Fix (`HonchoHermesPanel.tsx`, 2 edits) — mirrors the Cycle-5 Stella `/hermes` fix
+1. **Delegation reachable offline.** Dropped `!hermesOnline` from both `disabled` props
+   (kept `hermesRunning` + empty-prompt guards). The runner is backend-INDEPENDENT at the
+   resolution level (never throws; records every run incl. failures; surfaces a graceful
+   message), so an offline delegation is safe + honest. Placeholder now reads
+   *"Ask Hermes anyway — offline runs still record for learning..."* when offline.
+2. **Result renders on failure.** Added an `else` branch setting `hermesResult` to
+   *"⚡ Hermes could not finish this task — <error>"* so the result block + 👍/👎 control
+   render after an offline/failed run. Rating a failed run is legitimate feedback (it
+   down-weights that path next time).
+The "Hermes Offline 💤" status banner is unchanged — the offline state stays honest.
+
+### Runtime proof (PASS, exit 0; served build :3460, real backend :3000, Ollama down)
+```
+hermes-learning typeable=true runEnabled=true result=1 rating=1 thanks=1 \
+  persisted=hermes:learning:212089d6-4e89-43fe-a0eb-0a2f16290ee8(runs=1,rated=1)
+```
+- A task was delegated offline, the run recorded, the 👍 was clicked, "Thanks — Hermes
+  will remember." rendered, AND the per-user store `hermes:learning:<uid>` now holds the
+  run with `rating === 1`. That is the exact Cycle-6 assertion.
+- The 9× `404 (Not Found)` console errors = `/api/hermes/delegate` offline = correct
+  offline state; the run still recorded + got rated. (`hermes-learning.png`)
+
+### Harness improvement
+- New driver action `hermes-learning`: delegate → assert result renders → click 👍 →
+  assert `.hhp__rate-thanks` + assert the per-user `hermes:learning:<uid>` store holds a
+  `rating === 1` record.
+
+### Gate (green)
+- `tsc -b` ✓ · `vitest run` **661/661** (75 files) ✓ · `react-router build` rc=0 ✓ ·
+  SSR smoke (`SMOKE_TEST_PORT=3458`) **PASS** (0 console / 0 warnings / 0 page errors) ✓.
+
+### Cycle status
+- Cycle 6 (Hermes learning — rating + record): ✅ DONE — loop was dead offline, now FIXED.
+- Next: Cycle 7 (Scribe ingestion — pickers + Convert now).

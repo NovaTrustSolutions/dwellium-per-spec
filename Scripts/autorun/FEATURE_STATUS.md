@@ -22,7 +22,7 @@ Legend: ✅ works · ⚠️ renders-but-dead/empty/offline · ❌ broken
 | 8 | Fact Check | Fact Check | ⚠️ | "Fact-Check Log" renders with data: 50 claims, 0 verified, 0 disputed, 4% avg conf — all rows UNVERIFIABLE 0%. `+ Paste a claim` input + Check button present. Likely LLM-gated (low confidence = no verifier). `audit-fact.png` |
 | 9 | Workspace | Workspace | ❌ | **"Failed to load domaines — HTTP 404" + Retry.** Domaine list fetch hits a backend route that 404s. Drill-down (Domaine→Project→Thread) blocked at step 1. `audit-workspace.png` |
 | — | Scribe | Scribe | ⏳ | NOT isolated yet — `scribe` regex matched **Transcribe** first. Needs exact-label match next cycle. |
-| — | Hermes | (within Stella/Honcho) | ⚠️ | "Hermes Offline" everywhere — python agent down. /hermes spawn untested. |
+| — | Hermes | (within Stella/Honcho) | ✅ | **Cycle 6 FIXED** — learning loop was renders-but-dead offline: HonchoHermesPanel delegate input/Run were `disabled={!hermesOnline}`, so with Ollama down you could never run → `recordRun` never fired → no 👍/👎 control. Fix: delegation reachable offline (runner is backend-independent + records every run) + result renders on graceful failure so the rating shows. Runtime proof: offline delegate → 👍 → `hermes:learning:<uid>` holds run with `rating===1` (`hermes-learning.png`). /hermes spawn from Stella fixed in Cycle 5. Status banner still honestly shows "Hermes Offline 💤". |
 | — | Statute matching | (within Scribe) | ⏳ | Not reached yet. |
 
 ## Cross-cutting findings

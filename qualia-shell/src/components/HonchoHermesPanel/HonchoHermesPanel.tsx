@@ -292,6 +292,15 @@ export default function HonchoHermesPanel() {
                     metadata: { agent: 'hermes', task },
                 }),
             }).catch(() => {});
+        } else {
+            // Graceful failure (e.g. Ollama offline): the run is STILL recorded to
+            // the learning store, so surface a result + the 👍/👎 control. Rating a
+            // failed run is legitimate feedback — it down-weights the path next time.
+            setHermesResult(
+                run.error
+                    ? `⚡ Hermes could not finish this task — ${run.error}`
+                    : '⚡ Hermes could not finish this task.',
+            );
         }
         setHermesRunning(false);
         setHermesPrompt('');
@@ -604,12 +613,14 @@ export default function HonchoHermesPanel() {
                     <div className="hhp__delegate-section">
                         <h3 className="hhp__section-title">🎯 Delegate Task</h3>
                         <div className="hhp__delegate-row">
-                            <input className="hhp__delegate-input" placeholder="Ask Hermes to investigate, search, or analyze..." aria-label="Hermes task prompt"
+                            <input className="hhp__delegate-input"
+                                placeholder={hermesOnline ? 'Ask Hermes to investigate, search, or analyze...' : 'Ask Hermes anyway — offline runs still record for learning...'}
+                                aria-label="Hermes task prompt"
                                 value={hermesPrompt} onChange={e => setHermesPrompt(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && delegateToHermes()}
-                                disabled={!hermesOnline || hermesRunning} />
+                                disabled={hermesRunning} />
                             <button className="hhp__delegate-btn" onClick={delegateToHermes}
-                                disabled={!hermesOnline || hermesRunning || !hermesPrompt.trim()}>
+                                disabled={hermesRunning || !hermesPrompt.trim()}>
                                 {hermesRunning ? '⏳ Thinking...' : '⚡ Run'}
                             </button>
                         </div>

@@ -329,6 +329,52 @@ async function runAction(page, action, res) {
       return `/hermes spawn: typeable=${typeable} sendEnabled=${sendEnabled} replied=${replied}`;
     }
 
+    case 'hermes-learning': {
+      // Honcho/Hermes "⚡ Hermes" tab: delegate a task (offline runs still record
+      // + degrade gracefully), then 👍 the run and PROVE the rating persists to
+      // the per-user hermes:learning:<uid> store. This is the Cycle-6 loop.
+      await ensureOpen(page, '.hhp', 'Honcho'); // Honcho auto-opens; don't toggle closed
+      const hermesTab = page.locator('.hhp__tab', { hasText: /Hermes/i }).first();
+      await hermesTab.waitFor({ state: 'visible', timeout: 8_000 });
+      await hermesTab.click();
+      await page.waitForTimeout(400);
+      const input = page.locator('.hhp__delegate-input').first();
+      await input.waitFor({ state: 'visible', timeout: 8_000 });
+      const typeable = await input.isEditable();          // fix #2: reachable offline
+      const task = 'investigate the latest maintenance backlog';
+      await input.fill(task);
+      const runBtn = page.locator('.hhp__delegate-btn').first();
+      const runEnabled = !(await runBtn.isDisabled());
+      if (runEnabled) await runBtn.click();
+      // Runner resolves to success OR a recorded graceful failure — never hangs.
+      await page.waitForTimeout(6000);
+      // fix #1: a result renders even on offline failure, so the rating shows.
+      const resultShown = await page.locator('.hhp__result').count();
+      const upBtn = page.locator('.hhp__rate-btn', { hasText: '👍' }).first();
+      const ratingVisible = await upBtn.count();
+      if (ratingVisible) await upBtn.click();
+      await page.waitForTimeout(600);
+      const thanks = await page.locator('.hhp__rate-thanks').count();
+      // Assert: the per-user learning store now holds a run with rating === 1.
+      const persisted = await page.evaluate(() => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i) || '';
+          if (!k.startsWith('hermes:learning:')) continue;
+          try {
+            const arr = JSON.parse(localStorage.getItem(k) || '[]');
+            if (Array.isArray(arr) && arr.length && arr.some(r => r && r.rating === 1)) {
+              return { key: k, count: arr.length, rated: arr.filter(r => r && r.rating === 1).length };
+            }
+          } catch { /* skip */ }
+        }
+        return null;
+      });
+      const pass = !!resultShown && !!ratingVisible && !!thanks && !!persisted;
+      res.pass = pass;
+      res.note = `hermes-learning typeable=${typeable} runEnabled=${runEnabled} result=${resultShown} rating=${ratingVisible} thanks=${thanks} persisted=${persisted ? `${persisted.key}(runs=${persisted.count},rated=${persisted.rated})` : 'NONE'}`;
+      return `learning loop: result=${!!resultShown} rated=${!!ratingVisible} persisted=${!!persisted}`;
+    }
+
     default:
       res.note = `unknown action "${action}" — opened only`;
       res.pass = res.opened;

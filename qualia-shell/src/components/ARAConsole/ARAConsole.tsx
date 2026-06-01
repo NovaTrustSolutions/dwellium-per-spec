@@ -9,6 +9,7 @@ import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
+import VoiceVisualizer from './VoiceVisualizer';
 
 // ── TTS voice catalog (Cycle 1 of ARA voice arc — 2026-05-28) ────────────
 // Two tiers: OpenAI TTS (high quality, 6 voices, requires the user's OpenAI
@@ -1302,6 +1303,11 @@ export default function ARAConsole() {
                 '--ara-bg-tint': theme.bgTint,
             } as React.CSSProperties}
         >
+            {/* Voice-reactive visualizer overlay — fades in only while ARA (Aura)
+                is speaking; taps the live TTS audio for real audio reactivity.
+                Switchable templates (Galaxy / Orb / Bars / Waveform). */}
+            <VoiceVisualizer active={isSpeaking} audioRef={currentAudioRef} />
+
             {/* Mode Bar */}
             <div className="ara-mode-bar">
                 <div className="ara-mode-selector">

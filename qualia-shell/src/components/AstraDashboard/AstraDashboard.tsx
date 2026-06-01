@@ -24,6 +24,7 @@ import IntelligenceDashboard from './IntelligenceDashboard';
 import ObservabilityPanel from './ObservabilityPanel';
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout } from './useDashboardLayout';
+import { friendlyLoadError } from '../../lib/backendStatus';
 import {
     fetchFinanceSnapshot,
     buildResearchPrompt, RESEARCH_TOPICS, RESEARCH_SYSTEM_PROMPT,
@@ -72,7 +73,7 @@ function PanelStatus({ loading, error, empty, emptyLabel }: {
     if (error) {
         return (
             <div className="a-panel-state a-panel-state--error" role="alert">
-                Couldn’t load data — {error}
+                Couldn’t load data — {friendlyLoadError(error)}
             </div>
         );
     }

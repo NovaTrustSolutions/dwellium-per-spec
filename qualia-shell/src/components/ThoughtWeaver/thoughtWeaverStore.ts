@@ -86,3 +86,25 @@ export function clearLocalCaptures(): void {
         try { localStorage.removeItem(resolveKey()); } catch { /* sandboxed */ }
     });
 }
+
+/**
+ * Re-file a local capture into a user-chosen bucket — a user override of the
+ * AI's guess. The original `text` is preserved verbatim (never re-interpreted);
+ * only `filed_to` changes and `confidence` is set to 1 (user-confirmed). This is
+ * the "never misinterpreted by the AI" guarantee: the user always has the final
+ * say over how their own stored thought is classified.
+ */
+export function recategorizeLocalCapture(id: string, bucket: string): void {
+    if (typeof window === 'undefined') return;
+    const current = thoughtWeaverStore.getSnapshot();
+    let changed = false;
+    const next = current.map(c => {
+        if (c.id !== id) return c;
+        changed = true;
+        return { ...c, filed_to: bucket, confidence: 1 }; // text intentionally untouched
+    });
+    if (!changed) return;
+    thoughtWeaverStore.set(next, () => {
+        try { localStorage.setItem(resolveKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+    });
+}

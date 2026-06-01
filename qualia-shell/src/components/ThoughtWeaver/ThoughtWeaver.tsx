@@ -9,6 +9,7 @@ import {
     appendLocalCapture,
     deleteLocalCapture,
     clearLocalCaptures,
+    recategorizeLocalCapture,
 } from './thoughtWeaverStore';
 import type { LocalCapture } from './thoughtWeaverStore';
 import {
@@ -46,6 +47,8 @@ import {
     buildTwContextDigest,
 } from './thoughtWeaverLinkage';
 import { localCategorize } from './localCategorizer';
+import { deriveStats, deriveBuckets, deriveTimeline } from './localViews';
+import { friendlyLoadError, isBackendDownError } from '../../lib/backendStatus';
 import './ThoughtWeaver.css';
 
 // ── Daily to-do synthesis ────────────────────────────────────────────
@@ -243,6 +246,11 @@ export default function ThoughtWeaver() {
     // How the most recent capture was sorted — surfaced honestly in the toast
     // instead of silently swallowing where the result came from.
     const [captureSource, setCaptureSource] = useState<'llm' | 'backend' | 'local' | null>(null);
+    // Backend reachability — drives the honest "backend offline" banner instead
+    // of silently showing empty panels when the Dwellium backend isn't running.
+    const [backendOffline, setBackendOffline] = useState(false);
+    // Which local capture is being re-filed by the user (category override).
+    const [refileId, setRefileId] = useState<string | null>(null);
 
     // ── Data fetching ────────────────────────────────────────────────
 
@@ -251,7 +259,8 @@ export default function ThoughtWeaver() {
             const res = await fetch(`${API}/captures?limit=20`);
             const json = await res.json();
             if (json.success) setCaptures(json.data);
-        } catch { /* silent */ }
+            setBackendOffline(false);
+        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
     }, []);
 
     const fetchStats = useCallback(async () => {
@@ -259,7 +268,8 @@ export default function ThoughtWeaver() {
             const res = await fetch(`${API}/stats`);
             const json = await res.json();
             if (json.success) setStats(json.data);
-        } catch { /* silent */ }
+            setBackendOffline(false);
+        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
     }, []);
 
     const fetchBucketItems = useCallback(async () => {
@@ -273,7 +283,8 @@ export default function ThoughtWeaver() {
                 ideas: i.success ? i.data : [],
                 admin: a.success ? a.data : [],
             });
-        } catch { /* silent */ }
+            setBackendOffline(false);
+        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
     }, []);
 
     const fetchTimeline = useCallback(async () => {
@@ -281,7 +292,8 @@ export default function ThoughtWeaver() {
             const res = await fetch(`${API}/timeline`);
             const json = await res.json();
             if (json.success) setTimeline(json.data);
-        } catch { /* silent */ }
+            setBackendOffline(false);
+        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
     }, []);
 
     useEffect(() => {
@@ -454,6 +466,35 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         deleteLocalCapture(id);
     }, []);
 
+    // ── Glanceable views from the LOCAL trusted store ────────────────────
+    // The header counts, Dashboard, and Timeline must reflect what's stored on
+    // THIS device even with no backend. Derive them from localCaptures and merge
+    // backend data on top when present, so the views are never blank offline.
+    const effectiveStats = useMemo<Stats>(() => {
+        return stats ?? deriveStats(localCaptures);
+    }, [stats, localCaptures]);
+
+    const effectiveBuckets = useMemo<Record<BucketId, BucketItem[]>>(() => {
+        const local = deriveBuckets(localCaptures);
+        return {
+            people: [...bucketItems.people, ...local.people],
+            projects: [...bucketItems.projects, ...local.projects],
+            ideas: [...bucketItems.ideas, ...local.ideas],
+            admin: [...bucketItems.admin, ...local.admin],
+        };
+    }, [bucketItems, localCaptures]);
+
+    const effectiveTimeline = useMemo<BucketItem[]>(() => {
+        const merged = [...timeline, ...deriveTimeline(localCaptures)];
+        return merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [timeline, localCaptures]);
+
+    // User override of the AI's category on a local capture (never-misinterpreted).
+    const handleRefile = useCallback((id: string, bucket: BucketId) => {
+        recategorizeLocalCapture(id, bucket);
+        setRefileId(null);
+    }, []);
+
     const handleClearAllLocal = useCallback(() => {
         if (localCaptures.length === 0) return;
         const ok = typeof window !== 'undefined' && window.confirm(
@@ -554,14 +595,14 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
     }, [mergedCaptures, reports.insights]);
 
     const allBucketItems = useMemo(() => {
-        if (activeBucket === 'all') return Object.entries(bucketItems).flatMap(([type, items]) => items.map(i => ({ ...i, type })));
-        return bucketItems[activeBucket].map(i => ({ ...i, type: activeBucket }));
-    }, [bucketItems, activeBucket]);
+        if (activeBucket === 'all') return Object.entries(effectiveBuckets).flatMap(([type, items]) => items.map(i => ({ ...i, type })));
+        return effectiveBuckets[activeBucket].map(i => ({ ...i, type: activeBucket }));
+    }, [effectiveBuckets, activeBucket]);
 
     const filteredTimeline = useMemo(() => {
-        if (timelineFilter === 'all') return timeline;
-        return timeline.filter(i => i.type === timelineFilter);
-    }, [timeline, timelineFilter]);
+        if (timelineFilter === 'all') return effectiveTimeline;
+        return effectiveTimeline.filter(i => i.type === timelineFilter);
+    }, [effectiveTimeline, timelineFilter]);
 
     const groupedTimeline = useMemo(() => {
         const groups: Record<string, BucketItem[]> = {};
@@ -581,12 +622,12 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             <div className="tw-header">
                 <div className="tw-header__top">
                     <h2 className="tw-title">🧠 Thought Weaver</h2>
-                    {stats && (
+                    {effectiveStats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: '#D6FE51' }}>👤 {stats.activePeople}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>📁 {stats.activeProjects}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#fbbf24' }}>💡 {stats.totalIdeas}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#34d399' }}>📋 {stats.tasksDue}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#D6FE51' }}>👤 {effectiveStats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>📁 {effectiveStats.activeProjects}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#fbbf24' }}>💡 {effectiveStats.totalIdeas}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#34d399' }}>📋 {effectiveStats.tasksDue}</span>
                         </div>
                     )}
                 </div>
@@ -598,6 +639,24 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     ))}
                 </div>
             </div>
+
+            {/* Honest backend-offline banner — shown when a backend fetch fails
+                because the Dwellium server isn't reachable (your "show the error
+                if the backend isn't up" ask). The local store remains the source
+                of truth, so the views above still work. */}
+            {backendOffline && (
+                <div
+                    className="tw-offline-banner"
+                    role="status"
+                    style={{
+                        margin: '8px 12px 0', padding: '8px 12px', borderRadius: 8,
+                        background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.45)',
+                        color: '#fdba74', fontSize: 12.5, lineHeight: 1.4,
+                    }}
+                >
+                    ⚠ <strong>Backend offline</strong> — the Dwellium server isn’t reachable, so you’re seeing the thoughts stored on this device. Nothing is lost; your captures stay saved here.
+                </div>
+            )}
 
             {/* ─── CAPTURE TAB ─── */}
             {activeTab === 'capture' && (
@@ -682,6 +741,21 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                             <span className="tw-confidence-mini">{Math.round(c.confidence * 100)}%</span>
                                             {c.source === 'local' && (
                                                 <span className="tw-local-badge" title="Stored in this browser — only you can delete it">💾 local</span>
+                                            )}
+                                            {/* User override of the AI's category — you always have the final say. */}
+                                            {c.source === 'local' && (
+                                                refileId === c.id ? (
+                                                    <div className="tw-resolve-picker">
+                                                        {BUCKETS.map(b => (
+                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleRefile(c.id, b.id)} title={`File under ${b.label}`}>
+                                                                {b.icon}
+                                                            </button>
+                                                        ))}
+                                                        <button className="tw-resolve-cancel" onClick={() => setRefileId(null)}>✕</button>
+                                                    </div>
+                                                ) : (
+                                                    <button className="tw-categorize-btn" onClick={() => setRefileId(c.id)} title="Re-file — you decide the category; the AI never has the final say on your stored thought">✎ Re-file</button>
+                                                )
                                             )}
                                             {c.status === 'needs_review' && c.source !== 'local' && (
                                                 resolveId === c.id ? (
@@ -943,15 +1017,15 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             {activeTab === 'dashboard' && (
                 <div className="tw-dashboard">
                     {/* Stats bar */}
-                    {stats && (
+                    {effectiveStats && (
                         <div className="tw-stats-bar">
                             {[
-                                { icon: '🧠', label: 'Captures', value: stats.totalCaptures, color: '#D6FE51' },
-                                { icon: '📥', label: 'To Review', value: stats.pendingReviews, color: '#f97316', highlight: stats.pendingReviews > 0 },
-                                { icon: '👤', label: 'People', value: stats.activePeople, color: '#D6FE51' },
-                                { icon: '📁', label: 'Active', value: stats.activeProjects, color: '#60a5fa' },
-                                { icon: '💡', label: 'Ideas', value: stats.totalIdeas, color: '#fbbf24' },
-                                { icon: '📋', label: 'Due', value: stats.tasksDue, color: '#34d399', highlight: stats.tasksDue > 0 },
+                                { icon: '🧠', label: 'Captures', value: effectiveStats.totalCaptures, color: '#D6FE51' },
+                                { icon: '📥', label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
+                                { icon: '👤', label: 'People', value: effectiveStats.activePeople, color: '#D6FE51' },
+                                { icon: '📁', label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
+                                { icon: '💡', label: 'Ideas', value: effectiveStats.totalIdeas, color: '#fbbf24' },
+                                { icon: '📋', label: 'Due', value: effectiveStats.tasksDue, color: '#34d399', highlight: effectiveStats.tasksDue > 0 },
                             ].map(s => (
                                 <div key={s.label} className={`tw-stat-card ${s.highlight ? 'tw-stat-card--highlight' : ''}`}>
                                     <span className="tw-stat-card__icon">{s.icon}</span>
@@ -972,7 +1046,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 style={activeBucket === b.id ? { background: b.color + '22', color: b.color, borderColor: b.color } : {}}
                                 onClick={() => setActiveBucket(b.id)}>
                                 {b.icon} {b.label}
-                                <span className="tw-bucket-pill__count">{bucketItems[b.id].length}</span>
+                                <span className="tw-bucket-pill__count">{effectiveBuckets[b.id].length}</span>
                             </button>
                         ))}
                     </div>
@@ -998,7 +1072,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                         </div>
                                         <div className="tw-item-card__actions">
                                             <span className="tw-time">{timeAgo(item.createdAt)}</span>
-                                            <button className="tw-delete-btn" onClick={() => handleDelete(item.type || '', item.id)} title="Delete">🗑</button>
+                                            <button className="tw-delete-btn" onClick={() => (item as { source?: string }).source === 'local' ? deleteLocalCapture(item.id) : handleDelete(item.type || '', item.id)} title="Delete">🗑</button>
                                         </div>
                                     </div>
                                 </div>

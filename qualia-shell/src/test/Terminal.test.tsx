@@ -181,4 +181,20 @@ describe('Terminal', () => {
             expect(screen.getByText(/hi there/)).toBeInTheDocument();
         });
     });
+
+    it('treats a malformed capabilities response (no cwd) as offline, not a crash', async () => {
+        // Reproduces the live bug: backend returns success but no data.cwd →
+        // old code threw "Cannot read properties of undefined (reading 'cwd')".
+        mockAuthFetch.mockReset();
+        mockAuthFetch.mockImplementation(async (url: string) => {
+            if (String(url).includes('/capabilities')) return json({ success: true }); // success, but NO data
+            return json({ success: false }, false, 404);
+        });
+        render(<Terminal />);
+        await waitFor(() => {
+            expect(screen.getByText(/Backend terminal unavailable/i)).toBeInTheDocument();
+        });
+        // The cryptic crash text must NOT appear.
+        expect(screen.queryByText(/Cannot read properties/i)).not.toBeInTheDocument();
+    });
 });

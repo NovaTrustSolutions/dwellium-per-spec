@@ -187,6 +187,13 @@ export default function Terminal() {
             if (!capsRes.ok || !capsJson?.success) {
                 throw new Error(capsJson?.error || `Failed to load terminal capabilities (${capsRes.status})`);
             }
+            // Backend responded but the payload is malformed (no cwd). The old
+            // code crashed here with "Cannot read properties of undefined
+            // (reading 'cwd')" — surfaced live this session. Fail clearly and
+            // fall through to the offline shell instead.
+            if (!capsJson.data || typeof capsJson.data.cwd === 'undefined') {
+                throw new Error('Terminal backend unavailable — capabilities response was malformed (no cwd).');
+            }
             setCapabilities(capsJson.data);
 
             const res = await authFetch(`${API_TERMINAL}/sessions`, {

@@ -8,6 +8,9 @@
  */
 import { useState } from 'react';
 import { useScribeStore } from './scribeStore';
+import { getActiveEditorView } from './markdownConfig';
+import { markdownToPdfBytes, downloadPdf } from './pdfExport';
+import { SLASH_COMMANDS, commandSnippet } from './slashCommands';
 
 export function DocumentToolbar() {
     const activeFilepath = useScribeStore((s) => s.activeFilepath);
@@ -22,6 +25,9 @@ export function DocumentToolbar() {
     const [versioning, setVersioning] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [toast, setToast] = useState('');
+    const [exporting, setExporting] = useState(false);
+    const [insertOpen, setInsertOpen] = useState(false);
+    const openFiles = useScribeStore((s) => s.openFiles);
 
     if (!activeFilepath) return null;
 
@@ -53,6 +59,36 @@ export function DocumentToolbar() {
         }
     };
 
+    const handleExportPdf = async () => {
+        if (exporting || !activeFilepath) return;
+        setExporting(true);
+        try {
+            const content = openFiles.find((f) => f.filepath === activeFilepath)?.content ?? '';
+            const base = (activeFilepath.split('/').pop() ?? 'document').replace(/\.md$/i, '');
+            const bytes = await markdownToPdfBytes(base, content);
+            downloadPdf(base, bytes);
+            setToast('✓ Exported PDF');
+            setTimeout(() => setToast(''), 2500);
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    // Insert a Markdown block at the cursor — the slash-command palette surfaced
+    // as a toolbar menu (same command registry the "/" trigger will use).
+    const handleInsertBlock = (id: string) => {
+        const snip = commandSnippet(id);
+        const view = getActiveEditorView();
+        setInsertOpen(false);
+        if (!snip || !view) return;
+        const pos = view.state.selection.main.head;
+        view.dispatch({
+            changes: { from: pos, insert: snip.text },
+            selection: { anchor: pos + snip.cursor },
+        });
+        view.focus();
+    };
+
     return (
         <div className="scribe__toolbar">
             <ToolbarBtn
@@ -72,6 +108,51 @@ export function DocumentToolbar() {
                 title="Save a snapshot of current content"
                 disabled={versioning}
                 onClick={() => void handleVersion()}
+            />
+            <div style={{ position: 'relative' }}>
+                <ToolbarBtn
+                    label="＋ Insert"
+                    title="Insert a block: heading, list, table, quote, code, divider…"
+                    active={insertOpen}
+                    onClick={() => setInsertOpen((v) => !v)}
+                />
+                {insertOpen && (
+                    <div
+                        role="menu"
+                        aria-label="Insert block"
+                        style={{
+                            position: 'absolute', top: '100%', left: 0, zIndex: 60, marginTop: 4,
+                            background: '#111', border: '1px solid #333', borderRadius: 8,
+                            boxShadow: '0 6px 20px rgba(0,0,0,0.5)', padding: 4, minWidth: 190,
+                            maxHeight: 320, overflowY: 'auto',
+                        }}
+                    >
+                        {SLASH_COMMANDS.map((c) => (
+                            <button
+                                key={c.id}
+                                role="menuitem"
+                                onClick={() => handleInsertBlock(c.id)}
+                                title={c.description}
+                                style={{
+                                    display: 'block', width: '100%', textAlign: 'left',
+                                    background: 'transparent', border: 'none', color: '#ddd',
+                                    padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
+                                    fontSize: 12, fontFamily: 'inherit',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = '#222'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                                {c.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+            <ToolbarBtn
+                label={exporting ? '...' : '⬇ PDF'}
+                title="Export this document as a PDF"
+                disabled={exporting}
+                onClick={() => void handleExportPdf()}
             />
             {toast && <span className="scribe__toolbar-toast">{toast}</span>}
             <span style={{ flex: 1 }} />

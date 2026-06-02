@@ -24,6 +24,7 @@ import { Splitter } from './Splitter';
 import { TOC_MIN, TOC_MAX, MINIMAP_MIN, MINIMAP_MAX } from './scribeLayoutStore';
 import IngestionPanel from './ingestion/IngestionPanel';
 import { useIngestion } from './ingestion/useIngestion';
+import { FileTree } from './FileTree';
 import './Scribe.css';
 
 export default function Scribe() {
@@ -198,16 +199,7 @@ function EmptyState() {
             {fetched && files.length > 0 && (
                 <div className="scribe__file-list">
                     <div className="scribe__file-list-header">Your files</div>
-                    {files.map((f) => (
-                        <button
-                            key={f.filepath}
-                            className="scribe__file-item"
-                            onClick={() => void openFile(f.filepath)}
-                        >
-                            <span className="scribe__file-name">{f.filepath}</span>
-                            <span className="scribe__file-meta">{(f.size / 1024).toFixed(1)} KB</span>
-                        </button>
-                    ))}
+                    <FileTree files={files} onOpen={(p) => void openFile(p)} />
                 </div>
             )}
 

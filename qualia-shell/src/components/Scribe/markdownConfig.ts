@@ -175,6 +175,14 @@ export function registerEditorView(view: EditorView): () => void {
     return () => { activeViews.delete(view); };
 }
 
+/** The most-recently-registered editor view (Scribe shows one editor at a time).
+ *  Used by toolbar actions that need to insert text at the cursor. */
+export function getActiveEditorView(): EditorView | null {
+    let last: EditorView | null = null;
+    for (const v of activeViews) last = v;
+    return last;
+}
+
 export function applyEditorThemeToAllViews(theme: ScribeColorTheme): void {
     const ext = syntaxHighlighting(buildHighlightStyle(theme));
     for (const view of activeViews) {

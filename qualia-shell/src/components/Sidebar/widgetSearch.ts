@@ -32,6 +32,18 @@ const WIDGET_SEARCH_PROFILES: Record<string, WidgetSearchProfile> = {
         contexts: ['project execution', 'task board', 'delivery tracking'],
         aliases: ['kanban', 'project board']
     },
+    'task-board': {
+        summary: 'Local-first Kanban board: drag cards between columns, auto-timestamps, bulk-move, resizable columns, and a reversible audit log of every user and AI action.',
+        keywords: ['task', 'board', 'kanban', 'columns', 'drag', 'timestamp', 'bulk', 'audit', 'reversible', 'undo', 'project', 'todo'],
+        contexts: ['task management', 'project execution', 'kanban board', 'work tracking'],
+        aliases: ['kanban', 'task board', 'todo board']
+    },
+    'tag-file': {
+        summary: 'Central Tag file: everything tagged anywhere in the app, in one place. Tag cloud with counts, filter by tag, see each item and where it came from.',
+        keywords: ['tag', 'tags', 'label', 'tagged', 'tag file', 'index', 'organize', 'cross-widget'],
+        contexts: ['organization', 'cross-widget tags', 'tag index', 'knowledge organization'],
+        aliases: ['tags', 'tag file', 'labels']
+    },
     'control-panel': {
         summary: 'Settings and system controls for shell configuration and operational preferences.',
         keywords: ['settings', 'control', 'preferences', 'config', 'system'],

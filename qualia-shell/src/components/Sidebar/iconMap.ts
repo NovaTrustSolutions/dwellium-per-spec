@@ -40,6 +40,7 @@ import {
     Diamond,
     LayoutGrid,
     Layers,
+    Tag,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -80,6 +81,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'file-text':      FileText,
     'file-stack':     FileStack,
     'terminal':       Terminal,
+    'tag':            Tag,
 
     // ── Group Headers ──
     'building':       Building,

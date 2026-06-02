@@ -1,5 +1,10 @@
-import { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, useContext, useSyncExternalStore, ChangeEvent } from 'react';
 import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
+import { UserContext } from '../../context/UserContext';
+import { embedAudioBuffer } from './speakerEmbedder';
+import { identifySpeaker as identifySpeakerByEmbedding, type EnrolledSpeaker } from './speakerLibrary';
+import { speakerLibraryStore, speakerLibraryUserIdHolder } from './speakerLibraryStore';
+import { LocalVoiceLibrary } from './LocalVoiceLibrary';
 import './TranscriptionHub.css';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -60,6 +65,8 @@ interface TranscriptionSegment {
     end: number;
     speaker: string;
     confidence: number;
+    /** Neural voiceprint for this segment (for enroll-from-segment + re-matching). */
+    embedding?: number[];
 }
 
 interface FactCheckResult {
@@ -420,6 +427,15 @@ export default function TranscriptionHub() {
 
     // --- Speaker identification state ---
     const speakerProfilesRef = useRef<Map<string, number[]>>(new Map());
+    // ── Neural speaker library (per-user, local) ──
+    const userCtx = useContext(UserContext);
+    speakerLibraryUserIdHolder.current = userCtx?.user?.id ?? null;
+    const enrolledSpeakers = useSyncExternalStore(
+        speakerLibraryStore.subscribe, speakerLibraryStore.getSnapshot, speakerLibraryStore.getServerSnapshot,
+    );
+    const enrolledRef = useRef<EnrolledSpeaker[]>(enrolledSpeakers);
+    enrolledRef.current = enrolledSpeakers;
+    const latestEmbeddingRef = useRef<number[] | null>(null);
     const currentSpeakerRef = useRef('User');
     const speakerCountRef = useRef(1);
 
@@ -1102,6 +1118,22 @@ export default function TranscriptionHub() {
         return currentSpeakerRef.current;
     }, []);
 
+    // Neural identification: embed the segment's audio and match it against the
+    // enrolled voice library (replaces the old feature-distance heuristic).
+    const identifyAndTag = useCallback(async (segId: string, buffer?: AudioBuffer) => {
+        if (!buffer) {
+            setSegments(prev => prev.map(s => s.id === segId ? { ...s, speaker: 'Unknown' } : s));
+            return;
+        }
+        let embedding: number[] | null = null;
+        try { embedding = await embedAudioBuffer(buffer); } catch { /* model/audio unavailable */ }
+        if (embedding) latestEmbeddingRef.current = embedding;
+        const match = embedding ? identifySpeakerByEmbedding(embedding, enrolledRef.current) : null;
+        setSegments(prev => prev.map(s => s.id === segId
+            ? { ...s, speaker: match ? match.label : 'Unknown', embedding: embedding ?? undefined }
+            : s));
+    }, []);
+
     // ---- MOONSHINE AI TRANSCRIPTION ----
     const startMoonshine = useCallback(async () => {
         if (!moonshineEnabled) return;
@@ -1137,15 +1169,17 @@ export default function TranscriptionHub() {
                     onTranscriptionCommitted(text: string, buffer?: AudioBuffer) {
                         if (!text || text.trim().length === 0) return;
 
-                        // Speaker identification from audio buffer
-                        const speaker = identifySpeaker(buffer);
-
+                        // Neural speaker identification (async): create the segment
+                        // now with a provisional label, then embed the voice and match
+                        // it against the enrolled library; identifyAndTag updates it.
+                        const speaker = 'Unknown';
+                        const segId = crypto.randomUUID();
                         const now = Date.now();
                         const startSec = (now - moonshineStartTimeRef.current) / 1000;
                         moonshineSegCountRef.current++;
 
                         const segment: TranscriptionSegment = {
-                            id: crypto.randomUUID(),
+                            id: segId,
                             text: text.trim(),
                             start: Math.max(0, startSec - 3),
                             end: startSec,
@@ -1154,6 +1188,7 @@ export default function TranscriptionHub() {
                         };
 
                         setSegments(prev => [...prev, segment]);
+                        void identifyAndTag(segId, buffer);
                         setLiveTranscript('');
                         setLiveFinalParts([]);
 
@@ -1198,7 +1233,7 @@ export default function TranscriptionHub() {
             // Fallback to native browser recognition
             startLiveRecognition();
         }
-    }, [moonshineEnabled, factCheckEnabled, identifySpeaker, legalShieldEnabled, setContradictionQueue]);
+    }, [moonshineEnabled, factCheckEnabled, identifySpeaker, identifyAndTag, legalShieldEnabled, setContradictionQueue]);
 
     const stopMoonshine = useCallback(() => {
         if (moonshineRef.current) {
@@ -2871,6 +2906,7 @@ export default function TranscriptionHub() {
 
                     {/* ── Speaker Library ── */}
                     <SpeakerLibraryPanel apiBase={API_TRANSCRIBE} />
+                    <LocalVoiceLibrary getLatestEmbedding={() => latestEmbeddingRef.current} />
                 </div>
             )}
 

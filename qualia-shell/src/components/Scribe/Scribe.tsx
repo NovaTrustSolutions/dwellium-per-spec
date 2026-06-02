@@ -3,7 +3,7 @@
  * AI redlines, inline comments, versioning, and table of contents.
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, type ChangeEvent } from 'react';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { getMarkdownExtensions, registerEditorView } from './markdownConfig';
@@ -25,6 +25,8 @@ import { TOC_MIN, TOC_MAX, MINIMAP_MIN, MINIMAP_MAX } from './scribeLayoutStore'
 import IngestionPanel from './ingestion/IngestionPanel';
 import { useIngestion } from './ingestion/useIngestion';
 import { FileTree } from './FileTree';
+import { SearchPanel } from './SearchPanel';
+import { docxToMarkdown } from './docxConvert';
 import './Scribe.css';
 
 export default function Scribe() {
@@ -191,10 +193,29 @@ function EmptyState() {
         setDraftName('');
     };
 
+    // Import a .docx → Markdown (via mammoth) and open it as a new Scribe file.
+    const handleDocxFile = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        try {
+            const md = await docxToMarkdown(await file.arrayBuffer());
+            const base = file.name.replace(/\.docx$/i, '').trim() || 'imported';
+            const path = `${base}.md`;
+            await useScribeStore.getState().createFile(path, md);
+            await useScribeStore.getState().openFile(path);
+        } catch (err) {
+            console.error('[Scribe] .docx import failed', err);
+            alert('Could not import that .docx file.');
+        }
+    };
+
     return (
         <div className="scribe__empty">
             <h2>Scribe</h2>
             <p>Markdown editor with AI redlines, inline comments, versioning, smart paste.</p>
+
+            <SearchPanel files={files} />
 
             {fetched && files.length > 0 && (
                 <div className="scribe__file-list">
@@ -225,6 +246,11 @@ function EmptyState() {
                     + New File
                 </button>
             )}
+
+            <label className="scribe__new-btn" style={{ cursor: 'pointer', display: 'inline-block' }} title="Import a Word .docx file as Markdown">
+                ⬆ Import .docx
+                <input type="file" accept=".docx" onChange={(e) => void handleDocxFile(e)} style={{ display: 'none' }} />
+            </label>
 
             {fetched && files.length === 0 && !creating && (
                 <p className="scribe__muted">No files yet. Create one to get started.</p>

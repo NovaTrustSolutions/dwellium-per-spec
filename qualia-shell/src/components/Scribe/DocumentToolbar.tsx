@@ -11,6 +11,7 @@ import { useScribeStore } from './scribeStore';
 import { getActiveEditorView } from './markdownConfig';
 import { markdownToPdfBytes, downloadPdf } from './pdfExport';
 import { SLASH_COMMANDS, commandSnippet } from './slashCommands';
+import { downloadDocx } from './docxConvert';
 
 export function DocumentToolbar() {
     const activeFilepath = useScribeStore((s) => s.activeFilepath);
@@ -26,6 +27,7 @@ export function DocumentToolbar() {
     const [deleting, setDeleting] = useState(false);
     const [toast, setToast] = useState('');
     const [exporting, setExporting] = useState(false);
+    const [exportingDocx, setExportingDocx] = useState(false);
     const [insertOpen, setInsertOpen] = useState(false);
     const openFiles = useScribeStore((s) => s.openFiles);
 
@@ -71,6 +73,20 @@ export function DocumentToolbar() {
             setTimeout(() => setToast(''), 2500);
         } finally {
             setExporting(false);
+        }
+    };
+
+    const handleExportDocx = async () => {
+        if (exportingDocx || !activeFilepath) return;
+        setExportingDocx(true);
+        try {
+            const content = openFiles.find((f) => f.filepath === activeFilepath)?.content ?? '';
+            const base = (activeFilepath.split('/').pop() ?? 'document').replace(/\.md$/i, '');
+            await downloadDocx(base, base, content);
+            setToast('✓ Exported DOCX');
+            setTimeout(() => setToast(''), 2500);
+        } finally {
+            setExportingDocx(false);
         }
     };
 
@@ -153,6 +169,12 @@ export function DocumentToolbar() {
                 title="Export this document as a PDF"
                 disabled={exporting}
                 onClick={() => void handleExportPdf()}
+            />
+            <ToolbarBtn
+                label={exportingDocx ? '...' : '⬇ DOCX'}
+                title="Export this document as a Word .docx"
+                disabled={exportingDocx}
+                onClick={() => void handleExportDocx()}
             />
             {toast && <span className="scribe__toolbar-toast">{toast}</span>}
             <span style={{ flex: 1 }} />

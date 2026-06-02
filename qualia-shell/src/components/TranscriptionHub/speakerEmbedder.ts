@@ -15,7 +15,18 @@
  * 'unavailable' and never touches `window`.
  */
 
-const MODEL_ID = 'Xenova/wavlm-base-plus-sv'; // x-vector speaker-verification model
+// Configurable embedding model. WavLM-SV is the verified Transformers.js
+// x-vector default; a stronger model (ECAPA-TDNN / WeSpeaker exported to ONNX)
+// can be selected here, but needs a browser run to validate the load.
+export const MODEL_CANDIDATES = ['Xenova/wavlm-base-plus-sv'];
+let currentModelId = MODEL_CANDIDATES[0];
+export function setEmbedderModel(id: string): void {
+    currentModelId = id;
+    pipePromise = null;        // force reload with the new model
+    mode = 'unavailable';
+}
+export function getEmbedderModel(): string { return currentModelId; }
+
 const TARGET_RATE = 16000;
 
 export type EmbedderMode = 'neural' | 'basic' | 'unavailable';
@@ -88,7 +99,7 @@ async function loadPipeline() {
             // Allow remote model fetch from the HF hub; cache in the browser.
             tjs.env.allowLocalModels = false;
         }
-        const pipe = await tjs.pipeline('audio-xvector', MODEL_ID);
+        const pipe = await tjs.pipeline('audio-xvector', currentModelId);
         mode = 'neural';
         return pipe as (audio: Float32Array, opts?: unknown) => Promise<unknown>;
     } catch (err) {
@@ -139,4 +150,54 @@ export async function embedAudio(audio16k: Float32Array): Promise<number[] | nul
 /** Convenience: embed straight from an AudioBuffer (recorder path). */
 export async function embedAudioBuffer(buffer: AudioBuffer): Promise<number[] | null> {
     return embedAudio(audioBufferToMono16k(buffer));
+}
+
+// ── Energy-based VAD + window gating (pure, testable) ──────────────────
+// A neural VAD (Silero via @ricky0123/vad-web) would be more accurate but is a
+// new dependency + browser-only; this energy VAD is dependency-free and good
+// enough to strip silence and reject too-short/too-quiet windows — both of
+// which otherwise produce unreliable voiceprints.
+
+/** RMS energy per fixed-length frame. */
+export function frameEnergies(samples: Float32Array, frameLen = 400): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < samples.length; i += frameLen) {
+        const end = Math.min(samples.length, i + frameLen);
+        let sq = 0;
+        for (let j = i; j < end; j++) sq += samples[j] * samples[j];
+        out.push(Math.sqrt(sq / Math.max(1, end - i)));
+    }
+    return out;
+}
+
+/** Fraction of frames whose energy exceeds `threshold` (0..1). */
+export function voicedRatio(samples: Float32Array, threshold = 0.01, frameLen = 400): number {
+    const e = frameEnergies(samples, frameLen);
+    if (e.length === 0) return 0;
+    return e.filter(x => x > threshold).length / e.length;
+}
+
+/** Trim leading/trailing silent frames; returns just the voiced span. */
+export function trimSilence(samples: Float32Array, threshold = 0.01, frameLen = 400): Float32Array {
+    const e = frameEnergies(samples, frameLen);
+    const first = e.findIndex(x => x > threshold);
+    let last = -1;
+    for (let i = e.length - 1; i >= 0; i--) { if (e[i] > threshold) { last = i; break; } }
+    if (first < 0 || last < 0) return new Float32Array(0);
+    return samples.slice(first * frameLen, Math.min(samples.length, (last + 1) * frameLen));
+}
+
+export interface EmbedGateOptions { minMs?: number; minVoicedRatio?: number; energyThreshold?: number; }
+
+/**
+ * Should this window be embedded? Requires enough duration AND enough voiced
+ * content — rejecting short/quiet windows is a large accuracy win (a 0.5s "yeah"
+ * or a silent gap yields a garbage voiceprint that flips the speaker).
+ */
+export function shouldEmbed(samples: Float32Array, sampleRate = TARGET_RATE, opts: EmbedGateOptions = {}): boolean {
+    const minMs = opts.minMs ?? 800;
+    const minVoiced = opts.minVoicedRatio ?? 0.25;
+    const thr = opts.energyThreshold ?? 0.01;
+    if ((samples.length / sampleRate) * 1000 < minMs) return false;
+    return voicedRatio(samples, thr) >= minVoiced;
 }

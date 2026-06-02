@@ -96,3 +96,44 @@ export function identifySpeaker(
     }
     return best && best.score >= threshold ? best : null;
 }
+
+/** Minimum gap between top-1 and top-2 cosine scores to accept a match. */
+export const DEFAULT_MARGIN = 0.06;
+
+export interface IdentifyDetail {
+    /** Accepted match — passes BOTH the threshold and the top1-vs-top2 margin. */
+    match: IdentifyResult | null;
+    /** Top-1 candidate regardless of acceptance (for UI / debugging). */
+    best: IdentifyResult | null;
+    /** Top-2 similarity score (−1 if only one enrolled speaker). */
+    runnerUpScore: number;
+    /** best.score − runnerUpScore. */
+    margin: number;
+}
+
+/**
+ * Like identifySpeaker, but also enforces a top-1-vs-top-2 MARGIN so we don't
+ * confidently label a segment when two enrolled voices are nearly tied. Returns
+ * rich detail so callers (smoothing, UI) can reason about confidence.
+ */
+export function identifyWithConfidence(
+    embedding: number[],
+    speakers: EnrolledSpeaker[],
+    opts: { threshold?: number; margin?: number } = {},
+): IdentifyDetail {
+    const threshold = opts.threshold ?? DEFAULT_MATCH_THRESHOLD;
+    const marginReq = opts.margin ?? DEFAULT_MARGIN;
+    const empty: IdentifyDetail = { match: null, best: null, runnerUpScore: -1, margin: 0 };
+    if (!embedding || embedding.length === 0 || speakers.length === 0) return empty;
+
+    const e = l2normalize(embedding);
+    const scored = speakers
+        .map(s => ({ id: s.id, label: s.label, score: cosineSimilarity(e, s.centroid) }))
+        .sort((a, b) => b.score - a.score);
+
+    const best = scored[0];
+    const runnerUpScore = scored.length > 1 ? scored[1].score : -1;
+    const margin = best.score - runnerUpScore;
+    const accepted = best.score >= threshold && margin >= marginReq;
+    return { match: accepted ? best : null, best, runnerUpScore, margin };
+}

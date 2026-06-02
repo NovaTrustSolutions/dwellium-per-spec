@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useContext, useSyncExternalStore, ChangeEvent } from 'react';
 import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
 import { UserContext } from '../../context/UserContext';
-import { embedAudioBuffer } from './speakerEmbedder';
-import { identifySpeaker as identifySpeakerByEmbedding, type EnrolledSpeaker } from './speakerLibrary';
+import { embedAudio, audioBufferToMono16k, trimSilence, shouldEmbed } from './speakerEmbedder';
+import { identifyWithConfidence, type EnrolledSpeaker } from './speakerLibrary';
 import { speakerLibraryStore, speakerLibraryUserIdHolder } from './speakerLibraryStore';
+import { createSpeakerSmoother } from './speakerDiarization';
+import { getSpeakerSettings } from './speakerSettings';
 import { LocalVoiceLibrary } from './LocalVoiceLibrary';
 import './TranscriptionHub.css';
 import { API_BASE } from '../../config';
@@ -436,6 +438,7 @@ export default function TranscriptionHub() {
     const enrolledRef = useRef<EnrolledSpeaker[]>(enrolledSpeakers);
     enrolledRef.current = enrolledSpeakers;
     const latestEmbeddingRef = useRef<number[] | null>(null);
+    const smootherRef = useRef(createSpeakerSmoother({ minSwitchStreak: getSpeakerSettings().minSwitchStreak }));
     const currentSpeakerRef = useRef('User');
     const speakerCountRef = useRef(1);
 
@@ -1121,17 +1124,29 @@ export default function TranscriptionHub() {
     // Neural identification: embed the segment's audio and match it against the
     // enrolled voice library (replaces the old feature-distance heuristic).
     const identifyAndTag = useCallback(async (segId: string, buffer?: AudioBuffer) => {
-        if (!buffer) {
-            setSegments(prev => prev.map(s => s.id === segId ? { ...s, speaker: 'Unknown' } : s));
+        const tag = (label: string, embedding?: number[]) =>
+            setSegments(prev => prev.map(s => s.id === segId
+                ? { ...s, speaker: label, embedding: embedding ?? s.embedding }
+                : s));
+        if (!buffer) { tag(smootherRef.current.current() ?? 'Unknown'); return; }
+
+        const settings = getSpeakerSettings();
+        // #3: strip silence, then gate on duration + voiced content. Too short or
+        // too quiet → don't embed (it'd be a garbage voiceprint); hold current.
+        const voiced = trimSilence(audioBufferToMono16k(buffer));
+        if (!shouldEmbed(voiced, 16000, { minMs: settings.minMs })) {
+            tag(smootherRef.current.current() ?? 'Unknown');
             return;
         }
         let embedding: number[] | null = null;
-        try { embedding = await embedAudioBuffer(buffer); } catch { /* model/audio unavailable */ }
+        try { embedding = await embedAudio(voiced); } catch { /* model/audio unavailable */ }
         if (embedding) latestEmbeddingRef.current = embedding;
-        const match = embedding ? identifySpeakerByEmbedding(embedding, enrolledRef.current) : null;
-        setSegments(prev => prev.map(s => s.id === segId
-            ? { ...s, speaker: match ? match.label : 'Unknown', embedding: embedding ?? undefined }
-            : s));
+        // #4: margin-gated identification, then temporal smoothing.
+        const detail = embedding
+            ? identifyWithConfidence(embedding, enrolledRef.current, { threshold: settings.threshold, margin: settings.margin })
+            : null;
+        const smoothed = smootherRef.current.push(detail?.match?.label ?? 'Unknown');
+        tag(smoothed, embedding ?? undefined);
     }, []);
 
     // ---- MOONSHINE AI TRANSCRIPTION ----
@@ -2906,7 +2921,12 @@ export default function TranscriptionHub() {
 
                     {/* ── Speaker Library ── */}
                     <SpeakerLibraryPanel apiBase={API_TRANSCRIBE} />
-                    <LocalVoiceLibrary getLatestEmbedding={() => latestEmbeddingRef.current} />
+                    <LocalVoiceLibrary
+                        getLatestEmbedding={() => latestEmbeddingRef.current}
+                        getUnknownEmbeddings={() => segments
+                            .filter(s => s.speaker === 'Unknown' && s.embedding && s.embedding.length > 0)
+                            .map(s => s.embedding as number[])}
+                    />
                 </div>
             )}
 

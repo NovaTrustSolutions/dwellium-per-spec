@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { API_BASE } from '../../config';
 import { useUser } from '../../context/UserContext';
+import { runLocalCommand } from './localShell';
 import './Terminal.css';
 
 interface TerminalToolCapability {
@@ -67,6 +68,9 @@ export default function Terminal() {
     const [isBusy, setIsBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [saveMsg, setSaveMsg] = useState<string | null>(null);
+    // True when the backend PTY routes are unreachable — the widget falls back
+    // to a clearly-labeled local offline shell instead of looking dead.
+    const [offline, setOffline] = useState(false);
     const surfaceRef = useRef<HTMLDivElement | null>(null);
     const inputCaptureRef = useRef<HTMLTextAreaElement | null>(null);
     const scrollRef = useRef<HTMLPreElement | null>(null);
@@ -196,6 +200,7 @@ export default function Terminal() {
 
             sessionIdRef.current = json.data.session.id;
             setSession(json.data.session);
+            setOffline(false);
             cursorRef.current = json.data.nextCursor || 0;
             setCursor(cursorRef.current);
             const initialOutput = (json.data.chunks || []).map((chunk: { data: string }) => chunk.data).join('');
@@ -204,6 +209,8 @@ export default function Terminal() {
             setTimeout(() => setSaveMsg(null), 2500);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to start terminal session');
+            // No backend session → switch to the local offline shell.
+            setOffline(true);
         } finally {
             setIsConnecting(false);
             setIsBusy(false);
@@ -247,8 +254,19 @@ export default function Terminal() {
         if (!trimmed) return;
         setCommandInput('');
         focusTerminal();
+        // Offline (no backend session): interpret a small set of commands locally
+        // so the widget is usable + honest instead of silently doing nothing.
+        if (offline || !sessionIdRef.current) {
+            const result = runLocalCommand(trimmed, { cwd: '~' });
+            if (result.clear) {
+                setOutput('');
+            } else {
+                setOutput(prev => trimOutput(`${prev}${prev ? '\n' : ''}$ ${trimmed}\n${result.output}`));
+            }
+            return;
+        }
         await sendRawInput(`${trimmed}\r`);
-    }, [focusTerminal, sendRawInput]);
+    }, [offline, focusTerminal, sendRawInput]);
 
     const sendSignal = useCallback(async (signal: 'SIGINT' | 'SIGTERM' | 'EOF') => {
         if (!sessionIdRef.current) return;
@@ -264,10 +282,11 @@ export default function Terminal() {
     }, [authFetch, focusTerminal]);
 
     const quickCommands = useMemo(() => {
+        if (offline) return ['help', 'date', 'clear'];
         const commands = ['pwd', 'ls -la', 'git status'];
         if (toolMap.get('claude')) commands.push('claude');
         return commands;
-    }, [toolMap]);
+    }, [offline, toolMap]);
 
     return (
         <div className="qualia-terminal">
@@ -311,7 +330,7 @@ export default function Terminal() {
                             key={command}
                             className="qualia-terminal__quick-btn"
                             onClick={() => void runCommand(command)}
-                            disabled={isConnecting || !session}
+                            disabled={isConnecting || (!session && !offline)}
                         >
                             {command}
                         </button>
@@ -319,6 +338,15 @@ export default function Terminal() {
                 </div>
             </div>
 
+            {offline && (
+                <div
+                    className="qualia-terminal__offline"
+                    role="status"
+                    style={{ padding: '6px 12px', background: 'rgba(249,115,22,0.12)', borderTop: '1px solid rgba(249,115,22,0.4)', borderBottom: '1px solid rgba(249,115,22,0.4)', color: '#fdba74', fontSize: 12 }}
+                >
+                    ⚠ Backend terminal unavailable — running a limited <strong>offline shell</strong>. Type <code>help</code>; connect the backend for a full PTY shell.
+                </div>
+            )}
             <div
                 ref={surfaceRef}
                 className="qualia-terminal__surface"
@@ -333,7 +361,7 @@ export default function Terminal() {
                 }}
             >
                 <pre ref={scrollRef} className="qualia-terminal__output">
-                    {output || (isConnecting ? 'Connecting terminal…' : 'Terminal ready. Click here and start typing.')}
+                    {output || (isConnecting ? 'Connecting terminal…' : offline ? 'Offline shell ready — type "help" then press Run. Connect the backend for a full PTY shell.' : 'Terminal ready. Click here and start typing.')}
                 </pre>
                 <textarea
                     ref={inputCaptureRef}

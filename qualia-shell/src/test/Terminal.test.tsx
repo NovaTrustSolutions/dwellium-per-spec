@@ -160,4 +160,25 @@ describe('Terminal', () => {
             expect(body.signal).toBe('SIGINT');
         });
     });
+
+    it('falls back to an honest offline local shell when the backend is unavailable', async () => {
+        mockAuthFetch.mockReset();
+        mockAuthFetch.mockImplementation(async (url: string) => {
+            if (String(url).includes('/capabilities')) return json({ success: false }, false, 404);
+            return json({ success: false, error: 'no backend' }, false, 404);
+        });
+        const user = userEvent.setup();
+        render(<Terminal />);
+        // Honest banner instead of a misleading "Terminal ready" dead state.
+        await waitFor(() => {
+            expect(screen.getByText(/Backend terminal unavailable/i)).toBeInTheDocument();
+        });
+        // A local command actually runs.
+        const input = screen.getByPlaceholderText('Run a command or launch a CLI like claude');
+        await user.type(input, 'echo hi there');
+        await user.click(screen.getByText('Run'));
+        await waitFor(() => {
+            expect(screen.getByText(/hi there/)).toBeInTheDocument();
+        });
+    });
 });

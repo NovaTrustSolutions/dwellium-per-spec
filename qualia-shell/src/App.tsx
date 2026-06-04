@@ -6,6 +6,7 @@ import { PermissionsProvider } from './context/PermissionsContext';
 import QueryProvider from './providers/QueryProvider';
 import LoginScreen from './components/Auth/LoginScreen';
 import AppSuspenseFallback from './components/Shell/AppSuspenseFallback';
+import BackendConnectionBanner from './components/Shell/BackendConnectionBanner';
 import { lazyWithReload } from './utils/lazyWithReload';
 import './styles/global.css';
 import './styles/skins.css';
@@ -125,6 +126,7 @@ export function DefaultRoute() {
         <ThemeProvider>
             <UserProvider>
                 <QueryProvider>
+                    <BackendConnectionBanner />
                     <AuthGate />
                 </QueryProvider>
             </UserProvider>

@@ -1,4 +1,5 @@
 import { CSSProperties, useRef, useCallback, useEffect, ReactNode, useState } from 'react';
+import { GripVertical, CornerUpRight } from 'lucide-react';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { WindowState, RegionRect } from '../../data/types';
@@ -305,25 +306,8 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                             } catch { /* sandboxed */ }
                         }}
                         title="Drag into Scribe to insert a reference to this widget"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginLeft: 8,
-                            width: 18,
-                            height: 18,
-                            borderRadius: 4,
-                            cursor: 'grab',
-                            color: '#666',
-                            fontSize: 12,
-                            lineHeight: 1,
-                            userSelect: 'none',
-                            transition: 'color 100ms, background 100ms',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; e.currentTarget.style.background = 'rgba(214,254,81,0.08)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = '#666'; e.currentTarget.style.background = 'transparent'; }}
                     >
-                        ⤴
+                        <CornerUpRight size={12} aria-hidden="true" />
                     </span>
                 </div>
                 {/* AI loading shimmer bar */}
@@ -332,25 +316,31 @@ export default function Window({ state, children, regionRect, containerStyle }: 
 
             {/* Content */}
             <div className="window__content">
-                {/* Tear-off handle — drag out of window boundary to detach */}
-                {!state.maximized && (
-                    <div
-                        className={`window__tearoff-handle ${tearoffActive ? 'window__tearoff-handle--active' : ''}`}
-                        onMouseDown={onTearoffMouseDown}
-                        title="Drag outside window to open in its own browser window"
-                        style={tearoffActive ? { '--tearoff-progress': tearoffProgress } as React.CSSProperties : undefined}
-                    >
-                        <span className="window__tearoff-icon">⠿</span>
-                        <span className="window__tearoff-label">
-                            {tearoffActive
-                                ? tearoffProgress >= 1 ? 'Release to pop out!' : `Pull further to pop out (${Math.round(tearoffProgress * 100)}%)`
-                                : 'Drag outside window to pop out'}
-                        </span>
-                        <span className="window__tearoff-arrow">↗</span>
-                    </div>
-                )}
                 {children}
             </div>
+
+            {/* Tear-off grip — compact, pinned handle (NOT a persistent chrome
+                row). Drag it outside the window to detach into its own window.
+                Idle state shows only a Lucide grip + tooltip; the textual
+                progress appears transiently while actively tearing off. The
+                title-bar "Pop out" button is the primary, always-visible
+                affordance. (HARD RULE 3.5: no persistent pop-out banner.) */}
+            {!state.maximized && (
+                <div
+                    className={`window__tearoff-handle ${tearoffActive ? 'window__tearoff-handle--active' : ''}`}
+                    onMouseDown={onTearoffMouseDown}
+                    title="Drag outside the window to open it in its own window"
+                    aria-hidden="true"
+                    style={tearoffActive ? { '--tearoff-progress': tearoffProgress } as React.CSSProperties : undefined}
+                >
+                    <GripVertical size={12} className="window__tearoff-icon" aria-hidden="true" />
+                    {tearoffActive && (
+                        <span className="window__tearoff-progress">
+                            {tearoffProgress >= 1 ? 'Release' : `${Math.round(tearoffProgress * 100)}%`}
+                        </span>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

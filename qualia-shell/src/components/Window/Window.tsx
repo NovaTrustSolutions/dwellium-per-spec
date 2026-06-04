@@ -15,7 +15,7 @@ export interface WindowProps {
 
 export default function Window({ state, children, regionRect, containerStyle }: WindowProps) {
     const { closeWindow, focusWindow, minimizeWindow, maximizeWindow, updateWindowPosition, updateWindowSize, windows, popOutWindow } = useWindows();
-    const { computeSnap, setActiveGuides, settings, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments } = useLayout();
+    const { computeSnap, setActiveGuides, setInteracting, settings, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments } = useLayout();
     const windowRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
     const resizeRef = useRef({ resizing: false, edge: '', startX: 0, startY: 0, origW: 0, origH: 0, origX: 0, origY: 0 });
@@ -33,6 +33,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         const startX = regionRect ? regionRect.x : state.x;
         const startY = regionRect ? regionRect.y : state.y;
         dragRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, origX: startX, origY: startY };
+        setInteracting(true); // enter layout-edit mode → grid/snap guides visible
 
         // If dragging out of a region, clear the assignment
         let clearedRegion = false;
@@ -77,6 +78,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         const onUp = (ev: MouseEvent) => {
             dragRef.current.dragging = false;
             setActiveGuides([]);
+            setInteracting(false); // exit layout-edit mode → grid hidden again
             setHoveredRegionId(null);
 
             // Check if dropped on a region
@@ -110,7 +112,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         };
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
-    }, [state.id, state.x, state.y, state.width, state.height, state.maximized, focusWindow, updateWindowPosition, updateWindowSize, computeSnap, setActiveGuides, windows, settings.regionLayout, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments, regionRect, maximizeWindow]);
+    }, [state.id, state.x, state.y, state.width, state.height, state.maximized, focusWindow, updateWindowPosition, updateWindowSize, computeSnap, setActiveGuides, setInteracting, windows, settings.regionLayout, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments, regionRect, maximizeWindow]);
 
     // --- Resize ---
     const onResizeMouseDown = useCallback((e: React.MouseEvent, edge: string) => {
@@ -124,6 +126,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
             origW: state.width, origH: state.height,
             origX: state.x, origY: state.y
         };
+        setInteracting(true); // enter layout-edit mode → grid/snap guides visible
 
         const onMove = (ev: MouseEvent) => {
             const r = resizeRef.current;
@@ -149,12 +152,13 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         };
         const onUp = () => {
             resizeRef.current.resizing = false;
+            setInteracting(false); // exit layout-edit mode → grid hidden again
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('mouseup', onUp);
         };
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
-    }, [state, focusWindow, updateWindowSize, updateWindowPosition]);
+    }, [state, focusWindow, updateWindowSize, updateWindowPosition, setInteracting]);
 
     // Keyboard close
     useEffect(() => {

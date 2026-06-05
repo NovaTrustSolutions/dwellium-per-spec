@@ -104,6 +104,17 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 540,
         category: 'ai',
     },
+    // MemoryGraphRAG — three-layer memory Graph-RAG (Ontology/Fact/Passage) +
+    // multi-agent extraction + bridging + Personalized-PageRank retrieval.
+    'memory-graph-rag': {
+        id: 'memory-graph-rag',
+        label: 'MemoryGraphRAG',
+        icon: 'brain-circuit',
+        component: lazyWithReload(() => import('../components/MemoryGraphRAG/MemoryGraphRAG')),
+        minWidth: 820,
+        minHeight: 560,
+        category: 'ai',
+    },
     // Builder agents (spec §8.6/8.7/8.8) — Schema Producer + PRD synthesis + Gap analysis
     'builder-agents': {
         id: 'builder-agents',

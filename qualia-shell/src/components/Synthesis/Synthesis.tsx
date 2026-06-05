@@ -8,6 +8,7 @@
 import { useState, useContext, useSyncExternalStore, useCallback } from 'react';
 import { Sparkles, RefreshCw, Save, Layers, Trash2 } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
+import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import {
@@ -131,6 +132,9 @@ export default function Synthesis() {
                                 </button>
                             </div>
                             <div style={{ padding: '12px 14px', overflowY: 'auto', whiteSpace: 'pre-wrap', color: '#ddd', fontSize: 13, lineHeight: 1.7 }}>{result}</div>
+                            <div style={{ padding: '8px 12px', borderTop: '1px solid #222' }}>
+                                <TagInput source="synthesis" sourceId={parentId || query.trim() || 'synthesis'} title={query.trim() || 'Synthesis'} />
+                            </div>
                         </div>
                     )}
                 </div>

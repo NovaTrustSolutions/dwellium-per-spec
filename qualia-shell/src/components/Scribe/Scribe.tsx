@@ -13,6 +13,7 @@ import { useScribeStore, type FileEntry } from './scribeStore';
 import { useAutoSave } from './useAutoSave';
 import { TabBar } from './TabBar';
 import { DocumentToolbar } from './DocumentToolbar';
+import { TagInput } from '../Tags/TagInput';
 import { TableOfContents } from './TableOfContents';
 import { SelectionToolbar } from './SelectionToolbar';
 import { AraMiniPanel } from './AraMiniPanel';
@@ -150,6 +151,11 @@ export default function Scribe() {
                         }}
                     />
                     <DocumentToolbar />
+                    {activeFilepath && (
+                        <div className="scribe-doc-tags" style={{ padding: '4px 10px', borderBottom: '1px solid var(--border, #222)' }}>
+                            <TagInput source="scribe" sourceId={activeFilepath} title={activeFilepath.split('/').pop() || 'Document'} />
+                        </div>
+                    )}
                 </>
             )}
             {loading && <div className="scribe__status">Loading...</div>}

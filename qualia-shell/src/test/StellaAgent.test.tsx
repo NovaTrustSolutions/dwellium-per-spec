@@ -185,4 +185,81 @@ describe('StellaAgent', () => {
         expect(screen.getByText('Retry')).toBeInTheDocument();
         expect(screen.getByText('Initialize')).toBeInTheDocument();
     });
+
+    it('surfaces a degraded state distinctly from offline and keeps chat reachable', async () => {
+        mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            if (typeof url !== 'string') return json({ success: false }, false);
+            if (url.includes('/stella/init')) return json({ success: true });
+            if (url.includes('/stella/status')) {
+                return json({
+                    success: true,
+                    data: { status: 'degraded', liveCheck: { ok: false }, version: '1.2.0' },
+                });
+            }
+            return json({ success: false }, false);
+        });
+
+        render(<StellaAgent />);
+
+        // Label reads "Degraded", NOT "Offline".
+        await waitFor(() => {
+            expect(screen.getByText(/Stella Degraded/)).toBeInTheDocument();
+        });
+        expect(screen.getByText(/Stella agent is degraded/)).toBeInTheDocument();
+        expect(screen.queryByText(/Stella agent is offline/)).not.toBeInTheDocument();
+
+        // Chat input stays enabled — a degraded agent is still reachable.
+        const input = screen.getByPlaceholderText('Ask Stella anything…') as HTMLTextAreaElement;
+        expect(input.disabled).toBe(false);
+    });
+
+    it('treats a non-2xx /status response as offline (resp.ok guard)', async () => {
+        mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            if (typeof url !== 'string') return json({ success: false }, false);
+            if (url.includes('/stella/init')) return json({ success: true });
+            // 500 with a body that WOULD parse as success — the resp.ok guard
+            // must short-circuit before trusting it.
+            if (url.includes('/stella/status')) {
+                return json({ success: true, data: { status: 'online', liveCheck: { ok: true } } }, false);
+            }
+            return json({ success: false }, false);
+        });
+
+        render(<StellaAgent />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Stella agent is offline/)).toBeInTheDocument();
+        });
+    });
+
+    it('surfaces a system error when the backend chat call fails', async () => {
+        const user = userEvent.setup();
+        mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            if (typeof url !== 'string') return json({ success: false }, false);
+            if (url.includes('/stella/init')) return json({ success: true });
+            if (url.includes('/stella/status')) {
+                return json({
+                    success: true,
+                    data: { status: 'online', liveCheck: { ok: true, version: '1.2.0', ms: 10 } },
+                });
+            }
+            if (url.includes('/stella/chat') && opts?.method === 'POST') {
+                throw new Error('network down');
+            }
+            return json({ success: false }, false);
+        });
+
+        render(<StellaAgent />);
+        await waitFor(() => {
+            expect(screen.getByText(/Stella Online/)).toBeInTheDocument();
+        });
+
+        const input = screen.getByPlaceholderText('Ask Stella anything…');
+        await user.type(input, 'Hello');
+        await user.click(screen.getByTitle('Send'));
+
+        await waitFor(() => {
+            expect(screen.getByText(/network down/)).toBeInTheDocument();
+        });
+    });
 });

@@ -101,6 +101,11 @@ interface LayoutContextValue {
     resetSettings: () => void;
     activeGuides: SnapGuide[];
     setActiveGuides: (guides: SnapGuide[]) => void;
+    /** True only while the user is actively dragging/resizing a window
+        (layout-edit mode). Gates the layout grid / snap guides so they are
+        invisible in normal use (spec §2.8). */
+    isInteracting: boolean;
+    setInteracting: (v: boolean) => void;
     computeSnap: (
         x: number, y: number, w: number, h: number,
         allWindows: WindowState[], currentId: string,
@@ -132,6 +137,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const [activeGuides, setActiveGuides] = useState<SnapGuide[]>([]);
+    const [isInteracting, setInteracting] = useState(false);
     const [regionAssignments, setRegionAssignments] = useState<Record<string, string[]>>({});
     const [hoveredRegionId, setHoveredRegionId] = useState<string | null>(null);
     const settingsRef = useRef(settings);
@@ -397,6 +403,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
         <LayoutContext.Provider value={{
             settings, updateSettings, resetSettings,
             activeGuides, setActiveGuides,
+            isInteracting, setInteracting,
             computeSnap, fontPresets: FONT_PRESETS,
             regionAssignments, hoveredRegionId, setHoveredRegionId,
             assignWindowToRegion, clearWindowRegion, setActiveRegionTab, moveTabToRegion,

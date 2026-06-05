@@ -51,6 +51,10 @@ import { type RouteConfig, index, route } from '@react-router/dev/routes';
  */
 export default [
     route('/security', 'routes/security.tsx'),
+    // Server-side reverse proxy for same-origin /api/* → backend (:3000).
+    // More specific than the '*' splat below, so /api/* matches here (not the SPA shell),
+    // which is what was returning 405 for relative fetch('/api/...') calls in this deployment.
+    route('/api/*', 'routes/apiProxy.tsx'),
     index('routes/default.tsx'),
     route('*', 'routes/default.tsx', { id: 'splat' }),
 ] satisfies RouteConfig;

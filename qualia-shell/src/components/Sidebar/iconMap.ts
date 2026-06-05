@@ -39,6 +39,8 @@ import {
     Archive,
     Diamond,
     LayoutGrid,
+    Layers,
+    Tag,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -70,6 +72,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
     // ── Filing Cabinet ──
     'folder-tree':    FolderTree,
+    'layers':         Layers,
     'check-square':   CheckSquare,
     'inbox':          Inbox,
     'folder-open':    FolderOpen,
@@ -78,6 +81,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'file-text':      FileText,
     'file-stack':     FileStack,
     'terminal':       Terminal,
+    'tag':            Tag,
 
     // ── Group Headers ──
     'building':       Building,

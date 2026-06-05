@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { API_BASE as API_ROOT } from '../../config';
+import { getDraftHandoffs, openWidgetHandoff } from './inboxLinkage';
 
 const API_BASE = `${API_ROOT}/api/inbox/actions`;
 
@@ -441,7 +442,7 @@ export default function SmartActions() {
                                     )}
                                     <div style={{ ...styles.row, marginTop: '10px' }}>
                                         <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={() => editTemplate(t)}>✏️ Edit</button>
-                                        <button style={{ ...styles.btn, ...styles.btnDanger }} onClick={() => handleDeleteTemplate(t.id)}>🗑️</button>
+                                        <button aria-label="Delete template" style={{ ...styles.btn, ...styles.btnDanger }} onClick={() => handleDeleteTemplate(t.id)}>🗑️</button>
                                     </div>
                                 </div>
                             ))}
@@ -493,6 +494,23 @@ export default function SmartActions() {
                                     </div>
                                     <div style={{ color: 'var(--text-secondary, #8b8f98)', whiteSpace: 'pre-wrap', fontSize: '13px' }}>
                                         {draftResult.body}
+                                    </div>
+                                    {/* Cross-widget handoff (LINKAGE I2 + I3): take the draft into an
+                                        assistant/editor to refine and send. Uses the shell's
+                                        `dwellium:open-widget` intent bus via inboxLinkage. */}
+                                    <div style={{ ...styles.row, marginTop: '10px', flexWrap: 'wrap', marginBottom: 0 }}>
+                                        <span style={{ color: 'var(--text-secondary, #8b8f98)', fontSize: '12px' }}>Open in:</span>
+                                        {getDraftHandoffs(draftResult).map((h) => (
+                                            <button
+                                                key={h.widgetId}
+                                                style={{ ...styles.btn, ...styles.btnGhost }}
+                                                onClick={() => openWidgetHandoff(h)}
+                                                aria-label={h.label}
+                                                title={h.label}
+                                            >
+                                                {h.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             )}

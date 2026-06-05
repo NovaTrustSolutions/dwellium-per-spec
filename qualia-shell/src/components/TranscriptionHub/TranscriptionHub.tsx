@@ -1,9 +1,18 @@
-import { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, useContext, useSyncExternalStore, ChangeEvent } from 'react';
 import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
+import { UserContext } from '../../context/UserContext';
+import { embedAudio, audioBufferToMono16k, trimSilence, shouldEmbed } from './speakerEmbedder';
+import { identifyWithConfidence, type EnrolledSpeaker } from './speakerLibrary';
+import { speakerLibraryStore, speakerLibraryUserIdHolder } from './speakerLibraryStore';
+import { createSpeakerSmoother } from './speakerDiarization';
+import { getSpeakerSettings } from './speakerSettings';
+import { LocalVoiceLibrary } from './LocalVoiceLibrary';
 import './TranscriptionHub.css';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { scanSegmentsViaLlm, buildNotebookLmQuery } from './legalShieldClient';
+import { hasActiveLlm } from '../../lib/llmClient';
+import { buildMatchedStatutes, dedupMatchedStatutes, formatSimilarity } from './statuteMatch';
 import type { LegalScanResult as LegalScanResultLlm } from './legalShieldClient';
 
 // Open the user's NotebookLM (preferring their Calendar Google email) with a
@@ -58,6 +67,8 @@ interface TranscriptionSegment {
     end: number;
     speaker: string;
     confidence: number;
+    /** Neural voiceprint for this segment (for enroll-from-segment + re-matching). */
+    embedding?: number[];
 }
 
 interface FactCheckResult {
@@ -418,6 +429,16 @@ export default function TranscriptionHub() {
 
     // --- Speaker identification state ---
     const speakerProfilesRef = useRef<Map<string, number[]>>(new Map());
+    // ── Neural speaker library (per-user, local) ──
+    const userCtx = useContext(UserContext);
+    speakerLibraryUserIdHolder.current = userCtx?.user?.id ?? null;
+    const enrolledSpeakers = useSyncExternalStore(
+        speakerLibraryStore.subscribe, speakerLibraryStore.getSnapshot, speakerLibraryStore.getServerSnapshot,
+    );
+    const enrolledRef = useRef<EnrolledSpeaker[]>(enrolledSpeakers);
+    enrolledRef.current = enrolledSpeakers;
+    const latestEmbeddingRef = useRef<number[] | null>(null);
+    const smootherRef = useRef(createSpeakerSmoother({ minSwitchStreak: getSpeakerSettings().minSwitchStreak }));
     const currentSpeakerRef = useRef('User');
     const speakerCountRef = useRef(1);
 
@@ -609,9 +630,10 @@ export default function TranscriptionHub() {
                         alert: r.alert,
                         statute: r.code_ref ?? '',
                         advice: r.suggested_action ?? r.summary ?? '',
-                        matchedStatutes: r.code_ref
-                            ? [{ volumeId: r.code_ref, similarity: 1, excerpt: r.summary ?? '' }]
-                            : [],
+                        // Cycle 9: extract ALL cited O.C.G.A. sections (primary
+                        // from code_ref @ similarity 1, secondary from summary @
+                        // 0.6), normalized + de-duped — was single-statute@1.
+                        matchedStatutes: buildMatchedStatutes(r),
                     }));
                 } else {
                     // Path B: legacy backend (in case a future route reappears)
@@ -623,7 +645,11 @@ export default function TranscriptionHub() {
                         });
                         const json = await res.json();
                         if (json.success && json.data?.results) {
-                            scanResults = json.data.results as LegalScanResult[];
+                            // Cycle 9: de-dupe backend-supplied matchedStatutes too.
+                            scanResults = (json.data.results as LegalScanResult[]).map(r => ({
+                                ...r,
+                                matchedStatutes: dedupMatchedStatutes(r.matchedStatutes),
+                            }));
                             scanTimeMs = json.data.scanTimeMs ?? 0;
                         }
                     } catch { /* backend not available — that's fine */ }
@@ -1095,6 +1121,34 @@ export default function TranscriptionHub() {
         return currentSpeakerRef.current;
     }, []);
 
+    // Neural identification: embed the segment's audio and match it against the
+    // enrolled voice library (replaces the old feature-distance heuristic).
+    const identifyAndTag = useCallback(async (segId: string, buffer?: AudioBuffer) => {
+        const tag = (label: string, embedding?: number[]) =>
+            setSegments(prev => prev.map(s => s.id === segId
+                ? { ...s, speaker: label, embedding: embedding ?? s.embedding }
+                : s));
+        if (!buffer) { tag(smootherRef.current.current() ?? 'Unknown'); return; }
+
+        const settings = getSpeakerSettings();
+        // #3: strip silence, then gate on duration + voiced content. Too short or
+        // too quiet → don't embed (it'd be a garbage voiceprint); hold current.
+        const voiced = trimSilence(audioBufferToMono16k(buffer));
+        if (!shouldEmbed(voiced, 16000, { minMs: settings.minMs })) {
+            tag(smootherRef.current.current() ?? 'Unknown');
+            return;
+        }
+        let embedding: number[] | null = null;
+        try { embedding = await embedAudio(voiced); } catch { /* model/audio unavailable */ }
+        if (embedding) latestEmbeddingRef.current = embedding;
+        // #4: margin-gated identification, then temporal smoothing.
+        const detail = embedding
+            ? identifyWithConfidence(embedding, enrolledRef.current, { threshold: settings.threshold, margin: settings.margin })
+            : null;
+        const smoothed = smootherRef.current.push(detail?.match?.label ?? 'Unknown');
+        tag(smoothed, embedding ?? undefined);
+    }, []);
+
     // ---- MOONSHINE AI TRANSCRIPTION ----
     const startMoonshine = useCallback(async () => {
         if (!moonshineEnabled) return;
@@ -1130,15 +1184,17 @@ export default function TranscriptionHub() {
                     onTranscriptionCommitted(text: string, buffer?: AudioBuffer) {
                         if (!text || text.trim().length === 0) return;
 
-                        // Speaker identification from audio buffer
-                        const speaker = identifySpeaker(buffer);
-
+                        // Neural speaker identification (async): create the segment
+                        // now with a provisional label, then embed the voice and match
+                        // it against the enrolled library; identifyAndTag updates it.
+                        const speaker = 'Unknown';
+                        const segId = crypto.randomUUID();
                         const now = Date.now();
                         const startSec = (now - moonshineStartTimeRef.current) / 1000;
                         moonshineSegCountRef.current++;
 
                         const segment: TranscriptionSegment = {
-                            id: crypto.randomUUID(),
+                            id: segId,
                             text: text.trim(),
                             start: Math.max(0, startSec - 3),
                             end: startSec,
@@ -1147,6 +1203,7 @@ export default function TranscriptionHub() {
                         };
 
                         setSegments(prev => [...prev, segment]);
+                        void identifyAndTag(segId, buffer);
                         setLiveTranscript('');
                         setLiveFinalParts([]);
 
@@ -1191,7 +1248,7 @@ export default function TranscriptionHub() {
             // Fallback to native browser recognition
             startLiveRecognition();
         }
-    }, [moonshineEnabled, factCheckEnabled, identifySpeaker, legalShieldEnabled, setContradictionQueue]);
+    }, [moonshineEnabled, factCheckEnabled, identifySpeaker, identifyAndTag, legalShieldEnabled, setContradictionQueue]);
 
     const stopMoonshine = useCallback(() => {
         if (moonshineRef.current) {
@@ -1369,6 +1426,21 @@ export default function TranscriptionHub() {
         setFactChecks(new Map(entry.factChecks));
         setElapsed(entry.duration);
         setActiveTab('recorder');
+        // Cycle 8: re-run Legal Shield on a LOADED transcript so matched statutes
+        // are reachable when REVIEWING a saved recording. Previously the legal
+        // scan only fired during live mic transcription (the moonshine / cloud-STT
+        // segment paths enqueued each new segment) — opening a past transcript set
+        // the segments but never queued a scan, leaving the matched-statute UI
+        // permanently dead for the review flow. Enqueue the segment texts using
+        // the SAME length gate as the live path (text.length > 15). The scan
+        // effect drains the queue and only calls the LLM when Legal Shield is on
+        // AND a provider is active, so this is a no-op offline (correct).
+        if (legalShieldEnabled) {
+            const texts = entry.segments
+                .map(s => s.text)
+                .filter(t => typeof t === 'string' && t.trim().length > 15);
+            if (texts.length > 0) setLegalScanQueue(prev => [...prev, ...texts]);
+        }
     };
 
     // ---- DELETE TRANSCRIPTION ----
@@ -2077,6 +2149,11 @@ export default function TranscriptionHub() {
                                 ⚖️ {legalShieldEnabled ? 'Legal Shield ON' : 'Legal Shield OFF'}
                                 {legalScanRunning && <span className="th-legal-spinner">⟳</span>}
                             </button>
+                            {legalShieldEnabled && !hasActiveLlm(integrations.llm) && (
+                                <span className="th-legal-hint" role="status">
+                                    ⚖️ Add an LLM key in Settings → API Keys to enable statute matching.
+                                </span>
+                            )}
                             <button
                                 className="th-legal-toggle"
                                 onClick={() => {
@@ -2275,8 +2352,26 @@ export default function TranscriptionHub() {
                                                         title={`${la.statute}: ${la.advice}`}
                                                     >
                                                         {alertCfg.icon} {alertCfg.label}
-                                                        {la.statute !== 'N/A' && <span className="th-segment__legal-statute">{la.statute}</span>}
+                                                        {la.statute !== 'N/A' && la.statute !== '' && <span className="th-segment__legal-statute">{la.statute}</span>}
                                                     </span>
+                                                )}
+
+                                                {/* Cycle 9: matched-statute detail — similarity + excerpt */}
+                                                {la && la.matchedStatutes && la.matchedStatutes.length > 0 && (
+                                                    <ul className="th-segment__legal-matches" aria-label="Matched Georgia statutes">
+                                                        {la.matchedStatutes.map((ms, mi) => (
+                                                            <li key={`${ms.volumeId}-${mi}`} className="th-segment__legal-match" title={ms.excerpt || undefined}>
+                                                                <span className="th-segment__legal-match-id">{ms.volumeId}</span>
+                                                                <span
+                                                                    className="th-segment__legal-match-sim"
+                                                                    aria-label={`Match confidence ${formatSimilarity(ms.similarity)}`}
+                                                                >
+                                                                    {formatSimilarity(ms.similarity)}
+                                                                </span>
+                                                                {ms.excerpt && <span className="th-segment__legal-match-excerpt">{ms.excerpt}</span>}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
                                                 )}
 
                                                 {/* Inline contradiction badge */}
@@ -2826,6 +2921,12 @@ export default function TranscriptionHub() {
 
                     {/* ── Speaker Library ── */}
                     <SpeakerLibraryPanel apiBase={API_TRANSCRIBE} />
+                    <LocalVoiceLibrary
+                        getLatestEmbedding={() => latestEmbeddingRef.current}
+                        getUnknownEmbeddings={() => segments
+                            .filter(s => s.speaker === 'Unknown' && s.embedding && s.embedding.length > 0)
+                            .map(s => s.embedding as number[])}
+                    />
                 </div>
             )}
 

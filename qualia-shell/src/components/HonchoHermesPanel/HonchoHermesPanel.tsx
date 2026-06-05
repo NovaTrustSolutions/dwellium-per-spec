@@ -1,5 +1,25 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useUser } from '../../context/UserContext';
+import { useIngestion } from '../Scribe/ingestion/useIngestion';
+import {
+    dreamStore,
+    dreamUserIdHolder,
+    appendDream,
+    deleteDream,
+    clearDreams,
+} from '../StellaAgent/honchoDreamStore';
+import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
+import { hermesLearningUserIdHolder, rateRun } from './hermesLearningStore';
+import { memoryStore, memoryUserIdHolder, addLocalMemory, deleteLocalMemory } from './honchoMemoryStore';
+import { runHermes } from './hermesRunner';
+import {
+    arrangeMarkdownFiles,
+    displayName,
+    formatBytes,
+    DEFAULT_ARRANGE,
+    type MdSortKey,
+    type MdSortDir,
+} from './markdownArrange';
 import './HonchoHermesPanel.css';
 
 /* ─── Types ─── */
@@ -52,10 +72,37 @@ const TYPE_COLORS: Record<string, string> = {
 };
 const IMPORTANCE_LABELS = ['Low', 'Medium', 'High', 'Critical'];
 
-type TabId = 'memory' | 'hermes' | 'agents' | 'graph';
+type TabId = 'memory' | 'dreams' | 'hermes' | 'agents' | 'graph' | 'files';
 
 export default function HonchoHermesPanel() {
     const { user, authFetch } = useUser();
+
+    /* ─── DREAMS TAB STATE (per-user dream/reflection abilities) ─── */
+    // Update the dynamic-key holder DURING render before the store read, so the
+    // useSyncExternalStore snapshot resolves to this user's dreams (mirrors the
+    // useIngestion / WindowContext savedLayouts dynamic-key pattern).
+    dreamUserIdHolder.current = user?.id ?? null;
+    // Same dynamic-key holder discipline for the Hermes self-improvement store
+    // (Cycle 16): set BEFORE any learning-store read so few-shot recall +
+    // tool-weighting resolve to this user's run history.
+    hermesLearningUserIdHolder.current = user?.id ?? null;
+    // Local-first Honcho memories (same dynamic-key holder discipline): set BEFORE
+    // the store read so the snapshot resolves to THIS user's persisted memories.
+    // This is what makes "+ Add Memory" actually persist + show when the backend
+    // memory route is offline/404 (which it is in the current Express backend).
+    memoryUserIdHolder.current = user?.id ?? null;
+    const dreams = useSyncExternalStore(
+        dreamStore.subscribe,
+        dreamStore.getSnapshot,
+        dreamStore.getServerSnapshot,
+    );
+    const localMemories = useSyncExternalStore(
+        memoryStore.subscribe,
+        memoryStore.getSnapshot,
+        memoryStore.getServerSnapshot,
+    );
+    const [newDream, setNewDream] = useState({ title: '', text: '' });
+    const [showAddDream, setShowAddDream] = useState(false);
     const [activeTab, setActiveTab] = useState<TabId>('memory');
     const [loading, setLoading] = useState(true);
 
@@ -74,6 +121,11 @@ export default function HonchoHermesPanel() {
     const [hermesSteps, setHermesSteps] = useState<HermesStep[]>([]);
     const [hermesRunning, setHermesRunning] = useState(false);
     const [hermesResult, setHermesResult] = useState<string>('');
+    // Cycle 17: self-improvement — id of the run just recorded (enables the
+    // 👍/👎 rating control) + the rating already given for it.
+    const [lastRunId, setLastRunId] = useState<string | null>(null);
+    const [lastRating, setLastRating] = useState<number | null>(null);
+    const [fewShotInjected, setFewShotInjected] = useState(0);
     const stepsEndRef = useRef<HTMLDivElement>(null);
 
     /* ─── AGENTS TAB STATE ─── */
@@ -82,6 +134,17 @@ export default function HonchoHermesPanel() {
 
     /* ─── GRAPH TAB STATE ─── */
     const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[] } | null>(null);
+
+    /* ─── FILES TAB STATE (Markdown arrange/filter view) ─── */
+    const ingestion = useIngestion();
+    const [fileSortKey, setFileSortKey] = useState<MdSortKey>(DEFAULT_ARRANGE.sortKey);
+    const [fileSortDir, setFileSortDir] = useState<MdSortDir>(DEFAULT_ARRANGE.sortDir);
+    const [fileFilter, setFileFilter] = useState<string>(DEFAULT_ARRANGE.filterText);
+    const arrangedFiles = arrangeMarkdownFiles(ingestion.converted, {
+        sortKey: fileSortKey,
+        sortDir: fileSortDir,
+        filterText: fileFilter,
+    });
 
     /* ═══ DATA FETCHING ═══ */
     const fetchMemories = useCallback(async () => {
@@ -155,88 +218,98 @@ export default function HonchoHermesPanel() {
 
     /* ═══ ACTIONS ═══ */
     const addMemory = async () => {
-        if (!newMemory.content.trim()) return;
+        const content = newMemory.content.trim();
+        if (!content) return;
+        // Local-first: persist immediately so the memory shows + survives reload
+        // even when the backend route is offline (it 404s today). The store read
+        // re-renders the list synchronously — no round-trip required.
+        addLocalMemory({
+            userId: user?.email || user?.id || 'default',
+            content,
+            memoryType: newMemory.memoryType,
+            importance: newMemory.importance,
+            source: 'manual',
+        });
+        setNewMemory({ content: '', memoryType: 'fact', importance: 0.5 });
+        setShowAddMemory(false);
+        // Best-effort backend sync (no-op / 404 swallowed when Honcho is offline).
         try {
             await authFetch('/api/honcho/memories', {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: user?.email || 'default',
-                    content: newMemory.content,
+                    content,
                     memoryType: newMemory.memoryType,
                     importance: newMemory.importance,
                     source: 'manual',
                 }),
             });
-            setNewMemory({ content: '', memoryType: 'fact', importance: 0.5 });
-            setShowAddMemory(false);
             fetchMemories();
             fetchMemoryStats();
-        } catch { /* silent */ }
+        } catch { /* backend offline — local copy already persisted */ }
     };
 
     const deleteMemory = async (id: string) => {
+        // Local store owns user-added memories; drop it there first.
+        const wasLocal = deleteLocalMemory(id);
         try {
             await authFetch(`/api/honcho/memories/${id}`, { method: 'DELETE' });
-            fetchMemories();
-            fetchMemoryStats();
-        } catch { /* silent */ }
+            if (!wasLocal) { fetchMemories(); fetchMemoryStats(); }
+        } catch { /* backend offline — local copy already removed */ }
     };
 
     const delegateToHermes = async () => {
         if (!hermesPrompt.trim() || hermesRunning) return;
+        const task = hermesPrompt;               // captured: cleared below
         setHermesRunning(true);
         setHermesResult('');
         setHermesSteps([]);
+        setLastRunId(null);
+        setLastRating(null);
 
-        // Add initial thinking step
-        setHermesSteps(prev => [...prev, {
-            type: 'thought', content: `Processing: "${hermesPrompt}"`, timestamp: new Date().toISOString(),
-        }]);
+        // Delegate to the ONE shared self-improving run path (hermesRunner):
+        // few-shot injection (mechanism a) + proven-tool weighting (mechanism b)
+        // + record-back into the LOCAL learning store all live there.
+        const run = await runHermes(task, {
+            authFetch,
+            toolNames: hermesTools.map(t => t.name),
+        });
 
-        try {
-            const res = await authFetch('/api/hermes/delegate', {
+        setHermesSteps(run.steps);
+        setFewShotInjected(run.fewShotCount);
+        if (run.recordId) setLastRunId(run.recordId);
+        if (run.outcome === 'success') {
+            setHermesResult(run.result || 'Done');
+            // Write Honcho memory after task completion (Phase 6: HM-4)
+            authFetch('/api/honcho/memories', {
                 method: 'POST',
-                body: JSON.stringify({ task: hermesPrompt, context: '' }),
-            });
-            const data = await res.json();
-
-            if (data.success && data.data) {
-                // Parse steps from response
-                const steps: HermesStep[] = [];
-                if (data.data.thought) steps.push({ type: 'thought', content: data.data.thought, timestamp: new Date().toISOString() });
-                if (data.data.action) steps.push({ type: 'action', content: data.data.action, timestamp: new Date().toISOString() });
-                if (data.data.observation) steps.push({ type: 'observation', content: data.data.observation, timestamp: new Date().toISOString() });
-                steps.push({ type: 'final_answer', content: data.data.answer || data.data.result || 'Task completed.', timestamp: new Date().toISOString() });
-                setHermesSteps(steps);
-                setHermesResult(data.data.answer || data.data.result || 'Done');
-
-                // Write memory after task completion (Phase 6: HM-4)
-                if (data.data.answer || data.data.result) {
-                    authFetch('/api/honcho/memories', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            userId: user?.email || 'default',
-                            content: `Hermes completed task: "${hermesPrompt}" → ${(data.data.answer || data.data.result || '').substring(0, 200)}`,
-                            memoryType: 'observation',
-                            source: 'agent',
-                            importance: 0.6,
-                            metadata: { agent: 'hermes', task: hermesPrompt },
-                        }),
-                    }).catch(() => {});
-                }
-            } else {
-                setHermesSteps(prev => [...prev, {
-                    type: 'final_answer', content: data.error || 'Task failed.', timestamp: new Date().toISOString(),
-                }]);
-            }
-        } catch (err: any) {
-            setHermesSteps(prev => [...prev, {
-                type: 'final_answer', content: `Error: ${err.message}`, timestamp: new Date().toISOString(),
-            }]);
-        } finally {
-            setHermesRunning(false);
-            setHermesPrompt('');
+                body: JSON.stringify({
+                    userId: user?.email || 'default',
+                    content: `Hermes completed task: "${task}" → ${run.result.substring(0, 200)}`,
+                    memoryType: 'observation',
+                    source: 'agent',
+                    importance: 0.6,
+                    metadata: { agent: 'hermes', task },
+                }),
+            }).catch(() => {});
+        } else {
+            // Graceful failure (e.g. Ollama offline): the run is STILL recorded to
+            // the learning store, so surface a result + the 👍/👎 control. Rating a
+            // failed run is legitimate feedback — it down-weights the path next time.
+            setHermesResult(
+                run.error
+                    ? `⚡ Hermes could not finish this task — ${run.error}`
+                    : '⚡ Hermes could not finish this task.',
+            );
         }
+        setHermesRunning(false);
+        setHermesPrompt('');
+    };
+
+    /** Rate the last recorded run (+1 👍 / -1 👎); feeds few-shot ranking. */
+    const handleRateRun = (rating: number) => {
+        if (!lastRunId) return;
+        try { rateRun(lastRunId, rating); setLastRating(rating); } catch { /* silent */ }
     };
 
     /* ═══ HELPERS ═══ */
@@ -257,7 +330,21 @@ export default function HonchoHermesPanel() {
         return IMPORTANCE_LABELS[0];
     };
 
-    const filteredMemories = memories.filter(m => {
+    // Combine local-first memories (user-added, offline-persistent) with any
+    // backend-fetched memories. Local first so a just-added memory shows on top;
+    // de-dupe by id in case the backend echoes a synced local copy.
+    const combinedMemories: HonchoMemory[] = (() => {
+        const seen = new Set<string>();
+        const out: HonchoMemory[] = [];
+        for (const m of [...localMemories, ...memories]) {
+            if (seen.has(m.id)) continue;
+            seen.add(m.id);
+            out.push(m as HonchoMemory);
+        }
+        return out;
+    })();
+
+    const filteredMemories = combinedMemories.filter(m => {
         if (typeFilter !== 'all' && m.memoryType !== typeFilter) return false;
         if (memoryFilter && !m.content.toLowerCase().includes(memoryFilter.toLowerCase())) return false;
         return true;
@@ -273,7 +360,7 @@ export default function HonchoHermesPanel() {
                     <div>
                         <h2 className="hhp__title">Honcho + Hermes</h2>
                         <p className="hhp__subtitle">
-                            Memory &amp; Intelligence · {memoryStats?.totalMemories || 0} memories
+                            Memory &amp; Intelligence · {(memoryStats?.totalMemories || 0) + localMemories.length} memories
                             <span className={`hhp__status-dot ${hermesOnline ? 'online' : 'offline'}`} />
                             {hermesOnline ? 'Hermes Online' : 'Hermes Offline'}
                         </p>
@@ -285,9 +372,11 @@ export default function HonchoHermesPanel() {
             <div className="hhp__tabs">
                 {([
                     ['memory', '🧠 Memory'],
+                    ['dreams', '🌙 Dreams'],
                     ['hermes', '⚡ Hermes'],
                     ['agents', '🤖 Agents'],
                     ['graph', '🕸️ Graph'],
+                    ['files', '📄 Files'],
                 ] as [TabId, string][]).map(([id, label]) => (
                     <button key={id} className={`hhp__tab ${activeTab === id ? 'active' : ''}`}
                         onClick={() => {
@@ -300,7 +389,7 @@ export default function HonchoHermesPanel() {
                 ))}
             </div>
 
-            {loading && <div className="hhp__loading">Loading intelligence systems...</div>}
+            {loading && <div className="hhp__loading" role="status" aria-live="polite">Loading intelligence systems...</div>}
 
             {/* ═══ MEMORY TAB ═══ */}
             {!loading && activeTab === 'memory' && (
@@ -317,9 +406,9 @@ export default function HonchoHermesPanel() {
 
                     {/* Toolbar */}
                     <div className="hhp__toolbar">
-                        <input className="hhp__search" placeholder="Search memories..." value={memoryFilter}
+                        <input className="hhp__search" placeholder="Search memories..." aria-label="Search memories" value={memoryFilter}
                             onChange={e => { setMemoryFilter(e.target.value); }} />
-                        <select className="hhp__type-filter" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                        <select className="hhp__type-filter" aria-label="Filter memories by type" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
                             <option value="all">All Types</option>
                             <option value="fact">📋 Facts</option>
                             <option value="preference">⭐ Preferences</option>
@@ -335,10 +424,10 @@ export default function HonchoHermesPanel() {
                     {/* Add Form */}
                     {showAddMemory && (
                         <div className="hhp__add-form">
-                            <textarea className="hhp__add-textarea" placeholder="What should I remember?"
+                            <textarea className="hhp__add-textarea" placeholder="What should I remember?" aria-label="Memory content"
                                 value={newMemory.content} onChange={e => setNewMemory({ ...newMemory, content: e.target.value })} rows={3} />
                             <div className="hhp__add-row">
-                                <select className="hhp__add-type" value={newMemory.memoryType}
+                                <select className="hhp__add-type" aria-label="Memory type" value={newMemory.memoryType}
                                     onChange={e => setNewMemory({ ...newMemory, memoryType: e.target.value })}>
                                     <option value="fact">📋 Fact</option>
                                     <option value="preference">⭐ Preference</option>
@@ -383,7 +472,110 @@ export default function HonchoHermesPanel() {
                                     <p className="hhp__memory-content">{m.content}</p>
                                     <div className="hhp__memory-meta">
                                         <span className="hhp__memory-time">{formatTime(m.createdAt)}</span>
-                                        <button className="hhp__memory-delete" onClick={() => deleteMemory(m.id)} title="Delete">🗑️</button>
+                                        <button className="hhp__memory-delete" onClick={() => deleteMemory(m.id)} aria-label="Delete memory" title="Delete">🗑️</button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ═══ DREAMS TAB ═══ */}
+            {!loading && activeTab === 'dreams' && (
+                <div className="hhp__panel">
+                    <h3 className="hhp__section-title">🌙 Dreams</h3>
+                    <p className="hhp__hint">
+                        Short reflections Honcho synthesizes over your memories — patterns,
+                        connections, and unsurfaced to-dos. Stored locally, per user.
+                    </p>
+
+                    {/* Toolbar */}
+                    <div className="hhp__toolbar">
+                        <button
+                            className="hhp__add-btn"
+                            aria-label={showAddDream ? 'Cancel new dream' : 'Add a dream'}
+                            onClick={() => setShowAddDream(v => !v)}
+                        >
+                            {showAddDream ? '✕ Cancel' : '+ Add Dream'}
+                        </button>
+                        {dreams.length > 0 && (
+                            <button
+                                className="hhp__btn"
+                                aria-label="Clear all dreams"
+                                onClick={() => clearDreams()}
+                            >
+                                🗑️ Clear all
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Add Form */}
+                    {showAddDream && (
+                        <div className="hhp__add-form">
+                            <input
+                                className="hhp__search"
+                                placeholder="Dream title (e.g. 'Pattern: meetings cluster Wednesdays')"
+                                aria-label="Dream title"
+                                value={newDream.title}
+                                onChange={e => setNewDream({ ...newDream, title: e.target.value })}
+                            />
+                            <textarea
+                                className="hhp__add-textarea"
+                                placeholder="The reflection / synthesis…"
+                                aria-label="Dream text"
+                                value={newDream.text}
+                                onChange={e => setNewDream({ ...newDream, text: e.target.value })}
+                                rows={3}
+                            />
+                            <div className="hhp__add-row">
+                                <button
+                                    className="hhp__add-submit"
+                                    disabled={!newDream.title.trim() || !newDream.text.trim()}
+                                    onClick={() => {
+                                        appendDream({
+                                            title: newDream.title.trim(),
+                                            text: newDream.text.trim(),
+                                            sources: [],
+                                        });
+                                        setNewDream({ title: '', text: '' });
+                                        setShowAddDream(false);
+                                    }}
+                                >
+                                    Save Dream
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Dream List */}
+                    <div className="hhp__memory-list">
+                        {dreams.length === 0 ? (
+                            <div className="hhp__empty">
+                                <span>🌙</span>
+                                <p>No dreams yet. Honcho will surface reflections as it learns — or add one manually.</p>
+                            </div>
+                        ) : (
+                            dreams.map(d => (
+                                <div key={d.id} className="hhp__memory-card"
+                                    style={{ '--accent': '#8b5cf6' } as React.CSSProperties}>
+                                    <div className="hhp__memory-top">
+                                        <span className="hhp__memory-type">🌙 {d.title}</span>
+                                        {d.sources.length > 0 && (
+                                            <div className="hhp__memory-badges">
+                                                <span className="hhp__memory-source">{d.sources.length} sources</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="hhp__memory-content">{d.text}</p>
+                                    <div className="hhp__memory-meta">
+                                        <span className="hhp__memory-time">{formatTime(d.createdAt)}</span>
+                                        <button
+                                            className="hhp__memory-delete"
+                                            aria-label={`Delete dream ${d.title}`}
+                                            title="Delete"
+                                            onClick={() => deleteDream(d.id)}
+                                        >🗑️</button>
                                     </div>
                                 </div>
                             ))
@@ -421,15 +613,24 @@ export default function HonchoHermesPanel() {
                     <div className="hhp__delegate-section">
                         <h3 className="hhp__section-title">🎯 Delegate Task</h3>
                         <div className="hhp__delegate-row">
-                            <input className="hhp__delegate-input" placeholder="Ask Hermes to investigate, search, or analyze..."
+                            <input className="hhp__delegate-input"
+                                placeholder={hermesOnline ? 'Ask Hermes to investigate, search, or analyze...' : 'Ask Hermes anyway — offline runs still record for learning...'}
+                                aria-label="Hermes task prompt"
                                 value={hermesPrompt} onChange={e => setHermesPrompt(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && delegateToHermes()}
-                                disabled={!hermesOnline || hermesRunning} />
+                                disabled={hermesRunning} />
                             <button className="hhp__delegate-btn" onClick={delegateToHermes}
-                                disabled={!hermesOnline || hermesRunning || !hermesPrompt.trim()}>
+                                disabled={hermesRunning || !hermesPrompt.trim()}>
                                 {hermesRunning ? '⏳ Thinking...' : '⚡ Run'}
                             </button>
                         </div>
+
+                        {/* Self-improvement: surface how many past successes informed this run */}
+                        {fewShotInjected > 0 && (
+                            <p className="hhp__fewshot-note" role="note">
+                                🧠 Learning from {fewShotInjected} similar past {fewShotInjected === 1 ? 'run' : 'runs'}.
+                            </p>
+                        )}
 
                         {/* ReAct Steps Trace */}
                         {hermesSteps.length > 0 && (
@@ -459,6 +660,25 @@ export default function HonchoHermesPanel() {
                             <div className="hhp__result">
                                 <h4>📋 Result</h4>
                                 <pre className="hhp__result-content">{hermesResult}</pre>
+                                {/* Rating control (Cycle 17): feedback re-weights few-shot recall */}
+                                {lastRunId && (
+                                    <div className="hhp__rate-row" role="group" aria-label="Rate this Hermes run">
+                                        <span className="hhp__rate-label">Was this helpful?</span>
+                                        <button
+                                            className={`hhp__rate-btn ${lastRating === 1 ? 'is-active' : ''}`}
+                                            onClick={() => handleRateRun(1)}
+                                            aria-pressed={lastRating === 1}
+                                            aria-label="Mark this run helpful">👍</button>
+                                        <button
+                                            className={`hhp__rate-btn ${lastRating === -1 ? 'is-active' : ''}`}
+                                            onClick={() => handleRateRun(-1)}
+                                            aria-pressed={lastRating === -1}
+                                            aria-label="Mark this run unhelpful">👎</button>
+                                        {lastRating !== null && (
+                                            <span className="hhp__rate-thanks" role="status">Thanks — Hermes will remember.</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -555,6 +775,79 @@ export default function HonchoHermesPanel() {
                                 })}
                             </svg>
                         </div>
+                    )}
+                </div>
+            )}
+
+            {/* ═══ FILES TAB — Markdown arrange/filter view ═══ */}
+            {!loading && activeTab === 'files' && (
+                <div className="hhp__panel">
+                    <h3 className="hhp__section-title">📄 Converted Markdown</h3>
+
+                    {/* Arrange / filter toolbar */}
+                    <div className="hhp__toolbar">
+                        <input
+                            className="hhp__search"
+                            placeholder="Filter files by name..."
+                            aria-label="Filter Markdown files by name"
+                            value={fileFilter}
+                            onChange={e => setFileFilter(e.target.value)}
+                        />
+                        <select
+                            className="hhp__type-filter"
+                            aria-label="Sort Markdown files by"
+                            value={fileSortKey}
+                            onChange={e => setFileSortKey(e.target.value as MdSortKey)}
+                        >
+                            <option value="date">Date</option>
+                            <option value="name">Name</option>
+                            <option value="size">Size</option>
+                        </select>
+                        <button
+                            className="hhp__btn"
+                            aria-label={`Sort ${fileSortDir === 'asc' ? 'ascending' : 'descending'} — toggle direction`}
+                            title={fileSortDir === 'asc' ? 'Ascending' : 'Descending'}
+                            onClick={() => setFileSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+                        >
+                            {fileSortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
+                        </button>
+                    </div>
+
+                    {arrangedFiles.length === 0 ? (
+                        <div className="hhp__empty">
+                            <span>📄</span>
+                            <p>
+                                {ingestion.converted.length === 0
+                                    ? 'No converted Markdown files yet. Use Scribe → Choose folders → Convert now to populate this view.'
+                                    : 'No files match the current filter.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <ul className="hhp__file-list" aria-label="Converted Markdown files">
+                            {arrangedFiles.map((f, i) => (
+                                <li key={`${f.sourceName}-${i}`} className="hhp__file-row">
+                                    <button
+                                        className="hhp__file-open"
+                                        aria-label={`Open ${displayName(f)} in Scribe`}
+                                        title="Open in Scribe"
+                                        onClick={() => dispatchOpenWidget('scribe', 'Scribe', '📝')}
+                                    >
+                                        <span className="hhp__file-name">📝 {displayName(f)}</span>
+                                        <span className="hhp__file-meta">
+                                            <span className="hhp__file-size">{formatBytes(f.bytes)}</span>
+                                            {f.convertedAt && (
+                                                <span className="hhp__file-date">
+                                                    {f.convertedAt.slice(0, 10)}
+                                                </span>
+                                            )}
+                                            {f.status === 'passthrough' && (
+                                                <span className="hhp__file-badge">passthrough</span>
+                                            )}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
                     )}
                 </div>
             )}

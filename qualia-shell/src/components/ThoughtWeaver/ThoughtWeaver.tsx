@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -9,6 +9,7 @@ import {
     appendLocalCapture,
     deleteLocalCapture,
     clearLocalCaptures,
+    recategorizeLocalCapture,
 } from './thoughtWeaverStore';
 import type { LocalCapture } from './thoughtWeaverStore';
 import {
@@ -21,6 +22,33 @@ import {
     clearDoneTodos,
 } from './todoStore';
 import type { TodoItem } from './todoStore';
+import {
+    reportStore,
+    reportUserIdHolder,
+    addDailyReport,
+    addWeeklySummary,
+    setInsights,
+    clearReports,
+} from './reportStore';
+import type { ReportData } from './reportStore';
+import {
+    generateReports,
+    isDailyReportDue,
+    isWeeklyReportDue,
+} from './reportEngine';
+import type { GenerateOptions, GenerateContext, ReportSink } from './reportEngine';
+import { weekStartOf } from './insights';
+import type { InsightCapture } from './insights';
+import {
+    sendToAra,
+    saveToHonchoMemory,
+    composeInsightContext,
+    insightToHonchoSeed,
+    buildTwContextDigest,
+} from './thoughtWeaverLinkage';
+import { localCategorize } from './localCategorizer';
+import { deriveStats, deriveBuckets, deriveTimeline } from './localViews';
+import { friendlyLoadError, isBackendDownError } from '../../lib/backendStatus';
 import './ThoughtWeaver.css';
 
 // ── Daily to-do synthesis ────────────────────────────────────────────
@@ -61,7 +89,7 @@ function synthesizeTodosFromCaptures(captures: CaptureEntry[]): Array<Omit<TodoI
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type TabId = 'capture' | 'today' | 'dashboard' | 'timeline';
+type TabId = 'capture' | 'today' | 'reports' | 'dashboard' | 'timeline';
 type BucketId = 'people' | 'projects' | 'ideas' | 'admin';
 
 interface Stats {
@@ -104,6 +132,7 @@ interface BucketItem {
 const TABS: { id: TabId; label: string; icon: string }[] = [
     { id: 'capture', label: 'Capture', icon: '📝' },
     { id: 'today', label: 'Today', icon: '✅' },
+    { id: 'reports', label: 'Reports', icon: '📈' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'timeline', label: 'Timeline', icon: '🕐' },
 ];
@@ -179,6 +208,7 @@ export default function ThoughtWeaver() {
     // cache invalidates automatically when the key resolver returns a fresh value.
     thoughtWeaverUserIdHolder.current = userId;
     todoUserIdHolder.current = userId;
+    reportUserIdHolder.current = userId;
     const localCaptures: LocalCapture[] = useSyncExternalStore(
         thoughtWeaverStore.subscribe,
         thoughtWeaverStore.getSnapshot,
@@ -189,7 +219,17 @@ export default function ThoughtWeaver() {
         todoStore.getSnapshot,
         todoStore.getServerSnapshot,
     );
+    const reports: ReportData = useSyncExternalStore(
+        reportStore.subscribe,
+        reportStore.getSnapshot,
+        reportStore.getServerSnapshot,
+    );
     const [newTodoText, setNewTodoText] = useState('');
+    const [generating, setGenerating] = useState(false);
+    const [genMsg, setGenMsg] = useState<string | null>(null);
+    const [handoffMsg, setHandoffMsg] = useState<string | null>(null);
+    const didCatchUp = useRef(false);
+    const llmReady = hasActiveLlm(integrations.llm);
 
     const [activeTab, setActiveTab] = useState<TabId>('capture');
     const [text, setText] = useState('');
@@ -203,6 +243,14 @@ export default function ThoughtWeaver() {
     const [lastResult, setLastResult] = useState<{ filed_to: string; confidence: number; destination_name: string | null } | null>(null);
     const [seeded, setSeeded] = useState(false);
     const [resolveId, setResolveId] = useState<string | null>(null);
+    // How the most recent capture was sorted — surfaced honestly in the toast
+    // instead of silently swallowing where the result came from.
+    const [captureSource, setCaptureSource] = useState<'llm' | 'backend' | 'local' | null>(null);
+    // Backend reachability — drives the honest "backend offline" banner instead
+    // of silently showing empty panels when the Dwellium backend isn't running.
+    const [backendOffline, setBackendOffline] = useState(false);
+    // Which local capture is being re-filed by the user (category override).
+    const [refileId, setRefileId] = useState<string | null>(null);
 
     // ── Data fetching ────────────────────────────────────────────────
 
@@ -211,7 +259,8 @@ export default function ThoughtWeaver() {
             const res = await fetch(`${API}/captures?limit=20`);
             const json = await res.json();
             if (json.success) setCaptures(json.data);
-        } catch { /* silent */ }
+            setBackendOffline(false);
+        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
     }, []);
 
     const fetchStats = useCallback(async () => {
@@ -219,7 +268,8 @@ export default function ThoughtWeaver() {
             const res = await fetch(`${API}/stats`);
             const json = await res.json();
             if (json.success) setStats(json.data);
-        } catch { /* silent */ }
+            setBackendOffline(false);
+        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
     }, []);
 
     const fetchBucketItems = useCallback(async () => {
@@ -233,7 +283,8 @@ export default function ThoughtWeaver() {
                 ideas: i.success ? i.data : [],
                 admin: a.success ? a.data : [],
             });
-        } catch { /* silent */ }
+            setBackendOffline(false);
+        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
     }, []);
 
     const fetchTimeline = useCallback(async () => {
@@ -241,7 +292,8 @@ export default function ThoughtWeaver() {
             const res = await fetch(`${API}/timeline`);
             const json = await res.json();
             if (json.success) setTimeline(json.data);
-        } catch { /* silent */ }
+            setBackendOffline(false);
+        } catch (e) { if (isBackendDownError(e)) setBackendOffline(true); }
     }, []);
 
     useEffect(() => {
@@ -300,6 +352,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0.5;
                     const destination_name = parsed.destination_name || null;
                     setLastResult({ filed_to, confidence, destination_name });
+                    setCaptureSource('llm');
                     persistLocally(filed_to, confidence, destination_name);
                     setText('');
                     setLoading(false);
@@ -324,6 +377,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             const json = await res.json();
             if (json.success) {
                 setLastResult({ filed_to: json.data.filed_to, confidence: json.data.confidence, destination_name: json.data.destination_name });
+                setCaptureSource('backend');
                 persistLocally(json.data.filed_to, json.data.confidence, json.data.destination_name);
                 setText('');
                 fetchCaptures();
@@ -333,10 +387,15 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             }
         } catch { /* backend offline AND no LLM configured — still persist locally */ }
 
-        // ── 3) Both LLM and backend unavailable: still keep the thought ──
-        // The user said: "make it always persistent". Treat as needs_review.
-        persistLocally('needs_review', 0, null);
-        setLastResult({ filed_to: 'needs_review', confidence: 0, destination_name: null });
+        // ── 3) Both LLM and backend unavailable: categorize LOCALLY ──
+        // Offline must not mean "do nothing". Run the deterministic heuristic so
+        // the thought is actually sorted into People/Projects/Ideas/Tasks instead
+        // of being dumped as needs_review/confidence-0. This is the difference
+        // between "saved but dead" and "the feature works with no backend".
+        const local = localCategorize(thoughtText);
+        persistLocally(local.filed_to, local.confidence, local.destination_name);
+        setLastResult({ filed_to: local.filed_to, confidence: local.confidence, destination_name: local.destination_name });
+        setCaptureSource('local');
         setText('');
         setLoading(false);
     };
@@ -407,6 +466,35 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         deleteLocalCapture(id);
     }, []);
 
+    // ── Glanceable views from the LOCAL trusted store ────────────────────
+    // The header counts, Dashboard, and Timeline must reflect what's stored on
+    // THIS device even with no backend. Derive them from localCaptures and merge
+    // backend data on top when present, so the views are never blank offline.
+    const effectiveStats = useMemo<Stats>(() => {
+        return stats ?? deriveStats(localCaptures);
+    }, [stats, localCaptures]);
+
+    const effectiveBuckets = useMemo<Record<BucketId, BucketItem[]>>(() => {
+        const local = deriveBuckets(localCaptures);
+        return {
+            people: [...bucketItems.people, ...local.people],
+            projects: [...bucketItems.projects, ...local.projects],
+            ideas: [...bucketItems.ideas, ...local.ideas],
+            admin: [...bucketItems.admin, ...local.admin],
+        };
+    }, [bucketItems, localCaptures]);
+
+    const effectiveTimeline = useMemo<BucketItem[]>(() => {
+        const merged = [...timeline, ...deriveTimeline(localCaptures)];
+        return merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [timeline, localCaptures]);
+
+    // User override of the AI's category on a local capture (never-misinterpreted).
+    const handleRefile = useCallback((id: string, bucket: BucketId) => {
+        recategorizeLocalCapture(id, bucket);
+        setRefileId(null);
+    }, []);
+
     const handleClearAllLocal = useCallback(() => {
         if (localCaptures.length === 0) return;
         const ok = typeof window !== 'undefined' && window.confirm(
@@ -415,15 +503,106 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         if (ok) clearLocalCaptures();
     }, [localCaptures.length]);
 
+    // ── Reports + insights generation (Cycle 13) ──────────────────────
+    // Build the local-first sink + injectable LLM, then drive the pure engine.
+    // All persistence stays in the per-user reportStore / todoStore (no backend).
+    const runGenerate = useCallback(async (opts?: GenerateOptions) => {
+        if (generating) return;
+        setGenerating(true);
+        setGenMsg(null);
+        try {
+            const now = new Date();
+            const insightCaptures: InsightCapture[] = mergedCaptures.map(c => ({
+                id: c.id,
+                text: c.original_text,
+                filed_to: c.filed_to,
+                destination_name: c.destination_name,
+                createdAt: c.createdAt,
+            }));
+            const ctx: GenerateContext = {
+                captures: insightCaptures,
+                today: now.toISOString().slice(0, 10),
+                nowIso: now.toISOString(),
+                llm: (req) => callLlm(req, integrations.llm),
+            };
+            const sink: ReportSink = {
+                addDailyReport,
+                addWeeklySummary,
+                setInsights,
+                syncTodos: (seeds) => syncTodosFromCaptures(seeds),
+            };
+            const r = await generateReports(ctx, sink, opts);
+            const wantInsights = opts === undefined || opts.insights === true;
+            const parts: string[] = [];
+            if (r.ranDaily) parts.push('daily report');
+            if (r.ranWeekly) parts.push('weekly summary');
+            if (r.todosAdded > 0) parts.push(`${r.todosAdded} to-do${r.todosAdded === 1 ? '' : 's'}`);
+            if (wantInsights) parts.push(`${r.insightCount} insight${r.insightCount === 1 ? '' : 's'}`);
+            setGenMsg(parts.length ? `Generated ${parts.join(', ')}.` : 'Nothing new to generate yet.');
+        } catch {
+            setGenMsg('Generation hit a snag — your captures are safe.');
+        } finally {
+            setGenerating(false);
+        }
+    }, [generating, mergedCaptures, integrations.llm]);
+
+    // On-open catch-up: once captures are available, if a daily report hasn't
+    // been generated for today, draft it + refresh to-dos (and the weekly
+    // summary if that's also due). Insights are LLM-only, so they stay behind
+    // the explicit "Generate now" button rather than spending tokens on open.
+    // Runs once per mount (ref-guarded); client-only by virtue of useEffect.
+    useEffect(() => {
+        if (didCatchUp.current) return;
+        if (mergedCaptures.length === 0) return;
+        didCatchUp.current = true;
+        const today = new Date().toISOString().slice(0, 10);
+        const snap = reportStore.getSnapshot();
+        if (!isDailyReportDue(snap.lastDailyReportDate, today)) return;
+        const weekDue = isWeeklyReportDue(snap.lastWeeklyReportWeek, weekStartOf(today));
+        runGenerate({ daily: true, todos: true, weekly: weekDue });
+    }, [mergedCaptures.length, runGenerate]);
+
+    const handleClearReports = useCallback(() => {
+        const total = reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length;
+        if (total === 0) return;
+        const ok = typeof window !== 'undefined' && window.confirm(
+            `Clear all ${total} generated report${total === 1 ? '' : 's'}/insight${total === 1 ? '' : 's'}? Your captures + to-dos are kept.`
+        );
+        if (ok) { clearReports(); setGenMsg(null); }
+    }, [reports.dailyReports.length, reports.weeklySummaries.length, reports.insights.length]);
+
+    // ── Cross-widget handoffs (Cycle 15: TW ↔ ARA ↔ Honcho) ──────────────
+    // All decoupled via the existing buses: ARA reuses `scribe:send-to-ara`
+    // (zero ARA change); Honcho saves to its LOCAL dreamStore. Pure logic lives
+    // in thoughtWeaverLinkage.ts; these are the thin call sites.
+    const handleInsightToAra = useCallback((insight: { text: string; kind: 'pattern' | 'connection' | 'suggestion' }) => {
+        const ok = sendToAra(composeInsightContext(insight));
+        setHandoffMsg(ok ? 'Sent insight to ARA.' : 'Nothing to send.');
+    }, []);
+
+    const handleInsightToHoncho = useCallback((insight: { id: string; text: string; kind: 'pattern' | 'connection' | 'suggestion' }) => {
+        const saved = saveToHonchoMemory(insightToHonchoSeed(insight));
+        setHandoffMsg(saved ? 'Saved to Honcho memory.' : 'Nothing to save.');
+    }, []);
+
+    const handleDigestToAra = useCallback(() => {
+        const digest = buildTwContextDigest(
+            mergedCaptures.map(c => ({ text: c.original_text, filed_to: c.filed_to })),
+            reports.insights,
+        );
+        const ok = sendToAra(digest ? { text: digest, preface: 'Here is a digest of my recent notes for context:' } : null);
+        setHandoffMsg(ok ? 'Sent recent-notes digest to ARA.' : 'No notes to share yet.');
+    }, [mergedCaptures, reports.insights]);
+
     const allBucketItems = useMemo(() => {
-        if (activeBucket === 'all') return Object.entries(bucketItems).flatMap(([type, items]) => items.map(i => ({ ...i, type })));
-        return bucketItems[activeBucket].map(i => ({ ...i, type: activeBucket }));
-    }, [bucketItems, activeBucket]);
+        if (activeBucket === 'all') return Object.entries(effectiveBuckets).flatMap(([type, items]) => items.map(i => ({ ...i, type })));
+        return effectiveBuckets[activeBucket].map(i => ({ ...i, type: activeBucket }));
+    }, [effectiveBuckets, activeBucket]);
 
     const filteredTimeline = useMemo(() => {
-        if (timelineFilter === 'all') return timeline;
-        return timeline.filter(i => i.type === timelineFilter);
-    }, [timeline, timelineFilter]);
+        if (timelineFilter === 'all') return effectiveTimeline;
+        return effectiveTimeline.filter(i => i.type === timelineFilter);
+    }, [effectiveTimeline, timelineFilter]);
 
     const groupedTimeline = useMemo(() => {
         const groups: Record<string, BucketItem[]> = {};
@@ -443,12 +622,12 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             <div className="tw-header">
                 <div className="tw-header__top">
                     <h2 className="tw-title">🧠 Thought Weaver</h2>
-                    {stats && (
+                    {effectiveStats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: '#D6FE51' }}>👤 {stats.activePeople}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>📁 {stats.activeProjects}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#fbbf24' }}>💡 {stats.totalIdeas}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#34d399' }}>📋 {stats.tasksDue}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#D6FE51' }}>👤 {effectiveStats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>📁 {effectiveStats.activeProjects}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#fbbf24' }}>💡 {effectiveStats.totalIdeas}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#34d399' }}>📋 {effectiveStats.tasksDue}</span>
                         </div>
                     )}
                 </div>
@@ -460,6 +639,24 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     ))}
                 </div>
             </div>
+
+            {/* Honest backend-offline banner — shown when a backend fetch fails
+                because the Dwellium server isn't reachable (your "show the error
+                if the backend isn't up" ask). The local store remains the source
+                of truth, so the views above still work. */}
+            {backendOffline && (
+                <div
+                    className="tw-offline-banner"
+                    role="status"
+                    style={{
+                        margin: '8px 12px 0', padding: '8px 12px', borderRadius: 8,
+                        background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.45)',
+                        color: '#fdba74', fontSize: 12.5, lineHeight: 1.4,
+                    }}
+                >
+                    ⚠ <strong>Backend offline</strong> — the Dwellium server isn’t reachable, so you’re seeing the thoughts stored on this device. Nothing is lost; your captures stay saved here.
+                </div>
+            )}
 
             {/* ─── CAPTURE TAB ─── */}
             {activeTab === 'capture' && (
@@ -496,8 +693,15 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 <span className={`tw-confidence tw-confidence--${confidenceLabel(lastResult.confidence).toLowerCase()}`}>
                                     {confidenceLabel(lastResult.confidence)} ({Math.round(lastResult.confidence * 100)}%)
                                 </span>
+                                {captureSource && (
+                                    <span className="tw-source-badge" title="How this thought was sorted">
+                                        {captureSource === 'llm' ? '✨ via your LLM'
+                                            : captureSource === 'backend' ? '🛰 via backend'
+                                            : '💾 sorted locally · offline'}
+                                    </span>
+                                )}
                             </div>
-                            <button className="tw-result__close" onClick={() => setLastResult(null)}>✕</button>
+                            <button className="tw-result__close" onClick={() => { setLastResult(null); setCaptureSource(null); }}>✕</button>
                         </div>
                     )}
 
@@ -537,6 +741,21 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                             <span className="tw-confidence-mini">{Math.round(c.confidence * 100)}%</span>
                                             {c.source === 'local' && (
                                                 <span className="tw-local-badge" title="Stored in this browser — only you can delete it">💾 local</span>
+                                            )}
+                                            {/* User override of the AI's category — you always have the final say. */}
+                                            {c.source === 'local' && (
+                                                refileId === c.id ? (
+                                                    <div className="tw-resolve-picker">
+                                                        {BUCKETS.map(b => (
+                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleRefile(c.id, b.id)} title={`File under ${b.label}`}>
+                                                                {b.icon}
+                                                            </button>
+                                                        ))}
+                                                        <button className="tw-resolve-cancel" onClick={() => setRefileId(null)}>✕</button>
+                                                    </div>
+                                                ) : (
+                                                    <button className="tw-categorize-btn" onClick={() => setRefileId(c.id)} title="Re-file — you decide the category; the AI never has the final say on your stored thought">✎ Re-file</button>
+                                                )
                                             )}
                                             {c.status === 'needs_review' && c.source !== 'local' && (
                                                 resolveId === c.id ? (
@@ -672,19 +891,141 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                 </div>
             )}
 
+            {/* ─── REPORTS TAB ─── */}
+            {activeTab === 'reports' && (
+                <div className="tw-reports">
+                    <div className="tw-reports__header">
+                        <h3 className="tw-section-title">Reports &amp; Insights</h3>
+                        <div className="tw-reports__actions">
+                            <button
+                                className="tw-reports__gen-btn"
+                                onClick={() => runGenerate()}
+                                disabled={generating || mergedCaptures.length === 0}
+                                aria-busy={generating}
+                                title="Draft today's report, refresh to-dos, roll up the week, and surface insights"
+                            >
+                                {generating ? '⏳ Generating…' : '✨ Generate now'}
+                            </button>
+                            <button
+                                className="tw-reports__handoff-btn"
+                                onClick={handleDigestToAra}
+                                disabled={mergedCaptures.length === 0}
+                                title="Send a digest of recent captures + insights to ARA as context"
+                            >
+                                → ARA context
+                            </button>
+                            {(reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length) > 0 && (
+                                <button className="tw-reports__clear-btn" onClick={handleClearReports} disabled={generating}>
+                                    🧹 Clear reports
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {genMsg && (
+                        <p className="tw-reports__msg" role="status" aria-live="polite">{genMsg}</p>
+                    )}
+                    {handoffMsg && (
+                        <p className="tw-reports__msg" role="status" aria-live="polite">{handoffMsg}</p>
+                    )}
+                    {!llmReady && (
+                        <p className="tw-reports__hint" role="note">
+                            Add an LLM key in Settings → API Keys for richer reports and non-obvious insights. Without
+                            it, reports use a built-in heuristic and the insights pass stays empty.
+                        </p>
+                    )}
+
+                    {(reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length) === 0 ? (
+                        <div className="tw-empty">
+                            <span className="tw-empty__icon">📈</span>
+                            <p>
+                                {mergedCaptures.length === 0
+                                    ? 'Capture a few thoughts first, then come back to generate a report.'
+                                    : 'No reports yet. Click "Generate now" to draft today\'s report and surface insights.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Non-obvious insights */}
+                            {reports.insights.length > 0 && (
+                                <section className="tw-reports__section" aria-label="Insights">
+                                    <h4 className="tw-reports__section-title">💡 Insights</h4>
+                                    {reports.insights.map(i => (
+                                        <div key={i.id} className={`tw-insight tw-insight--${i.kind}`}>
+                                            <span className="tw-insight__kind">{i.kind}</span>
+                                            <span className="tw-insight__text">{i.text}</span>
+                                            <div className="tw-insight__actions">
+                                                <button
+                                                    className="tw-insight__action"
+                                                    onClick={() => handleInsightToAra(i)}
+                                                    title="Discuss this insight with ARA"
+                                                    aria-label="Send insight to ARA"
+                                                >
+                                                    → ARA
+                                                </button>
+                                                <button
+                                                    className="tw-insight__action"
+                                                    onClick={() => handleInsightToHoncho(i)}
+                                                    title="Save this insight to Honcho memory"
+                                                    aria-label="Save insight to Honcho memory"
+                                                >
+                                                    🧠 Honcho
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </section>
+                            )}
+
+                            {/* Daily reports */}
+                            {reports.dailyReports.length > 0 && (
+                                <section className="tw-reports__section" aria-label="Daily reports">
+                                    <h4 className="tw-reports__section-title">📅 Daily Reports</h4>
+                                    {reports.dailyReports.map(r => (
+                                        <article key={r.id} className="tw-report-card">
+                                            <header className="tw-report-card__head">
+                                                <span className="tw-report-card__date">{r.date}</span>
+                                                <span className="tw-report-card__count">{r.captureCount} capture{r.captureCount === 1 ? '' : 's'}</span>
+                                            </header>
+                                            <p className="tw-report-card__body">{r.summary}</p>
+                                        </article>
+                                    ))}
+                                </section>
+                            )}
+
+                            {/* Weekly summaries */}
+                            {reports.weeklySummaries.length > 0 && (
+                                <section className="tw-reports__section" aria-label="Weekly summaries">
+                                    <h4 className="tw-reports__section-title">🗓️ Weekly Summaries</h4>
+                                    {reports.weeklySummaries.map(w => (
+                                        <article key={w.id} className="tw-report-card">
+                                            <header className="tw-report-card__head">
+                                                <span className="tw-report-card__date">Week of {w.weekStart}</span>
+                                                <span className="tw-report-card__count">{w.captureCount} capture{w.captureCount === 1 ? '' : 's'}</span>
+                                            </header>
+                                            <p className="tw-report-card__body">{w.summary}</p>
+                                        </article>
+                                    ))}
+                                </section>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+
             {/* ─── DASHBOARD TAB ─── */}
             {activeTab === 'dashboard' && (
                 <div className="tw-dashboard">
                     {/* Stats bar */}
-                    {stats && (
+                    {effectiveStats && (
                         <div className="tw-stats-bar">
                             {[
-                                { icon: '🧠', label: 'Captures', value: stats.totalCaptures, color: '#D6FE51' },
-                                { icon: '📥', label: 'To Review', value: stats.pendingReviews, color: '#f97316', highlight: stats.pendingReviews > 0 },
-                                { icon: '👤', label: 'People', value: stats.activePeople, color: '#D6FE51' },
-                                { icon: '📁', label: 'Active', value: stats.activeProjects, color: '#60a5fa' },
-                                { icon: '💡', label: 'Ideas', value: stats.totalIdeas, color: '#fbbf24' },
-                                { icon: '📋', label: 'Due', value: stats.tasksDue, color: '#34d399', highlight: stats.tasksDue > 0 },
+                                { icon: '🧠', label: 'Captures', value: effectiveStats.totalCaptures, color: '#D6FE51' },
+                                { icon: '📥', label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
+                                { icon: '👤', label: 'People', value: effectiveStats.activePeople, color: '#D6FE51' },
+                                { icon: '📁', label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
+                                { icon: '💡', label: 'Ideas', value: effectiveStats.totalIdeas, color: '#fbbf24' },
+                                { icon: '📋', label: 'Due', value: effectiveStats.tasksDue, color: '#34d399', highlight: effectiveStats.tasksDue > 0 },
                             ].map(s => (
                                 <div key={s.label} className={`tw-stat-card ${s.highlight ? 'tw-stat-card--highlight' : ''}`}>
                                     <span className="tw-stat-card__icon">{s.icon}</span>
@@ -705,7 +1046,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 style={activeBucket === b.id ? { background: b.color + '22', color: b.color, borderColor: b.color } : {}}
                                 onClick={() => setActiveBucket(b.id)}>
                                 {b.icon} {b.label}
-                                <span className="tw-bucket-pill__count">{bucketItems[b.id].length}</span>
+                                <span className="tw-bucket-pill__count">{effectiveBuckets[b.id].length}</span>
                             </button>
                         ))}
                     </div>
@@ -731,7 +1072,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                         </div>
                                         <div className="tw-item-card__actions">
                                             <span className="tw-time">{timeAgo(item.createdAt)}</span>
-                                            <button className="tw-delete-btn" onClick={() => handleDelete(item.type || '', item.id)} title="Delete">🗑</button>
+                                            <button className="tw-delete-btn" onClick={() => (item as { source?: string }).source === 'local' ? deleteLocalCapture(item.id) : handleDelete(item.type || '', item.id)} title="Delete">🗑</button>
                                         </div>
                                     </div>
                                 </div>

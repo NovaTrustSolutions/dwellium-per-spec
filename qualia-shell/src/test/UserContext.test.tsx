@@ -251,4 +251,38 @@ describe('UserContext', () => {
         expect(result.current.isAuthenticated).toBe(false);
         expect(localStorage.getItem('dwellium-auth-token')).toBeNull();
     });
+
+    it('keeps the session on a transient /api/auth/me network failure (does NOT log out)', async () => {
+        localStorage.setItem('dwellium-auth-token', 'valid-jwt');
+        localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
+
+        // Backend hiccup: fetch rejects (network down / backend mid-restart)
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('network down'));
+
+        const { result } = renderHook(() => useUser(), { wrapper });
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        // Session survives — restored optimistically from localStorage, NOT cleared.
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(result.current.user?.name).toBe('Andy');
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
+    });
+
+    it('keeps the session on a 5xx /api/auth/me failure (does NOT log out)', async () => {
+        localStorage.setItem('dwellium-auth-token', 'valid-jwt');
+        localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
+
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: false,
+            status: 503,
+        });
+
+        const { result } = renderHook(() => useUser(), { wrapper });
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
+    });
 });

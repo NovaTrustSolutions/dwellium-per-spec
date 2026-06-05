@@ -16,13 +16,16 @@
  *
  * See Scripts/autorun/FILE_EXPLORER_PORTING_PLAN.md for full breakdown.
  */
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef, useContext } from 'react';
+import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus, FolderRoot } from 'lucide-react';
 import { FileExplorerCell, resetVisiblePaths, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
 import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
+import { getWorkspaceRoot } from './workspaceRoot';
+import { MoveToModal } from './MoveToModal';
+import { destFor } from './moveTargets';
 import { API_BASE } from '../../config';
-import { getAuthHeaders } from '../../context/UserContext';
+import { getAuthHeaders, UserContext } from '../../context/UserContext';
 
 // Cycle 8: upload a pasted/dropped image to /api/scribe/images (reused per Ilya design lock #4)
 // Returns the server-side URL of the uploaded image, or null on failure.
@@ -67,6 +70,10 @@ function sortFlat(entries: FileEntry[], sort: 'modified-desc' | 'name-asc' | 'si
 
 export default function FileExplorer() {
     const { locked, viewMode, selectedPath, flatSort, setLocked, setViewMode, setFlatSort } = useFileExplorer();
+    // Workspace root path (spec §2.4) — read userId via context directly so a
+    // missing provider (tests) degrades gracefully instead of throwing.
+    const userCtx = useContext(UserContext);
+    const workspaceRoot = getWorkspaceRoot(userCtx?.user?.id ?? null);
     const [entries, setEntries] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -75,6 +82,9 @@ export default function FileExplorer() {
     const [newEntry, setNewEntry] = useState<NewEntryState | null>(null);
     const [newName, setNewName] = useState('');
     const newInputRef = useRef<HTMLInputElement>(null);
+
+    // "Move to…" picker target (spec §4.3). Null when the modal is closed.
+    const [moveTarget, setMoveTarget] = useState<FileEntry | null>(null);
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -89,6 +99,22 @@ export default function FileExplorer() {
             setLoading(false);
         }
     }, []);
+
+    // Move the picker's target into the chosen destination (spec §4.3).
+    const doMove = useCallback(async (destPath: string) => {
+        const src = moveTarget;
+        if (!src) return;
+        try {
+            await apiMove(src.path, destFor(destPath, src.name), false);
+            setMoveTarget(null);
+            await refresh();
+            setToast(`✓ Moved "${src.name}" to ${destPath || 'root'}`);
+            setTimeout(() => setToast(null), 3000);
+        } catch (err: any) {
+            alert(`Move failed: ${err?.message ?? err}`);
+            setMoveTarget(null);
+        }
+    }, [moveTarget, refresh]);
 
     useEffect(() => {
         if (newEntry) newInputRef.current?.focus();
@@ -373,6 +399,23 @@ export default function FileExplorer() {
                 </button>
             </div>
 
+            {/* Workspace root path (spec §2.4) — always visible under the toolbar */}
+            <div
+                title={`Workspace root: ${workspaceRoot}`}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '3px 10px', flexShrink: 0,
+                    background: '#070707', borderBottom: '1px solid #1a1a1a',
+                    fontSize: 10, color: '#888',
+                    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                }}
+            >
+                <FolderRoot size={11} strokeWidth={1.75} style={{ color: '#D6FE51', flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {workspaceRoot}
+                </span>
+            </div>
+
             {/* Tree body */}
             {/* Cycle 9: lock banner — appears below toolbar when locked, explains state */}
             {locked && (
@@ -487,6 +530,7 @@ export default function FileExplorer() {
                                 entry={entry}
                                 onChange={refresh}
                                 onRequestNewEntry={requestNewEntry}
+                                onRequestMove={setMoveTarget}
                                 showFullPath={viewMode === 'flat'}
                             />
                         ))}
@@ -495,6 +539,16 @@ export default function FileExplorer() {
                     </>
                 )}
             </div>
+
+            {/* Move-to-Thread picker (spec §4.3) */}
+            {moveTarget && (
+                <MoveToModal
+                    entry={moveTarget}
+                    entries={entries}
+                    onPick={(destPath) => void doMove(destPath)}
+                    onClose={() => setMoveTarget(null)}
+                />
+            )}
 
             {/* Status footer */}
             {/* Paste toast (Cycle 8) */}

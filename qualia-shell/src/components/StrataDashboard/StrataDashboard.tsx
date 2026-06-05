@@ -73,6 +73,7 @@ import CivilEngineeringStudio from './modules/CivilEngineeringStudio';
 import StrataAdminSettings from './StrataAdminSettings';
 import GlobalSearch from '../GlobalSearch/GlobalSearch';
 import type { StrataModule } from './strataTypes';
+import { consumePendingStrataModule, STRATA_DEEPLINK_EVENT } from './strataDeepLink';
 import { useUser } from '../../context/UserContext';
 import { Settings, Scale, FolderKanban, Shield, Activity, Pencil, HardHat, Plus, X } from 'lucide-react';
 import { strataPost, strataGet } from './strataApi';
@@ -1670,6 +1671,23 @@ export default function StrataDashboard() {
     const { logout, hasPermission, user } = useUser();
     const [activeModule, setActiveModule] = useState<StrataModule | 'settings'>('overview');
     const [searchNavTarget, setSearchNavTarget] = useState<SearchNavTarget | null>(null);
+
+    // ── Cross-widget module deep-link (DASH-D6) ──────────────────────
+    // Cold-open: another widget (e.g. AstraDashboard) staged a module in the
+    // holder before firing `dwellium:open-widget`; consume it on mount so we
+    // land on that module instead of overview. Warm-focus: the window was
+    // already open, so we also listen for `dwellium:strata-module` events.
+    // Strictly additive — remove this block to fall back to overview.
+    useEffect(() => {
+        const pending = consumePendingStrataModule();
+        if (pending) setActiveModule(pending);
+        const handler = (ev: Event) => {
+            const module = (ev as CustomEvent).detail?.module;
+            if (module) setActiveModule(module as StrataModule);
+        };
+        window.addEventListener(STRATA_DEEPLINK_EVENT, handler);
+        return () => window.removeEventListener(STRATA_DEEPLINK_EVENT, handler);
+    }, []);
 
     const renderModule = () => {
         switch (activeModule) {

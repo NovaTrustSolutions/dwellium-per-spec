@@ -45,6 +45,8 @@ interface Props {
     depth?: number;
     onChange?: () => void;
     onRequestNewEntry?: (parentPath: string, type: 'file' | 'folder') => void;
+    /** Open the "Move to…" destination picker for this entry (spec §4.3). */
+    onRequestMove?: (entry: FileEntry) => void;
     /** Show full path as secondary line under filename (used in flat view). */
     showFullPath?: boolean;
 }
@@ -56,18 +58,32 @@ const visiblePathsRef: { current: string[] } = { current: [] };
 export function resetVisiblePaths() { visiblePathsRef.current = []; }
 export function pushVisiblePath(p: string) { visiblePathsRef.current.push(p); }
 
-export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry, showFullPath = false }: Props) {
+export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry, onRequestMove, showFullPath = false }: Props) {
     const { expanded, selectedPath, selectedPaths, locked, setSelectedPath, toggleSelected, selectRange, toggleFolder } = useFileExplorer();
     const isExpanded = !!expanded[entry.path];
     const isSelected = selectedPaths.includes(entry.path) || selectedPath === entry.path;
     pushVisiblePath(entry.path);
     const isFolder = entry.tier !== 'file';
 
+    // Show-in-Finder (spec §4.3) — only available in the Electron desktop build,
+    // where window.electronAPI bridges shell.showItemInFolder. Resolves the
+    // relative tree path against the injected workspace root.
+    const electronAPI = (typeof window !== 'undefined' ? (window as any).electronAPI : undefined) as
+        | { isElectron?: boolean; showItemInFolder?: (p: string) => void }
+        | undefined;
+    const canShowInFinder = !!electronAPI?.isElectron;
+    const showInFinder = () => {
+        const root = (typeof window !== 'undefined' ? (window as any).__dwelliumWorkspaceRoot : '') as string | undefined;
+        const abs = root ? `${root}/${entry.path}` : entry.path;
+        electronAPI?.showItemInFolder?.(abs);
+    };
+
     const [renaming, setRenaming] = useState(false);
     const [draftName, setDraftName] = useState(entry.name);
     const [ctx, setCtx] = useState<ContextMenuState | null>(null);
     const [dragOver, setDragOver] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (renaming) {
@@ -78,12 +94,18 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
 
     useEffect(() => {
         if (!ctx) return;
-        const close = () => setCtx(null);
-        document.addEventListener('mousedown', close, true);
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+        // Close on outside mousedown only — a mousedown INSIDE the menu must not
+        // dismiss it before the item's click fires (capture-phase close was
+        // swallowing every menu action).
+        const closeOnOutside = (e: MouseEvent) => {
+            if (menuRef.current && e.target instanceof Node && menuRef.current.contains(e.target)) return;
+            setCtx(null);
+        };
+        document.addEventListener('mousedown', closeOnOutside, true);
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCtx(null); };
         document.addEventListener('keydown', onKey);
         return () => {
-            document.removeEventListener('mousedown', close, true);
+            document.removeEventListener('mousedown', closeOnOutside, true);
             document.removeEventListener('keydown', onKey);
         };
     }, [ctx]);
@@ -386,6 +408,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
             {/* Right-click context menu */}
             {ctx && (
                 <div
+                    ref={menuRef}
                     onMouseDown={(e) => e.stopPropagation()}
                     style={{
                         position: 'fixed', top: ctx.y, left: ctx.x, zIndex: 1000,
@@ -401,13 +424,15 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                             <CtxDivider />
                         </>
                     )}
+                    {canShowInFinder && <CtxItem label="Show in Finder" onClick={() => { setCtx(null); showInFinder(); }} />}
+                    <CtxItem label="Move to…" disabled={locked} onClick={() => { setCtx(null); onRequestMove?.(entry); }} />
                     <CtxItem label="Rename" shortcut="F2" disabled={locked} onClick={() => { setCtx(null); startRename(); }} />
                     <CtxItem label="Delete" danger disabled={locked} onClick={() => { setCtx(null); void handleDelete(); }} />
                 </div>
             )}
 
             {isFolder && isExpanded && entry.children?.map((child) => (
-                <FileExplorerCell key={child.path} entry={child} depth={depth + 1} onChange={onChange} onRequestNewEntry={onRequestNewEntry} />
+                <FileExplorerCell key={child.path} entry={child} depth={depth + 1} onChange={onChange} onRequestNewEntry={onRequestNewEntry} onRequestMove={onRequestMove} />
             ))}
         </>
     );

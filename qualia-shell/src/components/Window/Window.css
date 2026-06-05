@@ -69,7 +69,8 @@
     justify-content: flex-start;
     gap: 10px;
     flex-direction: row;
-    height: 46px;
+    /* spec §3.5 — title bar ≤28–32px; content area is why the window exists. */
+    height: 30px;
     padding: 0 14px 0 12px;
     background: linear-gradient(180deg, var(--window-titlebar), rgba(0, 0, 0, 0.08));
     border-bottom: 1px solid var(--border-subtle);
@@ -351,61 +352,58 @@
     transform: scale(1.1);
 }
 /* ── Tearoff Handle ─────────────────────────────────────────────────── */
+/* Tear-off grip — compact, pinned handle (NOT a persistent chrome row).
+   Lives just below the title bar at the right edge; absolutely positioned so it
+   never consumes content height. Idle = a faint grip icon that brightens on
+   hover; active = brightens with a transient % readout. All colors via tokens. */
 .window__tearoff-handle {
-    display: flex;
+    position: absolute;
+    top: 50px;
+    right: 6px;
+    z-index: 4;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
+    gap: 4px;
+    padding: 2px 4px;
     font-size: 10px;
+    line-height: 1;
     color: var(--text-tertiary, #64748b);
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+    border-radius: 6px;
     cursor: grab;
     user-select: none;
-    flex-shrink: 0;
-    transition: background 0.15s ease, color 0.15s ease;
-    letter-spacing: 0.03em;
+    opacity: 0.35;
+    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    overflow: hidden;
+}
+
+.window:hover .window__tearoff-handle {
+    opacity: 0.7;
 }
 
 .window__tearoff-handle:hover {
-    background: rgba(214, 254, 81, 0.08);
-    color: var(--text-secondary, #94a3b8);
-    border-bottom-color: rgba(214, 254, 81, 0.15);
+    opacity: 1;
+    color: var(--accent, #D6FE51);
+    background: color-mix(in srgb, var(--accent, #D6FE51) 8%, transparent);
 }
 
 .window__tearoff-handle:active,
 .window__tearoff-handle--active {
     cursor: grabbing;
-    background: rgba(214, 254, 81, 0.14);
-    color: #D6FE51;
-    border-bottom-color: rgba(214, 254, 81, 0.3);
+    opacity: 1;
+    color: var(--accent, #D6FE51);
+    background: color-mix(in srgb, var(--accent, #D6FE51) 14%, transparent);
 }
 
 .window__tearoff-icon {
-    font-size: 12px;
-    opacity: 0.6;
     flex-shrink: 0;
 }
 
-.window__tearoff-label {
-    flex: 1;
+.window__tearoff-progress {
     font-variant-numeric: tabular-nums;
 }
 
-.window__tearoff-arrow {
-    font-size: 11px;
-    opacity: 0;
-    transition: opacity 0.15s, transform 0.15s;
-    transform: translateX(-4px);
-}
-
-.window__tearoff-handle:hover .window__tearoff-arrow,
-.window__tearoff-handle--active .window__tearoff-arrow {
-    opacity: 0.7;
-    transform: translateX(0);
-}
-
-/* Tearoff progress bar: fills left-to-right as user drags out */
+/* Tearoff progress bar: fills left-to-right as the user drags out */
 .window__tearoff-handle--active::after {
     content: '';
     position: absolute;
@@ -413,19 +411,35 @@
     left: 0;
     height: 2px;
     width: calc(var(--tearoff-progress, 0) * 100%);
-    background: linear-gradient(90deg, #D6FE51, #D6FE51);
+    background: var(--accent, #D6FE51);
     border-radius: 0 1px 1px 0;
     transition: width 0.05s linear;
 }
 
-.window__tearoff-handle {
-    position: relative;
-    overflow: hidden;
+/* Title-bar drag-grip (drag into Scribe to insert a reference). */
+.window__drag-grip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    cursor: grab;
+    color: var(--text-tertiary, #666);
+    line-height: 1;
+    user-select: none;
+    transition: color 0.1s, background 0.1s;
+}
+
+.window__drag-grip:hover {
+    color: var(--accent, #D6FE51);
+    background: color-mix(in srgb, var(--accent, #D6FE51) 8%, transparent);
 }
 
 /* Window gets a glowing outline while being torn off */
 .window--tearoff {
     box-shadow:
-        0 0 0 2px rgba(214, 254, 81, 0.5),
+        0 0 0 2px color-mix(in srgb, var(--accent, #D6FE51) 50%, transparent),
         0 20px 60px rgba(0, 0, 0, 0.5) !important;
 }

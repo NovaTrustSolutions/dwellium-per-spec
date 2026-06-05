@@ -2,7 +2,7 @@
  * Stella Assistant — Personal AI assistant widget for Dwellium
  * Integrates Stella (Python/AgentScope) into the Qualia shell.
  */
-import { useContext, useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
+import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import './StellaAgent.css';
 import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
@@ -19,6 +19,15 @@ import {
     clearDreams,
 } from './honchoDreamStore';
 import type { DreamEntry } from './honchoDreamStore';
+import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
+import { hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
+import { parseHermesCommand, spawnHermesFromStella } from './stellaHermesSpawn';
+import {
+    filterTools,
+    groupByCategory,
+    toolCount,
+    type StellaTool,
+} from './stellaToolCatalog';
 
 const API_BASE = '/api/stella';
 
@@ -29,6 +38,16 @@ function getAuthHeaders(extra?: Record<string, string>): Record<string, string> 
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...extra,
     };
+}
+
+/**
+ * Backend is reachable for chat when the agent reports `online` OR `degraded`.
+ * A degraded agent is still up and answering /status (e.g. circuit-breaker
+ * tripped or a provider is impaired) — chat may still succeed, so we don't
+ * hard-block it the way a true `offline`/`starting`/`loading` state does.
+ */
+function isBackendReachable(s: ConnectionStatus): boolean {
+    return s === 'online' || s === 'degraded';
 }
 
 /** Markdown → HTML via DOMPurify-protected utility (XSS-safe) */
@@ -208,6 +227,9 @@ export default function StellaAgent() {
     const userCtx = useContext(UserContext);
     const userIdForDreams = userCtx?.user?.id ?? null;
     dreamUserIdHolder.current = userIdForDreams;
+    // Per-user Hermes learning store key (dynamic-key holder discipline) — Stella-
+    // spawned runs record into the SAME local store the standalone widget uses.
+    hermesLearningUserIdHolder.current = userIdForDreams;
     const dreams: DreamEntry[] = useSyncExternalStore(
         dreamStore.subscribe,
         dreamStore.getSnapshot,
@@ -236,7 +258,7 @@ export default function StellaAgent() {
         {
             id: 'welcome',
             role: 'system',
-            content: '⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more.',
+            content: '⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more. Tip: type `/hermes <task>` to spawn the Hermes agent.',
             timestamp: Date.now(),
         },
     ]);
@@ -281,6 +303,8 @@ export default function StellaAgent() {
     const [skillSearchResults, setSkillSearchResults] = useState<SkillSearchResult[]>([]);
     const [skillSearching, setSkillSearching] = useState(false);
     const [installingSkill, setInstallingSkill] = useState<string | null>(null);
+    // Tool-catalog filter (Cycle 18 — Stella's organized tool library)
+    const [toolCatalogQuery, setToolCatalogQuery] = useState('');
 
     // Memory editing state
     const [editingMemory, setEditingMemory] = useState<string | null>(null);
@@ -428,11 +452,22 @@ export default function StellaAgent() {
     const checkStatus = useCallback(async () => {
         try {
             const resp = await fetch(`${API_BASE}/status`, { headers: getAuthHeaders() });
+            // Guard non-2xx before parsing — a 5xx with an HTML/empty body would
+            // otherwise throw in resp.json() and only be caught as a generic offline.
+            if (!resp.ok) { setStatus('offline'); return; }
             const data = await resp.json();
             if (data.success && data.data) {
                 const d = data.data;
                 const live = d.liveCheck;
-                setStatus(live?.ok ? 'online' : d.status === 'starting' ? 'starting' : 'offline');
+                // Honor a backend-reported `degraded` state (process up + answering
+                // /status but a health signal is impaired). The status dot + label
+                // already style this distinctly; collapsing it to `offline` lost it.
+                setStatus(
+                    live?.ok ? 'online'
+                        : d.status === 'degraded' ? 'degraded'
+                            : d.status === 'starting' ? 'starting'
+                                : 'offline'
+                );
                 setVersion(live?.version || d.version || '');
                 setHealthMs(live?.ms ?? null);
                 setPid(d.pid ?? null);
@@ -490,13 +525,56 @@ export default function StellaAgent() {
     }, [messages, isTyping]);
 
     // ─── Chat ─────────────────────────────────────────
+    // ── Stella → Hermes first-class spawn (Cycle 17B) ──
+    // Dispatch the ONE shared self-improving Hermes run path (hermesRunner via
+    // stellaHermesSpawn) and surface the result in chat. Few-shot injection +
+    // proven-tool weighting + record-back into the LOCAL per-user learning store
+    // all live in the shared runner — Stella adds no second fetch path.
+    const runStellaHermes = async (task: string, originalText: string) => {
+        setMessages(prev => [...prev, {
+            id: `user-${Date.now()}`, role: 'user', content: originalText, timestamp: Date.now(),
+        }]);
+        setInput('');
+        if (!task) {
+            setMessages(prev => [...prev, {
+                id: `system-${Date.now()}`, role: 'system',
+                content: 'Usage: `/hermes <task>` — e.g. `/hermes summarize the latest maintenance reports`.',
+                timestamp: Date.now(),
+            }]);
+            return;
+        }
+        setIsTyping(true);
+        const authFetch = (url: string, init?: RequestInit) => fetch(url, {
+            ...init,
+            headers: getAuthHeaders({ 'Content-Type': 'application/json', ...((init?.headers as Record<string, string>) ?? {}) }),
+        });
+        try {
+            const { reply } = await spawnHermesFromStella(task, {
+                authFetch,
+                toolNames: hermesTools.map((t: any) => t.name),
+            });
+            setMessages(prev => [...prev, {
+                id: `assistant-${Date.now()}`, role: 'assistant', content: reply, timestamp: Date.now(),
+            }]);
+        } finally {
+            setIsTyping(false);
+        }
+    };
+
     const sendMessage = async () => {
         const text = input.trim();
+        if (!text || isTyping) return;
+
+        // Stella → Hermes spawn intercept (`/hermes <task>`). Hermes is independent
+        // of the Stella backend + personal LLM, so it runs even when both are down.
+        const hermesCmd = parseHermesCommand(text);
+        if (hermesCmd.isHermes) { await runStellaHermes(hermesCmd.task, text); return; }
+
         // 2026-05-26: relax `status !== 'online'` gate when user has LLM configured.
         // Stella backend can be offline AND the chat still works via the user's
         // personal LLM key (Settings → API Keys).
         const llmReady = hasActiveLlm(integrations.llm);
-        if (!text || isTyping || (status !== 'online' && !llmReady)) return;
+        if (!isBackendReachable(status) && !llmReady) return;
 
         const userMsg: ChatMessage = {
             id: `user-${Date.now()}`,
@@ -532,8 +610,8 @@ export default function StellaAgent() {
                     return;
                 }
             } catch (err) {
-                // LLM call failed — surface to UI only if backend is also offline.
-                if (status !== 'online') {
+                // LLM call failed — surface to UI only if backend is also unreachable.
+                if (!isBackendReachable(status)) {
                     setMessages(prev => [...prev, {
                         id: `error-${Date.now()}`,
                         role: 'system',
@@ -653,6 +731,38 @@ export default function StellaAgent() {
             sendMessage();
         }
     };
+
+    // ─── S2 cross-widget handoffs (additive; LINKAGE gap S2) ───────────────
+    // Scan Stella's latest assistant reply for widget references and offer "Open:" chips
+    // on the existing `dwellium:open-widget` bus. Strictly additive — no restyle.
+    const suggestedHandoffs = useMemo<WidgetHandoff[]>(() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'assistant') {
+                return detectWidgetHandoffs(messages[i].content);
+            }
+        }
+        return [];
+    }, [messages]);
+    const handleHandoffClick = useCallback((handoff: WidgetHandoff) => {
+        openWidgetHandoff(handoff);
+    }, []);
+
+    // Run a tool-catalog entry via an EXISTING Stella mechanism (Cycle 18). No new plumbing:
+    // chat-command → prefill the composer + jump to chat; open-widget → the open-widget
+    // intent bus (same path as suggested handoffs); info → switch to the owning tab.
+    const runCatalogTool = useCallback((tool: StellaTool) => {
+        const a = tool.action;
+        if (a.kind === 'chat-command' && a.command) {
+            setTab('chat');
+            setInput(a.command);
+            requestAnimationFrame(() => inputRef.current?.focus());
+        } else if (a.kind === 'open-widget' && a.widgetId) {
+            openWidgetHandoff({ widgetId: a.widgetId, label: a.widgetLabel ?? tool.name, icon: a.widgetIcon ?? '' });
+        } else if (a.kind === 'info' && a.tab) {
+            setTab(a.tab as Tab);
+        }
+    }, []);
+    const catalogGroups = useMemo(() => groupByCategory(filterTools(toolCatalogQuery)), [toolCatalogQuery]);
 
     // ─── Skills ───────────────────────────────────────
     const loadSkills = useCallback(async () => {
@@ -1323,7 +1433,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
             {/* Status Bar */}
             <div className="stella__status-bar">
                 <span className={`stella__status-dot stella__status-dot--${status}`} />
-                <span>Stella {status === 'online' ? 'Online' : status === 'loading' ? 'Connecting…' : status === 'starting' ? 'Starting…' : 'Offline'}</span>
+                <span>Stella {status === 'online' ? 'Online' : status === 'degraded' ? 'Degraded' : status === 'loading' ? 'Connecting…' : status === 'starting' ? 'Starting…' : 'Offline'}</span>
                 {version && <span className="stella__version">v{version}</span>}
                 {healthMs !== null && status === 'online' && <span className="stella__latency">{healthMs}ms</span>}
                 {pid && <span className="stella__pid">PID {pid}</span>}
@@ -1353,6 +1463,12 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                 <div className="stella__offline-banner" style={{ background: 'rgba(214,254,81,0.08)', borderColor: 'rgba(214,254,81,0.3)' }}>
                     💡 Stella's Python agent is offline — chat is using your personal LLM ({integrations.llm.active}) instead. Skills/memory tabs require the agent.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry agent</button>
+                </div>
+            )}
+            {status === 'degraded' && (
+                <div className="stella__offline-banner" style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.3)' }}>
+                    ⚠️ Stella agent is degraded — it's reachable, but a health signal is impaired. Chat still works; some replies may be slower or fall back.
+                    <button className="stella__retry-btn" onClick={checkStatus}>Retry</button>
                 </div>
             )}
 
@@ -1402,7 +1518,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                     })()}
                     {/* Self-diagnosing banner: when Stella has no path to answer (no backend AND no LLM key),
                         show a clear CTA to fix it. Replaces silent disabled input. */}
-                    {status !== 'online' && !hasActiveLlm(integrations.llm) && (
+                    {!isBackendReachable(status) && !hasActiveLlm(integrations.llm) && (
                         <div className="stella__diagnose-banner">
                             <span className="stella__diagnose-icon">⚠️</span>
                             <div className="stella__diagnose-body">
@@ -1418,6 +1534,23 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             >
                                 Open Settings
                             </button>
+                        </div>
+                    )}
+                    {/* S2: additive cross-widget handoff row (no restyle; mirrors ARA). */}
+                    {suggestedHandoffs.length > 0 && (
+                        <div className="stella__handoff-row" role="group" aria-label="Open referenced widget">
+                            <span className="stella__handoff-label">Open:</span>
+                            {suggestedHandoffs.map((h) => (
+                                <button
+                                    key={h.widgetId}
+                                    type="button"
+                                    className="stella__handoff-btn"
+                                    onClick={() => handleHandoffClick(h)}
+                                    aria-label={`Open ${h.label}`}
+                                >
+                                    {h.label}
+                                </button>
+                            ))}
                         </div>
                     )}
                     <div className="stella__input-area">
@@ -1442,17 +1575,23 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={
-                                status === 'online' ? 'Ask Stella anything…' :
+                                isBackendReachable(status) ? 'Ask Stella anything…' :
                                 hasActiveLlm(integrations.llm) ? `Ask anything (via ${integrations.llm.active})…` :
-                                'Stella is offline — configure an LLM in Settings'
+                                'Stella is offline — type /hermes <task> to spawn Hermes, or configure an LLM in Settings'
                             }
-                            disabled={status !== 'online' && !hasActiveLlm(integrations.llm)}
+                            // Always typeable: Hermes spawn (`/hermes <task>`) is independent of
+                            // the Stella backend + personal LLM, so the composer must stay usable
+                            // offline — otherwise the advertised /hermes tip is a dead affordance.
                             rows={1}
                         />
                         <button
                             className="stella__send-btn"
                             onClick={sendMessage}
-                            disabled={!input.trim() || isTyping || (status !== 'online' && !hasActiveLlm(integrations.llm))}
+                            disabled={
+                                !input.trim() || isTyping ||
+                                // Offline + no LLM only blocks ordinary chat — never a /hermes spawn.
+                                (!isBackendReachable(status) && !hasActiveLlm(integrations.llm) && !parseHermesCommand(input).isHermes)
+                            }
                             title="Send"
                         >
                             ➤
@@ -1503,7 +1642,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                     <option value="all">All Types</option><option value="fact">📋 Facts</option><option value="preference">⭐ Preferences</option>
                                     <option value="decision">🔨 Decisions</option><option value="observation">👁️ Observations</option><option value="insight">💡 Insights</option>
                                 </select>
-                                <button className="stella__btn-sm" onClick={() => setShowAddHonchoMemory(!showAddHonchoMemory)}>{showAddHonchoMemory ? '✕' : '+ Add'}</button>
+                                <button className="stella__btn-sm" aria-label={showAddHonchoMemory ? 'Cancel adding memory' : 'Add memory'} aria-expanded={showAddHonchoMemory} onClick={() => setShowAddHonchoMemory(!showAddHonchoMemory)}>{showAddHonchoMemory ? '✕' : '+ Add'}</button>
                             </div>
                             {showAddHonchoMemory && (<div className="stella__honcho-add-form">
                                 <textarea className="stella__honcho-textarea" placeholder="What should Honcho remember?" value={newHonchoMemory.content} onChange={e => setNewHonchoMemory({ ...newHonchoMemory, content: e.target.value })} rows={3} />
@@ -1525,7 +1664,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                         <span className="stella__honcho-source">{m.source}</span></div>
                                     <p className="stella__honcho-content">{m.content}</p>
                                     <div className="stella__honcho-meta"><span>{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : ''}</span>
-                                        <button className="stella__btn-sm stella__btn-sm--danger" onClick={() => deleteHonchoMemory(m.id)}>🗑️</button></div>
+                                        <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete memory" onClick={() => deleteHonchoMemory(m.id)}>🗑️</button></div>
                                 </div>))}</div>
                         </>)}
                         {honchoSection === 'memory-network' && (<>
@@ -1571,7 +1710,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             </div>
                             <div className="stella__input-area"><textarea className="stella__input" value={honchoChatInput} onChange={e => setHonchoChatInput(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); honchoChatSend(); } }} placeholder="Ask about your memories…" rows={1} />
-                                <button className="stella__send-btn" onClick={honchoChatSend} disabled={!honchoChatInput.trim() || honchoChatLoading}>▶</button></div>
+                                <button className="stella__send-btn" aria-label="Send" onClick={honchoChatSend} disabled={!honchoChatInput.trim() || honchoChatLoading}>▶</button></div>
                         </>)}
                         {honchoSection === 'data-ingestion' && (<>
                             <h5 className="stella__skill-hub-title">📥 Data Ingestion</h5>
@@ -1611,7 +1750,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             <h5 className="stella__skill-hub-title">🔍 Semantic Search</h5>
                             <div className="stella__hermes-delegate-row"><input className="stella__hermes-input" placeholder="Semantic search across workspace…"
                                 value={honchoSearchQuery} onChange={e => setHonchoSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && honchoSemanticSearch()} />
-                                <button className="stella__send-btn" onClick={honchoSemanticSearch} disabled={!honchoSearchQuery.trim()}>🔍</button></div>
+                                <button className="stella__send-btn" aria-label="Search" onClick={honchoSemanticSearch} disabled={!honchoSearchQuery.trim()}>🔍</button></div>
                             <div className="stella__honcho-list">{honchoSearchResults.length === 0 ? (
                                 <div className="stella__empty"><span className="stella__empty-icon">🔍</span><p className="stella__empty-text">Enter a query to search.</p></div>
                             ) : honchoSearchResults.map((r: any, i: number) => (
@@ -1793,7 +1932,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             <div className="stella__honcho-dream-card-header">
                                                 <strong>{d.title}</strong>
                                                 <span className="stella__honcho-dream-time">{new Date(d.createdAt).toLocaleString()}</span>
-                                                <button className="stella__honcho-dream-del" onClick={() => deleteDream(d.id)} title="Delete">✕</button>
+                                                <button className="stella__honcho-dream-del" onClick={() => deleteDream(d.id)} title="Delete" aria-label="Delete dream">✕</button>
                                             </div>
                                             <p className="stella__honcho-dream-text">{d.text}</p>
                                             {d.sources.length > 0 && (
@@ -1964,6 +2103,52 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         </div>
                     )}
 
+                    {/* Stella Tool Catalog (Cycle 18) — broad, organized library of
+                        built-in capabilities; each entry runs via an existing mechanism.
+                        Additive section, always available (independent of backend skills). */}
+                    <div className="stella__tool-catalog" role="region" aria-label="Stella tool catalog">
+                        <h5 className="stella__skill-hub-title">🛠️ Tool Catalog ({toolCount()})</h5>
+                        <div className="stella__skill-search">
+                            <input
+                                className="stella__skill-search-input"
+                                type="text"
+                                placeholder="Filter tools…"
+                                aria-label="Filter Stella tools"
+                                value={toolCatalogQuery}
+                                onChange={e => setToolCatalogQuery(e.target.value)}
+                            />
+                        </div>
+                        {catalogGroups.length === 0 ? (
+                            <div className="stella__empty">
+                                <span className="stella__empty-icon">🛠️</span>
+                                <p className="stella__empty-text">No tools match “{toolCatalogQuery}”.</p>
+                            </div>
+                        ) : (
+                            catalogGroups.map(group => (
+                                <div key={group.category} className="stella__tool-cat-group">
+                                    <div className="stella__tool-cat-label">{group.category}</div>
+                                    {group.tools.map(tool => (
+                                        <button
+                                            key={tool.id}
+                                            type="button"
+                                            className="stella__tool-card"
+                                            onClick={() => runCatalogTool(tool)}
+                                            aria-label={`Run ${tool.name}`}
+                                            title={tool.description}
+                                        >
+                                            <span className="stella__tool-icon" aria-hidden="true">{tool.icon}</span>
+                                            <span className="stella__tool-info">
+                                                <span className="stella__tool-name">{tool.name}</span>
+                                                <span className="stella__tool-desc">{tool.description}</span>
+                                            </span>
+                                            <span className="stella__tool-go" aria-hidden="true">↗</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            ))
+                        )}
+                    </div>
+
                     <h5 className="stella__skill-hub-title">🧩 Installed Skills</h5>
                     {skillsLoading ? (
                         <div className="stella__loading">
@@ -1999,6 +2184,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             className="stella__btn-sm stella__btn-sm--danger"
                                             onClick={() => uninstallSkill(skill.name)}
                                             title="Uninstall"
+                                            aria-label="Uninstall skill"
                                         >🗑️</button>
                                     )}
                                 </div>
@@ -2176,7 +2362,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                         <button className="stella__btn-sm" onClick={async () => {
                                             await fetch(`${API_BASE}/cron/jobs/${job.id}/run`, { method: 'POST', headers: getAuthHeaders() });
                                         }} disabled={!permissions?.canManageAutomation}>▶▶ Run Now</button>
-                                        <button className="stella__btn-sm stella__btn-sm--danger" onClick={async () => {
+                                        <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete job" onClick={async () => {
                                             if (!confirm(`Delete job "${job.name}"?`)) return;
                                             await fetch(`${API_BASE}/cron/jobs/${job.id}`, { method: 'DELETE', headers: getAuthHeaders() });
                                             await loadCronJobs();
@@ -2225,7 +2411,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             await fetch(`${API_BASE}/mcp/${encodeURIComponent(srv.key)}/toggle`, { method: 'PATCH', headers: getAuthHeaders() });
                                             await loadMcpServers();
                                         }} disabled={!permissions?.canManageMCP}>{srv.enabled ? '⏸️ Disable' : '▶️ Enable'}</button>
-                                        <button className="stella__btn-sm stella__btn-sm--danger" onClick={async () => {
+                                        <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete MCP server" onClick={async () => {
                                             if (!confirm(`Delete MCP server "${srv.name}"?`)) return;
                                             await fetch(`${API_BASE}/mcp/${encodeURIComponent(srv.key)}`, { method: 'DELETE', headers: getAuthHeaders() });
                                             await loadMcpServers();

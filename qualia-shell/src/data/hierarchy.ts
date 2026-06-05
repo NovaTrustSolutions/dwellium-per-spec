@@ -19,6 +19,7 @@ export const defaultDockItems: DockItem[] = [
    // F-1 Universal Shell — Phase 3-E Option C ratified 2026-04-16. [CT-3H-HANDOFF-M4Q7]
    { id: 'dock-universal-shell', label: 'Universal Shell', icon: 'layout-grid', component: 'universal-shell', pinned: true, group: 'Property Management' },
    { id: 'dock-trello', label: 'Trello', icon: 'layout-list', component: 'trello-board', pinned: true, group: 'Property Management' },
+   { id: 'dock-task-board', label: 'Task Board', icon: 'layout-grid', component: 'task-board', pinned: true, group: 'Property Management' },
    { id: 'dock-inbox-zero', label: 'Inbox Zero', icon: 'mail-open', component: 'inbox-zero', pinned: true, group: 'Property Management' },
    // dock-settings removed 2026-05-26 — Settings is now opened from the inline gear button next to the Domains header in Sidebar.tsx. Filter at Sidebar.tsx::permittedItems (component !== 'control-panel') also drops it for existing installs that have it in their saved layout.
    { id: 'dock-tenant-portal', label: 'Tenant Portal', icon: 'home', component: 'tenant-portal-mgmt', pinned: true, group: 'Property Management' },
@@ -34,6 +35,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-hydra-ai', label: 'Hydra AI', icon: 'network', component: 'hydra-ai', pinned: true, group: 'AI Tools' },
    { id: 'dock-ara', label: 'ARA', icon: 'cpu', component: 'ara-console', pinned: true, group: 'AI Tools' },
    { id: 'dock-stella', label: 'Stella', icon: 'sparkles', component: 'stella-agent', pinned: true, group: 'AI Tools' },
+   { id: 'dock-honcho', label: 'Honcho', icon: 'brain-circuit', component: 'honcho', pinned: true, group: 'AI Tools' },
    // ── Filing Cabinet ──
    { id: 'dock-hierarchy', label: 'Explorer', icon: 'folder-tree', component: 'hierarchy-browser', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-tasks', label: 'Tasks', icon: 'check-square', component: 'tasks', pinned: true, group: 'Filing Cabinet' },
@@ -41,7 +43,9 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-files', label: 'Files', icon: 'folder-open', component: 'file-manager', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-notepad', label: 'Notepad', icon: 'file-edit', component: 'notepad', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-scribe', label: 'Scribe', icon: 'pen-tool', component: 'scribe', pinned: true, group: 'Filing Cabinet' },
+   { id: 'dock-tag-file', label: 'Tag File', icon: 'tag', component: 'tag-file', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-file-explorer', label: 'File Explorer', icon: 'folder-tree', component: 'file-explorer', pinned: true, group: 'Filing Cabinet' },
+   { id: 'dock-workspace', label: 'Workspace', icon: 'layers', component: 'workspace', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-docs', label: 'Docs', icon: 'file-text', component: 'doc-viewer', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-pdf-gear', label: 'PDF Gear', icon: 'file-stack', component: 'pdf-gear', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-terminal', label: 'Terminal', icon: 'terminal', component: 'terminal', pinned: true, group: 'Filing Cabinet' },

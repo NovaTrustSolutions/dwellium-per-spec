@@ -4,6 +4,20 @@ import { vi, describe, it, beforeEach, expect } from 'vitest';
 
 const authFetch = vi.fn();
 
+// LLM-fallback (gap A1) controls. Default: no active LLM → existing tests and
+// the no-LLM failure path are unaffected. The fallback test flips `llmActive`.
+let llmActive = false;
+const callLlmMock = vi.fn();
+
+vi.mock('../lib/llmClient', () => ({
+    hasActiveLlm: () => llmActive,
+    callLlm: (...args: any[]) => callLlmMock(...args),
+    LlmError: class LlmError extends Error {},
+}));
+
+// Per-test switch: when true, the backend /chat endpoint throws (offline).
+let chatShouldThrow = false;
+
 vi.mock('../context/UserContext', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../context/UserContext')>();
     return {
@@ -40,6 +54,9 @@ function jsonResponse(data: any, ok = true, status = 200): Response {
 describe('ARAConsole', () => {
     beforeEach(() => {
         authFetch.mockReset();
+        llmActive = false;
+        chatShouldThrow = false;
+        callLlmMock.mockReset();
         localStorage.clear();
         localStorage.setItem('dwellium-ara-tts', 'false');
         Element.prototype.scrollIntoView = vi.fn();
@@ -107,6 +124,9 @@ describe('ARAConsole', () => {
                 });
             }
             if (url.endsWith('/chat')) {
+                if (chatShouldThrow) {
+                    throw new Error('Backend unreachable. Is the server running on port 3000?');
+                }
                 return jsonResponse({
                     success: true,
                     data: {
@@ -157,7 +177,7 @@ describe('ARAConsole', () => {
 
         const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
         await user.type(textbox, 'What should I do next?');
-        await user.click(screen.getByRole('button', { name: '➤' }));
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
 
         await screen.findByText('I can help with that.');
         expect(await screen.findByText('Inbox · 2')).toBeInTheDocument();
@@ -186,7 +206,7 @@ describe('ARAConsole', () => {
 
         const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
         await user.type(textbox, 'Create follow-up tasks');
-        await user.click(screen.getByRole('button', { name: '➤' }));
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
         await screen.findByText('I can help with that.');
 
         await user.click(screen.getByRole('button', { name: 'Save As Note' }));
@@ -238,5 +258,53 @@ describe('ARAConsole', () => {
         render(<ARAConsole />);
 
         expect(await screen.findByText('Restored conversation reply.')).toBeInTheDocument();
+    });
+
+    it('surfaces a failure banner when the backend chat call fails and no LLM is configured', async () => {
+        chatShouldThrow = true;
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+
+        const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+        await user.type(textbox, 'What should I do next?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+        // Error banner + inline [Error] assistant message; no LLM fallback attempted.
+        expect(await screen.findByText(/Last request failed:/)).toBeInTheDocument();
+        expect(await screen.findByText(/\[Error\] Backend unreachable/)).toBeInTheDocument();
+        expect(callLlmMock).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the personal LLM key when the backend chat call fails (gap A1)', async () => {
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Offline LLM reply.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+
+        const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+        await user.type(textbox, 'What should I do next?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+        // LLM reply shown; success status confirms the offline route; no error banner.
+        expect(await screen.findByText('Offline LLM reply.')).toBeInTheDocument();
+        expect(await screen.findByText(/Backend offline — answered via your/)).toBeInTheDocument();
+        expect(screen.queryByText(/Last request failed:/)).not.toBeInTheDocument();
+        expect(callLlmMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('exposes accessible names on icon-only control-bar buttons (Cycle 9 a11y)', async () => {
+        render(<ARAConsole />);
+
+        // Wait for the input bar to render (modes resolved).
+        await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+
+        // The send button previously had NO accessible name (bare ➤ glyph).
+        expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Start voice input' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Clear conversation' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Voice settings' })).toBeInTheDocument();
+        // TTS seeded off in beforeEach → "Enable auto-read replies".
+        expect(screen.getByRole('button', { name: 'Enable auto-read replies' })).toBeInTheDocument();
     });
 });

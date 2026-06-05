@@ -1,0 +1,37 @@
+{
+  "name": "dwellium-desktop",
+  "productName": "Dwellium",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dwellium — standalone desktop build (SPA + bundled Node backend sidecar).",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac --universal"
+  },
+  "devDependencies": {
+    "electron": "^31.7.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.dwellium.desktop",
+    "productName": "Dwellium",
+    "directories": { "output": "dist-installer" },
+    "files": ["main.cjs", "preload.cjs", "package.json"],
+    "extraResources": [
+      { "from": "staging/client", "to": "client" },
+      { "from": "staging/backend", "to": "backend" }
+    ],
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Dwellium ${version}",
+      "writeUpdateInfo": false
+    }
+  }
+}

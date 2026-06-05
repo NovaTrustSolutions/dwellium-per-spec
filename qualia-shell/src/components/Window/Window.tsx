@@ -1,4 +1,5 @@
 import { CSSProperties, useRef, useCallback, useEffect, ReactNode, useState } from 'react';
+import { GripVertical, CornerUpRight } from 'lucide-react';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { WindowState, RegionRect } from '../../data/types';
@@ -14,7 +15,7 @@ export interface WindowProps {
 
 export default function Window({ state, children, regionRect, containerStyle }: WindowProps) {
     const { closeWindow, focusWindow, minimizeWindow, maximizeWindow, updateWindowPosition, updateWindowSize, windows, popOutWindow } = useWindows();
-    const { computeSnap, setActiveGuides, settings, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments } = useLayout();
+    const { computeSnap, setActiveGuides, setInteracting, settings, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments } = useLayout();
     const windowRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
     const resizeRef = useRef({ resizing: false, edge: '', startX: 0, startY: 0, origW: 0, origH: 0, origX: 0, origY: 0 });
@@ -32,6 +33,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         const startX = regionRect ? regionRect.x : state.x;
         const startY = regionRect ? regionRect.y : state.y;
         dragRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, origX: startX, origY: startY };
+        setInteracting(true); // enter layout-edit mode → grid/snap guides visible
 
         // If dragging out of a region, clear the assignment
         let clearedRegion = false;
@@ -76,6 +78,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         const onUp = (ev: MouseEvent) => {
             dragRef.current.dragging = false;
             setActiveGuides([]);
+            setInteracting(false); // exit layout-edit mode → grid hidden again
             setHoveredRegionId(null);
 
             // Check if dropped on a region
@@ -109,7 +112,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         };
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
-    }, [state.id, state.x, state.y, state.width, state.height, state.maximized, focusWindow, updateWindowPosition, updateWindowSize, computeSnap, setActiveGuides, windows, settings.regionLayout, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments, regionRect, maximizeWindow]);
+    }, [state.id, state.x, state.y, state.width, state.height, state.maximized, focusWindow, updateWindowPosition, updateWindowSize, computeSnap, setActiveGuides, setInteracting, windows, settings.regionLayout, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments, regionRect, maximizeWindow]);
 
     // --- Resize ---
     const onResizeMouseDown = useCallback((e: React.MouseEvent, edge: string) => {
@@ -123,6 +126,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
             origW: state.width, origH: state.height,
             origX: state.x, origY: state.y
         };
+        setInteracting(true); // enter layout-edit mode → grid/snap guides visible
 
         const onMove = (ev: MouseEvent) => {
             const r = resizeRef.current;
@@ -148,12 +152,13 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         };
         const onUp = () => {
             resizeRef.current.resizing = false;
+            setInteracting(false); // exit layout-edit mode → grid hidden again
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('mouseup', onUp);
         };
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
-    }, [state, focusWindow, updateWindowSize, updateWindowPosition]);
+    }, [state, focusWindow, updateWindowSize, updateWindowPosition, setInteracting]);
 
     // Keyboard close
     useEffect(() => {
@@ -305,25 +310,8 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                             } catch { /* sandboxed */ }
                         }}
                         title="Drag into Scribe to insert a reference to this widget"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginLeft: 8,
-                            width: 18,
-                            height: 18,
-                            borderRadius: 4,
-                            cursor: 'grab',
-                            color: '#666',
-                            fontSize: 12,
-                            lineHeight: 1,
-                            userSelect: 'none',
-                            transition: 'color 100ms, background 100ms',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = '#D6FE51'; e.currentTarget.style.background = 'rgba(214,254,81,0.08)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = '#666'; e.currentTarget.style.background = 'transparent'; }}
                     >
-                        ⤴
+                        <CornerUpRight size={12} aria-hidden="true" />
                     </span>
                 </div>
                 {/* AI loading shimmer bar */}
@@ -332,25 +320,31 @@ export default function Window({ state, children, regionRect, containerStyle }: 
 
             {/* Content */}
             <div className="window__content">
-                {/* Tear-off handle — drag out of window boundary to detach */}
-                {!state.maximized && (
-                    <div
-                        className={`window__tearoff-handle ${tearoffActive ? 'window__tearoff-handle--active' : ''}`}
-                        onMouseDown={onTearoffMouseDown}
-                        title="Drag outside window to open in its own browser window"
-                        style={tearoffActive ? { '--tearoff-progress': tearoffProgress } as React.CSSProperties : undefined}
-                    >
-                        <span className="window__tearoff-icon">⠿</span>
-                        <span className="window__tearoff-label">
-                            {tearoffActive
-                                ? tearoffProgress >= 1 ? 'Release to pop out!' : `Pull further to pop out (${Math.round(tearoffProgress * 100)}%)`
-                                : 'Drag outside window to pop out'}
-                        </span>
-                        <span className="window__tearoff-arrow">↗</span>
-                    </div>
-                )}
                 {children}
             </div>
+
+            {/* Tear-off grip — compact, pinned handle (NOT a persistent chrome
+                row). Drag it outside the window to detach into its own window.
+                Idle state shows only a Lucide grip + tooltip; the textual
+                progress appears transiently while actively tearing off. The
+                title-bar "Pop out" button is the primary, always-visible
+                affordance. (HARD RULE 3.5: no persistent pop-out banner.) */}
+            {!state.maximized && (
+                <div
+                    className={`window__tearoff-handle ${tearoffActive ? 'window__tearoff-handle--active' : ''}`}
+                    onMouseDown={onTearoffMouseDown}
+                    title="Drag outside the window to open it in its own window"
+                    aria-hidden="true"
+                    style={tearoffActive ? { '--tearoff-progress': tearoffProgress } as React.CSSProperties : undefined}
+                >
+                    <GripVertical size={12} className="window__tearoff-icon" aria-hidden="true" />
+                    {tearoffActive && (
+                        <span className="window__tearoff-progress">
+                            {tearoffProgress >= 1 ? 'Release' : `${Math.round(tearoffProgress * 100)}%`}
+                        </span>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

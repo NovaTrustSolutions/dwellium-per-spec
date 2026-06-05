@@ -303,9 +303,9 @@ export default function ReplyTracker() {
                                             <td style={{ ...s.td, opacity: 0.5, whiteSpace: 'nowrap' }}>{item.expected_reply_by ? new Date(item.expected_reply_by).toLocaleDateString() : '—'}</td>
                                             <td style={s.td}>
                                                 <div style={{ display: 'flex', gap: '4px' }}>
-                                                    <button style={s.btn('primary')} onClick={() => markReceived(item.id)} title="Mark as replied">✓</button>
-                                                    <button style={s.btn('ghost')} onClick={() => snoozeItem(item.id, 3)} title="Snooze 3 days">💤</button>
-                                                    <button style={s.btn('ghost')} onClick={() => closeItem(item.id)} title="Stop tracking">✕</button>
+                                                    <button style={s.btn('primary')} onClick={() => markReceived(item.id)} title="Mark as replied" aria-label="Mark as replied">✓</button>
+                                                    <button style={s.btn('ghost')} onClick={() => snoozeItem(item.id, 3)} title="Snooze 3 days" aria-label="Snooze 3 days">💤</button>
+                                                    <button style={s.btn('ghost')} onClick={() => closeItem(item.id)} title="Stop tracking" aria-label="Stop tracking">✕</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -344,9 +344,9 @@ export default function ReplyTracker() {
                                             <td style={{ ...s.td, opacity: 0.5, whiteSpace: 'nowrap' }}>{item.expected_reply_by ? new Date(item.expected_reply_by).toLocaleDateString() : '—'}</td>
                                             <td style={s.td}>
                                                 <div style={{ display: 'flex', gap: '4px' }}>
-                                                    <button style={s.btn('primary')} onClick={() => markReceived(item.id)} title="Mark as replied">✓</button>
-                                                    <button style={s.btn('ghost')} onClick={() => snoozeItem(item.id, 3)} title="Snooze 3 days">💤</button>
-                                                    <button style={s.btn('ghost')} onClick={() => closeItem(item.id)} title="Stop tracking">✕</button>
+                                                    <button style={s.btn('primary')} onClick={() => markReceived(item.id)} title="Mark as replied" aria-label="Mark as replied">✓</button>
+                                                    <button style={s.btn('ghost')} onClick={() => snoozeItem(item.id, 3)} title="Snooze 3 days" aria-label="Snooze 3 days">💤</button>
+                                                    <button style={s.btn('ghost')} onClick={() => closeItem(item.id)} title="Stop tracking" aria-label="Stop tracking">✕</button>
                                                 </div>
                                             </td>
                                         </tr>

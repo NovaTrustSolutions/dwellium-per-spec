@@ -232,6 +232,12 @@ export default function InboxZero() {
     const stats = statsQuery.data ?? null;
     const newsletters = newslettersQuery.data ?? [];
     const loading = itemsQuery.isLoading;
+    // Distinguish a genuine "all caught up" empty state from a failed fetch — without
+    // this guard the UI shows the celebratory "Inbox Zero!" message even when the
+    // backend request errored (misleading the operator into thinking nothing is pending).
+    const itemsError = itemsQuery.isError;
+    const itemsErrorMessage =
+        itemsQuery.error instanceof Error ? itemsQuery.error.message : 'Unable to load inbox';
     const metrics = metricsQuery.data ?? null;
 
     // Sync hasMore from RQ data
@@ -717,6 +723,7 @@ export default function InboxZero() {
                                         className="iz-toolbar__search-clear"
                                         onClick={() => { setSearchQuery(''); setDebouncedSearch(''); }}
                                         title="Clear search"
+                                        aria-label="Clear search"
                                     >✕</button>
                                 )}
                             </div>
@@ -927,7 +934,23 @@ export default function InboxZero() {
                     <div className="iz-cards">
                         {loading && <div className="iz-loading">Loading inbox…</div>}
 
-                        {!loading && pendingItems.length === 0 && (
+                        {!loading && itemsError && (
+                            <div className="iz-empty" role="alert">
+                                <div className="iz-empty__icon">⚠️</div>
+                                <div className="iz-empty__title">Couldn’t load inbox</div>
+                                <div className="iz-empty__sub">{itemsErrorMessage}</div>
+                                <button
+                                    type="button"
+                                    className="iz-action iz-action--retry"
+                                    style={{ marginTop: 12, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
+                                    onClick={() => itemsQuery.refetch()}
+                                >
+                                    🔄 Retry
+                                </button>
+                            </div>
+                        )}
+
+                        {!loading && !itemsError && pendingItems.length === 0 && (
                             <div className="iz-empty">
                                 <div className="iz-empty__icon">🎉</div>
                                 <div className="iz-empty__title">Inbox Zero!</div>
@@ -936,7 +959,7 @@ export default function InboxZero() {
                         )}
 
                         {/* Section header */}
-                        {!loading && pendingItems.length > 0 && (
+                        {!loading && !itemsError && pendingItems.length > 0 && (
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: 8,
                                 padding: '8px 4px 10px', marginBottom: 4,
@@ -1412,7 +1435,7 @@ export default function InboxZero() {
                                                 <span className="iz-viewer__date">{new Date(viewerEmail.createdAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                         </div>
-                                        <button className="iz-viewer__close" onClick={() => setViewerEmail(null)} title="Close (Esc)">✕</button>
+                                        <button className="iz-viewer__close" onClick={() => setViewerEmail(null)} title="Close (Esc)" aria-label="Close email">✕</button>
                                     </div>
 
                                     {/* Badges */}

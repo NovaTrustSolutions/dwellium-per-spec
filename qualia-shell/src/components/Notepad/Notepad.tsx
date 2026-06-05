@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useHierarchy } from '../../context/HierarchyContext';
+import { TagInput } from '../Tags/TagInput';
 import './Notepad.css';
 import { API_BASE } from '../../config';
 
@@ -335,6 +336,13 @@ export default function Notepad() {
                     {/* Title */}
                     <input className="np-editor__title-input" type="text" placeholder="Note title..."
                         value={title} onChange={e => handleTitleChange(e.target.value)} />
+
+                    {/* Tags → central Tag file (app-wide tagging) */}
+                    {activeNoteId && (
+                        <div className="np-editor__tags" style={{ padding: '4px 0 8px' }}>
+                            <TagInput source="notepad" sourceId={activeNoteId} title={title || 'Untitled'} />
+                        </div>
+                    )}
 
                     {/* Content */}
                     <div className="np-editor__content">

@@ -1050,9 +1050,22 @@
 
 /* [U27] Focus visible for accessibility */
 .ara-mode-option:focus-visible,
+.ara-mode-option-expand:focus-visible,
 .ara-send-btn:focus-visible,
 .ara-mic-btn:focus-visible,
-.ara-clear-btn:focus-visible {
+.ara-clear-btn:focus-visible,
+.ara-tts-btn:focus-visible,
+.ara-mute-btn:focus-visible,
+.ara-avatar-btn:focus-visible,
+.ara-voice-settings-btn:focus-visible,
+.ara-gender-toggle:focus-visible,
+.ara-speak-btn:focus-visible,
+.ara-meta-toggle:focus-visible,
+.ara-actions-toggle:focus-visible,
+.ara-voice-panel-close:focus-visible,
+.ara-avatar-panel-close:focus-visible,
+.ara-voice-item-select:focus-visible,
+.ara-voice-item-delete:focus-visible {
     outline: 2px solid var(--ara-accent, #D6FE51);
     outline-offset: 2px;
 }
@@ -2373,6 +2386,27 @@
 .ara-action-btn--secondary {
     background: rgba(255, 255, 255, 0.04);
     border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* A2 cross-widget handoff chips (LINKAGE gap A2) */
+.ara-handoff-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.ara-handoff-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #94a3b8;
+}
+
+.ara-handoff-btn {
+    padding: 6px 10px;
+    font-size: 11px;
 }
 
 .ara-action-form {

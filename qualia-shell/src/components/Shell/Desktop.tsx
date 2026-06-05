@@ -10,8 +10,10 @@ import Window from '../Window/Window';
 
 // Widget Registry — single source of truth for all widget components
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS } from '../../registry/widgetRegistry';
+import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAutoOpenHoncho } from './honchoAutoOpen';
 
 import QuickLook from '../QuickLook/QuickLook';
+import ThreadSwitcher from '../Workspace/ThreadSwitcher';
 import './Desktop.css';
 
 /** Suspense fallback for lazy-loaded widgets */
@@ -492,9 +494,11 @@ function HierarchyBrowser() {
     );
 }
 
-/** Snap overlay — renders guide lines and margin boundaries during drag */
-function SnapOverlay() {
-    const { activeGuides, settings } = useLayout();
+/** Snap overlay — renders guide lines and margin boundaries during drag.
+    Margin boundary lines are gated on layout-edit mode (isInteracting) so the
+    grid is invisible in normal use (spec §2.8). */
+export function SnapOverlay() {
+    const { activeGuides, settings, isInteracting } = useLayout();
     const hasGuides = activeGuides.length > 0;
 
     const guideColor = (type: string) => {
@@ -509,8 +513,8 @@ function SnapOverlay() {
 
     return (
         <div className="snap-overlay" style={{ pointerEvents: 'none' }}>
-            {/* Margin boundary lines (always visible when snap enabled) */}
-            {settings.snapEnabled && settings.snapToEdges && (
+            {/* Margin boundary lines — only while actively editing layout */}
+            {isInteracting && settings.snapEnabled && settings.snapToEdges && (
                 <>
                     <div className="snap-margin-line snap-margin-line--h" style={{ top: settings.margins.top }} />
                     <div className="snap-margin-line snap-margin-line--h" style={{ bottom: settings.margins.bottom }} />
@@ -549,7 +553,7 @@ export const WINDOW_COMPONENTS: Record<string, React.FC> = {
 
 export default function Desktop() {
     const { windows, closeWindow, openWindow } = useWindows();
-    const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab, assignWindowToRegion, moveTabToRegion } = useLayout();
+    const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab, assignWindowToRegion, moveTabToRegion, isInteracting } = useLayout();
     const { toggleTheme } = useTheme();
     const desktopRef = useRef<HTMLDivElement>(null);
     const [desktopSize, setDesktopSize] = useState({ w: 0, h: 0 });
@@ -589,6 +593,19 @@ export default function Desktop() {
         };
         window.addEventListener('qualia-open-widget', handleOpenWidget);
         return () => window.removeEventListener('qualia-open-widget', handleOpenWidget);
+    }, [openWindow]);
+
+    // ── Honcho "always-on by default" one-time auto-open (Cycle 8, D-5) ──
+    // Opens the standalone Honcho widget once on the first ready Desktop, then
+    // records a localStorage flag so it never reopens against a user who closed
+    // it. SSR-safe: localStorage is touched only here, inside an effect.
+    useEffect(() => {
+        try {
+            if (shouldAutoOpenHoncho(localStorage.getItem(HONCHO_AUTO_OPEN_KEY))) {
+                localStorage.setItem(HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE);
+                openWindow(HONCHO_COMPONENT, 'Honcho', 'brain-circuit');
+            }
+        } catch { /* sandboxed / disabled storage — skip auto-open */ }
     }, [openWindow]);
 
     // ── Auto-assign new windows to the correct layout region ──
@@ -821,8 +838,10 @@ export default function Desktop() {
                 </div>
             </div>
 
-            {/* Region overlays */}
-            {regionRects.length > 0 && (
+            {/* Region overlays — dashed cell borders only show while actively
+                editing layout (dragging/resizing), invisible in normal use
+                (spec §2.8). The region tab bars below remain always-visible. */}
+            {isInteracting && regionRects.length > 0 && (
                 <div className="desktop__regions">
                     {regionRects.map(region => {
                         const isOccupied = (regionAssignments[region.id] || []).length > 0;
@@ -1015,6 +1034,9 @@ export default function Desktop() {
                     <p className="desktop__empty-sub">Click an icon in the sidebar to get started</p>
                 </div>
             )}
+
+            {/* Global active-thread switcher (spec §4.3) */}
+            <ThreadSwitcher />
 
             {/* Toast Notification */}
             {toast && (

@@ -12,6 +12,7 @@ import { useScribeStore, type Redline } from './scribeStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { REDLINE_SYSTEM_PROMPT, parseRedlineResponse } from './redlinePrompt';
+import { AI_ACTIONS, buildActionSystemPrompt, buildSummarizePreface, type AiAction } from './aiActions';
 
 const TOOLBAR_HEIGHT = 36;
 const GAP_ABOVE_SELECTION = 8;
@@ -56,7 +57,7 @@ export function SelectionToolbar() {
         useScribeStore.getState().setSelectionToolbar(null);
     };
 
-    const handleSendToAgent = async () => {
+    const runRedline = async (systemPrompt: string) => {
         if (!llmReady || redlineLoading) return;
         useScribeStore.getState().setSelectionToolbar(null);
         useScribeStore.getState().setRedlineLoading(true);
@@ -64,7 +65,7 @@ export function SelectionToolbar() {
         try {
             const res = await callLlm({
                 prompt: text,
-                systemPrompt: REDLINE_SYSTEM_PROMPT,
+                systemPrompt,
                 responseFormat: 'json',
                 maxTokens: 2048,
                 temperature: 0.3,
@@ -102,6 +103,27 @@ export function SelectionToolbar() {
         } finally {
             useScribeStore.getState().setRedlineLoading(false);
         }
+    };
+
+    // Discrete AI writing helpers (Docs parity): Rewrite / Fix / Translate via
+    // the redline flow (user accepts/rejects), Summarize via the ARA panel.
+    const handleAiAction = (action: AiAction) => {
+        if (action.mode === 'ara') {
+            window.dispatchEvent(new CustomEvent('scribe:send-to-ara', {
+                detail: { text, preface: buildSummarizePreface() },
+            }));
+            useScribeStore.getState().setSelectionToolbar(null);
+            return;
+        }
+        let opts: { language?: string } | undefined;
+        if (action.id === 'translate') {
+            const language = typeof window !== 'undefined'
+                ? window.prompt('Translate to which language?', 'Spanish')
+                : null;
+            if (!language) return; // user cancelled
+            opts = { language };
+        }
+        void runRedline(buildActionSystemPrompt(action.id, opts));
     };
 
     return (
@@ -169,7 +191,7 @@ export function SelectionToolbar() {
             </button>
             <button
                 title={llmReady ? 'Send selection to AI for editing suggestions' : 'Configure an LLM in Settings → API Keys'}
-                onClick={() => void handleSendToAgent()}
+                onClick={() => void runRedline(REDLINE_SYSTEM_PROMPT)}
                 disabled={!llmReady || redlineLoading}
                 style={{
                     background: llmReady ? '#D6FE51' : '#333',
@@ -189,6 +211,33 @@ export function SelectionToolbar() {
             >
                 {redlineLoading ? '⏳ Thinking...' : '✦ Redline'}
             </button>
+
+            {/* Docs-parity AI writing helpers — one tap each. Icon-only to stay
+                compact; aria-label carries the discernible name for a11y. */}
+            {llmReady && AI_ACTIONS.map((action) => (
+                <button
+                    key={action.id}
+                    title={action.title}
+                    aria-label={action.label}
+                    onClick={() => handleAiAction(action)}
+                    disabled={redlineLoading}
+                    style={{
+                        background: 'transparent',
+                        border: '1px solid #444',
+                        color: '#ddd',
+                        cursor: redlineLoading ? 'not-allowed' : 'pointer',
+                        padding: '6px 8px',
+                        borderRadius: 999,
+                        fontSize: 13,
+                        fontFamily: 'inherit',
+                        transition: 'background 100ms',
+                    }}
+                    onMouseEnter={(e) => { if (!redlineLoading) e.currentTarget.style.background = '#222'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                    {action.icon}
+                </button>
+            ))}
         </div>
     );
 }

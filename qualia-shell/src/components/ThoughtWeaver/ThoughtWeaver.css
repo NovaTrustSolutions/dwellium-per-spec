@@ -1126,3 +1126,142 @@
     60% { transform: scale(1.08); }
     100% { opacity: 1; transform: scale(1); }
 }
+
+/* ─── Reports & Insights tab (Cycle 13) ─── */
+.tw-reports { padding: 4px 2px; }
+.tw-reports__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.tw-reports__actions { display: flex; gap: 8px; }
+.tw-reports__gen-btn,
+.tw-reports__clear-btn {
+    background: rgba(214, 254, 81, 0.08);
+    border: 1px solid rgba(214, 254, 81, 0.22);
+    color: #d6fe51;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.tw-reports__gen-btn:hover:not(:disabled),
+.tw-reports__clear-btn:hover:not(:disabled) {
+    background: rgba(214, 254, 81, 0.18);
+}
+.tw-reports__gen-btn:disabled,
+.tw-reports__clear-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.tw-reports__clear-btn {
+    background: rgba(156, 163, 175, 0.08);
+    border-color: rgba(156, 163, 175, 0.22);
+    color: #9ca3af;
+}
+.tw-reports__msg {
+    font-size: 12px;
+    color: #d6fe51;
+    margin: 0 0 10px;
+}
+.tw-reports__hint {
+    font-size: 12px;
+    color: #9ca3af;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+.tw-reports__section { margin-bottom: 18px; }
+.tw-reports__section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.82);
+    margin: 0 0 8px;
+}
+.tw-report-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+.tw-report-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.tw-report-card__date {
+    font-size: 12px;
+    font-weight: 600;
+    color: #d6fe51;
+    font-variant-numeric: tabular-nums;
+}
+.tw-report-card__count {
+    font-size: 11px;
+    color: #9ca3af;
+    font-variant-numeric: tabular-nums;
+}
+.tw-report-card__body {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.78);
+    line-height: 1.55;
+    margin: 0;
+    white-space: pre-wrap;
+}
+.tw-insight {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 3px solid #d6fe51;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+}
+.tw-insight--connection { border-left-color: #60a5fa; }
+.tw-insight--suggestion { border-left-color: #fbbf24; }
+.tw-insight__kind {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+    flex-shrink: 0;
+    padding-top: 1px;
+}
+.tw-insight__text {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.82);
+    line-height: 1.5;
+    flex: 1 1 auto;
+}
+/* Cross-widget handoff controls (Cycle 15: TW ↔ ARA ↔ Honcho). */
+.tw-insight__actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    align-self: center;
+}
+.tw-insight__action,
+.tw-reports__handoff-btn {
+    background: rgba(96, 165, 250, 0.10);
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    color: #93c5fd;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.tw-reports__handoff-btn { font-size: 12px; padding: 5px 12px; }
+.tw-insight__action:hover:not(:disabled),
+.tw-reports__handoff-btn:hover:not(:disabled) {
+    background: rgba(96, 165, 250, 0.20);
+}
+.tw-reports__handoff-btn:disabled { opacity: 0.5; cursor: not-allowed; }

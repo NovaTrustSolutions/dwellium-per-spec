@@ -2,6 +2,15 @@ import { getAuthToken } from '../../context/UserContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import './TrelloBoard.css';
 import { API_BASE } from '../../config';
+import {
+    BlastGateError,
+    enforceBlastGate,
+    isBlastGateEnabled,
+    type BlastFields,
+    type CardDraft,
+    type ValidationIssue,
+} from '../../services/blastGate';
+import { isCardSuggestEnabled, suggestCard } from '../../services/cardSuggest';
 
 const API = `${API_BASE}/api/trello`;
 
@@ -91,6 +100,36 @@ interface Activity {
     };
 }
 
+const BLAST_FIELDS: { key: keyof BlastFields; label: string; placeholder: string }[] = [
+    { key: 'benefit', label: 'Benefit', placeholder: 'Why this card matters' },
+    { key: 'labor', label: 'Labor', placeholder: 'Role or team doing the work' },
+    { key: 'assignee', label: 'Assignee', placeholder: 'Accountable owner' },
+    { key: 'scope', label: 'Scope', placeholder: 'What is in and out' },
+    { key: 'time', label: 'Time', placeholder: 'Due date or commitment' },
+];
+
+function buildTrelloDescription(draft: CardDraft): string {
+    const description = typeof draft.description === 'string' ? draft.description.trim() : '';
+    const blast = draft.blast ?? {};
+    const blastLines = BLAST_FIELDS
+        .map(({ key, label }) => {
+            const value = blast[key]?.trim();
+            return value ? `${label}: ${value}` : null;
+        })
+        .filter((line): line is string => Boolean(line));
+
+    if (blastLines.length === 0) return description;
+    return [description, `B.L.A.S.T.\n${blastLines.join('\n')}`].filter(Boolean).join('\n\n');
+}
+
+function issuesFor(issues: ValidationIssue[], field: keyof BlastFields | 'title'): string[] {
+    return issues.filter(issue => issue.field === field).map(issue => issue.message);
+}
+
+function emptyBlast(): Partial<BlastFields> {
+    return { benefit: '', labor: '', assignee: '', scope: '', time: '' };
+}
+
 // Surface a clear "not configured" message when the backend signals a
 // missing/invalid Trello credential. Without this, users see Trello's
 // raw "invalid token" string and assume their account is broken, when
@@ -139,6 +178,12 @@ export default function TrelloBoard() {
     // Add-card state
     const [addingToList, setAddingToList] = useState<string | null>(null);
     const [newCardName, setNewCardName] = useState('');
+    const [newCardDesc, setNewCardDesc] = useState('');
+    const [newCardBlast, setNewCardBlast] = useState<Partial<BlastFields>>(emptyBlast);
+    const [suggesting, setSuggesting] = useState(false);
+    const [suggestError, setSuggestError] = useState<string | null>(null);
+    const [suggestedDraft, setSuggestedDraft] = useState(false);
+    const [blastIssues, setBlastIssues] = useState<ValidationIssue[]>([]);
     const addInputRef = useRef<HTMLInputElement>(null);
 
     // Detail panel state
@@ -278,26 +323,85 @@ export default function TrelloBoard() {
 
     // ── Add Card ───────────────────────────────────
 
+    const resetAddCardForm = useCallback(() => {
+        setNewCardName('');
+        setNewCardDesc('');
+        setNewCardBlast(emptyBlast());
+        setSuggestError(null);
+        setSuggestedDraft(false);
+        setBlastIssues([]);
+    }, []);
+
+    const cancelAddCard = useCallback(() => {
+        setAddingToList(null);
+        resetAddCardForm();
+    }, [resetAddCardForm]);
+
+    const handleSuggestCard = useCallback(async () => {
+        const intent = [newCardName, newCardDesc].filter(Boolean).join('\n\n').trim();
+        if (!intent) {
+            setSuggestError('Enter a card intent before requesting a suggestion.');
+            return;
+        }
+
+        setSuggesting(true);
+        setSuggestError(null);
+        setBlastIssues([]);
+        try {
+            const draft = await suggestCard({ intent, context: { boardId: selectedBoard } });
+            setNewCardName(draft.title);
+            setNewCardDesc(typeof draft.description === 'string' ? draft.description : intent);
+            setNewCardBlast({ ...emptyBlast(), ...(draft.blast ?? {}) });
+            setSuggestedDraft(true);
+        } catch (err) {
+            setSuggestError(err instanceof Error ? err.message : 'Card suggestion failed.');
+        } finally {
+            setSuggesting(false);
+        }
+    }, [newCardDesc, newCardName, selectedBoard]);
+
     const handleAddCard = useCallback(async (listId: string) => {
         if (!newCardName.trim()) return;
-        const name = newCardName.trim();
-        setNewCardName('');
-        setAddingToList(null);
+
+        const draft: CardDraft = {
+            title: newCardName.trim(),
+            description: newCardDesc.trim(),
+            blast: newCardBlast,
+        };
+
+        let cardToCreate = draft;
+        if (isBlastGateEnabled()) {
+            try {
+                cardToCreate = enforceBlastGate(draft);
+            } catch (err) {
+                if (err instanceof BlastGateError) {
+                    setBlastIssues(err.issues);
+                    return;
+                }
+                throw err;
+            }
+        }
 
         try {
             const res = await authFetch(`${API}/cards`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, listId })
+                body: JSON.stringify({
+                    name: cardToCreate.title,
+                    desc: buildTrelloDescription(cardToCreate),
+                    listId,
+                })
             });
             const json = await res.json();
             if (json.success && json.data) {
                 setCards(prev => [...prev, json.data]);
+                setAddingToList(null);
+                resetAddCardForm();
             }
         } catch {
             // silent fail
         }
-    }, [newCardName]);
+    }, [newCardBlast, newCardDesc, newCardName, resetAddCardForm]);
 
     useEffect(() => {
         if (addingToList && addInputRef.current) {
@@ -432,9 +536,59 @@ export default function TrelloBoard() {
                                             placeholder="Enter card title…"
                                             onKeyDown={e => {
                                                 if (e.key === 'Enter') handleAddCard(list.id);
-                                                if (e.key === 'Escape') { setAddingToList(null); setNewCardName(''); }
+                                                if (e.key === 'Escape') cancelAddCard();
                                             }}
                                         />
+                                        {(isCardSuggestEnabled() || isBlastGateEnabled() || suggestedDraft) && (
+                                            <div className="trello-c9-panel">
+                                                {isCardSuggestEnabled() && (
+                                                    <>
+                                                        <textarea
+                                                            className="trello-add-card-textarea"
+                                                            value={newCardDesc}
+                                                            onChange={e => setNewCardDesc(e.target.value)}
+                                                            placeholder="Intent or details for the suggested card…"
+                                                            aria-label="Card suggestion intent"
+                                                        />
+                                                        <button
+                                                            className="trello-btn trello-btn--ai"
+                                                            onClick={handleSuggestCard}
+                                                            disabled={suggesting}
+                                                        >
+                                                            {suggesting ? 'Suggesting…' : 'Suggest with AI'}
+                                                        </button>
+                                                        {suggestError && <div className="trello-c9-error">{suggestError}</div>}
+                                                    </>
+                                                )}
+
+                                                {(isBlastGateEnabled() || suggestedDraft) && (
+                                                    <div className="trello-blast-fields" aria-label="B.L.A.S.T. card fields">
+                                                        {issuesFor(blastIssues, 'title').map(message => (
+                                                            <div key={message} className="trello-c9-error">{message}</div>
+                                                        ))}
+                                                        {BLAST_FIELDS.map(({ key, label, placeholder }) => (
+                                                            <label key={key} className="trello-blast-field">
+                                                                <span>{label}</span>
+                                                                <input
+                                                                    className="trello-add-card-input"
+                                                                    value={newCardBlast[key] ?? ''}
+                                                                    onChange={e => {
+                                                                        const value = e.target.value;
+                                                                        setNewCardBlast(prev => ({ ...prev, [key]: value }));
+                                                                        setBlastIssues(prev => prev.filter(issue => issue.field !== key));
+                                                                    }}
+                                                                    placeholder={placeholder}
+                                                                    aria-label={`B.L.A.S.T. ${label}`}
+                                                                />
+                                                                {issuesFor(blastIssues, key).map(message => (
+                                                                    <span key={message} className="trello-blast-field__issue">{message}</span>
+                                                                ))}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="trello-add-card-actions">
                                             <button
                                                 className="trello-btn trello-btn--primary"
@@ -444,7 +598,7 @@ export default function TrelloBoard() {
                                             </button>
                                             <button
                                                 className="trello-btn"
-                                                onClick={() => { setAddingToList(null); setNewCardName(''); }}
+                                                onClick={cancelAddCard}
                                             >
                                                 ✕
                                             </button>
@@ -453,7 +607,10 @@ export default function TrelloBoard() {
                                 ) : (
                                     <button
                                         className="trello-add-card-btn"
-                                        onClick={() => setAddingToList(list.id)}
+                                        onClick={() => {
+                                            setAddingToList(list.id);
+                                            resetAddCardForm();
+                                        }}
                                     >
                                         + Add a card
                                     </button>

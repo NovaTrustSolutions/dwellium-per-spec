@@ -2584,3 +2584,15 @@
     font-size: 12px;
 }
 
+/* Cycle 9 a11y — visible keyboard focus on interactive controls (WCAG 2.4.7).
+   Icon-only and action buttons rely on aria-label for a name; this gives them a
+   clear focus ring so keyboard users can see where they are. */
+.iz-action:focus-visible,
+.iz-toolbar__search-clear:focus-visible,
+.iz-viewer__close:focus-visible,
+.iz-batch__btn:focus-visible,
+.iz-batch__select-all:focus-visible {
+    outline: 2px solid var(--accent, #60a5fa);
+    outline-offset: 2px;
+}
+

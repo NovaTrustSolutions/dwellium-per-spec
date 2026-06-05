@@ -1,4 +1,9 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
+// Global cursor-spotlight bento-card treatment (spec §3.3). The CSS provides the
+// opt-in `.spotlight-card` class; the side-effect import attaches one delegated
+// pointer listener (SSR-guarded) that drives the --mx/--my custom properties.
+import '../src/styles/spotlight.css';
+import '../src/utils/spotlight';
 
 /**
  * Phase-8+ Task 8.6 — React Router v7 framework-mode canonical root layout

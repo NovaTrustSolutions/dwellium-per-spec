@@ -2,11 +2,14 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
+import VoiceVisualizer from './VoiceVisualizer';
 
 // ── TTS voice catalog (Cycle 1 of ARA voice arc — 2026-05-28) ────────────
 // Two tiers: OpenAI TTS (high quality, 6 voices, requires the user's OpenAI
@@ -963,6 +966,43 @@ export default function ARAConsole() {
             const message = err instanceof Error
                 ? err.message
                 : 'Backend unreachable. Is the server running on port 3000?';
+
+            // ── LLM-ready offline fallback (gap A1) ──
+            // ARA's backend carries deep domain context (modes, entity guardian,
+            // observability, ruVector retrieval), so we try it FIRST and only
+            // fall back to the user's personal LLM key when the backend is
+            // unreachable — unlike Stella, which routes LLM-first. This keeps the
+            // rich backend path primary while still answering when it's down.
+            if (hasActiveLlm(integrations.llm)) {
+                try {
+                    const llmRes = await callLlm({
+                        systemPrompt:
+                            `You are ARA, an AI chief-of-staff inside the Dwellium property-management app, ` +
+                            `currently operating in "${modeToUse}" mode${jurisdictionToUse ? ` (jurisdiction: ${jurisdictionToUse})` : ''}. ` +
+                            `The ARA backend is offline, so deep context retrieval is unavailable — answer from general knowledge, ` +
+                            `be concise and direct, and note when a question would need live property data. Use Markdown when helpful.`,
+                        prompt: outgoingMessage,
+                        maxTokens: 1024,
+                        temperature: 0.4,
+                    }, integrations.llm);
+                    if (llmRes) {
+                        setActionStatus({
+                            kind: 'success',
+                            message: `Backend offline — answered via your ${integrations.llm.active} key.`,
+                        });
+                        setMessages(prev => [...prev, createChatMessage({
+                            role: 'assistant',
+                            content: llmRes.text,
+                            mode: modeToUse,
+                        })]);
+                        return;
+                    }
+                } catch (llmErr) {
+                    // Fall through to the standard error surface below.
+                    console.warn('[ARA] LLM fallback failed:', llmErr);
+                }
+            }
+
             setRequestError(message);
             setMessages(prev => [...prev, createChatMessage({
                 role: 'assistant',
@@ -985,6 +1025,7 @@ export default function ARAConsole() {
         stripMarkdown,
         ttsEnabled,
         humanizeEnabled,
+        integrations.llm,
     ]);
 
     const sendMessage = useCallback(async () => {
@@ -1000,6 +1041,40 @@ export default function ARAConsole() {
             workspaceContext: lastRequest.workspaceContext,
         });
     }, [isLoading, lastRequest, sendPrompt]);
+
+    // ── A3: receive a selection handoff (LINKAGE gap A3) ──────────────────
+    // The Scribe-embedded AraMiniPanel listens for `scribe:send-to-ara`; until now
+    // the full ARAConsole widget was blind to it. Mirror the exact contract
+    // (preface + blockquoted text via composeAraPrompt) so a selection sent to ARA
+    // is answered by whichever ARA surface is open. Pure composition lives in
+    // araLinkage.ts; this effect is the thin DOM-listener wiring.
+    useEffect(() => {
+        const handler = (ev: Event) => {
+            const detail = (ev as CustomEvent).detail || {};
+            const composed = composeAraPrompt(detail);
+            if (!composed) return;
+            void sendPrompt(composed);
+        };
+        window.addEventListener('scribe:send-to-ara', handler);
+        return () => window.removeEventListener('scribe:send-to-ara', handler);
+    }, [sendPrompt]);
+
+    // ── A2: suggest "open in <widget>" handoffs from ARA's latest reply ───
+    // ARA can answer about the inbox / files / docs; these chips let the user
+    // jump to the referenced widget via the shared `dwellium:open-widget` bus.
+    const suggestedHandoffs = useMemo(() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'assistant') {
+                return detectWidgetHandoffs(messages[i].content);
+            }
+        }
+        return [];
+    }, [messages]);
+
+    const handleHandoffClick = useCallback((handoff: { widgetId: string; label: string; icon: string }) => {
+        openWidgetHandoff(handoff);
+        setActionStatus({ kind: 'success', message: `Opening ${handoff.label}…` });
+    }, []);
 
     const toggleMeta = useCallback((messageId: string) => {
         setExpandedMeta(prev => ({ ...prev, [messageId]: !prev[messageId] }));
@@ -1228,6 +1303,11 @@ export default function ARAConsole() {
                 '--ara-bg-tint': theme.bgTint,
             } as React.CSSProperties}
         >
+            {/* Voice-reactive visualizer overlay — fades in only while ARA (Aura)
+                is speaking; taps the live TTS audio for real audio reactivity.
+                Switchable templates (Galaxy / Orb / Bars / Waveform). */}
+            <VoiceVisualizer active={isSpeaking} audioRef={currentAudioRef} />
+
             {/* Mode Bar */}
             <div className="ara-mode-bar">
                 <div className="ara-mode-selector">
@@ -1279,6 +1359,8 @@ export default function ARAConsole() {
                                                             setExpandedTooltipId(isExpanded ? null : mode.id);
                                                         }}
                                                         title="Show details"
+                                                        aria-label={isExpanded ? `Hide ${mode.name} details` : `Show ${mode.name} details`}
+                                                        aria-expanded={isExpanded}
                                                     >
                                                         {isExpanded ? '▾' : 'ⓘ'}
                                                     </button>
@@ -1357,7 +1439,7 @@ export default function ARAConsole() {
                             🛡️ Entity Guardian
                         </span>
                     )}
-                    <button className="ara-clear-btn" onClick={clearChat} title="Clear conversation">
+                    <button className="ara-clear-btn" onClick={clearChat} title="Clear conversation" aria-label="Clear conversation">
                         ⟳
                     </button>
                 </div>
@@ -1400,6 +1482,7 @@ export default function ARAConsole() {
                                     className={`ara-speak-btn ${isSpeaking ? 'ara-speak-btn--active' : ''}`}
                                     onClick={() => isSpeaking ? stopSpeaking() : speakText(msg.content)}
                                     title={isSpeaking ? 'Stop speaking' : 'Read aloud'}
+                                    aria-label={isSpeaking ? 'Stop speaking' : 'Read message aloud'}
                                 >
                                     {isSpeaking ? '⏹' : '🔊'}
                                 </button>
@@ -1525,6 +1608,23 @@ export default function ARAConsole() {
                             Retry Last Prompt
                         </button>
                     </div>
+
+                    {suggestedHandoffs.length > 0 && (
+                        <div className="ara-handoff-row" role="group" aria-label="Open referenced widget">
+                            <span className="ara-handoff-label">Open:</span>
+                            {suggestedHandoffs.map((h) => (
+                                <button
+                                    key={h.widgetId}
+                                    type="button"
+                                    className="ara-action-btn ara-handoff-btn"
+                                    onClick={() => handleHandoffClick(h)}
+                                    aria-label={`Open ${h.label}`}
+                                >
+                                    {h.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {workspaceContext && (
                         <div className="ara-action-feedback ara-action-feedback--context">
@@ -1698,6 +1798,8 @@ export default function ARAConsole() {
                     onClick={toggleMic}
                     disabled={micTranscribing || isLoading}
                     title={micActive ? 'Stop recording' : micTranscribing ? 'Transcribing…' : 'Voice input'}
+                    aria-label={micActive ? 'Stop recording' : micTranscribing ? 'Transcribing voice input' : 'Start voice input'}
+                    aria-pressed={micActive}
                 >
                     {micTranscribing ? '⏳' : micActive ? '⏹' : '🎙️'}
                 </button>
@@ -1705,6 +1807,8 @@ export default function ARAConsole() {
                     className={`ara-tts-btn ${ttsEnabled ? 'ara-tts-btn--on' : ''}`}
                     onClick={toggleTts}
                     title={ttsEnabled ? 'Disable auto-read replies (TTS on)' : 'Enable auto-read replies (TTS off)'}
+                    aria-label={ttsEnabled ? 'Disable auto-read replies' : 'Enable auto-read replies'}
+                    aria-pressed={ttsEnabled}
                 >
                     {ttsEnabled ? '🔊' : '🔇'}
                 </button>
@@ -1716,6 +1820,8 @@ export default function ARAConsole() {
                     title={humanizeEnabled
                         ? 'Humanize ON — replies are warm + conversational. Click to turn off.'
                         : 'Humanize OFF — replies use ARA default tone. Click to turn on.'}
+                    aria-label={humanizeEnabled ? 'Turn off humanized replies' : 'Turn on humanized replies'}
+                    aria-pressed={humanizeEnabled}
                     style={{ fontSize: 14 }}
                 >
                     {humanizeEnabled ? '💬' : '🤖'}
@@ -1725,6 +1831,7 @@ export default function ARAConsole() {
                         className="ara-mute-btn"
                         onClick={muteAra}
                         title="Mute — stop ARA speaking"
+                        aria-label="Mute — stop ARA speaking"
                     >
                         ⏹
                     </button>
@@ -1733,6 +1840,8 @@ export default function ARAConsole() {
                     className={`ara-avatar-btn ${avatarEnabled ? 'ara-avatar-btn--active' : ''}`}
                     onClick={handleAvatarToggle}
                     title={avatarEnabled ? 'Disable AI Avatar' : 'Enable AI Avatar (requires password)'}
+                    aria-label={avatarEnabled ? 'Disable AI Avatar' : 'Enable AI Avatar'}
+                    aria-pressed={avatarEnabled}
                 >
                     {avatarEnabled ? '🧑‍💻' : '👤'}
                 </button>
@@ -1740,6 +1849,8 @@ export default function ARAConsole() {
                     className={`ara-voice-settings-btn ${voiceSettingsOpen ? 'ara-voice-settings-btn--active' : ''}`}
                     onClick={() => { setVoiceSettingsOpen(!voiceSettingsOpen); if (!voiceSettingsOpen) fetchVoices(); }}
                     title="Voice Settings"
+                    aria-label="Voice settings"
+                    aria-expanded={voiceSettingsOpen}
                 >
                     ⚙️
                 </button>
@@ -1753,6 +1864,7 @@ export default function ARAConsole() {
                         localStorage.setItem('dwellium-ara-voice', next);
                     }}
                     title={`Voice: ${voiceGender === 'female' ? 'Female' : 'Male'} — click to switch`}
+                    aria-label={`Voice gender: ${voiceGender === 'female' ? 'female' : 'male'}. Click to switch.`}
                 >
                     <span className={`ara-gender-option ${voiceGender === 'female' ? 'ara-gender-option--active' : ''}`}>♀</span>
                     <span className={`ara-gender-option ${voiceGender === 'male' ? 'ara-gender-option--active' : ''}`}>♂</span>
@@ -1784,6 +1896,8 @@ export default function ARAConsole() {
                     className="ara-send-btn"
                     onClick={sendMessage}
                     disabled={!input.trim() || isLoading}
+                    title="Send message"
+                    aria-label="Send message"
                 >
                     ➤
                 </button>
@@ -1794,7 +1908,7 @@ export default function ARAConsole() {
                 <div className="ara-voice-panel">
                     <div className="ara-voice-panel-header">
                         <h4>🎙️ Voice Settings</h4>
-                        <button className="ara-voice-panel-close" onClick={() => setVoiceSettingsOpen(false)}>✕</button>
+                        <button className="ara-voice-panel-close" onClick={() => setVoiceSettingsOpen(false)} title="Close voice settings" aria-label="Close voice settings">✕</button>
                     </div>
 
                     {/* Provider Status */}
@@ -1882,6 +1996,7 @@ export default function ARAConsole() {
                                                 className="ara-voice-item-delete"
                                                 onClick={() => deleteVoice(v.id)}
                                                 title={`Delete ${v.id}`}
+                                                aria-label={`Delete cloned voice ${v.id}`}
                                             >
                                                 🗑️
                                             </button>
@@ -1958,7 +2073,7 @@ export default function ARAConsole() {
                             {avatarStatus === 'error' && '⚠ Error'}
                             {avatarStatus === 'idle' && '○ Idle'}
                         </span>
-                        <button className="ara-avatar-panel-close" onClick={handleAvatarToggle}>✕</button>
+                        <button className="ara-avatar-panel-close" onClick={handleAvatarToggle} title="Close avatar panel" aria-label="Close avatar panel">✕</button>
                     </div>
                     <div className="ara-avatar-video-wrap">
                         {(avatarStatus === 'error' || avatarStatus === 'disconnected') && avatarError ? (

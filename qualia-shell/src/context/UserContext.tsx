@@ -10,6 +10,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useSyncExternalStore, ReactNode } from 'react';
 import { API_BASE } from '../config';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { backendStatusStore } from '../lib/backendStatusStore';
 
 // API_BASE imported from config
 const TOKEN_KEY = 'dwellium-auth-token';
@@ -147,7 +148,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 expiresAt: data.expiresAt,
                 refreshToken: data.refreshToken,
             });
-            if (data.user) setUser(data.user);
+            if (data.user) {
+                setUser(data.user);
+                try { localStorage.setItem('dwellium-user', JSON.stringify(data.user)); } catch { /* ignore */ }
+            }
             if (data.permissions) setPermissions(data.permissions);
             scheduleRefresh(data.expiresAt);
             return true;
@@ -228,6 +232,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
             });
             setUser(data.user);
             setPermissions(data.permissions || {});
+            // Persist identity so it survives reloads / remounts / backend blips
+            try { localStorage.setItem('dwellium-user', JSON.stringify(data.user)); } catch { /* ignore */ }
 
             // Schedule the first auto-refresh
             if (data.expiresAt) {
@@ -290,50 +296,71 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return;
         }
-        // Static token — restore from localStorage
+        // Optimistically restore the persisted identity FIRST, so a reload or a
+        // remount during a backend blip does NOT flash the login screen. The
+        // background /api/auth/me call below refreshes it (or, on a genuine
+        // 401/403, revokes it).
+        let restored = false;
+        try {
+            const savedUser = localStorage.getItem('dwellium-user');
+            if (savedUser) {
+                setUser(JSON.parse(savedUser));
+                restored = true;
+            }
+        } catch { /* ignore */ }
+
+        // Static token — restored from localStorage only (no backend round-trip).
         if (token.startsWith('static-')) {
-            try {
-                const savedUser = localStorage.getItem('dwellium-user');
-                if (savedUser) {
-                    setUser(JSON.parse(savedUser));
-                    setPermissions({});
-                    setIsLoading(false);
-                    return;
-                }
-            } catch { /* ignore */ }
-            clearTokens();
+            if (!restored) clearTokens();
             setIsLoading(false);
             return;
         }
-        fetch(`${API_BASE}/api/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then(res => {
-                if (!res.ok) throw new Error('expired');
-                return res.json();
-            })
-            .then(data => {
-                if (data.user) {
-                    setUser(data.user);
-                    setPermissions(data.permissions || {});
-                } else {
-                    setUser(data as DwelliumUser);
+
+        // Validate against the backend. Only a DEFINITIVE auth rejection (401/403)
+        // clears the session. Transient failures (network error, backend down, 5xx)
+        // KEEP the optimistically-restored session — being unable to reach the
+        // server is not proof the token is invalid (mirrors doRefresh's network
+        // policy). This fixes "clicking a widget bounces me back to the login
+        // screen": a single backend hiccup on remount/reload used to hard-log-out.
+        (async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/me`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.status === 401 || res.status === 403) {
+                    // Backend IS reachable (it answered) — clear any offline banner.
+                    backendStatusStore.markOnline();
+                    const refreshed = await doRefresh();
+                    if (!refreshed) clearTokens();
+                    setIsLoading(false);
+                    return;
                 }
+                if (!res.ok) {
+                    // Backend reachable but erroring (5xx) — keep the session and
+                    // surface the global banner; do NOT log out.
+                    backendStatusStore.markOffline(`Backend returned ${res.status}.`);
+                    setIsLoading(false);
+                    return;
+                }
+                const data = await res.json();
+                const validatedUser: DwelliumUser = data.user ?? (data as DwelliumUser);
+                setUser(validatedUser);
+                setPermissions(data.permissions || {});
+                try { localStorage.setItem('dwellium-user', JSON.stringify(validatedUser)); } catch { /* ignore */ }
+                backendStatusStore.markOnline();
                 // Schedule refresh based on stored expiry
                 const expiresAt = localStorage.getItem(EXPIRES_AT_KEY);
                 if (expiresAt) {
                     scheduleRefresh(expiresAt);
                 }
                 setIsLoading(false);
-            })
-            .catch(async () => {
-                // Access token expired — try refresh
-                const refreshed = await doRefresh();
-                if (!refreshed) {
-                    clearTokens();
-                }
+            } catch (err) {
+                // Network error / backend unreachable — keep the existing session
+                // (NEVER log out) and surface the global "connect?" banner.
+                backendStatusStore.markOffline(err instanceof Error ? err.message : String(err));
                 setIsLoading(false);
-            });
+            }
+        })();
 
         return () => {
             if (refreshTimerRef.current) {

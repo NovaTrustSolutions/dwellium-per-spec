@@ -1,5 +1,38 @@
 # CLAUDE.md — Repo-level Agent Notes
 
+---
+
+## 🔴 NON-NEGOTIABLE RULES (read before acting)
+
+### 🤡 BEFORE-YOU-SAY-YOU-CAN'T
+Before telling Ilya you **can't** do something — impossible, blocked,
+unavailable, "not permitted", or "already done" — you MUST first open and read
+[`FUCKUPS.md`](./FUCKUPS.md) at the repo root. The blocker may already be solved
+there. Only after reading it may you claim inability, and you must:
+1. **Quote the clown canary token** from FUCKUPS.md (`🤡 DWELLIUM-9F3A-"honk-honk"`)
+   to prove you read it, and
+2. **Cite the specific verification** (a command + its output) that proves it.
+
+"I can't" with no token and no proof is itself a fuck-up → log a new entry in
+`FUCKUPS.md`.
+
+### Verify before you claim
+Never write "done / fixed / works / verified" without running a check and pasting
+its output inline ABOVE the claim. Can't verify → say "NOT verified."
+
+### Backend failure NEVER logs the user out
+On any backend/network failure, keep the session and surface the global banner
+(`src/components/Shell/BackendConnectionBanner.tsx` + `src/lib/backendStatusStore.ts`)
+with a "Do you want to connect?" reconnect button. Only a real `401/403` clears
+auth (`src/context/UserContext.tsx`).
+
+### Never push without verified-green + Ilya's go
+Run the full gate green on the Mac first; never `git push`, `git reset --hard`,
+`git clean -fd`, or rewrite history on Ilya's behalf without an explicit go.
+Build with `npx react-router build`, NOT `npx vite build` (silent no-op).
+
+---
+
 **Repo.** `NovaTrustSolutions/dwellium-per-spec` (private)
 **Default branch.** `main`
 **Subtree.** `qualia-shell/` imported 2026-04-22 from upstream `qualia-shell` via `git subtree add`.

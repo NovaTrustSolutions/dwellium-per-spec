@@ -157,6 +157,12 @@
     /* 2026-05-26: black text + black-tinted timestamp for WCAG AA contrast on acid lime (#D6FE51 / 5.02:1+) */
     color: #000;
     border-bottom-right-radius: 4px;
+    /* spec §5.9 — the user's message stays pinned at the top of the viewport
+       while scrolling through a long agent response (position: sticky; top: 0). */
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .stella__msg--user .stella__msg-time {
@@ -476,6 +482,95 @@
 .stella__skill-source {
     font-size: 11px;
     color: var(--text-tertiary, #64748b);
+}
+
+/* Tool Catalog (Cycle 18) — organized library of Stella capabilities */
+.stella__tool-catalog {
+    margin-bottom: 18px;
+}
+
+.stella__tool-cat-group {
+    margin-bottom: 12px;
+}
+
+.stella__tool-cat-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #D6FE51;
+    margin: 6px 0 6px;
+    opacity: 0.85;
+}
+
+.stella__tool-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    background: rgba(27, 27, 27, 0.6);
+    border: 1px solid rgba(214, 254, 81, 0.08);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.stella__tool-card:hover,
+.stella__tool-card:focus-visible {
+    border-color: rgba(214, 254, 81, 0.3);
+    background: rgba(27, 27, 27, 0.85);
+    outline: none;
+}
+
+.stella__tool-card:focus-visible {
+    box-shadow: 0 0 0 2px rgba(214, 254, 81, 0.4);
+}
+
+.stella__tool-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15), rgba(214, 254, 81, 0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.stella__tool-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.stella__tool-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #e2e8f0);
+    margin-bottom: 2px;
+}
+
+.stella__tool-desc {
+    font-size: 11px;
+    color: var(--text-tertiary, #808080);
+    line-height: 1.35;
+}
+
+.stella__tool-go {
+    color: #D6FE51;
+    font-size: 14px;
+    flex-shrink: 0;
+    opacity: 0.6;
+}
+
+.stella__tool-card:hover .stella__tool-go,
+.stella__tool-card:focus-visible .stella__tool-go {
+    opacity: 1;
 }
 
 .stella__skill-toggle {
@@ -2219,6 +2314,35 @@
 }
 
 .stella__diagnose-cta:hover { background: #e8ff7a; }
+
+/* ── S2 cross-widget handoff row (additive; mirrors ARA's .ara-handoff-row) ── */
+.stella__handoff-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 12px 0;
+}
+
+.stella__handoff-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #94a3b8;
+}
+
+.stella__handoff-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #d6fe51;
+    background: rgba(214, 254, 81, 0.08);
+    border: 1px solid rgba(214, 254, 81, 0.35);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.stella__handoff-btn:hover { background: rgba(214, 254, 81, 0.16); }
 
 /* ── Context-window warning ── */
 .stella__ctx-warn {

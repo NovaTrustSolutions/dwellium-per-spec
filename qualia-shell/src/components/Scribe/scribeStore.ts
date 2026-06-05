@@ -46,11 +46,33 @@ export interface DocComment {
     status: 'open' | 'resolved';
 }
 
+/** Which surface the center column shows: the document editor or the Brain Dump intake (spec §5.2). */
+export type EditorMode = 'document' | 'dump';
+
 interface ScribeState {
     openFiles: OpenFile[];
     activeFilepath: string | null;
     loading: boolean;
     error: string | null;
+
+    /** Document editor vs Brain Dump intake. The sticky "Dump" tab toggles this. */
+    editorMode: EditorMode;
+    setEditorMode: (m: EditorMode) => void;
+
+    /** Find & Replace panel visibility (spec §5.11). ⌘F / toolbar toggles it. */
+    findReplaceOpen: boolean;
+    setFindReplaceOpen: (b: boolean) => void;
+
+    /** Focus mode (spec §5.11) — hides tabs/toolbar/TOC/minimap for distraction-free writing. ⌘⇧F. */
+    focusMode: boolean;
+    setFocusMode: (b: boolean) => void;
+    /**
+     * Open a document straight from in-memory content WITHOUT a backend read —
+     * used by Brain Dump's "Report" output and any other client-generated doc.
+     * If the filepath is already open it is replaced + activated. Always
+     * switches back to document mode so the user sees the result.
+     */
+    openInMemoryFile: (filepath: string, content: string) => void;
 
     redlines: Redline[];
     addRedline: (r: Redline) => void;
@@ -108,6 +130,27 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     activeFilepath: null,
     loading: false,
     error: null,
+
+    editorMode: 'document',
+    setEditorMode: (m) => set({ editorMode: m }),
+
+    findReplaceOpen: false,
+    setFindReplaceOpen: (b) => set({ findReplaceOpen: b }),
+
+    focusMode: false,
+    setFocusMode: (b) => set({ focusMode: b }),
+
+    openInMemoryFile: (filepath, content) => {
+        set((s) => {
+            const without = s.openFiles.filter((f) => f.filepath !== filepath);
+            return {
+                openFiles: [...without, { filepath, content, dirty: false, scrollTop: 0 }],
+                activeFilepath: filepath,
+                editorMode: 'document' as EditorMode,
+                error: null,
+            };
+        });
+    },
 
     redlines: [],
     addRedline: (r) => set((s) => ({ redlines: [...s.redlines, r] })),

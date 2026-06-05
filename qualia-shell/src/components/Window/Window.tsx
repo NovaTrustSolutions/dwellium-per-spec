@@ -4,6 +4,7 @@ import { useWindows } from '../../context/WindowContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { WindowState, RegionRect } from '../../data/types';
 import { getIcon } from '../Sidebar/iconMap';
+import WindowTagButton from './WindowTagButton';
 import './Window.css';
 
 export interface WindowProps {
@@ -313,6 +314,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                     >
                         <CornerUpRight size={12} aria-hidden="true" />
                     </span>
+                    <WindowTagButton source="widget" sourceId={String(state.component)} title={state.title} />
                 </div>
                 {/* AI loading shimmer bar */}
                 {state.isLoading && <div className="window__loading-bar" />}

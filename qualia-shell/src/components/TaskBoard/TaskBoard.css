@@ -273,3 +273,34 @@
 .tb-tl__sum { grid-column: 1 / -1; font-size: 12px; color: #d0d0d0; }
 .tb-tl__time { font-size: 10px; color: #808080; white-space: nowrap; }
 .tb-tl--rev .tb-tl__sum { text-decoration: line-through; color: #808080; }
+
+/* ===== Per-next-step assignment (project view) ===== */
+.tb-pv__sub { position: relative; }
+.tb-pv__sub-assign { margin-left: auto; position: relative; }
+.tb-assign-chip--sm {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+/* ===== Related-by-tags (associations) section in project view ===== */
+.tb-pv__rel { display: flex; flex-direction: column; gap: 6px; }
+.tb-pv__rel-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border: 1px solid var(--border, #2a2a2a);
+    border-radius: 8px; background: var(--surface, #161616);
+}
+.tb-pv__rel-src {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--text-tertiary, #808080); background: var(--surface-2, #1f1f1f);
+    border-radius: 4px; padding: 1px 6px; white-space: nowrap;
+}
+.tb-pv__rel-title { flex: 1; font-size: 13px; color: var(--text, #eee); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-pv__rel-empty { font-size: 12px; color: var(--text-tertiary, #808080); margin: 0; }
+.tb-btn--ghost {
+    background: transparent; border: 1px solid var(--border, #333);
+    color: var(--text-secondary, #bbb); border-radius: 6px; padding: 3px 8px;
+    font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.tb-btn--ghost:hover { background: var(--surface-hover, #242424); color: var(--text, #eee); }

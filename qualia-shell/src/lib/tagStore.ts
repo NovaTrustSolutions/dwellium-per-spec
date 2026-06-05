@@ -90,6 +90,26 @@ export function tagsForItem(items: TaggedItem[], source: string, sourceId: strin
     return items.find(i => i.id === id)?.tags ?? [];
 }
 
+/**
+ * Items carrying ANY of the given tags (case-insensitive), optionally excluding
+ * one item id. This is the association primitive: a tag that names a project
+ * gathers everything linked to it, and because items can hold many tags the
+ * same thing can belong to several projects/associations at once.
+ */
+export function itemsForAnyTag(items: TaggedItem[], tags: string[], excludeId?: string): TaggedItem[] {
+    const set = new Set(tags.map(t => (t ?? '').toLowerCase()).filter(Boolean));
+    if (set.size === 0) return [];
+    return items.filter(i => i.id !== excludeId && i.tags.some(t => set.has(t.toLowerCase())));
+}
+
+/** Things that share ≥1 tag with the given item (its associations), excluding itself. */
+export function relatedByTags(items: TaggedItem[], source: string, sourceId: string): TaggedItem[] {
+    const id = itemKey(source, sourceId);
+    const self = items.find(i => i.id === id);
+    if (!self) return [];
+    return itemsForAnyTag(items, self.tags, id);
+}
+
 // ── Per-user store ─────────────────────────────────────────────────
 export const tagStoreUserIdHolder: { current: string | null } = { current: null };
 
@@ -156,6 +176,8 @@ export function removeTaggedItem(source: string, sourceId: string): void {
 
 export function allTags(): TagCount[] { return tagCounts(tagStore.getSnapshot()); }
 export function getItemsForTag(tag: string): TaggedItem[] { return itemsForTag(tagStore.getSnapshot(), tag); }
+export function getItemsForAnyTag(tags: string[], excludeId?: string): TaggedItem[] { return itemsForAnyTag(tagStore.getSnapshot(), tags, excludeId); }
+export function getRelatedByTags(source: string, sourceId: string): TaggedItem[] { return relatedByTags(tagStore.getSnapshot(), source, sourceId); }
 export function getTagsForItem(source: string, sourceId: string): string[] {
     return tagsForItem(tagStore.getSnapshot(), source, sourceId);
 }

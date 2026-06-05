@@ -1,5 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import './TaskMenu.css';
+
+// The Kanban subview reuses the existing Task Board. Lazy at sub-component
+// altitude (bare React.lazy per CLAUDE.md) so a chunk-load failure here never
+// reloads the whole shell.
+const TaskBoardView = lazy(() => import('../TaskBoard/TaskBoard'));
 
 interface Task {
     id: string;
@@ -48,6 +53,19 @@ function normalizeAiViewTasks(tasks: Task[], urgencyFilter: string): Task[] {
 
 export default function TaskMenu() {
     const [tasks, setTasks] = useState<Task[]>([]);
+    // List ⇄ Board (Kanban) subview. Persisted per-browser; read in an effect so
+    // initial render stays SSR-safe (no localStorage during render).
+    const [view, setView] = useState<'list' | 'board'>('list');
+    useEffect(() => {
+        try {
+            const v = localStorage.getItem('dwellium:taskmenu-view');
+            if (v === 'board' || v === 'list') setView(v);
+        } catch { /* sandboxed */ }
+    }, []);
+    const chooseView = useCallback((v: 'list' | 'board') => {
+        setView(v);
+        try { localStorage.setItem('dwellium:taskmenu-view', v); } catch { /* sandboxed */ }
+    }, []);
     const [sortBy, setSortBy] = useState<'urgency' | 'date' | 'ai'>('urgency');
     const [filterUrgency, setFilterUrgency] = useState<string>('all');
     const [loading, setLoading] = useState(true);
@@ -368,6 +386,20 @@ export default function TaskMenu() {
 
     return (
         <div className="task-menu">
+            {/* View toggle: List ⇄ Board (Kanban subview, reuses Task Board) */}
+            <div className="task-viewtoggle" role="tablist" aria-label="Task view">
+                <button role="tab" aria-selected={view === 'list'} className={`task-viewtoggle__btn ${view === 'list' ? 'is-active' : ''}`} onClick={() => chooseView('list')}>☰ List</button>
+                <button role="tab" aria-selected={view === 'board'} className={`task-viewtoggle__btn ${view === 'board' ? 'is-active' : ''}`} onClick={() => chooseView('board')}>▤ Board</button>
+            </div>
+
+            {view === 'board' ? (
+                <div className="task-board-host">
+                    <Suspense fallback={<div className="task-loading">Loading board…</div>}>
+                        <TaskBoardView />
+                    </Suspense>
+                </div>
+            ) : (
+            <>
             {/* === AI Action Bar === */}
             <div className="task-ai-bar">
                 <button
@@ -493,6 +525,8 @@ export default function TaskMenu() {
                     </div>
                 )}
             </div>
+            </>
+            )}
         </div>
     );
 }

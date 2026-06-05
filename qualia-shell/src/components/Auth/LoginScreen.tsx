@@ -214,7 +214,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                 {QUICK_USERS.map(u => (
                                     <button
                                         key={u.email}
-                                        className={`login-avatar ${selectedUser === u.email ? 'login-avatar--active' : ''}`}
+                                        className={`login-avatar spotlight-card ${selectedUser === u.email ? 'login-avatar--active' : ''}`}
                                         onClick={() => handleQuickSelect(u)}
                                         disabled={loading}
                                         title={`${u.name} — ${ROLE_LABELS[u.role]}`}

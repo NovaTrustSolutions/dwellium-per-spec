@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dwellium — Feature Update Specification v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f8fafc;--surface:#ffffff;--surface-2:#f1f5f9;--accent:#0077cc;--green:#059669;--amber:#d97706;--red:#dc2626;--purple:#7c3aed;--rose:#db2777;--accent-rgb:0,119,204;--green-rgb:5,150,105;--amber-rgb:217,119,6;--red-rgb:220,38,38;--purple-rgb:124,58,237;--rose-rgb:219,39,119;--text:#1e293b;--muted:#64748b;--ink:#0f172a;--border:rgba(0,0,0,0.06);--border-hover:rgba(0,0,0,0.10);--rule:rgba(0,0,0,0.08);--shadow-card:0 8px 32px rgba(0,0,0,0.08);--spotlight:.04;--grad-main:linear-gradient(120deg,#7c3aed 0%,#0077cc 45%,#059669 100%);--grad-cyan:linear-gradient(120deg,#0077cc 0%,#7c3aed 100%);--grad-green:linear-gradient(120deg,#059669 0%,#0077cc 80%);--grad-amber:linear-gradient(120deg,#d97706 0%,#db2777 100%);--grad-red:linear-gradient(120deg,#dc2626 0%,#d97706 100%);--grad-purple:linear-gradient(120deg,#7c3aed 0%,#db2777 100%);--grad-pink:linear-gradient(120deg,#db2777 0%,#7c3aed 60%,#0077cc 100%);--toggle-bg:#ffffff;--toggle-border:rgba(0,0,0,0.10);}
+[data-theme="dark"]{--bg:#08080c;--surface:#0c0c14;--surface-2:#111119;--accent:#5eb8ff;--green:#34d987;--amber:#f5c444;--red:#ff5e7a;--purple:#a78bfa;--rose:#f472b6;--accent-rgb:94,184,255;--green-rgb:52,217,135;--amber-rgb:245,196,68;--red-rgb:255,94,122;--purple-rgb:167,139,250;--rose-rgb:244,114,182;--text:#e2e8f0;--muted:#94a3b8;--ink:#f8fafc;--border:rgba(255,255,255,0.07);--border-hover:rgba(255,255,255,0.13);--rule:rgba(255,255,255,0.07);--shadow-card:0 12px 40px rgba(0,0,0,0.4);--spotlight:.055;--grad-main:linear-gradient(120deg,#a78bfa 0%,#5eb8ff 45%,#34d987 100%);--grad-cyan:linear-gradient(120deg,#5eb8ff 0%,#a78bfa 100%);--grad-green:linear-gradient(120deg,#34d987 0%,#5eb8ff 80%);--grad-amber:linear-gradient(120deg,#f5c444 0%,#f472b6 100%);--grad-red:linear-gradient(120deg,#ff5e7a 0%,#f5c444 100%);--grad-purple:linear-gradient(120deg,#a78bfa 0%,#f472b6 100%);--grad-pink:linear-gradient(120deg,#f472b6 0%,#a78bfa 60%,#5eb8ff 100%);--toggle-bg:#0c0c14;--toggle-border:rgba(255,255,255,0.10);}
+*,*::before,*::after{transition:background-color 200ms ease,border-color 200ms ease,color 200ms ease,box-shadow 200ms ease;box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter Tight',sans-serif;background:var(--bg);color:var(--text);font-size:16px;line-height:1.65;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,rgba(0,0,0,0.025) 3px,rgba(0,0,0,0.025) 4px);opacity:0;transition:opacity 200ms ease;}
+[data-theme="dark"] body::after{opacity:1;}
+.container{max-width:960px;margin:0 auto;padding:56px 24px 100px;}
+.grad{background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;color:transparent;display:inline;}
+.grad-main{background-image:var(--grad-main);}.grad-cyan{background-image:var(--grad-cyan);}.grad-green{background-image:var(--grad-green);}.grad-amber{background-image:var(--grad-amber);}.grad-red{background-image:var(--grad-red);}.grad-purple{background-image:var(--grad-purple);}.grad-pink{background-image:var(--grad-pink);}
+.theme-toggle{position:fixed;top:24px;right:24px;z-index:10000;display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:999px;background:var(--toggle-bg);border:1px solid var(--toggle-border);cursor:pointer;font-family:'Inter Tight',sans-serif;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--muted);box-shadow:0 2px 12px rgba(0,0,0,0.10);}
+.theme-toggle:hover{color:var(--ink);border-color:var(--border-hover);transform:translateY(-1px);}
+.theme-toggle-icon{font-size:14px;line-height:1;}
+.header{margin-bottom:64px;padding-bottom:36px;border-bottom:1px solid var(--rule);}
+.header-eye{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;}
+.header-eye::before{content:'';display:block;width:20px;height:1.5px;background:linear-gradient(90deg,var(--accent),transparent);}
+.header h1{font-size:clamp(30px,5vw,48px);font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:10px;}
+.header-sub{color:var(--muted);font-size:15px;margin-bottom:26px;}
+.header-chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.06em;border:1px solid;}
+.chip-cyan{color:var(--accent);border-color:rgba(var(--accent-rgb),.3);background:rgba(var(--accent-rgb),.06);}
+.chip-green{color:var(--green);border-color:rgba(var(--green-rgb),.3);background:rgba(var(--green-rgb),.06);}
+.chip-amber{color:var(--amber);border-color:rgba(var(--amber-rgb),.3);background:rgba(var(--amber-rgb),.06);}
+.chip-purple{color:var(--purple);border-color:rgba(var(--purple-rgb),.3);background:rgba(var(--purple-rgb),.06);}
+.section-block{margin-bottom:64px;}
+.section-label{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:22px;}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--rule),transparent);}
+.sl-num{font-size:10px;color:var(--muted);font-weight:400;flex-shrink:0;opacity:.5;}
+.card{--mx:30%;--my:25%;--lr:var(--accent-rgb);background:var(--surface);background-image:radial-gradient(ellipse 80% 60% at var(--mx) var(--my),rgba(var(--lr),var(--spotlight)) 0%,transparent 65%);border:1px solid var(--border);border-radius:15px;padding:26px;opacity:0;transform:translateY(22px);transition:opacity 500ms ease,transform 500ms ease,border-color 250ms ease,box-shadow 250ms ease,background-image 0ms;}
+.card.visible{opacity:1;transform:translateY(0);}
+.card.visible:hover{transform:translateY(-3px);border-color:var(--border-hover);box-shadow:var(--shadow-card);}
+.card-cyan{--lr:var(--accent-rgb);}.card-green{--lr:var(--green-rgb);}.card-amber{--lr:var(--amber-rgb);}.card-red{--lr:var(--red-rgb);}.card-purple{--lr:var(--purple-rgb);}.card-pink{--lr:var(--rose-rgb);}
+.card-title{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin-bottom:14px;}
+.callout{border-radius:8px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-top:12px;}
+.callout-ok{background:rgba(var(--green-rgb),.06);border-left:3px solid var(--green);}
+.callout-warn{background:rgba(var(--amber-rgb),.07);border-left:3px solid var(--amber);}
+.callout-err{background:rgba(var(--red-rgb),.06);border-left:3px solid var(--red);}
+.callout-info{background:rgba(var(--accent-rgb),.06);border-left:3px solid var(--accent);}
+.callout-purple{background:rgba(var(--purple-rgb),.06);border-left:3px solid var(--purple);}
+.callout-icon{font-size:16px;flex-shrink:0;line-height:1;}
+.callout-body{font-size:14px;color:var(--text);line-height:1.65;}
+.callout-body strong{color:var(--ink);}
+p{margin-bottom:12px;font-size:15px;color:var(--text);}
+p:last-child{margin-bottom:0;}
+.fb{border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:14px;background:var(--surface-2);}
+.fb:last-child{margin-bottom:0;}
+.fh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.fn{font-size:15px;font-weight:700;color:var(--ink);}
+.ft{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px;white-space:nowrap;}
+.ft-a{color:var(--amber);background:rgba(var(--amber-rgb),.10);border:1px solid rgba(var(--amber-rgb),.25);}
+.ft-g{color:var(--green);background:rgba(var(--green-rgb),.10);border:1px solid rgba(var(--green-rgb),.25);}
+.ft-c{color:var(--accent);background:rgba(var(--accent-rgb),.10);border:1px solid rgba(var(--accent-rgb),.25);}
+.ft-p{color:var(--purple);background:rgba(var(--purple-rgb),.10);border:1px solid rgba(var(--purple-rgb),.25);}
+.rl{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;}
+.ri{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text);line-height:1.5;}
+.d{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px;}
+.dg{background:var(--green);}.da{background:var(--amber);}.dr{background:var(--red);}
+.sl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px;}
+code{background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.18);border-radius:4px;padding:1px 5px;font-size:12px;color:var(--accent);font-family:'SF Mono',monospace;}
+.checklist{list-style:none;display:flex;flex-direction:column;gap:9px;margin:0;padding:0;}
+.checklist li{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--text);line-height:1.55;cursor:pointer;user-select:none;}
+.check-box{flex-shrink:0;margin-top:1px;width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border-hover);background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:10px;transition:all 150ms ease;}
+.checklist li[data-checked="true"] .check-box{background:var(--green);border-color:var(--green);color:var(--bg);}
+.checklist li[data-checked="true"] .check-box::before{content:'\2713';font-weight:700;}
+.checklist li[data-checked="true"]>span:not(.check-box){color:var(--muted);text-decoration:line-through;}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeToggle"><span class="theme-toggle-icon" id="themeIcon">&#127769;</span><span id="themeLabel">Dark mode</span></button>
+<div class="container">
+
+<header class="header">
+  <div class="header-eye">Andy Zohoury &nbsp;&middot;&nbsp; For: Ilya Klipinitser / Hearth Beacon</div>
+  <h1><span class="grad grad-main">Dwellium Dashboard</span></h1>
+  <div class="header-sub">Feature Update Specification &nbsp;&middot;&nbsp; <strong>Version 2</strong> &nbsp;&middot;&nbsp; June 2026</div>
+  <div class="header-chips">
+    <span class="chip chip-green">&#10003; Updates Acknowledged</span>
+    <span class="chip chip-amber">Verify Friday</span>
+    <span class="chip chip-purple">UI Design System Target</span>
+    <span class="chip chip-cyan">Reference Repo Provided</span>
+  </div>
+</header>
+
+<div class="section-block">
+  <div class="callout callout-info"><span class="callout-icon">&#128203;</span><div class="callout-body"><strong>How to use this document:</strong> Section 1 acknowledges recent updates. Section 2 covers observations from using the build &mdash; some may be environment-related and are flagged for in-person verification. Sections 3&ndash;10 describe feature and design targets. Items tagged "verify Friday" will be reviewed together in person after a clean install.</div></div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">01</span><span class="grad grad-green">Recent Updates Acknowledged</span></div>
+  <div class="card card-green">
+    <div class="card-title">Updates acknowledged since initial review</div>
+    <ul class="rl" style="margin-bottom:16px;">
+      <li class="ri"><div class="d dg"></div><span><strong>Timeline and Kanban board</strong> &mdash; both added; complete tag system, tags route to the project from any widget</span></li>
+      <li class="ri"><div class="d dg"></div><span><strong>Multiple email accounts</strong> &mdash; can link more than one</span></li>
+      <li class="ri"><div class="d dg"></div><span><strong>Autonomous run library</strong> &mdash; agents run for a set time window (2&ndash;8 hours) without stopping for feedback; useful for overnight tasks</span></li>
+      <li class="ri"><div class="d dg"></div><span><strong>Task assignment with timestamps</strong> &mdash; assignable to self, Lisa, Stella, ARA, or anyone; agent completes and reports back; all actions reversible; audit log; custom fields for specialized assignees (lawyer, project manager, maintenance, etc.)</span></li>
+      <li class="ri"><div class="d dg"></div><span><strong>Speaker recognition library</strong> &mdash; voice matching; search all conversations a person participated in; ask what someone told you, get the source transcript</span></li>
+      <li class="ri"><div class="d dg"></div><span><strong>Full PDF suite</strong> &mdash; complete PDF editor plus Sterling PDF (open source)</span></li>
+      <li class="ri"><div class="d dg"></div><span><strong>Skills and automations</strong> &mdash; slash-command skills, drop-folder automations, Claude skills integration</span></li>
+    </ul>
+    <div class="callout callout-info"><span class="callout-icon">&#128268;</span><div class="callout-body"><strong>On the Electron jankiness:</strong> Note &mdash; if AntiGravity is running on the same machine, its backend services conflict with Dwellium&rsquo;s (different localhost ports), causing slowness and erratic behavior. Fully clearing the AntiGravity installation before running Dwellium should resolve this. Many of the issues observed may be environment-related, not Dwellium bugs, and will be re-evaluated after a clean setup on Friday.</div></div>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">02</span><span class="grad grad-amber">Current Build &mdash; Observations</span></div>
+  <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">Observed under the port-conflict environment. Items tagged "Verify Friday" should be retested after a clean install.</p>
+
+  <div class="fb"><div class="fh"><div class="fn">2.1 &mdash; Theme and Color System</div><div class="ft ft-a">Verify Friday</div></div>
+    <p>Theme switching did not apply uniformly in the version reviewed &mdash; some panels updated in light mode while others did not. Some elements appeared to have color values that did not respond to theme changes. Ilya indicated colors are configurable in Settings; this could not be confirmed remotely. When attempting to change colors, the result was not as expected. Will verify together in person.</p>
+    <p><strong>Desired outcome regardless:</strong> all colors in all components should reference CSS custom properties so a new theme requires only updating variable values, never touching component stylesheets.</p>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.2 &mdash; Module Connectivity and Error States</div><div class="ft ft-a">Verify Friday</div></div>
+    <p>Several modules showed error states or unconnected placeholders. Some of this is likely the port conflict. Modules that are genuinely not yet connected should show a clean &ldquo;not yet connected&rdquo; placeholder rather than a React error. The Inbox widget opened too small to be usable.</p>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.3 &mdash; API Connectivity</div><div class="ft ft-a">Verify Friday &mdash; will configure together</div></div>
+    <p>After entering an Anthropic API key and switching the active provider to ARA, ARA reported an error and did not respond. Will be resolved in person. Going forward: active provider clearly visible in settings, live connection status per provider, &ldquo;Test&rdquo; button for each.</p>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.4 &mdash; Workspace and File Location</div><div class="ft ft-a">Observation</div></div>
+    <p>When files are created or saved, there is no visible indication of where they are stored. Workspace root path should be visible in the interface; saved files should be navigable from the file explorer.</p>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.5 &mdash; System-Wide Content Search</div><div class="ft ft-a">Feature Needed</div></div>
+    <p>A content search &mdash; finding documents, notes, or any data by keyword or natural language &mdash; does not appear to be present. The sidebar filter is navigation, not search. If vector/semantic search has been built into the backend, it needs a prominent query interface.</p>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.6 &mdash; Version Button Does Not Increment</div><div class="ft ft-a">Bug</div></div>
+    <p>The version button in Scribe repeatedly saves as &ldquo;version one&rdquo; without incrementing. Correct behavior: each click creates a new numbered file (v1 &rarr; v2 &rarr; v3), preserving all prior versions. The reference implementation does this correctly.</p>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.7 &mdash; Chrome / Content Ratio</div><div class="ft ft-a">Design Issue</div></div>
+    <p>Multiple windows devote too much height to title bar, banners, and navigation rows, leaving too little room for actual content. A professional rule of thumb: content should occupy at least 70% of the available height.</p>
+    <ul class="rl" style="margin-top:10px;">
+      <li class="ri"><div class="d da"></div><span>Remove the persistent &ldquo;Drag outside window to pop out&rdquo; text banner &mdash; replace with a pin icon and tooltip on hover</span></li>
+      <li class="ri"><div class="d da"></div><span>Window title bar: 28&ndash;32px maximum</span></li>
+      <li class="ri"><div class="d da"></div><span>Minimap, ARA chat, and Contents panel must not all stack on the right side simultaneously &mdash; they need assigned, non-conflicting positions</span></li>
+      <li class="ri"><div class="d da"></div><span>Tabs must be visible when windows are in fullscreen mode, not only in split-screen</span></li>
+    </ul>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.8 &mdash; Text and Icon Size</div><div class="ft ft-a">Observation</div></div>
+    <p>Text in several widgets (File Explorer, Inbox Zero, control panels) is too small for comfortable extended use even at maximum text settings. Icons and controls that are too small or too densely packed are difficult to click reliably. Enterprise software used for multiple hours daily needs comfortable reading size and adequate spacing.</p>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.9 &mdash; Layout Grid Lines Visible in Normal Use</div><div class="ft ft-a">Bug</div></div>
+    <p>The widget layout grid renders its cell borders as permanent blue lines across the interface. These should only appear when the user is explicitly in layout-editing mode. In normal use the grid should be invisible.</p>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">2.10 &mdash; Tab Drag and Window Management</div><div class="ft ft-a">UX</div></div>
+    <p>Three behaviors should work simultaneously: (1) drag by tab header to reorder or move between panels; (2) drag by widget title bar to move the container; (3) pull a tab completely out to detach as a floating window, drag back in to re-dock. These should feel seamless, like a browser.</p>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">03</span><span class="grad grad-purple">UI Design System &mdash; Target Aesthetic</span></div>
+  <div class="callout callout-info" style="margin-bottom:20px;"><span class="callout-icon">&#127775;</span><div class="callout-body">The HTML reports produced for this project use a design system that represents exactly the visual direction being requested. Those reports look significantly better than the current application because they use an intentional, CSS variable-driven system with specific card effects, typography, and spacing. <strong>Provide that design system document to the implementation team as the primary visual reference.</strong><br><br>Reference: <code>Combined HTML Report Design System.md</code> (attached)</div></div>
+
+  <div class="fb" style="margin-bottom:14px;"><div class="fh"><div class="fn">CSS Variable-Driven Theming</div><div class="ft ft-p">Foundation</div></div>
+    <p>All colors in all components must reference CSS custom properties &mdash; never hardcoded hex values anywhere in a component's stylesheet. With this system, implementing a new theme requires only updating the variable values. Switching dark/light mode is a single <code>data-theme</code> attribute change on the root element.</p>
+    <p>Core tokens: <code>--bg</code>, <code>--surface</code>, <code>--surface-2</code>, <code>--accent</code>, <code>--green</code>, <code>--amber</code>, <code>--red</code>, <code>--purple</code>, <code>--text</code>, <code>--muted</code>, <code>--ink</code>, <code>--border</code>, <code>--border-hover</code>, <code>--shadow-card</code>, <code>--spotlight</code>. Each color also has an RGB companion for use in rgba() expressions.</p>
+  </div>
+
+  <div class="fb" style="margin-bottom:14px;"><div class="fh"><div class="fn">Card / Widget Design</div><div class="ft ft-p">Polish</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Cursor-tracked ambient spotlight</strong> &mdash; a soft radial gradient that follows the mouse across the card surface, fading toward edges. Pure CSS + a few lines of JavaScript (no animation library).</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Clean 1px border using <code>var(--border)</code>, brightening to <code>var(--border-hover)</code> on hover</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Subtle lift on hover: <code>translateY(-3px)</code> with expanding shadow &mdash; smooth, not dramatic</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>15px border-radius on cards; 8px on smaller elements; 999px on pills/chips</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>200ms ease transitions on all color, border, and shadow changes</span></li>
+    </ul>
+  </div>
+
+  <div class="fb" style="margin-bottom:14px;"><div class="fh"><div class="fn">Icon System &mdash; Not Emojis</div><div class="ft ft-p">Polish</div></div>
+    <p>Replace Unicode emoji in UI controls, buttons, navigation, and status indicators with a proper icon library. <strong>Recommended: Lucide Icons</strong> (lightweight, consistent visual weight, MIT license, scales cleanly, CSS-colorable with theme variables).</p>
+    <p>Emoji remain appropriate for user-generated content and AI responses. They are not appropriate for navigation items, button labels, status indicators, or widget headers. The distinction is immediately visible to anyone used to professional software.</p>
+  </div>
+
+  <div class="fb" style="margin-bottom:14px;"><div class="fh"><div class="fn">Header / Chrome Ratio</div><div class="ft ft-p">Layout</div></div>
+    <p>Content area should occupy at least 70% of the available height. Window chrome should be minimal:</p>
+    <ul class="rl" style="margin-top:10px;">
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Window title bar: 28&ndash;32px maximum</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Remove the &ldquo;Drag outside window to pop out&rdquo; text banner entirely &mdash; replace with a pin/dock icon that shows a tooltip on hover</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Navigation tabs: single row, 32&ndash;36px height, nothing else between nav and content</span></li>
+    </ul>
+  </div>
+
+  <div class="fb" style="margin-bottom:14px;"><div class="fh"><div class="fn">Typography</div><div class="ft ft-p">Polish</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Base font:</strong> Inter Tight (already used in reports; matches the target aesthetic perfectly)</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Body: 15&ndash;16px, weight 400, line-height 1.65</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Labels and secondary: 13px, weight 500</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Minimum readable: 11px for chips and metadata &mdash; never smaller</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>No gradient text in the application UI</strong> &mdash; gradient text is a report decoration. Application headings should use <code>var(--ink)</code> for readability.</span></li>
+    </ul>
+  </div>
+
+  <div class="fb"><div class="fh"><div class="fn">Theme / Skin System</div><div class="ft ft-p">Customization</div></div>
+    <p>With the CSS variable system in place, custom themes require only updating the variable values. Goals:</p>
+    <ul class="rl" style="margin-top:10px;">
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Dark theme</strong> (default): deep near-black backgrounds, subtle surface elevation, neon-adjacent accents</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Light theme</strong>: clean white surfaces, deep ink text, muted accent variants</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>&ldquo;Fey&rdquo; theme</strong> (aspirational): a distinct third aesthetic &mdash; earthy, warm, unique palette. The premium skin.</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>User-customizable</strong>: once the variable system is in place, custom themes should be creatable by editing token values in Settings</span></li>
+    </ul>
+  </div>
+</div>
+
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">04</span><span class="grad grad-green">File System &amp; Workspace Organization</span></div>
+  <div class="fb"><div class="fh"><div class="fn">4.1 &mdash; Workspace Directory and iCloud Sync</div><div class="ft ft-g">Foundation</div></div>
+    <p>The workspace should be linked to a directory on the local filesystem and optionally iCloud Drive. Changes in either direction &mdash; creating a file in the dashboard or dropping a file into the Finder folder &mdash; should be reflected automatically. Workspace root configurable and clearly visible in the interface.</p>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">4.2 &mdash; Workspace Hierarchy (Domain &rarr; Project &rarr; Thread)</div><div class="ft ft-g">Organization</div></div>
+    <p>A suggested three-level hierarchy. Each Thread folder contains: brain dump file (append-only), notes file, versioned reports folder, references folder, and system/memory folder. This structure corresponds to actual folders on disk. Alternative models are open for discussion.</p>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">4.3 &mdash; File Explorer</div><div class="ft ft-g">Navigation</div></div>
+    <p>A comprehensive file manager in the style of AntiGravity &times; Obsidian &times; macOS Finder.</p>
+    <div class="sl">Open Files / Tab Bar</div>
+    <ul class="rl"><li class="ri"><div class="d dg"></div><span>Open files shown as tabs at the top; individually closeable; "Close All" button; download and split buttons in header</span></li></ul>
+    <div class="sl">Navigation</div>
+    <ul class="rl">
+      <li class="ri"><div class="d dg"></div><span>Click expand arrow to expand tree inline; double-click folder name to navigate into it (Finder-style); back button, home button, right-click &rarr; "Show in Finder"</span></li>
+      <li class="ri"><div class="d dg"></div><span>Quick jump to any Domain/Project/Thread; hierarchy scoping to lock a pane to the active Thread when in Scribe</span></li>
+    </ul>
+    <div class="sl">Sort, Display and File Operations</div>
+    <ul class="rl">
+      <li class="ri"><div class="d dg"></div><span>Toggle alphabetical or last-modified sort; folders first; file type badges (.md, .pdf, .txt, .json, .docx); expand/collapse all</span></li>
+      <li class="ri"><div class="d dg"></div><span>New File / New Folder (inline rename), Rename, Delete (confirmation), Copy Path, Show in Finder</span></li>
+      <li class="ri"><div class="d dg"></div><span>Move to Thread (modal); Re-ingest; Convert to Markdown (PDF, DOCX, XLSX; OCR for images); batch convert on multi-select</span></li>
+    </ul>
+    <div class="sl">Drag and Drop and Split Panes</div>
+    <ul class="rl">
+      <li class="ri"><div class="d dg"></div><span>Between panes/folders (move; Alt = copy); into Scribe editor (reference link); into agent chat (attaches as context); Cmd+V in pane pastes clipboard image as PNG</span></li>
+      <li class="ri"><div class="d dg"></div><span>Up to three independent resizable panes; "Open in Split" right-click on any folder; thread switcher footer with expandable drawer</span></li>
+    </ul>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">4.4 &mdash; Domain Isolation and Scoped Views</div><div class="ft ft-g">Architecture</div></div>
+    <p>Domains, Projects, and Threads should be relatively self-contained knowledge spaces. Cross-Domain connections should be deliberate. Domain/Project/Thread names should be excluded from the tag vocabulary to prevent structural labels from creating spurious cross-Domain graph connections via common word matching.</p>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">05</span><span class="grad grad-cyan">Scribe &mdash; Document Editor</span></div>
+  <div class="fb"><div class="fh"><div class="fn">5.1 &mdash; Core Editor</div><div class="ft ft-c">Foundation</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d"></div><span>CodeMirror 6 with markdown syntax highlighting</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Inline markdown rendering (Obsidian-style)</strong> &mdash; formatting renders in the editor; raw syntax visible when cursor is on the line, formatted output shown when cursor moves away. No separate preview pane.</span></li>
+      <li class="ri"><div class="d"></div><span>Auto-save. Document versioning &mdash; saving a Report creates a new numbered version (v1, v2, v3&hellip;). Brain dumps and notes are append-only.</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Contents panel</strong> &mdash; persistent, left side, not a disappearing dropdown</span></li>
+    </ul>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">5.2 &mdash; Brain Dump / Intake Tab</div><div class="ft ft-c">Intake</div></div>
+    <p>A sticky, always-visible "Dump" tab. Clicking it switches to a full-height dump intake area. Submitting auto-prepends a <code># Prompt N</code> header, saves to the brain dump file, sends to the agent. Chat shows a compact link not raw text. "Report" button appears after first dump. <strong>Not currently in the Dwellium build.</strong></p>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">5.3 &mdash; Right-Click Menu and Paste Variants</div><div class="ft ft-c">Editing</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d"></div><span>Cut, Copy, Paste (verbatim)</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Paste+</strong> (<code>Cmd+Shift+V</code>) &mdash; smart paste respecting markdown structure; merges soft-wrapped prose, preserves code fences, respects lists and blockquotes</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Paste++</strong> (<code>Cmd+Shift+Alt+V</code>) &mdash; raw paste stripping all whitespace to flat string</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Markdown submenu</strong> &mdash; Bold, Italic, Strikethrough, H1&ndash;H3, Bullet List, Numbered List, Blockquote, Code Block; Clear Formatting</span></li>
+    </ul>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">5.4 &mdash; Citation Behavior</div><div class="ft ft-c">AI</div></div>
+    <p>Selecting text and triggering a citation (Cmd+L) creates a citation pill in the chat input area. <strong>The pill appears ready for the user to compose their own message &mdash; it does not auto-send or ask the agent anything.</strong> Distinct from inline comments (which stay in the document margin).</p>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">5.5 &mdash; AI Redlines, Inline Comments, Versioning</div><div class="ft ft-c">AI</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d"></div><span><strong>Redlines</strong> &mdash; agent-proposed edits displayed as tracked changes; accept/reject per change or accept all; works for batches</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Inline comments</strong> &mdash; margin-anchored, stored in sidecar JSON file alongside the document</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Scribe theme customization</strong> &mdash; color picker for every syntax element (H1&ndash;H4, Bold, Italic, Code, Blockquote, Links, Frontmatter); auto-fork on preset edit; save/delete custom themes; live preview; independent from app theme</span></li>
+    </ul>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">5.6 &mdash; Panel Layout, Sticky Chat, Additional Features</div><div class="ft ft-c">Layout</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d dr"></div><span><strong>Panel docking</strong> &mdash; file explorer (Cmd+Shift+1), chat (Cmd+Shift+3); resizable dividers; chat panel must never float over the document</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Sticky user message</strong> &mdash; original message stays pinned at top of viewport when scrolling through long agent response (<code>position: sticky</code>)</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Toolbar</strong> &mdash; Undo/Redo (live history state), Bold/Italic/Strikethrough, H1&ndash;H3, lists, Blockquote, Code Block, flag markers, Focus Mode, word count. <em>Requires history boundary fix before shipping undo/redo.</em></span></li>
+      <li class="ri"><div class="d"></div><span><strong>Find and Replace</strong> &mdash; Cmd+F / Cmd+H / Escape</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Focus Mode</strong> &mdash; Cmd+Shift+F; sidebar and chat hidden; editor expands full width</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Inline flags</strong> &mdash; <code>::flag::</code>, <code>::todo::</code>, <code>::question::</code> with colored indicators; indexed in <code>rag_flags</code>; searchable via Codex; HUD shows counts per Domain</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Document priority</strong> &mdash; high/normal/low badge in tab header and Codex list</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">06</span><span class="grad grad-cyan">Agent Context &mdash; Thread Assignment &amp; Memory</span></div>
+  <div class="fb"><div class="fh"><div class="fn">6.1 &mdash; Thread Assignment (Home Directory)</div><div class="ft ft-c">Architecture</div></div>
+    <p>The agent is always "homed" to the active Thread &mdash; all writes go there. The active Thread label is always displayed at the top of the workspace. The file explorer can navigate freely throughout the workspace regardless of which Thread is home.</p>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">6.2 &mdash; Cross-Thread Document Access</div><div class="ft ft-c">Architecture</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d"></div><span><strong>Drag to chat (read-only):</strong> gives the agent read access without moving or re-tagging the document</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Cross-Thread edits:</strong> create a cross-thread association; document surfaces in both threads&rsquo; knowledge graph</span></li>
+      <li class="ri"><div class="d"></div><span><strong>Share vs. copy:</strong> share (one file, edits reflected everywhere) or copy (independent duplicate) when moving documents between Threads</span></li>
+    </ul>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">6.3 &mdash; Chat History and Compaction</div><div class="ft ft-c">Memory</div></div>
+    <p>"Clear conversation" compresses rather than deletes. Summarization extracts key facts and outputs into a <strong>human-readable markdown Memory file</strong> in <code>System/Memory/</code> (openable in Scribe). Future sessions load the compressed Memory as context. Raw history preserved in database.</p>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">07</span><span class="grad grad-purple">Knowledge &amp; Intelligence Layer</span></div>
+  <div class="fb"><div class="fh"><div class="fn">7.1 &mdash; RAG Ingestion and Three-Tier Wiki</div><div class="ft ft-p">Foundation</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span>Auto-ingest on file create/change. AI tag extraction. Namespace-aware. Idempotent. Cost-logged. Tag-overlap graph edges.</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Namespace isolation:</strong> Domain/Project/Thread names excluded from tag vocabulary to prevent common-word spurious connections.</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Three-tier wiki:</strong> auto-generated synthesis pages at Thread, Project, and Domain levels via Claude Sonnet on each ingest; cold-start bootstrap on first launch.</span></li>
+    </ul>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">7.2 &mdash; Synthesis, Foundry, and Knowledge Graph</div><div class="ft ft-p">Intelligence</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Synthesis compounding loop:</strong> Ingest &rarr; Compile &rarr; Query &amp; Synthesize &rarr; Capture &rarr; Return &rarr; Recompile. Synthesized outputs feed back into the corpus. "Second-layer query" as a named one-click operation.</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Foundry intake:</strong> Capture (URL, paste, file, iCloud) &rarr; AI Triage (proposes tags, location, quality) &rarr; Review &rarr; Admit. Tracks separately from ingested documents.</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>Knowledge graph:</strong> d3-force visualization; betweenness centrality; Louvain community detection (<code>graphology</code> + <code>graphology-communities-louvain</code>); structural gap detection; double-click to open in Scribe.</span></li>
+      <li class="ri"><div class="d" style="background:var(--purple)"></div><span><strong>MCP exposure:</strong> if accessible via MCP, the knowledge base is queryable from any Claude session (<code>rag_ingest</code>, <code>rag_query</code>, <code>rag_compile</code>).</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">08</span><span class="grad grad-amber">Agent Management &mdash; The Hive</span></div>
+  <div class="fb"><div class="fh"><div class="fn">8.1 &mdash; Agent Control Room</div><div class="ft ft-a">Agents</div></div>
+    <p>Central panel: agent status cards (idle/running/error, last run, recent output), cost attribution by agent and Domain, manual trigger for any agent, per-agent configuration, Dreams panel surfacing Honcho&rsquo;s derived insights.</p>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">8.2 &mdash; CoPaw Auto-Capture</div><div class="ft ft-a">Memory</div></div>
+    <p>After every agent response, silently extract key facts and write to the memory system. Approximately 50 lines of code. The mechanism that makes memory compound continuously from the flow of ordinary work rather than only from explicit saves.</p>
+  </div>
+  <div class="fb"><div class="fh"><div class="fn">8.3 &mdash; Development Tools</div><div class="ft ft-a">Tools</div></div>
+    <ul class="rl">
+      <li class="ri"><div class="da" style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:5px;"></div><span><strong>Schema Producer</strong> &mdash; given a data structure description, produces a structured schema</span></li>
+      <li class="ri"><div class="da" style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:5px;"></div><span><strong>PRD synthesis agent</strong> &mdash; multiple source documents synthesized into structured requirements</span></li>
+      <li class="ri"><div class="da" style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:5px;"></div><span><strong>Gap analysis agent</strong> &mdash; given a specification and implementation, identifies what is missing or inconsistent</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">09</span><span class="grad grad-green">Verify Together on Friday</span></div>
+  <div class="card card-green">
+    <div class="card-title">Items to Test After Clean Install</div>
+    <ul class="checklist">
+      <li data-id="f1" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Configure Anthropic API key, confirm ARA responds</span></li>
+      <li data-id="f2" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Verify colors are changeable via Settings as described</span></li>
+      <li data-id="f3" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Confirm light mode applies uniformly after clean install</span></li>
+      <li data-id="f4" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Retest module connectivity after clearing port conflict</span></li>
+      <li data-id="f5" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Test Domain / Project / Thread structure in File Explorer</span></li>
+      <li data-id="f6" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Confirm wiki / knowledge system is in the shell as described</span></li>
+      <li data-id="f7" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Verify version button increments properly (v1 &rarr; v2 &rarr; v3)</span></li>
+      <li data-id="f8" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Test tab visibility in fullscreen mode</span></li>
+      <li data-id="f9" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Test Scribe: brain dump, redlines, drag-to-chat, versioning</span></li>
+      <li data-id="f10" data-checked="false" onclick="toggleCheck(this)"><span class="check-box"></span><span>Evaluate text and icon sizing on clean Electron build</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="section-block">
+  <div class="section-label"><span class="sl-num">10</span><span class="grad grad-green">Goal</span></div>
+  <div class="card card-cyan">
+    <div class="card-title">What Success Looks Like</div>
+    <p>A dashboard that can be used comfortably for hours of daily work as the primary working environment for developing AstraStrata. The better this build is, the faster the PRD work can proceed &mdash; which is the critical path to completing the full project.</p>
+    <p>Success means: the system is installed and pleasant to use; files are organized and findable; the Scribe editor is a capable writing environment; the knowledge system is ingesting content and surfacing useful synthesis; agents can be configured and directed; the overall UI feels like it was designed by people who actually use it; and the remaining feature gaps described in Sections 4&ndash;8 of this document are addressed in the next development cycle.</p>
+    <div class="callout callout-ok" style="margin-top:12px;"><span class="callout-icon">&#10004;</span><div class="callout-body">The features described in Sections 4&ndash;8 are recommendations and starting points. The implementation team is encouraged to improve upon them. The goal is a system that exceeds what these notes describe, not one that merely meets them.</div></div>
+  </div>
+</div>
+
+<p style="text-align:center;color:var(--muted);font-size:12px;margin-top:48px;">Dwellium Feature Update Specification v2 &middot; June 2026 &middot; Reference: <code>github.com/Agenteryx/agenteryx</code> &middot; UI Reference: <code>Combined HTML Report Design System.md</code></p>
+</div>
+
+<script>
+(function(){const h=document.documentElement,b=document.getElementById('themeToggle'),i=document.getElementById('themeIcon'),l=document.getElementById('themeLabel');const s=localStorage.getItem('theme'),p=window.matchMedia('(prefers-color-scheme: dark)').matches;applyTheme(s||(p?'dark':'light'));b.addEventListener('click',()=>{const n=h.dataset.theme==='dark'?'light':'dark';applyTheme(n);localStorage.setItem('theme',n);});function applyTheme(t){h.dataset.theme=t;i.textContent=t==='dark'?'☀️':'🌙';l.textContent=t==='dark'?'Light mode':'Dark mode';}})();
+function toggleCheck(li){const n=li.dataset.checked!=='true';li.dataset.checked=n;localStorage.setItem('check_'+li.dataset.id,n);}
+document.querySelectorAll('.checklist li[data-id]').forEach(li=>{if(localStorage.getItem('check_'+li.dataset.id)==='true')li.dataset.checked='true';});
+const obs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('visible');obs.unobserve(x.target);}});},{threshold:0.08});
+document.querySelectorAll('.card').forEach((c,i)=>{c.style.transitionDelay=`${(i%4)*60}ms`;obs.observe(c);});
+document.querySelectorAll('.card').forEach(c=>{c.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();c.style.setProperty('--mx',((e.clientX-r.left)/r.width*100).toFixed(1)+'%');c.style.setProperty('--my',((e.clientY-r.top)/r.height*100).toFixed(1)+'%');});c.addEventListener('mouseleave',()=>{c.style.setProperty('--mx','30%');c.style.setProperty('--my','25%');});});
+</script>
+</body>
+</html>

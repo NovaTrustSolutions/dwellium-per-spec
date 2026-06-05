@@ -1,0 +1,60 @@
+/**
+ * spotlight.css — premium bento-card treatment (spec §3.3).
+ *
+ * Opt-in: add `.spotlight-card` to any card. Provides the three §3.3 behaviors:
+ *   1. Cursor-following radial spotlight (driven by --mx/--my from spotlight.ts)
+ *   2. 1px border that brightens on hover (var(--border) → var(--border-hover))
+ *   3. A subtle lift on hover (translateY(-3px) + expanding shadow)
+ *
+ * Colors come from the §3.2 theme variables with sensible fey fallbacks so the
+ * effect works even before a theme defines them.
+ */
+
+.spotlight-card {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.spotlight-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(
+        240px circle at var(--mx, 50%) var(--my, 50%),
+        var(--spotlight, rgba(214, 254, 81, 0.16)),
+        transparent 60%
+    );
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.spotlight-card:hover::before {
+    opacity: 1;
+}
+
+.spotlight-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    border-color: var(--border-hover, rgba(214, 254, 81, 0.45));
+}
+
+/* Keep card content above the spotlight layer. */
+.spotlight-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spotlight-card,
+    .spotlight-card::before {
+        transition: none;
+    }
+    .spotlight-card:hover {
+        transform: none;
+    }
+}

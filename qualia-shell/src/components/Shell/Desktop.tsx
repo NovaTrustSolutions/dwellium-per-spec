@@ -13,6 +13,7 @@ import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS } from '../../registry/widgetR
 import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAutoOpenHoncho } from './honchoAutoOpen';
 
 import QuickLook from '../QuickLook/QuickLook';
+import ThreadSwitcher from '../Workspace/ThreadSwitcher';
 import './Desktop.css';
 
 /** Suspense fallback for lazy-loaded widgets */
@@ -1033,6 +1034,9 @@ export default function Desktop() {
                     <p className="desktop__empty-sub">Click an icon in the sidebar to get started</p>
                 </div>
             )}
+
+            {/* Global active-thread switcher (spec §4.3) */}
+            <ThreadSwitcher />
 
             {/* Toast Notification */}
             {toast && (

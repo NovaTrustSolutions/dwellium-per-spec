@@ -87,6 +87,19 @@ export const scribeTheme = EditorView.theme(
             borderRadius: '3px',
             padding: '0 2px',
         },
+        // Inline flags (spec §5.11): ::todo:: ::flag:: ::question:: render as
+        // colored pills so they stand out while scanning a draft.
+        '.cm-flag': {
+            borderRadius: '4px',
+            padding: '0 5px',
+            fontWeight: '700',
+            fontSize: '0.9em',
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            letterSpacing: '0.02em',
+        },
+        '.cm-flag-todo': { background: 'rgba(255,193,7,0.18)', color: '#ffce3a', border: '1px solid rgba(255,193,7,0.45)' },
+        '.cm-flag-flag': { background: 'rgba(255,77,109,0.18)', color: '#ff7a93', border: '1px solid rgba(255,77,109,0.45)' },
+        '.cm-flag-question': { background: 'rgba(80,180,255,0.18)', color: '#74c4ff', border: '1px solid rgba(80,180,255,0.45)' },
         '.cm-fenced-code': {
             backgroundColor: '#0a0a0a',
             borderLeft: '3px solid #D6FE51',
@@ -372,6 +385,40 @@ const highlightPlugin = ViewPlugin.fromClass(
     { decorations: (v) => v.decorations },
 );
 
+// ── Inline flags ::todo:: ::flag:: ::question:: (spec §5.11) ──────────────────
+
+const flagTodoDec = Decoration.mark({ class: 'cm-flag cm-flag-todo' });
+const flagFlagDec = Decoration.mark({ class: 'cm-flag cm-flag-flag' });
+const flagQuestionDec = Decoration.mark({ class: 'cm-flag cm-flag-question' });
+
+function flagDecoration(kind: string): Decoration {
+    if (kind === 'todo') return flagTodoDec;
+    if (kind === 'flag') return flagFlagDec;
+    return flagQuestionDec;
+}
+
+function buildFlagDecorations(view: EditorView): DecorationSet {
+    const builder = new RangeSetBuilder<Decoration>();
+    const re = /::(flag|todo|question)::/gi;
+    const pending: Array<{ from: number; to: number; kind: string }> = [];
+    for (const { from, to } of view.visibleRanges) {
+        const text = view.state.doc.sliceString(from, to);
+        let m: RegExpExecArray | null;
+        re.lastIndex = 0;
+        while ((m = re.exec(text)) !== null) {
+            pending.push({ from: from + m.index, to: from + m.index + m[0].length, kind: m[1].toLowerCase() });
+        }
+    }
+    pending.sort((a, b) => a.from - b.from);
+    for (const { from, to, kind } of pending) builder.add(from, to, flagDecoration(kind));
+    return builder.finish();
+}
+
+const flagPlugin = ViewPlugin.fromClass(
+    class { decorations: DecorationSet; constructor(view: EditorView) { this.decorations = buildFlagDecorations(view); } update(u: ViewUpdate) { if (u.docChanged || u.viewportChanged) { this.decorations = buildFlagDecorations(u.view); } } },
+    { decorations: (v) => v.decorations },
+);
+
 // ── Fenced code block ViewPlugin ─────────────────────────────────────────────
 
 const codeBlockLineDec = Decoration.line({ class: 'cm-fenced-code' });
@@ -544,6 +591,7 @@ export function getMarkdownExtensions(): Extension[] {
         quoteMarkPlugin,
         hrPlugin,
         highlightPlugin,
+        flagPlugin,
         fencedCodePlugin,
         mdTableField,
         doubleSpacePeriod,

@@ -157,6 +157,12 @@
     /* 2026-05-26: black text + black-tinted timestamp for WCAG AA contrast on acid lime (#D6FE51 / 5.02:1+) */
     color: #000;
     border-bottom-right-radius: 4px;
+    /* spec §5.9 — the user's message stays pinned at the top of the viewport
+       while scrolling through a long agent response (position: sticky; top: 0). */
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .stella__msg--user .stella__msg-time {

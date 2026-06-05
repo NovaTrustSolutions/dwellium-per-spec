@@ -8,6 +8,8 @@ export function TabBar() {
     const setActiveFile = useScribeStore((s) => s.setActiveFile);
     const closeFile = useScribeStore((s) => s.closeFile);
     const createFile = useScribeStore((s) => s.createFile);
+    const editorMode = useScribeStore((s) => s.editorMode);
+    const setEditorMode = useScribeStore((s) => s.setEditorMode);
     const { tabBarHeight } = useScribeLayout();
 
     // 2026-05-27 fix: window.prompt() is silently blocked in many contexts.
@@ -34,8 +36,8 @@ export function TabBar() {
         setDraftName('');
     }, []);
 
-    if (openFiles.length === 0) return <></>;
-
+    // The bar always renders now — the sticky Doc/Dump toggle (spec §5.2) must
+    // be visible even with zero open files.
     return (
         <div style={{
             display: 'flex',
@@ -48,7 +50,12 @@ export function TabBar() {
             background: '#0a0a0a',
             borderBottom: '1px solid #222',
         }}>
-            {openFiles.map((file) => (
+            {/* Sticky Doc / Dump mode toggle */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, marginRight: 8, flexShrink: 0 }}>
+                <ModeTab label="Doc" active={editorMode === 'document'} onClick={() => setEditorMode('document')} />
+                <ModeTab label="Dump" active={editorMode === 'dump'} onClick={() => setEditorMode('dump')} />
+            </div>
+            {editorMode === 'document' && openFiles.map((file) => (
                 <Tab
                     key={file.filepath}
                     file={file}
@@ -60,7 +67,7 @@ export function TabBar() {
                     }}
                 />
             ))}
-            {creating ? (
+            {editorMode === 'document' && (creating ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
                     <input
                         type="text"
@@ -104,8 +111,36 @@ export function TabBar() {
                 >
                     +
                 </button>
-            )}
+            ))}
         </div>
+    );
+}
+
+/** Sticky Doc / Dump mode toggle pill (spec §5.2). */
+function ModeTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+    const [hovered, setHovered] = useState(false);
+    return (
+        <button
+            onClick={onClick}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            title={label === 'Dump' ? 'Brain Dump — capture raw thoughts; synthesize into a report' : 'Document editor'}
+            style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '4px 12px', marginBottom: -1,
+                borderRadius: '6px 6px 0 0',
+                fontSize: 12, fontWeight: 700, letterSpacing: '0.04em',
+                fontFamily: 'inherit', cursor: 'pointer', userSelect: 'none',
+                flexShrink: 0,
+                border: 'none',
+                background: active ? '#000' : hovered ? '#111' : 'transparent',
+                color: active ? '#D6FE51' : '#888',
+                borderBottom: active ? '2px solid #D6FE51' : '2px solid transparent',
+                transition: 'background 150ms, color 150ms',
+            }}
+        >
+            {label}
+        </button>
     );
 }
 

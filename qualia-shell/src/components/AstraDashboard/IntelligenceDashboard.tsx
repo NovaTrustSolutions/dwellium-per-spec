@@ -86,7 +86,7 @@ function JamesPanel() {
     };
 
     return (
-        <div className="intel-panel intel-james">
+        <div className="intel-panel spotlight-card intel-james">
             <div className="intel-panel-header">
                 <Shield size={18} />
                 <h3>James Agent</h3>
@@ -148,7 +148,7 @@ function AnomaliesPanel() {
     const severityColor: Record<string, string> = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e' };
 
     return (
-        <div className="intel-panel intel-anomalies">
+        <div className="intel-panel spotlight-card intel-anomalies">
             <div className="intel-panel-header">
                 <AlertTriangle size={18} />
                 <h3>Anomalies</h3>
@@ -206,7 +206,7 @@ function ROIPanel() {
     const recColor: Record<string, string> = { approve: '#22c55e', defer: '#eab308', reject: '#ef4444' };
 
     return (
-        <div className="intel-panel intel-roi">
+        <div className="intel-panel spotlight-card intel-roi">
             <div className="intel-panel-header">
                 <DollarSign size={18} />
                 <h3>ROI Engine</h3>
@@ -289,7 +289,7 @@ function MemoryPanel() {
     };
 
     return (
-        <div className="intel-panel intel-memory">
+        <div className="intel-panel spotlight-card intel-memory">
             <div className="intel-panel-header">
                 <BookOpen size={18} />
                 <h3>Institutional Memory</h3>

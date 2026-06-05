@@ -12,6 +12,7 @@ import { getActiveEditorView } from './markdownConfig';
 import { markdownToPdfBytes, downloadPdf } from './pdfExport';
 import { SLASH_COMMANDS, commandSnippet } from './slashCommands';
 import { downloadDocx } from './docxConvert';
+import { PriorityBadge } from './PriorityBadge';
 
 export function DocumentToolbar() {
     const activeFilepath = useScribeStore((s) => s.activeFilepath);
@@ -19,6 +20,10 @@ export function DocumentToolbar() {
     const setTocVisible = useScribeStore((s) => s.setTocVisible);
     const minimapVisible = useScribeStore((s) => s.minimapVisible);
     const setMinimapVisible = useScribeStore((s) => s.setMinimapVisible);
+    const findReplaceOpen = useScribeStore((s) => s.findReplaceOpen);
+    const setFindReplaceOpen = useScribeStore((s) => s.setFindReplaceOpen);
+    const focusMode = useScribeStore((s) => s.focusMode);
+    const setFocusMode = useScribeStore((s) => s.setFocusMode);
     const createVersion = useScribeStore((s) => s.createVersion);
     const deleteFile = useScribeStore((s) => s.deleteFile);
     const closeFile = useScribeStore((s) => s.closeFile);
@@ -119,6 +124,19 @@ export function DocumentToolbar() {
                 active={minimapVisible}
                 onClick={() => setMinimapVisible(!minimapVisible)}
             />
+            <ToolbarBtn
+                label="🔍 Find"
+                title="Find & replace (⌘F)"
+                active={findReplaceOpen}
+                onClick={() => setFindReplaceOpen(!findReplaceOpen)}
+            />
+            <ToolbarBtn
+                label="⛶ Focus"
+                title="Focus mode — hide chrome for distraction-free writing (⌘⇧F)"
+                active={focusMode}
+                onClick={() => setFocusMode(!focusMode)}
+            />
+            <PriorityBadge />
             <ToolbarBtn
                 label={versioning ? '...' : '🕒 Version'}
                 title="Save a snapshot of current content"

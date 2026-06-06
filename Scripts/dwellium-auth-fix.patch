@@ -1,0 +1,689 @@
+diff --git a/qualia-shell/src/App.tsx b/qualia-shell/src/App.tsx
+index f6702f2..b55d4ce 100644
+--- a/qualia-shell/src/App.tsx
++++ b/qualia-shell/src/App.tsx
+@@ -5,6 +5,7 @@ import { UserProvider, useUser } from './context/UserContext';
+ import { PermissionsProvider } from './context/PermissionsContext';
+ import QueryProvider from './providers/QueryProvider';
+ import LoginScreen from './components/Auth/LoginScreen';
++import SessionExpiredModal from './components/Auth/SessionExpiredModal';
+ import AppSuspenseFallback from './components/Shell/AppSuspenseFallback';
+ import BackendConnectionBanner from './components/Shell/BackendConnectionBanner';
+ import { lazyWithReload } from './utils/lazyWithReload';
+@@ -32,7 +33,7 @@ const OpenJarvisWidget = lazyWithReload(() => import('./components/OpenJarvis/Op
+ 
+ /** Auth gate — shows login screen until authenticated */
+ function AuthGate() {
+-    const { isAuthenticated, isLoading, role } = useUser();
++    const { isAuthenticated, isLoading, role, sessionExpired } = useUser();
+     const [tenantMode, setTenantMode] = useState(false);
+ 
+     if (isLoading) {
+@@ -59,22 +60,27 @@ function AuthGate() {
+     // Wraps the lazy children (TenantLoginScreen / TenantPortal / AdminShell);
+     // eager LoginScreen renders pass-through without showing the fallback.
+     return (
+-        <Suspense fallback={<AppSuspenseFallback variant="viewport" />}>
+-            {!isAuthenticated ? (
+-                tenantMode
+-                    ? <TenantLoginScreen onBackToAdmin={() => setTenantMode(false)} />
+-                    : <LoginScreen onTenantMode={() => setTenantMode(true)} />
+-            ) : role === 'tenant' ? (
+-                <>
+-                    <TenantPortal />
+-                    <OpenJarvisWidget />
+-                </>
+-            ) : (
+-                <PermissionsProvider>
+-                    <AdminShell />
+-                </PermissionsProvider>
+-            )}
+-        </Suspense>
++        <>
++            <Suspense fallback={<AppSuspenseFallback variant="viewport" />}>
++                {!isAuthenticated ? (
++                    tenantMode
++                        ? <TenantLoginScreen onBackToAdmin={() => setTenantMode(false)} />
++                        : <LoginScreen onTenantMode={() => setTenantMode(true)} />
++                ) : role === 'tenant' ? (
++                    <>
++                        <TenantPortal />
++                        <OpenJarvisWidget />
++                    </>
++                ) : (
++                    <PermissionsProvider>
++                        <AdminShell />
++                    </PermissionsProvider>
++                )}
++            </Suspense>
++            {/* Recoverable re-auth: a definitively-dead session keeps the shell
++               mounted and overlays this modal instead of bouncing to login. */}
++            {isAuthenticated && sessionExpired && <SessionExpiredModal />}
++        </>
+     );
+ }
+ 
+diff --git a/qualia-shell/src/context/UserContext.tsx b/qualia-shell/src/context/UserContext.tsx
+index 818c79c..43f9bd1 100644
+--- a/qualia-shell/src/context/UserContext.tsx
++++ b/qualia-shell/src/context/UserContext.tsx
+@@ -50,12 +50,22 @@ export interface DwelliumUser {
+ 
+ export type PermissionsMap = Record<string, boolean>;
+ 
++/** Outcome of a silent token refresh attempt. `dead` means the refresh token
++ *  was definitively rejected (or absent) — the session cannot be recovered
++ *  silently. `transient` means a backend/network hiccup — keep the session. */
++type RefreshResult = 'refreshed' | 'dead' | 'transient';
++
+ interface UserContextValue {
+     user: DwelliumUser | null;
+     token: string | null;
+     role: string | null;
+     permissions: PermissionsMap;
+     isAuthenticated: boolean;
++    /** True when the backend has DEFINITIVELY rejected the session (a 401/403
++     *  from /api/auth/me with no successful refresh) while a user is present.
++     *  The shell stays mounted; AuthGate overlays a recoverable "sign in again"
++     *  modal instead of nuking state to the login screen. */
++    sessionExpired: boolean;
+     isLoading: boolean;
+     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+     logout: () => void;
+@@ -77,6 +87,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
+     const [permissions, setPermissions] = useState<PermissionsMap>({});
+     const token = useSyncExternalStore(tokenStore.subscribe, tokenStore.getSnapshot, tokenStore.getServerSnapshot);
+     const [isLoading, setIsLoading] = useState(true);
++    const [sessionExpired, setSessionExpired] = useState(false);
+     const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+     const isRefreshingRef = useRef(false);
+ 
+@@ -100,6 +111,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
+         tokenStore.set(null, () => localStorage.removeItem(TOKEN_KEY));
+         setUser(null);
+         setPermissions({});
++        setSessionExpired(false);
+         localStorage.removeItem(REFRESH_TOKEN_KEY);
+         localStorage.removeItem(EXPIRES_AT_KEY);
+         localStorage.removeItem('dwellium-user');
+@@ -109,6 +121,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
+         }
+     }, []);
+ 
++    /* ── Dead-session handling (recoverable) ──────────────
++     * Called ONLY when the session is definitively dead (a 401/403 from the
++     * authoritative /api/auth/me validator, or a rejected/absent refresh token).
++     * If we have a persisted identity to preserve, keep the shell mounted and
++     * flip `sessionExpired` so AuthGate overlays an in-place re-auth modal — the
++     * user resumes exactly where they were after signing back in. If there's no
++     * identity to preserve, fall back to a full clear (→ login screen). A
++     * TRANSIENT backend failure must NEVER reach here — that path keeps the
++     * session and shows the "connect?" banner instead. */
++    const endDeadSession = useCallback(() => {
++        if (refreshTimerRef.current) {
++            clearTimeout(refreshTimerRef.current);
++            refreshTimerRef.current = null;
++        }
++        if (localStorage.getItem('dwellium-user')) {
++            setSessionExpired(true);
++        } else {
++            clearTokens();
++        }
++    }, [clearTokens]);
++
+     /* ── Role helpers ─────────────────────────────────── */
+ 
+     const hasMinRole = useCallback((minRole: string): boolean => {
+@@ -126,9 +159,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
+ 
+     /* ── Silent refresh ───────────────────────────────── */
+ 
+-    const doRefresh = useCallback(async (): Promise<boolean> => {
++    const doRefresh = useCallback(async (): Promise<RefreshResult> => {
++        if (isRefreshingRef.current) return 'transient';
+         const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+-        if (!refreshToken || isRefreshingRef.current) return false;
++        // No refresh token: cannot recover silently. Reached only from the
++        // /api/auth/me validator (authFetch guards on a refresh token existing),
++        // where a 401/403 with no way to refresh means the session is dead.
++        if (!refreshToken) return 'dead';
+ 
+         isRefreshingRef.current = true;
+         try {
+@@ -138,9 +175,21 @@ export function UserProvider({ children }: { children: ReactNode }) {
+                 body: JSON.stringify({ refreshToken }),
+             });
+             if (!res.ok) {
+-                // Refresh token expired or invalid — force logout
+-                clearTokens();
+-                return false;
++                // Distinguish a DEAD session from a TRANSIENT backend failure.
++                // A rejected refresh token (401/403) means the session cannot be
++                // recovered silently → 'dead' (the caller decides whether to
++                // overlay the recoverable re-auth modal). A 5xx/404 is the backend
++                // being unreachable or mid-deploy → 'transient': keep the session
++                // and raise the "connect?" banner. Either way we must NEVER
++                // clearTokens() here — that was the "click a widget → bounced to
++                // the login screen" bug (one widget 401 → doRefresh → logout).
++                if (res.status === 401 || res.status === 403) {
++                    return 'dead';
++                }
++                if (res.status >= 500 || res.status === 404) {
++                    backendStatusStore.markOffline(`Auth refresh failed (${res.status}).`);
++                }
++                return 'transient';
+             }
+             const data = await res.json();
+             saveTokens({
+@@ -153,15 +202,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
+                 try { localStorage.setItem('dwellium-user', JSON.stringify(data.user)); } catch { /* ignore */ }
+             }
+             if (data.permissions) setPermissions(data.permissions);
++            setSessionExpired(false); // a successful refresh recovers the session
+             scheduleRefresh(data.expiresAt);
+-            return true;
++            return 'refreshed';
+         } catch {
+-            // Network error — don't logout, just skip this cycle
+-            return false;
++            // Network error — not authority to log out; treat as transient.
++            return 'transient';
+         } finally {
+             isRefreshingRef.current = false;
+         }
+-    }, [saveTokens, clearTokens]); // eslint-disable-line react-hooks/exhaustive-deps
++    }, [saveTokens]); // eslint-disable-line react-hooks/exhaustive-deps -- clearTokens intentionally NOT a dep: doRefresh must never log out
+ 
+     const scheduleRefresh = useCallback((expiresAt: string) => {
+         if (refreshTimerRef.current) {
+@@ -194,10 +244,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
+ 
+         const response = await fetch(fullUrl, { ...opts, headers });
+ 
+-        // On 401, try refreshing the token once and retry
+-        if (response.status === 401 && localStorage.getItem(REFRESH_TOKEN_KEY)) {
+-            const refreshed = await doRefresh();
+-            if (refreshed) {
++        // On 401/403, try one silent refresh, then retry.
++        if ((response.status === 401 || response.status === 403) && localStorage.getItem(REFRESH_TOKEN_KEY)) {
++            const result = await doRefresh();
++            if (result === 'refreshed') {
+                 const newToken = localStorage.getItem(TOKEN_KEY);
+                 const retryHeaders = new Headers(opts.headers);
+                 if (newToken) retryHeaders.set('Authorization', `Bearer ${newToken}`);
+@@ -206,10 +256,56 @@ export function UserProvider({ children }: { children: ReactNode }) {
+                 }
+                 return fetch(fullUrl, { ...opts, headers: retryHeaders });
+             }
++            if (result === 'dead') {
++                // Refresh token definitively rejected → the session is dead.
++                // Surface the recoverable re-auth modal (shell stays mounted);
++                // the widget still receives its original 401 to render locally.
++                endDeadSession();
++            }
++            // 'transient' → keep the session; the widget handles its own error.
+         }
+ 
+         return response;
+-    }, [doRefresh]);
++    }, [doRefresh, endDeadSession]);
++
++    /* ── Authoritative session validation ─────────────────
++     * Hits /api/auth/me (the single source of truth for "is this session still
++     * valid"). Used on mount, and on window focus / regaining connectivity. Safe
++     * to call repeatedly. Policy:
++     *   • 401/403  → one silent refresh; if that fails, the session is dead.
++     *   • 5xx/network → transient: KEEP the session, raise the "connect?" banner.
++     *   • ok       → refresh the in-memory user + clear any expired flag. */
++    const validateSession = useCallback(async () => {
++        const tok = localStorage.getItem(TOKEN_KEY);
++        if (!tok || tok.startsWith('static-')) return;
++        try {
++            const res = await fetch(`${API_BASE}/api/auth/me`, {
++                headers: { Authorization: `Bearer ${tok}` },
++            });
++            if (res.status === 401 || res.status === 403) {
++                backendStatusStore.markOnline(); // backend answered → it's reachable
++                const result = await doRefresh();
++                if (result === 'refreshed') setSessionExpired(false);
++                else if (result === 'dead') endDeadSession();
++                return;
++            }
++            if (!res.ok) {
++                backendStatusStore.markOffline(`Backend returned ${res.status}.`);
++                return;
++            }
++            const data = await res.json();
++            const validatedUser: DwelliumUser = data.user ?? (data as DwelliumUser);
++            setUser(validatedUser);
++            setPermissions(data.permissions || {});
++            setSessionExpired(false);
++            try { localStorage.setItem('dwellium-user', JSON.stringify(validatedUser)); } catch { /* ignore */ }
++            backendStatusStore.markOnline();
++            const expiresAt = localStorage.getItem(EXPIRES_AT_KEY);
++            if (expiresAt) scheduleRefresh(expiresAt);
++        } catch (err) {
++            backendStatusStore.markOffline(err instanceof Error ? err.message : String(err));
++        }
++    }, [doRefresh, endDeadSession, scheduleRefresh]);
+ 
+     /* ── Login ────────────────────────────────────────── */
+ 
+@@ -232,6 +328,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
+             });
+             setUser(data.user);
+             setPermissions(data.permissions || {});
++            setSessionExpired(false); // re-auth from the expired-session modal recovers in place
+             // Persist identity so it survives reloads / remounts / backend blips
+             try { localStorage.setItem('dwellium-user', JSON.stringify(data.user)); } catch { /* ignore */ }
+ 
+@@ -262,6 +359,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
+                         tokenStore.set(staticToken, () => localStorage.setItem(TOKEN_KEY, staticToken));
+                         setUser(userData);
+                         setPermissions({});
++                        setSessionExpired(false);
+                         localStorage.setItem('dwellium-user', JSON.stringify(userData));
+                         return { success: true };
+                     }
+@@ -316,50 +414,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
+             return;
+         }
+ 
+-        // Validate against the backend. Only a DEFINITIVE auth rejection (401/403)
+-        // clears the session. Transient failures (network error, backend down, 5xx)
+-        // KEEP the optimistically-restored session — being unable to reach the
+-        // server is not proof the token is invalid (mirrors doRefresh's network
+-        // policy). This fixes "clicking a widget bounces me back to the login
+-        // screen": a single backend hiccup on remount/reload used to hard-log-out.
++        // Validate against the backend via the shared authoritative validator.
++        // Only a DEFINITIVE 401/403 (with a failed refresh) ends the session;
++        // transient failures KEEP the optimistically-restored session and raise
++        // the "connect?" banner. This is what stops "clicking a widget bounces me
++        // back to the login screen" on a backend hiccup. On a genuinely dead
++        // session WITH a stored identity, validateSession flips `sessionExpired`
++        // (recoverable modal) rather than nuking state.
+         (async () => {
+-            try {
+-                const res = await fetch(`${API_BASE}/api/auth/me`, {
+-                    headers: { Authorization: `Bearer ${token}` },
+-                });
+-                if (res.status === 401 || res.status === 403) {
+-                    // Backend IS reachable (it answered) — clear any offline banner.
+-                    backendStatusStore.markOnline();
+-                    const refreshed = await doRefresh();
+-                    if (!refreshed) clearTokens();
+-                    setIsLoading(false);
+-                    return;
+-                }
+-                if (!res.ok) {
+-                    // Backend reachable but erroring (5xx) — keep the session and
+-                    // surface the global banner; do NOT log out.
+-                    backendStatusStore.markOffline(`Backend returned ${res.status}.`);
+-                    setIsLoading(false);
+-                    return;
+-                }
+-                const data = await res.json();
+-                const validatedUser: DwelliumUser = data.user ?? (data as DwelliumUser);
+-                setUser(validatedUser);
+-                setPermissions(data.permissions || {});
+-                try { localStorage.setItem('dwellium-user', JSON.stringify(validatedUser)); } catch { /* ignore */ }
+-                backendStatusStore.markOnline();
+-                // Schedule refresh based on stored expiry
+-                const expiresAt = localStorage.getItem(EXPIRES_AT_KEY);
+-                if (expiresAt) {
+-                    scheduleRefresh(expiresAt);
+-                }
+-                setIsLoading(false);
+-            } catch (err) {
+-                // Network error / backend unreachable — keep the existing session
+-                // (NEVER log out) and surface the global "connect?" banner.
+-                backendStatusStore.markOffline(err instanceof Error ? err.message : String(err));
+-                setIsLoading(false);
+-            }
++            await validateSession();
++            setIsLoading(false);
+         })();
+ 
+         return () => {
+@@ -369,6 +433,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
+         };
+     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+ 
++    /* ── Re-validate on focus / reconnect ─────────────────
++     * /api/auth/me only runs on mount, so a session that dies while the app is
++     * open would otherwise go unnoticed until a manual reload (widgets silently
++     * failing). Re-validate when the window regains focus or the device comes
++     * back online, so a dead session promptly surfaces the recoverable modal and
++     * a recovered backend clears the banner. Guarded so it never piles onto an
++     * in-flight refresh. */
++    useEffect(() => {
++        const onWake = () => {
++            if (localStorage.getItem(TOKEN_KEY) && !isRefreshingRef.current) {
++                void validateSession();
++            }
++        };
++        window.addEventListener('focus', onWake);
++        window.addEventListener('online', onWake);
++        return () => {
++            window.removeEventListener('focus', onWake);
++            window.removeEventListener('online', onWake);
++        };
++    }, [validateSession]);
++
+     return (
+         <UserContext.Provider value={{
+             user,
+@@ -376,6 +461,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
+             role: user?.role ?? null,
+             permissions,
+             isAuthenticated: !!user,
++            sessionExpired,
+             isLoading,
+             login,
+             logout,
+diff --git a/qualia-shell/src/test/UserContext.test.tsx b/qualia-shell/src/test/UserContext.test.tsx
+index 6861d5f..47cc9d5 100644
+--- a/qualia-shell/src/test/UserContext.test.tsx
++++ b/qualia-shell/src/test/UserContext.test.tsx
+@@ -285,4 +285,170 @@ describe('UserContext', () => {
+         expect(result.current.isAuthenticated).toBe(true);
+         expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
+     });
++
++    // ── Widget-click logout regression (authFetch → doRefresh) ────────────────
++    // These exercise the ACTUAL path a widget hits: an authed data call returns
++    // 401, authFetch() attempts one silent refresh, and the refresh fails. The
++    // session MUST survive — only the mount /api/auth/me validator (or an explicit
++    // logout) may ever clear auth. Prior bug: doRefresh() called clearTokens() on
++    // ANY non-OK refresh, so clicking a widget bounced the user to the login
++    // screen. The earlier "fix" only hardened the mount path, not this one.
++
++    async function renderAuthed() {
++        localStorage.setItem('dwellium-auth-token', 'valid-jwt');
++        localStorage.setItem('dwellium-refresh-token', 'valid-refresh');
++        localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
++        // Mount /api/auth/me validation succeeds → confirmed logged in.
++        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
++            ok: true,
++            status: 200,
++            json: async () => ({ user: MOCK_USER, permissions: { dashboard: true } }),
++        });
++        const { result } = renderHook(() => useUser(), { wrapper });
++        await waitFor(() => expect(result.current.isLoading).toBe(false));
++        expect(result.current.isAuthenticated).toBe(true);
++        return result;
++    }
++
++    it('does NOT log out when a widget call 401s and the refresh endpoint 5xxs', async () => {
++        const result = await renderAuthed();
++        (globalThis.fetch as ReturnType<typeof vi.fn>)
++            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
++            .mockResolvedValueOnce({ ok: false, status: 503 });  // /api/auth/refresh down
++
++        let res: Response | undefined;
++        await act(async () => {
++            res = await result.current.authFetch('/api/strata/properties');
++        });
++
++        // Session survives; the widget just receives its 401 to handle locally.
++        expect(result.current.isAuthenticated).toBe(true);
++        expect(result.current.sessionExpired).toBe(false); // transient (5xx), not dead
++        expect(result.current.user?.name).toBe('Andy');
++        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
++        expect(res?.status).toBe(401);
++    });
++
++    it('does NOT log out when a widget call 401s and the refresh endpoint also 401s', async () => {
++        const result = await renderAuthed();
++        (globalThis.fetch as ReturnType<typeof vi.fn>)
++            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
++            .mockResolvedValueOnce({ ok: false, status: 401 });  // refresh rejects too
++
++        await act(async () => {
++            await result.current.authFetch('/api/strata/vendors');
++        });
++
++        // A rejected refresh means the session is dead — but we DON'T bounce to
++        // the login screen. The shell stays mounted (isAuthenticated stays true)
++        // and sessionExpired flips so AuthGate overlays the recoverable re-auth
++        // modal; the user signs back in and resumes in place.
++        await waitFor(() => expect(result.current.sessionExpired).toBe(true));
++        expect(result.current.isAuthenticated).toBe(true);
++        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
++    });
++
++    it('does NOT log out when a widget call 401s and the refresh endpoint 404s', async () => {
++        const result = await renderAuthed();
++        (globalThis.fetch as ReturnType<typeof vi.fn>)
++            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
++            .mockResolvedValueOnce({ ok: false, status: 404 });  // refresh route missing (dev backend)
++
++        await act(async () => {
++            await result.current.authFetch('/api/strata/maintenance');
++        });
++
++        expect(result.current.isAuthenticated).toBe(true);
++        expect(result.current.sessionExpired).toBe(false); // 404 = transient, not dead
++        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
++    });
++
++    it('retries the widget call transparently when the refresh succeeds', async () => {
++        const result = await renderAuthed();
++        (globalThis.fetch as ReturnType<typeof vi.fn>)
++            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
++            .mockResolvedValueOnce({                              // /api/auth/refresh succeeds
++                ok: true,
++                status: 200,
++                json: async () => ({
++                    token: 'jwt-rotated',
++                    refreshToken: 'refresh-rotated',
++                    expiresAt: new Date(Date.now() + 3600_000).toISOString(),
++                }),
++            })
++            .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ data: [] }) }); // retry
++
++        let res: Response | undefined;
++        await act(async () => {
++            res = await result.current.authFetch('/api/strata/owners');
++        });
++
++        expect(result.current.isAuthenticated).toBe(true);
++        expect(res?.status).toBe(200);
++        expect(localStorage.getItem('dwellium-auth-token')).toBe('jwt-rotated');
++    });
++
++    // ── Recoverable re-auth (sessionExpired) ──────────────────────────────────
++    // A genuinely dead session must NOT bounce to the login screen and lose the
++    // user's place. Instead the shell stays mounted (isAuthenticated stays true)
++    // and `sessionExpired` flips so AuthGate overlays a re-auth modal.
++
++    it('a confirmed-dead session WITH a stored identity stays mounted and flags sessionExpired', async () => {
++        localStorage.setItem('dwellium-auth-token', 'valid-jwt');
++        localStorage.setItem('dwellium-refresh-token', 'dead-refresh');
++        localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
++        (globalThis.fetch as ReturnType<typeof vi.fn>)
++            .mockResolvedValueOnce({ ok: false, status: 401 })  // /api/auth/me — unauthorized
++            .mockResolvedValueOnce({ ok: false, status: 401 }); // /api/auth/refresh — token rejected
++
++        const { result } = renderHook(() => useUser(), { wrapper });
++        await waitFor(() => expect(result.current.isLoading).toBe(false));
++        await waitFor(() => expect(result.current.sessionExpired).toBe(true));
++
++        // Shell preserved (recoverable) — NOT bounced to the login screen.
++        expect(result.current.isAuthenticated).toBe(true);
++        expect(result.current.user?.name).toBe('Andy');
++    });
++
++    it('logging in from an expired session clears sessionExpired', async () => {
++        localStorage.setItem('dwellium-auth-token', 'valid-jwt');
++        localStorage.setItem('dwellium-refresh-token', 'dead-refresh');
++        localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
++        (globalThis.fetch as ReturnType<typeof vi.fn>)
++            .mockResolvedValueOnce({ ok: false, status: 401 })  // mount /api/auth/me
++            .mockResolvedValueOnce({ ok: false, status: 401 }); // mount refresh → dead
++
++        const { result } = renderHook(() => useUser(), { wrapper });
++        await waitFor(() => expect(result.current.sessionExpired).toBe(true));
++
++        // Re-auth from the modal succeeds:
++        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
++            ok: true,
++            json: async () => ({ token: 'jwt-new', refreshToken: 'refresh-new', user: MOCK_USER, permissions: {} }),
++        });
++        await act(async () => {
++            await result.current.login('andy@zpgroup.com', 'password');
++        });
++
++        expect(result.current.sessionExpired).toBe(false);
++        expect(result.current.isAuthenticated).toBe(true);
++        expect(localStorage.getItem('dwellium-auth-token')).toBe('jwt-new');
++    });
++
++    it('re-validates on window focus and flags a session that died while open', async () => {
++        const result = await renderAuthed(); // mount /api/auth/me → 200 (healthy)
++        expect(result.current.sessionExpired).toBe(false);
++
++        // Session dies server-side while the app is open; user refocuses the window.
++        (globalThis.fetch as ReturnType<typeof vi.fn>)
++            .mockResolvedValueOnce({ ok: false, status: 401 })  // focus → /api/auth/me
++            .mockResolvedValueOnce({ ok: false, status: 401 }); // focus → refresh → dead
++
++        await act(async () => {
++            window.dispatchEvent(new Event('focus'));
++        });
++
++        await waitFor(() => expect(result.current.sessionExpired).toBe(true));
++        expect(result.current.isAuthenticated).toBe(true); // shell preserved
++    });
+ });
+diff --git a/qualia-shell/src/components/Auth/SessionExpiredModal.tsx b/qualia-shell/src/components/Auth/SessionExpiredModal.tsx
+new file mode 100644
+index 0000000..45f12f5
+--- /dev/null
++++ b/qualia-shell/src/components/Auth/SessionExpiredModal.tsx
+@@ -0,0 +1,125 @@
++/**
++ * SessionExpiredModal — recoverable re-authentication.
++ *
++ * Rendered by AuthGate ONLY when the backend has definitively rejected the
++ * session (UserContext `sessionExpired === true`) while a user is still present.
++ * It overlays the existing shell — open windows, layout, and in-progress work
++ * stay mounted behind it — so signing back in resumes exactly where the user
++ * left off, instead of bouncing them to the login screen and losing state.
++ *
++ * On a successful login(), UserContext flips `sessionExpired` back to false and
++ * this modal unmounts automatically. "Log out instead" performs a full logout.
++ */
++import { useState, type FormEvent } from 'react';
++import { useUser } from '../../context/UserContext';
++
++const overlay: React.CSSProperties = {
++    position: 'fixed',
++    inset: 0,
++    zIndex: 2147483000, // above all shell windows
++    display: 'flex',
++    alignItems: 'center',
++    justifyContent: 'center',
++    background: 'rgba(6, 8, 16, 0.72)',
++    backdropFilter: 'blur(4px)',
++    WebkitBackdropFilter: 'blur(4px)',
++    fontFamily: 'Inter, -apple-system, sans-serif',
++};
++
++const card: React.CSSProperties = {
++    width: 'min(92vw, 380px)',
++    padding: '28px 26px',
++    borderRadius: 14,
++    background: '#0f1422',
++    border: '1px solid rgba(99,102,241,0.28)',
++    boxShadow: '0 24px 70px rgba(0,0,0,0.55)',
++    display: 'flex',
++    flexDirection: 'column',
++    gap: 14,
++    color: '#e5e9f0',
++};
++
++const title: React.CSSProperties = { margin: 0, fontSize: 18, fontWeight: 650 };
++const sub: React.CSSProperties = { margin: 0, fontSize: 13, lineHeight: 1.5, color: '#9aa4b8' };
++const label: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: '#9aa4b8' };
++const input: React.CSSProperties = {
++    padding: '10px 12px', borderRadius: 9, border: '1px solid rgba(148,163,184,0.28)',
++    background: '#0a0e1a', color: '#e5e9f0', fontSize: 14, outline: 'none',
++};
++const errBox: React.CSSProperties = {
++    fontSize: 12.5, color: '#fca5a5', background: 'rgba(239,68,68,0.12)',
++    border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 10px',
++};
++const primaryBtn: React.CSSProperties = {
++    padding: '10px 14px', borderRadius: 9, border: 'none', cursor: 'pointer',
++    background: '#6366f1', color: '#fff', fontSize: 14, fontWeight: 600,
++};
++const secondaryBtn: React.CSSProperties = {
++    padding: '8px 14px', borderRadius: 9, cursor: 'pointer',
++    background: 'transparent', color: '#9aa4b8', fontSize: 13,
++    border: '1px solid rgba(148,163,184,0.22)',
++};
++
++export default function SessionExpiredModal() {
++    const { user, login, logout } = useUser();
++    const [email, setEmail] = useState(user?.email ?? '');
++    const [password, setPassword] = useState('');
++    const [error, setError] = useState<string | null>(null);
++    const [busy, setBusy] = useState(false);
++
++    const onSubmit = async (e: FormEvent) => {
++        e.preventDefault();
++        if (busy) return;
++        setBusy(true);
++        setError(null);
++        const res = await login(email, password);
++        setBusy(false);
++        if (!res.success) {
++            setError(res.error || 'Sign in failed. Please try again.');
++            return;
++        }
++        // Success → UserContext clears `sessionExpired`; this modal unmounts.
++    };
++
++    return (
++        <div role="dialog" aria-modal="true" aria-label="Session expired" style={overlay}>
++            <form onSubmit={onSubmit} style={card}>
++                <h2 style={title}>Session expired</h2>
++                <p style={sub}>
++                    Your session timed out. Sign in to pick up right where you left off —
++                    your workspace is still open behind this.
++                </p>
++                <label style={label}>
++                    Email
++                    <input
++                        type="email"
++                        value={email}
++                        onChange={(e) => setEmail(e.target.value)}
++                        autoComplete="username"
++                        style={input}
++                        required
++                    />
++                </label>
++                <label style={label}>
++                    Password
++                    <input
++                        type="password"
++                        value={password}
++                        onChange={(e) => setPassword(e.target.value)}
++                        autoComplete="current-password"
++                        autoFocus
++                        style={input}
++                        required
++                    />
++                </label>
++                {error && <div role="alert" style={errBox}>{error}</div>}
++                <button type="submit" disabled={busy} style={primaryBtn}>
++                    {busy ? 'Signing in…' : 'Sign in'}
++                </button>
++                <button type="button" onClick={logout} style={secondaryBtn}>
++                    Log out instead
++                </button>
++            </form>
++        </div>
++    );
++}

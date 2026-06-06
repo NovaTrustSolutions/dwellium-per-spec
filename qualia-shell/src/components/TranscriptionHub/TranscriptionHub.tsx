@@ -9,6 +9,7 @@ import { getSpeakerSettings } from './speakerSettings';
 import { LocalVoiceLibrary } from './LocalVoiceLibrary';
 import './TranscriptionHub.css';
 import { API_BASE } from '../../config';
+import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { scanSegmentsViaLlm, buildNotebookLmQuery } from './legalShieldClient';
 import { hasActiveLlm } from '../../lib/llmClient';
@@ -2557,6 +2558,9 @@ export default function TranscriptionHub() {
                                         {entry.approvedBy && (
                                             <div className="th-log__entry-reviewer">Reviewed by {entry.approvedBy}</div>
                                         )}
+                                    </div>
+                                    <div className="th-log__entry-tags" onClick={(e) => e.stopPropagation()} style={{ padding: '4px 12px' }}>
+                                        <TagInput source="transcription" sourceId={entry.id} title={entry.title} />
                                     </div>
                                     <div className="th-log__entry-actions">
                                         <button

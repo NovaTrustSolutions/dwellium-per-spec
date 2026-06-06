@@ -11,6 +11,7 @@
 import { useState, useEffect, useContext, useSyncExternalStore, useCallback } from 'react';
 import { Globe, FolderTree, MessageSquare, Folder, BookOpen, RefreshCw, FileText } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
+import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { fetchTree } from '../FileExplorer/fileExplorerApi';
@@ -162,6 +163,11 @@ export default function Wiki() {
                                 {compiling ? <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <BookOpen size={13} />}
                                 {compiling ? 'Compiling…' : page ? 'Recompile' : 'Compile'}
                             </button>
+                        </div>
+
+                        {/* Tags — links this node into projects / cross-app associations */}
+                        <div style={{ padding: '8px 18px', borderBottom: '1px solid #222' }}>
+                            <TagInput source="wiki" sourceId={selected.path} title={selected.name} />
                         </div>
 
                         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>

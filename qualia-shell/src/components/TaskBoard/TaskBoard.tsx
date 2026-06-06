@@ -28,7 +28,8 @@ import {
     type Urgency, type TaskCard, type Assignee, type BoardState,
 } from './taskBoardModel';
 import { BUILT_IN_TARGETS, describeRoute } from './taskRouting';
-import { TagInput } from '../Tags/TagInput';
+import { TagInput, useTaggedItems } from '../Tags/TagInput';
+import { relatedByTags } from '../../lib/tagStore';
 import './TaskBoard.css';
 
 const MIN_COL = 200;
@@ -442,13 +443,16 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
     const [sub, setSub] = useState('');
     const [drag, setDrag] = useState(false);
     const [assignOpen, setAssignOpen] = useState(false);
+    const [assignSubFor, setAssignSubFor] = useState<string | null>(null);
     const [routeMsg, setRouteMsg] = useState<string | null>(null);
+    const taggedItems = useTaggedItems();
 
     // Re-seed local fields when switching to a different card (e.g. into a sub-project)
     useEffect(() => { setTitle(card?.title ?? ''); setDesc(card?.description ?? ''); }, [cardId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!card) return null;
     const subs = subtasksOf(board.cards, cardId);
+    const related = relatedByTags(taggedItems, 'task-board', cardId);
     const timeline = cardTimeline(board, cardId);
     const colName = board.columns.find(c => c.id === card.columnId)?.title ?? card.columnId;
 
@@ -507,19 +511,52 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                     </section>
 
                     <section className="tb-pv__sec">
-                        <h4>Sub-tasks ({subs.length})</h4>
+                        <h4>Related by tags ({related.length})</h4>
+                        {related.length === 0 ? (
+                            <p className="tb-pv__rel-empty">Tag this card, then tag items in other apps with the same tag — they link here across the whole app.</p>
+                        ) : (
+                            <div className="tb-pv__rel">
+                                {related.map(r => (
+                                    <div key={r.id} className="tb-pv__rel-item">
+                                        <span className="tb-pv__rel-src">{r.source}</span>
+                                        <span className="tb-pv__rel-title" title={r.tags.map(t => `#${t}`).join(' ')}>{r.title}</span>
+                                        <button className="tb-btn tb-btn--ghost" onClick={() => addCard({ title: r.title })} title="Add this linked item as a card on the board">＋ Add as card</button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <section className="tb-pv__sec">
+                        <h4>Next steps ({subs.length})</h4>
                         <div className="tb-pv__subs">
                             {subs.map(s => (
                                 <div key={s.id} className="tb-pv__sub">
                                     <span className="tb-pv__sub-dot" style={{ background: URGENCY_COLOR[s.urgency ?? 'low'] }} />
-                                    <button className="tb-pv__sub-title" onClick={() => onOpenCard(s.id)} title="Open sub-project">{s.title}</button>
+                                    <button className="tb-pv__sub-title" onClick={() => onOpenCard(s.id)} title="Open next step">{s.title}</button>
                                     <span className="tb-pv__sub-col">{board.columns.find(c => c.id === s.columnId)?.title}</span>
+                                    <div className="tb-pv__sub-assign">
+                                        <button
+                                            className={`tb-assign-chip tb-assign-chip--sm ${s.assignee ? 'tb-assign-chip--set' : ''}`}
+                                            onClick={() => setAssignSubFor(assignSubFor === s.id ? null : s.id)}
+                                            title="Assign this next step to an owner"
+                                            aria-label={`Assign next step: ${s.title}`}
+                                        >
+                                            {s.assignee ? describeRoute(s.assignee) : '＋ Assign'}
+                                        </button>
+                                        {assignSubFor === s.id && (
+                                            <AssigneePicker
+                                                onPick={a => { assignCard(s.id, a); setAssignSubFor(null); }}
+                                                onClose={() => setAssignSubFor(null)}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
                         <div className="tb-pv__add-sub">
                             <input
-                                className="tb-add__input" value={sub} placeholder="Add a sub-task…"
+                                className="tb-add__input" value={sub} placeholder="Add a next step…"
                                 onChange={e => setSub(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && sub.trim()) { addSubtask(cardId, sub.trim()); setSub(''); } }}
                             />

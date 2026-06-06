@@ -85,3 +85,33 @@ opens without the right-click step and can be shared beyond your own machines.
   `npmRebuild`).
 - LLM features work via your per-user API keys (re-enter on each Mac; internet
   required). All other local-first features work fully offline.
+
+## Reproducible builds (no machine-to-machine drift)
+
+The build is pinned so the same source produces the same app payload anywhere:
+
+- **Node** is pinned by `.nvmrc` (root + `electron/`). `build-electron-mac.sh`
+  aborts if your Node major differs — run `nvm use` first.
+- **Exact dependencies** come from committed lockfiles via strict `npm ci`
+  (qualia-shell, electron, and the backend) — never `npm install`.
+- **Electron / electron-builder** are pinned exact in `package.json` + lock, with
+  `electronVersion`, `npmRebuild: false`, and a fixed `buildVersion`.
+- **The bundled backend is pinned** to a commit in `BACKEND_PIN`. The build
+  refuses to bundle a different commit (override only with
+  `DWELLIUM_ALLOW_BACKEND_DRIFT=1`, never for releases). First run with an empty
+  `SHA=` records the current backend HEAD — **commit `BACKEND_PIN` afterward**.
+- Every build emits `dist-installer/build-manifest.json` recording Node/npm,
+  Electron versions, the two lockfile hashes, the backend SHA, the repo HEAD, and
+  a **SHA-256 fingerprint of the staged client payload**. Two machines prove
+  parity by diffing this file — identical `clientPayloadSha256` + lock hashes +
+  `backendSha` ⇒ identical app.
+
+What is *not* byte-identical: the `.dmg` container itself (electron-builder embeds
+timestamps; the image is unsigned). The **payload inside** it is deterministic —
+that's what the manifest fingerprints. For a byte-identical, verifiable installer
+you'd add Apple code-signing + notarization (Developer ID).
+
+Requirement on the backend repo: it must have a committed `package-lock.json`
+(the build `npm ci`s it). Runtime caveat: PDFGear OCR (tesseract.js) still fetches
+its wasm core + language model from a CDN on first use — self-host those under
+`qualia-shell/public/` for fully offline, version-locked OCR.

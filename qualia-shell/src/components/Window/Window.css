@@ -443,3 +443,21 @@
         0 0 0 2px color-mix(in srgb, var(--accent, #D6FE51) 50%, transparent),
         0 20px 60px rgba(0, 0, 0, 0.5) !important;
 }
+
+/* ===== Universal "tag this" affordance in the title bar (all apps) ===== */
+.window__tag { position: relative; display: inline-flex; align-items: center; }
+.window__tag-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; padding: 0;
+    border: none; background: transparent; cursor: pointer;
+    color: var(--text-tertiary, #808080); border-radius: 4px;
+    transition: background .15s, color .15s;
+}
+.window__tag-btn:hover { background: var(--surface-hover, rgba(255,255,255,0.08)); color: var(--text, #eee); }
+.window__tag-btn.is-open { color: var(--accent, #D6FE51); background: var(--surface-hover, rgba(255,255,255,0.08)); }
+.window__tag-pop {
+    position: absolute; top: 26px; left: 0; z-index: 40;
+    min-width: 240px; max-width: 320px; padding: 8px;
+    background: var(--surface, #181818); border: 1px solid var(--border, #2c2c2c);
+    border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+}

@@ -285,4 +285,170 @@ describe('UserContext', () => {
         expect(result.current.isAuthenticated).toBe(true);
         expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
     });
+
+    // ── Widget-click logout regression (authFetch → doRefresh) ────────────────
+    // These exercise the ACTUAL path a widget hits: an authed data call returns
+    // 401, authFetch() attempts one silent refresh, and the refresh fails. The
+    // session MUST survive — only the mount /api/auth/me validator (or an explicit
+    // logout) may ever clear auth. Prior bug: doRefresh() called clearTokens() on
+    // ANY non-OK refresh, so clicking a widget bounced the user to the login
+    // screen. The earlier "fix" only hardened the mount path, not this one.
+
+    async function renderAuthed() {
+        localStorage.setItem('dwellium-auth-token', 'valid-jwt');
+        localStorage.setItem('dwellium-refresh-token', 'valid-refresh');
+        localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
+        // Mount /api/auth/me validation succeeds → confirmed logged in.
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: async () => ({ user: MOCK_USER, permissions: { dashboard: true } }),
+        });
+        const { result } = renderHook(() => useUser(), { wrapper });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        expect(result.current.isAuthenticated).toBe(true);
+        return result;
+    }
+
+    it('does NOT log out when a widget call 401s and the refresh endpoint 5xxs', async () => {
+        const result = await renderAuthed();
+        (globalThis.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
+            .mockResolvedValueOnce({ ok: false, status: 503 });  // /api/auth/refresh down
+
+        let res: Response | undefined;
+        await act(async () => {
+            res = await result.current.authFetch('/api/strata/properties');
+        });
+
+        // Session survives; the widget just receives its 401 to handle locally.
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(result.current.sessionExpired).toBe(false); // transient (5xx), not dead
+        expect(result.current.user?.name).toBe('Andy');
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
+        expect(res?.status).toBe(401);
+    });
+
+    it('does NOT log out when a widget call 401s and the refresh endpoint also 401s', async () => {
+        const result = await renderAuthed();
+        (globalThis.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
+            .mockResolvedValueOnce({ ok: false, status: 401 });  // refresh rejects too
+
+        await act(async () => {
+            await result.current.authFetch('/api/strata/vendors');
+        });
+
+        // A rejected refresh means the session is dead — but we DON'T bounce to
+        // the login screen. The shell stays mounted (isAuthenticated stays true)
+        // and sessionExpired flips so AuthGate overlays the recoverable re-auth
+        // modal; the user signs back in and resumes in place.
+        await waitFor(() => expect(result.current.sessionExpired).toBe(true));
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
+    });
+
+    it('does NOT log out when a widget call 401s and the refresh endpoint 404s', async () => {
+        const result = await renderAuthed();
+        (globalThis.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
+            .mockResolvedValueOnce({ ok: false, status: 404 });  // refresh route missing (dev backend)
+
+        await act(async () => {
+            await result.current.authFetch('/api/strata/maintenance');
+        });
+
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(result.current.sessionExpired).toBe(false); // 404 = transient, not dead
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('valid-jwt');
+    });
+
+    it('retries the widget call transparently when the refresh succeeds', async () => {
+        const result = await renderAuthed();
+        (globalThis.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({ ok: false, status: 401 })   // widget data call
+            .mockResolvedValueOnce({                              // /api/auth/refresh succeeds
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    token: 'jwt-rotated',
+                    refreshToken: 'refresh-rotated',
+                    expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+                }),
+            })
+            .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ data: [] }) }); // retry
+
+        let res: Response | undefined;
+        await act(async () => {
+            res = await result.current.authFetch('/api/strata/owners');
+        });
+
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(res?.status).toBe(200);
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('jwt-rotated');
+    });
+
+    // ── Recoverable re-auth (sessionExpired) ──────────────────────────────────
+    // A genuinely dead session must NOT bounce to the login screen and lose the
+    // user's place. Instead the shell stays mounted (isAuthenticated stays true)
+    // and `sessionExpired` flips so AuthGate overlays a re-auth modal.
+
+    it('a confirmed-dead session WITH a stored identity stays mounted and flags sessionExpired', async () => {
+        localStorage.setItem('dwellium-auth-token', 'valid-jwt');
+        localStorage.setItem('dwellium-refresh-token', 'dead-refresh');
+        localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
+        (globalThis.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({ ok: false, status: 401 })  // /api/auth/me — unauthorized
+            .mockResolvedValueOnce({ ok: false, status: 401 }); // /api/auth/refresh — token rejected
+
+        const { result } = renderHook(() => useUser(), { wrapper });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        await waitFor(() => expect(result.current.sessionExpired).toBe(true));
+
+        // Shell preserved (recoverable) — NOT bounced to the login screen.
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(result.current.user?.name).toBe('Andy');
+    });
+
+    it('logging in from an expired session clears sessionExpired', async () => {
+        localStorage.setItem('dwellium-auth-token', 'valid-jwt');
+        localStorage.setItem('dwellium-refresh-token', 'dead-refresh');
+        localStorage.setItem('dwellium-user', JSON.stringify(MOCK_USER));
+        (globalThis.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({ ok: false, status: 401 })  // mount /api/auth/me
+            .mockResolvedValueOnce({ ok: false, status: 401 }); // mount refresh → dead
+
+        const { result } = renderHook(() => useUser(), { wrapper });
+        await waitFor(() => expect(result.current.sessionExpired).toBe(true));
+
+        // Re-auth from the modal succeeds:
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ token: 'jwt-new', refreshToken: 'refresh-new', user: MOCK_USER, permissions: {} }),
+        });
+        await act(async () => {
+            await result.current.login('andy@zpgroup.com', 'password');
+        });
+
+        expect(result.current.sessionExpired).toBe(false);
+        expect(result.current.isAuthenticated).toBe(true);
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('jwt-new');
+    });
+
+    it('re-validates on window focus and flags a session that died while open', async () => {
+        const result = await renderAuthed(); // mount /api/auth/me → 200 (healthy)
+        expect(result.current.sessionExpired).toBe(false);
+
+        // Session dies server-side while the app is open; user refocuses the window.
+        (globalThis.fetch as ReturnType<typeof vi.fn>)
+            .mockResolvedValueOnce({ ok: false, status: 401 })  // focus → /api/auth/me
+            .mockResolvedValueOnce({ ok: false, status: 401 }); // focus → refresh → dead
+
+        await act(async () => {
+            window.dispatchEvent(new Event('focus'));
+        });
+
+        await waitFor(() => expect(result.current.sessionExpired).toBe(true));
+        expect(result.current.isAuthenticated).toBe(true); // shell preserved
+    });
 });

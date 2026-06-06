@@ -1,0 +1,12 @@
+# Pin for the bundled backend sidecar, so the packaged .dmg is identical
+# machine-to-machine. The Electron build (Scripts/build-electron-mac.sh) verifies
+# the backend repo is checked out at SHA below before bundling it.
+#
+# Bootstrapping: leave SHA empty and run the build once — it records the current
+# backend HEAD here and tells you to commit this file. Thereafter every machine
+# must build from that exact commit (or the build fails).
+#
+# Re-pin: set SHA to a new full commit hash and commit this file.
+# Override (NOT for release builds): DWELLIUM_ALLOW_BACKEND_DRIFT=1 bypasses the check.
+REPO=NovaTrustSolutions/ai-dashboard369-file-manager
+SHA=

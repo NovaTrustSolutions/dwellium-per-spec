@@ -30,16 +30,27 @@ echo ""
 echo "✅ FULL GATE GREEN — committing + pushing"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git add -A
-git commit -m "feat: 17 wishlist features + partials + standalone Electron app
+git commit -m "feat: recoverable session re-auth + Cognitive Memory Network 3D visualization
 
-Scribe (§5): Brain-Dump tab, Find & Replace, Focus mode, inline flags, priority badge.
-Design/workspace: cursor-spotlight cards (§3.3), File-Explorer root path (§2.4), title-bar trim (§3.5).
-Files (§4.3): Move-to-Thread, Thread switcher, Show-in-Finder (Electron).
-Knowledge layer (§7): Three-Tier Wiki, Synthesis loop, Foundry intake, Knowledge Graph (dep-free force layout).
-Agents (§8): Schema/PRD/Gap builder agents (8.6-8.8), The Hive console + cost + manual trigger (8.1-8.3), CoPaw memory (8.5).
-Also: system-wide content search (§2.5), autonomous-run library (§1.4), sticky user message (§5.9), data-folder picker.
-Standalone Electron app: backend sidecar + front proxy, universal mac .dmg build script, IPC (show-in-finder, data root).
-Docs: GAP_ANALYSIS_v2, BACKEND_CONTRACT_remaining. ~72 new unit tests; tsc + gate green."
+Auth (fixes 'clicking a widget kicks me to the login screen'):
+- doRefresh() no longer logs out on a failed refresh; it returns refreshed/dead/transient.
+  The ONLY authorities that clear the session are the /api/auth/me validator (a definitive
+  401/403) and explicit logout(). A widget data-call 401 can no longer tear down the session.
+- A genuinely-dead session keeps the shell mounted and shows a recoverable 'Session expired'
+  modal (SessionExpiredModal) instead of bouncing to login; re-validates on focus + reconnect.
+  UserContext.tsx + App.tsx + components/Auth/SessionExpiredModal.tsx.
+
+MemoryGraphRAG — Cognitive Memory Network:
+- Wired into the AI Tools sidebar + widget search (data/hierarchy.ts, Sidebar/widgetSearch.ts).
+- New true-3D cinematic 'Network' view: orbiting perspective camera (project3D), painter's-
+  algorithm depth-sort + depth-of-field, ~1.8k-particle drift field, query beam, real BFS
+  wavefront (propagateWave) driving the HUD time step, bloom + vignette, edge-flow particles,
+  node hover/click inspector, full HUD with real-data telemetry (telemetryBase).
+  MemoryGraphView.tsx + pure layeredLayout.ts + memoryGraphScene.ts (+ CSS).
+
+Tests: +51 unit tests (layeredLayout 26, memoryGraphScene 9, UserContext recoverable-reauth 7,
+plus projection/wave/relaxation/telemetry). tsc + full suite green; PII clean.
+Logged F-009 (auth fix claimed-done-but-incomplete miss). Adds Scripts/apply-auth-fix.{sh,patch}."
 git push origin "$BRANCH"
 
 echo ""

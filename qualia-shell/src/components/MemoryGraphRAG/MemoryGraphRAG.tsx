@@ -10,10 +10,14 @@
  * offline heuristic otherwise — so it works fully local-first. The engine lives
  * in a ref; counts/views read from its store and re-render on a version bump.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useContext, useRef, useState } from 'react';
+import { UserContext } from '../../context/UserContext';
+import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { hasActiveLlm } from '../../lib/llmClient';
-import { getTaggedItems } from '../../lib/tagStore';
+import { getTaggedItems, tagStoreUserIdHolder } from '../../lib/tagStore';
+import { foundryStore, foundryUserIdHolder } from '../Foundry/foundryStore';
+import { synthesisStore, synthesisUserIdHolder } from '../Synthesis/synthesisStore';
 import { useScribeStore } from '../Scribe/scribeStore';
 import {
     createMemoryGraphRagEngine, type MemoryGraphRagEngine,
@@ -23,6 +27,8 @@ import './MemoryGraphRAG.css';
 
 export default function MemoryGraphRAG() {
     const { integrations } = useIntegrations();
+    const userCtx = useContext(UserContext);
+    const uid = userCtx?.user?.id ?? null;
     const llmReady = hasActiveLlm(integrations.llm);
     const engineRef = useRef<MemoryGraphRagEngine | null>(null);
     const [, force] = useState(0);
@@ -77,6 +83,7 @@ export default function MemoryGraphRAG() {
     };
 
     const pullTags = () => {
+        tagStoreUserIdHolder.current = uid;
         const items = getTaggedItems();
         const docs: SourceDocument[] = items.map((it) => ({
             sourceId: `tag:${it.id}`, sourceKind: 'tag', title: it.title,
@@ -91,6 +98,68 @@ export default function MemoryGraphRAG() {
             sourceId: `scribe:${f.filepath}`, sourceKind: 'scribe', title: f.filepath.split('/').pop() || f.filepath, text: f.content || '',
         }));
         void ingest(docs, 'Scribe docs');
+    };
+
+    // Captures: Foundry intake items + captured Syntheses (per-user local stores).
+    const pullCaptures = () => {
+        foundryUserIdHolder.current = uid;
+        synthesisUserIdHolder.current = uid;
+        const foundry = foundryStore.getSnapshot();
+        const synth = synthesisStore.getSnapshot();
+        const docs: SourceDocument[] = [
+            ...foundry.map((it) => ({ sourceId: `foundry:${it.id}`, sourceKind: 'capture' as const, title: (it.rawContent || '').slice(0, 60) || 'Capture', text: it.rawContent || '' })),
+            ...synth.map((s) => ({ sourceId: `synthesis:${s.id}`, sourceKind: 'synthesis' as const, title: s.query || 'Synthesis', text: `${s.query}\n\n${s.result}` })),
+        ];
+        void ingest(docs, 'Captures');
+    };
+
+    // Transcripts: TranscriptionHub saved logs (backend — graceful when offline).
+    const pullTranscripts = () => {
+        void (async () => {
+            setBusy('Fetching transcripts…');
+            try {
+                const res = await fetch(`${API_BASE}/api/transcribe/logs?limit=200`);
+                if (!res.ok) throw new Error(`backend ${res.status}`);
+                const json = await res.json();
+                const logs = json.data || json.logs || [];
+                const docs: SourceDocument[] = logs.map((log: any) => ({
+                    sourceId: `transcript:${log.id}`,
+                    sourceKind: 'transcript' as const,
+                    title: log.title || 'Transcript',
+                    text: log.transcript || (Array.isArray(log.segments) ? log.segments.map((s: any) => s.text || '').join(' ') : '') || log.title || '',
+                }));
+                await ingest(docs, 'Transcripts');
+            } catch (e: any) {
+                flash(`Transcripts need the backend (offline): ${e?.message || e}`);
+                setBusy('');
+            }
+        })();
+    };
+
+    // Workspace docs: the backend file store (text/markdown). Graceful when offline.
+    const pullWorkspace = () => {
+        void (async () => {
+            setBusy('Fetching workspace files…');
+            try {
+                const res = await fetch(`${API_BASE}/files?limit=50`);
+                if (!res.ok) throw new Error(`backend ${res.status}`);
+                const json = await res.json();
+                const files = (json.data || json.files || []).filter((f: any) =>
+                    /\.(md|markdown|txt|csv|json)$/i.test(f.name || f.fileName || '') || (f.type || '').includes('text'));
+                const docs: SourceDocument[] = [];
+                for (const f of files.slice(0, 25)) {
+                    try {
+                        const c = await fetch(`${API_BASE}/files/${f.id}`);
+                        if (!c.ok) continue;
+                        docs.push({ sourceId: `workspace:${f.id}`, sourceKind: 'workspace' as const, title: f.name || f.fileName || String(f.id), text: await c.text() });
+                    } catch { /* skip unreadable file */ }
+                }
+                await ingest(docs, 'Workspace files');
+            } catch (e: any) {
+                flash(`Workspace files need the backend (offline): ${e?.message || e}`);
+                setBusy('');
+            }
+        })();
     };
 
     const ask = useCallback(async () => {
@@ -135,7 +204,10 @@ export default function MemoryGraphRAG() {
                     <button className="mgr__btn mgr__btn--primary" onClick={ingestPaste} disabled={!!busy}>Ingest text</button>
                     <button className="mgr__btn" onClick={() => fileRef.current?.click()} disabled={!!busy}>Upload files</button>
                     <button className="mgr__btn" onClick={pullTags} disabled={!!busy}>Pull Tag File</button>
-                    <button className="mgr__btn" onClick={pullScribe} disabled={!!busy}>Pull open Scribe docs</button>
+                    <button className="mgr__btn" onClick={pullScribe} disabled={!!busy}>Pull Scribe docs</button>
+                    <button className="mgr__btn" onClick={pullCaptures} disabled={!!busy}>Pull Captures</button>
+                    <button className="mgr__btn" onClick={pullTranscripts} disabled={!!busy}>Pull Transcripts</button>
+                    <button className="mgr__btn" onClick={pullWorkspace} disabled={!!busy}>Pull Workspace files</button>
                     {busy && <span className="mgr__busy">⏳ {busy}</span>}
                 </div>
             </div>

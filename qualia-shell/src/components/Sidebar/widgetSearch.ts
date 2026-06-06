@@ -56,6 +56,12 @@ const WIDGET_SEARCH_PROFILES: Record<string, WidgetSearchProfile> = {
         contexts: ['writing', 'strategy planning', 'AI ideation'],
         aliases: ['brainstorm', 'idea studio']
     },
+    'memory-graph-rag': {
+        summary: 'Cognitive Memory Network — three-layer Graph-RAG memory (Ontology schema · Fact triplets · Passage evidence) with Personalized-PageRank retrieval, conflict adjudication, and source-grounded answers.',
+        keywords: ['memory', 'graph', 'rag', 'graphrag', 'cognitive', 'memory network', 'ontology', 'fact', 'passage', 'pagerank', 'knowledge graph', 'retrieval', 'grounded', 'adjudication', 'self-healing'],
+        contexts: ['research and verification', 'knowledge organization', 'memory', 'graph retrieval'],
+        aliases: ['cognitive memory network', 'memory graph', 'graph rag', 'graphrag', 'memory core']
+    },
     'inbox-zero': {
         summary: 'Email triage and approval flow for sorting signal vs noise and routing work.',
         keywords: ['inbox', 'email', 'triage', 'routing', 'approval', 'messages'],

@@ -23,6 +23,7 @@ import {
     createMemoryGraphRagEngine, type MemoryGraphRagEngine,
     type SourceDocument, type QueryAnswer, type ConflictResolution,
 } from '../../lib/memoryGraphRag';
+import MemoryGraphView from './MemoryGraphView';
 import './MemoryGraphRAG.css';
 
 export default function MemoryGraphRAG() {
@@ -38,6 +39,7 @@ export default function MemoryGraphRAG() {
     const [pasteText, setPasteText] = useState('');
     const [query, setQuery] = useState('');
     const [answer, setAnswer] = useState<QueryAnswer | null>(null);
+    const [view, setView] = useState<'graph' | 'panels'>('graph');
     const [busy, setBusy] = useState('');
     const [toast, setToast] = useState('');
     const fileRef = useRef<HTMLInputElement>(null);
@@ -184,6 +186,19 @@ export default function MemoryGraphRAG() {
     const resolutions: ConflictResolution[] = engine?.lastResolutions ?? [];
     const entName = (id: string) => engine?.store.entities.get(id)?.name ?? id;
 
+    // Full graph data for the layered visualization (the panels above use slices).
+    const scene = {
+        types: engine ? [...engine.store.types.values()] : [],
+        schemaRelations: engine ? [...engine.store.schemaRelations.values()] : [],
+        entities: engine ? [...engine.store.entities.values()] : [],
+        facts: engine ? [...engine.store.facts.values()] : [],
+        passages: engine ? [...engine.store.passages.values()] : [],
+        bridges: engine?.bridges ?? [],
+        resolutions,
+        nodeScores: answer?.nodeScores ?? null,
+        rankedPassageIds: answer?.rankedPassages.map((rp) => rp.passage.id) ?? [],
+    };
+
     return (
         <div className="mgr">
             <input ref={fileRef} type="file" accept=".txt,.md,.json,.csv" multiple hidden onChange={onFile} />
@@ -192,6 +207,10 @@ export default function MemoryGraphRAG() {
                 <div className="mgr__title">🧠 MemoryGraphRAG</div>
                 <span className={`mgr__llm ${llmReady ? 'is-on' : ''}`}>{llmReady ? `LLM: ${integrations.llm.active}` : 'Offline (heuristic) mode'}</span>
                 <div className="mgr__spacer" />
+                <div className="mgr__viewtoggle" role="tablist" aria-label="View">
+                    <button className={`mgr__seg ${view === 'graph' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'graph'} onClick={() => setView('graph')}>◈ Network</button>
+                    <button className={`mgr__seg ${view === 'panels' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'panels'} onClick={() => setView('panels')}>☰ Panels</button>
+                </div>
                 <span className="mgr__counts">{counts.entities} ent · {counts.facts} facts · {counts.passages} psg · {counts.types} types</span>
                 <button className="mgr__btn" onClick={reset}>Reset</button>
             </div>
@@ -212,7 +231,25 @@ export default function MemoryGraphRAG() {
                 </div>
             </div>
 
+            {/* Layered visualization (Cognitive Memory Network) — default view */}
+            {view === 'graph' && (
+                <MemoryGraphView
+                    types={scene.types}
+                    schemaRelations={scene.schemaRelations}
+                    entities={scene.entities}
+                    facts={scene.facts}
+                    passages={scene.passages}
+                    bridges={scene.bridges}
+                    resolutions={scene.resolutions}
+                    nodeScores={scene.nodeScores}
+                    rankedPassageIds={scene.rankedPassageIds}
+                    query={query}
+                    llmActive={llmReady}
+                />
+            )}
+
             {/* Three interconnected layer views */}
+            {view === 'panels' && (
             <div className="mgr__layers">
                 <section className="mgr__layer">
                     <h4>Ontology · schema</h4>
@@ -239,6 +276,7 @@ export default function MemoryGraphRAG() {
                     ))}
                 </section>
             </div>
+            )}
 
             {resolutions.length > 0 && (
                 <div className="mgr__conflicts">⚖ Resolved {resolutions.length} conflict(s): {resolutions.map((r) => r.reason).join(' · ')}</div>

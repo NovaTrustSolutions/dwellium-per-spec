@@ -5,6 +5,7 @@ import { UserProvider, useUser } from './context/UserContext';
 import { PermissionsProvider } from './context/PermissionsContext';
 import QueryProvider from './providers/QueryProvider';
 import LoginScreen from './components/Auth/LoginScreen';
+import SessionExpiredModal from './components/Auth/SessionExpiredModal';
 import AppSuspenseFallback from './components/Shell/AppSuspenseFallback';
 import BackendConnectionBanner from './components/Shell/BackendConnectionBanner';
 import { lazyWithReload } from './utils/lazyWithReload';
@@ -32,7 +33,7 @@ const OpenJarvisWidget = lazyWithReload(() => import('./components/OpenJarvis/Op
 
 /** Auth gate — shows login screen until authenticated */
 function AuthGate() {
-    const { isAuthenticated, isLoading, role } = useUser();
+    const { isAuthenticated, isLoading, role, sessionExpired } = useUser();
     const [tenantMode, setTenantMode] = useState(false);
 
     if (isLoading) {
@@ -59,22 +60,27 @@ function AuthGate() {
     // Wraps the lazy children (TenantLoginScreen / TenantPortal / AdminShell);
     // eager LoginScreen renders pass-through without showing the fallback.
     return (
-        <Suspense fallback={<AppSuspenseFallback variant="viewport" />}>
-            {!isAuthenticated ? (
-                tenantMode
-                    ? <TenantLoginScreen onBackToAdmin={() => setTenantMode(false)} />
-                    : <LoginScreen onTenantMode={() => setTenantMode(true)} />
-            ) : role === 'tenant' ? (
-                <>
-                    <TenantPortal />
-                    <OpenJarvisWidget />
-                </>
-            ) : (
-                <PermissionsProvider>
-                    <AdminShell />
-                </PermissionsProvider>
-            )}
-        </Suspense>
+        <>
+            <Suspense fallback={<AppSuspenseFallback variant="viewport" />}>
+                {!isAuthenticated ? (
+                    tenantMode
+                        ? <TenantLoginScreen onBackToAdmin={() => setTenantMode(false)} />
+                        : <LoginScreen onTenantMode={() => setTenantMode(true)} />
+                ) : role === 'tenant' ? (
+                    <>
+                        <TenantPortal />
+                        <OpenJarvisWidget />
+                    </>
+                ) : (
+                    <PermissionsProvider>
+                        <AdminShell />
+                    </PermissionsProvider>
+                )}
+            </Suspense>
+            {/* Recoverable re-auth: a definitively-dead session keeps the shell
+               mounted and overlays this modal instead of bouncing to login. */}
+            {isAuthenticated && sessionExpired && <SessionExpiredModal />}
+        </>
     );
 }
 

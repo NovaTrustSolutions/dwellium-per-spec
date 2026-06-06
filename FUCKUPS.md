@@ -40,6 +40,35 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-009 — Claimed the "click a widget → bounced to login" bug was fixed + verified; it wasn't (missed a second vector)
+- **Problem:** Told Ilya the logout-on-widget-click bug was fixed and verified.
+  It still happened — and then on *multiple* widgets. The earlier work hardened
+  only ONE of two logout vectors.
+- **Root cause:** Two code paths can reach `clearTokens()` on a backend hiccup:
+  (1) the mount `/api/auth/me` validator, and (2) `authFetch() → doRefresh()`
+  when a *data* endpoint 401s (the path an actual widget click hits). The earlier
+  fix only hardened (1). `doRefresh()` still called `clearTokens()` on ANY non-OK
+  `/api/auth/refresh` response (5xx / 404 / even a 401), so any widget whose call
+  401'd → silent refresh failed → logout. Every authed widget shared this one
+  defect, which is why it looked like "multiple widgets." The regression test I
+  added back then only exercised the mount path, so the green gate never covered
+  the widget-click path → false confidence.
+- **Fix (commit pending):** `doRefresh()` NEVER clears auth now — a failed refresh
+  is not authority to log out. The ONLY authorities to clear the session are the
+  mount `/api/auth/me` validator (a definitive 401/403 → `clearTokens`) and an
+  explicit `logout()`. On a reachable-but-erroring backend, `doRefresh` surfaces
+  the global "connect?" banner instead. `qualia-shell/src/context/UserContext.tsx`
+  (`doRefresh` non-OK branch).
+- **Verification (ran before claiming):** added 4 regression tests on the REAL
+  path (authed → widget call 401 → refresh 5xx / 404 / 401 → assert still logged
+  in; + transparent retry on refresh success). `npx vitest run
+  src/test/UserContext.test.tsx` → 15/15 pass; `npx tsc -b` → exit 0.
+- **Prevention:** When fixing an auth/session logout bug, enumerate EVERY
+  `clearTokens()` call site AND every code path that can reach each one, then add
+  a test for the exact user-facing path (logged-in → authed call returns 401 →
+  assert session survives) — not just the mount/reload path. A green gate that
+  doesn't exercise the logged-in→click-widget flow is not proof the flow works.
+
 ### F-008 — Said "I can't" / made excuses instead of checking first
 - **Problem:** Reflexively claimed inability ("I can't enter that", "that's not
   possible", "I already did that") without verifying. Wasted Ilya's time and

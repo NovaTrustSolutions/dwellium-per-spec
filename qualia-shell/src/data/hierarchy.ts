@@ -36,7 +36,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-ara', label: 'ARA', icon: 'cpu', component: 'ara-console', pinned: true, group: 'AI Tools' },
    { id: 'dock-stella', label: 'Stella', icon: 'sparkles', component: 'stella-agent', pinned: true, group: 'AI Tools' },
    { id: 'dock-honcho', label: 'Honcho', icon: 'brain-circuit', component: 'honcho', pinned: true, group: 'AI Tools' },
-   { id: 'dock-memory-graph-rag', label: 'MemoryGraphRAG', icon: 'brain-circuit', component: 'memory-graph-rag', pinned: true, group: 'AI Tools' },
+   { id: 'dock-memory-graph-rag', label: 'Cognitive M Network', icon: 'earth', component: 'memory-graph-rag', pinned: true, group: 'AI Tools' },
    // ── Filing Cabinet ──
    { id: 'dock-hierarchy', label: 'Explorer', icon: 'folder-tree', component: 'hierarchy-browser', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-tasks', label: 'Tasks', icon: 'check-square', component: 'tasks', pinned: true, group: 'Filing Cabinet' },

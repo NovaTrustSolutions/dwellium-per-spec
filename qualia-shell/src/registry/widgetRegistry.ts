@@ -108,8 +108,8 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     // multi-agent extraction + bridging + Personalized-PageRank retrieval.
     'memory-graph-rag': {
         id: 'memory-graph-rag',
-        label: 'MemoryGraphRAG',
-        icon: 'brain-circuit',
+        label: 'Cognitive M Network',
+        icon: 'earth',
         component: lazyWithReload(() => import('../components/MemoryGraphRAG/MemoryGraphRAG')),
         minWidth: 820,
         minHeight: 560,

@@ -679,7 +679,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 ))}
                             </div>
                             <button className="tw-capture__btn" onClick={handleCapture} disabled={!text.trim() || loading}>
-                                {loading ? '⏳' : '🚀'} {loading ? 'Classifying...' : 'Capture'}
+                                {loading ? 'Classifying...' : 'Capture'}
                             </button>
                         </div>
                     </div>

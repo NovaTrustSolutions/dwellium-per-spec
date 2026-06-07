@@ -42,7 +42,16 @@ export const dockItemsStore = createLocalStorageStore<DockItem[]>(
                     const savedItems = layout.dockItems || [];
                     // Prune: remove stale items that no longer exist in defaults
                     const validComponents = new Set(defaultDockItems.map(d => d.component));
-                    const prunedItems = savedItems.filter((i: DockItem) => validComponents.has(i.component));
+                    const defaultById = new Map(defaultDockItems.map(d => [d.id, d]));
+                    const prunedItems = savedItems
+                        .filter((i: DockItem) => validComponents.has(i.component))
+                        // Reconcile cosmetic identity (label + icon) from current defaults so
+                        // widget renames / icon changes propagate to an already-persisted dock
+                        // WITHOUT resetting the user's saved order, pins, or group placement.
+                        .map((i: DockItem) => {
+                            const def = defaultById.get(i.id);
+                            return def ? { ...i, label: def.label, icon: def.icon } : i;
+                        });
                     // Merge: keep saved order but add any new defaults not yet in the layout
                     const savedIds = new Set(prunedItems.map((i: DockItem) => i.id));
                     const newItems = defaultDockItems.filter(d => !savedIds.has(d.id));

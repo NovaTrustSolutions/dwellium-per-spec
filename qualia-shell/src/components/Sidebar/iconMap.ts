@@ -18,6 +18,7 @@ import {
     Settings,
     Home,
     BrainCircuit,
+    Earth,
     BookOpen,
     Mic,
     SearchCheck,
@@ -60,6 +61,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
     // ── AI Tools ──
     'brain-circuit':  BrainCircuit,
+    'earth':          Earth,
     'book-open':      BookOpen,
     'mic':            Mic,
     'search-check':   SearchCheck,

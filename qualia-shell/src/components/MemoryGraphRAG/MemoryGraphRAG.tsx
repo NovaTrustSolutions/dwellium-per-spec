@@ -24,6 +24,7 @@ import {
     type SourceDocument, type QueryAnswer, type ConflictResolution,
 } from '../../lib/memoryGraphRag';
 import MemoryGraphView from './MemoryGraphView';
+import { DEMO_DOCS, DEMO_QUESTIONS } from './demoCorpus';
 import './MemoryGraphRAG.css';
 
 export default function MemoryGraphRAG() {
@@ -71,6 +72,13 @@ export default function MemoryGraphRAG() {
         if (!pasteText.trim()) { flash('Paste some text first'); return; }
         void ingest([{ sourceId: `paste-${Date.now()}`, sourceKind: 'upload', title: pasteTitle.trim() || 'Pasted text', text: pasteText }], 'Pasted');
         setPasteText(''); setPasteTitle('');
+    };
+
+    // Demo: import a small built-in set of files so the graph populates instantly
+    // and you can immediately ask questions about them (prefills a sample query).
+    const loadDemo = () => {
+        setQuery(DEMO_QUESTIONS[0]);
+        void ingest(DEMO_DOCS, 'Demo files');
     };
 
     const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,7 +212,7 @@ export default function MemoryGraphRAG() {
             <input ref={fileRef} type="file" accept=".txt,.md,.json,.csv" multiple hidden onChange={onFile} />
 
             <div className="mgr__head">
-                <div className="mgr__title">🧠 MemoryGraphRAG</div>
+                <div className="mgr__title">🌍 Cognitive M Network</div>
                 <span className={`mgr__llm ${llmReady ? 'is-on' : ''}`}>{llmReady ? `LLM: ${integrations.llm.active}` : 'Offline (heuristic) mode'}</span>
                 <div className="mgr__spacer" />
                 <div className="mgr__viewtoggle" role="tablist" aria-label="View">
@@ -220,7 +228,8 @@ export default function MemoryGraphRAG() {
                 <input className="mgr__inp" placeholder="Title (optional)" value={pasteTitle} onChange={(e) => setPasteTitle(e.target.value)} />
                 <textarea className="mgr__ta" placeholder="Paste text to ingest into the three-layer memory…" value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={3} />
                 <div className="mgr__row">
-                    <button className="mgr__btn mgr__btn--primary" onClick={ingestPaste} disabled={!!busy}>Ingest text</button>
+                    <button className="mgr__btn mgr__btn--primary" onClick={loadDemo} disabled={!!busy} title="Import a few sample files so you can ask questions right away">🌍 Load demo</button>
+                    <button className="mgr__btn" onClick={ingestPaste} disabled={!!busy}>Ingest text</button>
                     <button className="mgr__btn" onClick={() => fileRef.current?.click()} disabled={!!busy}>Upload files</button>
                     <button className="mgr__btn" onClick={pullTags} disabled={!!busy}>Pull Tag File</button>
                     <button className="mgr__btn" onClick={pullScribe} disabled={!!busy}>Pull Scribe docs</button>

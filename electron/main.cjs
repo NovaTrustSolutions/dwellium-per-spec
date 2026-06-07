@@ -61,8 +61,23 @@ function logBackend(line) {
     process.stdout.write(`[backend] ${line}\n`);
 }
 
+/** Reap any process still holding one of our private ports — e.g. a sidecar
+ *  orphaned by a prior hard-crash — so the app never leaves a backend running
+ *  across restarts. No-op when nothing is listening. */
+function killStaleOnPort(port) {
+    try {
+        const { execSync } = require('child_process');
+        if (process.platform === 'win32') {
+            execSync(`for /f "tokens=5" %a in ('netstat -ano ^| findstr :${port} ^| findstr LISTENING') do taskkill /F /PID %a`, { stdio: 'ignore' });
+        } else {
+            execSync(`lsof -ti tcp:${port} -sTCP:LISTEN | xargs kill -9`, { stdio: 'ignore', shell: '/bin/sh' });
+        }
+    } catch { /* nothing was listening — fine */ }
+}
+
 /** Spawn the bundled backend via Electron's own Node (no Node needed on host). */
 function startBackend() {
+    killStaleOnPort(BACKEND_PORT); // reap an orphaned sidecar from a prior crash
     const entry = path.join(BACKEND_DIR, BACKEND_ENTRY);
     if (!fs.existsSync(entry)) {
         logBackend(`entry not found: ${entry} — backend features will show offline states.`);
@@ -122,6 +137,7 @@ function startFrontServer() {
             res.writeHead(200, { 'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream' });
             fs.createReadStream(fp).pipe(res);
         });
+        killStaleOnPort(FRONT_PORT); // reap a stale front server from a prior crash
         frontServer.listen(FRONT_PORT, '127.0.0.1', () => resolve());
     });
 }
@@ -189,5 +205,32 @@ app.whenReady().then(async () => {
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('quit', () => { try { backendProc && backendProc.kill(); } catch { /* */ } try { frontServer && frontServer.close(); } catch { /* */ } });
+// Self-contained desktop app (not a dock/menubar resident): closing the window
+// shuts the WHOLE app down on every platform, which tears the sidecar down with
+// it via the before-quit handler below.
+app.on('window-all-closed', () => app.quit());
+
+// Guarantee the backend dies BEFORE the app exits. before-quit fires while the
+// app is still alive, so we hold the quit (preventDefault) until SIGTERM — then
+// a SIGKILL fallback — has actually reaped the sidecar. No orphaned backend is
+// ever left listening after the app closes.
+let isShuttingDown = false;
+app.on('before-quit', (e) => {
+    if (isShuttingDown) return;          // 2nd pass (after we re-call quit) → let it proceed
+    isShuttingDown = true;
+    try { frontServer && frontServer.close(); } catch { /* */ }
+    const proc = backendProc; backendProc = null;
+    if (!proc) return;                   // no sidecar → nothing to wait for
+    e.preventDefault();                  // hold the quit until the child is confirmed dead
+    let finished = false;
+    const finish = () => { if (finished) return; finished = true; app.quit(); };
+    proc.on('exit', finish);
+    try { proc.kill('SIGTERM'); } catch { /* */ }
+    setTimeout(() => { try { if (!proc.killed) proc.kill('SIGKILL'); } catch { /* */ } finish(); }, 1500);
+});
+
+// Terminal launch (`electron .`) or OS-level termination: still reap the sidecar.
+function reapAndExit() { try { backendProc && backendProc.kill('SIGKILL'); } catch { /* */ } try { frontServer && frontServer.close(); } catch { /* */ } process.exit(0); }
+process.on('SIGINT', reapAndExit);
+process.on('SIGTERM', reapAndExit);
+process.on('SIGHUP', reapAndExit);

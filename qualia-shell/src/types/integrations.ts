@@ -64,6 +64,22 @@ export interface GoogleCalendarConfig {
     enabled: boolean;
 }
 
+/**
+ * Google Drive storage box — back up / restore the user's local data (Wiki,
+ * Thought Weaver, File Explorer cache, Honcho memory) to a folder on their own
+ * Google Drive. Frontend-only via Google Identity Services + the Drive REST API
+ * with the narrow `drive.file` scope (app only sees files it created). The user
+ * supplies a Google OAuth Client ID (one-time Google Cloud Console setup), just
+ * like an LLM API key. Access tokens are session-only and never persisted.
+ */
+export interface GoogleDriveConfig {
+    clientId: string;           // OAuth 2.0 Web client ID from Google Cloud Console
+    folderId?: string;          // resolved on first backup (the "Dwellium" folder)
+    folderName?: string;        // default 'Dwellium'
+    lastSyncAt?: number;        // unix ms of last successful backup/restore
+    enabled: boolean;
+}
+
 export interface SupabaseConfig {
     url: string;                        // e.g. "https://abc.supabase.co"
     anonKey: string;                    // public anon key
@@ -127,6 +143,10 @@ export interface IntegrationsBundle {
     };
     supabase?: SupabaseConfig;
     postgres?: PostgresConfig;
+    /** Storage backends — where the user's local data can be backed up. */
+    storage?: {
+        googleDrive?: GoogleDriveConfig;
+    };
     tests: {
         anthropic?: IntegrationTestResult;
         openai?: IntegrationTestResult;

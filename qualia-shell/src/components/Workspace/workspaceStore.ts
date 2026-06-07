@@ -44,6 +44,19 @@ import { fetchTree, mkdir, rename, move, deleteEntry } from '../FileExplorer/fil
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { SEED_DOMAINES, SEED_TREE } from './workspaceLocalSeed';
 
+/**
+ * Per-user local persistence of the last-known workspace STRUCTURE (tree + domaines +
+ * thread metas). The structure is fetched from the backend, but caching the latest
+ * snapshot to localStorage means the File Explorer shows YOUR folders instantly on
+ * reload and stays populated offline — the backend overlays it the moment it's reachable.
+ * Keyed per user; holder is updated by hydrate() (sister pattern to the other stores).
+ */
+export const workspaceUserIdHolder: { current: string | null } = { current: null };
+const cacheKey = (uid: string | null) => `dwellium:workspace:cache:${uid || '_anonymous'}`;
+function persistWorkspace(snap: { tree: FileEntry[]; domaines: DomaineMeta[]; threadMetas: Record<string, ThreadMeta> }) {
+    try { localStorage.setItem(cacheKey(workspaceUserIdHolder.current), JSON.stringify(snap)); } catch { /* quota / SSR — ignore */ }
+}
+
 /** Which drill-down altitude the widget is showing. */
 export type WorkspaceView = 'index' | 'domaine' | 'project';
 
@@ -171,6 +184,13 @@ interface WorkspaceState {
     /** Toggle a thread's status sidecar field; merges the result into the threadMetas cache. */
     setThreadStatus: (threadPath: string, status: 'active' | 'complete') => Promise<boolean>;
 
+    /**
+     * Load the last-known structure (tree + domaines + threadMetas) from localStorage so the
+     * File Explorer renders your folders instantly on reload + offline; the backend overlays
+     * it when reachable. Sets the per-user cache key for subsequent writes. Call on mount/login.
+     */
+    hydrate: (userId: string | null) => void;
+
     /** Reset all transient state to initial (test-friendly + logout-friendly). */
     reset: () => void;
 }
@@ -251,6 +271,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         try {
             const list = await fetchDomaines();
             set({ domaines: list, loading: false, offline: false });
+            persistWorkspace({ tree: get().tree, domaines: list, threadMetas: get().threadMetas });
         } catch (err) {
             set({
                 error: err instanceof Error ? err.message : 'Failed to load domaines',
@@ -264,6 +285,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         try {
             const tree = await fetchTree();
             set({ tree, treeLoading: false, offline: false });
+            persistWorkspace({ tree, domaines: get().domaines, threadMetas: get().threadMetas });
         } catch (err) {
             set({
                 treeError: err instanceof Error ? err.message : 'Failed to load workspace tree',
@@ -293,6 +315,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             if (r.status === 'fulfilled') next[threadPaths[i]] = r.value;
         });
         set({ threadMetas: next, threadMetaLoading: false });
+        persistWorkspace({ tree: get().tree, domaines: get().domaines, threadMetas: next });
     },
 
     clearMutationError: () => set({ mutationError: null }),
@@ -393,12 +416,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             const existing = get().threadMetas[threadPath];
             // Optimistically reflect the new status; merge any fuller meta the route echoed back.
             const merged = { ...(existing ?? {}), ...saved, status } as ThreadMeta;
-            set({ threadMetas: { ...get().threadMetas, [threadPath]: merged }, mutating: false });
+            const nextMetas = { ...get().threadMetas, [threadPath]: merged };
+            set({ threadMetas: nextMetas, mutating: false });
+            persistWorkspace({ tree: get().tree, domaines: get().domaines, threadMetas: nextMetas });
             return true;
         } catch (err) {
             set({ mutating: false, mutationError: err instanceof Error ? err.message : 'Failed to update thread' });
             return false;
         }
+    },
+
+    hydrate: (userId) => {
+        workspaceUserIdHolder.current = userId;
+        try {
+            const raw = localStorage.getItem(cacheKey(userId));
+            if (!raw) return;
+            const snap = JSON.parse(raw) as { tree?: FileEntry[]; domaines?: DomaineMeta[]; threadMetas?: Record<string, ThreadMeta> };
+            const patch: Partial<WorkspaceState> = {};
+            if (Array.isArray(snap.tree) && snap.tree.length) patch.tree = snap.tree;
+            if (Array.isArray(snap.domaines) && snap.domaines.length) patch.domaines = snap.domaines;
+            if (snap.threadMetas && typeof snap.threadMetas === 'object') patch.threadMetas = snap.threadMetas;
+            if (Object.keys(patch).length) set(patch);
+        } catch { /* corrupt cache / SSR — ignore */ }
     },
 
     reset: () => set({ ...INITIAL }),

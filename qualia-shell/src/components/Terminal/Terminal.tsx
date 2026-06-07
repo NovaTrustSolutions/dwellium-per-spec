@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+import PaperclipPanel from './PaperclipPanel';
+import LangFlowPanel from './LangFlowPanel';
+import CrewAIPanel from './CrewAIPanel';
 import { API_BASE } from '../../config';
 import { useUser } from '../../context/UserContext';
 import { runLocalCommand } from './localShell';
@@ -71,6 +74,7 @@ export default function Terminal() {
     // True when the backend PTY routes are unreachable — the widget falls back
     // to a clearly-labeled local offline shell instead of looking dead.
     const [offline, setOffline] = useState(false);
+    const [tab, setTab] = useState<'terminal' | 'paperclip' | 'langflow' | 'crewai'>('terminal');
     const surfaceRef = useRef<HTMLDivElement | null>(null);
     const inputCaptureRef = useRef<HTMLTextAreaElement | null>(null);
     const scrollRef = useRef<HTMLPreElement | null>(null);
@@ -297,6 +301,22 @@ export default function Terminal() {
 
     return (
         <div className="qualia-terminal">
+            <div style={{ display: 'flex', gap: 4, padding: '6px 10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+                {(['terminal', 'paperclip', 'langflow', 'crewai'] as const).map(t => (
+                    <button
+                        key={t}
+                        onClick={() => setTab(t)}
+                        style={{
+                            padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            border: 'none', background: 'transparent',
+                            borderBottom: tab === t ? '2px solid #D6FE51' : '2px solid transparent',
+                            color: tab === t ? '#D6FE51' : '#888',
+                        }}
+                    >{({ terminal: 'Terminal', paperclip: 'Paperclip', langflow: 'LangFlow', crewai: 'CrewAI' } as const)[t]}</button>
+                ))}
+            </div>
+            {tab === 'paperclip' ? <PaperclipPanel /> : tab === 'langflow' ? <LangFlowPanel /> : tab === 'crewai' ? <CrewAIPanel /> : (
+            <>
             <div className="qualia-terminal__header">
                 <div>
                     <div className="qualia-terminal__title">Workspace Terminal</div>
@@ -421,6 +441,8 @@ export default function Terminal() {
                     <span className="qualia-terminal__cursor">cursor {cursor}</span>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

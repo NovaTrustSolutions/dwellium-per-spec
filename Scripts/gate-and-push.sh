@@ -30,7 +30,19 @@ echo ""
 echo "✅ FULL GATE GREEN — committing + pushing"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git add -A
-git commit -m "feat: AI assistant launcher + Open Notebook tab + grid lock + Gmail/Calendar Settings paths
+git commit -m "feat: AI launcher + Open Notebook/Paperclip/LangFlow/CrewAI tabs + grid lock + Gmail/Cal paths
+
+LangFlow + CrewAI. Two more Terminal tabs. LangFlow embeds the running LangFlow visual builder
+(default :7860) — reachability, persisted URL, new-window fallback, and a setup guide that also
+installs the NovaTrustSolutions/langchain fork into LangFlow's env (LangChain is a library, no UI
+to embed — operational under LangFlow + from the Terminal). CrewAI is a Python framework with no
+local UI: the tab leads with a runnable quickstart (install/scaffold/run in the Terminal) plus an
+optional control-plane embed (app.crewai.com). components/Terminal/{LangFlowPanel,CrewAIPanel}.*
+
+Paperclip. New 'Paperclip' tab in the Terminal widget that embeds the self-hosted Paperclip
+app (paperclipai/paperclip — agent-orchestration control plane) via iframe (default :3100),
+with a reachability indicator, editable + persisted URL, open-in-new-window fallback, and a
+setup guide (npx paperclipai onboard --yes). components/Terminal/PaperclipPanel.* + tabbed Terminal.
 
 Open Notebook. New 'Open Notebook' tab in the NotebookLM widget that embeds the
 self-hosted Open Notebook app (lfnovo/open-notebook) via iframe (default :8502), with a

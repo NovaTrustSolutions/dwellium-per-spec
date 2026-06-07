@@ -586,6 +586,13 @@
     text-shadow: 0 0 6px var(--accent, #0088cc);
 }
 
+/* Active/pressed state — used by the grid-lock button when the grid is locked. */
+.sidebar__domain-toggle-btn--active {
+    color: var(--accent, #0088cc);
+    background: rgba(0, 136, 204, 0.14);
+    text-shadow: 0 0 6px var(--accent, #0088cc);
+}
+
 .sidebar__panel-title {
     font-size: var(--fs-xs, 11px);
     font-weight: var(--fw-bold, 700);

@@ -19,6 +19,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import './NotebookLMContext.css';
+import OpenNotebookPanel from './OpenNotebookPanel';
 
 interface NLMNotebook {
     id: string;
@@ -88,6 +89,7 @@ export default function NotebookLMContext() {
     const [emailInput, setEmailInput] = useState(googleEmail);
     useEffect(() => { setEmailInput(googleEmail); }, [googleEmail]);
     const [emailEditing, setEmailEditing] = useState(false);
+    const [tab, setTab] = useState<'notebooklm' | 'open-notebook'>('notebooklm');
 
     // Notebook list — localStorage first, backend bridge as opt-in upgrade
     const [notebooks, setNotebooks] = useState<NLMNotebook[]>(() => loadLocalNotebooks());
@@ -252,6 +254,22 @@ export default function NotebookLMContext() {
 
     return (
         <div className="nlm-widget">
+            <div style={{ display: 'flex', gap: 4, padding: '8px 10px 0', background: '#0a0a0a', borderBottom: '1px solid #222' }}>
+                {(['notebooklm', 'open-notebook'] as const).map(t => (
+                    <button
+                        key={t}
+                        onClick={() => setTab(t)}
+                        style={{
+                            padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            border: 'none', background: 'transparent',
+                            borderBottom: tab === t ? '2px solid #D6FE51' : '2px solid transparent',
+                            color: tab === t ? '#D6FE51' : '#888',
+                        }}
+                    >{t === 'notebooklm' ? 'NotebookLM' : 'Open Notebook'}</button>
+                ))}
+            </div>
+            {tab === 'open-notebook' ? <OpenNotebookPanel /> : (
+            <>
             {/* Connected Google account — read-only when set via Calendar/Gmail,
                 editable inline if the user wants to override or use a different
                 Google account for NotebookLM than for Calendar. */}
@@ -466,6 +484,8 @@ export default function NotebookLMContext() {
                     <li>Relevant answers are injected into the AI context automatically — no copy/paste needed</li>
                 </ol>
             </div>
+            </>
+            )}
         </div>
     );
 }

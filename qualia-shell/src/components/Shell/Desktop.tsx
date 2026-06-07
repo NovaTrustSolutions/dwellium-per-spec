@@ -1,6 +1,7 @@
 import { useWindows, COMPONENT_DEFAULT_SIZES } from '../../context/WindowContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
+import { useGridLock } from '../../hooks/useGridLock';
 import { useTheme } from '../../context/ThemeContext';
 import { API_BASE } from '../../config';
 import { reportError } from '../../services/errorReporter';
@@ -555,6 +556,7 @@ export default function Desktop() {
     const { windows, closeWindow, openWindow } = useWindows();
     const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab, assignWindowToRegion, moveTabToRegion, isInteracting } = useLayout();
     const { toggleTheme } = useTheme();
+    const { locked: gridLocked } = useGridLock();
     const desktopRef = useRef<HTMLDivElement>(null);
     const [desktopSize, setDesktopSize] = useState({ w: 0, h: 0 });
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
@@ -612,7 +614,7 @@ export default function Desktop() {
     // Whenever a new window appears and regions are enabled, assign it to the
     // least-occupied region so it snaps into the grid layout from settings.
     useEffect(() => {
-        if (!settings.regionsEnabled) return;
+        if (!settings.regionsEnabled || gridLocked) return; // locked → don't auto-reposition
         // Compute current region rects from desktop size
         const desktopEl = document.querySelector<HTMLElement>('.desktop-canvas');
         const rect = desktopEl?.getBoundingClientRect();
@@ -640,7 +642,7 @@ export default function Desktop() {
             assignWindowToRegion(win.id, best.id, windows);
             assignedIds.add(win.id); // prevent double-assign in same pass
         }
-    }, [windows, settings.regionsEnabled, settings.regionLayout, regionAssignments, assignWindowToRegion]);
+    }, [windows, settings.regionsEnabled, settings.regionLayout, regionAssignments, assignWindowToRegion, gridLocked]);
 
     // Custom Tooltip System
     useEffect(() => {

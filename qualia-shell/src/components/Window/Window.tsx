@@ -5,6 +5,7 @@ import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { WindowState, RegionRect } from '../../data/types';
 import { getIcon } from '../Sidebar/iconMap';
 import WindowTagButton from './WindowTagButton';
+import { useGridLock } from '../../hooks/useGridLock';
 import './Window.css';
 
 export interface WindowProps {
@@ -17,6 +18,7 @@ export interface WindowProps {
 export default function Window({ state, children, regionRect, containerStyle }: WindowProps) {
     const { closeWindow, focusWindow, minimizeWindow, maximizeWindow, updateWindowPosition, updateWindowSize, windows, popOutWindow } = useWindows();
     const { computeSnap, setActiveGuides, setInteracting, settings, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments } = useLayout();
+    const { locked } = useGridLock();
     const windowRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
     const resizeRef = useRef({ resizing: false, edge: '', startX: 0, startY: 0, origW: 0, origH: 0, origX: 0, origY: 0 });
@@ -26,7 +28,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
 
     // --- Drag with snap + region detection ---
     const onTitleMouseDown = useCallback((e: React.MouseEvent) => {
-        if (state.maximized) return;
+        if (state.maximized || locked) return;
         e.preventDefault();
         focusWindow(state.id);
 
@@ -113,11 +115,11 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         };
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
-    }, [state.id, state.x, state.y, state.width, state.height, state.maximized, focusWindow, updateWindowPosition, updateWindowSize, computeSnap, setActiveGuides, setInteracting, windows, settings.regionLayout, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments, regionRect, maximizeWindow]);
+    }, [state.id, state.x, state.y, state.width, state.height, state.maximized, focusWindow, updateWindowPosition, updateWindowSize, computeSnap, setActiveGuides, setInteracting, windows, settings.regionLayout, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments, regionRect, maximizeWindow, locked]);
 
     // --- Resize ---
     const onResizeMouseDown = useCallback((e: React.MouseEvent, edge: string) => {
-        if (state.maximized) return;
+        if (state.maximized || locked) return;
         e.preventDefault();
         e.stopPropagation();
         focusWindow(state.id);
@@ -159,7 +161,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
         };
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
-    }, [state, focusWindow, updateWindowSize, updateWindowPosition, setInteracting]);
+    }, [state, focusWindow, updateWindowSize, updateWindowPosition, setInteracting, locked]);
 
     // Keyboard close
     useEffect(() => {
@@ -248,12 +250,12 @@ export default function Window({ state, children, regionRect, containerStyle }: 
     return (
         <div
             ref={windowRef}
-            className={`window ${state.maximized ? 'window--maximized' : ''} ${tearoffActive ? 'window--tearoff' : ''}`}
+            className={`window ${state.maximized ? 'window--maximized' : ''} ${tearoffActive ? 'window--tearoff' : ''} ${locked ? 'window--locked' : ''}`}
             style={{ ...style, ...containerStyle }}
             onMouseDown={() => focusWindow(state.id)}
         >
             {/* Resize handles */}
-            {!state.maximized && (
+            {!state.maximized && !locked && (
                 <>
                     <div className="resize-handle resize-n" onMouseDown={e => onResizeMouseDown(e, 'n')} />
                     <div className="resize-handle resize-s" onMouseDown={e => onResizeMouseDown(e, 's')} />
@@ -331,7 +333,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                 progress appears transiently while actively tearing off. The
                 title-bar "Pop out" button is the primary, always-visible
                 affordance. (HARD RULE 3.5: no persistent pop-out banner.) */}
-            {!state.maximized && (
+            {!state.maximized && !locked && (
                 <div
                     className={`window__tearoff-handle ${tearoffActive ? 'window__tearoff-handle--active' : ''}`}
                     onMouseDown={onTearoffMouseDown}

@@ -30,28 +30,38 @@ echo ""
 echo "✅ FULL GATE GREEN — committing + pushing"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git add -A
-git commit -m "feat: persist File Explorer; Honcho background runner; Settings storage boxes
+git commit -m "feat: AI assistant launcher + Open Notebook tab + grid lock + Gmail/Calendar Settings paths
 
-File Explorer now actually saves. The Workspace store caches its structure
-(tree + domaines + thread metas) to a per-user localStorage snapshot and hydrates
-it on mount, so your folders show instantly on reload and stay populated offline;
-the backend overlays when reachable. workspaceStore.ts (+hydrate/persist) + Workspace.tsx.
+Open Notebook. New 'Open Notebook' tab in the NotebookLM widget that embeds the
+self-hosted Open Notebook app (lfnovo/open-notebook) via iframe (default :8502), with a
+reachability indicator, editable + persisted instance URL, an open-in-new-window fallback
+(for instances that block embedding), and a collapsible Docker setup guide for when it
+isn't running. components/NotebookLMContext/OpenNotebookPanel.* + tabbed NotebookLMContext.
 
-Honcho runs in the background. A top-level always-on runner (mounted in the app
-shell, post-auth) autonomously synthesizes a reflection over your Honcho memories on
-a throttled schedule (<=1 per 6h; needs an LLM configured + >=3 memories) even when
-the Honcho widget is closed. services/honchoBackgroundRunner.ts + Shell/AdminShell.tsx.
+AI assistant launcher. The bottom-right bubble now opens a selector menu to invoke
+Antigravity (Gemini), ARA, Inbox Zero, or Stella — each hosting its real component,
+fully functional. Draggable/resizable panel; minimize sends the active assistant to the
+background (collapses to the bubble) while it keeps running; opened assistants stay mounted
+so switching preserves state. Replaces the single OpenJarvis mount in AdminShell.
+components/AssistantLauncher/* (AssistantLauncher + AntigravityChat + css).
 
-Settings storage boxes. Alongside the existing local-disk data folder, a new Google
-Drive box backs up / restores Wiki + Thought Weaver + File Explorer + Honcho data to a
-'Dwellium' folder on the user's own Drive — frontend-only via Google Identity Services +
-Drive REST (drive.file scope; tokens session-only). API keys are NEVER backed up. The
-user supplies a Google OAuth Client ID, like an LLM key. types/integrations.ts +
-services/googleDriveStorage.ts (+snapshot tests) + ControlPanel/GoogleDriveSection.tsx.
+Grid lock. A lock/unlock button sits next to the Settings gear in the sidebar and
+freezes every widget window in place — no drag, resize, or tear-off — then unfreezes
+on toggle. Free-form placement + unlimited resizable widgets already existed (Settings
+-> Desktop Regions = Off); added a Settings hint making it discoverable. New SSR-safe
+gridLockStore (createLocalStorageStore + useSyncExternalStore) + useGridLock hook;
+Window.tsx gates drag/resize/tear-off on lock; Desktop auto-region-snap is skipped while
+locked. utils/gridLockStore.ts + hooks/useGridLock.ts (+unit tests) + Window.tsx/.css +
+Sidebar.tsx/.css + Desktop.tsx + ControlPanel.tsx.
 
-Verified: tsc -b clean; vitest 983/983 (3 shards, +5 drive-snapshot tests); PII + both
-builds + SSR smoke run as part of this gate. The live Google Drive OAuth round-trip needs
-the user's own Client ID (Google Cloud setup) — compile- + unit-verified, not live in CI."
+Gmail/Calendar. Fixed the 5 ControlPanel fetch calls to the /api/* routes the backend
+now exposes (gmail/test, gmail/fetch, calendar/events GET+POST, integrations/status) —
+they were missing the /api prefix so the Settings cards never reached the backend. The
+backend route layer lives in the dwellium-backend repo (committed there separately).
+
+Verified on the Mac sandbox: tsc --noEmit exit 0; vitest gridLockStore 6/6. Full gate
+(vitest suite + both builds + PII + SSR smoke) runs here. Live UI (lock button, frozen
+windows) + Google OAuth verified on the Mac after sign-in."
 git push origin "$BRANCH"
 
 echo ""

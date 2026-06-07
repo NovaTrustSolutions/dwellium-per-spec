@@ -40,6 +40,13 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-010 — Tried to live-boot the backend in the Cowork Linux sandbox to smoke-test new routes; can't (Mac-native better-sqlite3)
+- **Problem:** Wanted to verify the new Gmail/Calendar routes by booting `ai-dashboard369-file-manager` (`npm run dev`) + curling them in-sandbox. The server crashes at startup before listening.
+- **Root cause:** `node_modules/better-sqlite3/build/Release/better_sqlite3.node: invalid ELF header` — the mounted `node_modules` is compiled for macOS (Darwin/arm64); the Cowork sandbox is Linux x86. The native addon can't load. Sister to F-001 (sandbox can't run the full build/boot).
+- **Do NOT "fix" with `npm rebuild`/`npm install` in the sandbox** — that overwrites the Mac's native binary with a Linux one and breaks the backend on the Mac.
+- **Verification used instead:** `npx tsc --noEmit` in the backend → exit 0, 0 errors (proves the new routes compile + the service signatures match). The live route smoke-test (boot + `curl /api/integrations/status`, `/api/gmail/test`, `/api/calendar/events`) must run on the Mac.
+- **Prevention:** For backend changes, verify with `tsc` in-sandbox; run any live boot/curl on the Mac. Never rebuild native modules against the mounted `node_modules`.
+
 ### F-009 — Claimed the "click a widget → bounced to login" bug was fixed + verified; it wasn't (missed a second vector)
 - **Problem:** Told Ilya the logout-on-widget-click bug was fixed and verified.
   It still happened — and then on *multiple* widgets. The earlier work hardened

@@ -69,14 +69,14 @@ export default function ControlPanel() {
     const [newEventEnd, setNewEventEnd] = useState('');
 
     const loadIntegrationStatus = async () => {
-        const res = await fetch(`${API_BASE}/status`);
+        const res = await fetch(`${API_INTEGRATIONS}/status`);
         const json = await res.json();
         if (!json.success) throw new Error(json.error || 'Failed to load integration status');
         setIntegrationStatus(json.data);
     };
 
     const loadCalendarEvents = async () => {
-        const res = await fetch(`${API_BASE}/calendar/events?maxResults=6`);
+        const res = await fetch(`${API_BASE}/api/calendar/events?maxResults=6`);
         const json = await res.json();
         if (!json.success) throw new Error(json.error || 'Failed to load calendar events');
         setCalendarEvents(json.data || []);
@@ -103,7 +103,7 @@ export default function ControlPanel() {
         setIntegrationLoading(true);
         setIntegrationMessage(null);
         try {
-            const res = await fetch(`${API_BASE}/gmail/test`, { method: 'POST' });
+            const res = await fetch(`${API_BASE}/api/gmail/test`, { method: 'POST' });
             const json = await res.json();
             if (!json.success) throw new Error(json.error || 'Gmail test failed');
             await refreshIntegrations();
@@ -119,7 +119,7 @@ export default function ControlPanel() {
         setIntegrationLoading(true);
         setIntegrationMessage(null);
         try {
-            const res = await fetch(`${API_BASE}/gmail/fetch`, {
+            const res = await fetch(`${API_BASE}/api/gmail/fetch`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ maxResults: 20 })
@@ -142,7 +142,7 @@ export default function ControlPanel() {
             if (!newEventTitle || !newEventStart || !newEventEnd) {
                 throw new Error('Title, start, and end are required to create an event');
             }
-            const res = await fetch(`${API_BASE}/calendar/events`, {
+            const res = await fetch(`${API_BASE}/api/calendar/events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -294,6 +294,12 @@ export default function ControlPanel() {
                             onClick={() => updateSettings({ regionsEnabled: true })}>On</button>
                     </div>
                 </div>
+                {!layoutSettings.regionsEnabled && (
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 2px 0', lineHeight: 1.5 }}>
+                        Free-form: drag widgets anywhere and resize them freely — add as many as you like.
+                        Use the lock button next to the Settings gear in the sidebar to freeze the layout.
+                    </p>
+                )}
                 {layoutSettings.regionsEnabled && (
                     <div className="cp-field cp-field--nested">
                         <label className="cp-label">Region Layout</label>

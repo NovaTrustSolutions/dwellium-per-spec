@@ -85,6 +85,13 @@
     cursor: grabbing;
 }
 
+/* Locked grid — freeze in place: no move cursor (resize handles + tear-off are
+   not rendered when locked, handled in Window.tsx). */
+.window--locked .window__titlebar,
+.window--locked .window__titlebar:active {
+    cursor: default;
+}
+
 .window__titlebar::before {
     content: '';
     position: absolute;

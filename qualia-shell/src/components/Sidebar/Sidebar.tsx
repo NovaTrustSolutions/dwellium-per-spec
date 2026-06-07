@@ -7,6 +7,8 @@ import { HierarchyItem } from '../../data/types';
 import { rankWidgetSearchResults, WidgetSearchMatch } from './widgetSearch';
 import { getIcon, isLucideKey } from './iconMap';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { useGridLock } from '../../hooks/useGridLock';
+import { Lock, Unlock } from 'lucide-react';
 import './Sidebar.css';
 import React from 'react';
 
@@ -250,6 +252,7 @@ export default function Sidebar() {
     const { dockItems, windows, openWindow, closeWindow, restoreWindow, moveDockItem, saveLayout, savedLayouts, saveNamedLayout, loadNamedLayout, deleteNamedLayout } = useWindows();
     const { user, logout, hasMinRole } = useUser();
     const { can } = usePermissions();
+    const { locked: gridLocked, toggle: toggleGridLock } = useGridLock();
 
     const canSaveLayout = hasMinRole('corporate');
 
@@ -639,6 +642,14 @@ export default function Sidebar() {
                                                 >⊟</button>
                                             </>
                                         )}
+                                        <button
+                                            className={`sidebar__domain-toggle-btn ${gridLocked ? 'sidebar__domain-toggle-btn--active' : ''}`}
+                                            onClick={toggleGridLock}
+                                            title={gridLocked ? 'Unlock grid — allow moving & resizing widgets' : 'Lock grid in place'}
+                                            aria-pressed={gridLocked}
+                                            aria-label={gridLocked ? 'Unlock grid' : 'Lock grid in place'}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >{gridLocked ? <Lock size={12} /> : <Unlock size={12} />}</button>
                                         <button
                                             className="sidebar__domain-toggle-btn"
                                             onClick={() => handleWidgetClick('control-panel', 'Settings', 'settings')}

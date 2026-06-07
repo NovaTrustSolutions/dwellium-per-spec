@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-    buildLayeredGraph, phyllotaxis, projectNode, layerCenter, mulberry32, ambientField, sparkSeries, propagateWave,
+    buildLayeredGraph, phyllotaxis, gridPositions, projectNode, layerCenter, mulberry32, ambientField, sparkSeries, propagateWave,
     nodeWorld, project3D, telemetryBase, DEFAULT_CAMERA,
     type LayeredInput,
 } from '../components/MemoryGraphRAG/layeredLayout';
@@ -223,5 +223,29 @@ describe('telemetryBase', () => {
     });
     it('is deterministic', () => {
         expect(telemetryBase(buildLayeredGraph(base))).toEqual(telemetryBase(buildLayeredGraph(base)));
+    });
+});
+
+describe('gridPositions (passage document-matrix)', () => {
+    it('returns one centered point for n=1', () => {
+        expect(gridPositions(1)).toEqual([{ u: 0, v: 0 }]);
+    });
+    it('returns n points inside the centered span', () => {
+        const g = gridPositions(81);
+        expect(g).toHaveLength(81);
+        for (const { u, v } of g) {
+            expect(Math.abs(u)).toBeLessThanOrEqual(0.76);
+            expect(Math.abs(v)).toBeLessThanOrEqual(0.76);
+        }
+    });
+    it('is centered on the origin for a full square', () => {
+        const g = gridPositions(64); // 8×8 exactly
+        const mu = g.reduce((s, p) => s + p.u, 0) / g.length;
+        const mv = g.reduce((s, p) => s + p.v, 0) / g.length;
+        expect(Math.abs(mu)).toBeLessThan(1e-9);
+        expect(Math.abs(mv)).toBeLessThan(1e-9);
+    });
+    it('is deterministic', () => {
+        expect(gridPositions(50)).toEqual(gridPositions(50));
     });
 });

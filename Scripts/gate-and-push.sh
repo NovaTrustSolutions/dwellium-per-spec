@@ -30,27 +30,29 @@ echo ""
 echo "✅ FULL GATE GREEN — committing + pushing"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git add -A
-git commit -m "feat: recoverable session re-auth + Cognitive Memory Network 3D visualization
+git commit -m "feat: Cognitive M Network reference-match + demo; sidebar + Thought Weaver polish
 
-Auth (fixes 'clicking a widget kicks me to the login screen'):
-- doRefresh() no longer logs out on a failed refresh; it returns refreshed/dead/transient.
-  The ONLY authorities that clear the session are the /api/auth/me validator (a definitive
-  401/403) and explicit logout(). A widget data-call 401 can no longer tear down the session.
-- A genuinely-dead session keeps the shell mounted and shows a recoverable 'Session expired'
-  modal (SessionExpiredModal) instead of bouncing to login; re-validates on focus + reconnect.
-  UserContext.tsx + App.tsx + components/Auth/SessionExpiredModal.tsx.
+Cognitive Memory Network (MemoryGraphRAG) — match the reference cinematic:
+- Layered-render overhaul so the three layers read as distinct stacked platforms:
+  passage document-grid (gridPositions) + near-orthographic camera (PLANE_Y/span/dist/
+  focal), triangulated ontology mesh, multi-color fact web, central red-orange
+  topological-defect burst, hot beam, passage ripple rings.
+  layeredLayout.ts (+gridPositions tests) + MemoryGraphView.tsx + CSS.
+- One-click 'Load demo': imports a built-in sample corpus so you can ask questions
+  immediately (demoCorpus.ts; prefills a sample query).
+- Renamed widget to 'Cognitive M Network' + Earth icon (data/hierarchy.ts,
+  registry/widgetRegistry.ts, Sidebar/iconMap.ts, widget header).
+- Dock reconcile: refresh label + icon from defaults on load so renames/icon changes
+  propagate to a persisted dock without resetting saved order/pins (WindowContext.tsx).
 
-MemoryGraphRAG — Cognitive Memory Network:
-- Wired into the AI Tools sidebar + widget search (data/hierarchy.ts, Sidebar/widgetSearch.ts).
-- New true-3D cinematic 'Network' view: orbiting perspective camera (project3D), painter's-
-  algorithm depth-sort + depth-of-field, ~1.8k-particle drift field, query beam, real BFS
-  wavefront (propagateWave) driving the HUD time step, bloom + vignette, edge-flow particles,
-  node hover/click inspector, full HUD with real-data telemetry (telemetryBase).
-  MemoryGraphView.tsx + pure layeredLayout.ts + memoryGraphScene.ts (+ CSS).
+Sidebar collapse: icon-only rail glyphs recolored to violet (#8B5CF6) with the outline
+removed (Sidebar.css .sidebar__icon-rail-btn).
 
-Tests: +51 unit tests (layeredLayout 26, memoryGraphScene 9, UserContext recoverable-reauth 7,
-plus projection/wave/relaxation/telemetry). tsc + full suite green; PII clean.
-Logged F-009 (auth fix claimed-done-but-incomplete miss). Adds Scripts/apply-auth-fix.{sh,patch}."
+Thought Weaver: Capture button text -> near-black (#0a0a0a) on acid-lime; emojis removed
+(ThoughtWeaver.tsx + .css).
+
+Verified before push: tsc -b clean; vitest 978/978 (3 shards); PII scan clean. Builds +
+SSR smoke run as part of this gate."
 git push origin "$BRANCH"
 
 echo ""

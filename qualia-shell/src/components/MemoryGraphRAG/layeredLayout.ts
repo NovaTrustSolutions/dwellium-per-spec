@@ -83,6 +83,24 @@ export function phyllotaxis(i: number, n: number): { u: number; v: number } {
     return { u: r * Math.cos(a), v: r * Math.sin(a) };
 }
 
+/** Centered square grid fill — the Passage layer's document-matrix look. */
+export function gridPositions(n: number): Array<{ u: number; v: number }> {
+    if (n <= 0) return [];
+    if (n === 1) return [{ u: 0, v: 0 }];
+    const cols = Math.ceil(Math.sqrt(n));
+    const rows = Math.ceil(n / cols);
+    const span = 1.5; // fill most of the disc width
+    const out: Array<{ u: number; v: number }> = [];
+    for (let i = 0; i < n; i++) {
+        const c = i % cols, r = Math.floor(i / cols);
+        out.push({
+            u: cols > 1 ? (c / (cols - 1)) * span - span / 2 : 0,
+            v: rows > 1 ? (r / (rows - 1)) * span - span / 2 : 0,
+        });
+    }
+    return out;
+}
+
 function normalizer(vals: number[]): (v: number) => number {
     const mx = vals.length ? Math.max(...vals) : 0;
     const mn = vals.length ? Math.min(...vals) : 0;
@@ -99,6 +117,7 @@ function relaxLayers(nodes: LayeredNode[]): void {
     const groups: Record<Layer, LayeredNode[]> = { ontology: [], fact: [], passage: [] };
     for (const n of nodes) groups[n.layer].push(n);
     (Object.keys(groups) as Layer[]).forEach((layer) => {
+        if (layer === 'passage') return; // grid layout is intentional — don't scatter it
         const arr = groups[layer];
         if (arr.length < 2) return;
         const rad = arr.map((n) => 0.030 + n.score * 0.05);
@@ -186,9 +205,10 @@ export function buildLayeredGraph(input: LayeredInput, caps: LayoutCaps = {}): L
     });
     const conflictId = topEntities.find((e) => conflictSubjects.has(e.id)) ? `entity:${topEntities.find((e) => conflictSubjects.has(e.id))!.id}` : null;
 
-    // Passage disc
+    // Passage disc — laid out as a document grid (matrix of source cards).
+    const pGrid = gridPositions(topPassages.length);
     topPassages.forEach((p, i) => {
-        const { u, v } = phyllotaxis(i, topPassages.length);
+        const { u, v } = pGrid[i] ?? { u: 0, v: 0 };
         add({ id: `passage:${p.id}`, layer: 'passage', kind: 'passage', label: p.title || p.sourceId, u, v,
             score: score(`passage:${p.id}`), highlighted: ranked.has(p.id), conflict: false, sourceKind: p.sourceKind,
             title: `${p.sourceKind} · ${p.title || p.sourceId}` });
@@ -264,7 +284,7 @@ export interface Vec3 { x: number; y: number; z: number; }
 export interface Camera { angle: number; pitch: number; dist: number; focal: number; }
 export interface Projected3 { x: number; y: number; scale: number; camZ: number; focus: number; visible: boolean; }
 
-const PLANE_Y: Record<Layer, number> = { ontology: 2.0, fact: 0, passage: -2.0 };
+const PLANE_Y: Record<Layer, number> = { ontology: 1.5, fact: 0, passage: -1.5 };
 
 /** World-space position of a node: its layer sets the height plane; (u,v) place
  *  it on that horizontal plane (x = u, z = v). */
@@ -275,7 +295,7 @@ export function nodeWorld(n: { layer: Layer; u: number; v: number }): Vec3 {
 /** Screen-space world center of a layer plane (beam endpoints / wavefront origin). */
 export function layerWorldCenter(layer: Layer): Vec3 { return { x: 0, y: PLANE_Y[layer], z: 0 }; }
 
-export const DEFAULT_CAMERA: Camera = { angle: 0.62, pitch: 1.0, dist: 3.4, focal: 2.5 };
+export const DEFAULT_CAMERA: Camera = { angle: 0.6, pitch: 0.74, dist: 6, focal: 4.5 };
 
 /**
  * Perspective projection with a Y-axis orbit + downward pitch — the three
@@ -293,7 +313,7 @@ export function project3D(p: Vec3, cam: Camera, vp: Viewport): Projected3 {
     const z2 = p.y * sp + z1 * cp;
     const camZ = z2 + cam.dist;
     const persp = cam.focal / Math.max(0.25, camZ);
-    const span = Math.min(vp.width, vp.height * 1.5) * 0.26;
+    const span = Math.min(vp.width, vp.height * 1.5) * 0.2;
     return {
         x: vp.width / 2 + x1 * persp * span,
         y: vp.height / 2 - y2 * persp * span,

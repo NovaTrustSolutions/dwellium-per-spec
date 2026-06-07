@@ -26,6 +26,12 @@ const COLORS: Record<string, string> = {
 const EDGE_COLOR: Record<string, string> = {
     schema: '34,211,238', fact: '167,139,250', bridge: '120,130,160', instantiation: '47,140,160', evidence: '99,102,241',
 };
+// Multi-color fact web (teal / gold / violet / cyan), assigned stably per node id.
+const FACT_PALETTE = ['#2dd4bf', '#f5a623', '#a78bfa', '#22d3ee'];
+function factColor(id: string): string {
+    let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return FACT_PALETTE[h % FACT_PALETTE.length];
+}
 
 const glowCache = new Map<string, HTMLCanvasElement>();
 function glowSprite(color: string): HTMLCanvasElement {
@@ -99,7 +105,7 @@ export default function MemoryGraphView(props: Props) {
         canvas.addEventListener('pointerdown', onDown);
 
         let raf = 0; let running = true; const t0 = performance.now();
-        const camAt = (t: number): Camera => ({ ...DEFAULT_CAMERA, angle: reduced ? 0.55 : 0.55 + Math.sin(t * 0.13) * 0.34, pitch: 0.8, dist: 3.5, focal: 2.55 });
+        const camAt = (t: number): Camera => ({ ...DEFAULT_CAMERA, angle: reduced ? 0.6 : 0.6 + Math.sin(t * 0.12) * 0.28 });
 
         const ringPts = (y: number, rad: number, cam: Camera, vp: { width: number; height: number }) => {
             const out: Array<{ x: number; y: number }> = [];
@@ -181,6 +187,44 @@ export default function MemoryGraphView(props: Props) {
                 }
             }
 
+            // ── passage ripples + ontology mesh + fact defect-burst (behind nodes) ──
+            if (g.nodes.length > 0) {
+                const allProj = g.nodes.map((n) => ({ n, pr: project3D(nodeWorld(n), cam, vp) }));
+                // passage ripple rings (expanding on the passage plane)
+                const py = nodeWorld({ layer: 'passage', u: 0, v: 0 }).y;
+                ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#7b6bff'; ctx.lineWidth = 1.3;
+                for (let i = 1; i <= 4; i++) {
+                    const rr = i * 0.3 + (reduced ? 0 : (t * 0.12) % 0.3);
+                    ctx.globalAlpha = 0.32 * (1 - i / 5);
+                    ctx.beginPath();
+                    for (let a = 0; a <= Math.PI * 2 + 0.01; a += Math.PI / 32) { const p = project3D({ x: rr * Math.cos(a), y: py, z: rr * Math.sin(a) }, cam, vp); a === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); }
+                    ctx.stroke();
+                }
+                ctx.restore();
+                // ontology triangulated mesh (geodesic canopy)
+                const o = allProj.filter((q) => q.n.layer === 'ontology' && q.pr.visible).map((q) => q.pr);
+                ctx.save(); ctx.strokeStyle = 'rgba(52,224,255,0.3)'; ctx.lineWidth = 1;
+                for (let i = 0; i < o.length; i++) {
+                    const near = o.map((p, j) => ({ j, d: (p.x - o[i].x) ** 2 + (p.y - o[i].y) ** 2 })).filter((q) => q.j !== i).sort((a, b) => a.d - b.d).slice(0, 3);
+                    for (const q of near) { ctx.beginPath(); ctx.moveTo(o[i].x, o[i].y); ctx.lineTo(o[q.j].x, o[q.j].y); ctx.stroke(); }
+                }
+                ctx.restore();
+                // fact central topological-defect burst
+                const fy = nodeWorld({ layer: 'fact', u: 0, v: 0 }).y;
+                const cc = project3D({ x: 0, y: fy, z: 0 }, cam, vp);
+                ctx.save(); ctx.globalCompositeOperation = 'lighter';
+                const pulse = reduced ? 0.8 : 0.6 + 0.4 * Math.sin(t * 3);
+                for (let i = 5; i >= 1; i--) {
+                    const rr = i * 0.06;
+                    ctx.globalAlpha = (0.5 - i * 0.07) * pulse; ctx.strokeStyle = `rgb(255,${90 + i * 22},47)`; ctx.lineWidth = 4 - i * 0.5;
+                    ctx.beginPath();
+                    for (let a = 0; a <= Math.PI * 2 + 0.01; a += Math.PI / 32) { const p = project3D({ x: rr * Math.cos(a), y: fy, z: rr * Math.sin(a) }, cam, vp); a === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); }
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 0.7 * pulse; ctx.drawImage(glowSprite('#ff6a2a'), cc.x - 75, cc.y - 75, 150, 150);
+                ctx.restore();
+            }
+
             // nodes — depth sorted far→near
             const hits: Hit[] = [];
             const proj = g.nodes.map((n) => ({ n, pr: project3D(nodeWorld(n), cam, vp) })).filter((o) => o.pr.visible).sort((a, b) => b.pr.camZ - a.pr.camZ);
@@ -191,15 +235,19 @@ export default function MemoryGraphView(props: Props) {
                 const base = (n.kind === 'passage' ? 1.5 : 1.8) + n.score * 4.4;
                 const r = base * pr.scale * 1.7 * (n.highlighted ? 1.5 : 1) * (1 + wp * 0.5);
                 const hovered = hoverRef.current === n.id || selRef.current === n.id;
-                const color = n.highlighted ? COLORS.hi : COLORS[n.layer];
+                const color = n.highlighted ? COLORS.hi : (n.layer === 'fact' ? factColor(n.id) : COLORS[n.layer]);
                 hits.push({ id: n.id, x: pr.x, y: pr.y, r });
                 ctx.globalCompositeOperation = 'lighter';
                 ctx.globalAlpha = Math.min(1, ((n.highlighted ? 0.95 : 0.5) * (0.6 + pr.scale * 0.4) + wp * 0.5) * (1 - dof * 0.18));
                 const gs = r * (n.highlighted ? 6.5 : 4) * (1 + wp + dof * 0.6);
                 ctx.drawImage(glowSprite(hovered ? '#ffffff' : color), pr.x - gs / 2, pr.y - gs / 2, gs, gs);
                 ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1 - dof * 0.22; ctx.fillStyle = color;
-                if (n.kind === 'passage') { const s = r * 1.7; ctx.fillRect(pr.x - s / 2, pr.y - s / 2, s, s); }
-                else { ctx.beginPath(); ctx.arc(pr.x, pr.y, r, 0, Math.PI * 2); ctx.fill(); }
+                if (n.kind === 'passage') {
+                    const cw = 15 * pr.scale, ch = 19 * pr.scale;
+                    ctx.fillRect(pr.x - cw / 2, pr.y - ch / 2, cw, ch);
+                    ctx.fillStyle = '#cfe0ff'; ctx.globalAlpha = (1 - dof * 0.22) * 0.5;
+                    ctx.fillRect(pr.x - cw / 2, pr.y - ch / 2, cw, ch * 0.28); // card top highlight
+                } else { ctx.beginPath(); ctx.arc(pr.x, pr.y, r, 0, Math.PI * 2); ctx.fill(); }
                 if (hovered) { ctx.globalAlpha = 1; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(pr.x, pr.y, r + 4, 0, Math.PI * 2); ctx.stroke(); }
                 if (n.conflict) { ctx.strokeStyle = COLORS.conflict; ctx.lineWidth = 1.6; ctx.globalAlpha = reduced ? 0.9 : 0.6 + 0.4 * Math.sin(t * 4); ctx.beginPath(); ctx.arc(pr.x, pr.y, r + 5, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
             }

@@ -5,6 +5,7 @@ import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
 import DataFolderSection from './DataFolderSection';
+import GoogleDriveSection from './GoogleDriveSection';
 import SystemUpdateSection from './SystemUpdateSection';
 import ScribeSettings from '../Scribe/ScribeSettings';
 import './ControlPanel.css';
@@ -428,8 +429,9 @@ export default function ControlPanel() {
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />
 
-            {/* Data folder picker (passport drive / iCloud) — desktop build */}
+            {/* Storage boxes — local disk (desktop data folder) + Google Drive backup */}
             <DataFolderSection />
+            <GoogleDriveSection />
 
             {/* App updates — git pull + rebuild + restart (2026-05-28) */}
             <SystemUpdateSection />

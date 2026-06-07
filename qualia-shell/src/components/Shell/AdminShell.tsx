@@ -20,6 +20,7 @@
  */
 
 import { useEffect } from 'react';
+import { useHonchoBackgroundRunner } from '../../services/honchoBackgroundRunner';
 import { LayoutProvider } from '../../context/LayoutContext';
 import { HierarchyProvider } from '../../context/HierarchyContext';
 import { WindowProvider, useWindows } from '../../context/WindowContext';
@@ -31,6 +32,10 @@ import type { DockBackMessage } from '../PopupShell/PopupShell';
 
 function ShellLayout() {
     const { windows, closeWindow, openWindow } = useWindows();
+
+    // Honcho runs in the background while signed in: an autonomous reflection loop
+    // that keeps synthesizing over your memories even when the Honcho widget is closed.
+    useHonchoBackgroundRunner();
 
     // ── Prevent browser back button from crashing the SPA ──
     // The app uses React state for navigation, not URL routing.

@@ -30,29 +30,28 @@ echo ""
 echo "✅ FULL GATE GREEN — committing + pushing"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git add -A
-git commit -m "feat: Cognitive M Network reference-match + demo; sidebar + Thought Weaver polish
+git commit -m "feat: persist File Explorer; Honcho background runner; Settings storage boxes
 
-Cognitive Memory Network (MemoryGraphRAG) — match the reference cinematic:
-- Layered-render overhaul so the three layers read as distinct stacked platforms:
-  passage document-grid (gridPositions) + near-orthographic camera (PLANE_Y/span/dist/
-  focal), triangulated ontology mesh, multi-color fact web, central red-orange
-  topological-defect burst, hot beam, passage ripple rings.
-  layeredLayout.ts (+gridPositions tests) + MemoryGraphView.tsx + CSS.
-- One-click 'Load demo': imports a built-in sample corpus so you can ask questions
-  immediately (demoCorpus.ts; prefills a sample query).
-- Renamed widget to 'Cognitive M Network' + Earth icon (data/hierarchy.ts,
-  registry/widgetRegistry.ts, Sidebar/iconMap.ts, widget header).
-- Dock reconcile: refresh label + icon from defaults on load so renames/icon changes
-  propagate to a persisted dock without resetting saved order/pins (WindowContext.tsx).
+File Explorer now actually saves. The Workspace store caches its structure
+(tree + domaines + thread metas) to a per-user localStorage snapshot and hydrates
+it on mount, so your folders show instantly on reload and stay populated offline;
+the backend overlays when reachable. workspaceStore.ts (+hydrate/persist) + Workspace.tsx.
 
-Sidebar collapse: icon-only rail glyphs recolored to violet (#8B5CF6) with the outline
-removed (Sidebar.css .sidebar__icon-rail-btn).
+Honcho runs in the background. A top-level always-on runner (mounted in the app
+shell, post-auth) autonomously synthesizes a reflection over your Honcho memories on
+a throttled schedule (<=1 per 6h; needs an LLM configured + >=3 memories) even when
+the Honcho widget is closed. services/honchoBackgroundRunner.ts + Shell/AdminShell.tsx.
 
-Thought Weaver: Capture button text -> near-black (#0a0a0a) on acid-lime; emojis removed
-(ThoughtWeaver.tsx + .css).
+Settings storage boxes. Alongside the existing local-disk data folder, a new Google
+Drive box backs up / restores Wiki + Thought Weaver + File Explorer + Honcho data to a
+'Dwellium' folder on the user's own Drive — frontend-only via Google Identity Services +
+Drive REST (drive.file scope; tokens session-only). API keys are NEVER backed up. The
+user supplies a Google OAuth Client ID, like an LLM key. types/integrations.ts +
+services/googleDriveStorage.ts (+snapshot tests) + ControlPanel/GoogleDriveSection.tsx.
 
-Verified before push: tsc -b clean; vitest 978/978 (3 shards); PII scan clean. Builds +
-SSR smoke run as part of this gate."
+Verified: tsc -b clean; vitest 983/983 (3 shards, +5 drive-snapshot tests); PII + both
+builds + SSR smoke run as part of this gate. The live Google Drive OAuth round-trip needs
+the user's own Client ID (Google Cloud setup) — compile- + unit-verified, not live in CI."
 git push origin "$BRANCH"
 
 echo ""

@@ -24,7 +24,8 @@
  * useContext(UserContext)-based per-user state via useWorkspaceUi, RefreshCw refresh
  * convention with aria-label, SSR-safe stores. See WORKSPACE_PORTING_PLAN.md §11.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { UserContext } from '../../context/UserContext';
 import {
     RefreshCw, ChevronLeft, FolderOpen, Folder, MessageSquare, FileText,
     Plus, Pencil, Trash2, Check, X, CheckCircle2, RotateCcw, ExternalLink,
@@ -128,6 +129,7 @@ export default function Workspace() {
     const renameEntry = useWorkspaceStore((s) => s.renameEntry);
     const removeEntry = useWorkspaceStore((s) => s.removeEntry);
     const setThreadStatus = useWorkspaceStore((s) => s.setThreadStatus);
+    const hydrate = useWorkspaceStore((s) => s.hydrate);
 
     const {
         sortDomaine, setSortDomaine,
@@ -142,6 +144,12 @@ export default function Workspace() {
     const [renamingPath, setRenamingPath] = useState<string | null>(null);
     const [renameName, setRenameName] = useState('');
     const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
+
+    // Hydrate the last-known structure from localStorage BEFORE the backend fetch, so the
+    // File Explorer shows your folders instantly on reload and stays populated offline.
+    const userCtx = useContext(UserContext);
+    const uid = userCtx?.user?.id ?? null;
+    useEffect(() => { hydrate(uid); }, [hydrate, uid]);
 
     // Fetch the domaines list once on mount (effect-time = SSR-safe). If the backend route
     // is unreachable (no backend / 404), fall back to the local sample workspace so the

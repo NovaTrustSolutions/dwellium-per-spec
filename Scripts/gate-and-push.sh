@@ -30,7 +30,30 @@ echo ""
 echo "✅ FULL GATE GREEN — committing + pushing"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git add -A
-git commit -m "feat: AI launcher + Open Notebook/Paperclip/LangFlow/CrewAI tabs + grid lock + Gmail/Cal paths
+git commit -m "feat: transcription loop fix + AI System Health + user guide + install wizard
+
+Transcription loop fix. TranscriptionHub's meeting-manager poller depended on elapsed + segments,
+so during recording it tore down/recreated its setInterval every tick (and retried a dead backend
+forever). Now decoupled via a ref + gated on backendOffline + state==='recording'. USER_GUIDE.md
+added — every widget, the shell, settings, AI launcher, System Health, and integrations.
+
+System Health. Pre-launch readiness check for every AI widget: a 'System Health' sidebar widget
+(registry id system-health) + an auto readiness banner at login that opens it. Probes the backend
+(/health), the per-user LLM key (hasActiveLlm), and external services (LangFlow/Paperclip/Open
+Notebook reachability); shows each widget as ready / limited / not-connected with a Connect button
+that opens the right Settings. Transcription no longer fails silently — it surfaces a backend-offline
+banner. lib/systemHealth.ts (pure + unit-tested) + hooks/useSystemHealth.ts + components/SystemHealth/*
++ widgetRegistry + AdminShell mount + TranscriptionHub backend-offline surfacing.
+
+Install wizard. New installer/ — an Electron click-through installer for a new Mac: a stepper
+(Prerequisites → Get the code → Dependencies → Build → Services → Integrations → Finish) where
+each section auto-installs on Continue with a live log + progress, reusing install.sh's commands.
+main.js runs each section via bash (paths passed via env so spaces are safe). Run: cd installer
+&& npm install && npm start; package: npm run dist → a double-click .dmg. Verified: JS parses +
+every embedded step passes bash -n.
+
+uv fix. LangFlow/CrewAI setup commands switched from 'uv pip install' (needs a venv) to
+'uv tool install' (no venv) — fixes the 'No virtual environment found' error.
 
 LangFlow + CrewAI. Two more Terminal tabs. LangFlow embeds the running LangFlow visual builder
 (default :7860) — reachability, persisted URL, new-window fallback, and a setup guide that also

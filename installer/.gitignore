@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Generated/bundled at build time from the local backend checkout (not committed):
+resources/*.tar.gz

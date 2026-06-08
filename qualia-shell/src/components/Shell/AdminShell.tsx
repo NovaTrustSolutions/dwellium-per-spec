@@ -28,6 +28,7 @@ import Sidebar from '../Sidebar/Sidebar';
 import Desktop from './Desktop';
 import CommandPalette from '../CommandPalette/CommandPalette';
 import AssistantLauncher from '../AssistantLauncher/AssistantLauncher';
+import SystemHealthBanner from '../SystemHealth/SystemHealthBanner';
 import type { DockBackMessage } from '../PopupShell/PopupShell';
 
 function ShellLayout() {
@@ -148,6 +149,7 @@ function ShellLayout() {
             <Desktop />
             <CommandPalette />
             <AssistantLauncher />
+            <SystemHealthBanner />
         </div>
     );
 }

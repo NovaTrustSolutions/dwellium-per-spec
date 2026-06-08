@@ -17,7 +17,7 @@ const DEFAULT_URL = 'https://app.crewai.com';
 type Reach = 'checking' | 'up' | 'down';
 
 const STEPS: { label: string; cmd: string; tag: string }[] = [
-    { label: '1 · Install (uv)', cmd: "uv pip install 'crewai[tools]'", tag: 'i' },
+    { label: '1 · Install the CLI (uv tool — no venv needed)', cmd: "uv tool install 'crewai[tools]'", tag: 'i' },
     { label: '2 · Scaffold a crew', cmd: 'crewai create crew my_crew', tag: 's' },
     { label: '3 · Add API keys', cmd: '# edit my_crew/.env → OPENAI_API_KEY=sk-...  (+ SERPER_API_KEY for web tools)', tag: 'e' },
     { label: '4 · Run it', cmd: 'cd my_crew && crewai run', tag: 'r' },

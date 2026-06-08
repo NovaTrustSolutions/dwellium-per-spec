@@ -19,7 +19,7 @@ import './LangFlowPanel.css';
 const LS_URL = 'dwellium-langflow-url';
 const DEFAULT_URL = 'http://localhost:7860';
 
-const FORK_INSTALL = 'pip install "git+https://github.com/NovaTrustSolutions/langchain.git#subdirectory=libs/langchain"';
+const FORK_INSTALL = 'uv tool install langflow --with "git+https://github.com/NovaTrustSolutions/langchain.git#subdirectory=libs/langchain"';
 
 type Reach = 'checking' | 'up' | 'down';
 
@@ -107,11 +107,11 @@ export default function LangFlowPanel() {
                         <em> under</em> LangFlow (and from the Terminal tab). Requires Python 3.10–3.13.
                     </p>
 
-                    <div className="lf-snippet-head"><span>1 · Run LangFlow (uv, recommended)</span>
-                        <button className="lf-btn lf-btn--primary" onClick={() => copy('uv pip install langflow -U\nuv run langflow run', 'uv')}>{copied === 'uv' ? 'Copied ✓' : 'Copy'}</button>
+                    <div className="lf-snippet-head"><span>1 · Run LangFlow (uv tool — no venv needed)</span>
+                        <button className="lf-btn lf-btn--primary" onClick={() => copy('uv tool install langflow\nlangflow run', 'uv')}>{copied === 'uv' ? 'Copied ✓' : 'Copy'}</button>
                     </div>
-                    <pre className="lf-snippet">{`uv pip install langflow -U
-uv run langflow run     # serves at http://localhost:7860`}</pre>
+                    <pre className="lf-snippet">{`uv tool install langflow
+langflow run            # serves at http://localhost:7860`}</pre>
 
                     <div className="lf-snippet-head"><span>or · Docker</span>
                         <button className="lf-btn lf-btn--primary" onClick={() => copy('docker run -p 7860:7860 langflowai/langflow:latest', 'd')}>{copied === 'd' ? 'Copied ✓' : 'Copy'}</button>
@@ -124,9 +124,9 @@ uv run langflow run     # serves at http://localhost:7860`}</pre>
                     <pre className="lf-snippet">{FORK_INSTALL}</pre>
 
                     <p className="lf-setup-note">
-                        Install the fork into the <em>same</em> environment LangFlow runs in so its flows run on your
-                        LangChain. Then hit <strong>Reload</strong>. If the frame stays blank even when reachable, the
-                        instance blocks embedding — use <strong>Open ↗</strong> for the full app (same data).
+                        The <code>--with</code> flag installs LangFlow + your LangChain fork in one env, so its flows run
+                        on your LangChain. Then hit <strong>Reload</strong>. If the frame stays blank even when reachable,
+                        the instance blocks embedding — use <strong>Open ↗</strong> for the full app (same data).
                     </p>
                 </div>
             )}

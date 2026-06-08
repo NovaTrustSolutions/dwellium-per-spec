@@ -135,6 +135,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 520,
         category: 'ai',
     },
+    // Pre-launch AI readiness check
+    'system-health': {
+        id: 'system-health',
+        label: 'System Health',
+        icon: 'layout-grid',
+        component: lazyWithReload(() => import('../components/SystemHealth/SystemHealth')),
+        minWidth: 480,
+        minHeight: 560,
+        category: 'ai',
+    },
     // System-wide content search (spec §2.5)
     'content-search': {
         id: 'content-search',

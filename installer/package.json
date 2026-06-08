@@ -1,0 +1,28 @@
+{
+  "name": "dwellium-installer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dwellium installation wizard — click-through installer for a new Mac.",
+  "main": "main.js",
+  "scripts": {
+    "start": "bash scripts/make-backend-tarball.sh; electron .",
+    "dist": "bash scripts/make-backend-tarball.sh; electron-builder --mac --x64 --arm64"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.dwellium.installer",
+    "productName": "Dwellium Installer",
+    "files": ["main.js", "preload.js", "renderer/**/*"],
+    "extraResources": ["resources/*.tar.gz"],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg"]
+    },
+    "dmg": {
+      "title": "Install Dwellium"
+    }
+  }
+}

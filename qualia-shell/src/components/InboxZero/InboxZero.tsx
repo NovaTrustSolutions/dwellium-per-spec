@@ -50,13 +50,13 @@ const SECURITY_API_BASE = SECURITY_API;
 
 
 const THEME_PALETTES: { id: Theme; name: string; mood: string; colors: string[] }[] = [
-    { id: 'dark', name: 'Dwellium Dark', mood: 'Default dark interface', colors: ['#0d0f12', '#16191f', '#0088cc', '#e8eaed'] },
-    { id: 'light', name: 'Dwellium Light', mood: 'Default light interface', colors: ['#e8ecf1', '#ffffff', '#0088cc', '#1a1d24'] },
+    { id: 'dark', name: 'Dwellium Dark', mood: 'Default dark interface', colors: ['#0d0f12', '#16191f', 'var(--accent)', '#e8eaed'] },
+    { id: 'light', name: 'Dwellium Light', mood: 'Default light interface', colors: ['#e8ecf1', '#ffffff', 'var(--accent)', '#1a1d24'] },
     { id: 'trust', name: 'Trust & Professional', mood: 'Reliable, secure, established', colors: ['#0F172A', '#0369A1', '#F8FAFC', '#3B82F6'] },
-    { id: 'vibrant', name: 'Vibrant & Modern', mood: 'Innovative, energetic', colors: ['#6366F1', '#10B981', '#FFFFFF', '#F59E0B'] },
+    { id: 'vibrant', name: 'Vibrant & Modern', mood: 'Innovative, energetic', colors: ['#6366F1', '#22c55e', '#FFFFFF', '#f59e0b'] },
     { id: 'luxury', name: 'Luxury & Premium', mood: 'Sophisticated, exclusive', colors: ['#1C1917', '#CA8A04', '#FAFAF9', '#78716C'] },
     { id: 'healthcare', name: 'Healthcare', mood: 'Calm, trustworthy, clean', colors: ['#0891B2', '#059669', '#FFFFFF', '#06B6D4'] },
-    { id: 'creative', name: 'Creative & Playful', mood: 'Fun, approachable', colors: ['#EC4899', '#8B5CF6', '#FEF3C7', '#F59E0B'] },
+    { id: 'creative', name: 'Creative & Playful', mood: 'Fun, approachable', colors: ['#EC4899', '#8B5CF6', '#FEF3C7', '#f59e0b'] },
     { id: 'dark-excellence', name: 'Dark Excellence', mood: 'True black, 15:1 contrast', colors: ['#0A0A0A', '#1A1A1A', '#3B82F6', '#FFFFFF'] },
 ];
 
@@ -104,7 +104,7 @@ export default function InboxZero() {
             .replace(/>/g, '&gt;');
         // Style email quote lines (lines starting with >)
         escaped = escaped.replace(/^&gt;(.*)$/gm,
-            '<span style="color:#6b7280;border-left:3px solid #d1d5db;padding-left:10px;display:inline-block;margin:2px 0">&gt;$1</span>');
+            '<span style="color:var(--text-tertiary);border-left:3px solid var(--border-default);padding-left:10px;display:inline-block;margin:2px 0">&gt;$1</span>');
         // Convert newlines to <br>
         escaped = escaped.replace(/\r?\n/g, '<br>');
         return escaped;
@@ -623,7 +623,7 @@ export default function InboxZero() {
                                 }}
                                 style={{
                                     padding: '6px 16px', background: '#e11d48',
-                                    color: '#ffffff', border: '1px solid #be123c',
+                                    color: 'var(--text-primary)', border: '1px solid #be123c',
                                     borderRadius: '6px', fontSize: '13px', cursor: 'pointer',
                                     fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px',
                                     boxShadow: '0 4px 12px rgba(225, 29, 72, 0.3)'
@@ -763,7 +763,7 @@ export default function InboxZero() {
                             display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0',
                             borderTop: '1px solid rgba(255,255,255,0.04)', marginTop: 4,
                         }}>
-                            <span style={{ fontSize: 10, color: '#64748b', marginRight: 4 }}>Sort:</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginRight: 4 }}>Sort:</span>
                             {[
                                 { id: 'date' as const, label: '📅 Date' },
                                 { id: 'urgency' as const, label: '🔴 Urgency' },
@@ -784,9 +784,9 @@ export default function InboxZero() {
                                     style={{
                                         padding: '2px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer',
                                         fontFamily: 'inherit', fontWeight: sortField === s.id ? 600 : 400,
-                                        background: sortField === s.id ? 'rgba(214,254,81,0.15)' : 'transparent',
+                                        background: sortField === s.id ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                                         color: sortField === s.id ? '#D6FE51' : '#64748b',
-                                        border: sortField === s.id ? '1px solid rgba(214,254,81,0.3)' : '1px solid transparent',
+                                        border: sortField === s.id ? '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' : '1px solid transparent',
                                         transition: 'all 0.12s ease',
                                     }}
                                 >
@@ -855,7 +855,7 @@ export default function InboxZero() {
                                             placeholder="Enter label name…"
                                             value={bulkLabelInput}
                                             onChange={e => setBulkLabelInput(e.target.value)}
-                                            style={{ width: '100%', padding: '6px 10px', borderRadius: 4, border: '1px solid #475569', background: '#0f172a', color: '#e2e8f0', fontSize: 12, marginBottom: 6, boxSizing: 'border-box' }}
+                                            style={{ width: '100%', padding: '6px 10px', borderRadius: 4, border: '1px solid var(--border-strong)', background: '#0f172a', color: 'var(--text-primary)', fontSize: 12, marginBottom: 6, boxSizing: 'border-box' }}
                                             onKeyDown={async e => {
                                                 if (e.key === 'Enter' && bulkLabelInput.trim()) {
                                                     const ids = Array.from(selectedIds);
@@ -870,14 +870,14 @@ export default function InboxZero() {
                                                 }
                                             }}
                                         />
-                                        <div style={{ fontSize: 10, color: '#64748b' }}>Press Enter to apply label to {selectedIds.size} items</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Press Enter to apply label to {selectedIds.size} items</div>
                                     </div>
                                 )}
                             </div>
                             {/* Batch Route */}
                             <button
                                 className="iz-batch__btn"
-                                style={{ background: 'rgba(214,254,81,0.15)', color: '#D6FE51', border: '1px solid rgba(214,254,81,0.3)' }}
+                                style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}
                                 onClick={() => {
                                     const ids = Array.from(selectedIds).join(', ');
                                     navigator.clipboard?.writeText(ids).catch(() => {});
@@ -898,19 +898,19 @@ export default function InboxZero() {
                             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
                             borderRadius: 10, padding: '12px 16px',
                         }}>
-                            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Needs Reply</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Needs Reply</div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontSize: 24, fontWeight: 700, color: '#e2e8f0' }}>
+                                <span style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>
                                     {pendingItems.filter(i => i.urgency === 'high').length}
                                 </span>
-                                <span style={{ fontSize: 16, color: '#64748b' }}>✉️</span>
+                                <span style={{ fontSize: 16, color: 'var(--text-tertiary)' }}>✉️</span>
                             </div>
                         </div>
                         <div style={{
                             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
                             borderRadius: 10, padding: '12px 16px',
                         }}>
-                            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Filtered Pitch</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Filtered Pitch</div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: 24, fontWeight: 700, color: '#22c55e' }}>
                                     {pendingItems.filter(i => i.signalClass === 'noise').length}
@@ -922,7 +922,7 @@ export default function InboxZero() {
                             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
                             borderRadius: 10, padding: '12px 16px',
                         }}>
-                            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>AI Triage Status</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>AI Triage Status</div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: 14, fontWeight: 700, color: '#22c55e' }}>⊙ Active</span>
                                 <span style={{ fontSize: 16, color: '#22c55e' }}>✓</span>
@@ -964,9 +964,9 @@ export default function InboxZero() {
                                 display: 'flex', alignItems: 'center', gap: 8,
                                 padding: '8px 4px 10px', marginBottom: 4,
                             }}>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>Primary</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Primary</span>
                                 <span style={{
-                                    fontSize: 11, fontWeight: 700, color: '#D6FE51',
+                                    fontSize: 11, fontWeight: 700, color: 'var(--accent)',
                                     background: 'rgba(129,140,248,0.15)', padding: '1px 8px',
                                     borderRadius: 10,
                                 }}>{pendingItems.length}</span>
@@ -1010,10 +1010,10 @@ export default function InboxZero() {
                                             <div className="iz-card__content">
                                                 {/* Sender line with badges */}
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                                                    <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>
+                                                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
                                                         {item.sender?.split('@')[0]?.split('<')[0]?.replace(/"/g, '').trim() || 'Unknown'}
                                                     </span>
-                                                    <span style={{ fontSize: 11, color: '#64748b' }}>
+                                                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                                                         {item.sender?.match(/<(.+?)>/)?.[1] || item.sender?.match(/\S+@\S+/)?.[0] || ''}
                                                     </span>
                                                     {item.urgency === 'high' && (
@@ -1032,13 +1032,13 @@ export default function InboxZero() {
                                                     )}
                                                 </div>
                                                 {/* Subject */}
-                                                <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>
+                                                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
                                                     {item.subject}
                                                 </div>
                                                 {/* Snippet */}
                                                 <p className="iz-card__snippet">{item.summary || item.snippet}</p>
                                                 {/* Time */}
-                                                <span style={{ fontSize: 11, color: '#4b5563' }}>{formatTime(item.createdAt)}</span>
+                                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{formatTime(item.createdAt)}</span>
                                                 {item.routedToProject && (
                                                     <div className="iz-card__route">
                                                         ➜ {PROJECT_NAMES[item.routedToProject] || item.routedToProject}
@@ -1057,13 +1057,13 @@ export default function InboxZero() {
                                             minWidth: 120, alignItems: 'flex-start', justifyContent: 'center',
                                         }}>
                                             <button
-                                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
+                                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
                                                 onClick={e => { e.stopPropagation(); handleArchive(item.id); }}
                                             >
                                                 <span style={{ fontSize: 13 }}>📋</span> Archive
                                             </button>
                                             <button
-                                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
+                                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
                                                 onClick={e => { e.stopPropagation(); handleMarkRead(item.id); }}
                                             >
                                                 <span style={{ fontSize: 13 }}>{item.isRead ? '✉️' : '☑️'}</span> {item.isRead ? 'Mark Unread' : 'Mark Read'}
@@ -1104,10 +1104,10 @@ export default function InboxZero() {
                                         <div style={{
                                             marginTop: 8, borderRadius: 8,
                                             overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)',
-                                            background: '#ffffff', minHeight: 120, maxHeight: 400,
+                                            background: 'var(--bg-surface)', minHeight: 120, maxHeight: 400,
                                         }}>
                                             <iframe
-                                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:20px 24px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.7;color:#1e293b;background:#fff;word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0}a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{padding:8px 12px;border:1px solid #e2e8f0;text-align:left;font-size:13px}th{background:#f8fafc;font-weight:600}blockquote{margin:12px 0;padding:12px 20px;border-left:4px solid #6366f1;background:#f8fafc;color:#475569;border-radius:0 6px 6px 0}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:#f1f5f9;border-radius:4px;padding:2px 6px}pre{padding:14px 18px;overflow-x:auto}hr{border:none;border-top:1px solid #e2e8f0;margin:16px 0}h1,h2,h3{color:#0f172a;margin:16px 0 8px}ul,ol{padding-left:24px}li{margin:4px 0}p{margin:8px 0}.email-footer,.unsubscribe{font-size:11px;color:#94a3b8;margin-top:24px;padding-top:16px;border-top:1px solid #f1f5f9}</style></head><body>${formatEmailBody(item.body)}</body></html>`}
+                                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:20px 24px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.7;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:4px;display:block;margin:8px 0}a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:12px 0}td,th{padding:8px 12px;border:1px solid var(--border-default);text-align:left;font-size:13px}th{background:#f8fafc;font-weight:600}blockquote{margin:12px 0;padding:12px 20px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 6px 6px 0}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:14px 18px;overflow-x:auto}hr{border:none;border-top:1px solid var(--border-default);margin:16px 0}h1,h2,h3{color:#0f172a;margin:16px 0 8px}ul,ol{padding-left:24px}li{margin:4px 0}p{margin:8px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:24px;padding-top:16px;border-top:1px solid var(--border-default)}</style></head><body>${formatEmailBody(item.body)}</body></html>`}
                                                 style={{ width: '100%', height: '100%', minHeight: 120, border: 'none', display: 'block' }}
                                                 title="email-body-inline"
                                                 sandbox="allow-same-origin"
@@ -1219,7 +1219,7 @@ export default function InboxZero() {
                                                 {/* Link to Strata (Phase 0.1.4) */}
                                                 <button
                                                     className="iz-action iz-action--link"
-                                                    style={{ background: 'rgba(214,254,81,0.12)', color: '#D6FE51' }}
+                                                    style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}
                                                     onClick={() => {
                                                         setLinkModalFor(linkModalFor === item.id ? null : item.id);
                                                         setLinkForm({ linkType: 'workitem', targetId: '', targetName: '' });
@@ -1233,9 +1233,9 @@ export default function InboxZero() {
                                             {linkModalFor === item.id && (
                                                 <div style={{
                                                     marginTop: 10, padding: 16, borderRadius: 10,
-                                                    background: 'rgba(214,254,81,0.06)', border: '1px solid rgba(214,254,81,0.2)',
+                                                    background: 'color-mix(in srgb, var(--accent) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                                                 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#D6FE51', marginBottom: 10 }}>🔗 Link to Strata</div>
+                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', marginBottom: 10 }}>🔗 Link to Strata</div>
 
                                                     {/* Row 1: Category selector */}
                                                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -1255,9 +1255,9 @@ export default function InboxZero() {
                                                                 style={{
                                                                     padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
                                                                     cursor: 'pointer', fontFamily: 'inherit',
-                                                                    background: linkForm.linkType === opt.value ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                                                    background: linkForm.linkType === opt.value ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(255,255,255,0.04)',
                                                                     color: linkForm.linkType === opt.value ? '#D6FE51' : '#94a3b8',
-                                                                    border: linkForm.linkType === opt.value ? '1px solid rgba(214,254,81,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                                                                    border: linkForm.linkType === opt.value ? '1px solid color-mix(in srgb, var(--accent) 40%, transparent)' : '1px solid rgba(255,255,255,0.08)',
                                                                 }}
                                                                 onClick={() => setLinkForm(f => ({ ...f, linkType: opt.value }))}
                                                             >
@@ -1299,7 +1299,7 @@ export default function InboxZero() {
                                                         <button
                                                             style={{
                                                                 padding: '6px 16px', borderRadius: 6,
-                                                                background: '#D6FE51', color: '#fff', border: 'none',
+                                                                background: 'var(--accent)', color: 'var(--text-primary)', border: 'none',
                                                                 cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
                                                             }}
                                                             onClick={async () => {
@@ -1327,11 +1327,11 @@ export default function InboxZero() {
                                                             🔗 Link
                                                         </button>
                                                         <button
-                                                            style={{ padding: '6px 12px', borderRadius: 6, background: 'transparent', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', fontSize: '0.82rem' }}
+                                                            style={{ padding: '6px 12px', borderRadius: 6, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', fontSize: '0.82rem' }}
                                                             onClick={() => setLinkModalFor(null)}
                                                         >Cancel</button>
-                                                        <span style={{ fontSize: 10, color: '#4b5563', flex: 1, textAlign: 'right' }}>
-                                                            Linking as: <strong style={{ color: '#D6FE51' }}>{linkForm.linkType}</strong>
+                                                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flex: 1, textAlign: 'right' }}>
+                                                            Linking as: <strong style={{ color: 'var(--accent)' }}>{linkForm.linkType}</strong>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -1381,7 +1381,7 @@ export default function InboxZero() {
                                                     <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px' }}>🔗 LINKED ITEMS</p>
                                                     {linksCache[item.id].map((link: any, idx: number) => (
                                                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '3px 0' }}>
-                                                            <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'rgba(214,254,81,0.15)', color: '#D6FE51' }}>
+                                                            <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
                                                                 {link.link_type || link.type || 'related'}
                                                             </span>
                                                             <span style={{ fontSize: '11px', opacity: 0.7, flex: 1 }}>
@@ -1403,7 +1403,7 @@ export default function InboxZero() {
                         <div style={{ textAlign: 'center', padding: '16px 0' }}>
                             <button
                                 className="iz-action"
-                                style={{ padding: '8px 24px', fontSize: '13px', background: 'rgba(214,254,81,0.12)', color: '#D6FE51', border: '1px solid rgba(214,254,81,0.3)', borderRadius: '8px', cursor: 'pointer' }}
+                                style={{ padding: '8px 24px', fontSize: '13px', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderRadius: '8px', cursor: 'pointer' }}
                                 onClick={() => { setCurrentOffset(prev => prev + ITEMS_PER_PAGE); invalidateInbox(); }}
                             >
                                 Load More
@@ -1452,7 +1452,7 @@ export default function InboxZero() {
                                             </span>
                                         )}
                                         {viewerEmail.routedToProject && (
-                                            <span className="iz-viewer__badge" style={{ background: 'rgba(214,254,81,0.12)', color: '#D6FE51', border: '1px solid rgba(214,254,81,0.3)' }}>
+                                            <span className="iz-viewer__badge" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
                                                 ➜ {PROJECT_NAMES[viewerEmail.routedToProject] || viewerEmail.routedToProject}
                                                 {viewerEmail.routingConfidence ? ` (${Math.round(viewerEmail.routingConfidence * 100)}%)` : ''}
                                             </span>
@@ -1509,9 +1509,9 @@ export default function InboxZero() {
                                     )}
 
                                     {/* Email Body — auto-resizing iframe */}
-                                    <div className="iz-viewer__body" style={{ background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
+                                    <div className="iz-viewer__body" style={{ background: 'var(--bg-surface)', borderRadius: 8, overflow: 'hidden' }}>
                                         <iframe
-                                            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:28px 32px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.75;color:#1e293b;background:#fff;word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:6px;display:block;margin:12px 0}a{color:#2563eb;text-decoration:none;font-weight:500}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px 14px;border:1px solid #e2e8f0;text-align:left;font-size:14px}th{background:#f8fafc;font-weight:600;color:#334155}blockquote{margin:16px 0;padding:14px 24px;border-left:4px solid #6366f1;background:#f8fafc;color:#475569;border-radius:0 8px 8px 0;font-style:italic}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:#f1f5f9;border-radius:4px;padding:2px 6px}pre{padding:16px 20px;overflow-x:auto;border:1px solid #e2e8f0}hr{border:none;border-top:1px solid #e2e8f0;margin:20px 0}h1{font-size:22px;color:#0f172a;margin:20px 0 10px}h2{font-size:18px;color:#0f172a;margin:18px 0 8px}h3{font-size:16px;color:#1e293b;margin:14px 0 6px}ul,ol{padding-left:28px}li{margin:6px 0}p{margin:10px 0}.email-footer,.unsubscribe{font-size:11px;color:#94a3b8;margin-top:28px;padding-top:18px;border-top:1px solid #f1f5f9}</style></head><body>${formatEmailBody(viewerEmail.body || '') || `<div style="padding:40px;text-align:center;color:#94a3b8;font-style:italic"><p style="font-size:16px">📧</p><p>${viewerEmail.snippet || 'No email body available.'}</p></div>`}</body></html>`}
+                                            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:28px 32px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.75;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:6px;display:block;margin:12px 0}a{color:#2563eb;text-decoration:none;font-weight:500}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px 14px;border:1px solid var(--border-default);text-align:left;font-size:14px}th{background:#f8fafc;font-weight:600;color:#334155}blockquote{margin:16px 0;padding:14px 24px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 8px 8px 0;font-style:italic}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:16px 20px;overflow-x:auto;border:1px solid var(--border-default)}hr{border:none;border-top:1px solid var(--border-default);margin:20px 0}h1{font-size:22px;color:#0f172a;margin:20px 0 10px}h2{font-size:18px;color:#0f172a;margin:18px 0 8px}h3{font-size:16px;color:#1e293b;margin:14px 0 6px}ul,ol{padding-left:28px}li{margin:6px 0}p{margin:10px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:28px;padding-top:18px;border-top:1px solid var(--border-default)}</style></head><body>${formatEmailBody(viewerEmail.body || '') || `<div style="padding:40px;text-align:center;color:var(--text-secondary);font-style:italic"><p style="font-size:16px">📧</p><p>${viewerEmail.snippet || 'No email body available.'}</p></div>`}</body></html>`}
                                             style={{ width: '100%', border: 'none', display: 'block', minHeight: 200 }}
                                             title="email-viewer-body"
                                             sandbox="allow-same-origin allow-popups"
@@ -1721,7 +1721,7 @@ export default function InboxZero() {
                                             }}>
                                                 <span style={{ fontSize: '20px' }}>{legalShieldHealth.healthy ? '✅' : '⚠️'}</span>
                                                 <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 600, color: legalShieldHealth.healthy ? '#34d399' : '#ef4444' }}>
+                                                    <div style={{ fontWeight: 600, color: legalShieldHealth.healthy ? '#22c55e' : '#ef4444' }}>
                                                         {legalShieldHealth.healthy ? 'HEALTHY' : 'DEGRADED'}
                                                     </div>
                                                     <div style={{ fontSize: '12px', opacity: 0.7 }}>

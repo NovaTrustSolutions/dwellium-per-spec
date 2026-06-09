@@ -43,7 +43,7 @@ export function SearchPanel({ files }: { files: Array<{ filepath: string }> }) {
                 style={{
                     width: '100%', boxSizing: 'border-box', padding: '6px 10px',
                     background: '#1a1a1a', border: '1px solid #333', borderRadius: 6,
-                    color: '#eee', fontSize: 12, fontFamily: 'inherit',
+                    color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit',
                 }}
             />
             {query.trim() && (
@@ -62,7 +62,7 @@ export function SearchPanel({ files }: { files: Array<{ filepath: string }> }) {
                             onMouseEnter={(e) => { e.currentTarget.style.background = '#1e1e1e'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                         >
-                            <span style={{ display: 'block', color: '#D6FE51', fontSize: 11 }}>{(m.filepath.split('/').pop() ?? m.filepath)}:{m.line}</span>
+                            <span style={{ display: 'block', color: 'var(--accent)', fontSize: 11 }}>{(m.filepath.split('/').pop() ?? m.filepath)}:{m.line}</span>
                             <span style={{ display: 'block', color: '#bbb', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.lineText}</span>
                         </button>
                     ))}

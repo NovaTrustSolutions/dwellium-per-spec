@@ -406,7 +406,7 @@ export default function RulesManager() {
                             disabled={promptLoading || !promptText.trim()}
                             style={{
                                 padding: '0.5rem 0.8rem', borderRadius: '6px', border: 'none',
-                                background: 'var(--accent)', color: '#fff', cursor: 'pointer',
+                                background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer',
                                 fontSize: '0.8rem', fontWeight: 600, opacity: promptLoading ? 0.5 : 1,
                             }}
                         >
@@ -543,7 +543,7 @@ export default function RulesManager() {
 
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                         <button onClick={editingRule ? handleUpdateRule : handleCreateRule}
-                            style={{ padding: '0.6rem 1.5rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                            style={{ padding: '0.6rem 1.5rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
                             {editingRule ? '💾 Save Changes' : '➕ Create Rule'}
                         </button>
                         <button onClick={() => { resetForm(); setView('list'); }}
@@ -610,7 +610,7 @@ export default function RulesManager() {
                         <textarea value={knowledgeContent} onChange={e => setKnowledgeContent(e.target.value)} placeholder="Content that helps AI route emails better..."
                             style={{ width: '100%', minHeight: '4rem', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--input-bg, var(--surface-bg))', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.85rem' }} />
                         <button onClick={handleAddKnowledge} disabled={!knowledgeTitle || !knowledgeContent}
-                            style={{ marginTop: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, opacity: (!knowledgeTitle || !knowledgeContent) ? 0.5 : 1 }}>
+                            style={{ marginTop: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600, opacity: (!knowledgeTitle || !knowledgeContent) ? 0.5 : 1 }}>
                             ➕ Add Entry
                         </button>
                     </div>
@@ -668,7 +668,7 @@ export default function RulesManager() {
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     {p.name === activeProvider && (
-                                        <span style={{ fontSize: '0.7rem', background: 'var(--accent)', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>ACTIVE</span>
+                                        <span style={{ fontSize: '0.7rem', background: 'var(--accent)', color: 'var(--text-primary)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>ACTIVE</span>
                                     )}
                                     <span style={{ fontSize: '0.75rem', color: p.configured ? 'var(--text-secondary)' : 'rgba(239,68,68,0.8)' }}>
                                         {p.configured ? 'Configured' : 'Not configured'}

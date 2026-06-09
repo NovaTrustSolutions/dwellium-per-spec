@@ -7,7 +7,7 @@
     flex-direction: column;
     height: 100%;
     background: linear-gradient(135deg, #0f1117 0%, #1a1d28 100%);
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     overflow: hidden;
 }
@@ -37,14 +37,14 @@
 .huai-header__title {
     font-size: 1.05rem;
     font-weight: 700;
-    color: #f8fafc;
+    color: var(--text-primary);
     margin: 0;
     letter-spacing: -0.01em;
 }
 
 .huai-header__subtitle {
     font-size: 0.72rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
     margin: 0;
 }
 
@@ -65,7 +65,7 @@
     padding: 10px 14px;
     border: none;
     background: none;
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 0.78rem;
     font-weight: 500;
     cursor: pointer;
@@ -74,13 +74,13 @@
 }
 
 .huai-tab:hover {
-    color: #e2e8f0;
+    color: var(--text-primary);
     background: rgba(255, 255, 255, 0.03);
 }
 
 .huai-tab--active {
-    color: #f59e0b;
-    border-bottom-color: #f59e0b;
+    color: var(--warning);
+    border-bottom-color: var(--warning);
 }
 
 .huai-tab__icon {
@@ -117,14 +117,14 @@
     justify-content: center;
     gap: 12px;
     padding: 40px;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .huai-loading__spinner {
     width: 32px;
     height: 32px;
     border: 3px solid rgba(245, 158, 11, 0.15);
-    border-top-color: #f59e0b;
+    border-top-color: var(--warning);
     border-radius: 50%;
     animation: huai-spin 0.8s linear infinite;
 }
@@ -151,7 +151,7 @@
 }
 
 .huai-empty-text {
-    color: #64748b;
+    color: var(--text-tertiary);
     font-size: 0.8rem;
 }
 
@@ -160,7 +160,7 @@
 .huai-section-title {
     font-size: 0.82rem;
     font-weight: 600;
-    color: #f8fafc;
+    color: var(--text-primary);
     margin: 0 0 12px;
 }
 
@@ -241,7 +241,7 @@
 
 .huai-kpi__label {
     font-size: 0.68rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
     margin-top: 2px;
 }
 
@@ -250,11 +250,11 @@
 }
 
 .huai-kpi--critical .huai-kpi__value {
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .huai-kpi--warning .huai-kpi__value {
-    color: #f59e0b;
+    color: var(--warning);
 }
 
 .huai-kpi--overdue .huai-kpi__value {
@@ -296,12 +296,12 @@
 .huai-category-card__count {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #f8fafc;
+    color: var(--text-primary);
 }
 
 .huai-category-card__label {
     font-size: 0.65rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 /* ──── TIMELINE ITEMS ──── */
@@ -363,12 +363,12 @@
     display: flex;
     justify-content: space-between;
     font-size: 0.65rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     margin-top: 4px;
 }
 
 .huai-timeline-item__replace {
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 /* ──── ALERTS ──── */
@@ -379,7 +379,7 @@
 
 .huai-alerts__count {
     font-size: 0.78rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-weight: 500;
 }
 
@@ -420,12 +420,12 @@
     font-size: 0.82rem;
     font-weight: 600;
     margin: 0;
-    color: #f8fafc;
+    color: var(--text-primary);
 }
 
 .huai-alert-card__category {
     font-size: 0.68rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .huai-alert-card__severity {
@@ -436,14 +436,14 @@
 
 .huai-alert-card__message {
     font-size: 0.75rem;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     margin: 4px 0;
     line-height: 1.4;
 }
 
 .huai-alert-card__due {
     font-size: 0.68rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
     display: block;
     margin-bottom: 8px;
 }
@@ -465,7 +465,7 @@
 
 .huai-systems__count {
     font-size: 0.78rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .huai-system-group {
@@ -475,7 +475,7 @@
 .huai-system-group__title {
     font-size: 0.78rem;
     font-weight: 600;
-    color: #f8fafc;
+    color: var(--text-primary);
     margin: 0 0 8px;
     display: flex;
     align-items: center;
@@ -484,7 +484,7 @@
 
 .huai-system-group__count {
     font-size: 0.65rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     background: rgba(255, 255, 255, 0.05);
     padding: 1px 7px;
     border-radius: 10px;
@@ -532,7 +532,7 @@
 
 .huai-system-card__meta {
     font-size: 0.68rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     display: block;
     margin-bottom: 6px;
 }
@@ -570,7 +570,7 @@
     flex-wrap: wrap;
     gap: 8px;
     font-size: 0.65rem;
-    color: #64748b;
+    color: var(--text-tertiary);
     margin-top: 4px;
 }
 
@@ -595,7 +595,7 @@
 .huai-label {
     font-size: 0.72rem;
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--text-secondary);
     letter-spacing: 0.03em;
 }
 
@@ -606,7 +606,7 @@
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(0, 0, 0, 0.25);
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-size: 0.78rem;
     font-family: inherit;
     outline: none;
@@ -616,7 +616,7 @@
 .huai-select:focus,
 .huai-input:focus,
 .huai-textarea:focus {
-    border-color: #f59e0b;
+    border-color: var(--warning);
 }
 
 .huai-textarea {
@@ -626,7 +626,7 @@
 
 .huai-file-input {
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .huai-file-input::file-selector-button {
@@ -634,7 +634,7 @@
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.04);
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-size: 0.72rem;
     cursor: pointer;
     margin-right: 10px;
@@ -687,12 +687,12 @@
 .huai-inspect__analysis h4 {
     margin: 0 0 6px;
     font-size: 0.78rem;
-    color: #E8FF7A;
+    color: var(--accent-hover);
 }
 
 .huai-inspect__analysis p {
     margin: 0;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     white-space: pre-wrap;
 }
 
@@ -736,18 +736,18 @@
 
 .huai-inspection-card__date {
     font-size: 0.65rem;
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 .huai-inspection-card__notes {
     font-size: 0.72rem;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     margin: 2px 0;
 }
 
 .huai-inspection-card__ai {
     font-size: 0.68rem;
-    color: #E8FF7A;
+    color: var(--accent-hover);
     margin-top: 4px;
     padding: 6px 8px;
     background: rgba(59, 130, 246, 0.06);
@@ -773,7 +773,7 @@
 }
 
 .huai-btn--primary {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
+    background: linear-gradient(135deg, var(--warning), #d97706);
     color: #0f1117;
 }
 
@@ -784,13 +784,13 @@
 
 .huai-btn--ghost {
     background: rgba(255, 255, 255, 0.04);
-    color: #94a3b8;
+    color: var(--text-secondary);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .huai-btn--ghost:hover {
     background: rgba(255, 255, 255, 0.08);
-    color: #e2e8f0;
+    color: var(--text-primary);
 }
 
 .huai-btn--sm {
@@ -805,7 +805,7 @@
 
 .huai-btn--resolve {
     background: rgba(16, 185, 129, 0.12);
-    color: #10b981;
+    color: var(--success);
 }
 
 .huai-btn--resolve:hover {
@@ -814,7 +814,7 @@
 
 .huai-btn--snooze {
     background: rgba(245, 158, 11, 0.12);
-    color: #f59e0b;
+    color: var(--warning);
 }
 
 .huai-btn--snooze:hover {
@@ -823,18 +823,18 @@
 
 .huai-btn--dismiss {
     background: rgba(239, 68, 68, 0.08);
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .huai-btn--dismiss:hover {
     background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .huai-btn--analyze {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(214, 254, 81, 0.15));
-    color: #D6FE51;
-    border: 1px solid rgba(214, 254, 81, 0.2);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), color-mix(in srgb, var(--accent) 15%, transparent));
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .huai-btn--analyze:hover:not(:disabled) {
@@ -880,20 +880,20 @@
 .huai-modal__header h3 {
     margin: 0;
     font-size: 0.95rem;
-    color: #f8fafc;
+    color: var(--text-primary);
 }
 
 .huai-modal__close {
     background: none;
     border: none;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-size: 1.1rem;
     cursor: pointer;
     padding: 4px;
 }
 
 .huai-modal__close:hover {
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .huai-modal__templates {
@@ -910,7 +910,7 @@
 .huai-template-group summary {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     cursor: pointer;
     padding: 4px 0;
     list-style: none;
@@ -922,7 +922,7 @@
 
 .huai-template-group summary::before {
     content: '▸ ';
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 .huai-template-group[open] summary::before {
@@ -941,7 +941,7 @@
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
-    color: #cbd5e1;
+    color: var(--text-secondary);
     font-size: 0.68rem;
     cursor: pointer;
     transition: all 0.15s;
@@ -953,7 +953,7 @@
 }
 
 .huai-template-chip__years {
-    color: #64748b;
+    color: var(--text-tertiary);
     margin-left: 4px;
 }
 
@@ -1000,7 +1000,7 @@
 .hu-task-card:hover, .upkeep-card:hover, .hu-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
-    border-color: rgba(214, 254, 81, 0.15);
+    border-color: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* [P2] Schedule timeline gradient */
@@ -1014,7 +1014,7 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background: linear-gradient(180deg, var(--accent, #D6FE51), rgba(214, 254, 81, 0.1));
+    background: linear-gradient(180deg, var(--accent, var(--accent)), color-mix(in srgb, var(--accent) 10%, transparent));
     border-radius: 1px;
 }
 
@@ -1024,7 +1024,7 @@
 }
 .hu-category-pill:hover, .upkeep-filter:hover {
     transform: scale(1.06);
-    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.15);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* [P4] Completion checkmark pop */
@@ -1039,7 +1039,7 @@
 
 /* [P5] Due date urgency glow */
 .hu-overdue, .upkeep-overdue {
-    color: #ef4444 !important;
+    color: var(--danger) !important;
     text-shadow: 0 0 6px rgba(239, 68, 68, 0.3);
     animation: huOverdueGlow 2s ease-in-out infinite;
 }

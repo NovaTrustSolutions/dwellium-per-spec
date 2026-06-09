@@ -22,11 +22,11 @@
 }
 
 .fub-trigger:hover:not(:disabled) {
-    border-color: var(--accent, #D6FE51);
-    background: rgba(214, 254, 81, 0.12);
-    color: var(--accent, #D6FE51);
+    border-color: var(--accent, var(--accent));
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent, var(--accent));
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.2);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .fub-trigger--sm {
@@ -36,9 +36,9 @@
 }
 
 .fub-trigger--drag {
-    border-color: var(--accent, #D6FE51);
-    background: rgba(214, 254, 81, 0.15);
-    color: var(--accent, #D6FE51);
+    border-color: var(--accent, var(--accent));
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent, var(--accent));
 }
 
 .fub-trigger--uploading {
@@ -58,8 +58,8 @@
 .fub-spinner {
     width: 14px;
     height: 14px;
-    border: 2px solid rgba(214, 254, 81, 0.3);
-    border-top-color: var(--accent, #D6FE51);
+    border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-top-color: var(--accent, var(--accent));
     border-radius: 50%;
     animation: fub-spin 0.7s linear infinite;
     flex-shrink: 0;
@@ -91,14 +91,14 @@
 .fub-modal {
     width: 420px;
     max-width: calc(100vw - 32px);
-    background: var(--bg-card, #121212);
+    background: var(--bg-card, var(--bg-surface-elevated));
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
     padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 16px;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(214, 254, 81, 0.1);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
     animation: fub-slide-up 0.2s ease;
 }
 
@@ -181,8 +181,8 @@
     transition: all 0.15s;
 }
 .fub-file-change:hover {
-    border-color: var(--accent, #D6FE51);
-    color: var(--accent, #D6FE51);
+    border-color: var(--accent, var(--accent));
+    color: var(--accent, var(--accent));
 }
 
 /* ── Fields ──────────────────────────────────────────── */
@@ -217,7 +217,7 @@
 
 .fub-prompt:focus {
     outline: none;
-    border-color: var(--accent, #D6FE51);
+    border-color: var(--accent, var(--accent));
 }
 
 .fub-prompt::placeholder {
@@ -245,7 +245,7 @@
 .fub-checkbox {
     width: 15px;
     height: 15px;
-    accent-color: var(--accent, #D6FE51);
+    accent-color: var(--accent, var(--accent));
     cursor: pointer;
 }
 
@@ -263,7 +263,7 @@
 }
 .fub-doc-title:focus {
     outline: none;
-    border-color: var(--accent, #D6FE51);
+    border-color: var(--accent, var(--accent));
 }
 .fub-doc-title::placeholder { color: var(--text-muted, #6b7280); }
 
@@ -273,7 +273,7 @@
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
     border-radius: 8px;
-    color: #f87171;
+    color: var(--danger);
     font-size: 13px;
 }
 
@@ -292,7 +292,7 @@
     left: 0;
     top: 0;
     height: 100%;
-    background: linear-gradient(90deg, var(--accent, #D6FE51), #D6FE51);
+    background: linear-gradient(90deg, var(--accent, var(--accent)), var(--accent));
     border-radius: 8px;
     transition: width 0.4s ease;
 }
@@ -334,19 +334,19 @@
 
 .fub-btn-upload {
     padding: 9px 22px;
-    background: linear-gradient(135deg, var(--accent, #D6FE51), #b8d946);
+    background: linear-gradient(135deg, var(--accent, var(--accent)), #b8d946);
     border: none;
     border-radius: 8px;
-    color: #000000;
+    color: var(--text-inverse);
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
     transition: all 0.18s;
-    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .fub-btn-upload:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(214, 254, 81, 0.4);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 .fub-btn-upload:disabled {
     opacity: 0.5;

@@ -11,13 +11,13 @@ import { LogIn, AlertCircle, Shield, Eye, EyeOff } from 'lucide-react';
 import './LoginScreen.css';
 
 const QUICK_USERS = [
-    { email: 'andy@dwellium.com', name: 'Andy', role: 'god', color: '#D6FE51', initials: 'A', pw: 'admin123' },
+    { email: 'andy@dwellium.com', name: 'Andy', role: 'god', color: 'var(--accent)', initials: 'A', pw: 'admin123' },
     { email: 'lisa@zpgroup.io', name: 'Lisa', role: 'corporate', color: '#3b82f6', initials: 'L', pw: 'corp123' },
-    { email: 'wendy@dwellium.com', name: 'Wendy', role: 'management', color: '#10b981', initials: 'W', pw: 'mgmt123' },
+    { email: 'wendy@dwellium.com', name: 'Wendy', role: 'management', color: '#22c55e', initials: 'W', pw: 'mgmt123' },
     { email: 'candace@dwellium.com', name: 'Candace', role: 'management', color: '#f59e0b', initials: 'C', pw: 'mgmt123' },
-    { email: 'grieve@dwellium.com', name: 'Grieve', role: 'advisor', color: '#D6FE51', initials: 'G', pw: 'adv123' },
+    { email: 'grieve@dwellium.com', name: 'Grieve', role: 'advisor', color: 'var(--accent)', initials: 'G', pw: 'adv123' },
     { email: 'baldwin@dwellium.com', name: 'Baldwin', role: 'advisor', color: '#a855f7', initials: 'B', pw: 'adv123' },
-    { email: 'leo@dwellium.com', name: 'Leo', role: 'advisor', color: '#D6FE51', initials: 'Lo', pw: 'adv123' },
+    { email: 'leo@dwellium.com', name: 'Leo', role: 'advisor', color: 'var(--accent)', initials: 'Lo', pw: 'adv123' },
     { email: 'lee@dwellium.com', name: 'Lee', role: 'maintenance', color: '#ef4444', initials: 'Le', pw: 'maint123' },
     { email: 'jose@dwellium.com', name: 'Jose', role: 'maintenance', color: '#f97316', initials: 'J', pw: 'maint123' },
 ];
@@ -143,7 +143,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                             }}>
                                 <form onSubmit={handleGateSubmit} style={{
                                     background: 'linear-gradient(145deg, rgba(15,15,30,0.95), rgba(20,20,40,0.95))',
-                                    border: '1px solid rgba(214,254,81,0.25)', borderRadius: 20,
+                                    border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)', borderRadius: 20,
                                     padding: '36px 32px', width: 380, maxWidth: '90vw',
                                     boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
                                 }}>
@@ -151,12 +151,12 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                         <div style={{
                                             width: 56, height: 56, borderRadius: '50%', margin: '0 auto 12px',
                                             background: pendingUser.color, display: 'flex', alignItems: 'center',
-                                            justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff',
+                                            justifyContent: 'center', fontSize: 22, fontWeight: 700, color: 'var(--text-primary)',
                                         }}>{pendingUser.initials}</div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
                                             Welcome, {pendingUser.name}
                                         </div>
-                                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
                                             Enter passphrase to continue
                                         </div>
                                     </div>
@@ -165,7 +165,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                         <div style={{
                                             padding: '8px 12px', marginBottom: 14, borderRadius: 8,
                                             background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                                            color: '#f87171', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
+                                            color: '#ef4444', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6,
                                         }}>
                                             <AlertCircle size={14} /> {gateError}
                                         </div>
@@ -182,8 +182,8 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                         autoFocus
                                         style={{
                                             width: '100%', padding: '12px 16px', borderRadius: 12,
-                                            border: '1px solid rgba(214,254,81,0.3)', background: 'rgba(0,0,0,0.3)',
-                                            color: '#e2e8f0', fontSize: 14, outline: 'none',
+                                            border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', background: 'rgba(0,0,0,0.3)',
+                                            color: 'var(--text-primary)', fontSize: 14, outline: 'none',
                                             fontFamily: 'Inter, -apple-system, sans-serif',
                                             boxSizing: 'border-box',
                                         }}
@@ -192,12 +192,12 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                                         <button type="button" onClick={handleGateCancel} style={{
                                             flex: 1, padding: '10px 0', borderRadius: 12, border: '1px solid rgba(100,116,139,0.3)',
-                                            background: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer',
+                                            background: 'none', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
                                             fontFamily: 'Inter, -apple-system, sans-serif', fontWeight: 600,
                                         }}>Cancel</button>
                                         <button type="submit" disabled={loading} style={{
                                             flex: 2, padding: '10px 0', borderRadius: 12, border: 'none',
-                                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff',
+                                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'var(--text-primary)',
                                             fontSize: 13, cursor: 'pointer', fontWeight: 700,
                                             fontFamily: 'Inter, -apple-system, sans-serif',
                                             opacity: loading ? 0.6 : 1,
@@ -309,9 +309,9 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     marginTop: 16,
                                     padding: '10px 0',
                                     background: 'none',
-                                    border: '1px solid rgba(214,254,81,0.15)',
+                                    border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)',
                                     borderRadius: 12,
-                                    color: '#94a3b8',
+                                    color: 'var(--text-secondary)',
                                     fontSize: 13,
                                     cursor: 'pointer',
                                     fontFamily: 'Inter, -apple-system, sans-serif',
@@ -322,7 +322,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     (e.currentTarget as HTMLElement).style.color = '#5dade2';
                                 }}
                                 onMouseLeave={e => {
-                                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(214,254,81,0.15)';
+                                    (e.currentTarget as HTMLElement).style.borderColor = 'color-mix(in srgb, var(--accent) 15%, transparent)';
                                     (e.currentTarget as HTMLElement).style.color = '#94a3b8';
                                 }}
                             >

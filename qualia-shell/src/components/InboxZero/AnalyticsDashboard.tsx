@@ -70,10 +70,10 @@ const styles: Record<string, React.CSSProperties> = {
     container: { padding: '20px', fontFamily: 'Inter, system-ui, sans-serif', color: '#e1e1e6', maxHeight: '100%', overflowY: 'auto' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
     title: { fontSize: '20px', fontWeight: 700, color: '#f0f0f5' },
-    refreshBtn: { padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(214,254,81,0.3)', background: 'rgba(214,254,81,0.15)', color: '#D6FE51', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s' },
+    refreshBtn: { padding: '6px 14px', borderRadius: '8px', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s' },
     tabs: { display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' as const },
     tab: { padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#8b8b9e', cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' },
-    tabActive: { background: 'rgba(214,254,81,0.2)', border: '1px solid rgba(214,254,81,0.4)', color: '#D6FE51' },
+    tabActive: { background: 'color-mix(in srgb, var(--accent) 20%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color: 'var(--accent)' },
     gridRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' },
     card: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px' },
     cardTitle: { fontSize: '11px', fontWeight: 600, color: '#6b6b80', textTransform: 'uppercase' as const, letterSpacing: '0.5px', marginBottom: '6px' },
@@ -96,8 +96,8 @@ const styles: Record<string, React.CSSProperties> = {
 // ============================================
 
 function trendPill(trend: string): React.CSSProperties {
-    if (trend === 'improving') return { ...styles.pill, background: 'rgba(34,197,94,0.15)', color: '#4ade80' };
-    if (trend === 'worsening') return { ...styles.pill, background: 'rgba(239,68,68,0.15)', color: '#f87171' };
+    if (trend === 'improving') return { ...styles.pill, background: 'rgba(34,197,94,0.15)', color: '#22c55e' };
+    if (trend === 'worsening') return { ...styles.pill, background: 'rgba(239,68,68,0.15)', color: '#ef4444' };
     if (trend === 'stable') return { ...styles.pill, background: 'rgba(234,179,8,0.15)', color: '#facc15' };
     return { ...styles.pill, background: 'rgba(255,255,255,0.08)', color: '#8b8b9e' };
 }
@@ -111,10 +111,10 @@ function methodColor(method: string): string {
 function heatColor(count: number, max: number): string {
     if (count === 0) return 'rgba(255,255,255,0.03)';
     const intensity = Math.min(count / Math.max(max, 1), 1);
-    if (intensity > 0.7) return 'rgba(214,254,81,0.7)';
-    if (intensity > 0.4) return 'rgba(214,254,81,0.4)';
-    if (intensity > 0.15) return 'rgba(214,254,81,0.2)';
-    return 'rgba(214,254,81,0.08)';
+    if (intensity > 0.7) return 'color-mix(in srgb, var(--accent) 70%, transparent)';
+    if (intensity > 0.4) return 'color-mix(in srgb, var(--accent) 40%, transparent)';
+    if (intensity > 0.15) return 'color-mix(in srgb, var(--accent) 20%, transparent)';
+    return 'color-mix(in srgb, var(--accent) 8%, transparent)';
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -202,7 +202,7 @@ const AnalyticsDashboard: React.FC = () => {
 
             {error && (
                 <div style={{ ...styles.card, borderColor: 'rgba(239,68,68,0.3)', marginBottom: '16px' }}>
-                    <span style={{ color: '#f87171' }}>⚠️ {error}</span>
+                    <span style={{ color: '#ef4444' }}>⚠️ {error}</span>
                 </div>
             )}
 
@@ -239,11 +239,11 @@ const OverviewView: React.FC<{ data: OverviewData }> = ({ data }) => {
                 </div>
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Signals</div>
-                    <div style={{ ...styles.cardValue, color: '#4ade80' }}>{inbox.signal}</div>
+                    <div style={{ ...styles.cardValue, color: '#22c55e' }}>{inbox.signal}</div>
                 </div>
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Noise</div>
-                    <div style={{ ...styles.cardValue, color: '#f87171' }}>{inbox.noise}</div>
+                    <div style={{ ...styles.cardValue, color: '#ef4444' }}>{inbox.noise}</div>
                 </div>
             </div>
 
@@ -263,7 +263,7 @@ const OverviewView: React.FC<{ data: OverviewData }> = ({ data }) => {
                 </div>
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Actions Taken</div>
-                    <div style={{ ...styles.cardValue, color: '#D6FE51' }}>{actions.totalActions}</div>
+                    <div style={{ ...styles.cardValue, color: 'var(--accent)' }}>{actions.totalActions}</div>
                     <div style={styles.cardSub}>{actions.last24h} today</div>
                 </div>
             </div>
@@ -281,7 +281,7 @@ const OverviewView: React.FC<{ data: OverviewData }> = ({ data }) => {
                                         background: methodColor(m.method),
                                         height: '100%',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '10px', fontWeight: 700, color: '#fff',
+                                        fontSize: '10px', fontWeight: 700, color: 'var(--text-primary)',
                                         minWidth: share > 5 ? '40px' : '0',
                                     }}>
                                         {share > 10 ? `${m.method} ${share.toFixed(0)}%` : ''}
@@ -321,7 +321,7 @@ const OverviewView: React.FC<{ data: OverviewData }> = ({ data }) => {
                                             <td style={{ ...styles.td, textAlign: 'right' }}>{p.count}</td>
                                             <td style={styles.td}>
                                                 <div style={{ ...styles.barContainer, height: '10px', width: '120px', display: 'inline-flex' }}>
-                                                    <div style={{ width: `${share}%`, background: '#D6FE51', height: '100%', borderRadius: '10px' }} />
+                                                    <div style={{ width: `${share}%`, background: 'var(--accent)', height: '100%', borderRadius: '10px' }} />
                                                 </div>
                                                 <span style={{ marginLeft: '8px', fontSize: '11px', color: '#8b8b9e' }}>{share.toFixed(1)}%</span>
                                             </td>
@@ -501,7 +501,7 @@ const TrendsView: React.FC<{ data: RuleTrend[] }> = ({ data }) => {
                                         {rule.totalHits}
                                     </td>
                                     <td style={{ ...styles.td, textAlign: 'right' }}>
-                                        <span style={{ color: rule.avgConfidence >= 0.7 ? '#4ade80' : rule.avgConfidence >= 0.4 ? '#facc15' : '#f87171' }}>
+                                        <span style={{ color: rule.avgConfidence >= 0.7 ? '#22c55e' : rule.avgConfidence >= 0.4 ? '#facc15' : '#ef4444' }}>
                                             {(rule.avgConfidence * 100).toFixed(0)}%
                                         </span>
                                     </td>
@@ -513,7 +513,7 @@ const TrendsView: React.FC<{ data: RuleTrend[] }> = ({ data }) => {
                                             {rule.daily.slice(-14).map((d, i) => (
                                                 <div
                                                     key={i}
-                                                    style={{ ...styles.sparkBar, height: `${Math.max((d.count / maxDaily) * 28, 2)}px`, background: '#D6FE51' }}
+                                                    style={{ ...styles.sparkBar, height: `${Math.max((d.count / maxDaily) * 28, 2)}px`, background: 'var(--accent)' }}
                                                     title={`${d.day}: ${d.count}`}
                                                 />
                                             ))}
@@ -553,10 +553,10 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Method Share</div>
                     <div style={{ ...styles.barContainer, height: '28px', marginTop: '8px' }}>
-                        <div style={{ width: `${ruleShare}%`, background: '#D6FE51', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff' }}>
+                        <div style={{ width: `${ruleShare}%`, background: 'var(--accent)', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}>
                             {ruleShare > 15 ? `Rule ${ruleShare}%` : ''}
                         </div>
-                        <div style={{ width: `${llmShare}%`, background: '#06b6d4', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff' }}>
+                        <div style={{ width: `${llmShare}%`, background: '#06b6d4', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}>
                             {llmShare > 15 ? `LLM ${llmShare}%` : ''}
                         </div>
                     </div>
@@ -569,7 +569,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                     <thead>
                         <tr>
                             <th style={styles.th}>Metric</th>
-                            <th style={{ ...styles.th, textAlign: 'right', color: '#D6FE51' }}>Rule</th>
+                            <th style={{ ...styles.th, textAlign: 'right', color: 'var(--accent)' }}>Rule</th>
                             <th style={{ ...styles.th, textAlign: 'right', color: '#06b6d4' }}>LLM</th>
                             <th style={styles.th}>Winner</th>
                         </tr>
@@ -580,7 +580,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                             <td style={{ ...styles.td, textAlign: 'right' }}>{(rule.avgConfidence * 100).toFixed(1)}%</td>
                             <td style={{ ...styles.td, textAlign: 'right' }}>{(llm.avgConfidence * 100).toFixed(1)}%</td>
                             <td style={styles.td}>
-                                <span style={{ ...styles.pill, background: rule.avgConfidence >= llm.avgConfidence ? 'rgba(214,254,81,0.2)' : 'rgba(6,182,212,0.2)', color: rule.avgConfidence >= llm.avgConfidence ? '#D6FE51' : '#22d3ee' }}>
+                                <span style={{ ...styles.pill, background: rule.avgConfidence >= llm.avgConfidence ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(6,182,212,0.2)', color: rule.avgConfidence >= llm.avgConfidence ? '#D6FE51' : '#22d3ee' }}>
                                     {rule.avgConfidence >= llm.avgConfidence ? '📐 Rule' : '🤖 LLM'}
                                 </span>
                             </td>
@@ -590,7 +590,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                             <td style={{ ...styles.td, textAlign: 'right' }}>{rule.avgTimeMs}ms</td>
                             <td style={{ ...styles.td, textAlign: 'right' }}>{llm.avgTimeMs}ms</td>
                             <td style={styles.td}>
-                                <span style={{ ...styles.pill, background: rule.avgTimeMs <= llm.avgTimeMs ? 'rgba(214,254,81,0.2)' : 'rgba(6,182,212,0.2)', color: rule.avgTimeMs <= llm.avgTimeMs ? '#D6FE51' : '#22d3ee' }}>
+                                <span style={{ ...styles.pill, background: rule.avgTimeMs <= llm.avgTimeMs ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(6,182,212,0.2)', color: rule.avgTimeMs <= llm.avgTimeMs ? '#D6FE51' : '#22d3ee' }}>
                                     {rule.avgTimeMs <= llm.avgTimeMs ? '📐 Rule' : '🤖 LLM'}
                                 </span>
                             </td>
@@ -607,7 +607,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                 </table>
             </div>
 
-            <div style={{ ...styles.card, marginTop: '12px', border: '1px solid rgba(214,254,81,0.2)' }}>
+            <div style={{ ...styles.card, marginTop: '12px', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}>
                 <div style={styles.cardTitle}>💡 Recommendation</div>
                 <div style={{ fontSize: '14px', color: '#d0d0da', lineHeight: 1.6 }}>{recommendation}</div>
             </div>
@@ -623,7 +623,7 @@ const FallbackView: React.FC<{ data: FallbackData }> = ({ data }) => {
             <div style={styles.gridRow}>
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Overall Fallback Rate</div>
-                    <div style={{ ...styles.cardValue, color: overallFallbackRate > 40 ? '#f87171' : overallFallbackRate > 20 ? '#facc15' : '#4ade80' }}>
+                    <div style={{ ...styles.cardValue, color: overallFallbackRate > 40 ? '#ef4444' : overallFallbackRate > 20 ? '#facc15' : '#22c55e' }}>
                         {overallFallbackRate}%
                     </div>
                 </div>
@@ -651,7 +651,7 @@ const FallbackView: React.FC<{ data: FallbackData }> = ({ data }) => {
                                         <div style={{ fontSize: '9px', color: '#8b8b9e', marginBottom: '2px' }}>{d.fallbackRate}%</div>
                                         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1px' }}>
                                             <div style={{ width: '100%', height: `${barH * llmPct}px`, background: '#06b6d4', borderRadius: '3px 3px 0 0' }} />
-                                            <div style={{ width: '100%', height: `${barH * (1 - llmPct)}px`, background: '#D6FE51', borderRadius: '0 0 3px 3px' }} />
+                                            <div style={{ width: '100%', height: `${barH * (1 - llmPct)}px`, background: 'var(--accent)', borderRadius: '0 0 3px 3px' }} />
                                         </div>
                                         <div style={{ fontSize: '8px', color: '#6b6b80', marginTop: '4px', transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>
                                             {d.day.slice(5)}
@@ -661,7 +661,7 @@ const FallbackView: React.FC<{ data: FallbackData }> = ({ data }) => {
                             })}
                         </div>
                         <div style={{ display: 'flex', gap: '16px', marginTop: '12px', fontSize: '11px' }}>
-                            <span style={{ color: '#D6FE51' }}>● Rule</span>
+                            <span style={{ color: 'var(--accent)' }}>● Rule</span>
                             <span style={{ color: '#06b6d4' }}>● LLM/AI Fallback</span>
                         </div>
                     </div>

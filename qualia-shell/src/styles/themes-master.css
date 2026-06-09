@@ -1,0 +1,404 @@
+/* ============================================================
+   DWELLIUM — MASTER THEME PACK (16 palettes)
+   Ported byte-for-byte from "HTML Report Master Design — v3".
+   Each block keeps the source palette tokens (--bg/--surface/--text/--blue/
+   --gs/--ge/--panel-*/--dock-*/--callout-*) AND bridges them onto Dwellium's
+   own design tokens, so selecting a theme re-skins the entire app at parity.
+   Selector map: [data-theme="X"] -> .theme-X  (applied via ThemeContext on <html>).
+   NOTE: source "dark" is exposed as .theme-deep-dark to preserve Dwellium's own .theme-dark.
+   ============================================================ */
+.theme-cosmos{
+  --bg:#08081a;--surface:#0f0f1e;--surface2:#13132a;--border:#1e1e3a;
+  --text:#fff;--muted:#8888aa;--cyan:#00e5b0;--blue:#4d8aff;
+  --gs:#7c3aed;--ge:#4d8aff;--ip:#6366f1;--il:#a78bfa;--ig:#22c55e;
+  --mx:50%;--my:50%;
+  --panel-bg:rgba(8,8,24,.97);--panel-border:rgba(255,255,255,.12);
+  --panel-text:#fff;--panel-hover:rgba(255,255,255,.07);
+  --dock-bg:rgba(28,28,36,.9);--dock-border:rgba(255,255,255,.1);
+  --dock-icon:rgba(255,255,255,.5);--dock-icon-hover:#fff;--dock-active:rgba(255,255,255,.13);
+  --callout-info:rgba(77,138,255,.12);--callout-info-b:rgba(77,138,255,.4);
+  --callout-ok:rgba(34,197,94,.12);--callout-ok-b:rgba(34,197,94,.4);
+  --callout-warn:rgba(251,191,36,.12);--callout-warn-b:rgba(251,191,36,.4);
+  --callout-danger:rgba(239,68,68,.12);--callout-danger-b:rgba(239,68,68,.4);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-deep-dark{
+  --bg:#030305;--surface:#0d0d0f;--surface2:#151518;--border:rgba(255,255,255,.07);
+  --text:#fff;--muted:#6e6e88;--cyan:#00c8aa;--blue:#4d82ff;
+  --gs:#00c8aa;--ge:#4d82ff;--ip:#7755ef;--il:#b055e8;--ig:#10d47a;
+  --panel-bg:rgba(3,3,5,.99);--panel-border:rgba(255,255,255,.08);
+  --panel-text:#fff;--panel-hover:rgba(255,255,255,.04);
+  --dock-bg:rgba(8,8,12,.95);--dock-border:rgba(255,255,255,.08);
+  --dock-icon:rgba(255,255,255,.35);--dock-icon-hover:#fff;--dock-active:rgba(0,255,204,.1);
+  --callout-info:rgba(61,122,255,.12);--callout-info-b:rgba(61,122,255,.5);
+  --callout-ok:rgba(0,255,136,.1);--callout-ok-b:rgba(0,255,136,.4);
+  --callout-warn:rgba(255,200,0,.1);--callout-warn-b:rgba(255,200,0,.4);
+  --callout-danger:rgba(255,60,60,.1);--callout-danger-b:rgba(255,60,60,.4);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-simple-black{
+  --bg:#000000;--surface:#0d0d0d;--surface2:#181818;--border:rgba(255,255,255,.08);
+  --text:#ffffff;--muted:#888888;--cyan:#60a5fa;--blue:#3b82f6;
+  --gs:#2563eb;--ge:#60a5fa;--ip:#6366f1;--il:#818cf8;--ig:#34d399;
+  --mx:50%;--my:50%;
+  --panel-bg:rgba(4,4,4,.98);--panel-border:rgba(255,255,255,.1);
+  --panel-text:#ffffff;--panel-hover:rgba(255,255,255,.05);
+  --dock-bg:rgba(12,12,12,.94);--dock-border:rgba(255,255,255,.1);
+  --dock-icon:rgba(255,255,255,.4);--dock-icon-hover:#fff;--dock-active:rgba(59,130,246,.15);
+  --callout-info:rgba(59,130,246,.1);--callout-info-b:rgba(59,130,246,.4);
+  --callout-ok:rgba(52,211,153,.1);--callout-ok-b:rgba(52,211,153,.4);
+  --callout-warn:rgba(251,191,36,.1);--callout-warn-b:rgba(251,191,36,.4);
+  --callout-danger:rgba(239,68,68,.1);--callout-danger-b:rgba(239,68,68,.4);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-cyberpunk{
+  --bg:#060606;--surface:#111111;--surface2:#1a1a1a;--border:rgba(245,230,66,.15);
+  --text:#f5f5f5;--muted:#666655;--cyan:#00d4ff;--blue:#f5e642;
+  --gs:#f5e642;--ge:#e44d26;--ip:#f5e642;--il:#e44d26;--ig:#00d4ff;
+  --panel-bg:rgba(6,6,6,.99);--panel-border:rgba(245,230,66,.2);
+  --panel-text:#f5f5f5;--panel-hover:rgba(245,230,66,.05);
+  --dock-bg:rgba(10,10,10,.95);--dock-border:rgba(245,230,66,.2);
+  --dock-icon:rgba(245,230,66,.45);--dock-icon-hover:#f5e642;--dock-active:rgba(245,230,66,.1);
+  --callout-info:rgba(0,212,255,.1);--callout-info-b:rgba(0,212,255,.45);
+  --callout-ok:rgba(0,255,136,.08);--callout-ok-b:rgba(0,255,136,.35);
+  --callout-warn:rgba(245,230,66,.1);--callout-warn-b:rgba(245,230,66,.5);
+  --callout-danger:rgba(228,77,38,.12);--callout-danger-b:rgba(228,77,38,.5);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-synthwave{
+  --bg:#040d1a;--surface:#081428;--surface2:#0e1e38;--border:rgba(255,0,170,.2);
+  --text:#fff;--muted:rgba(200,190,255,.55);--cyan:#00f0ff;--blue:#ff00aa;
+  --gs:#ff00aa;--ge:#00f0ff;--ip:#ff00aa;--il:#c800ff;--ig:#00f0ff;
+  --panel-bg:rgba(4,13,26,.98);--panel-border:rgba(255,0,170,.28);
+  --panel-text:#fff;--panel-hover:rgba(255,0,170,.08);
+  --dock-bg:rgba(8,20,40,.92);--dock-border:rgba(255,0,170,.3);
+  --dock-icon:rgba(255,255,255,.45);--dock-icon-hover:#fff;--dock-active:rgba(255,0,170,.18);
+  --callout-info:rgba(0,240,255,.1);--callout-info-b:rgba(0,240,255,.45);
+  --callout-ok:rgba(0,240,255,.08);--callout-ok-b:rgba(0,240,255,.35);
+  --callout-warn:rgba(255,200,0,.1);--callout-warn-b:rgba(255,200,0,.4);
+  --callout-danger:rgba(255,0,170,.1);--callout-danger-b:rgba(255,0,170,.5);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-solarized{
+  --bg:#002b36;--surface:#073642;--surface2:#0d3f4d;--border:#586e75;
+  --text:#839496;--muted:#7a9ba3;--cyan:#2aa198;--blue:#268bd2;
+  --gs:#268bd2;--ge:#2aa198;--ip:#6c71c4;--il:#d33682;--ig:#859900;
+  --panel-bg:rgba(0,43,54,.98);--panel-border:rgba(88,110,117,.5);
+  --panel-text:#839496;--panel-hover:rgba(38,139,210,.08);
+  --dock-bg:rgba(0,43,54,.95);--dock-border:rgba(88,110,117,.4);
+  --dock-icon:rgba(131,148,150,.5);--dock-icon-hover:#839496;--dock-active:rgba(38,139,210,.12);
+  --callout-info:rgba(38,139,210,.12);--callout-info-b:rgba(38,139,210,.4);
+  --callout-ok:rgba(133,153,0,.12);--callout-ok-b:rgba(133,153,0,.4);
+  --callout-warn:rgba(181,137,0,.12);--callout-warn-b:rgba(181,137,0,.4);
+  --callout-danger:rgba(220,50,47,.12);--callout-danger-b:rgba(220,50,47,.4);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-rose-pine{
+  --bg:#191724;--surface:#1f1d2e;--surface2:#26233a;--border:#403d52;
+  --text:#e0def4;--muted:#6e6a86;--cyan:#9ccfd8;--blue:#c4a7e7;
+  --gs:#ebbcba;--ge:#c4a7e7;--ip:#ebbcba;--il:#eb6f92;--ig:#9ccfd8;
+  --panel-bg:rgba(25,23,36,.97);--panel-border:rgba(235,188,186,.15);
+  --panel-text:#e0def4;--panel-hover:rgba(235,188,186,.06);
+  --dock-bg:rgba(25,23,36,.92);--dock-border:rgba(64,61,82,.7);
+  --dock-icon:rgba(224,222,244,.4);--dock-icon-hover:#e0def4;--dock-active:rgba(235,188,186,.12);
+  --callout-info:rgba(196,167,231,.1);--callout-info-b:rgba(196,167,231,.4);
+  --callout-ok:rgba(144,197,150,.12);--callout-ok-b:rgba(144,197,150,.42);
+  --callout-warn:rgba(246,193,119,.1);--callout-warn-b:rgba(246,193,119,.4);
+  --callout-danger:rgba(235,111,146,.1);--callout-danger-b:rgba(235,111,146,.45);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-mocha{
+  --bg:#1e1e2e;--surface:#181825;--surface2:#313244;--border:#313244;
+  --text:#cdd6f4;--muted:#6c6f85;--cyan:#89dceb;--blue:#89b4fa;
+  --gs:#cba6f7;--ge:#89b4fa;--ip:#cba6f7;--il:#f38ba8;--ig:#a6e3a1;
+  --panel-bg:rgba(30,30,46,.97);--panel-border:rgba(49,50,68,.7);
+  --panel-text:#cdd6f4;--panel-hover:rgba(203,166,247,.06);
+  --dock-bg:rgba(24,24,37,.92);--dock-border:rgba(49,50,68,.7);
+  --dock-icon:rgba(205,214,244,.4);--dock-icon-hover:#cdd6f4;--dock-active:rgba(203,166,247,.14);
+  --callout-info:rgba(137,180,250,.1);--callout-info-b:rgba(137,180,250,.4);
+  --callout-ok:rgba(166,227,161,.1);--callout-ok-b:rgba(166,227,161,.4);
+  --callout-warn:rgba(249,226,175,.1);--callout-warn-b:rgba(249,226,175,.4);
+  --callout-danger:rgba(243,139,168,.1);--callout-danger-b:rgba(243,139,168,.4);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-dracula{
+  --bg:#1e1f29;--surface:#21222c;--surface2:#2d2f3f;--border:#44475a;
+  --text:#f8f8f2;--muted:#6272a4;--cyan:#8be9fd;--blue:#6272a4;
+  --gs:#ff5555;--ge:#ff79c6;--ip:#ff5555;--il:#ff79c6;--ig:#50fa7b;
+  --panel-bg:rgba(22,22,32,.98);--panel-border:rgba(68,71,90,.8);
+  --panel-text:#f8f8f2;--panel-hover:rgba(255,85,85,.06);
+  --dock-bg:rgba(22,22,32,.95);--dock-border:rgba(68,71,90,.7);
+  --dock-icon:rgba(248,248,242,.4);--dock-icon-hover:#f8f8f2;--dock-active:rgba(255,85,85,.14);
+  --callout-info:rgba(139,233,253,.1);--callout-info-b:rgba(139,233,253,.4);
+  --callout-ok:rgba(80,250,123,.1);--callout-ok-b:rgba(80,250,123,.4);
+  --callout-warn:rgba(241,250,140,.1);--callout-warn-b:rgba(241,250,140,.4);
+  --callout-danger:rgba(255,85,85,.12);--callout-danger-b:rgba(255,85,85,.5);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-obsidian{
+  --bg:#0a0a0f;--surface:#111116;--surface2:#1a1a20;--border:rgba(134,143,151,.18);
+  --text:#f0f0f2;--muted:#868f97;--cyan:#ffa16c;--blue:#479ffa;
+  --gs:#ffa16c;--ge:#479ffa;--ip:#ffa16c;--il:#ff8c61;--ig:#479ffa;
+  --panel-bg:rgba(12,12,18,.97);--panel-border:rgba(134,143,151,.22);
+  --panel-text:#f0f0f2;--panel-hover:rgba(255,255,255,.06);
+  --dock-bg:rgba(18,18,22,.92);--dock-border:rgba(134,143,151,.2);
+  --dock-icon:rgba(240,240,242,.45);--dock-icon-hover:#f0f0f2;--dock-active:rgba(255,161,108,.14);
+  --callout-info:rgba(71,159,250,.12);--callout-info-b:rgba(71,159,250,.4);
+  --callout-ok:rgba(34,197,94,.12);--callout-ok-b:rgba(34,197,94,.42);
+  --callout-warn:rgba(255,161,108,.12);--callout-warn-b:rgba(255,161,108,.45);
+  --callout-danger:rgba(255,100,80,.12);--callout-danger-b:rgba(255,100,80,.45);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-tokyo-night{
+  --bg:#1a1b2e;--surface:#1f2335;--surface2:#292e42;--border:#3b4261;
+  --text:#c0caf5;--muted:#6b7599;--cyan:#7dcfff;--blue:#7aa2f7;
+  --gs:#bb9af7;--ge:#7aa2f7;--ip:#bb9af7;--il:#f7768e;--ig:#9ece6a;
+  --panel-bg:rgba(26,27,46,.97);--panel-border:rgba(59,66,97,.55);
+  --panel-text:#c0caf5;--panel-hover:rgba(122,162,247,.07);
+  --dock-bg:rgba(31,35,53,.92);--dock-border:rgba(59,66,97,.6);
+  --dock-icon:rgba(192,202,245,.4);--dock-icon-hover:#c0caf5;--dock-active:rgba(122,162,247,.15);
+  --callout-info:rgba(122,162,247,.12);--callout-info-b:rgba(122,162,247,.4);
+  --callout-ok:rgba(158,206,106,.1);--callout-ok-b:rgba(158,206,106,.4);
+  --callout-warn:rgba(224,175,104,.1);--callout-warn-b:rgba(224,175,104,.4);
+  --callout-danger:rgba(247,118,142,.1);--callout-danger-b:rgba(247,118,142,.4);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-gruvbox{
+  --bg:#282828;--surface:#3c3836;--surface2:#504945;--border:#504945;
+  --text:#ebdbb2;--muted:#928374;--cyan:#8ec07c;--blue:#83a598;
+  --gs:#d65d0e;--ge:#fabd2f;--ip:#d65d0e;--il:#fb4934;--ig:#8ec07c;
+  --panel-bg:rgba(40,40,40,.97);--panel-border:rgba(80,73,69,.7);
+  --panel-text:#ebdbb2;--panel-hover:rgba(215,153,33,.06);
+  --dock-bg:rgba(40,40,40,.92);--dock-border:rgba(80,73,69,.6);
+  --dock-icon:rgba(235,219,178,.4);--dock-icon-hover:#ebdbb2;--dock-active:rgba(250,189,47,.12);
+  --callout-info:rgba(131,165,152,.12);--callout-info-b:rgba(131,165,152,.4);
+  --callout-ok:rgba(142,192,124,.1);--callout-ok-b:rgba(142,192,124,.4);
+  --callout-warn:rgba(250,189,47,.1);--callout-warn-b:rgba(250,189,47,.45);
+  --callout-danger:rgba(251,73,52,.1);--callout-danger-b:rgba(251,73,52,.45);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-apple-dark{
+  --bg:#1c1c1e;--surface:#2c2c2e;--surface2:#3a3a3c;--border:rgba(255,255,255,.1);
+  --text:#fff;--muted:#98989f;--cyan:#30d158;--blue:#0a84ff;
+  --gs:#0a84ff;--ge:#30d158;--ip:#bf5af2;--il:#ff9f0a;--ig:#30d158;
+  --panel-bg:rgba(28,28,30,.97);--panel-border:rgba(255,255,255,.1);
+  --panel-text:#fff;--panel-hover:rgba(255,255,255,.06);
+  --dock-bg:rgba(44,44,46,.92);--dock-border:rgba(255,255,255,.1);
+  --dock-icon:rgba(255,255,255,.45);--dock-icon-hover:#fff;--dock-active:rgba(255,255,255,.12);
+  --callout-info:rgba(10,132,255,.12);--callout-info-b:rgba(10,132,255,.4);
+  --callout-ok:rgba(48,209,88,.12);--callout-ok-b:rgba(48,209,88,.4);
+  --callout-warn:rgba(255,159,10,.12);--callout-warn-b:rgba(255,159,10,.4);
+  --callout-danger:rgba(255,69,58,.12);--callout-danger-b:rgba(255,69,58,.4);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-nord{
+  --bg:#2e3440;--surface:#3b4252;--surface2:#434c5e;--border:#4c566a;
+  --text:#eceff4;--muted:#8090a8;--cyan:#88c0d0;--blue:#81a1c1;
+  --gs:#5e81ac;--ge:#88c0d0;--ip:#b48ead;--il:#bf616a;--ig:#a3be8c;
+  --panel-bg:rgba(46,52,64,.97);--panel-border:rgba(76,86,106,.6);
+  --panel-text:#eceff4;--panel-hover:rgba(129,161,193,.07);
+  --dock-bg:rgba(59,66,82,.92);--dock-border:rgba(76,86,106,.5);
+  --dock-icon:rgba(236,239,244,.4);--dock-icon-hover:#eceff4;--dock-active:rgba(129,161,193,.14);
+  --callout-info:rgba(129,161,193,.12);--callout-info-b:rgba(129,161,193,.4);
+  --callout-ok:rgba(163,190,140,.1);--callout-ok-b:rgba(163,190,140,.4);
+  --callout-warn:rgba(235,203,139,.1);--callout-warn-b:rgba(235,203,139,.4);
+  --callout-danger:rgba(191,97,106,.1);--callout-danger-b:rgba(191,97,106,.4);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-latte{
+  --bg:#ede8ff;--surface:#f8f5ff;--surface2:#e4dcff;--border:#c4b5fd;
+  --text:#2d1b69;--muted:#7c6aad;--cyan:#7c3aed;--blue:#6d28d9;
+  --gs:#9333ea;--ge:#6d28d9;--ip:#a78bfa;--il:#ec4899;--ig:#10b981;
+  --panel-bg:rgba(248,245,255,.98);--panel-border:rgba(139,92,246,.2);
+  --panel-text:#2d1b69;--panel-hover:rgba(147,51,234,.07);
+  --dock-bg:rgba(248,245,255,.95);--dock-border:rgba(139,92,246,.22);
+  --dock-icon:rgba(45,27,105,.4);--dock-icon-hover:#2d1b69;--dock-active:rgba(147,51,234,.13);
+  --callout-info:rgba(109,40,217,.1);--callout-info-b:rgba(109,40,217,.35);
+  --callout-ok:rgba(16,185,129,.1);--callout-ok-b:rgba(16,185,129,.35);
+  --callout-warn:rgba(245,158,11,.1);--callout-warn-b:rgba(245,158,11,.35);
+  --callout-danger:rgba(236,72,153,.12);--callout-danger-b:rgba(236,72,153,.38);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.theme-corporate{
+  --bg:#f4f5f7;--surface:#fff;--surface2:#f0f0f5;--border:#dde0e8;
+  --text:#0a0a18;--muted:#6b7280;--cyan:#0070c9;--blue:#0070c9;
+  --gs:#0070c9;--ge:#5ac8fa;--ip:#5e5ce6;--il:#0070c9;--ig:#30d158;
+  --panel-bg:rgba(255,255,255,.97);--panel-border:rgba(0,0,0,.1);
+  --panel-text:#0a0a18;--panel-hover:rgba(0,0,0,.05);
+  --dock-bg:rgba(255,255,255,.92);--dock-border:rgba(0,0,0,.1);
+  --dock-icon:rgba(0,0,0,.4);--dock-icon-hover:#0a0a18;--dock-active:rgba(0,112,201,.1);
+  --callout-info:rgba(0,112,201,.08);--callout-info-b:rgba(0,112,201,.3);
+  --callout-ok:rgba(48,209,88,.08);--callout-ok-b:rgba(48,209,88,.3);
+  --callout-warn:rgba(255,159,10,.08);--callout-warn-b:rgba(255,159,10,.3);
+  --callout-danger:rgba(255,59,48,.08);--callout-danger-b:rgba(255,59,48,.3);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--blue);--accent-hover:var(--ge);--accent-subtle:color-mix(in srgb,var(--blue) 14%,transparent);--accent-text:var(--blue);
+  --success:var(--ig);--danger:#ef4444;--warning:#f59e0b;
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--text) 10%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--text) 18%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--blue) 8%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--blue) 14%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--blue) 30%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--blue) 40%,transparent);
+}
+
+/* ══ Animations (parity) ══ */
+@keyframes sw-pulse{0%,100%{box-shadow:inset 0 1px 0 rgba(255,0,170,.22),0 4px 28px rgba(0,0,0,.85),0 0 20px rgba(255,0,170,.05)}50%{box-shadow:inset 0 1px 0 rgba(0,240,255,.2),0 4px 28px rgba(0,0,0,.85),0 0 25px rgba(0,240,255,.07)}}
+@keyframes dock-rise{from{transform:translateX(-50%) translateY(80px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+
+/* ══ Ambient cursor-glow (the doc's signature radial follow), opt-in via body.master-glow ══ */
+body.master-glow{transition:background-color .3s ease,color .3s ease}
+body.master-glow::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(700px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--blue,#4d8aff) 9%,transparent) 0%,color-mix(in srgb,var(--gs,#7c3aed) 4%,transparent) 40%,transparent 66%)}
+body.master-glow.animations-off::after{display:none}

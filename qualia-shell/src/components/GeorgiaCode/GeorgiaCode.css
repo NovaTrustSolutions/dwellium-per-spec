@@ -8,8 +8,8 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: linear-gradient(165deg, #000000 0%, #0e0e0e 40%, #000000 100%);
-    color: #e2e8f0;
+    background: linear-gradient(165deg, #000000 0%, var(--bg-surface) 40%, #000000 100%);
+    color: var(--text-primary);
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     overflow: hidden;
 }
@@ -18,8 +18,8 @@
 .gc-header {
     position: relative;
     padding: 24px 28px 20px;
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.06) 0%, rgba(214, 254, 81, 0.03) 50%, rgba(0, 0, 0, 0.6) 100%);
-    border-bottom: 1px solid rgba(214, 254, 81, 0.15);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, transparent) 0%, color-mix(in srgb, var(--accent) 3%, transparent) 50%, rgba(0, 0, 0, 0.6) 100%);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     overflow: hidden;
 }
 
@@ -30,7 +30,7 @@
     right: -20%;
     width: 300px;
     height: 300px;
-    background: radial-gradient(circle, rgba(214, 254, 81, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 70%);
     pointer-events: none;
 }
 
@@ -53,24 +53,24 @@
     width: 44px;
     height: 44px;
     border-radius: 8px;
-    background: linear-gradient(135deg, #D6FE51 0%, #D6FE51 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 22px;
-    box-shadow: 0 4px 16px rgba(214, 254, 81, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .gc-title {
     font-size: 20px;
     font-weight: 700;
     letter-spacing: -0.02em;
-    color: #f1f5f9;
+    color: var(--text-primary);
 }
 
 .gc-subtitle {
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     margin-top: 2px;
     letter-spacing: 0.02em;
 }
@@ -89,7 +89,7 @@
 
 .gc-status-badge.indexed {
     background: rgba(34, 197, 94, 0.12);
-    color: #4ade80;
+    color: var(--success);
     border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
@@ -102,7 +102,7 @@
 
 .gc-status-badge.offline {
     background: rgba(239, 68, 68, 0.12);
-    color: #f87171;
+    color: var(--danger);
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
@@ -158,13 +158,13 @@
 .gc-stat-value {
     font-size: 18px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-variant-numeric: tabular-nums;
 }
 
 .gc-stat-label {
     font-size: 11px;
-    color: #64748b;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
@@ -185,14 +185,14 @@
 .gc-search-icon {
     position: absolute;
     left: 16px;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-size: 16px;
     pointer-events: none;
     transition: color 0.2s;
 }
 
 .gc-search-box:focus-within .gc-search-icon {
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 .gc-search-input {
@@ -201,7 +201,7 @@
     background: rgba(27, 27, 27, 0.7);
     border: 1px solid rgba(51, 51, 51, 0.3);
     border-radius: 8px;
-    color: #f1f5f9;
+    color: var(--text-primary);
     font-size: 14px;
     font-family: inherit;
     outline: none;
@@ -209,12 +209,12 @@
 }
 
 .gc-search-input::placeholder {
-    color: #475569;
+    color: var(--text-tertiary);
 }
 
 .gc-search-input:focus {
-    border-color: rgba(214, 254, 81, 0.5);
-    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.12), 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent), 0 2px 8px rgba(0, 0, 0, 0.2);
     background: rgba(27, 27, 27, 0.9);
 }
 
@@ -222,7 +222,7 @@
     position: absolute;
     right: 6px;
     padding: 8px 18px;
-    background: linear-gradient(135deg, #D6FE51 0%, #D6FE51 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
     border: none;
     border-radius: 8px;
     color: white;
@@ -234,8 +234,8 @@
 }
 
 .gc-search-btn:hover {
-    background: linear-gradient(135deg, #D6FE51 0%, #D6FE51 100%);
-    box-shadow: 0 2px 12px rgba(214, 254, 81, 0.4);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 40%, transparent);
     transform: translateY(-1px);
 }
 
@@ -252,7 +252,7 @@
 .gc-search-hint {
     margin-top: 8px;
     font-size: 11px;
-    color: #475569;
+    color: var(--text-tertiary);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -265,7 +265,7 @@
     border-radius: 4px;
     font-size: 10px;
     font-family: inherit;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 /* --- QUICK TOPICS --- */
@@ -283,16 +283,16 @@
     border: 1px solid rgba(51, 51, 51, 0.25);
     border-radius: 8px;
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
 }
 
 .gc-topic-chip:hover {
-    background: rgba(214, 254, 81, 0.12);
-    border-color: rgba(214, 254, 81, 0.3);
-    color: #E8FF7A;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    color: var(--accent-hover);
 }
 
 /* --- RESULTS --- */
@@ -329,13 +329,13 @@
 
 .gc-results-count {
     font-size: 12px;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-weight: 500;
 }
 
 .gc-results-time {
     font-size: 11px;
-    color: #475569;
+    color: var(--text-tertiary);
 }
 
 /* Result card */
@@ -358,14 +358,14 @@
     top: 0;
     bottom: 0;
     width: 3px;
-    background: linear-gradient(180deg, #D6FE51 0%, #D6FE51 100%);
+    background: linear-gradient(180deg, var(--accent) 0%, var(--accent) 100%);
     opacity: 0;
     transition: opacity 0.2s;
 }
 
 .gc-result-card:hover {
     background: rgba(27, 27, 27, 0.7);
-    border-color: rgba(214, 254, 81, 0.25);
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     transform: translateY(-1px);
 }
@@ -376,7 +376,7 @@
 
 .gc-result-card.expanded {
     background: rgba(27, 27, 27, 0.7);
-    border-color: rgba(214, 254, 81, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .gc-result-card.expanded::before {
@@ -393,7 +393,7 @@
 .gc-result-volume {
     font-size: 11px;
     font-weight: 600;
-    color: #D6FE51;
+    color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     display: flex;
@@ -412,7 +412,7 @@
     align-items: center;
     gap: 4px;
     font-size: 11px;
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 .gc-relevance-bar {
@@ -430,7 +430,7 @@
 }
 
 .gc-relevance-fill.high {
-    background: linear-gradient(90deg, #22c55e, #4ade80);
+    background: linear-gradient(90deg, var(--success), var(--success));
 }
 
 .gc-relevance-fill.medium {
@@ -438,13 +438,13 @@
 }
 
 .gc-relevance-fill.low {
-    background: linear-gradient(90deg, #ef4444, #f87171);
+    background: linear-gradient(90deg, var(--danger), var(--danger));
 }
 
 .gc-result-text {
     font-size: 13px;
     line-height: 1.65;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
@@ -464,13 +464,13 @@
     gap: 4px;
     margin-top: 8px;
     font-size: 11px;
-    color: #D6FE51;
+    color: var(--accent);
     font-weight: 500;
     cursor: pointer;
 }
 
 .gc-result-expand:hover {
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 /* --- EMPTY STATE --- */
@@ -493,13 +493,13 @@
 .gc-empty-title {
     font-size: 18px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--text-primary);
     margin-bottom: 8px;
 }
 
 .gc-empty-text {
     font-size: 13px;
-    color: #64748b;
+    color: var(--text-tertiary);
     line-height: 1.6;
     max-width: 360px;
 }
@@ -518,8 +518,8 @@
 .gc-spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid rgba(214, 254, 81, 0.15);
-    border-top-color: #D6FE51;
+    border: 3px solid color-mix(in srgb, var(--accent) 15%, transparent);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: gc-spin 0.8s linear infinite;
 }
@@ -532,7 +532,7 @@
 
 .gc-loading-text {
     font-size: 13px;
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 /* --- FOOTER --- */
@@ -544,7 +544,7 @@
     align-items: center;
     justify-content: space-between;
     font-size: 11px;
-    color: #475569;
+    color: var(--text-tertiary);
 }
 
 .gc-footer-brand {
@@ -554,7 +554,7 @@
 }
 
 .gc-footer-brand span {
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 .gc-footer-actions {
@@ -567,23 +567,23 @@
     background: rgba(34, 34, 34, 0.3);
     border: 1px solid rgba(51, 51, 51, 0.2);
     border-radius: 6px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 11px;
     cursor: pointer;
     transition: all 0.15s;
 }
 
 .gc-footer-btn:hover {
-    background: rgba(214, 254, 81, 0.12);
-    border-color: rgba(214, 254, 81, 0.3);
-    color: #E8FF7A;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    color: var(--accent-hover);
 }
 
 /* --- INDEXING PROGRESS OVERLAY --- */
 .gc-index-progress {
     padding: 16px 28px;
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.04), rgba(214, 254, 81, 0.02));
-    border-bottom: 1px solid rgba(214, 254, 81, 0.1);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent), color-mix(in srgb, var(--accent) 2%, transparent));
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .gc-progress-header {
@@ -596,13 +596,13 @@
 .gc-progress-label {
     font-size: 12px;
     font-weight: 600;
-    color: #E8FF7A;
+    color: var(--accent-hover);
 }
 
 .gc-progress-pct {
     font-size: 12px;
     font-weight: 700;
-    color: #D6FE51;
+    color: var(--accent);
     font-variant-numeric: tabular-nums;
 }
 
@@ -616,7 +616,7 @@
 
 .gc-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #D6FE51, #E8FF7A, #D6FE51);
+    background: linear-gradient(90deg, var(--accent), var(--accent-hover), var(--accent));
     border-radius: 3px;
     transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
     background-size: 200% 100%;
@@ -635,5 +635,5 @@
 
 .gc-progress-detail {
     font-size: 11px;
-    color: #64748b;
+    color: var(--text-tertiary);
 }

@@ -32,10 +32,10 @@ function KPIStat({ icon, label, value, color, bg, sub }: {
                     width: 32, height: 32, borderRadius: 8, display: 'flex',
                     alignItems: 'center', justifyContent: 'center', background: bg, color,
                 }}>{icon}</div>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</span>
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#e2e8f0', lineHeight: 1 }}>{value}</div>
-            {sub && <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>{sub}</div>}
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+            {sub && <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>{sub}</div>}
         </div>
     );
 }
@@ -50,12 +50,12 @@ function ReportCard({ icon, label, items, color }: {
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <span style={{ color }}>{icon}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {items.map(item => (
                     <div key={item.text} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: '#94a3b8' }}>{item.text}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.text}</span>
                         <span style={{
                             fontSize: 13, fontWeight: 700,
                             color: item.warn ? '#ef4444' : '#e2e8f0',
@@ -88,7 +88,7 @@ export default function PropertyOverview({ property, units, linkedData }: Proper
     // ── Unit status colors ──
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'occupied': return '#10b981';
+            case 'occupied': return '#22c55e';
             case 'vacant': return '#3b82f6';
             case 'turn': return '#f59e0b';
             case 'maintenance': return '#ef4444';
@@ -107,14 +107,14 @@ export default function PropertyOverview({ property, units, linkedData }: Proper
                     label="Occupancy"
                     value={`${occupancyRate}%`}
                     color="#6366f1"
-                    bg="rgba(214,254,81,0.15)"
+                    bg="color-mix(in srgb, var(--accent) 15%, transparent)"
                     sub={`${occupiedUnits} of ${totalUnits} units`}
                 />
                 <KPIStat
                     icon={<DollarSign size={16} />}
                     label="Total Rent"
                     value={`$${totalRent.toLocaleString()}`}
-                    color="#10b981"
+                    color="#22c55e"
                     bg="rgba(16,185,129,0.15)"
                     sub="Monthly revenue"
                 />
@@ -139,12 +139,12 @@ export default function PropertyOverview({ property, units, linkedData }: Proper
             {totalUnits > 0 && (
                 <div className="s-glass-card" style={{ padding: '16px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Users size={16} color="#6366f1" />
                             Unit Snapshot
                         </h3>
                         <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
-                            <span style={{ color: '#10b981', fontWeight: 600 }}>● {occupiedUnits} Occupied</span>
+                            <span style={{ color: '#22c55e', fontWeight: 600 }}>● {occupiedUnits} Occupied</span>
                             <span style={{ color: '#3b82f6', fontWeight: 600 }}>● {units.length - occupiedUnits} Vacant</span>
                         </div>
                     </div>
@@ -159,7 +159,7 @@ export default function PropertyOverview({ property, units, linkedData }: Proper
                                 background: 'rgba(255,255,255,0.03)',
                                 border: `2px solid ${getStatusColor(u.status)}`,
                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                fontSize: 10, fontWeight: 600, color: '#cbd5e1', gap: 1,
+                                fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', gap: 1,
                             }}>
                                 <span>{u.unitNumber}</span>
                                 <span style={{ fontSize: 7, color: getStatusColor(u.status), textTransform: 'uppercase' }}>{u.status}</span>
@@ -209,7 +209,7 @@ export default function PropertyOverview({ property, units, linkedData }: Proper
                 <ReportCard
                     icon={<Calendar size={14} />}
                     label="Lease Health"
-                    color="#10b981"
+                    color="#22c55e"
                     items={rc ? [
                         { text: 'Expiring ≤ 30d', value: rc.leaseHealth.expiringIn30, warn: rc.leaseHealth.expiringIn30 > 0 },
                         { text: 'Expiring ≤ 60d', value: rc.leaseHealth.expiringIn60 },
@@ -222,7 +222,7 @@ export default function PropertyOverview({ property, units, linkedData }: Proper
 
             {/* ── Property Info Summary ── */}
             <div className="s-glass-card" style={{ padding: '16px 20px' }}>
-                <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Building2 size={16} color="#818cf8" />
                     Property Details
                 </h3>
@@ -239,8 +239,8 @@ export default function PropertyOverview({ property, units, linkedData }: Proper
                         { label: 'County', value: property.metadata?.county },
                     ].filter(f => f.value).map(f => (
                         <div key={f.label}>
-                            <div style={{ fontSize: 9, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{f.label}</div>
-                            <div style={{ color: '#cbd5e1', marginTop: 1 }}>{f.value}</div>
+                            <div style={{ fontSize: 9, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{f.label}</div>
+                            <div style={{ color: 'var(--text-secondary)', marginTop: 1 }}>{f.value}</div>
                         </div>
                     ))}
                 </div>

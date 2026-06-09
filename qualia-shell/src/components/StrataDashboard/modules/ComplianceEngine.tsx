@@ -63,7 +63,7 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-    valid: '#10b981', warning: '#f59e0b', expired: '#ef4444', missing: '#94a3b8',
+    valid: '#22c55e', warning: '#f59e0b', expired: '#ef4444', missing: '#94a3b8',
 };
 
 function computeStatus(item: ComplianceItem): 'valid' | 'warning' | 'expired' | 'missing' {
@@ -418,7 +418,7 @@ export default function ComplianceEngine() {
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">
-                        <Shield size={22} style={{ verticalAlign: -4, marginRight: 8, color: '#10b981' }} />
+                        <Shield size={22} style={{ verticalAlign: -4, marginRight: 8, color: '#22c55e' }} />
                         Compliance Engine
                     </h2>
                     <p className="s-module-subtitle">
@@ -439,7 +439,7 @@ export default function ComplianceEngine() {
                                 style={{
                                     padding: '4px 8px', borderRadius: 0, margin: 0, gap: 3,
                                     background: view === m ? 'rgba(16,185,129,0.2)' : 'transparent',
-                                    color: view === m ? '#10b981' : '#64748b', fontSize: 10,
+                                    color: view === m ? '#22c55e' : '#64748b', fontSize: 10,
                                     whiteSpace: 'nowrap',
                                 }}
                                 onClick={() => {
@@ -465,7 +465,7 @@ export default function ComplianceEngine() {
                         background: `${STATUS_COLORS[s]}08`, border: `1px solid ${STATUS_COLORS[s]}20`,
                     }}>
                         <div style={{ fontSize: 18, fontWeight: 800, color: STATUS_COLORS[s] }}>{summary[s]}</div>
-                        <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>{s}</div>
+                        <div style={{ fontSize: 9, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>{s}</div>
                     </div>
                 ))}
             </div>
@@ -474,17 +474,17 @@ export default function ComplianceEngine() {
             {portfolioRollup && (
                 <div style={{
                     display: 'flex', gap: 12, marginBottom: 14, padding: '10px 16px', borderRadius: 10,
-                    background: 'linear-gradient(135deg, rgba(214,254,81,0.06) 0%, rgba(16,185,129,0.06) 100%)',
-                    border: '1px solid rgba(214,254,81,0.12)', alignItems: 'center', flexWrap: 'wrap',
+                    background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, transparent) 0%, rgba(16,185,129,0.06) 100%)',
+                    border: '1px solid color-mix(in srgb, var(--accent) 12%, transparent)', alignItems: 'center', flexWrap: 'wrap',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Shield size={18} style={{ color: portfolioRollup.overallScore >= 80 ? '#10b981' : portfolioRollup.overallScore >= 50 ? '#f59e0b' : '#ef4444' }} />
-                        <span style={{ fontSize: 24, fontWeight: 900, color: portfolioRollup.overallScore >= 80 ? '#10b981' : portfolioRollup.overallScore >= 50 ? '#f59e0b' : '#ef4444' }}>
+                        <Shield size={18} style={{ color: portfolioRollup.overallScore >= 80 ? '#22c55e' : portfolioRollup.overallScore >= 50 ? '#f59e0b' : '#ef4444' }} />
+                        <span style={{ fontSize: 24, fontWeight: 900, color: portfolioRollup.overallScore >= 80 ? '#22c55e' : portfolioRollup.overallScore >= 50 ? '#f59e0b' : '#ef4444' }}>
                             {portfolioRollup.overallScore}%
                         </span>
-                        <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Portfolio Score</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>Portfolio Score</span>
                     </div>
-                    <span style={{ fontSize: 10, color: '#64748b', padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.04)' }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.04)' }}>
                         {portfolioRollup.propertyCount} properties • {portfolioRollup.total} items
                     </span>
                     {portfolioRollup.worstPerformers?.length > 0 && (
@@ -512,13 +512,13 @@ export default function ComplianceEngine() {
                     background: 'rgba(255,255,255,0.04)', borderRadius: 6,
                     border: '1px solid rgba(255,255,255,0.08)', flex: 1, maxWidth: 240,
                 }}>
-                    <Search size={12} style={{ color: '#64748b' }} />
+                    <Search size={12} style={{ color: 'var(--text-tertiary)' }} />
                     <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search…"
-                        style={{ flex: 1, background: 'none', border: 'none', color: '#e2e8f0', fontSize: 11, outline: 'none' }} />
+                        style={{ flex: 1, background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 11, outline: 'none' }} />
                 </div>
                 <select value={filterType} onChange={e => setFilterType(e.target.value)}
-                    style={{ padding: '5px 8px', borderRadius: 6, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', outline: 'none' }}>
+                    style={{ padding: '5px 8px', borderRadius: 6, fontSize: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', outline: 'none' }}>
                     <option value="all">All Types</option>
                     {ITEM_TYPES.map(t => <option key={t} value={t}>{ITEM_TYPE_LABELS[t]}</option>)}
                 </select>
@@ -557,9 +557,9 @@ export default function ComplianceEngine() {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                                 <thead>
                                     <tr>
-                                        <th style={{ textAlign: 'left', padding: '8px 10px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)', minWidth: 150 }}>Entity</th>
+                                        <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-tertiary)', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)', minWidth: 150 }}>Entity</th>
                                         {ITEM_TYPES.map(t => (
-                                            <th key={t} style={{ textAlign: 'center', padding: '8px 6px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 10 }}>
+                                            <th key={t} style={{ textAlign: 'center', padding: '8px 6px', color: 'var(--text-tertiary)', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 10 }}>
                                                 {ITEM_TYPE_LABELS[t]}
                                             </th>
                                         ))}
@@ -567,11 +567,11 @@ export default function ComplianceEngine() {
                                 </thead>
                                 <tbody>
                                     {heatmapData.length === 0 ? (
-                                        <tr><td colSpan={ITEM_TYPES.length + 1} style={{ padding: 30, textAlign: 'center', color: '#475569' }}>No compliance data. Add items to build heatmap.</td></tr>
+                                        <tr><td colSpan={ITEM_TYPES.length + 1} style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)' }}>No compliance data. Add items to build heatmap.</td></tr>
                                     ) : heatmapData.map(entity => (
                                         <tr key={`${entity.type}:${entity.id}`}
                                             style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                            <td style={{ padding: '8px 10px', color: '#cbd5e1', fontWeight: 600 }}>
+                                            <td style={{ padding: '8px 10px', color: 'var(--text-secondary)', fontWeight: 600 }}>
                                                 <span style={{ marginRight: 6, color: entity.type === 'property' ? '#D6FE51' : '#f59e0b' }}>
                                                     {entity.type === 'property' ? <Building2 size={11} /> : <Truck size={11} />}
                                                 </span>
@@ -608,16 +608,16 @@ export default function ComplianceEngine() {
                             {selectedCell && (
                                 <div className="s-glass-card" style={{ marginTop: 12, padding: 16 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                                        <h4 style={{ margin: 0, fontSize: 13, color: '#e2e8f0', flex: 1 }}>
+                                        <h4 style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>
                                             {selectedCell.entityName} — {ITEM_TYPE_LABELS[selectedCell.itemType]}
                                         </h4>
                                         <button className="s-btn s-btn-ghost" onClick={() => setSelectedCell(null)}><X size={12} /></button>
                                     </div>
                                     {enrichedItems.filter(i => i.entityType === selectedCell.entityType && i.entityId === selectedCell.entityId && i.itemType === selectedCell.itemType).length === 0 ? (
-                                        <div style={{ color: '#94a3b8', fontSize: 12 }}>
+                                        <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                                             <AlertTriangle size={14} style={{ verticalAlign: -2, marginRight: 4, color: '#ef4444' }} />
                                             No {ITEM_TYPE_LABELS[selectedCell.itemType]} on file for {selectedCell.entityName}.
-                                            <button className="s-btn s-btn-ghost" style={{ marginLeft: 8, fontSize: 10, color: '#D6FE51' }}
+                                            <button className="s-btn s-btn-ghost" style={{ marginLeft: 8, fontSize: 10, color: 'var(--accent)' }}
                                                 onClick={() => setShowAddItem(true)}>
                                                 <Plus size={10} /> Add Now
                                             </button>
@@ -649,9 +649,9 @@ export default function ComplianceEngine() {
                                                 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                                         {getStatusDot(item.computedStatus)}
-                                                        <span style={{ fontWeight: 600, fontSize: 12, color: '#e2e8f0' }}>{item.label}</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-primary)' }}>{item.label}</span>
                                                     </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 10, color: '#64748b' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text-tertiary)' }}>
                                                         {item.carrier && <span>Carrier: {item.carrier}</span>}
                                                         {item.policyNumber && <span>Policy: {item.policyNumber}</span>}
                                                         {item.expirationDate && <span>Expires: {new Date(item.expirationDate).toLocaleDateString()}</span>}
@@ -677,7 +677,7 @@ export default function ComplianceEngine() {
                             {/* Central node selector */}
                             <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', gap: 6, alignItems: 'center' }}>
                                 <select value={centralNode} onChange={e => setCentralNode(e.target.value)}
-                                    style={{ padding: '3px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', outline: 'none' }}>
+                                    style={{ padding: '3px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-secondary)', outline: 'none' }}>
                                     <option value="">Auto Center</option>
                                     {properties.map(p => <option key={p.id} value={'property:' + p.id}>{p.name}</option>)}
                                     {vendors.map(v => <option key={v.id} value={'vendor:' + v.id}>{v.name}</option>)}
@@ -692,7 +692,7 @@ export default function ComplianceEngine() {
                                         return (
                                             <line key={`${node.id}-${connId}`}
                                                 x1={node.x} y1={node.y} x2={target.x} y2={target.y}
-                                                stroke={node.status ? `${STATUS_COLORS[node.status]}60` : 'rgba(214,254,81,0.15)'}
+                                                stroke={node.status ? `${STATUS_COLORS[node.status]}60` : 'color-mix(in srgb, var(--accent) 15%, transparent)'}
                                                 strokeWidth={1.5} strokeDasharray={node.status === 'expired' ? '4,4' : undefined} />
                                         );
                                     })
@@ -744,16 +744,16 @@ export default function ComplianceEngine() {
                                             boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
                                         }}
                                         onMouseLeave={() => setMindMapHover(null)}>
-                                        <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 4 }}>{hoveredNode.label}</div>
-                                        <div style={{ fontSize: 10, color: '#64748b' }}>
+                                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{hoveredNode.label}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
                                             {hoveredNode.type === 'carrier' ? 'Insurance Carrier' : hoveredNode.type}
                                         </div>
                                         {relatedItem && (
                                             <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3, fontSize: 10 }}>
-                                                {relatedItem.carrier && <div style={{ color: '#94a3b8' }}>Carrier: <strong>{relatedItem.carrier}</strong></div>}
-                                                {relatedItem.policyNumber && <div style={{ color: '#94a3b8' }}>Policy: {relatedItem.policyNumber}</div>}
-                                                {relatedItem.coverageLimits && <div style={{ color: '#94a3b8' }}>Coverage: {relatedItem.coverageLimits}</div>}
-                                                {relatedItem.expirationDate && <div style={{ color: '#94a3b8' }}>Expires: {new Date(relatedItem.expirationDate).toLocaleDateString()}</div>}
+                                                {relatedItem.carrier && <div style={{ color: 'var(--text-secondary)' }}>Carrier: <strong>{relatedItem.carrier}</strong></div>}
+                                                {relatedItem.policyNumber && <div style={{ color: 'var(--text-secondary)' }}>Policy: {relatedItem.policyNumber}</div>}
+                                                {relatedItem.coverageLimits && <div style={{ color: 'var(--text-secondary)' }}>Coverage: {relatedItem.coverageLimits}</div>}
+                                                {relatedItem.expirationDate && <div style={{ color: 'var(--text-secondary)' }}>Expires: {new Date(relatedItem.expirationDate).toLocaleDateString()}</div>}
                                                 <div style={{
                                                     marginTop: 2, padding: '2px 6px', borderRadius: 4, display: 'inline-block',
                                                     background: (STATUS_COLORS[relatedItem.computedStatus] || '#64748b') + '20',
@@ -768,7 +768,7 @@ export default function ComplianceEngine() {
                                                         e.preventDefault();
                                                         window.open(`/api/files/${(relatedItem as any).documentId}`, '_blank');
                                                     }} style={{
-                                                        marginTop: 4, color: '#D6FE51', fontSize: 10, fontWeight: 600,
+                                                        marginTop: 4, color: 'var(--accent)', fontSize: 10, fontWeight: 600,
                                                         textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
                                                     }}>
                                                         📄 View Source Document →
@@ -783,8 +783,8 @@ export default function ComplianceEngine() {
                                                         window.dispatchEvent(event);
                                                     }
                                                 }} style={{
-                                                    marginTop: 2, background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.2)',
-                                                    borderRadius: 4, padding: '3px 8px', color: '#D6FE51', fontSize: 10,
+                                                    marginTop: 2, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
+                                                    borderRadius: 4, padding: '3px 8px', color: 'var(--accent)', fontSize: 10,
                                                     fontWeight: 600, cursor: 'pointer',
                                                 }}>
                                                     View Entity Profile →
@@ -792,14 +792,14 @@ export default function ComplianceEngine() {
                                             </div>
                                         )}
                                         {hoveredNode.meta && !relatedItem && (
-                                            <div style={{ color: '#94a3b8', marginTop: 4, fontSize: 10 }}>{hoveredNode.meta}</div>
+                                            <div style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: 10 }}>{hoveredNode.meta}</div>
                                         )}
                                     </div>
                                 );
                             })()}
 
                             {mindMapNodes.length === 0 && (
-                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: '#475569' }}>
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                                     <Network size={40} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 8 }} />
                                     <p style={{ margin: 0, fontSize: 13 }}>Add compliance items to build the relationship map</p>
                                 </div>
@@ -812,11 +812,11 @@ export default function ComplianceEngine() {
                         <div style={{ position: 'relative', paddingLeft: 28 }}>
                             <div style={{
                                 position: 'absolute', left: 12, top: 0, bottom: 0, width: 2,
-                                background: 'linear-gradient(to bottom, #10b981, rgba(16,185,129,0.1))', borderRadius: 1,
+                                background: 'linear-gradient(to bottom, #22c55e, rgba(16,185,129,0.1))', borderRadius: 1,
                             }} />
 
                             {timelineData.length === 0 ? (
-                                <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
+                                <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                                     <Calendar size={40} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 12 }} />
                                     <p style={{ margin: 0 }}>No date-sensitive items to display</p>
                                 </div>
@@ -833,12 +833,12 @@ export default function ComplianceEngine() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, position: 'relative' }}>
                                             <div style={{
                                                 position: 'absolute', left: -22, width: 10, height: 10,
-                                                borderRadius: '50%', background: '#10b981', border: '2px solid #0f172a',
+                                                borderRadius: '50%', background: '#22c55e', border: '2px solid #0f172a',
                                             }} />
-                                            <span style={{ fontWeight: 700, fontSize: 13, color: '#e2e8f0' }}>
+                                            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>
                                                 {new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
                                             </span>
-                                            <span style={{ fontSize: 10, color: '#64748b', padding: '1px 6px', borderRadius: 6, background: 'rgba(255,255,255,0.04)' }}>
+                                            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', padding: '1px 6px', borderRadius: 6, background: 'rgba(255,255,255,0.04)' }}>
                                                 {monthItems.length} items
                                             </span>
                                             {monthItems.length >= 3 && (
@@ -859,16 +859,16 @@ export default function ComplianceEngine() {
                                                 }}>
                                                     <div style={{ position: 'absolute', left: -22, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: STATUS_COLORS[item.computedStatus] }} />
                                                     {getStatusDot(item.computedStatus)}
-                                                    <span style={{ fontWeight: 600, fontSize: 11, color: '#e2e8f0', flex: 1 }}>
+                                                    <span style={{ fontWeight: 600, fontSize: 11, color: 'var(--text-primary)', flex: 1 }}>
                                                         {resolveEntityName(item.entityType, item.entityId)}
                                                     </span>
-                                                    <span style={{ fontSize: 10, color: '#94a3b8', padding: '1px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.03)' }}>
+                                                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', padding: '1px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.03)' }}>
                                                         {ITEM_TYPE_LABELS[item.itemType]}
                                                     </span>
                                                     <span style={{ fontSize: 10, color: STATUS_COLORS[item.computedStatus], fontWeight: 700 }}>
                                                         {new Date(item.expirationDate!).toLocaleDateString()}
                                                     </span>
-                                                    {item.carrier && <span style={{ fontSize: 9, color: '#475569' }}>{item.carrier}</span>}
+                                                    {item.carrier && <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>{item.carrier}</span>}
                                                 </div>
                                             ))}
                                         </div>
@@ -884,23 +884,23 @@ export default function ComplianceEngine() {
                             {/* Score cards */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
                                 <div className="s-glass-card" style={{ textAlign: 'center', padding: 16 }}>
-                                    <div style={{ fontSize: 32, fontWeight: 900, color: summary.total > 0 ? (summary.expired > 0 ? '#ef4444' : summary.warning > 0 ? '#f59e0b' : '#10b981') : '#64748b' }}>
+                                    <div style={{ fontSize: 32, fontWeight: 900, color: summary.total > 0 ? (summary.expired > 0 ? '#ef4444' : summary.warning > 0 ? '#f59e0b' : '#22c55e') : '#64748b' }}>
                                         {summary.total > 0 ? Math.round(((summary.valid) / summary.total) * 100) : 0}%
                                     </div>
-                                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Overall Compliance Score</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>Overall Compliance Score</div>
                                 </div>
                                 <div className="s-glass-card" style={{ textAlign: 'center', padding: 16 }}>
                                     <div style={{ fontSize: 32, fontWeight: 900, color: '#ef4444' }}>{summary.expired + summary.missing}</div>
-                                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Action Required</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>Action Required</div>
                                 </div>
                                 <div className="s-glass-card" style={{ textAlign: 'center', padding: 16 }}>
                                     <div style={{ fontSize: 32, fontWeight: 900, color: '#f59e0b' }}>{summary.warning}</div>
-                                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Approaching Expiration</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>Approaching Expiration</div>
                                 </div>
                             </div>
 
                             {/* Type breakdown */}
-                            <h3 style={{ margin: '0 0 10px', fontSize: 13, color: '#94a3b8' }}>Compliance by Type</h3>
+                            <h3 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary)' }}>Compliance by Type</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
                                 {ITEM_TYPES.map(type => {
                                     const typeItems = enrichedItems.filter(i => i.itemType === type);
@@ -915,16 +915,16 @@ export default function ComplianceEngine() {
                                             background: 'rgba(255,255,255,0.02)', borderRadius: 8,
                                             border: '1px solid rgba(255,255,255,0.04)',
                                         }}>
-                                            <span style={{ fontWeight: 700, fontSize: 12, color: '#e2e8f0', minWidth: 110 }}>{ITEM_TYPE_LABELS[type]}</span>
-                                            <span style={{ fontSize: 10, color: '#64748b', minWidth: 30 }}>{typeItems.length}</span>
+                                            <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)', minWidth: 110 }}>{ITEM_TYPE_LABELS[type]}</span>
+                                            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', minWidth: 30 }}>{typeItems.length}</span>
                                             <div style={{ flex: 1, display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'rgba(255,255,255,0.03)' }}>
-                                                {valid > 0 && <div style={{ width: `${(valid / typeItems.length) * 100}%`, background: '#10b981' }} />}
+                                                {valid > 0 && <div style={{ width: `${(valid / typeItems.length) * 100}%`, background: '#22c55e' }} />}
                                                 {warn > 0 && <div style={{ width: `${(warn / typeItems.length) * 100}%`, background: '#f59e0b' }} />}
                                                 {exp > 0 && <div style={{ width: `${(exp / typeItems.length) * 100}%`, background: '#ef4444' }} />}
                                                 {miss > 0 && <div style={{ width: `${(miss / typeItems.length) * 100}%`, background: '#94a3b8' }} />}
                                             </div>
                                             <div style={{ display: 'flex', gap: 4, fontSize: 9 }}>
-                                                <span style={{ color: '#10b981' }}>{valid}✓</span>
+                                                <span style={{ color: '#22c55e' }}>{valid}✓</span>
                                                 <span style={{ color: '#f59e0b' }}>{warn}⚠</span>
                                                 <span style={{ color: '#ef4444' }}>{exp}✗</span>
                                             </div>
@@ -947,14 +947,14 @@ export default function ComplianceEngine() {
                                                 border: `1px solid ${cluster.severity === 'high' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'}`,
                                             }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                                    <span style={{ fontWeight: 700, fontSize: 12, color: '#e2e8f0' }}>{cluster.label}</span>
+                                                    <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)' }}>{cluster.label}</span>
                                                     <span style={{
                                                         fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
                                                         background: cluster.severity === 'high' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
                                                         color: cluster.severity === 'high' ? '#ef4444' : '#f59e0b',
                                                     }}>{cluster.count} items</span>
                                                 </div>
-                                                <div style={{ fontSize: 10, color: '#64748b' }}>{cluster.items.join(' • ')}</div>
+                                                <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{cluster.items.join(' • ')}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -965,7 +965,7 @@ export default function ComplianceEngine() {
 
                     {/* ═══ VIEW 5: VENDOR MATRIX ═══ */}
                     {view === 'vendor-matrix' && (
-                      <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Vendor Matrix unavailable.</div>}>
+                      <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Vendor Matrix unavailable.</div>}>
                         <div data-testid="compliance-vendor-matrix">
                         {/* Task 2.3 — Section 8 (AHA) Rollup card. Renders above the
                             Vendor Matrix table when the /compliance/section8-rollup
@@ -977,8 +977,8 @@ export default function ComplianceEngine() {
                                 className="s-glass-card"
                                 style={{
                                     padding: '14px 16px', marginBottom: 12,
-                                    border: '1px solid rgba(214,254,81,0.25)',
-                                    background: 'rgba(214,254,81,0.04)',
+                                    border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+                                    background: 'color-mix(in srgb, var(--accent) 4%, transparent)',
                                 }}
                                 onClick={() => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: 'compliance.section8Rollup.inspect', level: 'info', data: { propertyId: section8Rollup.propertyId } }); } catch { /* no-op */ } }}
                             >
@@ -986,10 +986,10 @@ export default function ComplianceEngine() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                         <Shield size={14} color="#818cf8" />
                                         <div>
-                                            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
                                                 Section 8 (AHA) Rollup
                                             </div>
-                                            <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, marginTop: 2 }} data-testid="compliance-section8-property">
+                                            <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, marginTop: 2 }} data-testid="compliance-section8-property">
                                                 {section8Rollup.propertyId ? (
                                                     <button className="s-property-link" style={{ fontSize: 13, fontWeight: 600 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(section8Rollup.propertyId!); }}>{section8Rollup.propertyName}</button>
                                                 ) : section8Rollup.propertyName}
@@ -998,14 +998,14 @@ export default function ComplianceEngine() {
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: 10, color: '#64748b' }}>Scheduled</div>
-                                            <div style={{ fontSize: 15, color: '#e2e8f0', fontWeight: 700 }} data-testid="compliance-section8-count">
+                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Scheduled</div>
+                                            <div style={{ fontSize: 15, color: 'var(--text-primary)', fontWeight: 700 }} data-testid="compliance-section8-count">
                                                 {section8Rollup.totalScheduled}
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: 10, color: '#64748b' }}>Next Inspection</div>
-                                            <div style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 600 }} data-testid="compliance-section8-next">
+                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Next Inspection</div>
+                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }} data-testid="compliance-section8-next">
                                                 {section8Rollup.nextInspectionDate ?? '—'}
                                             </div>
                                         </div>
@@ -1021,7 +1021,7 @@ export default function ComplianceEngine() {
                                                     ? '#ef4444'
                                                     : section8Rollup.status === 'attention'
                                                         ? '#f59e0b'
-                                                        : '#10b981',
+                                                        : '#22c55e',
                                             }}
                                             data-testid="compliance-section8-status"
                                         >
@@ -1035,19 +1035,19 @@ export default function ComplianceEngine() {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                                 <thead>
                                     <tr>
-                                        <th style={{ textAlign: 'left', padding: '8px 10px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)', minWidth: 140 }}>Vendor</th>
-                                        <th style={{ textAlign: 'center', padding: '8px 6px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>COI</th>
-                                        <th style={{ textAlign: 'center', padding: '8px 6px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>W-9</th>
-                                        <th style={{ textAlign: 'center', padding: '8px 6px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Insurance</th>
-                                        <th style={{ textAlign: 'center', padding: '8px 6px', color: '#64748b', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>License</th>
+                                        <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text-tertiary)', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)', minWidth: 140 }}>Vendor</th>
+                                        <th style={{ textAlign: 'center', padding: '8px 6px', color: 'var(--text-tertiary)', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>COI</th>
+                                        <th style={{ textAlign: 'center', padding: '8px 6px', color: 'var(--text-tertiary)', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>W-9</th>
+                                        <th style={{ textAlign: 'center', padding: '8px 6px', color: 'var(--text-tertiary)', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Insurance</th>
+                                        <th style={{ textAlign: 'center', padding: '8px 6px', color: 'var(--text-tertiary)', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>License</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {vendorMatrixData.length === 0 ? (
-                                        <tr><td colSpan={5} style={{ padding: 30, textAlign: 'center', color: '#475569' }}>No vendor compliance data</td></tr>
+                                        <tr><td colSpan={5} style={{ padding: 30, textAlign: 'center', color: 'var(--text-tertiary)' }}>No vendor compliance data</td></tr>
                                     ) : vendorMatrixData.map(({ vendor, items }) => (
                                         <tr key={vendor.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                            <td style={{ padding: '10px', color: '#cbd5e1', fontWeight: 600 }}>
+                                            <td style={{ padding: '10px', color: 'var(--text-secondary)', fontWeight: 600 }}>
                                                 <Truck size={11} style={{ marginRight: 6, color: '#f59e0b', verticalAlign: -1 }} />
                                                 {vendor.name}
                                             </td>
@@ -1087,7 +1087,7 @@ export default function ComplianceEngine() {
                         background: '#0f172a', borderRadius: 12, padding: 24, border: '1px solid rgba(255,255,255,0.1)',
                         width: 450, maxHeight: '80vh', overflowY: 'auto',
                     }}>
-                        <h3 style={{ margin: '0 0 16px', color: '#e2e8f0' }}><Shield size={18} style={{ verticalAlign: -3, marginRight: 8 }} /> Add Compliance Item</h3>
+                        <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}><Shield size={18} style={{ verticalAlign: -3, marginRight: 8 }} /> Add Compliance Item</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                             <div>
                                 <label className="s-label">Entity Type *</label>
@@ -1171,7 +1171,7 @@ export default function ComplianceEngine() {
                         </button>
                     </div>
                     {predictions.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '40px 20px', color: '#475569' }}>
+                        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-tertiary)' }}>
                             <TrendingUp size={32} strokeWidth={1} style={{ opacity: 0.3, marginBottom: 8 }} />
                             <p style={{ margin: 0, fontSize: 13 }}>No predictions loaded yet.</p>
                             <p style={{ margin: '4px 0 0', fontSize: 11, color: '#334155' }}>Click "Scan" to analyze upcoming expirations.</p>
@@ -1179,7 +1179,7 @@ export default function ComplianceEngine() {
                     ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
                             {predictions.map((flag: any) => {
-                                const sevColor = flag.severity === 'high' ? '#ef4444' : flag.severity === 'medium' ? '#f59e0b' : '#10b981';
+                                const sevColor = flag.severity === 'high' ? '#ef4444' : flag.severity === 'medium' ? '#f59e0b' : '#22c55e';
                                 return (
                                     <div key={flag.month} style={{
                                         borderRadius: 10, overflow: 'hidden',
@@ -1200,7 +1200,7 @@ export default function ComplianceEngine() {
                                             </span>
                                         </div>
                                         <div style={{ padding: '10px 14px' }}>
-                                            <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 8px', lineHeight: 1.5 }}>
+                                            <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '0 0 8px', lineHeight: 1.5 }}>
                                                 {flag.recommendation}
                                             </p>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1209,12 +1209,12 @@ export default function ComplianceEngine() {
                                                         fontSize: 10, padding: '4px 8px', borderRadius: 4,
                                                         background: 'rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between',
                                                     }}>
-                                                        <span style={{ color: '#cbd5e1' }}>{item.entityName}</span>
-                                                        <span style={{ color: '#64748b' }}>{item.type} · {item.expirationDate}</span>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>{item.entityName}</span>
+                                                        <span style={{ color: 'var(--text-tertiary)' }}>{item.type} · {item.expirationDate}</span>
                                                     </div>
                                                 ))}
                                                 {(flag.items || []).length > 5 && (
-                                                    <span style={{ fontSize: 10, color: '#475569', padding: '2px 8px' }}>
+                                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', padding: '2px 8px' }}>
                                                         + {flag.items.length - 5} more
                                                     </span>
                                                 )}

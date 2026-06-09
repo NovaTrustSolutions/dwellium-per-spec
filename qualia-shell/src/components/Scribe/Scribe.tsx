@@ -219,7 +219,7 @@ function FocusExitChip() {
                 position: 'absolute', top: 10, left: 16, zIndex: 50,
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '5px 12px', borderRadius: 999,
-                background: hovered ? 'rgba(214,254,81,0.12)' : 'rgba(0,0,0,0.6)',
+                background: hovered ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'rgba(0,0,0,0.6)',
                 border: `1px solid ${hovered ? '#D6FE51' : '#333'}`,
                 color: hovered ? '#D6FE51' : '#888',
                 fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',

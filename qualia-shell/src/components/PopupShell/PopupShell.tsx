@@ -102,10 +102,10 @@ export function PopupShell({ component }: { component: string }) {
                     style={{
                         display: 'flex', alignItems: 'center', gap: 5,
                         padding: '4px 12px',
-                        background: docking ? 'rgba(214,254,81,0.3)' : 'rgba(214,254,81,0.10)',
-                        border: '1px solid rgba(214,254,81,0.3)',
+                        background: docking ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                        border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                         borderRadius: 4,
-                        color: '#D6FE51',
+                        color: 'var(--accent)',
                         fontSize: 12,
                         fontWeight: 500,
                         cursor: docking ? 'not-allowed' : 'pointer',
@@ -116,14 +116,14 @@ export function PopupShell({ component }: { component: string }) {
                     }}
                     onMouseEnter={e => {
                         if (!docking) {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(214,254,81,0.20)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(214,254,81,0.5)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--accent) 20%, transparent)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'color-mix(in srgb, var(--accent) 50%, transparent)';
                         }
                     }}
                     onMouseLeave={e => {
                         if (!docking) {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(214,254,81,0.10)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(214,254,81,0.3)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'color-mix(in srgb, var(--accent) 30%, transparent)';
                         }
                     }}
                 >
@@ -143,7 +143,7 @@ export function PopupShell({ component }: { component: string }) {
                 <Suspense fallback={
                     <div style={{
                         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#D6FE51', fontSize: 13,
+                        color: 'var(--accent)', fontSize: 13,
                     }}>
                         Loading widget…
                     </div>

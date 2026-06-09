@@ -11,13 +11,13 @@ import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
 
 const POLICY_TYPES = [
-    { key: 'liability', label: 'General Liability', color: '#D6FE51' },
+    { key: 'liability', label: 'General Liability', color: 'var(--accent)' },
     { key: 'property', label: 'Property', color: '#3b82f6' },
     { key: 'flood', label: 'Flood', color: '#06b6d4' },
-    { key: 'umbrella', label: 'Umbrella', color: '#D6FE51' },
+    { key: 'umbrella', label: 'Umbrella', color: 'var(--accent)' },
     { key: 'workers_comp', label: "Workers' Comp", color: '#f59e0b' },
     { key: 'auto', label: 'Auto', color: '#22c55e' },
-    { key: 'other', label: 'Other', color: '#64748b' },
+    { key: 'other', label: 'Other', color: 'var(--text-tertiary)' },
 ] as const;
 
 // Task 2.5 — canonical shape is `InsurancePolicy` in packages/types.
@@ -31,7 +31,7 @@ interface Props {
 }
 
 function getExpiryStatus(expDate: string): { label: string; color: string; icon: typeof CheckCircle } {
-    if (!expDate) return { label: 'No expiry', color: '#64748b', icon: Clock };
+    if (!expDate) return { label: 'No expiry', color: 'var(--text-tertiary)', icon: Clock };
     const now = new Date();
     const exp = new Date(expDate);
     const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -167,7 +167,7 @@ export default function InsuranceModule({ propertyId }: Props) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <h3 style={{ margin: 0, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Shield size={14} color="#6366f1" /> Insurance Policies
-                    {policies.length > 0 && <span style={{ fontSize: 10, color: '#64748b', fontWeight: 400 }}>({policies.length})</span>}
+                    {policies.length > 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 400 }}>({policies.length})</span>}
                 </h3>
                 <button className="s-btn s-btn-primary" style={{ fontSize: 11, padding: '4px 12px' }}
                     onClick={() => { setEditing(null); setShowForm(!showForm); }}>
@@ -179,15 +179,15 @@ export default function InsuranceModule({ propertyId }: Props) {
                 Compliance Score Strip when /insurance/folioguard-rollup
                 returns data for this property. Fail-soft: null → not rendered.
                 ErrorBoundary wraps the whole surface per GR-13. */}
-            <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12, marginBottom: 12 }}>FolioGuard unavailable.</div>}>
+            <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12, marginBottom: 12 }}>FolioGuard unavailable.</div>}>
                 {folioguardRollup && (
                     <div
                         data-testid="insurance-folioguard-card"
                         className="s-glass-card"
                         style={{
                             padding: '14px 16px', marginBottom: 12,
-                            border: '1px solid rgba(214,254,81,0.25)',
-                            background: 'rgba(214,254,81,0.04)',
+                            border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+                            background: 'color-mix(in srgb, var(--accent) 4%, transparent)',
                         }}
                         onClick={() => { try { Sentry.addBreadcrumb({ category: 'ui.click', message: 'insurance.folioguard.inspect', level: 'info', data: { propertyId: folioguardRollup.propertyId, lapsed: folioguardRollup.lapsed } }); } catch { /* no-op */ } }}
                     >
@@ -195,24 +195,24 @@ export default function InsuranceModule({ propertyId }: Props) {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <Shield size={14} color="#818cf8" />
                                 <div>
-                                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
                                         FolioGuard Enforcement
                                     </div>
-                                    <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, marginTop: 2 }} data-testid="insurance-folioguard-property">
+                                    <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, marginTop: 2 }} data-testid="insurance-folioguard-property">
                                         {folioguardRollup.propertyName}
                                     </div>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: 10, color: '#64748b' }}>Policies</div>
-                                    <div style={{ fontSize: 15, color: '#e2e8f0', fontWeight: 700 }} data-testid="insurance-folioguard-total">
+                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Policies</div>
+                                    <div style={{ fontSize: 15, color: 'var(--text-primary)', fontWeight: 700 }} data-testid="insurance-folioguard-total">
                                         {folioguardRollup.totalPolicies}
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: 10, color: '#64748b' }}>Lapsed</div>
-                                    <div style={{ fontSize: 15, color: folioguardRollup.lapsed > 0 ? '#ef4444' : '#10b981', fontWeight: 700 }} data-testid="insurance-folioguard-lapsed">
+                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Lapsed</div>
+                                    <div style={{ fontSize: 15, color: folioguardRollup.lapsed > 0 ? '#ef4444' : '#22c55e', fontWeight: 700 }} data-testid="insurance-folioguard-lapsed">
                                         {folioguardRollup.lapsed}
                                     </div>
                                 </div>
@@ -228,7 +228,7 @@ export default function InsuranceModule({ propertyId }: Props) {
                                             ? '#ef4444'
                                             : folioguardRollup.status === 'attention'
                                                 ? '#f59e0b'
-                                                : '#10b981',
+                                                : '#22c55e',
                                     }}
                                     data-testid="insurance-folioguard-status"
                                 >
@@ -248,22 +248,22 @@ export default function InsuranceModule({ propertyId }: Props) {
                     border: `1px solid ${rollup.score >= 80 ? 'rgba(16,185,129,0.15)' : rollup.score >= 50 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)'}`,
                     alignItems: 'center',
                 }}>
-                    <BarChart3 size={14} style={{ color: rollup.score >= 80 ? '#10b981' : rollup.score >= 50 ? '#f59e0b' : '#ef4444' }} />
-                    <span style={{ fontSize: 18, fontWeight: 800, color: rollup.score >= 80 ? '#10b981' : rollup.score >= 50 ? '#f59e0b' : '#ef4444' }}>
+                    <BarChart3 size={14} style={{ color: rollup.score >= 80 ? '#22c55e' : rollup.score >= 50 ? '#f59e0b' : '#ef4444' }} />
+                    <span style={{ fontSize: 18, fontWeight: 800, color: rollup.score >= 80 ? '#22c55e' : rollup.score >= 50 ? '#f59e0b' : '#ef4444' }}>
                         {rollup.score}%
                     </span>
-                    <span style={{ fontSize: 11, color: '#94a3b8', flex: 1 }}>Property Compliance</span>
-                    <span style={{ fontSize: 10, color: '#10b981' }}>{rollup.valid}✓</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', flex: 1 }}>Property Compliance</span>
+                    <span style={{ fontSize: 10, color: '#22c55e' }}>{rollup.valid}✓</span>
                     <span style={{ fontSize: 10, color: '#f59e0b' }}>{rollup.warning}⚠</span>
                     <span style={{ fontSize: 10, color: '#ef4444' }}>{rollup.expired}✗</span>
-                    <span style={{ fontSize: 10, color: '#64748b' }}>{rollup.missing}—</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{rollup.missing}—</span>
                 </div>
             )}
 
             {showForm && (
                 <form onSubmit={handleSubmit} style={{
                     padding: 12, borderRadius: 8, marginBottom: 12,
-                    background: 'rgba(214,254,81,0.04)', border: '1px solid rgba(214,254,81,0.15)',
+                    background: 'color-mix(in srgb, var(--accent) 4%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)',
                 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                         <select name="policyType" defaultValue={editing?.policyType || 'liability'} className="s-input" style={{ fontSize: 11 }}>
@@ -283,11 +283,11 @@ export default function InsuranceModule({ propertyId }: Props) {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 8, marginBottom: 8 }}>
                         <div>
-                            <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Effective</label>
+                            <label style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'block', marginBottom: 2 }}>Effective</label>
                             <input name="effectiveDate" type="date" defaultValue={editing?.effectiveDate || ''} className="s-input" style={{ fontSize: 11 }} />
                         </div>
                         <div>
-                            <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Expiration</label>
+                            <label style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'block', marginBottom: 2 }}>Expiration</label>
                             <input name="expirationDate" type="date" defaultValue={editing?.expirationDate || ''} className="s-input" style={{ fontSize: 11 }} />
                         </div>
                         <input name="notes" placeholder="Notes" defaultValue={editing?.notes || ''} className="s-input" style={{ fontSize: 11 }} />
@@ -312,7 +312,7 @@ export default function InsuranceModule({ propertyId }: Props) {
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                     <Shield size={16} style={{ color: info.color, flexShrink: 0 }} />
-                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', flex: 1 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
                                         {p.carrier || 'Unknown Carrier'}
                                     </span>
                                     <span style={{
@@ -327,27 +327,27 @@ export default function InsuranceModule({ propertyId }: Props) {
                                         <ExpiryIcon size={10} /> {expiry.label}
                                     </span>
                                     <button onClick={() => { setEditing(p); setShowForm(true); }}
-                                        style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 4 }} title="Edit">
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }} title="Edit">
                                         <Edit2 size={12} />
                                     </button>
                                     <button onClick={() => handleDelete(p.id)}
-                                        style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 4 }} title="Delete">
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }} title="Delete">
                                         <Trash2 size={12} />
                                     </button>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 6, fontSize: 11, color: '#94a3b8' }}>
-                                    {p.policyNumber && <div>Policy: <strong style={{ color: '#cbd5e1' }}>{p.policyNumber}</strong></div>}
-                                    {p.premiumAnnual && <div>Premium: <strong style={{ color: '#cbd5e1' }}>{fmtCurrency(p.premiumAnnual)}/yr</strong></div>}
-                                    {p.coverageAmount && <div>Coverage: <strong style={{ color: '#cbd5e1' }}>{fmtCurrency(p.coverageAmount)}</strong></div>}
-                                    {p.deductible && <div>Deductible: <strong style={{ color: '#cbd5e1' }}>{fmtCurrency(p.deductible)}</strong></div>}
-                                    {p.agentName && <div>Agent: <strong style={{ color: '#cbd5e1' }}>{p.agentName}</strong></div>}
-                                    {p.effectiveDate && <div>Effective: <strong style={{ color: '#cbd5e1' }}>{p.effectiveDate}</strong></div>}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
+                                    {p.policyNumber && <div>Policy: <strong style={{ color: 'var(--text-secondary)' }}>{p.policyNumber}</strong></div>}
+                                    {p.premiumAnnual && <div>Premium: <strong style={{ color: 'var(--text-secondary)' }}>{fmtCurrency(p.premiumAnnual)}/yr</strong></div>}
+                                    {p.coverageAmount && <div>Coverage: <strong style={{ color: 'var(--text-secondary)' }}>{fmtCurrency(p.coverageAmount)}</strong></div>}
+                                    {p.deductible && <div>Deductible: <strong style={{ color: 'var(--text-secondary)' }}>{fmtCurrency(p.deductible)}</strong></div>}
+                                    {p.agentName && <div>Agent: <strong style={{ color: 'var(--text-secondary)' }}>{p.agentName}</strong></div>}
+                                    {p.effectiveDate && <div>Effective: <strong style={{ color: 'var(--text-secondary)' }}>{p.effectiveDate}</strong></div>}
                                 </div>
-                                {p.notes && <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, fontStyle: 'italic' }}>{p.notes}</div>}
+                                {p.notes && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6, fontStyle: 'italic' }}>{p.notes}</div>}
 
                                 {/* Expand/Collapse for docs & workitems */}
                                 <button onClick={() => setExpandedPolicy(expandedPolicy === p.id ? null : p.id)}
-                                    style={{ background: 'none', border: 'none', color: '#D6FE51', fontSize: 10, fontWeight: 600, cursor: 'pointer', marginTop: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 10, fontWeight: 600, cursor: 'pointer', marginTop: 8, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                                     {expandedPolicy === p.id ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                                     {expandedPolicy === p.id ? 'Collapse' : 'Documents & Links'}
                                 </button>
@@ -357,23 +357,23 @@ export default function InsuranceModule({ propertyId }: Props) {
                                         {/* Documents */}
                                         <div style={{ marginBottom: 10 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                                                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     <FileText size={11} /> Documents ({(policyDocs[p.id] || []).length})
                                                 </span>
                                             </div>
                                             {(policyDocs[p.id] || []).map(doc => (
                                                 <div key={doc.id} style={{
                                                     padding: '4px 8px', borderRadius: 4, marginBottom: 3,
-                                                    background: 'rgba(255,255,255,0.02)', fontSize: 10, color: '#cbd5e1',
+                                                    background: 'rgba(255,255,255,0.02)', fontSize: 10, color: 'var(--text-secondary)',
                                                     display: 'flex', alignItems: 'center', gap: 6,
                                                 }}>
-                                                    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', textTransform: 'uppercase' }}>{doc.type}</span>
+                                                    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', textTransform: 'uppercase' }}>{doc.type}</span>
                                                     <span style={{ flex: 1 }}>{doc.description}</span>
-                                                    <span style={{ color: '#475569' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>
+                                                    <span style={{ color: 'var(--text-tertiary)' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>
                                                 </div>
                                             ))}
                                             <form onSubmit={(e) => handleAddDoc(p.id, e)} style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                                                <select name="docType" style={{ padding: '3px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0' }}>
+                                                <select name="docType" style={{ padding: '3px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)' }}>
                                                     <option value="declarations">Declarations</option>
                                                     <option value="endorsement">Endorsement</option>
                                                     <option value="certificate">Certificate</option>
@@ -381,8 +381,8 @@ export default function InsuranceModule({ propertyId }: Props) {
                                                     <option value="correspondence">Correspondence</option>
                                                     <option value="other">Other</option>
                                                 </select>
-                                                <input name="description" placeholder="Description" style={{ flex: 1, padding: '3px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0' }} />
-                                                <button type="submit" style={{ padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.2)', color: '#D6FE51', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                <input name="description" placeholder="Description" style={{ flex: 1, padding: '3px 6px', borderRadius: 4, fontSize: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)' }} />
+                                                <button type="submit" style={{ padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
                                                     <Upload size={9} /> Add
                                                 </button>
                                             </form>
@@ -394,7 +394,7 @@ export default function InsuranceModule({ propertyId }: Props) {
                     })}
                 </div>
             ) : (
-                <div style={{ textAlign: 'center', padding: 16, color: '#475569', fontSize: 12 }}>
+                <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>
                     <Shield size={20} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 6 }} />
                     <p style={{ margin: 0 }}>No insurance policies tracked</p>
                 </div>
@@ -403,7 +403,7 @@ export default function InsuranceModule({ propertyId }: Props) {
             {/* Linked Compliance Workitems */}
             {linkedWorkitems.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                    <h4 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <h4 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Briefcase size={11} /> Compliance Work Items ({linkedWorkitems.length})
                     </h4>
                     {linkedWorkitems.map((wi: any) => (
@@ -412,11 +412,11 @@ export default function InsuranceModule({ propertyId }: Props) {
                             background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
                             display: 'flex', alignItems: 'center', gap: 8, fontSize: 11,
                         }}>
-                            <span style={{ flex: 1, color: '#e2e8f0' }}>{wi.title}</span>
+                            <span style={{ flex: 1, color: 'var(--text-primary)' }}>{wi.title}</span>
                             <span style={{
                                 fontSize: 9, padding: '1px 6px', borderRadius: 4, fontWeight: 600,
                                 background: wi.status === 'resolved' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
-                                color: wi.status === 'resolved' ? '#10b981' : '#f59e0b',
+                                color: wi.status === 'resolved' ? '#22c55e' : '#f59e0b',
                             }}>{wi.status}</span>
                         </div>
                     ))}

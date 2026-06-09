@@ -26,7 +26,7 @@ export default function AppSuspenseFallback({ variant, label }: Props) {
         return (
             <div style={{
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#D6FE51', fontSize: 13,
+                color: 'var(--accent)', fontSize: 13,
             }}>
                 {label ?? 'Loading widget…'}
             </div>
@@ -38,13 +38,13 @@ export default function AppSuspenseFallback({ variant, label }: Props) {
         <div style={{
             position: 'fixed', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: '#0a0e1a', color: '#64748b', fontSize: 14,
+            background: '#0a0e1a', color: 'var(--text-tertiary)', fontSize: 14,
             fontFamily: 'Inter, -apple-system, sans-serif',
         }}>
             <div style={{ textAlign: 'center' }}>
                 <div style={{
                     width: 24, height: 24, margin: '0 auto 12px',
-                    border: '2px solid rgba(214,254,81,0.3)', borderTopColor: '#D6FE51',
+                    border: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)', borderTopColor: 'var(--accent)',
                     borderRadius: '50%', animation: 'spin 0.6s linear infinite',
                 }} />
                 {label ?? 'Loading…'}

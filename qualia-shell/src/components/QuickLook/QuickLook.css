@@ -88,7 +88,7 @@
 .ql-header__name {
     font-size: 15px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -97,7 +97,7 @@
 
 .ql-header__meta {
     font-size: 12px;
-    color: #64748b;
+    color: var(--text-tertiary);
     margin-top: 2px;
     font-weight: 500;
 }
@@ -120,26 +120,26 @@
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.04);
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .ql-btn:hover {
     background: rgba(255, 255, 255, 0.08);
-    color: #e2e8f0;
+    color: var(--text-primary);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .ql-btn--open {
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15) 0%, rgba(214, 254, 81, 0.08) 100%);
-    color: #D6FE51;
-    border-color: rgba(214, 254, 81, 0.25);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 100%);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .ql-btn--open:hover {
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.25) 0%, rgba(214, 254, 81, 0.15) 100%);
-    color: #D6FE51;
-    box-shadow: 0 4px 16px rgba(214, 254, 81, 0.2);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 25%, transparent) 0%, color-mix(in srgb, var(--accent) 15%, transparent) 100%);
+    color: var(--accent);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .ql-btn--large {
@@ -161,7 +161,7 @@
 
 .ql-btn--close:hover {
     background: rgba(239, 68, 68, 0.15);
-    color: #f87171;
+    color: var(--danger);
     border-color: rgba(239, 68, 68, 0.3);
 }
 
@@ -193,15 +193,15 @@
     justify-content: center;
     height: 100%;
     gap: 16px;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-size: 14px;
 }
 
 .ql-loading__spinner {
     width: 36px;
     height: 36px;
-    border: 3px solid rgba(214, 254, 81, 0.15);
-    border-top-color: #D6FE51;
+    border: 3px solid color-mix(in srgb, var(--accent) 15%, transparent);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: qlSpin 0.7s linear infinite;
 }
@@ -235,7 +235,7 @@
     padding: 10px 24px;
     background: rgba(251, 191, 36, 0.06);
     border-top: 1px solid rgba(251, 191, 36, 0.12);
-    color: #fbbf24;
+    color: var(--warning);
     font-size: 12px;
     font-weight: 600;
     text-align: center;
@@ -246,7 +246,7 @@
     width: 100%;
     height: 100%;
     border: none;
-    background: #fff;
+    background: var(--bg-surface);
 }
 
 /* Image Preview */
@@ -303,7 +303,7 @@
 }
 
 .ql-unsupported__text {
-    color: #64748b;
+    color: var(--text-tertiary);
     font-size: 14px;
     max-width: 300px;
     line-height: 1.5;
@@ -322,7 +322,7 @@
 
 .ql-footer__hint {
     font-size: 11px;
-    color: #475569;
+    color: var(--text-tertiary);
     font-weight: 500;
 }
 
@@ -335,6 +335,6 @@
     border-radius: 4px;
     font-family: 'SFMono-Regular', Consolas, monospace;
     font-size: 10px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }

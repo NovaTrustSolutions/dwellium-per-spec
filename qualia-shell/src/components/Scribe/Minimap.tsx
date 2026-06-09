@@ -40,8 +40,8 @@ function buildRuns(text: string): ColoredRun[] {
         const t = line.trimStart();
         let color: string;
         if (t.startsWith('# ')) color = '#D6FE51';
-        else if (t.startsWith('## ')) color = 'rgba(214,254,81,0.7)';
-        else if (t.startsWith('### ') || t.startsWith('#### ') || t.startsWith('##### ') || t.startsWith('###### ')) color = 'rgba(214,254,81,0.45)';
+        else if (t.startsWith('## ')) color = 'color-mix(in srgb, var(--accent) 70%, transparent)';
+        else if (t.startsWith('### ') || t.startsWith('#### ') || t.startsWith('##### ') || t.startsWith('###### ')) color = 'color-mix(in srgb, var(--accent) 45%, transparent)';
         else color = BODY;
         push(line, color);
     }

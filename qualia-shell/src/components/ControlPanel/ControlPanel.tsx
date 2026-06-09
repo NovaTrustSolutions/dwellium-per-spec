@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useTheme } from '../../context/ThemeContext';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { useTheme, THEMES, CUSTOM_TOKENS_KEY } from '../../context/ThemeContext';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
@@ -56,7 +56,10 @@ interface CalendarEvent {
 }
 
 export default function ControlPanel() {
-    const { theme, accentColor, toggleTheme, setAccentColor } = useTheme();
+    const { theme, accentColor, setTheme, setAccentColor } = useTheme();
+    const [showImport, setShowImport] = useState(false);
+    const [importText, setImportText] = useState('');
+    const [editMsg, setEditMsg] = useState('');
     const { windows, minimizeWindow, restoreWindow, closeWindow, saveLayout, resetLayout } = useWindows();
     const { settings: layoutSettings, updateSettings, resetSettings, fontPresets } = useLayout();
     const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus | null>(null);
@@ -170,17 +173,91 @@ export default function ControlPanel() {
     const gmailStatus = status?.gmail;
     const calendarStatus = status?.calendar;
 
+    // ── Theme editor (Settings → Appearance → Customize) ──
+    const EDITOR_FIELDS: { label: string; vars: string[] }[] = [
+        { label: 'Background', vars: ['--bg', '--bg-desktop'] },
+        { label: 'Surface', vars: ['--surface', '--bg-surface'] },
+        { label: 'Elevated', vars: ['--surface2', '--bg-surface-elevated'] },
+        { label: 'Border', vars: ['--border', '--border-default'] },
+        { label: 'Text', vars: ['--text', '--text-primary'] },
+        { label: 'Muted', vars: ['--muted', '--text-secondary'] },
+        { label: 'Accent', vars: ['--blue', '--accent', '--accent-text'] },
+        { label: 'Gradient A', vars: ['--gs'] },
+        { label: 'Gradient B', vars: ['--ge'] },
+        { label: 'Success', vars: ['--ig', '--success'] },
+    ];
+    const editBtn: CSSProperties = { fontSize: 11, padding: '5px 12px', borderRadius: 6, cursor: 'pointer', background: 'var(--bg-surface-hover, rgba(255,255,255,0.06))', color: 'var(--text-primary)', border: '1px solid var(--border-default, rgba(255,255,255,0.12))' };
+    const readVar = (v: string): string => {
+        try { const val = getComputedStyle(document.documentElement).getPropertyValue(v).trim(); return /^#[0-9a-fA-F]{3,8}$/.test(val) ? val : '#888888'; } catch { return '#888888'; }
+    };
+    const persistTokens = (mut: (cur: Record<string, string>) => void) => {
+        let cur: Record<string, string> = {};
+        try { cur = JSON.parse(localStorage.getItem(CUSTOM_TOKENS_KEY) || '{}'); } catch { /* ignore */ }
+        mut(cur);
+        try { localStorage.setItem(CUSTOM_TOKENS_KEY, JSON.stringify(cur)); } catch { /* ignore */ }
+    };
+    const applyToken = (vars: string[], value: string) => {
+        const r = document.documentElement;
+        vars.forEach(v => r.style.setProperty(v, value));
+        persistTokens(cur => vars.forEach(v => { cur[v] = value; }));
+    };
+    const resetCustom = () => {
+        const r = document.documentElement;
+        try { Object.keys(JSON.parse(localStorage.getItem(CUSTOM_TOKENS_KEY) || '{}')).forEach(v => r.style.removeProperty(v)); } catch { /* ignore */ }
+        try { localStorage.removeItem(CUSTOM_TOKENS_KEY); } catch { /* ignore */ }
+        setEditMsg('Reset to theme defaults'); setTimeout(() => setEditMsg(''), 2000);
+    };
+    const exportTheme = () => {
+        const cs = getComputedStyle(document.documentElement);
+        const out: Record<string, string> = { theme };
+        ['--bg', '--surface', '--surface2', '--border', '--text', '--muted', '--cyan', '--blue', '--gs', '--ge', '--ip', '--il', '--ig'].forEach(k => { const val = cs.getPropertyValue(k).trim(); if (val) out[k] = val; });
+        const json = JSON.stringify(out, null, 2);
+        try { navigator.clipboard.writeText(json); } catch { /* ignore */ }
+        try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = `dwellium-theme-${theme}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } catch { /* ignore */ }
+        setEditMsg('Copied + downloaded'); setTimeout(() => setEditMsg(''), 2000);
+    };
+    const doImport = () => {
+        try {
+            const obj = JSON.parse(importText) as Record<string, string>;
+            const r = document.documentElement;
+            persistTokens(cur => Object.entries(obj).forEach(([k, v]) => { if (k.startsWith('--') && typeof v === 'string') { r.style.setProperty(k, v); cur[k] = v; } }));
+            setEditMsg('Applied ✓'); setShowImport(false);
+        } catch { setEditMsg('Invalid JSON'); }
+        setTimeout(() => setEditMsg(''), 2500);
+    };
+
     return (
         <div className="control-panel">
             <section className="cp-section">
                 <h3 className="cp-section__title">Appearance</h3>
 
                 <div className="cp-field">
-                    <label className="cp-label">Theme</label>
-                    <button className="cp-toggle" onClick={toggleTheme}>
-                        <span className={`cp-toggle__option ${theme === 'dark' ? 'cp-toggle__option--active' : ''}`}>🌙 Dark</span>
-                        <span className={`cp-toggle__option ${theme === 'light' ? 'cp-toggle__option--active' : ''}`}>☀️ Light</span>
-                    </button>
+                    <label className="cp-label">Theme — {THEMES.find(t => t.id === theme)?.label || theme}</label>
+                    {(['Dwellium', 'Master Pack'] as const).map(group => (
+                        <div key={group} style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 10, opacity: 0.5, margin: '6px 0', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{group}</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 8 }}>
+                                {THEMES.filter(t => t.group === group).map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => setTheme(t.id)}
+                                        title={t.label}
+                                        style={{
+                                            display: 'flex', flexDirection: 'column', gap: 5, padding: 6, borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                                            background: theme === t.id ? 'var(--bg-surface-hover, rgba(255,255,255,0.06))' : 'transparent',
+                                            border: theme === t.id ? '1.5px solid var(--accent)' : '1px solid var(--border-default, rgba(255,255,255,0.1))',
+                                        }}
+                                    >
+                                        <span style={{ display: 'flex', height: 24, borderRadius: 5, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.25)' }}>
+                                            <span style={{ flex: 2, background: t.bg }} />
+                                            <span style={{ flex: 1, background: t.accent }} />
+                                        </span>
+                                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                 </div>
 
                 <div className="cp-field">
@@ -196,6 +273,29 @@ export default function ControlPanel() {
                             />
                         ))}
                     </div>
+                </div>
+
+                <div className="cp-field">
+                    <label className="cp-label">Customize Theme {editMsg && <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 6 }}>· {editMsg}</span>}</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(116px, 1fr))', gap: 8 }}>
+                        {EDITOR_FIELDS.map(f => (
+                            <label key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
+                                <input type="color" defaultValue={readVar(f.vars[0])} onChange={e => applyToken(f.vars, e.target.value)} style={{ width: 26, height: 22, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }} />
+                                {f.label}
+                            </label>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                        <button onClick={resetCustom} style={editBtn}>Reset</button>
+                        <button onClick={exportTheme} style={editBtn}>Export JSON</button>
+                        <button onClick={() => setShowImport(s => !s)} style={editBtn}>Import JSON</button>
+                    </div>
+                    {showImport && (
+                        <div style={{ marginTop: 8 }}>
+                            <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder={'{"--bg":"#101020","--blue":"#7aa2f7"}'} rows={3} style={{ width: '100%', boxSizing: 'border-box', fontSize: 11, fontFamily: 'var(--font-mono)', background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-default)', borderRadius: 6, padding: 8 }} />
+                            <button onClick={doImport} style={{ ...editBtn, marginTop: 6 }}>Apply</button>
+                        </div>
+                    )}
                 </div>
             </section>
 

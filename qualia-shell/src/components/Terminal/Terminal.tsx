@@ -309,7 +309,7 @@ export default function Terminal() {
                         style={{
                             padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                             border: 'none', background: 'transparent',
-                            borderBottom: tab === t ? '2px solid #D6FE51' : '2px solid transparent',
+                            borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
                             color: tab === t ? '#D6FE51' : '#888',
                         }}
                     >{({ terminal: 'Terminal', paperclip: 'Paperclip', langflow: 'LangFlow', crewai: 'CrewAI' } as const)[t]}</button>

@@ -85,7 +85,7 @@
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06);
     border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.18);
     border-radius: 8px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     cursor: pointer;
     font-size: 13px;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -200,14 +200,14 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     text-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
 }
 
 /* [U6] Count badge */
 .ara-dropdown-count {
     font-size: 10px;
-    color: #52525b;
+    color: var(--text-tertiary);
     background: rgba(255, 255, 255, 0.04);
     padding: 2px 10px;
     border-radius: 8px;
@@ -251,7 +251,7 @@
     border: none;
     border-radius: 6px;
     border-left: 3px solid transparent;
-    color: #d1d5db;
+    color: var(--text-secondary);
     cursor: pointer;
     text-align: left;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -262,15 +262,15 @@
 /* [D11] Hover with per-persona accent tint */
 .ara-mode-option:hover {
     background: rgba(var(--opt-accent-rgb, 56, 152, 236), 0.06);
-    border-left-color: var(--opt-accent, #D6FE51);
+    border-left-color: var(--opt-accent, var(--accent));
     transform: translateX(2px);
 }
 
 /* [D12] Active option with accent glow */
 .ara-mode-option.active {
     background: rgba(var(--opt-accent-rgb, 56, 152, 236), 0.1);
-    border-left-color: var(--opt-accent, #D6FE51);
-    color: #e0e0e0;
+    border-left-color: var(--opt-accent, var(--accent));
+    color: var(--text-primary);
     box-shadow: inset 3px 0 12px -4px rgba(var(--opt-accent-rgb, 56, 152, 236), 0.2);
 }
 
@@ -303,7 +303,7 @@
 /* [U10] Description with ellipsis */
 .ara-mode-option-desc {
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -322,7 +322,7 @@
     border-radius: 6px;
     border: none;
     background: rgba(255, 255, 255, 0.05);
-    color: #52525b;
+    color: var(--text-tertiary);
     font-size: 11px;
     cursor: pointer;
     display: flex;
@@ -335,7 +335,7 @@
 
 .ara-mode-option-expand:hover {
     background: rgba(255, 255, 255, 0.1);
-    color: #d4d4d8;
+    color: var(--text-secondary);
 }
 
 /* ========== INLINE DETAIL PANEL ========== */
@@ -365,7 +365,7 @@
 /* [D16] Lens text with accent color */
 .ara-detail-lens {
     font-size: 12px;
-    color: var(--opt-accent, #D6FE51);
+    color: var(--opt-accent, var(--accent));
     font-style: italic;
     margin: 0 0 10px;
     line-height: 1.5;
@@ -400,18 +400,18 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    color: #71717a;
+    color: var(--text-tertiary);
 }
 
 /* [U14] Detail values */
 .ara-detail-value {
     font-size: 11px;
-    color: #a1a1aa;
+    color: var(--text-secondary);
     line-height: 1.5;
 }
 
 .ara-detail-item--forbidden .ara-detail-value {
-    color: #fca5a5;
+    color: var(--danger);
 }
 
 /* ========== MODE STATUS ========== */
@@ -454,7 +454,7 @@
 }
 
 .ara-jurisdiction-btn.active {
-    color: #f59e0b;
+    color: var(--warning);
     background: rgba(245, 158, 11, 0.12);
     box-shadow:
         0 0 12px rgba(245, 158, 11, 0.15),
@@ -472,7 +472,7 @@
 /* [D19] Guardian indicator with animated pulse */
 .ara-guardian-indicator {
     font-size: 11px;
-    color: #fbbf24;
+    color: var(--warning);
     background: rgba(251, 191, 36, 0.08);
     padding: 4px 12px;
     border-radius: 8px;
@@ -498,7 +498,7 @@
 .ara-clear-btn {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #6b7280;
+    color: var(--text-tertiary);
     width: 34px;
     height: 34px;
     border-radius: 6px;
@@ -513,7 +513,7 @@
 .ara-clear-btn:hover {
     background: rgba(239, 68, 68, 0.1);
     border-color: rgba(239, 68, 68, 0.25);
-    color: #ef4444;
+    color: var(--danger);
     transform: rotate(90deg);
 }
 
@@ -560,7 +560,7 @@
     font-size: 20px;
     font-weight: 800;
     letter-spacing: -0.4px;
-    background: linear-gradient(135deg, #f4f4f5 0%, var(--ara-accent, #D6FE51) 100%);
+    background: linear-gradient(135deg, #f4f4f5 0%, var(--ara-accent, var(--accent)) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -569,7 +569,7 @@
 /* [D24] Lens text */
 .ara-hint-lens {
     font-size: 13px;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     font-style: italic;
     margin: 0 0 8px;
     opacity: 0.8;
@@ -577,7 +577,7 @@
 
 .ara-hint-best {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     margin: 0 0 16px;
 }
 
@@ -596,7 +596,7 @@
     border-radius: 8px;
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06);
     border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
-    color: #a1a1aa;
+    color: var(--text-secondary);
     font-weight: 600;
 }
 
@@ -693,7 +693,7 @@
 
 /* [D28] Avatar diamond with accent glow */
 .ara-avatar {
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     font-size: 13px;
     text-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.5);
 }
@@ -702,13 +702,13 @@
 .ara-sender {
     font-size: 10px;
     font-weight: 800;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     text-transform: uppercase;
     letter-spacing: 0.8px;
 }
 
 .ara-sender--user {
-    color: #71717a;
+    color: var(--text-tertiary);
 }
 
 /* [U20] Mode icon in header */
@@ -752,7 +752,7 @@
             rgba(var(--ara-accent-rgb, 56, 152, 236), 0.16),
             rgba(var(--ara-accent-rgb, 56, 152, 236), 0.06));
     border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
-    color: #e0e0e0;
+    color: var(--text-primary);
     border-bottom-right-radius: 4px;
 }
 
@@ -760,7 +760,7 @@
 .ara-message--assistant .ara-message-body {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    color: #d1d5db;
+    color: var(--text-secondary);
     border-bottom-left-radius: 4px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
@@ -779,7 +779,7 @@
 
 /* [D34] Italic with accent color */
 .ara-line em {
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     font-style: italic;
 }
 
@@ -791,13 +791,13 @@
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.85em;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 /* [D36] Bullets with accent */
 .ara-bullet,
 .ara-num {
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     margin-right: 6px;
     font-weight: 700;
 }
@@ -816,7 +816,7 @@
 .ara-h3 {
     font-size: 13px;
     margin: 8px 0 4px;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     font-weight: 700;
 }
 
@@ -831,7 +831,7 @@
 .ara-typing span {
     width: 7px;
     height: 7px;
-    background: var(--ara-gradient, linear-gradient(135deg, #D6FE51, #E8FF7A));
+    background: var(--ara-gradient, linear-gradient(135deg, var(--accent), var(--accent-hover)));
     border-radius: 50%;
     animation: araTypingDot 1.4s ease infinite;
     box-shadow: 0 0 8px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
@@ -879,7 +879,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     padding: 11px 16px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 13px;
     font-family: inherit;
     resize: none;
@@ -907,7 +907,7 @@
 .ara-send-btn {
     width: 42px;
     height: 42px;
-    background: var(--ara-gradient, linear-gradient(135deg, #D6FE51, #D6FE51));
+    background: var(--ara-gradient, linear-gradient(135deg, var(--accent), var(--accent)));
     border: none;
     border-radius: 8px;
     color: white;
@@ -948,7 +948,7 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 16px;
     cursor: pointer;
     display: flex;
@@ -963,7 +963,7 @@
 .ara-mic-btn:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
-    color: #d1d5db;
+    color: var(--text-secondary);
     transform: translateY(-1px);
 }
 
@@ -971,21 +971,21 @@
 .ara-mic-btn--active {
     background: rgba(239, 68, 68, 0.12);
     border-color: rgba(239, 68, 68, 0.35);
-    color: #ef4444;
+    color: var(--danger);
     animation: araMicPulse 1.6s ease infinite;
 }
 
 .ara-mic-btn--active:hover:not(:disabled) {
     background: rgba(239, 68, 68, 0.2);
     border-color: rgba(239, 68, 68, 0.5);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 /* [D47] Transcribing state */
 .ara-mic-btn--transcribing {
     background: rgba(251, 191, 36, 0.08);
     border-color: rgba(251, 191, 36, 0.25);
-    color: #fbbf24;
+    color: var(--warning);
     animation: none;
 }
 
@@ -1066,7 +1066,7 @@
 .ara-avatar-panel-close:focus-visible,
 .ara-voice-item-select:focus-visible,
 .ara-voice-item-delete:focus-visible {
-    outline: 2px solid var(--ara-accent, #D6FE51);
+    outline: 2px solid var(--ara-accent, var(--accent));
     outline-offset: 2px;
 }
 
@@ -1221,7 +1221,7 @@
 .ara-mode-option.active::after {
     content: '✓';
     font-size: 12px;
-    color: var(--opt-accent, #D6FE51);
+    color: var(--opt-accent, var(--accent));
     margin-left: 6px;
     font-weight: 800;
 }
@@ -1262,7 +1262,7 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 16px;
     cursor: pointer;
     display: flex;
@@ -1276,7 +1276,7 @@
 .ara-tts-btn:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
-    color: #d1d5db;
+    color: var(--text-secondary);
     transform: translateY(-1px);
 }
 
@@ -1284,7 +1284,7 @@
 .ara-tts-btn--on {
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.1);
     border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     box-shadow: 0 0 12px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
 }
 
@@ -1301,7 +1301,7 @@
     background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.35);
     border-radius: 8px;
-    color: #ef4444;
+    color: var(--danger);
     font-size: 16px;
     cursor: pointer;
     display: flex;
@@ -1351,13 +1351,13 @@
 }
 
 .ara-speak-btn:hover {
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
 }
 
 .ara-speak-btn--active {
     opacity: 1;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     animation: araSpeakPulse 1.5s ease infinite;
 }
 
@@ -1382,7 +1382,7 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 16px;
     cursor: pointer;
     display: flex;
@@ -1396,14 +1396,14 @@
 .ara-voice-settings-btn:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
-    color: #d1d5db;
+    color: var(--text-secondary);
     transform: translateY(-1px);
 }
 
 .ara-voice-settings-btn--active {
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.1);
     border-color: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3);
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     box-shadow: 0 0 12px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
 }
 
@@ -1478,7 +1478,7 @@
     border-radius: 8px;
     border: none;
     background: rgba(255, 255, 255, 0.05);
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 13px;
     cursor: pointer;
     display: flex;
@@ -1489,7 +1489,7 @@
 
 .ara-voice-panel-close:hover {
     background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 /* Provider status bar */
@@ -1511,7 +1511,7 @@
 
 .ara-voice-provider-label {
     font-size: 11px;
-    color: #a1a1aa;
+    color: var(--text-secondary);
     font-weight: 600;
 }
 
@@ -1531,7 +1531,7 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
 }
 
 /* Voice list */
@@ -1561,7 +1561,7 @@
     padding: 8px 12px;
     background: none;
     border: none;
-    color: #d1d5db;
+    color: var(--text-secondary);
     cursor: pointer;
     font-family: inherit;
     font-size: 12px;
@@ -1576,7 +1576,7 @@
 
 .ara-voice-item-radio {
     font-size: 14px;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
 }
 
 .ara-voice-item-name {
@@ -1589,7 +1589,7 @@
     border-radius: 8px;
     border: none;
     background: transparent;
-    color: #52525b;
+    color: var(--text-tertiary);
     font-size: 12px;
     cursor: pointer;
     display: flex;
@@ -1601,13 +1601,13 @@
 
 .ara-voice-item-delete:hover {
     background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 /* Clone form */
 .ara-voice-hint {
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     margin: 0 0 12px;
     line-height: 1.5;
 }
@@ -1624,7 +1624,7 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     font-family: inherit;
     outline: none;
@@ -1639,7 +1639,7 @@
 }
 
 .ara-voice-name-input::placeholder {
-    color: #52525b;
+    color: var(--text-tertiary);
 }
 
 /* Dropzone */
@@ -1664,7 +1664,7 @@
 }
 
 .ara-voice-dropzone--drag {
-    border-color: var(--ara-accent, #D6FE51);
+    border-color: var(--ara-accent, var(--accent));
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
     box-shadow: 0 0 24px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.12);
     transform: scale(1.02);
@@ -1677,13 +1677,13 @@
 
 .ara-voice-drop-text {
     font-size: 12px;
-    color: #a1a1aa;
+    color: var(--text-secondary);
     font-weight: 600;
 }
 
 .ara-voice-drop-sub {
     font-size: 10px;
-    color: #52525b;
+    color: var(--text-tertiary);
 }
 
 /* Upload spinner */
@@ -1691,7 +1691,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     font-size: 12px;
     font-weight: 600;
 }
@@ -1700,7 +1700,7 @@
     width: 18px;
     height: 18px;
     border: 2px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.2);
-    border-top-color: var(--ara-accent, #D6FE51);
+    border-top-color: var(--ara-accent, var(--accent));
     border-radius: 50%;
     animation: araVoiceSpin 0.8s linear infinite;
 }
@@ -1744,13 +1744,13 @@
     border-radius: 8px;
     font-size: 16px;
     font-weight: 700;
-    color: #52525b;
+    color: var(--text-tertiary);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ara-gender-option--active {
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15);
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     box-shadow: 0 0 10px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.15);
 }
 
@@ -1760,7 +1760,7 @@
 
 /* [P1] Send button gradient shimmer on hover */
 .ara-input-send:hover {
-    background: linear-gradient(135deg, var(--ara-accent, #D6FE51), color-mix(in srgb, var(--ara-accent, #D6FE51) 70%, #E8FF7A)) !important;
+    background: linear-gradient(135deg, var(--ara-accent, var(--accent)), color-mix(in srgb, var(--ara-accent, var(--accent)) 70%, var(--accent-hover))) !important;
     box-shadow: 0 4px 20px rgba(var(--ara-accent-rgb, 56, 152, 236), 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
     transform: translateY(-2px) scale(1.05);
 }
@@ -1801,7 +1801,7 @@
 
 /* [P4] Mode selector pill with accent gradient ring */
 .ara-mode-trigger {
-    background-image: linear-gradient(var(--window-bg, #000000), var(--window-bg, #000000)), linear-gradient(135deg, rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3), rgba(214, 254, 81, 0.2));
+    background-image: linear-gradient(var(--window-bg, #000000), var(--window-bg, #000000)), linear-gradient(135deg, rgba(var(--ara-accent-rgb, 56, 152, 236), 0.3), color-mix(in srgb, var(--accent) 20%, transparent));
     background-origin: border-box;
     background-clip: padding-box, border-box;
 }
@@ -1822,7 +1822,7 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 16px;
     cursor: pointer;
     display: flex;
@@ -1835,34 +1835,34 @@
 
 .ara-avatar-btn:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(214, 254, 81, 0.3);
-    color: #d1d5db;
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    color: var(--text-secondary);
     transform: translateY(-1px);
 }
 
 .ara-avatar-btn--active {
-    background: rgba(214, 254, 81, 0.12);
-    border-color: rgba(214, 254, 81, 0.35);
-    color: #D6FE51;
-    box-shadow: 0 0 14px rgba(214, 254, 81, 0.15);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    color: var(--accent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 15%, transparent);
     animation: araAvatarPulse 2.5s ease infinite;
 }
 
 .ara-avatar-btn--active:hover {
-    background: rgba(214, 254, 81, 0.18);
-    border-color: rgba(214, 254, 81, 0.5);
-    box-shadow: 0 0 22px rgba(214, 254, 81, 0.22);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 @keyframes araAvatarPulse {
 
     0%,
     100% {
-        box-shadow: 0 0 14px rgba(214, 254, 81, 0.15);
+        box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 15%, transparent);
     }
 
     50% {
-        box-shadow: 0 0 22px rgba(214, 254, 81, 0.25);
+        box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 25%, transparent);
     }
 }
 
@@ -1873,7 +1873,7 @@
     left: 12px;
     right: 12px;
     background: rgba(0, 0, 0, 0.98);
-    border: 1px solid rgba(214, 254, 81, 0.15);
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     backdrop-filter: none;
@@ -1899,8 +1899,8 @@
     align-items: center;
     gap: 10px;
     padding: 12px 18px;
-    border-bottom: 1px solid rgba(214, 254, 81, 0.1);
-    background: rgba(214, 254, 81, 0.04);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 
 .ara-avatar-panel-header h4 {
@@ -1917,9 +1917,9 @@
     font-weight: 800;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: #D6FE51;
-    background: rgba(214, 254, 81, 0.12);
-    border: 1px solid rgba(214, 254, 81, 0.2);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 6px;
     padding: 3px 8px;
 }
@@ -1930,7 +1930,7 @@
     border-radius: 8px;
     border: none;
     background: rgba(255, 255, 255, 0.05);
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 13px;
     cursor: pointer;
     display: flex;
@@ -1941,7 +1941,7 @@
 
 .ara-avatar-panel-close:hover {
     background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 /* Status indicator */
@@ -1955,23 +1955,23 @@
 }
 
 .ara-avatar-status--connecting {
-    color: #f59e0b;
+    color: var(--warning);
     background: rgba(245, 158, 11, 0.1);
     animation: araAvatarBlink 1.5s ease infinite;
 }
 
 .ara-avatar-status--connected {
-    color: #22c55e;
+    color: var(--success);
     background: rgba(34, 197, 94, 0.1);
 }
 
 .ara-avatar-status--error {
-    color: #ef4444;
+    color: var(--danger);
     background: rgba(239, 68, 68, 0.1);
 }
 
 .ara-avatar-status--idle {
-    color: #6b7280;
+    color: var(--text-tertiary);
     background: rgba(107, 114, 128, 0.1);
 }
 
@@ -1992,7 +1992,7 @@
     width: 100%;
     height: 360px;
     position: relative;
-    background: #000;
+    background: var(--bg-desktop);
     border-radius: 0 0 8px 8px;
     overflow: hidden;
 }
@@ -2024,22 +2024,22 @@
 .ara-avatar-error p {
     margin: 0;
     font-size: 13px;
-    color: #a1a1aa;
+    color: var(--text-secondary);
     line-height: 1.6;
 }
 
 .ara-avatar-error code {
-    background: rgba(214, 254, 81, 0.1);
-    border: 1px solid rgba(214, 254, 81, 0.2);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 11px;
-    color: #E8FF7A;
+    color: var(--accent-hover);
 }
 
 .ara-avatar-error-hint {
     font-size: 11px !important;
-    color: #52525b !important;
+    color: var(--text-tertiary) !important;
 }
 
 /* Connecting spinner overlay */
@@ -2053,7 +2053,7 @@
     gap: 14px;
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: none;
-    color: #D6FE51;
+    color: var(--accent);
     font-size: 13px;
     font-weight: 600;
 }
@@ -2061,8 +2061,8 @@
 .ara-avatar-connecting-spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid rgba(214, 254, 81, 0.2);
-    border-top-color: #D6FE51;
+    border: 3px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: araVoiceSpin 0.8s linear infinite;
 }
@@ -2095,7 +2095,7 @@
     width: 340px;
     max-width: calc(100% - 48px);
     background: rgba(18, 18, 18, 0.98);
-    border: 1px solid rgba(214, 254, 81, 0.2);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     padding: 28px 24px 22px;
@@ -2136,7 +2136,7 @@
 
 .ara-avatar-modal-desc {
     font-size: 12px;
-    color: #71717a;
+    color: var(--text-tertiary);
     line-height: 1.6;
     margin: 0 0 18px;
 }
@@ -2157,8 +2157,8 @@
 }
 
 .ara-avatar-modal-input:focus {
-    border-color: rgba(214, 254, 81, 0.45);
-    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.08);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
     background: rgba(255, 255, 255, 0.06);
 }
 
@@ -2193,14 +2193,14 @@
 }
 
 .ara-avatar-modal-input::placeholder {
-    color: #52525b;
+    color: var(--text-tertiary);
     letter-spacing: 0;
 }
 
 .ara-avatar-modal-error {
     display: block;
     font-size: 11px;
-    color: #ef4444;
+    color: var(--danger);
     margin-top: 8px;
     font-weight: 600;
 }
@@ -2217,7 +2217,7 @@
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -2227,12 +2227,12 @@
 
 .ara-avatar-modal-cancel:hover {
     background: rgba(255, 255, 255, 0.08);
-    color: #d1d5db;
+    color: var(--text-secondary);
 }
 
 .ara-avatar-modal-submit {
     padding: 9px 22px;
-    background: linear-gradient(135deg, #D6FE51, #D6FE51);
+    background: linear-gradient(135deg, var(--accent), var(--accent));
     border: none;
     border-radius: 6px;
     color: white;
@@ -2241,12 +2241,12 @@
     cursor: pointer;
     font-family: inherit;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 16px rgba(214, 254, 81, 0.25);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .ara-avatar-modal-submit:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 24px rgba(214, 254, 81, 0.35);
+    box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 35%, transparent);
     filter: brightness(1.1);
 }
 
@@ -2273,7 +2273,7 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #cbd5e1;
+    color: var(--text-secondary);
     font-size: 11px;
     font-weight: 600;
 }
@@ -2281,7 +2281,7 @@
 .ara-meta-toggle {
     background: transparent;
     border: none;
-    color: var(--ara-accent, #D6FE51);
+    color: var(--ara-accent, var(--accent));
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
@@ -2300,7 +2300,7 @@
 .ara-meta-block strong {
     display: block;
     margin-bottom: 8px;
-    color: #f8fafc;
+    color: var(--text-primary);
     font-size: 12px;
 }
 
@@ -2316,12 +2316,12 @@
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) auto;
     gap: 8px;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     font-size: 12px;
 }
 
 .ara-meta-list li span:last-child {
-    color: #94a3b8;
+    color: var(--text-secondary);
     text-align: right;
 }
 
@@ -2349,7 +2349,7 @@
 .ara-actions-header span {
     font-size: 12px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--text-primary);
     letter-spacing: 0.02em;
 }
 
@@ -2363,7 +2363,7 @@
     border: 1px solid rgba(var(--ara-accent-rgb, 56, 152, 236), 0.22);
     border-radius: 6px;
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
-    color: #e2e8f0;
+    color: var(--text-primary);
     padding: 8px 12px;
     font-size: 12px;
     font-weight: 700;
@@ -2401,7 +2401,7 @@
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.02em;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .ara-handoff-btn {
@@ -2427,7 +2427,7 @@
 .ara-action-field {
     display: grid;
     gap: 6px;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     font-size: 12px;
 }
 
@@ -2440,7 +2440,7 @@
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.04);
-    color: #f8fafc;
+    color: var(--text-primary);
     padding: 9px 11px;
     outline: none;
 }
@@ -2467,7 +2467,7 @@
 .ara-action-feedback--error {
     background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.2);
-    color: #fca5a5;
+    color: var(--danger);
 }
 
 .ara-action-feedback--warning {
@@ -2508,13 +2508,13 @@
 
 .ara-observability-card span,
 .ara-observability-last {
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 11px;
 }
 
 .ara-observability-card strong,
 .ara-observability-last strong {
-    color: #f8fafc;
+    color: var(--text-primary);
 }
 
 .ara-observability-failure {
@@ -2534,7 +2534,7 @@
 
 .ara-voice-fallbacks {
     margin-top: 8px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 11px;
     line-height: 1.5;
 }

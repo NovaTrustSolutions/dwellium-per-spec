@@ -8,45 +8,45 @@
 .strata-dashboard {
     /* -- Base Colors (fey.com parity: pure black, tonal layers) -- */
     --s-bg-primary: var(--bg-desktop, #000000);
-    --s-bg-secondary: var(--bg-surface, #0e0e0e);
-    --s-bg-tertiary: var(--bg-surface-elevated, #121212);
-    --s-bg-elevated: var(--bg-surface-hover, #1b1b1b);
-    --s-bg-surface: var(--bg-surface-active, #1f1f1f);
-    --s-bg-hover: var(--bg-surface-hover, #1b1b1b);
+    --s-bg-secondary: var(--bg-surface, var(--bg-surface));
+    --s-bg-tertiary: var(--bg-surface-elevated, var(--bg-surface-elevated));
+    --s-bg-elevated: var(--bg-surface-hover, var(--bg-surface-hover));
+    --s-bg-surface: var(--bg-surface-active, var(--bg-surface-active));
+    --s-bg-hover: var(--bg-surface-hover, var(--bg-surface-hover));
 
     /* -- Glass (fey.com: no blur, solid tonal layers) -- */
     --s-glass-bg: var(--bg-glass, rgba(14, 14, 14, 0.88));
     --s-glass-bg-strong: var(--bg-glass-hover, rgba(18, 18, 18, 0.92));
-    --s-glass-border: var(--border-default, #222222);
-    --s-glass-border-hover: var(--border-strong, #333333);
+    --s-glass-border: var(--border-default, var(--border-default));
+    --s-glass-border-hover: var(--border-strong, var(--border-strong));
     --s-glass-shadow: none;
     --s-glass-blur: blur(0px);
 
     /* -- Accent Colors (fey.com: acid lime) -- */
-    --s-accent-primary: var(--accent, #D6FE51);
-    --s-accent-primary-hover: var(--accent-hover, #E8FF7A);
-    --s-accent-primary-glow: rgba(214, 254, 81, 0.15);
-    --s-accent-gradient: linear-gradient(135deg, #D6FE51, #b4da2e);
+    --s-accent-primary: var(--accent, var(--accent));
+    --s-accent-primary-hover: var(--accent-hover, var(--accent-hover));
+    --s-accent-primary-glow: color-mix(in srgb, var(--accent) 15%, transparent);
+    --s-accent-gradient: linear-gradient(135deg, var(--accent), #b4da2e);
 
     /* -- Semantic Colors (fey.com palette) -- */
-    --s-success: var(--success, #D6FE51);
-    --s-success-bg: rgba(214, 254, 81, 0.08);
-    --s-success-border: rgba(214, 254, 81, 0.20);
-    --s-warning: var(--warning, #f59e0b);
+    --s-success: var(--success, var(--accent));
+    --s-success-bg: color-mix(in srgb, var(--accent) 8%, transparent);
+    --s-success-border: color-mix(in srgb, var(--accent) 20%, transparent);
+    --s-warning: var(--warning, var(--warning));
     --s-warning-bg: rgba(245, 158, 11, 0.08);
     --s-warning-border: rgba(245, 158, 11, 0.20);
     --s-danger: var(--danger, #ffa16c);
     --s-danger-bg: rgba(255, 161, 108, 0.08);
     --s-danger-border: rgba(255, 161, 108, 0.20);
-    --s-info: #868F97;
+    --s-info: var(--text-secondary);
     --s-info-bg: rgba(134, 143, 151, 0.08);
     --s-info-border: rgba(134, 143, 151, 0.20);
 
     /* -- Text (fey.com: pure white primary, muted slate secondary) -- */
     --s-text-primary: var(--text-primary, #ffffff);
-    --s-text-secondary: var(--text-secondary, #868F97);
-    --s-text-tertiary: var(--text-tertiary, #808080);
-    --s-text-accent: var(--accent-text, #D6FE51);
+    --s-text-secondary: var(--text-secondary, var(--text-secondary));
+    --s-text-tertiary: var(--text-tertiary, var(--text-tertiary));
+    --s-text-accent: var(--accent-text, var(--accent));
 
     /* -- Typography (fey.com: Hanken Grotesk + JetBrains Mono) -- */
     --s-font-sans: var(--font-primary, 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
@@ -72,10 +72,10 @@
     /* -- Shadows (fey.com: none — use borders for depth) -- */
     --s-shadow-glow: 0 0 12px var(--s-accent-primary-glow);
 
-    /* -- Hardcoded RGBA helpers (fey.com: #222222 borders, subtle hovers) -- */
-    --s-separator: #1a1a1a;
+    /* -- Hardcoded RGBA helpers (fey.com: var(--border-default) borders, subtle hovers) -- */
+    --s-separator: var(--border-subtle);
     --s-row-hover: rgba(255, 255, 255, 0.02);
-    --s-row-border: #222222;
+    --s-row-border: var(--border-default);
 
     /* -- Transitions -- */
     --s-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -101,7 +101,7 @@
    ═══════════════════════════════════════════ */
 :is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .strata-dashboard {
     --s-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-    --s-accent-primary-glow: rgba(214, 254, 81, 0.15);
+    --s-accent-primary-glow: color-mix(in srgb, var(--accent) 15%, transparent);
     --s-success-bg: rgba(16, 185, 129, 0.08);
     --s-warning-bg: rgba(245, 158, 11, 0.08);
     --s-danger-bg: rgba(239, 68, 68, 0.08);
@@ -212,7 +212,7 @@
 }
 
 .strata-dashboard .s-kpi-card-icon.blue {
-    background: rgba(214, 254, 81, 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     color: var(--s-accent-primary);
 }
 
@@ -451,7 +451,7 @@
     min-width: 42px;
     padding: var(--s-space-1);
     border-radius: var(--s-radius-sm);
-    background: rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .strata-dashboard .s-upcoming-date .month {
@@ -504,9 +504,9 @@
 }
 
 .strata-dashboard .s-upcoming-badge.inspection {
-    background: rgba(214, 254, 81, 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     color: var(--s-accent-primary-hover);
-    border: 1px solid rgba(214, 254, 81, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .strata-dashboard .s-upcoming-badge.payment {
@@ -701,7 +701,7 @@
 }
 
 .strata-dashboard .s-nav-item.active {
-    background: rgba(214, 254, 81, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     color: var(--s-accent-primary);
 }
 
@@ -778,9 +778,9 @@
 }
 
 .strata-dashboard .s-btn-primary {
-    background: #ffffff;
-    color: #000000;
-    border-color: #ffffff;
+    background: var(--bg-surface);
+    color: var(--text-inverse);
+    border-color: var(--text-primary);
 }
 
 .strata-dashboard .s-btn-primary:hover {
@@ -792,13 +792,13 @@
 .strata-dashboard .s-btn-ghost {
     background: transparent;
     color: var(--s-text-secondary);
-    border-color: #222222;
+    border-color: var(--border-default);
 }
 
 .strata-dashboard .s-btn-ghost:hover {
     background: transparent;
-    color: #ffffff;
-    border-color: #ffffff;
+    color: var(--text-primary);
+    border-color: var(--text-primary);
 }
 
 .strata-dashboard .s-btn-sm {
@@ -824,13 +824,13 @@
 }
 
 .strata-dashboard .s-btn-icon:hover {
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 /* ── Inputs (fey.com: subtle border, dark fill) ── */
 .strata-dashboard .s-input {
-    background: #0e0e0e;
-    border: 1px solid #222222;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
     border-radius: 4px;
     padding: 8px 12px;
     color: var(--s-text-primary);
@@ -899,7 +899,7 @@
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: rgba(214, 254, 81, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     color: var(--s-accent-primary);
     display: flex;
     align-items: center;
@@ -997,7 +997,7 @@
 
 .strata-dashboard .s-badge.review,
 .strata-dashboard .s-badge.approved {
-    background: rgba(214, 254, 81, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     color: var(--s-accent-primary-hover);
 }
 
@@ -1012,7 +1012,7 @@
 }
 
 .strata-dashboard .s-badge.coming-soon {
-    background: rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
     color: var(--s-accent-primary);
     font-size: 0.7rem;
 }
@@ -1106,7 +1106,7 @@
 }
 
 .strata-dashboard .s-list-item.active {
-    background: rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
     border-left: 3px solid var(--s-accent-primary);
 }
 
@@ -1228,7 +1228,7 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: 3px solid rgba(214, 254, 81, 0.12);
+    border: 3px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-top-color: var(--s-accent-primary);
     animation: s-spin 0.8s linear infinite;
 }
@@ -1269,8 +1269,8 @@
     margin-top: 8px;
     padding: 7px 18px;
     border-radius: 8px;
-    border: 1px solid rgba(214, 254, 81, 0.3);
-    background: rgba(214, 254, 81, 0.1);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
     color: var(--s-accent-primary);
     font-size: 0.8rem;
     font-weight: 600;
@@ -1279,9 +1279,9 @@
 }
 
 .strata-dashboard .s-state-retry:hover {
-    background: rgba(214, 254, 81, 0.2);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
     border-color: var(--s-accent-primary);
-    box-shadow: 0 0 14px rgba(214, 254, 81, 0.15);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* ── Error variant ── */
@@ -1330,7 +1330,7 @@
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    background: rgba(214, 254, 81, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     color: var(--s-accent-primary);
     display: flex;
     align-items: center;
@@ -1354,7 +1354,7 @@
     width: 48px;
     height: 48px;
     border-radius: 12px;
-    background: rgba(214, 254, 81, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     color: var(--s-accent-primary);
     display: flex;
     align-items: center;
@@ -1583,13 +1583,13 @@
 }
 
 .strata-dashboard .s-status-step.done {
-    background: rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
     color: var(--s-accent-primary);
 }
 
 .strata-dashboard .s-status-step.current {
-    background: rgba(214, 254, 81, 0.2);
-    color: #fff;
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--text-primary);
 }
 
 .strata-dashboard .s-status-dot {
@@ -2023,19 +2023,19 @@
 }
 
 .strata-table-row:hover {
-    background: rgba(214, 254, 81, 0.06) !important;
-    box-shadow: inset 3px 0 0 var(--accent, #D6FE51);
+    background: color-mix(in srgb, var(--accent) 6%, transparent) !important;
+    box-shadow: inset 3px 0 0 var(--accent, var(--accent));
     transform: translateX(2px);
 }
 
 /* [P2] Column header sort indicator glow */
 .strata-th--sorted {
-    color: var(--accent, #D6FE51) !important;
-    text-shadow: 0 0 8px rgba(214, 254, 81, 0.3);
+    color: var(--accent, var(--accent)) !important;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .strata-th--sorted::after {
-    filter: drop-shadow(0 0 4px rgba(214, 254, 81, 0.5));
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 50%, transparent));
 }
 
 /* [P3] Filter badge pill with glass effect */
@@ -2049,7 +2049,7 @@
 .strata-filter-tag:hover,
 .strata-active-filter:hover {
     transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.2);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 /* [P4] Panel card hover lift */
@@ -2062,7 +2062,7 @@
 .strata-panel:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    border-color: rgba(214, 254, 81, 0.15);
+    border-color: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* [P5] Table zebra stripe with glass effect */
@@ -2103,10 +2103,10 @@
 }
 
 .strata-dashboard .s-workspace-tab.active {
-    background: rgba(214, 254, 81, 0.15);
-    color: var(--s-accent-primary, #D6FE51);
-    border-color: rgba(214, 254, 81, 0.3);
-    box-shadow: 0 0 8px rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--s-accent-primary, var(--accent));
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 /* ========================================
@@ -2140,8 +2140,8 @@
 
 /* Search input focus glow */
 .strata-dashboard .s-glass-card input[type="text"]:focus {
-    border-color: rgba(214, 254, 81, 0.4) !important;
-    box-shadow: 0 0 12px rgba(214, 254, 81, 0.08);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent) !important;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 /* ── Property Navigation Link ── */
@@ -2153,12 +2153,12 @@
     color: var(--s-text-primary);
     cursor: pointer;
     text-decoration: none;
-    border-bottom: 1px dashed rgba(214, 254, 81, 0.3);
+    border-bottom: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 .strata-dashboard .s-property-link:hover {
-    color: #D6FE51;
-    border-bottom-color: #D6FE51;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
 }
 
 /* ── Resident Navigation Link ── */
@@ -2170,12 +2170,12 @@
     color: var(--s-text-primary);
     cursor: pointer;
     text-decoration: none;
-    border-bottom: 1px dashed rgba(214, 254, 81, 0.3);
+    border-bottom: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 .strata-dashboard .s-resident-link:hover {
-    color: #D6FE51;
-    border-bottom-color: #D6FE51;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
 }
 
 /* ── Unit Navigation Link ── */
@@ -2187,12 +2187,12 @@
     color: var(--s-text-primary);
     cursor: pointer;
     text-decoration: none;
-    border-bottom: 1px dashed rgba(214, 254, 81, 0.3);
+    border-bottom: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 .strata-dashboard .s-unit-link:hover {
-    color: #D6FE51;
-    border-bottom-color: #D6FE51;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -2223,26 +2223,26 @@
     }
 
     /* ── Primary text color overrides ── */
-    & [style*="color: #e2e8f0"],
-    & [style*="color: '#e2e8f0'"],
-    & [style*="color: #f1f5f9"],
-    & [style*="color: '#f1f5f9'"],
-    & [style*="color: #cbd5e1"],
-    & [style*="color: '#cbd5e1'"] {
+    & [style*="color: var(--text-primary)"],
+    & [style*="color: 'var(--text-primary)'"],
+    & [style*="color: var(--text-primary)"],
+    & [style*="color: 'var(--text-primary)'"],
+    & [style*="color: var(--text-secondary)"],
+    & [style*="color: 'var(--text-secondary)'"] {
         color: var(--text-primary) !important;
     }
 
     /* ── Secondary text color overrides ── */
-    & [style*="color: #94a3b8"],
-    & [style*="color: '#94a3b8'"] {
+    & [style*="color: var(--text-secondary)"],
+    & [style*="color: 'var(--text-secondary)'"] {
         color: var(--text-secondary) !important;
     }
 
     /* ── Tertiary text color overrides ── */
-    & [style*="color: #64748b"],
-    & [style*="color: '#64748b'"],
-    & [style*="color: #475569"],
-    & [style*="color: '#475569'"] {
+    & [style*="color: var(--text-tertiary)"],
+    & [style*="color: 'var(--text-tertiary)'"],
+    & [style*="color: var(--text-tertiary)"],
+    & [style*="color: 'var(--text-tertiary)'"] {
         color: var(--text-tertiary) !important;
     }
 
@@ -2452,30 +2452,30 @@
     /* Property navigation link — light theme */
     & .s-property-link {
         color: var(--text-primary);
-        border-bottom-color: rgba(214, 254, 81, 0.3);
+        border-bottom-color: color-mix(in srgb, var(--accent) 30%, transparent);
     }
     & .s-property-link:hover {
-        color: #D6FE51;
-        border-bottom-color: #D6FE51;
+        color: var(--accent);
+        border-bottom-color: var(--accent);
     }
 
     /* Resident navigation link — light theme */
     & .s-resident-link {
         color: var(--text-primary);
-        border-bottom-color: rgba(214, 254, 81, 0.3);
+        border-bottom-color: color-mix(in srgb, var(--accent) 30%, transparent);
     }
     & .s-resident-link:hover {
-        color: #D6FE51;
-        border-bottom-color: #D6FE51;
+        color: var(--accent);
+        border-bottom-color: var(--accent);
     }
 
     /* Unit navigation link — light theme */
     & .s-unit-link {
         color: var(--text-primary);
-        border-bottom-color: rgba(214, 254, 81, 0.3);
+        border-bottom-color: color-mix(in srgb, var(--accent) 30%, transparent);
     }
     & .s-unit-link:hover {
-        color: #D6FE51;
-        border-bottom-color: #D6FE51;
+        color: var(--accent);
+        border-bottom-color: var(--accent);
     }
 }

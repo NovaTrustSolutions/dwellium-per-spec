@@ -254,7 +254,7 @@ export default function NotebookLMContext() {
 
     return (
         <div className="nlm-widget">
-            <div style={{ display: 'flex', gap: 4, padding: '8px 10px 0', background: '#0a0a0a', borderBottom: '1px solid #222' }}>
+            <div style={{ display: 'flex', gap: 4, padding: '8px 10px 0', background: 'var(--bg-desktop)', borderBottom: '1px solid #222' }}>
                 {(['notebooklm', 'open-notebook'] as const).map(t => (
                     <button
                         key={t}
@@ -262,7 +262,7 @@ export default function NotebookLMContext() {
                         style={{
                             padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                             border: 'none', background: 'transparent',
-                            borderBottom: tab === t ? '2px solid #D6FE51' : '2px solid transparent',
+                            borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
                             color: tab === t ? '#D6FE51' : '#888',
                         }}
                     >{t === 'notebooklm' ? 'NotebookLM' : 'Open Notebook'}</button>
@@ -275,7 +275,7 @@ export default function NotebookLMContext() {
                 Google account for NotebookLM than for Calendar. */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 14px', background: '#0a0a0a',
+                padding: '8px 14px', background: 'var(--bg-desktop)',
                 borderBottom: '1px solid #222', fontSize: 12,
             }}>
                 <span style={{ color: '#666', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.6 }}>Google</span>
@@ -289,13 +289,13 @@ export default function NotebookLMContext() {
                             autoFocus
                             style={{
                                 flex: 1, padding: '4px 8px', minWidth: 0,
-                                background: '#000', color: '#fff',
-                                border: '1px solid #D6FE51', borderRadius: 4,
+                                background: 'var(--bg-desktop)', color: 'var(--text-primary)',
+                                border: '1px solid var(--accent)', borderRadius: 4,
                                 fontSize: 12, fontFamily: 'inherit', outline: 'none',
                             }}
                         />
                         <button onClick={commitEmailOverride} style={{
-                            padding: '4px 10px', background: '#D6FE51', color: '#000',
+                            padding: '4px 10px', background: 'var(--accent)', color: 'var(--text-inverse)',
                             border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: 11,
                         }}>Save</button>
                     </>
@@ -305,11 +305,11 @@ export default function NotebookLMContext() {
                             {googleEmail || 'No Google account connected — set up Calendar/Gmail in Settings → API Keys, or paste an email here.'}
                         </span>
                         <button onClick={() => setEmailEditing(true)} title="Edit Google email" style={{
-                            padding: '4px 8px', background: 'transparent', color: '#888',
+                            padding: '4px 8px', background: 'transparent', color: 'var(--text-tertiary)',
                             border: '1px solid #333', borderRadius: 4, cursor: 'pointer', fontSize: 11,
                         }}>{googleEmail ? 'Change' : 'Set'}</button>
                         <button onClick={() => openNotebookLM()} title="Open notebooklm.google.com in a new tab" style={{
-                            padding: '4px 10px', background: '#D6FE51', color: '#000',
+                            padding: '4px 10px', background: 'var(--accent)', color: 'var(--text-inverse)',
                             border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: 11,
                         }}>Open NotebookLM ↗</button>
                     </>
@@ -392,8 +392,8 @@ export default function NotebookLMContext() {
                                     title={googleEmail ? `Open "${nb.title}" in NotebookLM as ${googleEmail}` : `Open "${nb.title}" in NotebookLM`}
                                     style={{
                                         padding: '4px 8px', fontSize: 11,
-                                        background: 'transparent', color: '#D6FE51',
-                                        border: '1px solid rgba(214,254,81,0.4)', borderRadius: 4,
+                                        background: 'transparent', color: 'var(--accent)',
+                                        border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', borderRadius: 4,
                                         cursor: 'pointer',
                                     }}
                                 >Open ↗</button>

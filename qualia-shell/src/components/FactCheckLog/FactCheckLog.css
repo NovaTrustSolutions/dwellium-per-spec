@@ -34,14 +34,14 @@
 .fcl-header__title {
     font-size: 15px;
     font-weight: 700;
-    color: #e0e0e0;
+    color: var(--text-primary);
     letter-spacing: -0.3px;
     margin: 0;
 }
 
 .fcl-header__loading {
     font-size: 8px;
-    color: #D6FE51;
+    color: var(--accent);
     animation: fcl-blink 1s ease infinite;
     margin-left: 4px;
 }
@@ -84,7 +84,7 @@
     font-size: 20px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
-    color: #d1d5db;
+    color: var(--text-secondary);
     line-height: 1;
 }
 
@@ -92,16 +92,16 @@
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     font-weight: 700;
 }
 
 .fcl-stat--verified .fcl-stat__value {
-    color: #34d399;
+    color: var(--success);
 }
 
 .fcl-stat--disputed .fcl-stat__value {
-    color: #ef4444;
+    color: var(--danger);
 }
 
 /* ========== MANUAL INPUT ========== */
@@ -118,7 +118,7 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     font-family: inherit;
     outline: none;
@@ -126,20 +126,20 @@
 }
 
 .fcl-input__field::placeholder {
-    color: #4b5563;
+    color: var(--text-tertiary);
 }
 
 .fcl-input__field:focus {
-    border-color: rgba(214, 254, 81, 0.4);
-    background: rgba(214, 254, 81, 0.05);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
 .fcl-input__btn {
     padding: 8px 16px;
     border-radius: 10px;
-    border: 1px solid rgba(214, 254, 81, 0.2);
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.1), rgba(214, 254, 81, 0.05));
-    color: #D6FE51;
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
+    color: var(--accent);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -149,14 +149,14 @@
     align-items: center;
     gap: 5px;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.1);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .fcl-input__btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.2), rgba(214, 254, 81, 0.1));
-    border-color: rgba(214, 254, 81, 0.35);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(214, 254, 81, 0.15);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .fcl-input__btn:disabled {
@@ -186,7 +186,7 @@
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: transparent;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
@@ -197,15 +197,15 @@
 
 .fcl-pill:hover {
     background: rgba(255, 255, 255, 0.06);
-    color: #d1d5db;
+    color: var(--text-secondary);
     transform: translateY(-1px);
 }
 
 .fcl-pill--active {
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.12), rgba(214, 254, 81, 0.06));
-    color: #D6FE51;
-    border-color: rgba(214, 254, 81, 0.25);
-    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.08);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 6%, transparent));
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .fcl-filters__search {
@@ -215,7 +215,7 @@
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(255, 255, 255, 0.02);
-    color: #d1d5db;
+    color: var(--text-secondary);
     font-size: 11px;
     outline: none;
     font-family: inherit;
@@ -227,7 +227,7 @@
 }
 
 .fcl-filters__search:focus {
-    border-color: rgba(214, 254, 81, 0.3);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 /* ========== ENTRIES LIST ========== */
@@ -271,7 +271,7 @@
 
 .fcl-empty__sub {
     font-size: 12px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     max-width: 260px;
     line-height: 1.5;
 }
@@ -309,9 +309,9 @@
 }
 
 .fcl-entry--expanded {
-    border-color: rgba(214, 254, 81, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
     background: rgba(255, 255, 255, 0.03);
-    box-shadow: 0 0 16px rgba(214, 254, 81, 0.06);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .fcl-entry__main {
@@ -353,7 +353,7 @@
 .fcl-entry__claim {
     font-size: 13px;
     line-height: 1.5;
-    color: #d1d5db;
+    color: var(--text-secondary);
     margin: 0 0 6px;
     word-wrap: break-word;
 }
@@ -366,7 +366,7 @@
 
 .fcl-entry__time {
     font-size: 10px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
 }
@@ -397,7 +397,7 @@
 .fcl-entry__conf-text {
     font-size: 10px;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-variant-numeric: tabular-nums;
     min-width: 28px;
 }
@@ -411,7 +411,7 @@
 }
 
 .fcl-entry:hover .fcl-entry__chevron {
-    color: #6b7280;
+    color: var(--text-tertiary);
 }
 
 /* Expanded details */
@@ -435,21 +435,21 @@
 .fcl-entry__explanation {
     font-size: 12px;
     line-height: 1.6;
-    color: #9ca3af;
+    color: var(--text-secondary);
     margin-bottom: 8px;
 }
 
 .fcl-entry__explanation strong {
-    color: #d1d5db;
+    color: var(--text-secondary);
 }
 
 .fcl-entry__sources {
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-secondary);
 }
 
 .fcl-entry__sources strong {
-    color: #d1d5db;
+    color: var(--text-secondary);
 }
 
 .fcl-entry__sources ul {
@@ -462,7 +462,7 @@
 }
 
 .fcl-entry__sources a {
-    color: #D6FE51;
+    color: var(--accent);
     text-decoration: none;
     font-size: 11px;
     word-break: break-all;
@@ -470,7 +470,7 @@
 }
 
 .fcl-entry__sources a:hover {
-    color: #D6FE51;
+    color: var(--accent);
     text-decoration: underline;
 }
 
@@ -514,28 +514,28 @@
 .fc-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    border-color: rgba(214, 254, 81, 0.15);
+    border-color: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* [P3] Source citation link style */
 .fc-source-link,
 .fc-citation {
-    color: var(--accent, #D6FE51);
+    color: var(--accent, var(--accent));
     text-decoration: none;
-    border-bottom: 1px dashed rgba(214, 254, 81, 0.3);
+    border-bottom: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
     transition: border-color 0.2s ease, color 0.2s ease;
 }
 
 .fc-source-link:hover,
 .fc-citation:hover {
-    border-bottom-color: var(--accent, #D6FE51);
-    text-shadow: 0 0 8px rgba(214, 254, 81, 0.2);
+    border-bottom-color: var(--accent, var(--accent));
+    text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 /* [P4] Confidence bar gradient */
 .fc-confidence-bar,
 .fc-confidence-fill {
-    background: linear-gradient(90deg, #ef4444, #eab308, #22c55e);
+    background: linear-gradient(90deg, var(--danger), #eab308, var(--success));
     border-radius: 4px;
     height: 4px;
     transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -553,7 +553,7 @@
 }
 
 .fc-filter-active {
-    box-shadow: 0 0 12px rgba(214, 254, 81, 0.2);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 /* ========== HEADER ACTIONS ROW ========== */
@@ -567,9 +567,9 @@
 .fcl-save-btn {
     padding: 6px 14px;
     border-radius: 8px;
-    border: 1px solid rgba(214, 254, 81, 0.2);
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.1), rgba(214, 254, 81, 0.05));
-    color: #D6FE51;
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
+    color: var(--accent);
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
@@ -580,8 +580,8 @@
 }
 
 .fcl-save-btn:hover {
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.2), rgba(214, 254, 81, 0.1));
-    border-color: rgba(214, 254, 81, 0.35);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.15);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }

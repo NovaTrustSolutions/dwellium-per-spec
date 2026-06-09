@@ -169,7 +169,7 @@ export default function DumpMode() {
     const showReportButton = dumps.length > 0;
 
     return (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#000' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg-desktop)' }}>
             {/* Header strip */}
             <div style={{
                 height: 36, display: 'flex', alignItems: 'center', gap: 8,
@@ -178,7 +178,7 @@ export default function DumpMode() {
                 <Brain size={14} style={{ color: ACCENT }} />
                 <span style={{
                     fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-                    textTransform: 'uppercase', color: '#ccc', fontFamily: 'monospace',
+                    textTransform: 'uppercase', color: 'var(--text-secondary)', fontFamily: 'monospace',
                 }}>
                     Brain Dump
                 </span>
@@ -208,8 +208,8 @@ export default function DumpMode() {
                             placeholder="Report (default)"
                             disabled={reportBusy}
                             style={{
-                                flex: 1, background: '#0a0a0a', border: '1px solid #333',
-                                borderRadius: 6, padding: '5px 9px', color: '#fff',
+                                flex: 1, background: 'var(--bg-desktop)', border: '1px solid #333',
+                                borderRadius: 6, padding: '5px 9px', color: 'var(--text-primary)',
                                 fontSize: 12, outline: 'none', fontFamily: 'inherit',
                             }}
                         />
@@ -217,7 +217,7 @@ export default function DumpMode() {
                             onClick={() => void handleGenerateReport()}
                             disabled={reportBusy}
                             style={{
-                                background: ACCENT, color: '#000', border: 'none', borderRadius: 6,
+                                background: ACCENT, color: 'var(--text-inverse)', border: 'none', borderRadius: 6,
                                 padding: '5px 14px', fontSize: 12, fontWeight: 700,
                                 cursor: reportBusy ? 'wait' : 'pointer', fontFamily: 'inherit',
                                 opacity: reportBusy ? 0.7 : 1,
@@ -244,7 +244,7 @@ export default function DumpMode() {
             {/* Bottom action bar */}
             <div style={{
                 flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10,
-                padding: '12px 20px', borderTop: '1px solid #222', background: '#0a0a0a',
+                padding: '12px 20px', borderTop: '1px solid #222', background: 'var(--bg-desktop)',
             }}>
                 <span style={{ fontSize: 11, color: '#808080', fontFamily: 'monospace' }}>
                     {dumpText.length} chars
@@ -267,7 +267,7 @@ export default function DumpMode() {
                             : "Configure an LLM provider in Settings → API Keys to enable this"}
                         style={{
                             padding: '9px 18px', borderRadius: 8, border: '1px solid #333',
-                            background: 'transparent', color: '#ccc', fontSize: 13, fontWeight: 600,
+                            background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600,
                             cursor: reportBusy ? 'wait' : 'pointer', fontFamily: 'inherit',
                             transition: 'color 150ms, border-color 150ms',
                         }}

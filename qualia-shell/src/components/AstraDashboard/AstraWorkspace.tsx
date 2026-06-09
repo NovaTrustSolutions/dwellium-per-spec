@@ -416,7 +416,7 @@ export default function AstraWorkspace() {
                         <h3 className="aw-modal-title"><History size={16} /> Draft Version History</h3>
                         <div className="aw-draft-list">
                             {draftHistory.length === 0 && (
-                                <div style={{ color: '#888', padding: 16, textAlign: 'center' }}>No drafts yet. Chat with ARA to generate drafts.</div>
+                                <div style={{ color: 'var(--text-tertiary)', padding: 16, textAlign: 'center' }}>No drafts yet. Chat with ARA to generate drafts.</div>
                             )}
                             {[...draftHistory].reverse().map(draft => (
                                 <div key={draft.id} className="aw-draft-item">

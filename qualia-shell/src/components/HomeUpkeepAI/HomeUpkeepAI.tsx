@@ -92,7 +92,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 const CONDITION_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-    'excellent': { color: '#10b981', bg: 'rgba(16,185,129,0.12)', label: 'Excellent' },
+    'excellent': { color: '#22c55e', bg: 'rgba(16,185,129,0.12)', label: 'Excellent' },
     'good': { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', label: 'Good' },
     'fair': { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'Fair' },
     'poor': { color: '#f97316', bg: 'rgba(249,115,22,0.12)', label: 'Poor' },
@@ -250,7 +250,7 @@ export default function HomeUpkeepAI() {
         const radius = 52;
         const circumference = 2 * Math.PI * radius;
         const offset = circumference - (score / 100) * circumference;
-        const color = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+        const color = score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
 
         return (
             <div className="huai-health-ring">
@@ -308,7 +308,7 @@ export default function HomeUpkeepAI() {
                         {timeline.slice(0, 8).map(item => {
                             const barColor = item.lifespanPct >= 90 ? '#ef4444'
                                 : item.lifespanPct >= 70 ? '#f59e0b'
-                                    : item.lifespanPct >= 50 ? '#3b82f6' : '#10b981';
+                                    : item.lifespanPct >= 50 ? '#3b82f6' : '#22c55e';
                             return (
                                 <div key={item.systemId} className="huai-timeline-item">
                                     <div className="huai-timeline-item__header">
@@ -430,7 +430,7 @@ export default function HomeUpkeepAI() {
                                 const tl = timeline.find(t => t.systemId === sys.id);
                                 const cond = CONDITION_CONFIG[sys.condition] || CONDITION_CONFIG.good;
                                 const barColor = (tl?.lifespanPct || 0) >= 90 ? '#ef4444'
-                                    : (tl?.lifespanPct || 0) >= 70 ? '#f59e0b' : '#10b981';
+                                    : (tl?.lifespanPct || 0) >= 70 ? '#f59e0b' : '#22c55e';
                                 return (
                                     <div key={sys.id} className="huai-system-card">
                                         <div className="huai-system-card__header">

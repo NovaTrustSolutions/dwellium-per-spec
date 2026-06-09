@@ -114,17 +114,17 @@ export default function Wiki() {
     }, [selected, compiling, integrations.llm, sources]);
 
     return (
-        <div style={{ display: 'flex', height: '100%', width: '100%', background: '#000', color: '#ccc', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
             {/* Left: tier tree */}
             <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid #222', display: 'flex', flexDirection: 'column', background: '#070707' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid #222' }}>
                     <BookOpen size={14} style={{ color: ACCENT }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888' }}>Three-Tier Wiki</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Three-Tier Wiki</span>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
-                    {loading && <div style={{ padding: 16, color: '#555', fontSize: 11 }}>Loading…</div>}
+                    {loading && <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 11 }}>Loading…</div>}
                     {!loading && nodes.length === 0 && (
-                        <div style={{ padding: 16, color: '#555', fontSize: 11, lineHeight: 1.6 }}>
+                        <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.6 }}>
                             No domains/projects/threads yet. Create them in the File Explorer to compile wiki pages.
                         </div>
                     )}
@@ -134,7 +134,7 @@ export default function Wiki() {
                         const has = !!wikiMap[n.path];
                         return (
                             <button key={n.path} onClick={() => setSelectedPath(n.path)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', padding: '5px 10px', paddingLeft: 10 + n.depth * 12, background: isSel ? 'rgba(214,254,81,0.08)' : 'transparent', border: 'none', borderLeft: isSel ? `2px solid ${ACCENT}` : '2px solid transparent', color: isSel ? ACCENT : '#bbb', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                                style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', padding: '5px 10px', paddingLeft: 10 + n.depth * 12, background: isSel ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent', border: 'none', borderLeft: isSel ? `2px solid ${ACCENT}` : '2px solid transparent', color: isSel ? ACCENT : '#bbb', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
                                 <Icon size={13} strokeWidth={1.75} style={{ flexShrink: 0, opacity: isSel ? 1 : 0.7 }} />
                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.name}</span>
                                 {has && <span title="Compiled" style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT, flexShrink: 0 }} />}
@@ -147,7 +147,7 @@ export default function Wiki() {
             {/* Right: page */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 {!selected ? (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 13, padding: 24, textAlign: 'center' }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: 24, textAlign: 'center' }}>
                         {backendOffline ? 'File backend offline — connect it to load your domains, projects, and threads.' : 'Select a domain, project, or thread to view or compile its wiki page.'}
                     </div>
                 ) : (
@@ -155,11 +155,11 @@ export default function Wiki() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '1px solid #222' }}>
                             {(() => { const I = TIER_ICON[selected.tier] ?? Folder; return <I size={18} style={{ color: ACCENT, flexShrink: 0 }} />; })()}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.name}</div>
+                                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.name}</div>
                                 <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{selected.tier} wiki · {sources.length} source{sources.length === 1 ? '' : 's'}</div>
                             </div>
                             <button onClick={() => void compile()} disabled={compiling}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, border: 'none', background: ACCENT, color: '#000', fontSize: 12, fontWeight: 700, cursor: compiling ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: compiling ? 0.7 : 1 }}>
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 7, border: 'none', background: ACCENT, color: 'var(--text-inverse)', fontSize: 12, fontWeight: 700, cursor: compiling ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: compiling ? 0.7 : 1 }}>
                                 {compiling ? <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <BookOpen size={13} />}
                                 {compiling ? 'Compiling…' : page ? 'Recompile' : 'Compile'}
                             </button>
@@ -173,13 +173,13 @@ export default function Wiki() {
                         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
                             {err && <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}>⚠ {err}</div>}
                             {!llmReady && (
-                                <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid #222', color: '#888', fontSize: 11 }}>
+                                <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid #222', color: 'var(--text-tertiary)', fontSize: 11 }}>
                                     No LLM configured — “Compile” builds a structure-only page (sources). Add a provider in Settings → API Keys for full synthesis (overview, concepts, open questions).
                                 </div>
                             )}
 
                             {!page ? (
-                                <div style={{ color: '#777', fontSize: 13, lineHeight: 1.7 }}>
+                                <div style={{ color: 'var(--text-tertiary)', fontSize: 13, lineHeight: 1.7 }}>
                                     <p style={{ marginTop: 0 }}>No wiki page compiled for this {selected.tier} yet.</p>
                                     {sources.length > 0 && (
                                         <>
@@ -228,14 +228,14 @@ function WikiPageView({ page }: { page: import('./wikiStore').WikiPage }) {
             )}
             {page.concepts.length > 0 && (
                 <Section title="Key concepts">
-                    <ul style={{ margin: 0, paddingLeft: 18, color: '#ccc', fontSize: 13, lineHeight: 1.7 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7 }}>
                         {page.concepts.map((c, i) => <li key={i}>{c}</li>)}
                     </ul>
                 </Section>
             )}
             {page.openQuestions.length > 0 && (
                 <Section title="Open questions">
-                    <ul style={{ margin: 0, paddingLeft: 18, color: '#ccc', fontSize: 13, lineHeight: 1.7 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7 }}>
                         {page.openQuestions.map((q, i) => <li key={i}>{q}</li>)}
                     </ul>
                 </Section>

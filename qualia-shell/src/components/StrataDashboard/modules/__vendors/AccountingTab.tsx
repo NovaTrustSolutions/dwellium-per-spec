@@ -62,7 +62,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
             <h4
                 style={{
                     fontSize: 11,
-                    color: '#94a3b8',
+                    color: 'var(--text-secondary)',
                     fontWeight: 600,
                     margin: 0,
                     marginBottom: 10,
@@ -82,8 +82,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <>
-            <span style={{ color: '#64748b' }}>{label}</span>
-            <span style={{ color: '#e2e8f0' }}>{value}</span>
+            <span style={{ color: 'var(--text-tertiary)' }}>{label}</span>
+            <span style={{ color: 'var(--text-primary)' }}>{value}</span>
         </>
     );
 }

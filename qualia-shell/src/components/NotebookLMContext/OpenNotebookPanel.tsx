@@ -86,7 +86,7 @@ export default function OpenNotebookPanel() {
         try { await navigator.clipboard.writeText(DOCKER_SNIPPET); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch { /* ignore */ }
     };
 
-    const dotColor = reach === 'up' ? '#34D399' : reach === 'down' ? '#ff6b6b' : '#888';
+    const dotColor = reach === 'up' ? '#22c55e' : reach === 'down' ? '#ff6b6b' : '#888';
     const dotLabel = reach === 'up' ? 'Reachable' : reach === 'down' ? 'Not reachable' : 'Checking…';
 
     return (

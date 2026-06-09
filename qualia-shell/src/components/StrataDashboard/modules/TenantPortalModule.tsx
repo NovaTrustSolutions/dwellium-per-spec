@@ -268,10 +268,10 @@ function TenantPortalModuleInner() {
     function KpiRow() {
         if (!stats) return null;
         const cards = [
-            { label: 'Total Tenants', value: String(stats.totalTenants), icon: Users, color: '#D6FE51' },
+            { label: 'Total Tenants', value: String(stats.totalTenants), icon: Users, color: 'var(--accent)' },
             { label: 'Open Requests', value: String(stats.openMaintenanceRequests), icon: Wrench, color: '#f59e0b' },
             { label: 'Expiring Leases', value: String(stats.expiringLeases), icon: AlertTriangle, color: '#ef4444' },
-            { label: 'Vacant Units', value: String(stats.vacantUnits), icon: Building2, color: '#D6FE51' },
+            { label: 'Vacant Units', value: String(stats.vacantUnits), icon: Building2, color: 'var(--accent)' },
         ];
         return (
             <div className="tp-kpi-grid">
@@ -336,7 +336,7 @@ function TenantPortalModuleInner() {
         return (
             <div className="tp-card">
                 <div className="tp-card-header">
-                    <div className="tp-card-header-icon" style={{ background: 'rgba(214,254,81,0.12)', color: '#D6FE51' }}>
+                    <div className="tp-card-header-icon" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>
                         <Users size={15} />
                     </div>
                     <h3>Tenant Directory</h3>
@@ -479,7 +479,7 @@ function TenantPortalModuleInner() {
                                     <DollarSign size={14} />
                                     <div>
                                         <div className="tp-detail-item-label">Monthly Rent</div>
-                                        <div className="tp-detail-item-value" style={{ color: '#34d399' }}>${selectedTenant.rentAmount.toLocaleString()}</div>
+                                        <div className="tp-detail-item-value" style={{ color: '#22c55e' }}>${selectedTenant.rentAmount.toLocaleString()}</div>
                                     </div>
                                 </div>
                             )}
@@ -553,7 +553,7 @@ function TenantPortalModuleInner() {
                                             <td>{wo.unitNumber || '—'}</td>
                                             <td>{priorityBadge(wo.priority)}</td>
                                             <td>{statusBadge(wo.status)}</td>
-                                            <td style={{ fontSize: 11, color: '#475569' }}>{new Date(wo.createdAt).toLocaleDateString()}</td>
+                                            <td style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{new Date(wo.createdAt).toLocaleDateString()}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -600,7 +600,7 @@ function TenantPortalModuleInner() {
                                 <tbody>
                                     {data.map((p: any) => (
                                         <tr key={p.id}>
-                                            <td style={{ fontSize: 11, color: '#475569', whiteSpace: 'nowrap' }}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                                            <td style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{new Date(p.createdAt).toLocaleDateString()}</td>
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                     <div className="tp-detail-avatar" style={{ background: nameColor(p.tenantName), width: 22, height: 22, fontSize: 9 }}>
@@ -635,7 +635,7 @@ function TenantPortalModuleInner() {
                 {replyTo && (
                     <div className="tp-reply-form">
                         <h4 className="tp-reply-title">
-                            <Send size={14} style={{ color: '#D6FE51' }} />
+                            <Send size={14} style={{ color: 'var(--accent)' }} />
                             Reply to {replyTo.tenantName}
                         </h4>
                         <div className="tp-reply-fields">
@@ -668,7 +668,7 @@ function TenantPortalModuleInner() {
 
                 <div className="tp-card">
                     <div className="tp-card-header">
-                        <div className="tp-card-header-icon" style={{ background: 'rgba(214,254,81,0.12)', color: '#D6FE51' }}>
+                        <div className="tp-card-header-icon" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>
                             <MessageSquare size={15} />
                         </div>
                         <h3>Tenant Messages</h3>
@@ -771,7 +771,7 @@ function TenantPortalModuleInner() {
                                         ) : a.propertyName}</td>
                                         <td>
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                <Hash size={11} style={{ color: '#475569' }} />{a.unitNumber}
+                                                <Hash size={11} style={{ color: 'var(--text-tertiary)' }} />{a.unitNumber}
                                             </span>
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap' }}>{new Date(a.leaseEnd).toLocaleDateString()}</td>
@@ -847,7 +847,7 @@ function TenantPortalModuleInner() {
                     data-testid="tenant-portal-static-banner"
                     className="s-glass-card"
                     style={{
-                        padding: '8px 12px', color: '#fbbf24', fontSize: 12,
+                        padding: '8px 12px', color: '#f59e0b', fontSize: 12,
                         borderColor: 'rgba(251,191,36,0.4)', display: 'flex', alignItems: 'center', gap: 8,
                     }}
                 >
@@ -881,7 +881,7 @@ export default function TenantPortalModule() {
     return (
         <ErrorBoundary
             fallback={
-                <div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>
+                <div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>
                     Tenant Portal module unavailable.
                 </div>
             }

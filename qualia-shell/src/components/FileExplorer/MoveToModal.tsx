@@ -45,8 +45,8 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
         >
             <Icon size={14} strokeWidth={1.75} style={{ color: isCurrent ? '#444' : '#D6FE51', flexShrink: 0 }} />
             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-            {sub && <span style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sub}</span>}
-            {isCurrent && <span style={{ fontSize: 9, color: '#555' }}>current</span>}
+            {sub && <span style={{ fontSize: 9, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sub}</span>}
+            {isCurrent && <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>current</span>}
         </button>
     );
 
@@ -57,31 +57,31 @@ export function MoveToModal({ entry, entries, onPick, onClose }: {
         >
             <div
                 onMouseDown={(e) => e.stopPropagation()}
-                style={{ width: 360, maxWidth: '100%', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: '#0d0d0d', border: '1px solid #333', borderRadius: 10, boxShadow: '0 16px 48px rgba(0,0,0,0.7)', overflow: 'hidden' }}
+                style={{ width: 360, maxWidth: '100%', maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', border: '1px solid #333', borderRadius: 10, boxShadow: '0 16px 48px rgba(0,0,0,0.7)', overflow: 'hidden' }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid #222' }}>
-                    <CornerDownRight size={14} style={{ color: '#D6FE51' }} />
-                    <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#eee', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <CornerDownRight size={14} style={{ color: 'var(--accent)' }} />
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         Move "{entry.name}" to…
                     </span>
-                    <button onClick={onClose} title="Cancel" style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
+                    <button onClick={onClose} title="Cancel" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
                 </div>
                 <input
                     autoFocus
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     placeholder="Filter destinations…"
-                    style={{ margin: 10, padding: '7px 10px', background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                    style={{ margin: 10, padding: '7px 10px', background: 'var(--bg-desktop)', border: '1px solid #333', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
                 />
                 <div style={{ flex: 1, overflowY: 'auto', padding: '0 6px 8px' }}>
                     {/* Root is always a valid destination (unless already at root). */}
                     {(!q || 'root'.includes(q)) && row('Root', '', '', Folder, 0, currentParent === '')}
                     {shown.map((t: MoveTarget) => row(t.name, t.tier, t.path, TIER_ICON[t.tier] ?? Folder, t.depth, t.path === currentParent))}
                     {shown.length === 0 && (!q ? false : true) && (
-                        <div style={{ padding: '16px', textAlign: 'center', color: '#555', fontSize: 11 }}>No matching destinations.</div>
+                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 11 }}>No matching destinations.</div>
                     )}
                     {targets.length === 0 && (
-                        <div style={{ padding: '16px', textAlign: 'center', color: '#555', fontSize: 11 }}>
+                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 11 }}>
                             No folders or threads yet — create a domain/project/thread to move into.
                         </div>
                     )}

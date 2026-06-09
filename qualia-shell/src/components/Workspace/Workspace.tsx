@@ -45,13 +45,13 @@ const DANGER = '#ff4d6d';
 /** Shared inline style for the small icon-only action buttons on cards + editor rows. */
 const iconBtn: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'transparent', border: 'none', color: '#888',
+    background: 'transparent', border: 'none', color: 'var(--text-tertiary)',
     cursor: 'pointer', padding: 3, borderRadius: 4, flexShrink: 0,
 };
 
 /** Shared inline style for the create + rename text inputs. */
 const editInput: React.CSSProperties = {
-    flex: 1, minWidth: 0, background: '#0a0a0a', color: '#f0f0f0',
+    flex: 1, minWidth: 0, background: 'var(--bg-desktop)', color: '#f0f0f0',
     border: '1px solid #333', borderRadius: 4, padding: '4px 8px',
     fontSize: 12, fontFamily: 'inherit', outline: 'none',
 };
@@ -354,7 +354,7 @@ export default function Workspace() {
         <div
             style={{
                 display: 'flex', flexDirection: 'column', height: '100%',
-                background: '#0a0a0a', color: '#e8e8e8',
+                background: 'var(--bg-desktop)', color: '#e8e8e8',
                 fontFamily: 'inherit', overflow: 'hidden',
             }}
         >
@@ -374,7 +374,7 @@ export default function Workspace() {
                         style={{
                             display: 'flex', alignItems: 'center', gap: 2,
                             background: 'transparent', border: 'none',
-                            color: '#888', cursor: 'pointer', padding: 2,
+                            color: 'var(--text-tertiary)', cursor: 'pointer', padding: 2,
                             fontFamily: 'inherit', fontSize: 11, maxWidth: '40%',
                         }}
                         onMouseEnter={(e) => { e.currentTarget.style.color = ACCENT; }}
@@ -389,7 +389,7 @@ export default function Workspace() {
 
                 <span style={{
                     flex: 1, fontSize: 12, fontWeight: 600,
-                    letterSpacing: '0.02em', color: '#ccc',
+                    letterSpacing: '0.02em', color: 'var(--text-secondary)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
                     {title}
@@ -406,7 +406,7 @@ export default function Workspace() {
                         title="Sort domaines"
                         aria-label="Sort domaines"
                         style={{
-                            background: '#0a0a0a', color: '#ccc',
+                            background: 'var(--bg-desktop)', color: 'var(--text-secondary)',
                             border: '1px solid #222', borderRadius: 4,
                             padding: '2px 4px', fontSize: 10,
                             fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
@@ -424,7 +424,7 @@ export default function Workspace() {
                         title="Sort projects"
                         aria-label="Sort projects"
                         style={{
-                            background: '#0a0a0a', color: '#ccc',
+                            background: 'var(--bg-desktop)', color: 'var(--text-secondary)',
                             border: '1px solid #222', borderRadius: 4,
                             padding: '2px 4px', fontSize: 10,
                             fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
@@ -442,7 +442,7 @@ export default function Workspace() {
                         title="Sort threads"
                         aria-label="Sort threads"
                         style={{
-                            background: '#0a0a0a', color: '#ccc',
+                            background: 'var(--bg-desktop)', color: 'var(--text-secondary)',
                             border: '1px solid #222', borderRadius: 4,
                             padding: '2px 4px', fontSize: 10,
                             fontFamily: 'inherit', cursor: 'pointer', outline: 'none',
@@ -588,7 +588,7 @@ export default function Workspace() {
                     ) : sortedThreads.length === 0 ? (
                         <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
                             <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>💬</div>
-                            <div style={{ color: '#888', marginBottom: 4 }}>No threads in this project</div>
+                            <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No threads in this project</div>
                             <div style={{ fontSize: 10 }}>
                                 Threads are folders inside a project — each one a workstream of notes and reports.
                             </div>
@@ -716,7 +716,7 @@ export default function Workspace() {
                     ) : sortedProjects.length === 0 ? (
                         <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
                             <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>📂</div>
-                            <div style={{ color: '#888', marginBottom: 4 }}>No projects in this domaine</div>
+                            <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No projects in this domaine</div>
                             <div style={{ fontSize: 10 }}>
                                 Projects are folders inside a domaine. Add one to start a thread.
                             </div>
@@ -816,7 +816,7 @@ export default function Workspace() {
                 ) : sortedDomaines.length === 0 ? (
                     <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
                         <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>🗂️</div>
-                        <div style={{ color: '#888', marginBottom: 4 }}>No domaines yet</div>
+                        <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No domaines yet</div>
                         <div style={{ fontSize: 10 }}>
                             Domaines are top-level folders in your workspace. Create one to get started.
                         </div>
@@ -873,7 +873,7 @@ export default function Workspace() {
                                         </div>
                                         {d.description && (
                                             <span style={{
-                                                fontSize: 10, color: '#888', lineHeight: 1.5,
+                                                fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.5,
                                                 display: '-webkit-box', WebkitLineClamp: 2,
                                                 WebkitBoxOrient: 'vertical', overflow: 'hidden',
                                             }}>{d.description}</span>

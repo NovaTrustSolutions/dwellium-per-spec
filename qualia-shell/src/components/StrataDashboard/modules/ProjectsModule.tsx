@@ -177,7 +177,7 @@ function ProjectsModuleInner() {
         switch (p) {
             case 'high': return '#ef4444';
             case 'medium': return '#f59e0b';
-            case 'low': return '#10b981';
+            case 'low': return '#22c55e';
             default: return '#64748b';
         }
     };
@@ -187,7 +187,7 @@ function ProjectsModuleInner() {
             case 'open': return '#3b82f6';
             case 'in_progress': return '#f59e0b';
             case 'review': return '#D6FE51';
-            case 'completed': return '#10b981';
+            case 'completed': return '#22c55e';
             case 'cancelled': return '#ef4444';
             default: return '#64748b';
         }
@@ -223,7 +223,7 @@ function ProjectsModuleInner() {
                             </span>
                         </div>
                         {wi.description && !expanded && (
-                            <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.5, maxHeight: 32, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5, maxHeight: 32, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {wi.description.slice(0, 120)}{wi.description.length > 120 ? '…' : ''}
                             </p>
                         )}
@@ -232,10 +232,10 @@ function ProjectsModuleInner() {
                                 {wi.tags.slice(0, 3).map((tag, i) => (
                                     <span key={i} style={{
                                         fontSize: 9, padding: '1px 5px', borderRadius: 4,
-                                        background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600,
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600,
                                     }}>{tag}</span>
                                 ))}
-                                {wi.tags.length > 3 && <span style={{ fontSize: 9, color: '#475569' }}>+{wi.tags.length - 3}</span>}
+                                {wi.tags.length > 3 && <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>+{wi.tags.length - 3}</span>}
                             </div>
                         )}
                     </div>
@@ -258,11 +258,11 @@ function ProjectsModuleInner() {
                         background: 'rgba(255,255,255,0.01)',
                     }}>
                         {wi.description && (
-                            <p style={{ margin: '0 0 10px', fontSize: 12, color: '#94a3b8', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                            <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                 {wi.description}
                             </p>
                         )}
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 10, color: '#475569', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 10 }}>
                             <span><Clock size={10} style={{ verticalAlign: -1 }} /> {new Date(wi.createdAt).toLocaleDateString()}</span>
                             {wi.domain && <span>Domain: {wi.domain}</span>}
                             {wi.type && <span>Type: {wi.type}</span>}
@@ -274,9 +274,9 @@ function ProjectsModuleInner() {
                             onClick={(e) => { e.stopPropagation(); toggleStatus(wi.id, wi.status); }}
                             style={{
                                 padding: '5px 14px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                                border: `1px solid ${isActive ? 'rgba(16,185,129,0.3)' : 'rgba(214,254,81,0.3)'}`,
-                                background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(214,254,81,0.1)',
-                                color: isActive ? '#10b981' : '#D6FE51',
+                                border: `1px solid ${isActive ? 'rgba(16,185,129,0.3)' : 'color-mix(in srgb, var(--accent) 30%, transparent)'}`,
+                                background: isActive ? 'rgba(16,185,129,0.1)' : 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                                color: isActive ? '#22c55e' : '#D6FE51',
                                 cursor: 'pointer',
                                 display: 'inline-flex', alignItems: 'center', gap: 5,
                             }}
@@ -309,23 +309,23 @@ function ProjectsModuleInner() {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
                 >
-                    <span style={{ color: '#D6FE51' }}>{group.icon}</span>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0', flex: 1 }}>{group.label}</span>
+                    <span style={{ color: 'var(--accent)' }}>{group.icon}</span>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', flex: 1 }}>{group.label}</span>
                     <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                        background: active.length > 0 ? 'rgba(214,254,81,0.15)' : 'rgba(100,116,139,0.1)',
+                        background: active.length > 0 ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'rgba(100,116,139,0.1)',
                         color: active.length > 0 ? '#D6FE51' : '#64748b',
                     }}>{active.length} active</span>
                     <span style={{
                         fontSize: 10, padding: '2px 8px', borderRadius: 10,
-                        background: 'rgba(100,116,139,0.08)', color: '#475569',
+                        background: 'rgba(100,116,139,0.08)', color: 'var(--text-tertiary)',
                     }}>{inactive.length} done</span>
-                    {collapsed ? <ChevronDown size={14} style={{ color: '#475569' }} /> : <ChevronUp size={14} style={{ color: '#475569' }} />}
+                    {collapsed ? <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronUp size={14} style={{ color: 'var(--text-tertiary)' }} />}
                 </div>
                 {!collapsed && (
                     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {group.items.length === 0 ? (
-                            <div style={{ padding: 16, textAlign: 'center', color: '#475569', fontSize: 12 }}>No projects</div>
+                            <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>No projects</div>
                         ) : (
                             group.items
                                 .sort((a, b) => {
@@ -347,7 +347,7 @@ function ProjectsModuleInner() {
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">
-                        <FolderKanban size={22} style={{ verticalAlign: -4, marginRight: 8, color: '#D6FE51' }} />
+                        <FolderKanban size={22} style={{ verticalAlign: -4, marginRight: 8, color: 'var(--accent)' }} />
                         Projects — Universal Node
                     </h2>
                     <p className="s-module-subtitle">
@@ -368,7 +368,7 @@ function ProjectsModuleInner() {
                                 className="s-btn s-btn-ghost"
                                 style={{
                                     padding: '5px 10px', borderRadius: 0, margin: 0, gap: 4,
-                                    background: viewMode === mode ? 'rgba(214,254,81,0.2)' : 'transparent',
+                                    background: viewMode === mode ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'transparent',
                                     color: viewMode === mode ? '#D6FE51' : '#64748b', fontSize: 11,
                                 }}
                                 onClick={() => setViewMode(mode)}
@@ -393,7 +393,7 @@ function ProjectsModuleInner() {
                     borderRadius: 8,
                     marginBottom: 12,
                     fontSize: 12,
-                    color: '#fca5a5',
+                    color: '#ef4444',
                 }}>{statusFeedback}</div>
             )}
 
@@ -404,13 +404,13 @@ function ProjectsModuleInner() {
                 borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
                 marginBottom: 16, maxWidth: 400,
             }}>
-                <Search size={14} style={{ color: '#64748b' }} />
+                <Search size={14} style={{ color: 'var(--text-tertiary)' }} />
                 <input
                     data-testid="projects-search-input"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search projects…"
-                    style={{ flex: 1, background: 'none', border: 'none', color: '#e2e8f0', fontSize: 12, outline: 'none' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 12, outline: 'none' }}
                 />
             </div>
 
@@ -419,7 +419,7 @@ function ProjectsModuleInner() {
             ) : error ? (
                 <ErrorState message={error} onRetry={fetchProjects} />
             ) : items.length === 0 ? (
-                <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
+                <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                     <FolderKanban size={40} strokeWidth={1} style={{ marginBottom: 12, opacity: 0.4 }} />
                     <p style={{ margin: 0, fontSize: 14 }}>No projects found. Run the Trello sync or create workitems.</p>
                 </div>
@@ -449,7 +449,7 @@ function ProjectsModuleInner() {
                                     width: 8, height: 8, borderRadius: '50%',
                                     background: getStatusColor(col.status),
                                 }} />
-                                <span style={{ fontWeight: 700, fontSize: 12, color: '#e2e8f0', textTransform: 'capitalize' }}>
+                                <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
                                     {col.status.replace('_', ' ')}
                                 </span>
                                 <span style={{
@@ -472,13 +472,13 @@ function ProjectsModuleInner() {
             ) : (
                 /* ── All / List View ── */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <h3 style={{ margin: '8px 0', fontSize: 14, color: '#e2e8f0' }}>
-                        <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 6, color: '#D6FE51' }} />
+                    <h3 style={{ margin: '8px 0', fontSize: 14, color: 'var(--text-primary)' }}>
+                        <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 6, color: 'var(--accent)' }} />
                         Active ({activeItems.length})
                     </h3>
                     {activeItems.map(wi => <ProjectCard key={wi.id} wi={wi} />)}
-                    <h3 style={{ margin: '16px 0 8px', fontSize: 14, color: '#94a3b8' }}>
-                        <XCircle size={14} style={{ verticalAlign: -2, marginRight: 6, color: '#64748b' }} />
+                    <h3 style={{ margin: '16px 0 8px', fontSize: 14, color: 'var(--text-secondary)' }}>
+                        <XCircle size={14} style={{ verticalAlign: -2, marginRight: 6, color: 'var(--text-tertiary)' }} />
                         Inactive ({inactiveItems.length})
                     </h3>
                     {inactiveItems.map(wi => <ProjectCard key={wi.id} wi={wi} />)}
@@ -494,7 +494,7 @@ function ProjectsModuleInner() {
 // degrades gracefully instead of taking the whole shell down.
 export default function ProjectsModule() {
     return (
-        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Projects module unavailable.</div>}>
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Projects module unavailable.</div>}>
             <ProjectsModuleInner />
         </ErrorBoundary>
     );

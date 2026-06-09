@@ -69,36 +69,36 @@ export default function ContentSearch() {
     const open = (widget: string) => window.dispatchEvent(new CustomEvent('qualia-open-widget', { detail: widget }));
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#000', color: '#ccc', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid #222', flexShrink: 0 }}>
                 <Search size={16} style={{ color: ACCENT }} />
                 <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search all content — notes, dumps, syntheses, wiki, foundry, files…"
-                    style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: 15, outline: 'none', fontFamily: 'inherit' }} />
+                    style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 15, outline: 'none', fontFamily: 'inherit' }} />
                 <span style={{ fontSize: 11, color: '#666' }}>{query ? `${hits.length} result${hits.length === 1 ? '' : 's'}` : `${docs.length} indexed`}</span>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: 10 }}>
                 {!query && (
-                    <div style={{ padding: 16, color: '#555', fontSize: 12, lineHeight: 1.7 }}>
+                    <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.7 }}>
                         Type to search across your local corpus. Full file-content + semantic search additionally uses the backend index when connected.
                     </div>
                 )}
-                {query && hits.length === 0 && <div style={{ padding: 16, color: '#555', fontSize: 12 }}>No results for “{query}”.</div>}
+                {query && hits.length === 0 && <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>No results for “{query}”.</div>}
                 {hits.map((h) => {
                     const M = TYPE_META[h.type];
                     const Icon = M.icon;
                     return (
                         <button key={h.id} onClick={() => open(h.widget)}
-                            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 5, background: '#0a0a0a', border: '1px solid #1c1c1c', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}
+                            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 5, background: 'var(--bg-desktop)', border: '1px solid #1c1c1c', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}
                             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.background = '#111'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1c1c1c'; e.currentTarget.style.background = '#0a0a0a'; }}>
                             <Icon size={15} style={{ color: ACCENT, flexShrink: 0, marginTop: 1 }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ color: '#eee', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.title}</span>
+                                    <span style={{ color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.title}</span>
                                     <span style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>{M.label}</span>
                                 </div>
-                                <div style={{ fontSize: 11.5, color: '#999', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.snippet}</div>
+                                <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.snippet}</div>
                             </div>
                         </button>
                     );

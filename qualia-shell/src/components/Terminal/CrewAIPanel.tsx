@@ -73,7 +73,7 @@ export default function CrewAIPanel() {
         copy(cmd, 'run');
     };
 
-    const dotColor = reach === 'up' ? '#34D399' : reach === 'down' ? '#ff6b6b' : '#888';
+    const dotColor = reach === 'up' ? '#22c55e' : reach === 'down' ? '#ff6b6b' : '#888';
 
     return (
         <div className="cr-panel">

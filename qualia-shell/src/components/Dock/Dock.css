@@ -18,7 +18,7 @@
     background: rgba(10, 10, 10, 0.92);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border: 1px solid #222222;
+    border: 1px solid var(--border-default);
     border-radius: 8px;
     box-shadow: none;
     pointer-events: auto;

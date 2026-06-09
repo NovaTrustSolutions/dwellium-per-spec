@@ -34,9 +34,9 @@ type VerdictFilter = 'all' | 'verified' | 'disputed' | 'unverifiable' | 'partial
 const API_FACT_CHECK = `${API_BASE}/api/transcribe/fact-check`;
 
 const VERDICT_CONFIG: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-    verified: { label: 'Verified', icon: '✅', color: '#34d399', bg: 'rgba(16, 185, 129, 0.12)' },
+    verified: { label: 'Verified', icon: '✅', color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
     disputed: { label: 'Disputed', icon: '❌', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' },
-    unverifiable: { label: 'Unverifiable', icon: '❓', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.12)' },
+    unverifiable: { label: 'Unverifiable', icon: '❓', color: '#f59e0b', bg: 'rgba(251, 191, 36, 0.12)' },
     partially_true: { label: 'Partial', icon: '⚠️', color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.12)' },
 };
 

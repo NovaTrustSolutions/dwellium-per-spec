@@ -33,7 +33,7 @@ interface AssistantMeta {
 const ASSISTANTS: AssistantMeta[] = [
     { key: 'antigravity', name: 'Antigravity', tagline: 'Gemini · workspace-aware', accent: '#8B5CF6', Icon: Sparkles },
     { key: 'ara', name: 'ARA', tagline: 'Dwellium agent console', accent: '#22D3EE', Icon: Bot },
-    { key: 'inbox-zero', name: 'Inbox Zero', tagline: 'AI email triage', accent: '#34D399', Icon: Inbox },
+    { key: 'inbox-zero', name: 'Inbox Zero', tagline: 'AI email triage', accent: '#22c55e', Icon: Inbox },
     { key: 'stella', name: 'Stella', tagline: 'Voice + tools agent', accent: '#F472B6', Icon: Star },
 ];
 const META: Record<AssistantKey, AssistantMeta> = Object.fromEntries(ASSISTANTS.map(a => [a.key, a])) as Record<AssistantKey, AssistantMeta>;

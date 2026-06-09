@@ -15,9 +15,9 @@
     --tp-text: #e2e8f0;
     --tp-text-muted: #94a3b8;
     --tp-text-dim: #64748b;
-    --tp-success: #10b981;
-    --tp-warning: #f59e0b;
-    --tp-danger: #ef4444;
+    --tp-success: var(--success);
+    --tp-warning: var(--warning);
+    --tp-danger: var(--danger);
     --tp-radius: 12px;
     --tp-radius-sm: 8px;
 }
@@ -237,8 +237,8 @@
 }
 
 .tp-stat-icon.indigo {
-    background: rgba(214, 254, 81, 0.12);
-    color: #D6FE51;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
 }
 
 .tp-stat-value {
@@ -361,7 +361,7 @@
 
 .tp-wo-priority.critical {
     background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .tp-wo-priority.high {
@@ -371,12 +371,12 @@
 
 .tp-wo-priority.medium {
     background: rgba(245, 158, 11, 0.12);
-    color: #f59e0b;
+    color: var(--warning);
 }
 
 .tp-wo-priority.low {
     background: rgba(100, 116, 139, 0.12);
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 /* ── Form ─────────────────────────────────── */
@@ -595,8 +595,8 @@
 }
 
 .tp-message-direction.outbound {
-    background: rgba(214, 254, 81, 0.12);
-    color: #D6FE51;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
 }
 
 /* ── Empty States ────────────────────────── */
@@ -729,7 +729,7 @@
 .tp-card:hover, .tp-rent-card:hover, .tenant-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
-    border-color: rgba(214, 254, 81, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 /* [P2] Payment history row hover animation */
@@ -737,28 +737,28 @@
     transition: background 0.2s ease, transform 0.15s ease;
 }
 .tp-payment-row:hover, .tp-history-item:hover, .tenant-payment:hover {
-    background: rgba(214, 254, 81, 0.04);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
     transform: translateX(3px);
-    box-shadow: inset 3px 0 0 rgba(214, 254, 81, 0.5);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 /* [P3] Maintenance request priority colors */
-.tp-urgent, .tp-priority-high { border-left: 3px solid #ef4444; }
+.tp-urgent, .tp-priority-high { border-left: 3px solid var(--danger); }
 .tp-medium, .tp-priority-medium { border-left: 3px solid #eab308; }
-.tp-low, .tp-priority-low { border-left: 3px solid #22c55e; }
+.tp-low, .tp-priority-low { border-left: 3px solid var(--success); }
 
 /* [P4] Quick action button hover glow */
 .tp-action-btn, .tp-quick-action, .tenant-action {
     transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 .tp-action-btn:hover, .tp-quick-action:hover, .tenant-action:hover {
-    box-shadow: 0 0 20px rgba(214, 254, 81, 0.2), 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 20%, transparent), 0 4px 12px rgba(0,0,0,0.15);
     transform: translateY(-2px) scale(1.02);
 }
 
 /* [P5] Portal header ambient gradient */
 .tp-header, .tenant-header {
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.06), rgba(214, 254, 81, 0.03), transparent) !important;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, transparent), color-mix(in srgb, var(--accent) 3%, transparent), transparent) !important;
     position: relative;
 }
 .tp-header::after, .tenant-header::after {
@@ -768,5 +768,5 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(214, 254, 81, 0.15), transparent);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 15%, transparent), transparent);
 }

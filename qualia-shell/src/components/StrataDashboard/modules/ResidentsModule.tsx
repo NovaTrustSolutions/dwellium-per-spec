@@ -34,13 +34,13 @@ interface Tenant {
 const RESIDENT_STATUSES = ['onboarding', 'active', 'notice', 'renewal', 'former'] as const;
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
     onboarding: { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6' },
-    active: { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+    active: { bg: 'rgba(16,185,129,0.12)', color: '#22c55e' },
     notice: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
     renewal: { bg: 'rgba(168,85,247,0.12)', color: '#a855f7' },
-    former: { bg: 'rgba(100,116,139,0.12)', color: '#64748b' },
-    inactive: { bg: 'rgba(100,116,139,0.12)', color: '#64748b' },
+    former: { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-tertiary)' },
+    inactive: { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-tertiary)' },
     pending: { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6' },
-    archived: { bg: 'rgba(100,116,139,0.12)', color: '#64748b' },
+    archived: { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-tertiary)' },
 };
 const TRANSITIONS: Record<string, string[]> = {
     onboarding: ['active'], active: ['notice', 'renewal', 'former'],
@@ -111,8 +111,8 @@ function daysUntil(target: Date, today: Date): number {
 function BlockRow({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }}>
-            <span style={{ color: '#64748b', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>{label}</span>
-            <span style={{ color: '#cbd5e1', textAlign: 'right', wordBreak: 'break-word', fontSize: 12 }}>{value}</span>
+            <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>{label}</span>
+            <span style={{ color: 'var(--text-secondary)', textAlign: 'right', wordBreak: 'break-word', fontSize: 12 }}>{value}</span>
         </div>
     );
 }
@@ -137,7 +137,7 @@ function BlockSection({
                 style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 14px', border: 'none', background: 'none',
-                    color: '#94a3b8', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
+                    color: 'var(--text-secondary)', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
                     textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit',
                 }}
             >
@@ -152,7 +152,7 @@ function BlockSection({
 // ── Block 1 (Task 3.1): FolioGuard Smart Ensure upsell — stub per v1 L168 ──
 export function BlockFolioGuardUpsell(_props: { tenant: EntityProfile }) {
     return (
-        <div data-testid="tenant-block-folioguard" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="tenant-block-folioguard" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             FolioGuard Smart Ensure — automated insurance requirement tracking. Coming soon — Phase-5 wires the Compliance-module Insurance tab as the Strata equivalent of AppFolio's tenant-side upsell card.
         </div>
     );
@@ -163,7 +163,7 @@ export function BlockEmergencyContact({ tenant }: { tenant: EntityProfile }) {
     const contacts: EmergencyContact[] = Array.isArray(tenant.emergencyContacts) ? tenant.emergencyContacts : [];
     if (contacts.length === 0) {
         return (
-            <div data-testid="tenant-block-emergency-contact" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            <div data-testid="tenant-block-emergency-contact" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
                 No emergency contact on file.
             </div>
         );
@@ -185,7 +185,7 @@ export function BlockEmergencyContact({ tenant }: { tenant: EntityProfile }) {
 // ── Block 3 (Task 3.1): Upcoming Activities — stub per v1 L168 ──
 export function BlockUpcomingActivities(_props: { tenant: EntityProfile }) {
     return (
-        <div data-testid="tenant-block-upcoming-activities" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="tenant-block-upcoming-activities" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             Upcoming activities not yet captured. Coming soon — Phase-5 wires per-tenant scheduled events (lease renewal, inspection, rent increase) once the activity-feed pipeline lands.
         </div>
     );
@@ -196,7 +196,7 @@ export function BlockAnimals({ tenant }: { tenant: EntityProfile }) {
     const animals: Animal[] = Array.isArray(tenant.animals) ? tenant.animals : [];
     if (animals.length === 0) {
         return (
-            <div data-testid="tenant-block-animals" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            <div data-testid="tenant-block-animals" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
                 No animals on file.
             </div>
         );
@@ -212,7 +212,7 @@ export function BlockAnimals({ tenant }: { tenant: EntityProfile }) {
                     <BlockRow
                         label="Service Animal"
                         value={a.isServiceAnimal
-                            ? <span style={{ color: '#10b981', fontWeight: 700 }}>Yes</span>
+                            ? <span style={{ color: '#22c55e', fontWeight: 700 }}>Yes</span>
                             : 'No'}
                     />
                 </div>
@@ -226,7 +226,7 @@ export function BlockVehicles({ tenant }: { tenant: EntityProfile }) {
     const vehicles: Vehicle[] = Array.isArray(tenant.vehicles) ? tenant.vehicles : [];
     if (vehicles.length === 0) {
         return (
-            <div data-testid="tenant-block-vehicles" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+            <div data-testid="tenant-block-vehicles" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
                 No vehicles on file.
             </div>
         );
@@ -276,7 +276,7 @@ export function InsuranceStatusBadge({
     } else {
         label = `Active (${diff} days remaining)`;
         bg = 'rgba(16,185,129,0.12)';
-        color = '#10b981';
+        color = '#22c55e';
     }
     return (
         <span
@@ -312,7 +312,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
             <button onClick={() => setOpen(o => !o)} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 14px', border: 'none', background: 'none',
-                color: '#94a3b8', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
+                color: 'var(--text-secondary)', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
                 textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit',
             }}>
                 {icon} {title}
@@ -320,7 +320,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit }: {
                     {onEdit && (
                         <span
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'rgba(214,254,81,0.1)', color: '#D6FE51', cursor: 'pointer', transition: 'all 0.15s' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.15s' }}
                             title={`Edit ${title}`}
                         >
                             <Settings2 size={11} />
@@ -338,8 +338,8 @@ function Field({ label, value, full }: { label: string; value?: string; full?: b
     if (!value && value !== '0') return null;
     return (
         <div style={{ gridColumn: full ? '1 / -1' : undefined }}>
-            <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</div>
-            <div style={{ fontSize: 13, color: '#cbd5e1', marginTop: 1, wordBreak: 'break-word' }}>{value || '—'}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 1, wordBreak: 'break-word' }}>{value || '—'}</div>
         </div>
     );
 }
@@ -357,7 +357,7 @@ function LinkageIndicator({ tenantId }: { tenantId: string }) {
     // shape drift captured §7 v2.18+ candidate.
     if (!linkage || !linkage.health) return null;
     const Icon = linkage.health === 'valid' ? Check : linkage.health === 'warning' ? AlertCircle : XCircle;
-    const color = linkage.health === 'valid' ? '#10b981' : linkage.health === 'warning' ? '#f59e0b' : '#ef4444';
+    const color = linkage.health === 'valid' ? '#22c55e' : linkage.health === 'warning' ? '#f59e0b' : '#ef4444';
     const issues = Array.isArray(linkage.issues) ? linkage.issues : [];
     return (
         <span title={issues.length > 0 ? issues.join('\n') : 'Fully linked'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'help' }}>
@@ -378,18 +378,18 @@ function HistoryTab({ tenantId }: { tenantId: string }) {
         switch (t) { case 'communication': return <Mail size={12} />; case 'workitem': return <FileText size={12} />; case 'lease': return <Calendar size={12} />; default: return <Clock size={12} />; }
     };
     const typeColor = (t: string) => {
-        switch (t) { case 'communication': return '#06b6d4'; case 'workitem': return '#D6FE51'; case 'lease': return '#10b981'; default: return '#64748b'; }
+        switch (t) { case 'communication': return '#06b6d4'; case 'workitem': return '#D6FE51'; case 'lease': return '#22c55e'; default: return '#64748b'; }
     };
-    if (loading) return <div style={{ padding: 20, textAlign: 'center', color: '#475569', fontSize: 12 }}>Loading history…</div>;
-    if (events.length === 0) return <div style={{ padding: 20, textAlign: 'center', color: '#475569', fontSize: 12 }}>No history recorded yet.</div>;
+    if (loading) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>Loading history…</div>;
+    if (events.length === 0) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>No history recorded yet.</div>;
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0' }}>
             {events.map((ev, i) => (
                 <div key={ev.id + i} style={{ display: 'flex', gap: 8, padding: '6px 14px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                     <span style={{ color: typeColor(ev.type), flexShrink: 0, marginTop: 2 }}>{typeIcon(ev.type)}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
-                        <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{ev.type} · {ev.action} · {ev.timestamp ? new Date(ev.timestamp).toLocaleDateString() : '—'}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 1 }}>{ev.type} · {ev.action} · {ev.timestamp ? new Date(ev.timestamp).toLocaleDateString() : '—'}</div>
                     </div>
                 </div>
             ))}
@@ -414,13 +414,13 @@ function CommTab({ tenantId, tenantName }: { tenantId: string; tenantName: strin
     };
     return (
         <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.8 }}>Send Communication</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Send Communication</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {TEMPLATES.map(t => (
                     <button key={t.key} onClick={() => setSelectedTemplate(t.key)} style={{
                         padding: '4px 10px', borderRadius: 8, border: '1px solid',
-                        borderColor: selectedTemplate === t.key ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)',
-                        background: selectedTemplate === t.key ? 'rgba(214,254,81,0.15)' : 'transparent',
+                        borderColor: selectedTemplate === t.key ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'rgba(255,255,255,0.08)',
+                        background: selectedTemplate === t.key ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                         color: selectedTemplate === t.key ? '#D6FE51' : '#64748b',
                         fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                     }}>{t.icon} {t.label}</button>
@@ -439,15 +439,15 @@ function CommTab({ tenantId, tenantName }: { tenantId: string; tenantName: strin
             </div>
             {selectedTemplate === 'general' && (
                 <textarea value={customMsg} onChange={e => setCustomMsg(e.target.value)} placeholder="Type your message…"
-                    style={{ width: '100%', minHeight: 60, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', minHeight: 60, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
             )}
             <button onClick={handleSend} disabled={sending} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 padding: '8px 16px', borderRadius: 8, border: 'none',
-                background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: '#fff',
+                background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: 'var(--text-primary)',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1,
             }}><Send size={12} /> {sending ? 'Sending…' : `Send to ${tenantName}`}</button>
-            {sent && <div style={{ fontSize: 11, color: sent.startsWith('✓') ? '#10b981' : '#ef4444', fontWeight: 600 }}>{sent}</div>}
+            {sent && <div style={{ fontSize: 11, color: sent.startsWith('✓') ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{sent}</div>}
         </div>
     );
 }
@@ -511,12 +511,12 @@ function OtherOccupantsSection({ tenant, allTenants }: { tenant: Tenant; allTena
                 style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 14px', border: 'none', background: 'none',
-                    color: '#94a3b8', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
+                    color: 'var(--text-secondary)', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
                     textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit',
                 }}
             >
                 <Users size={12} /> Other Occupants
-                <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 10, background: 'rgba(214,254,81,0.15)', color: '#D6FE51', fontSize: 10, fontWeight: 700 }}>
+                <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 10, background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', fontSize: 10, fontWeight: 700 }}>
                     {loading ? '…' : others.length}
                 </span>
                 <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -525,7 +525,7 @@ function OtherOccupantsSection({ tenant, allTenants }: { tenant: Tenant; allTena
             </button>
             {open && (
                 <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {loading && <div style={{ fontSize: 11, color: '#475569' }}>Loading occupants…</div>}
+                    {loading && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Loading occupants…</div>}
                     {!loading && others.map((o) => (
                         <div
                             key={o.id}
@@ -533,8 +533,8 @@ function OtherOccupantsSection({ tenant, allTenants }: { tenant: Tenant; allTena
                             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}
                         >
                             <Users size={12} color="#64748b" />
-                            <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>{o.name}</span>
-                            <span style={{ marginLeft: 'auto', fontSize: 10, color: '#64748b' }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>{o.name}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)' }}>
                                 {o.metadata?.tenantType || 'Other Occupant'}
                             </span>
                         </div>
@@ -735,13 +735,13 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>Residents & Tenants</h2>
-                    <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>{filtered.length}{filtered.length !== tenants.length ? ` of ${tenants.length}` : ''} tenants</p>
+                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Residents & Tenants</h2>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>{filtered.length}{filtered.length !== tenants.length ? ` of ${tenants.length}` : ''} tenants</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <select aria-label="Filter residents by property" value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} style={{ padding: '7px 10px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: propertyFilter === 'all' ? '#64748b' : '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none', cursor: 'pointer', maxWidth: 180 }}>
-                        <option value="all" style={{ background: '#1e293b', color: '#94a3b8' }}>All Properties</option>
-                        {uniqueProperties.map(p => <option key={p} value={p} style={{ background: '#1e293b', color: '#e2e8f0' }}>{p}</option>)}
+                        <option value="all" style={{ background: '#1e293b', color: 'var(--text-secondary)' }}>All Properties</option>
+                        {uniqueProperties.map(p => <option key={p} value={p} style={{ background: '#1e293b', color: 'var(--text-primary)' }}>{p}</option>)}
                     </select>
                     <select aria-label="Filter residents by lease expiration" value={leaseFilter} onChange={e => setLeaseFilter(e.target.value)} style={{ padding: '7px 10px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: leaseFilter === 'all' ? '#64748b' : '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}>
                         <option value="all" style={{ background: '#1e293b' }}>All Leases</option>
@@ -751,14 +751,14 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                     </select>
                     {hasPermission('strata:residents:search') && (
                         <div style={{ position: 'relative' }}>
-                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                            <input placeholder="Search name, unit, status…" value={search} onChange={e => setSearch(e.target.value)} style={{ padding: '7px 12px 7px 30px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 180 }} />
+                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                            <input placeholder="Search name, unit, status…" value={search} onChange={e => setSearch(e.target.value)} style={{ padding: '7px 12px 7px 30px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit', outline: 'none', width: 180 }} />
                         </div>
                     )}
-                    <button onClick={fetchTenants} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <button onClick={fetchTenants} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                         <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
                     </button>
-                    <button onClick={() => setShowForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', border: 'none', borderRadius: 8, background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+                    <button onClick={() => setShowForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', border: 'none', borderRadius: 8, background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
                         <Plus size={12} /> New Tenant
                     </button>
                 </div>
@@ -766,11 +766,11 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
             {/* Status filter pills */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexShrink: 0, flexWrap: 'wrap' }}>
-                <button onClick={() => setStatusFilter('all')} style={{ padding: '3px 10px', borderRadius: 12, border: '1px solid', borderColor: statusFilter === 'all' ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)', background: statusFilter === 'all' ? 'rgba(214,254,81,0.15)' : 'transparent', color: statusFilter === 'all' ? '#D6FE51' : '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>All ({tenants.length})</button>
+                <button onClick={() => setStatusFilter('all')} style={{ padding: '3px 10px', borderRadius: 12, border: '1px solid', borderColor: statusFilter === 'all' ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'rgba(255,255,255,0.08)', background: statusFilter === 'all' ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent', color: statusFilter === 'all' ? '#D6FE51' : '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>All ({tenants.length})</button>
                 {RESIDENT_STATUSES.map(s => {
                     const count = tenants.filter(t => t.status === s).length;
                     return (
-                        <button key={s} onClick={() => setStatusFilter(s)} style={{ padding: '3px 10px', borderRadius: 12, border: '1px solid', borderColor: statusFilter === s ? `${sc(s).color}66` : 'rgba(255,255,255,0.08)', background: statusFilter === s ? sc(s).bg : 'transparent', color: statusFilter === s ? sc(s).color : '#64748b', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
+                        <button key={s} onClick={() => setStatusFilter(s)} style={{ padding: '3px 10px', borderRadius: 12, border: '1px solid', borderColor: statusFilter === s ? `${sc(s).color}66` : 'rgba(255,255,255,0.08)', background: statusFilter === s ? sc(s).bg : 'transparent', color: statusFilter === s ? sc(s).color : 'var(--text-tertiary)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
                             {s} ({count})
                         </button>
                     );
@@ -779,27 +779,27 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
             {/* Bulk action bar */}
             {bulkSelected.size > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 8, borderRadius: 10, background: 'rgba(214,254,81,0.08)', border: '1px solid rgba(214,254,81,0.2)', flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#D6FE51' }}>{bulkSelected.size} selected</span>
-                    <button onClick={() => setShowBulkStatus(true)} style={{ padding: '4px 12px', borderRadius: 8, border: 'none', background: 'rgba(214,254,81,0.2)', color: '#D6FE51', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Change Status</button>
-                    <button onClick={() => setBulkSelected(new Set())} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#64748b', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 8, borderRadius: 10, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>{bulkSelected.size} selected</span>
+                    <button onClick={() => setShowBulkStatus(true)} style={{ padding: '4px 12px', borderRadius: 8, border: 'none', background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Change Status</button>
+                    <button onClick={() => setBulkSelected(new Set())} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
                 </div>
             )}
 
             {/* Bulk status modal */}
             {showBulkStatus && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowBulkStatus(false)}>
-                    <div style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(214,254,81,0.2)' }} onClick={e => e.stopPropagation()}>
-                        <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Bulk Status Change</h3>
-                        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>Change status for {bulkSelected.size} selected tenants:</p>
+                    <div style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Bulk Status Change</h3>
+                        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>Change status for {bulkSelected.size} selected tenants:</p>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
                             {RESIDENT_STATUSES.map(s => (
-                                <button key={s} onClick={() => setBulkTargetStatus(s)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid', borderColor: bulkTargetStatus === s ? `${sc(s).color}66` : 'rgba(255,255,255,0.08)', background: bulkTargetStatus === s ? sc(s).bg : 'transparent', color: bulkTargetStatus === s ? sc(s).color : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>{s}</button>
+                                <button key={s} onClick={() => setBulkTargetStatus(s)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid', borderColor: bulkTargetStatus === s ? `${sc(s).color}66` : 'rgba(255,255,255,0.08)', background: bulkTargetStatus === s ? sc(s).bg : 'transparent', color: bulkTargetStatus === s ? sc(s).color : 'var(--text-tertiary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>{s}</button>
                             ))}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                            <button onClick={() => setShowBulkStatus(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                            <button onClick={handleBulkStatus} disabled={!bulkTargetStatus} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: bulkTargetStatus ? 1 : 0.5 }}>Apply</button>
+                            <button onClick={() => setShowBulkStatus(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                            <button onClick={handleBulkStatus} disabled={!bulkTargetStatus} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: bulkTargetStatus ? 1 : 0.5 }}>Apply</button>
                         </div>
                     </div>
                 </div>
@@ -813,7 +813,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                         <thead><tr>
                             <th style={{ width: 32, padding: '10px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'sticky', top: 0, background: 'rgba(15,20,36,0.95)', backdropFilter: 'blur(8px)', zIndex: 1 }}></th>
                             {['Name', 'Property', 'Unit', 'Status', 'Type', 'Rent', 'Lease To'].map(h => (
-                                <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#64748b', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'sticky', top: 0, background: 'rgba(15,20,36,0.95)', backdropFilter: 'blur(8px)', zIndex: 1 }}>{h}</th>
+                                <th key={h} style={{ textAlign: 'left', padding: '10px 12px', fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--text-tertiary)', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'sticky', top: 0, background: 'rgba(15,20,36,0.95)', backdropFilter: 'blur(8px)', zIndex: 1 }}>{h}</th>
                             ))}
                         </tr></thead>
                         <tbody>
@@ -822,13 +822,13 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                             ) : error ? (
                                 <tr><td colSpan={8}><ErrorState message={error} onRetry={fetchTenants} /></td></tr>
                             ) : filtered.length === 0 ? (
-                                <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>No tenants found</td></tr>
+                                <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>No tenants found</td></tr>
                             ) : filtered.map(t => {
                                 const m = t.metadata || {};
                                 const isActive = selected?.id === t.id;
                                 const isBulk = bulkSelected.has(t.id);
                                 return (
-                                    <tr key={t.id} onClick={() => setSelected(t)} style={{ cursor: 'pointer', background: isActive ? 'rgba(214,254,81,0.08)' : undefined, borderLeft: isActive ? '3px solid #6366f1' : '3px solid transparent' }}
+                                    <tr key={t.id} onClick={() => setSelected(t)} style={{ cursor: 'pointer', background: isActive ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : undefined, borderLeft: isActive ? '3px solid #6366f1' : '3px solid transparent' }}
                                         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                                         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = ''; }}>
                                         <td style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -839,21 +839,21 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                                 {isBulk ? <CheckSquare size={14} /> : <Square size={14} />}
                                             </button>
                                         </td>
-                                        <td style={{ padding: '8px 12px', fontSize: 13, color: '#e2e8f0', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                        <td style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t.name} <LinkageIndicator tenantId={t.id} /></div>
                                         </td>
-                                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             {m.propertyName && t.propertyIds?.[0] ? (
                                                 <button className="s-property-link" onClick={(e) => { e.stopPropagation(); navigateToProperty(t.propertyIds[0]); }}>{m.propertyName}</button>
                                             ) : (m.propertyName || '—')}
                                         </td>
-                                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.unit || '—'}</td>
+                                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.unit || '—'}</td>
                                         <td style={{ padding: '8px 12px', fontSize: 12, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: sc(t.status).bg, color: sc(t.status).color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t.status}</span>
                                         </td>
-                                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.tenantType || '—'}</td>
-                                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#10b981', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.rent ? `$${m.rent}` : '—'}</td>
-                                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.leaseTo || '—'}</td>
+                                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.tenantType || '—'}</td>
+                                        <td style={{ padding: '8px 12px', fontSize: 12, color: '#22c55e', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.rent ? `$${m.rent}` : '—'}</td>
+                                        <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{m.leaseTo || '—'}</td>
                                     </tr>
                                 );
                             })}
@@ -868,21 +868,21 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#e2e8f0' }}>{selected.name}</h3>
+                                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>{selected.name}</h3>
                                     <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                                         <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: sc(selected.status).bg, color: sc(selected.status).color, textTransform: 'uppercase' }}>{selected.status}</span>
-                                        {md.tenantType && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(214,254,81,0.12)', color: '#D6FE51' }}>{md.tenantType}</span>}
+                                        {md.tenantType && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>{md.tenantType}</span>}
                                         {md.primaryTenant === 'Yes' && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>PRIMARY</span>}
                                         <LinkageIndicator tenantId={selected.id} />
                                     </div>
                                 </div>
-                                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+                                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
                             </div>
 
                             {/* Status workflow transitions */}
                             {TRANSITIONS[selected.status] && TRANSITIONS[selected.status].length > 0 && (
                                 <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: 10, color: '#475569', alignSelf: 'center', marginRight: 4 }}>→</span>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', alignSelf: 'center', marginRight: 4 }}>→</span>
                                     {TRANSITIONS[selected.status].map(ns => (
                                         <button key={ns} onClick={() => handleStatusChange(selected.id, ns)} style={{
                                             padding: '3px 10px', borderRadius: 8, border: '1px solid', fontSize: 10, fontWeight: 600,
@@ -894,16 +894,16 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                             )}
 
                             {/* Contact + actions */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, fontSize: 13, color: '#94a3b8' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
                                 {selected.email && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Mail size={13} color="#64748b" /> {selected.email}</div>}
                                 {selected.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={13} color="#64748b" /> {selected.phone}</div>}
                             </div>
 
                             <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                                <button onClick={() => openEditForm(selected)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(214,254,81,0.08)', border: '1px solid rgba(214,254,81,0.2)', color: '#D6FE51', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <button onClick={() => openEditForm(selected)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     <Settings2 size={12} /> Edit Tenant
                                 </button>
-                                <button onClick={() => setConfirmDelete(selected.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <button onClick={() => setConfirmDelete(selected.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     <Trash2 size={12} /> Delete Tenant
                                 </button>
                             </div>
@@ -953,7 +953,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                 </DetailSection>
                                 {md.primaryTenant === 'Yes' && (
                                     <ErrorBoundary fallback={
-                                        <div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>
+                                        <div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>
                                             Other Occupants unavailable.
                                         </div>
                                     }>
@@ -965,7 +965,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                 </DetailSection>
                                 {/* ─── Task 3.1: v1-L164 expansion — 5 NEW blocks scoped under one ErrorBoundary ─── */}
                                 <ErrorBoundary fallback={
-                                    <div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>
+                                    <div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>
                                         Tenant detail blocks unavailable.
                                     </div>
                                 }>
@@ -994,7 +994,7 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
 
                 {/* Empty state */}
                 {!selected && (
-                    <div style={{ width: 320, minWidth: 280, flexShrink: 0, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#475569', gap: 8 }}>
+                    <div style={{ width: 320, minWidth: 280, flexShrink: 0, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', gap: 8 }}>
                         <Users size={40} strokeWidth={1} /><p style={{ margin: 0, fontSize: 13 }}>Select a tenant to view details</p>
                     </div>
                 )}
@@ -1003,32 +1003,32 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
             {/* Create Tenant Modal */}
             {showForm && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowForm(false)}>
-                    <div style={{ width: 480, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(214,254,81,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ width: 480, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Add New Tenant</h3>
-                            <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Add New Tenant</h3>
+                            <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
                         </div>
                         <form onSubmit={handleCreate}>
                             <div style={{ display: 'grid', gap: 12 }}>
-                                <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Full Name *</label><input name="name" required placeholder="John Doe" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Full Name *</label><input name="name" required placeholder="John Doe" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input name="email" type="email" placeholder="tenant@email.com" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
-                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Phone</label><input name="phone" placeholder="555-000-0000" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input name="email" type="email" placeholder="tenant@email.com" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Phone</label><input name="phone" placeholder="555-000-0000" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Property</label><select name="propertyName" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}><option value="">Select property…</option>{uniqueProperties.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
-                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Unit</label><input name="unit" placeholder="101" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Property</label><select name="propertyName" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}><option value="">Select property…</option>{uniqueProperties.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Unit</label><input name="unit" placeholder="101" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Monthly Rent</label><input name="rent" type="number" step="0.01" placeholder="1500" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
-                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Lease From</label><input name="leaseFrom" type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
-                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Lease To</label><input name="leaseTo" type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Monthly Rent</label><input name="rent" type="number" step="0.01" placeholder="1500" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Lease From</label><input name="leaseFrom" type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
+                                    <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Lease To</label><input name="leaseTo" type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} /></div>
                                 </div>
-                                <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tenant Type</label><select name="tenantType" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}><option value="Residential">Residential</option><option value="Commercial">Commercial</option><option value="Section 8">Section 8</option></select></div>
+                                <div><label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tenant Type</label><select name="tenantType" style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}><option value="Residential">Residential</option><option value="Commercial">Commercial</option><option value="Section 8">Section 8</option></select></div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-                                <button type="button" onClick={() => setShowForm(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                                <button type="submit" style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Add Tenant</button>
+                                <button type="button" onClick={() => setShowForm(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                                <button type="submit" style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Add Tenant</button>
                             </div>
                         </form>
                     </div>
@@ -1038,50 +1038,50 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
             {/* Edit Tenant Modal */}
             {showEditForm && selected && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
-                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid rgba(214,254,81,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Edit Tenant</h3>
-                            <button onClick={() => setShowEditForm(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Edit Tenant</h3>
+                            <button onClick={() => setShowEditForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
                         </div>
                         <form onSubmit={handleEditSave} style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
-                            <div style={{ padding: '10px 14px', background: 'rgba(214,254,81,0.08)', borderRadius: 8, border: '1px solid rgba(214,254,81,0.2)', marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>Editing: {selected.name}</div>
-                                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Update tenant details, lease info, and entity tags.</div>
+                            <div style={{ padding: '10px 14px', background: 'color-mix(in srgb, var(--accent) 8%, transparent)', borderRadius: 8, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', marginBottom: 16 }}>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Editing: {selected.name}</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>Update tenant details, lease info, and entity tags.</div>
                             </div>
 
-                            <h4 style={{ fontSize: 11, color: '#D6FE51', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
+                            <h4 style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                                <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Full Name</label><input className="s-input" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input className="s-input" type="email" value={editFormData.email || ''} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Phone</label><input className="s-input" value={editFormData.phone || ''} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
+                                <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Full Name</label><input className="s-input" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input className="s-input" type="email" value={editFormData.email || ''} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Phone</label><input className="s-input" value={editFormData.phone || ''} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
                             </div>
 
-                            <h4 style={{ fontSize: 11, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Lease & Property</h4>
+                            <h4 style={{ fontSize: 11, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Lease & Property</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginBottom: 10 }}>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Property</label><input className="s-input" value={editFormData.propertyName || ''} onChange={e => setEditFormData({...editFormData, propertyName: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Unit</label><input className="s-input" value={editFormData.unit || ''} onChange={e => setEditFormData({...editFormData, unit: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Property</label><input className="s-input" value={editFormData.propertyName || ''} onChange={e => setEditFormData({...editFormData, propertyName: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Unit</label><input className="s-input" value={editFormData.unit || ''} onChange={e => setEditFormData({...editFormData, unit: e.target.value})} /></div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Monthly Rent</label><input className="s-input" type="number" step="0.01" value={editFormData.rent || ''} onChange={e => setEditFormData({...editFormData, rent: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Lease From</label><input className="s-input" type="date" value={editFormData.leaseFrom || ''} onChange={e => setEditFormData({...editFormData, leaseFrom: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Lease To</label><input className="s-input" type="date" value={editFormData.leaseTo || ''} onChange={e => setEditFormData({...editFormData, leaseTo: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Monthly Rent</label><input className="s-input" type="number" step="0.01" value={editFormData.rent || ''} onChange={e => setEditFormData({...editFormData, rent: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Lease From</label><input className="s-input" type="date" value={editFormData.leaseFrom || ''} onChange={e => setEditFormData({...editFormData, leaseFrom: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Lease To</label><input className="s-input" type="date" value={editFormData.leaseTo || ''} onChange={e => setEditFormData({...editFormData, leaseTo: e.target.value})} /></div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tenant Type</label><select className="s-input" value={editFormData.tenantType || 'Residential'} onChange={e => setEditFormData({...editFormData, tenantType: e.target.value})}><option value="Residential">Residential</option><option value="Commercial">Commercial</option><option value="Section 8">Section 8</option></select></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Primary Tenant</label><select className="s-input" value={editFormData.primaryTenant || ''} onChange={e => setEditFormData({...editFormData, primaryTenant: e.target.value})}><option value="">—</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tenant Type</label><select className="s-input" value={editFormData.tenantType || 'Residential'} onChange={e => setEditFormData({...editFormData, tenantType: e.target.value})}><option value="Residential">Residential</option><option value="Commercial">Commercial</option><option value="Section 8">Section 8</option></select></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Primary Tenant</label><select className="s-input" value={editFormData.primaryTenant || ''} onChange={e => setEditFormData({...editFormData, primaryTenant: e.target.value})}><option value="">—</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
                             </div>
 
                             <h4 style={{ fontSize: 11, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Additional Info</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Birthdate</label><input className="s-input" type="date" value={editFormData.birthdate || ''} onChange={e => setEditFormData({...editFormData, birthdate: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Plates</label><input className="s-input" value={editFormData.licensePlates || ''} onChange={e => setEditFormData({...editFormData, licensePlates: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Birthdate</label><input className="s-input" type="date" value={editFormData.birthdate || ''} onChange={e => setEditFormData({...editFormData, birthdate: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Plates</label><input className="s-input" value={editFormData.licensePlates || ''} onChange={e => setEditFormData({...editFormData, licensePlates: e.target.value})} /></div>
                             </div>
                             <div style={{ marginBottom: 16 }}>
-                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pets</label>
+                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pets</label>
                                 <input className="s-input" value={editFormData.pets || ''} onChange={e => setEditFormData({...editFormData, pets: e.target.value})} placeholder="e.g. 1 dog (Labrador), 1 cat" />
                             </div>
                             <div style={{ marginBottom: 16 }}>
-                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</label>
+                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</label>
                                 <textarea className="s-input" style={{ minHeight: 50, resize: 'vertical' }} value={editFormData.tenantNotes || ''} onChange={e => setEditFormData({...editFormData, tenantNotes: e.target.value})} />
                             </div>
 
@@ -1090,19 +1090,19 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
                                 {(editFormData.tags || []).map((tag: string) => (
                                     <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '3px 10px', borderRadius: 12, background: 'rgba(6,182,212,0.12)', color: '#67e8f9', fontWeight: 600, border: '1px solid rgba(6,182,212,0.2)' }}>
                                         <Tag size={10} /> {tag}
-                                        <button onClick={() => handleRemoveEditTag(tag)} type="button" style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex' }}><X size={10} /></button>
+                                        <button onClick={() => handleRemoveEditTag(tag)} type="button" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, display: 'flex' }}><X size={10} /></button>
                                     </span>
                                 ))}
-                                {(editFormData.tags || []).length === 0 && <span style={{ fontSize: 11, color: '#475569' }}>No tags — link to properties, owners, vendors</span>}
+                                {(editFormData.tags || []).length === 0 && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>No tags — link to properties, owners, vendors</span>}
                             </div>
                             <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
-                                <input value={editTagInput} onChange={e => setEditTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddEditTag(); } }} placeholder="Add tag (property, owner, vendor name)…" style={{ flex: 1, padding: '6px 10px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#e2e8f0', fontFamily: 'inherit', outline: 'none' }} />
+                                <input value={editTagInput} onChange={e => setEditTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddEditTag(); } }} placeholder="Add tag (property, owner, vendor name)…" style={{ flex: 1, padding: '6px 10px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-primary)', fontFamily: 'inherit', outline: 'none' }} />
                                 <button type="button" onClick={handleAddEditTag} style={{ padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.3)', color: '#67e8f9', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16 }}>
-                                <button type="button" onClick={() => setShowEditForm(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                                <button type="submit" style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Save Changes</button>
+                                <button type="button" onClick={() => setShowEditForm(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                                <button type="submit" style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Save Changes</button>
                             </div>
                         </form>
                     </div>
@@ -1113,12 +1113,12 @@ export default function ResidentsModule({ searchNavTarget, onNavComplete }: Resi
             {confirmDelete && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setConfirmDelete(null)}>
                     <div style={{ width: 380, background: '#1e293b', borderRadius: 16, padding: 24, border: '1px solid rgba(239,68,68,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                        <Trash2 size={32} style={{ color: '#f87171', marginBottom: 12 }} />
-                        <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Delete Tenant?</h3>
-                        <p style={{ margin: '0 0 20px', fontSize: 13, color: '#94a3b8' }}>This action cannot be undone. The tenant record will be permanently removed.</p>
+                        <Trash2 size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
+                        <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Delete Tenant?</h3>
+                        <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)' }}>This action cannot be undone. The tenant record will be permanently removed.</p>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-                            <button onClick={() => setConfirmDelete(null)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                            <button onClick={() => handleDelete(confirmDelete)} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #ef4444, #f87171)', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Delete</button>
+                            <button onClick={() => setConfirmDelete(null)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                            <button onClick={() => handleDelete(confirmDelete)} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #ef4444, #ef4444)', color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Delete</button>
                         </div>
                     </div>
                 </div>

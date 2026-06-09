@@ -22,20 +22,20 @@ export default function ResidentAvailabilityCard({ availability }: Props) {
             data-testid="resident-availability-card"
             style={{ padding: '14px 16px', marginBottom: 10 }}
         >
-            <h4 style={{ fontSize: 12, color: '#94a3b8', margin: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+            <h4 style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
                 <Calendar size={12} color="#818cf8" /> Resident Availability
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, auto) 1fr', columnGap: 16, rowGap: 6, fontSize: 12 }}>
-                <span style={{ color: '#64748b' }}>Preferred Date</span>
-                <span style={{ color: '#e2e8f0' }}>
+                <span style={{ color: 'var(--text-tertiary)' }}>Preferred Date</span>
+                <span style={{ color: 'var(--text-primary)' }}>
                     {date ?? '—'}{dayOfWeek ? ` (${dayOfWeek})` : ''}
                 </span>
-                <span style={{ color: '#64748b' }}>Timezone</span>
-                <span style={{ color: '#e2e8f0' }}>{timezone ?? '—'}</span>
-                <span style={{ color: '#64748b', alignSelf: 'start' }}>Time Windows</span>
+                <span style={{ color: 'var(--text-tertiary)' }}>Timezone</span>
+                <span style={{ color: 'var(--text-primary)' }}>{timezone ?? '—'}</span>
+                <span style={{ color: 'var(--text-tertiary)', alignSelf: 'start' }}>Time Windows</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }} data-testid="resident-availability-windows">
                     {timeWindows.length === 0 ? (
-                        <span style={{ color: '#64748b' }}>—</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}>—</span>
                     ) : (
                         timeWindows.map((w, i) => (
                             <span
@@ -44,7 +44,7 @@ export default function ResidentAvailabilityCard({ availability }: Props) {
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 6,
                                     padding: '3px 10px', borderRadius: 10, fontSize: 11,
-                                    background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.25)',
+                                    background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
                                     color: '#c7d2fe', width: 'fit-content',
                                 }}
                             >

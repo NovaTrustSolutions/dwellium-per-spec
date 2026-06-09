@@ -1,6 +1,6 @@
 /**
  * UniversalShell.css — fey.com parity styling.
- * Pure black base, #121212 cards, #222222 borders, Hanken Grotesk + JetBrains Mono,
+ * Pure black base, var(--bg-surface-elevated) cards, var(--border-default) borders, Hanken Grotesk + JetBrains Mono,
  * acid lime accents, no glass/blur, no shadows.
  */
 
@@ -10,7 +10,7 @@
     width: 100%;
     height: 100%;
     min-height: 0;
-    background: #000000;
+    background: var(--bg-desktop);
     color: var(--text-primary, #ffffff);
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
 }
@@ -27,8 +27,8 @@
     align-items: center;
     gap: 12px;
     padding: 10px 16px;
-    border-bottom: 1px solid #222222;
-    background: #0e0e0e;
+    border-bottom: 1px solid var(--border-default);
+    background: var(--bg-surface);
 }
 
 .us-header__brand {
@@ -40,21 +40,21 @@
 
 .us-header__glyph {
     font-size: 18px;
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 .us-header__title {
     font-weight: 600;
     letter-spacing: -0.01em;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .us-header__surface {
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 4px;
-    background: rgba(214, 254, 81, 0.08);
-    color: #D6FE51;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
     letter-spacing: 0.08em;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
@@ -69,9 +69,9 @@
 
 .us-switcher__item {
     appearance: none;
-    border: 1px solid #222222;
+    border: 1px solid var(--border-default);
     background: transparent;
-    color: var(--text-secondary, #868F97);
+    color: var(--text-secondary, var(--text-secondary));
     padding: 6px 10px;
     border-radius: 4px;
     font-size: 12px;
@@ -82,13 +82,13 @@
 
 .us-switcher__item:hover {
     border-color: #444444;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .us-switcher__item--active {
-    background: #ffffff;
-    border-color: #ffffff;
-    color: #000000;
+    background: var(--bg-surface);
+    border-color: var(--text-primary);
+    color: var(--text-inverse);
 }
 
 /* ── Columns ── */
@@ -106,15 +106,15 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    background: #121212;
-    border: 1px solid #222222;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-default);
     border-radius: 8px;
     overflow: hidden;
 }
 
 .us-column__header {
     padding: 10px 12px;
-    border-bottom: 1px solid #222222;
+    border-bottom: 1px solid var(--border-default);
     background: rgba(255, 255, 255, 0.02);
 }
 
@@ -123,7 +123,7 @@
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #D6FE51;
+    color: var(--accent);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
@@ -161,8 +161,8 @@
     padding: 12px;
     border-radius: 4px;
     background: rgba(255, 255, 255, 0.02);
-    border: 1px dashed #333333;
-    color: var(--text-secondary, #868F97);
+    border: 1px dashed var(--border-strong);
+    color: var(--text-secondary, var(--text-secondary));
     font-size: 12.5px;
     line-height: 1.5;
 }
@@ -170,11 +170,11 @@
 .us-adapter-stub__title {
     font-weight: 600;
     font-size: 13px;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .us-adapter-stub__body {
-    color: var(--text-secondary, #868F97);
+    color: var(--text-secondary, var(--text-secondary));
 }
 
 .us-adapter-stub code {
@@ -208,7 +208,7 @@
 
 .us-column-empty__label {
     font-weight: 600;
-    color: #D6FE51;
+    color: var(--accent);
     font-style: normal;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 11px;
@@ -224,7 +224,7 @@
     font-weight: 600;
     font-size: 14px;
     margin-bottom: 6px;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .us-empty-state__body {
@@ -284,5 +284,5 @@
 
 .us-column-error__retry:hover {
     border-color: #ffa16c;
-    color: #ffffff;
+    color: var(--text-primary);
 }

@@ -294,7 +294,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                 // Build a ghost drag-image showing the count
                 const ghost = document.createElement('div');
                 ghost.textContent = `📎 ${dragPaths.length} items`;
-                ghost.style.cssText = 'position:absolute;top:-1000px;padding:4px 10px;background:#1a1a1a;color:#D6FE51;border:1px solid #D6FE51;border-radius:4px;font:600 11px Inter,sans-serif;';
+                ghost.style.cssText = 'position:absolute;top:-1000px;padding:4px 10px;background:#1a1a1a;color:#D6FE51;border:1px solid var(--accent);border-radius:4px;font:600 11px Inter,sans-serif;';
                 document.body.appendChild(ghost);
                 e.dataTransfer.setDragImage(ghost, -10, -10);
                 requestAnimationFrame(() => { if (document.body.contains(ghost)) document.body.removeChild(ghost); });
@@ -335,8 +335,8 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                     fontSize: 12,
                     color: isSelected ? '#D6FE51' : '#ccc',
                     background: dragOver
-                        ? 'rgba(214,254,81,0.18)'
-                        : isSelected ? 'rgba(214,254,81,0.08)' : 'transparent',
+                        ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
+                        : isSelected ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent',
                     boxShadow: dragOver ? 'inset 0 0 0 1px #D6FE51' : 'none',
                     // Cycle 9: lock-aware cursor — pointer for navigation (selection/expand still allowed),
                     // not-allowed when hovering a draggable file/folder under lock since rearrangement is blocked.
@@ -372,8 +372,8 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                         onBlur={() => void commitRename()}
                         style={{
                             flex: 1, minWidth: 0,
-                            background: '#000', color: '#fff',
-                            border: '1px solid #D6FE51', borderRadius: 3,
+                            background: 'var(--bg-desktop)', color: 'var(--text-primary)',
+                            border: '1px solid var(--accent)', borderRadius: 3,
                             padding: '0 4px', fontSize: 12, fontFamily: 'inherit',
                             outline: 'none',
                         }}
@@ -389,7 +389,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                             }}>{entry.name}</span>
                             {showFullPath && entry.path !== entry.name && (
                                 <span style={{
-                                    fontSize: 9, color: '#555',
+                                    fontSize: 9, color: 'var(--text-tertiary)',
                                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                     marginTop: 1,
                                 }}>{entry.path.slice(0, entry.path.length - entry.name.length - 1)}</span>
@@ -397,7 +397,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
                         </div>
                         {entry.tier !== 'file' && entry.tier !== 'folder' && (
                             <span style={{
-                                fontSize: 9, color: '#555', textTransform: 'uppercase',
+                                fontSize: 9, color: 'var(--text-tertiary)', textTransform: 'uppercase',
                                 letterSpacing: '0.06em', flexShrink: 0,
                             }}>{entry.tier}</span>
                         )}

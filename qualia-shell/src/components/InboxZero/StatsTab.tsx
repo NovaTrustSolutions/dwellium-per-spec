@@ -35,7 +35,7 @@ export default function StatsTab({ stats, metrics, zeroProgress }: Props) {
                         const C = 2 * Math.PI * r;
                         const segments = [
                             { name: 'Signal', value: stats.signal, color: '#22c55e' },
-                            { name: 'Noise', value: stats.noise, color: '#6b7280' },
+                            { name: 'Noise', value: stats.noise, color: 'var(--text-tertiary)' },
                             { name: 'Low', value: stats.lowPriority || 0, color: '#eab308' },
                         ];
                         let offset = 0;
@@ -65,9 +65,9 @@ export default function StatsTab({ stats, metrics, zeroProgress }: Props) {
 
                 <div className="iz-legend">
                     {[
-                        { name: 'Pending', value: stats?.pending || 0, color: '#D6FE51' },
+                        { name: 'Pending', value: stats?.pending || 0, color: 'var(--accent)' },
                         { name: 'Signal', value: stats?.signal || 0, color: '#22c55e' },
-                        { name: 'Noise', value: stats?.noise || 0, color: '#6b7280' },
+                        { name: 'Noise', value: stats?.noise || 0, color: 'var(--text-tertiary)' },
                         { name: 'Approved', value: stats?.approved || 0, color: '#60a5fa' },
                         { name: 'Archived', value: stats?.archived || 0, color: '#374151' },
                     ].map(item => (
@@ -83,14 +83,14 @@ export default function StatsTab({ stats, metrics, zeroProgress }: Props) {
             {/* Progress metrics */}
             <div className="iz-metrics">
                 <div className="iz-metric">
-                    <div className="iz-metric__value" style={{ color: '#34d399' }}>{zeroProgress}%</div>
+                    <div className="iz-metric__value" style={{ color: '#22c55e' }}>{zeroProgress}%</div>
                     <div className="iz-metric__label">Inbox Zero Progress</div>
                     <div className="iz-metric__bar">
-                        <div className="iz-metric__bar-fill" style={{ width: `${zeroProgress}%`, background: '#34d399' }} />
+                        <div className="iz-metric__bar-fill" style={{ width: `${zeroProgress}%`, background: '#22c55e' }} />
                     </div>
                 </div>
                 <div className="iz-metric">
-                    <div className="iz-metric__value" style={{ color: '#D6FE51' }}>{stats?.pending || 0}</div>
+                    <div className="iz-metric__value" style={{ color: 'var(--accent)' }}>{stats?.pending || 0}</div>
                     <div className="iz-metric__label">Remaining</div>
                 </div>
                 <div className="iz-metric">

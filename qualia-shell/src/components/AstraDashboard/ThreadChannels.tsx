@@ -26,10 +26,10 @@ interface CommEntry {
 type ChannelId = 'corporate' | 'management' | 'tenant' | 'combined';
 
 const CHANNELS: { id: ChannelId; label: string; icon: React.ReactNode; color: string; description: string }[] = [
-    { id: 'corporate', label: 'Corporate', icon: <Building size={16} />, color: '#D6FE51', description: 'Board-level & inter-company' },
+    { id: 'corporate', label: 'Corporate', icon: <Building size={16} />, color: 'var(--accent)', description: 'Board-level & inter-company' },
     { id: 'management', label: 'Management', icon: <Users size={16} />, color: '#22c55e', description: 'PM ↔ maintenance crews' },
     { id: 'tenant', label: 'Tenant-Facing', icon: <UserCircle size={16} />, color: '#eab308', description: 'Tenant notices & comms' },
-    { id: 'combined', label: 'Combined', icon: <Layers size={16} />, color: '#94a3b8', description: 'All messages, unfiltered' },
+    { id: 'combined', label: 'Combined', icon: <Layers size={16} />, color: 'var(--text-secondary)', description: 'All messages, unfiltered' },
 ];
 
 const CHANNEL_FILTER_MAP: Record<ChannelId, string | null> = {

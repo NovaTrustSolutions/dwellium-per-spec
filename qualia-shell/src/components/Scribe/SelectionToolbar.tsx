@@ -155,7 +155,7 @@ export function SelectionToolbar() {
                 style={{
                     background: 'transparent',
                     border: '1px solid #444',
-                    color: '#ccc',
+                    color: 'var(--text-secondary)',
                     cursor: 'pointer',
                     padding: '6px 12px',
                     borderRadius: 999,

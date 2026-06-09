@@ -49,7 +49,7 @@ function showToast(msg: string, type: 'success' | 'error' = 'success') {
     t.textContent = msg;
     Object.assign(t.style, {
         position: 'fixed', bottom: '20px', right: '20px', padding: '10px 18px',
-        background: type === 'success' ? '#10b981' : '#ef4444', color: '#fff',
+        background: type === 'success' ? '#22c55e' : '#ef4444', color: 'var(--text-primary)',
         borderRadius: '8px', zIndex: '9999', fontSize: '13px', fontWeight: '600',
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
     });
@@ -67,7 +67,7 @@ const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Building2 }[] = [
 /* ── Color helpers ── */
 function statusColor(s: string): string {
     switch (s) {
-        case 'completed': case 'resolved': return '#10b981';
+        case 'completed': case 'resolved': return '#22c55e';
         case 'in_progress': return '#D6FE51';
         case 'open': return '#f59e0b';
         case 'pending': return '#f97316';
@@ -85,7 +85,7 @@ function priorityColor(p: string): string {
         case 'critical': return '#ef4444';
         case 'high': return '#f59e0b';
         case 'medium': return '#D6FE51';
-        case 'low': return '#10b981';
+        case 'low': return '#22c55e';
         default: return '#94a3b8';
     }
 }
@@ -116,7 +116,7 @@ function Section({ title, icon, children, defaultOpen = true, onToggle }: {
             <button onClick={() => setOpen(o => { const next = !o; onToggle?.(next); return next; })} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 14px', border: 'none', background: 'none',
-                color: '#D6FE51', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: 0.5,
             }}>
                 {icon} {title}
@@ -132,8 +132,8 @@ function Field({ label, value, dynamic }: { label: string; value?: string | numb
     if (!value && value !== 0) return null;
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <span style={{ color: '#64748b', fontSize: 12, fontWeight: 500 }}>{label}</span>
-            <span data-dynamic={dynamic ? 'timestamp' : undefined} style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600, textAlign: 'right', maxWidth: '60%', wordBreak: 'break-word' }}>{value}</span>
+            <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontWeight: 500 }}>{label}</span>
+            <span data-dynamic={dynamic ? 'timestamp' : undefined} style={{ color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, textAlign: 'right', maxWidth: '60%', wordBreak: 'break-word' }}>{value}</span>
         </div>
     );
 }
@@ -146,7 +146,7 @@ function GroupHeader({ label, count, color, icon }: { label: string; count: numb
             borderBottom: `2px solid ${color}`, marginBottom: 6, marginTop: 12,
         }}>
             <span style={{ color }}>{icon}</span>
-            <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 700 }}>{label}</span>
+            <span style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 700 }}>{label}</span>
             <span style={{
                 marginLeft: 'auto', fontSize: 10, fontWeight: 700,
                 background: `${color}20`, color, padding: '2px 8px', borderRadius: 10,
@@ -163,15 +163,15 @@ function ItemCard({ item, selected, onClick }: { item: Workitem; selected: boole
             onClick={onClick}
             style={{
                 padding: '10px 12px', cursor: 'pointer', borderRadius: 8,
-                background: selected ? 'rgba(214,254,81,0.12)' : 'rgba(255,255,255,0.02)',
-                border: selected ? '1px solid rgba(214,254,81,0.3)' : '1px solid rgba(255,255,255,0.04)',
+                background: selected ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'rgba(255,255,255,0.02)',
+                border: selected ? '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' : '1px solid rgba(255,255,255,0.04)',
                 marginBottom: 4, transition: 'all 0.15s',
             }}
         >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <div style={{ marginTop: 2 }}>{priorityIcon(item.priority)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+                    <div style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
                         {item.title}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
@@ -179,7 +179,7 @@ function ItemCard({ item, selected, onClick }: { item: Workitem; selected: boole
                             {statusLabel(item.status)}
                         </span>
                         {meta.trelloBoardName && (
-                            <span style={{ fontSize: 10, color: '#64748b', display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 2 }}>
                                 <MapPin size={9} /> {meta.trelloBoardName}
                             </span>
                         )}
@@ -215,7 +215,7 @@ function ItemCard({ item, selected, onClick }: { item: Workitem; selected: boole
 // ── Block 7: View as Maintenance Tech (stub per v1 L168) ──
 export function BlockViewAsTech(_props: { item: Workitem }) {
     return (
-        <div data-testid="wo-block-view-as-tech" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="wo-block-view-as-tech" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             Coming soon — Phase-N wires RBAC tech-portal perspective filter.
         </div>
     );
@@ -230,8 +230,8 @@ export function BlockWithheldAmount({ item }: { item: Workitem }) {
         : '—';
     return (
         <div data-testid="wo-block-withheld-amount" style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12 }}>
-            <span style={{ color: '#64748b', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>Owner Withholding</span>
-            <span style={{ color: '#cbd5e1', textAlign: 'right' }}>{display}</span>
+            <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>Owner Withholding</span>
+            <span style={{ color: 'var(--text-secondary)', textAlign: 'right' }}>{display}</span>
         </div>
     );
 }
@@ -239,7 +239,7 @@ export function BlockWithheldAmount({ item }: { item: Workitem }) {
 // ── Block 11: Invoices (stub per v1 L168) ──
 export function BlockInvoices(_props: { item: Workitem }) {
     return (
-        <div data-testid="wo-block-invoices" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="wo-block-invoices" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             Coming soon — Phase-N wires invoice ledger surface.
         </div>
     );
@@ -248,7 +248,7 @@ export function BlockInvoices(_props: { item: Workitem }) {
 // ── Block 12: Texts (stub per v1 L168) ──
 export function BlockTexts(_props: { item: Workitem }) {
     return (
-        <div data-testid="wo-block-texts" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="wo-block-texts" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             Coming soon — Phase-N wires SMS thread surface.
         </div>
     );
@@ -257,7 +257,7 @@ export function BlockTexts(_props: { item: Workitem }) {
 // ── Block 13: Emails (stub per v1 L168) ──
 export function BlockEmails(_props: { item: Workitem }) {
     return (
-        <div data-testid="wo-block-emails" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="wo-block-emails" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             Coming soon — Phase-N wires email thread surface.
         </div>
     );
@@ -274,9 +274,9 @@ export function BlockNotes({ item }: { item: Workitem }) {
                     const body = (n && typeof n === 'object' && (n.body ?? n.content)) || (typeof n === 'string' ? n : String(n));
                     const metaLine = n && typeof n === 'object' ? [n.posted_by, n.ts].filter(Boolean).join(' · ') : '';
                     return (
-                        <div key={i} style={{ fontSize: 12, color: '#94a3b8', padding: '6px 0', borderBottom: i < raw.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                        <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '6px 0', borderBottom: i < raw.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                             <div>{body}</div>
-                            {metaLine && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>{metaLine}</div>}
+                            {metaLine && <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{metaLine}</div>}
                         </div>
                     );
                 })}
@@ -285,13 +285,13 @@ export function BlockNotes({ item }: { item: Workitem }) {
     }
     if (typeof raw === 'string' && raw.trim().length > 0) {
         return (
-            <div data-testid="wo-block-notes" style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'pre-line' }}>
+            <div data-testid="wo-block-notes" style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-line' }}>
                 {raw}
             </div>
         );
     }
     return (
-        <div data-testid="wo-block-notes" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="wo-block-notes" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             No notes recorded.
         </div>
     );
@@ -474,9 +474,9 @@ export default function MaintenanceModule() {
                     if (item.dueDate && diffDays < 0) { key = 'Overdue'; label = `⚠️ Overdue`; color = '#ef4444'; sortKey = 0; }
                     else if (item.dueDate && diffDays <= 7) { key = 'Due This Week'; label = 'Due This Week'; color = '#f59e0b'; sortKey = 1; }
                     else if (item.dueDate && diffDays <= 30) { key = 'Due This Month'; label = 'Due This Month'; color = '#D6FE51'; sortKey = 2; }
-                    else if (item.dueDate) { key = 'Due Later'; label = 'Due Later'; color = '#10b981'; sortKey = 3; }
+                    else if (item.dueDate) { key = 'Due Later'; label = 'Due Later'; color = '#22c55e'; sortKey = 3; }
                     // For items without due date, group by last activity
-                    else if (pastDays <= 7) { key = 'Active This Week'; label = 'Active This Week'; color = '#10b981'; sortKey = 4; }
+                    else if (pastDays <= 7) { key = 'Active This Week'; label = 'Active This Week'; color = '#22c55e'; sortKey = 4; }
                     else if (pastDays <= 30) { key = 'Active This Month'; label = 'Active This Month'; color = '#3b82f6'; sortKey = 5; }
                     else if (pastDays <= 90) { key = 'Active Last 3 Months'; label = 'Active Last 3 Months'; color = '#D6FE51'; sortKey = 6; }
                     else { key = 'Older'; label = 'Older'; color = '#475569'; sortKey = 7; }
@@ -526,7 +526,7 @@ export default function MaintenanceModule() {
                                 onClick={() => { setTab(t.id); setSelected(null); }}
                                 style={{
                                     padding: '6px 12px', border: 'none', borderRadius: 6,
-                                    background: tab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                    background: tab === t.id ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(255,255,255,0.04)',
                                     color: tab === t.id ? '#D6FE51' : '#94a3b8',
                                     cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
                                     display: 'flex', alignItems: 'center', gap: 4,
@@ -551,7 +551,7 @@ export default function MaintenanceModule() {
                                 onClick={() => setViewMode(v.id)}
                                 style={{
                                     padding: '5px 10px', border: 'none', borderRadius: 6,
-                                    background: viewMode === v.id ? 'rgba(214,254,81,0.25)' : 'transparent',
+                                    background: viewMode === v.id ? 'color-mix(in srgb, var(--accent) 25%, transparent)' : 'transparent',
                                     color: viewMode === v.id ? '#D6FE51' : '#64748b',
                                     cursor: 'pointer', fontSize: 11, fontWeight: 600, transition: 'all 0.15s',
                                     display: 'flex', alignItems: 'center', gap: 4,
@@ -567,13 +567,13 @@ export default function MaintenanceModule() {
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${slaMetrics ? 7 : 4}, 1fr)`, gap: 10, marginBottom: 16 }}>
                     {[
                         { label: 'Open', value: summary.open, color: '#f59e0b', icon: <AlertTriangle size={16} /> },
-                        { label: 'In Progress', value: summary.inProgress, color: '#D6FE51', icon: <Clock size={16} /> },
-                        { label: 'Completed', value: summary.completed, color: '#10b981', icon: <CheckCircle size={16} /> },
-                        { label: 'Total', value: summary.total, color: '#94a3b8', icon: <Wrench size={16} /> },
+                        { label: 'In Progress', value: summary.inProgress, color: 'var(--accent)', icon: <Clock size={16} /> },
+                        { label: 'Completed', value: summary.completed, color: '#22c55e', icon: <CheckCircle size={16} /> },
+                        { label: 'Total', value: summary.total, color: 'var(--text-secondary)', icon: <Wrench size={16} /> },
                         ...(slaMetrics ? [
                             { label: 'Overdue', value: slaMetrics.overdueCount, color: '#ef4444', icon: <AlertTriangle size={16} /> },
-                            { label: 'SLA %', value: `${slaMetrics.slaCompliance}%`, color: slaMetrics.slaCompliance >= 80 ? '#10b981' : '#ef4444', icon: <Shield size={16} /> },
-                            { label: 'Avg Resolve', value: `${slaMetrics.avgResolutionHours}h`, color: '#D6FE51', icon: <Clock size={16} /> },
+                            { label: 'SLA %', value: `${slaMetrics.slaCompliance}%`, color: slaMetrics.slaCompliance >= 80 ? '#22c55e' : '#ef4444', icon: <Shield size={16} /> },
+                            { label: 'Avg Resolve', value: `${slaMetrics.avgResolutionHours}h`, color: 'var(--accent)', icon: <Clock size={16} /> },
                         ] : []),
                     ].map(k => (
                         <div key={k.label} style={{
@@ -582,9 +582,9 @@ export default function MaintenanceModule() {
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                 <span style={{ color: k.color }}>{k.icon}</span>
-                                <span style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{k.label}</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>{k.label}</span>
                             </div>
-                            <div style={{ fontSize: 24, fontWeight: 700, color: '#e2e8f0' }}>{k.value}</div>
+                            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>{k.value}</div>
                         </div>
                     ))}
                 </div>
@@ -648,24 +648,24 @@ export default function MaintenanceModule() {
                     <div className="s-glass-card" style={{ padding: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <History size={16} color="#818cf8" />
-                            <span style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 14 }}>Maintenance History</span>
+                            <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>Maintenance History</span>
                             <select value={historyFilter.propertyId || ''} onChange={e => setHistoryFilter({ propertyId: e.target.value || undefined })}
-                                style={{ marginLeft: 'auto', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 11 }}>
+                                style={{ marginLeft: 'auto', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 11 }}>
                                 <option value="">All Properties</option>
                                 {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
                         {historyItems.length === 0 ? (
-                            <div style={{ textAlign: 'center', color: '#64748b', padding: 24 }}>No history found</div>
+                            <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 24 }}>No history found</div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 {historyItems.map(h => (
                                     <div key={h.id} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: 10 }}>
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(h.status)}15`, color: statusColor(h.status), fontWeight: 700 }}>{statusLabel(h.status)}</span>
-                                        <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{h.title}</span>
-                                        {h.technicianName && <span style={{ fontSize: 10, color: '#94a3b8' }}><User size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{h.technicianName}</span>}
-                                        {h.resolutionHours !== null && h.resolutionHours !== undefined && <span style={{ fontSize: 10, color: '#D6FE51' }}>{h.resolutionHours}h</span>}
-                                        <span data-dynamic="timestamp" style={{ fontSize: 10, color: '#475569' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
+                                        <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{h.title}</span>
+                                        {h.technicianName && <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}><User size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{h.technicianName}</span>}
+                                        {h.resolutionHours !== null && h.resolutionHours !== undefined && <span style={{ fontSize: 10, color: 'var(--accent)' }}>{h.resolutionHours}h</span>}
+                                        <span data-dynamic="timestamp" style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{new Date(h.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 ))}
                             </div>
@@ -732,7 +732,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                 padding: '16px', marginBottom: 8,
                 border: '1px solid rgba(255,255,255,0.08)',
             }}>
-                <h3 style={{ margin: '0 0 8px', color: '#e2e8f0', fontSize: 16, fontWeight: 700, lineHeight: 1.3 }}>
+                <h3 style={{ margin: '0 0 8px', color: 'var(--text-primary)', fontSize: 16, fontWeight: 700, lineHeight: 1.3 }}>
                     {item.title}
                 </h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
@@ -755,7 +755,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     {item.domain && (
                         <span style={{
                             fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6,
-                            color: '#94a3b8', background: 'rgba(255,255,255,0.06)',
+                            color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.06)',
                         }}>
                             {item.domain}
                         </span>
@@ -779,24 +779,24 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         {item.propertyId ? (
                             <button className="s-property-link" style={{ fontSize: 12, fontWeight: 600 }} onClick={() => navigateToProperty(item.propertyId!)}>{propName}</button>
                         ) : (
-                            <span style={{ fontSize: 12, color: '#D6FE51', fontWeight: 600 }}>{propName}</span>
+                            <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>{propName}</span>
                         )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <User size={13} color="#64748b" />
-                        <span style={{ fontSize: 12, color: '#e2e8f0' }}>{item.assignedTo || 'Unassigned'}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{item.assignedTo || 'Unassigned'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Wrench size={13} color="#64748b" />
-                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>{item.tags.find(t => t.toLowerCase().startsWith('unit:'))?.split(':').slice(1).join(':').trim() || '—'}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.tags.find(t => t.toLowerCase().startsWith('unit:'))?.split(':').slice(1).join(':').trim() || '—'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Landmark size={13} color="#64748b" />
-                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>{meta.owner || '—'}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{meta.owner || '—'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Home size={13} color="#64748b" />
-                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>{meta.resident || item.tags.find(t => t.toLowerCase().startsWith('resident:'))?.split(':').slice(1).join(':').trim() || '—'}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{meta.resident || item.tags.find(t => t.toLowerCase().startsWith('resident:'))?.split(':').slice(1).join(':').trim() || '—'}</span>
                     </div>
                 </div>
             </div>
@@ -804,7 +804,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
             {/* ── Description ── */}
             {item.description && (
                 <Section title="Description" icon={<ClipboardCheck size={13} />}>
-                    <p style={{ color: '#cbd5e1', fontSize: 13, lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>
                         {item.description}
                     </p>
                 </Section>
@@ -832,7 +832,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
 
             {/* ── Work Order Info (6 primitives: WO #, permission, owner approval, trade, instructions, next follow-up) ── */}
             {(item.workOrderNumber || item.permissionToEnter !== undefined || item.ownerApproved !== undefined || item.trade || item.vendorInstructions || item.nextFollowUpDate) && (
-                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Work Order Info unavailable.</div>}>
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Work Order Info unavailable.</div>}>
                     <Section
                         title="Work Order Info"
                         icon={<Wrench size={13} />}
@@ -851,7 +851,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
 
             {/* ── Resident Availability ── */}
             {item.residentAvailability && (
-                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Resident Availability unavailable.</div>}>
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Resident Availability unavailable.</div>}>
                     <Section
                         title="Resident Availability"
                         icon={<CalendarDays size={13} />}
@@ -865,7 +865,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
 
             {/* ── Actions Log ── */}
             {item.actionsLog && item.actionsLog.length > 0 && (
-                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Actions Log unavailable.</div>}>
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Actions Log unavailable.</div>}>
                     <Section
                         title={`Actions Log (${item.actionsLog.length})`}
                         icon={<ClipboardCheck size={13} />}
@@ -879,7 +879,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
 
             {/* ── Labor ── */}
             {item.laborEntries && (
-                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Labor table unavailable.</div>}>
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Labor table unavailable.</div>}>
                     <Section
                         title={`Labor (${item.laborEntries.length})`}
                         icon={<PenTool size={13} />}
@@ -893,7 +893,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
 
             {/* ── Purchase Orders ── */}
             {item.purchaseOrders && (
-                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Purchase Orders unavailable.</div>}>
+                <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>Purchase Orders unavailable.</div>}>
                     <Section
                         title={`Purchase Orders (${item.purchaseOrders.length})`}
                         icon={<ExternalLink size={13} />}
@@ -921,14 +921,14 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
             {/* ── Attachments ── */}
             <Section title={`Attachments (${attachments.length})`} icon={<Camera size={13} />} defaultOpen={attachments.length > 0}>
                 {attachments.length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: 12, padding: '4px 0' }}>No attachments</div>
+                    <div style={{ color: 'var(--text-tertiary)', fontSize: 12, padding: '4px 0' }}>No attachments</div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {attachments.map((a: any) => (
                             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600 }}>{a.type?.replace(/_/g, ' ')}</span>
-                                <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{a.description || a.metadata?.fileName || 'Unnamed'}</span>
-                                <span data-dynamic="timestamp" style={{ fontSize: 10, color: '#475569' }}>{a.metadata?.uploadedAt ? new Date(a.metadata.uploadedAt).toLocaleDateString() : ''}</span>
+                                <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600 }}>{a.type?.replace(/_/g, ' ')}</span>
+                                <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{a.description || a.metadata?.fileName || 'Unnamed'}</span>
+                                <span data-dynamic="timestamp" style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{a.metadata?.uploadedAt ? new Date(a.metadata.uploadedAt).toLocaleDateString() : ''}</span>
                             </div>
                         ))}
                     </div>
@@ -937,7 +937,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     {['before_photo', 'after_photo', 'vendor_quote', 'receipt'].map(type => (
                         <button key={type} onClick={() => onAddAttachment(type, '')} style={{
                             padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4,
-                            background: 'rgba(255,255,255,0.04)', color: '#D6FE51', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                            background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, fontWeight: 600,
                         }}>
                             <Upload size={9} style={{ verticalAlign: -1, marginRight: 2 }} />{type.replace(/_/g, ' ')}
                         </button>
@@ -955,7 +955,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                 AFTER Section 14 Attachments (slight v1 order divergence) so all 6 NEW Blocks
                 stay contiguous under one wrap. Module ErrorBoundary count: 5 → 6.
                 Module Sentry breadcrumb count: 5 → 6 (new consolidated `ui.block-toggle`). */}
-            <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>WO detail blocks unavailable.</div>}>
+            <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 8 }}>WO detail blocks unavailable.</div>}>
                 <Section
                     title="View as Maintenance Tech"
                     icon={<User size={13} />}
@@ -1010,7 +1010,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
             {/* ── Action Buttons ── */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                 {(item.status === 'open' || item.status === 'pending') && (
-                    <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(214,254,81,0.2)', color: '#D6FE51', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Send size={12} /> Dispatch
                     </button>
                 )}
@@ -1018,7 +1018,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                     <button onClick={() => {
                         const notes = window.prompt('Completion notes (optional):');
                         onSignOff(notes || undefined);
-                    }} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(16,185,129,0.2)', color: '#10b981', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    }} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(16,185,129,0.2)', color: '#22c55e', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <PenTool size={12} /> Sign Off
                     </button>
                 )}
@@ -1031,7 +1031,7 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         {item.tags.map(tag => (
                             <span key={tag} style={{
                                 fontSize: 11, padding: '3px 10px', borderRadius: 6,
-                                background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 500,
+                                background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 500,
                             }}>{tag}</span>
                         ))}
                     </div>
@@ -1052,10 +1052,10 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                                 rel="noopener noreferrer"
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 5,
-                                    fontSize: 12, color: '#D6FE51', textDecoration: 'none',
+                                    fontSize: 12, color: 'var(--accent)', textDecoration: 'none',
                                     padding: '4px 10px', borderRadius: 6,
-                                    background: 'rgba(214,254,81,0.1)',
-                                    border: '1px solid rgba(214,254,81,0.2)',
+                                    background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                                    border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                                 }}
                             >
                                 <ExternalLink size={11} /> Open in Trello
@@ -1066,8 +1066,8 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         onClick={onExpand}
                         style={{
                             width: '100%', marginTop: 8, padding: '8px 12px',
-                            borderRadius: 6, border: '1px solid rgba(214,254,81,0.2)',
-                            background: 'rgba(214,254,81,0.08)', color: '#D6FE51',
+                            borderRadius: 6, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
+                            background: 'color-mix(in srgb, var(--accent) 8%, transparent)', color: 'var(--accent)',
                             cursor: 'pointer', fontSize: 12, fontWeight: 600,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         }}
@@ -1093,11 +1093,11 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                 <Section title="Checklists" icon={<ClipboardCheck size={13} />} defaultOpen={false}>
                     {meta.checklists.map((cl: any, i: number) => (
                         <div key={i} style={{ marginBottom: 10 }}>
-                            <div style={{ color: '#D6FE51', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{cl.name}</div>
+                            <div style={{ color: 'var(--accent)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{cl.name}</div>
                             {cl.checkItems?.map((ci: any, j: number) => (
                                 <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
-                                    <span style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${ci.state === 'complete' ? '#10b981' : '#475569'}`, background: ci.state === 'complete' ? '#10b98120' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {ci.state === 'complete' && <CheckCircle size={10} color="#10b981" />}
+                                    <span style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${ci.state === 'complete' ? '#22c55e' : '#475569'}`, background: ci.state === 'complete' ? '#10b98120' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {ci.state === 'complete' && <CheckCircle size={10} color="#22c55e" />}
                                     </span>
                                     <span style={{ color: ci.state === 'complete' ? '#64748b' : '#e2e8f0', fontSize: 12, textDecoration: ci.state === 'complete' ? 'line-through' : 'none' }}>{ci.name}</span>
                                 </div>
@@ -1128,8 +1128,8 @@ function DispatchModal({ onSubmit, onClose }: {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#1e2130', borderRadius: 12, padding: 24, width: 400, maxWidth: '90%', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: 16, fontWeight: 700 }}>Dispatch Work Order</h3>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
+                    <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: 16, fontWeight: 700 }}>Dispatch Work Order</h3>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <input value={name} onChange={e => setName(e.target.value)} placeholder="Technician Name *" style={inputStyle} />
@@ -1141,7 +1141,7 @@ function DispatchModal({ onSubmit, onClose }: {
                     <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Dispatch notes (optional)" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
                     <button onClick={() => { if (name) onSubmit({ technicianName: name, technicianPhone: phone, scheduledDate: date || undefined, scheduledTime: time || undefined, notes }); }}
                         disabled={!name}
-                        style={{ padding: '8px 16px', border: 'none', borderRadius: 6, background: name ? '#D6FE51' : '#334155', color: '#fff', cursor: name ? 'pointer' : 'default', fontWeight: 600 }}>
+                        style={{ padding: '8px 16px', border: 'none', borderRadius: 6, background: name ? '#D6FE51' : '#334155', color: 'var(--text-primary)', cursor: name ? 'pointer' : 'default', fontWeight: 600 }}>
                         <Send size={13} style={{ verticalAlign: -2, marginRight: 4 }} /> Dispatch
                     </button>
                 </div>
@@ -1152,7 +1152,7 @@ function DispatchModal({ onSubmit, onClose }: {
 
 const inputStyle: React.CSSProperties = {
     padding: '8px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(255,255,255,0.04)', color: '#e2e8f0', fontSize: 13,
+    background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', fontSize: 13,
 };
 
 /* ════════════════════════════════════════════
@@ -1190,10 +1190,10 @@ function RecurringForm({ properties, onSubmit, onCancel }: {
             <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" rows={2} style={{ ...inputStyle, width: '100%', marginBottom: 8, resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => { if (title) onSubmit({ title, description: desc, propertyId: prop || undefined, priority: pri, frequencyLabel: freq }); }}
-                    disabled={!title} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: title ? '#D6FE51' : '#334155', color: '#fff', cursor: title ? 'pointer' : 'default', fontWeight: 600, fontSize: 12 }}>
+                    disabled={!title} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: title ? '#D6FE51' : '#334155', color: 'var(--text-primary)', cursor: title ? 'pointer' : 'default', fontWeight: 600, fontSize: 12 }}>
                     <Plus size={12} style={{ verticalAlign: -2, marginRight: 3 }} /> Create
                 </button>
-                <button onClick={onCancel} style={{ padding: '6px 14px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, background: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}>Cancel</button>
+                <button onClick={onCancel} style={{ padding: '6px 14px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>Cancel</button>
             </div>
         </div>
     );

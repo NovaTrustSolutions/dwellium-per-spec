@@ -73,7 +73,7 @@ export default function CivilEngineeringStudio() {
     };
 
     const calcColor = (status: string) => {
-        return { draft: '#f59e0b', review: '#3b82f6', approved: '#10b981', rejected: '#ef4444' }[status] || '#64748b';
+        return { draft: '#f59e0b', review: '#3b82f6', approved: '#22c55e', rejected: '#ef4444' }[status] || '#64748b';
     };
 
     return (
@@ -122,7 +122,7 @@ export default function CivilEngineeringStudio() {
                 <button onClick={handleGenerate} disabled={loading || !prompt.trim()}
                     style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', border: 'none',
-                        borderRadius: 8, background: loading ? '#4a5568' : '#f59e0b', color: '#000', fontWeight: 700,
+                        borderRadius: 8, background: loading ? '#4a5568' : '#f59e0b', color: 'var(--text-inverse)', fontWeight: 700,
                         cursor: loading ? 'wait' : 'pointer', fontSize: 13,
                     }}>
                     {loading ? <RefreshCw size={14} className="spin" /> : <Play size={14} />}
@@ -147,7 +147,7 @@ export default function CivilEngineeringStudio() {
                     {result?.id && result.status === 'draft' && (
                         <button onClick={handleSendToReview} style={{
                             display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', border: 'none', borderRadius: 6,
-                            background: '#3b82f6', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            background: '#3b82f6', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
                         }}>
                             <Send size={12} /> Send to PE Review
                         </button>
@@ -162,7 +162,7 @@ export default function CivilEngineeringStudio() {
                 {/* SVG Area */}
                 <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f1219', padding: 20 }}>
                     {loading ? (
-                        <div style={{ textAlign: 'center', color: '#64748b' }}>
+                        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)' }}>
                             <RefreshCw size={32} className="spin" style={{ marginBottom: 12 }} />
                             <div>Generating engineering plan…</div>
                         </div>

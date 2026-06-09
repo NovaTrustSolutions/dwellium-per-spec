@@ -38,7 +38,7 @@
     font-size: 18px;
     font-weight: 700;
     margin: 0 0 2px;
-    background: linear-gradient(135deg, #D6FE51, #00f2fe);
+    background: linear-gradient(135deg, var(--accent), #00f2fe);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -154,7 +154,7 @@
     width: 16px;
     height: 16px;
     border: 2px solid rgba(79, 172, 254, 0.2);
-    border-top-color: #D6FE51;
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: nlm-spin 0.8s linear infinite;
     display: inline-block;
@@ -320,7 +320,7 @@
     background: rgba(79, 172, 254, 0.08);
     border: 1px dashed rgba(79, 172, 254, 0.3);
     border-radius: 8px;
-    color: #D6FE51;
+    color: var(--accent);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -353,7 +353,7 @@
     line-height: 1.5;
 }
 
-.nlm-add-hint code { color: #D6FE51; }
+.nlm-add-hint code { color: var(--accent); }
 
 .nlm-form-group { display: flex; flex-direction: column; gap: 4px; }
 
@@ -382,10 +382,10 @@
 .nlm-form-save {
     flex: 1;
     padding: 9px;
-    background: linear-gradient(135deg, #D6FE51, #00f2fe);
+    background: linear-gradient(135deg, var(--accent), #00f2fe);
     border: none;
     border-radius: 6px;
-    color: #000;
+    color: var(--text-inverse);
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;

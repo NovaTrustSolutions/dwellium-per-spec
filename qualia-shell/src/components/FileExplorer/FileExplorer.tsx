@@ -297,7 +297,7 @@ export default function FileExplorer() {
                 position: 'relative',
                 display: 'flex', flexDirection: 'column',
                 height: '100%', width: '100%',
-                background: '#000', color: '#ccc',
+                background: 'var(--bg-desktop)', color: 'var(--text-secondary)',
                 fontFamily: 'inherit', fontSize: 12,
                 overflow: 'hidden',
                 outline: 'none',
@@ -310,7 +310,7 @@ export default function FileExplorer() {
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 padding: '6px 10px', height: 36, flexShrink: 0,
-                background: '#0a0a0a', borderBottom: '1px solid #222',
+                background: 'var(--bg-desktop)', borderBottom: '1px solid #222',
             }}>
                 <span style={{
                     fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
@@ -363,7 +363,7 @@ export default function FileExplorer() {
                         onChange={(e) => setFlatSort(e.target.value as 'modified-desc' | 'name-asc' | 'size-desc')}
                         title="Sort flat view"
                         style={{
-                            background: '#0a0a0a', color: '#ccc',
+                            background: 'var(--bg-desktop)', color: 'var(--text-secondary)',
                             border: '1px solid #222', borderRadius: 4,
                             padding: '2px 4px', fontSize: 10,
                             fontFamily: 'inherit', cursor: 'pointer',
@@ -406,11 +406,11 @@ export default function FileExplorer() {
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '3px 10px', flexShrink: 0,
                     background: '#070707', borderBottom: '1px solid #1a1a1a',
-                    fontSize: 10, color: '#888',
+                    fontSize: 10, color: 'var(--text-tertiary)',
                     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                 }}
             >
-                <FolderRoot size={11} strokeWidth={1.75} style={{ color: '#D6FE51', flexShrink: 0 }} />
+                <FolderRoot size={11} strokeWidth={1.75} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {workspaceRoot}
                 </span>
@@ -449,8 +449,8 @@ export default function FileExplorer() {
                 style={{
                     flex: 1, overflowY: 'auto', overflowX: 'hidden',
                     padding: '4px 0',
-                    background: rootDragOver ? 'rgba(214,254,81,0.04)' : 'transparent',
-                    boxShadow: rootDragOver ? 'inset 0 0 0 2px rgba(214,254,81,0.4)' : 'none',
+                    background: rootDragOver ? 'color-mix(in srgb, var(--accent) 4%, transparent)' : 'transparent',
+                    boxShadow: rootDragOver ? 'inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent)' : 'none',
                     transition: 'background 80ms, box-shadow 80ms',
                     cursor: locked ? 'not-allowed' : 'default',
                 }}
@@ -469,8 +469,8 @@ export default function FileExplorer() {
                             onClick={() => void refresh()}
                             style={{
                                 marginTop: 8, padding: '4px 10px', fontSize: 11,
-                                background: 'transparent', color: '#D6FE51',
-                                border: '1px solid #D6FE51', borderRadius: 4,
+                                background: 'transparent', color: 'var(--accent)',
+                                border: '1px solid var(--accent)', borderRadius: 4,
                                 cursor: 'pointer',
                             }}
                         >Retry</button>
@@ -478,18 +478,18 @@ export default function FileExplorer() {
                 ) : loading && displayedEntries.length === 0 ? (
                     <div style={{
                         padding: '24px 16px', textAlign: 'center',
-                        color: '#555', fontSize: 11,
+                        color: 'var(--text-tertiary)', fontSize: 11,
                     }}>Loading…</div>
                 ) : displayedEntries.length === 0 ? (
                     <div style={{
                         padding: '24px 16px', textAlign: 'center',
-                        color: '#555', fontSize: 11, lineHeight: 1.6,
+                        color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.6,
                     }}>
                         <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>📁</div>
-                        <div style={{ color: '#888', marginBottom: 4 }}>No files yet</div>
+                        <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No files yet</div>
                         <div style={{ fontSize: 10 }}>
                             Drop a file from Finder here, or create a domain folder
-                            in <code style={{ color: '#aaa' }}>~/.dwellium/files/&lt;userId&gt;/</code>
+                            in <code style={{ color: 'var(--text-secondary)' }}>~/.dwellium/files/&lt;userId&gt;/</code>
                         </div>
                     </div>
                 ) : (
@@ -499,11 +499,11 @@ export default function FileExplorer() {
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: 6,
                                 padding: '4px 8px',
-                                background: 'rgba(214,254,81,0.04)',
-                                borderLeft: '2px solid #D6FE51',
+                                background: 'color-mix(in srgb, var(--accent) 4%, transparent)',
+                                borderLeft: '2px solid var(--accent)',
                             }}>
                                 <span style={{ width: 12 }} />
-                                <span style={{ fontSize: 11, color: '#D6FE51', opacity: 0.6 }}>{newEntry.type === 'folder' ? '📁' : '📄'}</span>
+                                <span style={{ fontSize: 11, color: 'var(--accent)', opacity: 0.6 }}>{newEntry.type === 'folder' ? '📁' : '📄'}</span>
                                 <input
                                     ref={newInputRef}
                                     value={newName}
@@ -516,8 +516,8 @@ export default function FileExplorer() {
                                     placeholder={newEntry.type === 'folder' ? 'Domain name' : 'filename.md'}
                                     style={{
                                         flex: 1, minWidth: 0,
-                                        background: '#000', color: '#fff',
-                                        border: '1px solid #D6FE51', borderRadius: 3,
+                                        background: 'var(--bg-desktop)', color: 'var(--text-primary)',
+                                        border: '1px solid var(--accent)', borderRadius: 3,
                                         padding: '2px 6px', fontSize: 12, fontFamily: 'inherit',
                                         outline: 'none',
                                     }}
@@ -555,8 +555,8 @@ export default function FileExplorer() {
             {toast && (
                 <div style={{
                     position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-                    padding: '6px 14px', background: 'rgba(214,254,81,0.12)',
-                    border: '1px solid rgba(214,254,81,0.5)', color: '#D6FE51',
+                    padding: '6px 14px', background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--accent) 50%, transparent)', color: 'var(--accent)',
                     fontSize: 11, borderRadius: 6, zIndex: 50,
                     pointerEvents: 'none',
                     animation: 'feToastFade 3s ease-out forwards',
@@ -565,8 +565,8 @@ export default function FileExplorer() {
 
             <div style={{
                 padding: '4px 10px', flexShrink: 0,
-                background: '#0a0a0a', borderTop: '1px solid #222',
-                fontSize: 10, color: '#555',
+                background: 'var(--bg-desktop)', borderTop: '1px solid #222',
+                fontSize: 10, color: 'var(--text-tertiary)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
                 <span>{viewMode === 'tree' ? 'Tree view' : 'Flat view'}</span>
@@ -581,8 +581,8 @@ function iconBtn(active: boolean, disabled = false): React.CSSProperties {
     return {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         width: 24, height: 24, padding: 0,
-        background: active ? 'rgba(214,254,81,0.08)' : 'transparent',
-        border: '1px solid ' + (active ? 'rgba(214,254,81,0.4)' : '#222'),
+        background: active ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent',
+        border: '1px solid ' + (active ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : '#222'),
         borderRadius: 4,
         color: disabled ? '#333' : (active ? '#D6FE51' : '#666'),
         cursor: disabled ? 'not-allowed' : 'pointer',

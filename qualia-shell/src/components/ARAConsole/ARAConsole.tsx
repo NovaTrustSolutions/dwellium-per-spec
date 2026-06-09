@@ -123,9 +123,9 @@ const PERSONA_THEMES: Record<string, { accent: string; accentRgb: string; gradie
         bgTint: 'rgba(56, 152, 236, 0.04)',
     },
     'clinical-analyst': {
-        accent: '#10b981',
+        accent: '#22c55e',
         accentRgb: '16, 185, 129',
-        gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        gradient: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
         bgTint: 'rgba(16, 185, 129, 0.04)',
     },
     'lead-counsel': {
@@ -138,12 +138,12 @@ const PERSONA_THEMES: Record<string, { accent: string; accentRgb: string; gradie
         accent: '#D6FE51',
         accentRgb: '139, 92, 246',
         gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-        bgTint: 'rgba(214, 254, 81, 0.04)',
+        bgTint: 'color-mix(in srgb, var(--accent) 4%, transparent)',
     },
     'devils-advocate': {
         accent: '#ef4444',
         accentRgb: '239, 68, 68',
-        gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        gradient: 'linear-gradient(135deg, #ef4444 0%, #ef4444 100%)',
         bgTint: 'rgba(239, 68, 68, 0.04)',
     },
     'research-synthesizer': {
@@ -1968,7 +1968,7 @@ export default function ARAConsole() {
                                                 <span className="ara-voice-item-name">
                                                     {v.provider === 'openai' ? '🌐' : '💻'} {v.label}
                                                 </span>
-                                                <span style={{ fontSize: 10, color: '#888' }}>{v.description}</span>
+                                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{v.description}</span>
                                             </span>
                                         </button>
                                     </div>

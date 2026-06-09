@@ -18,7 +18,7 @@
     display: flex;
     gap: 8px;
     padding: 10px 14px;
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.06) 0%, rgba(214, 254, 81, 0.03) 50%, rgba(236, 72, 153, 0.03) 100%);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, transparent) 0%, color-mix(in srgb, var(--accent) 3%, transparent) 50%, rgba(236, 72, 153, 0.03) 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -30,10 +30,10 @@
     justify-content: center;
     gap: 8px;
     padding: 10px 16px;
-    border: 1px solid rgba(214, 254, 81, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.1) 0%, rgba(214, 254, 81, 0.06) 100%);
-    color: #D6FE51;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, color-mix(in srgb, var(--accent) 6%, transparent) 100%);
+    color: var(--accent);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -47,7 +47,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15) 0%, rgba(214, 254, 81, 0.1) 100%);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 10%, transparent) 100%);
     opacity: 0;
     transition: opacity 0.3s;
     pointer-events: none;
@@ -58,17 +58,17 @@
 }
 
 .ai-organize-btn:hover {
-    border-color: rgba(214, 254, 81, 0.45);
-    color: #E8FF7A;
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--accent-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(214, 254, 81, 0.2), 0 0 40px rgba(214, 254, 81, 0.05);
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 40px color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
 .ai-organize-btn.active {
-    background: linear-gradient(135deg, #D6FE51 0%, #D6FE51 100%);
-    color: #000000;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+    color: var(--text-inverse);
     border-color: transparent;
-    box-shadow: 0 4px 24px rgba(214, 254, 81, 0.35);
+    box-shadow: 0 4px 24px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .ai-organize-btn.analyzing {
@@ -97,7 +97,7 @@
     width: 14px;
     height: 14px;
     border: 2px solid rgba(232, 255, 122, 0.3);
-    border-top-color: #D6FE51;
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -111,7 +111,7 @@
     border: 1px solid rgba(234, 67, 53, 0.2);
     border-radius: 12px;
     background: linear-gradient(135deg, rgba(234, 67, 53, 0.08) 0%, rgba(66, 133, 244, 0.05) 100%);
-    color: #f87171;
+    color: var(--danger);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -123,7 +123,7 @@
 
 .gmail-sync-btn:hover {
     border-color: rgba(234, 67, 53, 0.4);
-    color: #fca5a5;
+    color: var(--danger);
     transform: translateY(-1px);
     box-shadow: 0 4px 20px rgba(234, 67, 53, 0.15);
 }
@@ -141,7 +141,7 @@
     width: 12px;
     height: 12px;
     border: 2px solid rgba(248, 113, 113, 0.3);
-    border-top-color: #f87171;
+    border-top-color: var(--danger);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -161,7 +161,7 @@
 }
 
 .gmail-result-toast strong {
-    color: #4ade80;
+    color: var(--success);
 }
 
 .gmail-result-icon {
@@ -190,7 +190,7 @@
 
 .sort-group label {
     font-size: 10px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     margin-right: 4px;
     font-weight: 600;
     text-transform: uppercase;
@@ -203,7 +203,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     background: transparent;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
@@ -215,22 +215,22 @@
 .sort-btn:hover,
 .urgency-filter:hover {
     background: rgba(255, 255, 255, 0.06);
-    color: #d1d5db;
+    color: var(--text-secondary);
     border-color: rgba(255, 255, 255, 0.12);
     transform: translateY(-1px);
 }
 
 .sort-btn.active,
 .urgency-filter.active {
-    background: linear-gradient(135deg, #D6FE51 0%, #D6FE51 100%);
-    color: #000000;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent) 100%);
+    color: var(--text-inverse);
     border-color: transparent;
-    box-shadow: 0 2px 12px rgba(214, 254, 81, 0.3);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .sort-btn--ai.active {
-    background: linear-gradient(135deg, #D6FE51 0%, #b8d946 100%);
-    box-shadow: 0 2px 12px rgba(214, 254, 81, 0.35);
+    background: linear-gradient(135deg, var(--accent) 0%, #b8d946 100%);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 /* ========== Task list ========== */
@@ -276,7 +276,7 @@
 }
 
 .group-header.high {
-    color: #ef4444;
+    color: var(--danger);
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.04) 100%);
     border: 1px solid rgba(239, 68, 68, 0.12);
 }
@@ -288,7 +288,7 @@
 }
 
 .group-header.low {
-    color: #22c55e;
+    color: var(--success);
     background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.04) 100%);
     border: 1px solid rgba(34, 197, 94, 0.12);
 }
@@ -339,16 +339,16 @@
 }
 
 .task-card.task-card--highlighted {
-    border-color: rgba(214, 254, 81, 0.45);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
     box-shadow:
-        0 0 0 1px rgba(214, 254, 81, 0.28) inset,
-        0 0 0 2px rgba(214, 254, 81, 0.14),
-        0 8px 30px rgba(214, 254, 81, 0.18);
+        0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent) inset,
+        0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent),
+        0 8px 30px color-mix(in srgb, var(--accent) 18%, transparent);
     animation: taskFlashFocus 1.8s ease;
 }
 
 .task-card.urgency-high {
-    border-left-color: #ef4444;
+    border-left-color: var(--danger);
 }
 
 .task-card.urgency-medium {
@@ -356,7 +356,7 @@
 }
 
 .task-card.urgency-low {
-    border-left-color: #22c55e;
+    border-left-color: var(--success);
 }
 
 /* ========== AI Score & Rank Badges ========== */
@@ -368,9 +368,9 @@
     height: 22px;
     padding: 0 6px;
     border-radius: 6px;
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15) 0%, rgba(214, 254, 81, 0.1) 100%);
-    border: 1px solid rgba(214, 254, 81, 0.2);
-    color: #E8FF7A;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--accent) 10%, transparent) 100%);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent-hover);
     font-size: 11px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
@@ -385,9 +385,9 @@
     height: 24px;
     padding: 0 8px;
     border-radius: 8px;
-    background: color-mix(in srgb, var(--score-color, #D6FE51) 15%, transparent);
-    border: 1px solid color-mix(in srgb, var(--score-color, #D6FE51) 30%, transparent);
-    color: var(--score-color, #D6FE51);
+    background: color-mix(in srgb, var(--score-color, var(--accent)) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--score-color, var(--accent)) 30%, transparent);
+    color: var(--score-color, var(--accent));
     font-size: 12px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
@@ -396,18 +396,18 @@
 }
 
 .task-card:hover .ai-score-badge {
-    box-shadow: 0 0 12px color-mix(in srgb, var(--score-color, #D6FE51) 25%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--score-color, var(--accent)) 25%, transparent);
     transform: scale(1.05);
 }
 
 .ai-reason {
     font-size: 10px;
-    color: #D6FE51;
+    color: var(--accent);
     margin-top: 4px;
     padding: 3px 8px;
-    background: rgba(214, 254, 81, 0.06);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
     border-radius: 6px;
-    border-left: 2px solid rgba(214, 254, 81, 0.3);
+    border-left: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
     line-height: 1.4;
     font-style: italic;
 }
@@ -427,7 +427,7 @@
 .task-title {
     font-weight: 700;
     font-size: 13px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     flex: 1;
     letter-spacing: -0.2px;
     line-height: 1.3;
@@ -437,7 +437,7 @@
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     font-size: 11px;
     padding: 3px 6px;
     cursor: pointer;
@@ -446,17 +446,17 @@
 }
 
 .urgency-select:hover {
-    border-color: rgba(214, 254, 81, 0.3);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .urgency-select:focus {
-    border-color: #D6FE51;
+    border-color: var(--accent);
     outline: none;
 }
 
 .task-desc {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     margin-top: 4px;
     line-height: 1.5;
     display: -webkit-box;
@@ -478,19 +478,19 @@
 
 .task-project {
     font-size: 11px;
-    color: #D6FE51;
+    color: var(--accent);
     cursor: pointer;
     padding: 3px 10px;
     border-radius: 20px;
     transition: all 0.2s;
-    background: rgba(214, 254, 81, 0.06);
-    border: 1px solid rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
     font-weight: 600;
 }
 
 .task-project:hover {
-    background: rgba(214, 254, 81, 0.15);
-    border-color: rgba(214, 254, 81, 0.25);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
     transform: translateY(-1px);
 }
 
@@ -505,7 +505,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     background: transparent;
-    color: #4b5563;
+    color: var(--text-tertiary);
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -516,15 +516,15 @@
 
 .status-btn:hover {
     background: rgba(255, 255, 255, 0.06);
-    color: #d1d5db;
+    color: var(--text-secondary);
     transform: translateY(-1px);
 }
 
 .status-btn.active {
-    background: linear-gradient(135deg, #D6FE51, #D6FE51);
-    color: #000000;
+    background: linear-gradient(135deg, var(--accent), var(--accent));
+    color: var(--text-inverse);
     border-color: transparent;
-    box-shadow: 0 2px 8px rgba(214, 254, 81, 0.25);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 /* ========== Reassign picker ========== */
@@ -552,7 +552,7 @@
 
 .picker-header {
     font-size: 10px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     font-weight: 700;
     margin-bottom: 8px;
     text-transform: uppercase;
@@ -570,7 +570,7 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 6px;
     background: transparent;
-    color: #9ca3af;
+    color: var(--text-secondary);
     font-size: 11px;
     cursor: pointer;
     text-align: left;
@@ -579,9 +579,9 @@
 }
 
 .picker-item:hover {
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15), rgba(214, 254, 81, 0.1));
-    color: #D6FE51;
-    border-color: rgba(214, 254, 81, 0.25);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
     transform: translateX(2px);
 }
 
@@ -592,7 +592,7 @@
     align-items: center;
     justify-content: center;
     padding: 48px 20px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     text-align: center;
     flex: 1;
 }
@@ -621,14 +621,14 @@
 
 .task-empty p {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-tertiary);
 }
 
 /* Loading */
 .task-loading {
     text-align: center;
     padding: 32px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     font-size: 13px;
     animation: taskPulse 1.5s ease-in-out infinite;
 }
@@ -650,11 +650,11 @@
 
     0%,
     100% {
-        box-shadow: 0 0 8px rgba(214, 254, 81, 0.2);
+        box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 20%, transparent);
     }
 
     50% {
-        box-shadow: 0 0 24px rgba(214, 254, 81, 0.5), 0 0 48px rgba(214, 254, 81, 0.15);
+        box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 50%, transparent), 0 0 48px color-mix(in srgb, var(--accent) 15%, transparent);
     }
 }
 
@@ -699,10 +699,10 @@
 @keyframes taskFlashFocus {
     0% {
         transform: translateY(-2px);
-        background: rgba(214, 254, 81, 0.12);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
     }
     40% {
-        background: rgba(214, 254, 81, 0.09);
+        background: color-mix(in srgb, var(--accent) 9%, transparent);
     }
     100% {
         background: rgba(255, 255, 255, 0.02);
@@ -718,8 +718,8 @@
 }
 .task-viewtoggle__btn {
     appearance: none;
-    border: 1px solid var(--border, #333);
-    background: var(--surface, #1a1a1a);
+    border: 1px solid var(--border, var(--border-strong));
+    background: var(--surface, var(--border-subtle));
     color: var(--text-secondary, #bbb);
     border-radius: 8px;
     padding: 5px 12px;
@@ -729,9 +729,9 @@
 }
 .task-viewtoggle__btn:hover { background: var(--surface-hover, #242424); color: var(--text, #eee); }
 .task-viewtoggle__btn.is-active {
-    background: var(--accent, #D6FE51);
-    color: #000;
-    border-color: var(--accent, #D6FE51);
+    background: var(--accent, var(--accent));
+    color: var(--text-inverse);
+    border-color: var(--accent, var(--accent));
     font-weight: 600;
 }
 /* Board subview fills the widget so the Kanban columns get full height */

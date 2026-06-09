@@ -18,7 +18,7 @@ interface FixedAssetsTableProps {
 export default function FixedAssetsTable({ assets }: FixedAssetsTableProps) {
     if (assets.length === 0) {
         return (
-            <div style={{ textAlign: 'center', color: '#64748b', fontSize: 11, padding: 12 }}>
+            <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 11, padding: 12 }}>
                 No fixed assets recorded.
             </div>
         );

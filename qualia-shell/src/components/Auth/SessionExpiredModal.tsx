@@ -47,12 +47,12 @@ const input: React.CSSProperties = {
     background: '#0a0e1a', color: '#e5e9f0', fontSize: 14, outline: 'none',
 };
 const errBox: React.CSSProperties = {
-    fontSize: 12.5, color: '#fca5a5', background: 'rgba(239,68,68,0.12)',
+    fontSize: 12.5, color: '#ef4444', background: 'rgba(239,68,68,0.12)',
     border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 10px',
 };
 const primaryBtn: React.CSSProperties = {
     padding: '10px 14px', borderRadius: 9, border: 'none', cursor: 'pointer',
-    background: '#6366f1', color: '#fff', fontSize: 14, fontWeight: 600,
+    background: '#6366f1', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600,
 };
 const secondaryBtn: React.CSSProperties = {
     padding: '8px 14px', borderRadius: 9, cursor: 'pointer',

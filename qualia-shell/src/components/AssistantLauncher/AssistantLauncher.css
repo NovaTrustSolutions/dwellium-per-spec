@@ -19,7 +19,7 @@
     border-radius: 50%;
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
     background: var(--al-accent, #8B5CF6);
-    color: #0a0a0a;
+    color: var(--text-inverse);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -38,8 +38,8 @@
     height: 18px;
     padding: 0 4px;
     border-radius: 9px;
-    background: #0a0a0a;
-    color: #fff;
+    background: var(--bg-desktop);
+    color: var(--text-primary);
     font-size: 11px;
     font-weight: 700;
     display: flex;
@@ -65,7 +65,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: var(--text-tertiary, #808080);
+    color: var(--text-tertiary, var(--text-tertiary));
     padding: 6px 10px 8px;
 }
 
@@ -100,8 +100,8 @@
 }
 .al-menu-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .al-menu-name { font-size: 13px; font-weight: 600; }
-.al-menu-tagline { font-size: 11px; color: var(--text-tertiary, #808080); }
-.al-menu-running { margin-left: auto; color: #34D399; font-size: 10px; }
+.al-menu-tagline { font-size: 11px; color: var(--text-tertiary, var(--text-tertiary)); }
+.al-menu-running { margin-left: auto; color: var(--success); font-size: 10px; }
 
 /* ── Panel ── */
 .al-panel {
@@ -130,7 +130,7 @@
 .al-header-id { display: flex; align-items: center; gap: 8px; color: var(--al-accent, #8B5CF6); min-width: 0; }
 .al-header-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
 .al-header-name { font-size: 13px; font-weight: 700; color: var(--text-primary, #f2f2f2); }
-.al-header-tagline { font-size: 10px; color: var(--text-tertiary, #808080); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.al-header-tagline { font-size: 10px; color: var(--text-tertiary, var(--text-tertiary)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .al-switch { display: flex; gap: 4px; margin-left: auto; }
 .al-switch-pill {
@@ -149,7 +149,7 @@
 }
 .al-switch-pill:hover { color: var(--al-accent); border-color: color-mix(in srgb, var(--al-accent) 50%, transparent); }
 .al-switch-pill--active {
-    color: #0a0a0a;
+    color: var(--text-inverse);
     background: var(--al-accent, #8B5CF6);
     border-color: var(--al-accent, #8B5CF6);
 }
@@ -160,7 +160,7 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #34D399;
+    background: var(--success);
     border: 1px solid var(--bg-base, #0c0c0c);
 }
 
@@ -191,7 +191,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    color: var(--text-tertiary, #808080);
+    color: var(--text-tertiary, var(--text-tertiary));
     font-size: 13px;
     padding: 20px;
     text-align: center;
@@ -202,7 +202,7 @@
     border-radius: 8px;
     border: 1px solid var(--border-subtle);
     background: var(--al-accent, #8B5CF6);
-    color: #0a0a0a;
+    color: var(--text-inverse);
     font-weight: 600;
     cursor: pointer;
 }
@@ -240,7 +240,7 @@
     font-weight: 600;
     cursor: pointer;
 }
-.alc-model-opt--active { background: var(--al-accent, #8B5CF6); color: #0a0a0a; border-color: var(--al-accent, #8B5CF6); }
+.alc-model-opt--active { background: var(--al-accent, #8B5CF6); color: var(--text-inverse); border-color: var(--al-accent, #8B5CF6); }
 .alc-tool-btn {
     padding: 3px 10px;
     border-radius: 6px;
@@ -263,7 +263,7 @@
     line-height: 1.5;
     word-break: break-word;
 }
-.alc-msg--user .alc-bubble { background: var(--al-accent, #8B5CF6); color: #0a0a0a; }
+.alc-msg--user .alc-bubble { background: var(--al-accent, #8B5CF6); color: var(--text-inverse); }
 .alc-msg--assistant .alc-bubble, .alc-msg--system .alc-bubble {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-primary, #f2f2f2);
@@ -274,7 +274,7 @@
 .alc-content code { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 .alc-thinking { display: flex; gap: 4px; padding: 2px 0; }
-.alc-thinking span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary, #808080); animation: alc-blink 1.2s infinite both; }
+.alc-thinking span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary, var(--text-tertiary)); animation: alc-blink 1.2s infinite both; }
 .alc-thinking span:nth-child(2) { animation-delay: 0.2s; }
 .alc-thinking span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes alc-blink { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
@@ -298,7 +298,7 @@
     border-radius: 10px;
     border: none;
     background: var(--al-accent, #8B5CF6);
-    color: #0a0a0a;
+    color: var(--text-inverse);
     font-size: 15px;
     cursor: pointer;
     display: flex;
@@ -306,5 +306,5 @@
     justify-content: center;
 }
 .alc-send-btn:disabled { opacity: 0.4; cursor: default; }
-.alc-send-spinner { width: 14px; height: 14px; border: 2px solid rgba(0, 0, 0, 0.3); border-top-color: #0a0a0a; border-radius: 50%; animation: alc-spin 0.7s linear infinite; }
+.alc-send-spinner { width: 14px; height: 14px; border: 2px solid rgba(0, 0, 0, 0.3); border-top-color: var(--text-inverse); border-radius: 50%; animation: alc-spin 0.7s linear infinite; }
 @keyframes alc-spin { to { transform: rotate(360deg); } }

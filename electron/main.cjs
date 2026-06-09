@@ -31,7 +31,7 @@ const SPA_DIR = isPackaged ? path.join(RES, 'client') : path.join(RES, 'qualia-s
 const BACKEND_DIR = isPackaged ? path.join(RES, 'backend') : path.join(RES, '..', 'ai-dashboard369-file-manager');
 // Backend entrypoint (relative to BACKEND_DIR). Overridable for whatever the
 // real backend's built entry is (dist/index.js, server.js, …).
-const BACKEND_ENTRY = process.env.DWELLIUM_BACKEND_ENTRY || 'dist/index.js';
+const BACKEND_ENTRY = process.env.DWELLIUM_BACKEND_ENTRY || 'dist/app.js';
 
 // Data root — point this at a passport-drive / iCloud folder to make data
 // portable. Resolution: env override > persisted choice (Settings → Data Folder)

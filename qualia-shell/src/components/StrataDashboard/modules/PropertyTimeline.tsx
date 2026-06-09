@@ -114,13 +114,13 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
 
     if (loading) {
         return (
-            <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Property timeline unavailable.</div>}>
+            <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Property timeline unavailable.</div>}>
             <div className="s-glass-card" data-testid="property-timeline-module" style={{ padding: '16px 20px' }}>
-                <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Clock size={16} color="#818cf8" />
                     Activity Timeline
                 </h3>
-                <div style={{ textAlign: 'center', color: '#475569', fontSize: 12, padding: '20px 0' }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, padding: '20px 0' }}>
                     Loading activity…
                 </div>
             </div>
@@ -129,14 +129,14 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
     }
 
     return (
-        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Property timeline unavailable.</div>}>
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Property timeline unavailable.</div>}>
         <div className="s-glass-card" data-testid="property-timeline-module" style={{ padding: '16px 20px' }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Clock size={16} color="#818cf8" />
                 Activity Timeline
                 <span style={{
                     fontSize: 10, padding: '2px 8px', borderRadius: 10,
-                    background: 'rgba(214,254,81,0.15)', color: '#D6FE51', fontWeight: 600, marginLeft: 4,
+                    background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', fontWeight: 600, marginLeft: 4,
                 }}>{events.length} events</span>
             </h3>
 
@@ -149,7 +149,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                     {(['workitem', 'communication', 'compliance', 'insurance', 'incident', 'audit'] as ActivityEventSource[]).map(src => (
                         <span key={src} style={{
                             fontSize: 10, padding: '2px 6px', borderRadius: 4,
-                            background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontWeight: 500,
+                            background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', fontWeight: 500,
                             border: '1px solid rgba(255,255,255,0.06)',
                         }}>
                             {src}: {sourceBreakdown[src] ?? 0}
@@ -159,7 +159,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
             )}
 
             {events.length === 0 ? (
-                <div data-testid="property-timeline-empty" style={{ textAlign: 'center', color: '#475569', fontSize: 12, padding: '20px 0' }}>
+                <div data-testid="property-timeline-empty" style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, padding: '20px 0' }}>
                     No activity recorded for this property yet.
                 </div>
             ) : (
@@ -210,12 +210,12 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                                     </span>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{
-                                            fontSize: 12, fontWeight: 600, color: '#e2e8f0',
+                                            fontSize: 12, fontWeight: 600, color: 'var(--text-primary)',
                                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                                         }}>
                                             {ev.title}
                                         </div>
-                                        <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                                 <User size={9} /> {ev.actor}
                                             </span>
@@ -223,7 +223,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                                             {ev.status && <span className={`s-badge ${ev.status}`} style={{ fontSize: '0.45rem', padding: '1px 5px' }}>{ev.status}</span>}
                                         </div>
                                     </div>
-                                    <span style={{ fontSize: 10, color: '#475569', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                                         {timeAgo(ev.timestamp)}
                                     </span>
                                 </div>
@@ -237,7 +237,7 @@ export default function PropertyTimeline({ propertyId }: PropertyTimelineProps) 
                             onClick={() => setShowAll(true)}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 4, margin: '4px auto 0',
-                                background: 'none', border: 'none', color: '#D6FE51', fontSize: 11,
+                                background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11,
                                 fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                             }}
                         >

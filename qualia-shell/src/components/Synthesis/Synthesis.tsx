@@ -79,17 +79,17 @@ export default function Synthesis() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#000', color: '#ccc', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
             {/* Header + pipeline */}
             <div style={{ padding: '10px 16px', borderBottom: '1px solid #222', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Sparkles size={15} style={{ color: ACCENT }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888' }}>Synthesis Lab</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Synthesis Lab</span>
                     {layer > 1 && <span style={{ marginLeft: 'auto', fontSize: 11, color: ACCENT, fontFamily: 'monospace' }}>layer {layer}</span>}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
                     {PASSES.map((p, i) => (
-                        <span key={p} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 999, background: 'rgba(214,254,81,0.06)', border: '1px solid #222', color: '#777', letterSpacing: '0.04em' }}>
+                        <span key={p} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 999, background: 'color-mix(in srgb, var(--accent) 6%, transparent)', border: '1px solid #222', color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>
                             {i + 1}. {p}
                         </span>
                     ))}
@@ -104,7 +104,7 @@ export default function Synthesis() {
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Ask a question to synthesize across your corpus…"
                         rows={3}
-                        style={{ width: '100%', boxSizing: 'border-box', background: '#0a0a0a', border: '1px solid #333', borderRadius: 8, color: '#fff', fontSize: 13, padding: '10px 12px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-desktop)', border: '1px solid #333', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '10px 12px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
                     />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <button onClick={onSynthesize} disabled={busy || !query.trim()}
@@ -123,7 +123,7 @@ export default function Synthesis() {
                                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT }}>Synthesis {layer > 1 ? `· layer ${layer}` : ''}</span>
                                 <div style={{ flex: 1 }} />
                                 <button onClick={onCapture} disabled={captured} title="Capture as a document — feeds back into the corpus"
-                                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 6, border: '1px solid #333', background: captured ? 'rgba(214,254,81,0.12)' : 'transparent', color: captured ? ACCENT : '#ccc', fontSize: 11, fontWeight: 600, cursor: captured ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 6, border: '1px solid #333', background: captured ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent', color: captured ? ACCENT : '#ccc', fontSize: 11, fontWeight: 600, cursor: captured ? 'default' : 'pointer', fontFamily: 'inherit' }}>
                                     <Save size={12} /> {captured ? 'Captured' : 'Capture'}
                                 </button>
                                 <button onClick={onSecondLayer} disabled={busy} title="Second-layer query — re-query using this synthesis as added context"
@@ -142,14 +142,14 @@ export default function Synthesis() {
                 {/* Captured corpus */}
                 <div style={{ width: 240, flexShrink: 0, borderLeft: '1px solid #222', background: '#070707', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid #222' }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', flex: 1 }}>Captured ({history.length})</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-tertiary)', flex: 1 }}>Captured ({history.length})</span>
                         {history.length > 0 && (
                             <button onClick={() => clearSyntheses()} title="Clear captured syntheses" style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', display: 'flex' }}><Trash2 size={12} /></button>
                         )}
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
                         {history.length === 0 ? (
-                            <div style={{ padding: 12, color: '#555', fontSize: 11, lineHeight: 1.6 }}>Captured syntheses feed back into the corpus and become context for future queries.</div>
+                            <div style={{ padding: 12, color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.6 }}>Captured syntheses feed back into the corpus and become context for future queries.</div>
                         ) : history.map((h) => (
                             <button key={h.id} onClick={() => { setQuery(h.query); setResult(h.result); setLayer(h.layer); setParentId(h.id); setCaptured(true); setErr(''); }}
                                 style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 9px', marginBottom: 4, background: 'transparent', border: '1px solid #222', borderRadius: 6, color: '#bbb', cursor: 'pointer', fontFamily: 'inherit' }}

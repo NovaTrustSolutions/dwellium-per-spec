@@ -47,7 +47,7 @@ export function TabBar() {
             padding: '6px 8px 0',
             gap: 2,
             height: tabBarHeight,
-            background: '#0a0a0a',
+            background: 'var(--bg-desktop)',
             borderBottom: '1px solid #222',
         }}>
             {/* Sticky Doc / Dump mode toggle */}
@@ -83,10 +83,10 @@ export function TabBar() {
                         style={{
                             height: 28,
                             padding: '0 8px',
-                            background: '#000',
-                            border: '1px solid #D6FE51',
+                            background: 'var(--bg-desktop)',
+                            border: '1px solid var(--accent)',
                             borderRadius: 4,
-                            color: '#fff',
+                            color: 'var(--text-primary)',
                             fontSize: 12,
                             fontFamily: 'inherit',
                             outline: 'none',
@@ -135,7 +135,7 @@ function ModeTab({ label, active, onClick }: { label: string; active: boolean; o
                 border: 'none',
                 background: active ? '#000' : hovered ? '#111' : 'transparent',
                 color: active ? '#D6FE51' : '#888',
-                borderBottom: active ? '2px solid #D6FE51' : '2px solid transparent',
+                borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
                 transition: 'background 150ms, color 150ms',
             }}
         >
@@ -175,7 +175,7 @@ function Tab({ file, isActive, onActivate, onClose }: {
                 marginBottom: -1,
                 background: isActive ? '#000' : hovered ? '#111' : 'transparent',
                 color: isActive ? '#D6FE51' : '#ccc',
-                borderBottom: isActive ? '2px solid #D6FE51' : '2px solid transparent',
+                borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
                 transition: 'background 150ms, color 150ms',
             }}
         >

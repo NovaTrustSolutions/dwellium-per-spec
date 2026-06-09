@@ -21,12 +21,12 @@ import './Desktop.css';
 const WidgetLoader = () => (
     <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100%', color: '#64748b', fontSize: 13,
+        height: '100%', color: 'var(--text-tertiary)', fontSize: 13,
         fontFamily: 'Inter, system-ui, sans-serif',
     }}>
         <div style={{
             width: 20, height: 20, marginRight: 8,
-            border: '2px solid rgba(214,254,81,0.2)', borderTopColor: '#D6FE51',
+            border: '2px solid color-mix(in srgb, var(--accent) 20%, transparent)', borderTopColor: 'var(--accent)',
             borderRadius: '50%', animation: 'spin 0.6s linear infinite',
         }} />
         Loading…
@@ -57,21 +57,21 @@ class WidgetErrorBoundary extends React.Component<
             return (
                 <div style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    height: '100%', color: '#94a3b8', fontSize: 13, gap: 12, padding: 24, textAlign: 'center',
+                    height: '100%', color: 'var(--text-secondary)', fontSize: 13, gap: 12, padding: 24, textAlign: 'center',
                     fontFamily: 'Inter, system-ui, sans-serif', background: 'rgba(15,17,23,0.6)',
                 }}>
                     <span style={{ fontSize: 32 }}>⚠️</span>
-                    <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 14 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
                         {this.props.widgetName || 'Widget'} encountered an error
                     </div>
-                    <div style={{ color: '#64748b', fontSize: 12, maxWidth: 320 }}>
+                    <div style={{ color: 'var(--text-tertiary)', fontSize: 12, maxWidth: 320 }}>
                         {this.state.error?.message || 'Something went wrong'}
                     </div>
                     <button
                         onClick={() => this.setState({ hasError: false, error: null })}
                         style={{
                             marginTop: 8, padding: '6px 18px', fontSize: 12, fontWeight: 500,
-                            background: 'rgba(214,254,81,0.15)', color: '#D6FE51', border: '1px solid rgba(214,254,81,0.3)',
+                            background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                             borderRadius: 6, cursor: 'pointer', transition: 'all 0.15s',
                         }}
                     >
@@ -786,7 +786,7 @@ export default function Desktop() {
             <a
                 href="#desktop-content"
                 className="sr-only"
-                onFocus={(e) => { (e.target as HTMLElement).style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:99999;padding:8px 20px;background:#6366f1;color:#fff;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;width:auto;height:auto;clip:auto;white-space:normal;'; }}
+                onFocus={(e) => { (e.target as HTMLElement).style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:99999;padding:8px 20px;background:#6366f1;color:var(--text-primary);border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;width:auto;height:auto;clip:auto;white-space:normal;'; }}
                 onBlur={(e) => { (e.target as HTMLElement).style.cssText = ''; }}
             >
                 Skip to content
@@ -883,7 +883,7 @@ export default function Desktop() {
                         onDragOver={e => {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'move';
-                            (e.currentTarget as HTMLElement).style.background = 'rgba(214,254,81,0.15)';
+                            (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--accent) 15%, transparent)';
                         }}
                         onDragLeave={e => {
                             (e.currentTarget as HTMLElement).style.background = 'rgba(15,17,23,0.92)';
@@ -949,7 +949,7 @@ export default function Desktop() {
                                     style={{
                                         flex: '0 1 auto', maxWidth: 160, padding: '4px 10px 4px 14px', fontSize: 11,
                                         fontWeight: isActive ? 600 : 400, cursor: 'grab',
-                                        background: isActive ? 'rgba(214,254,81,0.12)' : 'transparent',
+                                        background: isActive ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
                                         border: 'none', borderBottom: isActive ? '2px solid #818cf8' : '2px solid transparent',
                                         color: isActive ? '#e2e8f0' : '#64748b',
                                         display: 'flex', alignItems: 'center', gap: 5,
@@ -977,7 +977,7 @@ export default function Desktop() {
                                         }}
                                         onMouseEnter={e => {
                                             (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.2)';
-                                            (e.currentTarget as HTMLElement).style.color = '#f87171';
+                                            (e.currentTarget as HTMLElement).style.color = '#ef4444';
                                         }}
                                         onMouseLeave={e => {
                                             (e.currentTarget as HTMLElement).style.background = '';

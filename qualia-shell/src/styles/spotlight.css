@@ -26,7 +26,7 @@
     pointer-events: none;
     background: radial-gradient(
         240px circle at var(--mx, 50%) var(--my, 50%),
-        var(--spotlight, rgba(214, 254, 81, 0.16)),
+        var(--spotlight, color-mix(in srgb, var(--accent) 16%, transparent)),
         transparent 60%
     );
     opacity: 0;
@@ -40,7 +40,7 @@
 .spotlight-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-    border-color: var(--border-hover, rgba(214, 254, 81, 0.45));
+    border-color: var(--border-hover, color-mix(in srgb, var(--accent) 45%, transparent));
 }
 
 /* Keep card content above the spotlight layer. */

@@ -97,7 +97,7 @@ export default function StatusCheckModule() {
                         }} />
                         Status Check
                     </h2>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                         {summary
                             ? `${summary.online} online · ${summary.degraded} degraded · ${summary.offline} offline`
                             : 'Checking services...'
@@ -106,7 +106,7 @@ export default function StatusCheckModule() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {lastChecked && (
-                        <span style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Clock size={11} />
                             {lastChecked.toLocaleTimeString()}
                         </span>
@@ -118,7 +118,7 @@ export default function StatusCheckModule() {
                             display: 'flex', alignItems: 'center', gap: 6,
                             padding: '8px 16px', borderRadius: 8,
                             background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                            color: '#e2e8f0', cursor: loading ? 'wait' : 'pointer', fontSize: 13,
+                            color: 'var(--text-primary)', cursor: loading ? 'wait' : 'pointer', fontSize: 13,
                         }}
                     >
                         <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
@@ -141,7 +141,7 @@ export default function StatusCheckModule() {
                             textAlign: 'center',
                         }}>
                             <div style={{ fontSize: 28, fontWeight: 800, color: card.color }}>{card.count}</div>
-                            <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</div>
                         </div>
                     ))}
                 </div>
@@ -152,7 +152,7 @@ export default function StatusCheckModule() {
                 <div style={{
                     padding: '12px 16px', borderRadius: 10, marginBottom: '1rem',
                     background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                    color: '#f87171', fontSize: 13,
+                    color: '#ef4444', fontSize: 13,
                 }}>
                     ⚠ Failed to check status: {error}
                 </div>
@@ -175,7 +175,7 @@ export default function StatusCheckModule() {
                                     <div style={{ color: config.color, opacity: 0.8 }}>
                                         {icon}
                                     </div>
-                                    <span style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>{svc.name}</span>
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{svc.name}</span>
                                 </div>
                                 <div style={{
                                     display: 'flex', alignItems: 'center', gap: 4,
@@ -192,12 +192,12 @@ export default function StatusCheckModule() {
                                 </div>
                             </div>
 
-                            <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                                 {svc.details || '—'}
                             </div>
 
                             {svc.latencyMs !== undefined && (
-                                <div style={{ marginTop: 6, fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <Clock size={10} />
                                     {svc.latencyMs}ms
                                 </div>
@@ -208,7 +208,7 @@ export default function StatusCheckModule() {
             </div>
 
             {/* Auto-refresh note */}
-            <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: 11, color: '#475569' }}>
+            <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)' }}>
                 Auto-refreshes every 30 seconds
             </p>
         </div>

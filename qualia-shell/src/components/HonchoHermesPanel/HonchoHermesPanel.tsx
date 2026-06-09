@@ -68,7 +68,7 @@ const TYPE_ICONS: Record<string, string> = {
 };
 const TYPE_COLORS: Record<string, string> = {
     fact: '#3b82f6', preference: '#f59e0b', decision: '#ef4444',
-    observation: '#D6FE51', insight: '#10b981', manual: '#D6FE51',
+    observation: '#D6FE51', insight: '#22c55e', manual: '#D6FE51',
 };
 const IMPORTANCE_LABELS = ['Low', 'Medium', 'High', 'Critical'];
 
@@ -770,7 +770,7 @@ export default function HonchoHermesPanel() {
                                         <line key={i}
                                             x1={50 + Math.cos(aS) * (rS / 4)} y1={50 + Math.sin(aS) * (rS / 4)}
                                             x2={50 + Math.cos(aT) * (rT / 4)} y2={50 + Math.sin(aT) * (rT / 4)}
-                                            stroke="rgba(214,254,81,0.15)" strokeWidth="0.3" />
+                                            stroke="color-mix(in srgb, var(--accent) 15%, transparent)" strokeWidth="0.3" />
                                     );
                                 })}
                             </svg>

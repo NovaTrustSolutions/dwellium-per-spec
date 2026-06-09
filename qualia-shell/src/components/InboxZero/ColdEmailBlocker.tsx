@@ -101,7 +101,7 @@ export default function ColdEmailBlocker() {
         tabs: { display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '3px' } as React.CSSProperties,
         tab: (active: boolean) => ({
             padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none',
-            background: active ? 'rgba(214,254,81,0.2)' : 'transparent', color: active ? '#D6FE51' : 'rgba(255,255,255,0.5)',
+            background: active ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'transparent', color: active ? '#D6FE51' : 'rgba(255,255,255,0.5)',
             transition: 'all 0.15s',
         }) as React.CSSProperties,
         statGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' } as React.CSSProperties,
@@ -124,7 +124,7 @@ export default function ColdEmailBlocker() {
         btn: (variant: 'primary' | 'ghost') => ({
             padding: '6px 14px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
             border: variant === 'ghost' ? '1px solid rgba(255,255,255,0.1)' : 'none',
-            background: variant === 'primary' ? 'rgba(214,254,81,0.2)' : 'transparent',
+            background: variant === 'primary' ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'transparent',
             color: variant === 'primary' ? '#D6FE51' : 'rgba(255,255,255,0.6)',
         }) as React.CSSProperties,
         empty: { textAlign: 'center' as const, padding: '40px', opacity: 0.4, fontSize: '13px' } as React.CSSProperties,
@@ -148,7 +148,7 @@ export default function ColdEmailBlocker() {
                 <>
                     <div style={s.statGrid}>
                         <div style={s.statCard}>
-                            <div style={{ ...s.statValue, color: '#D6FE51' }}>{stats.totalScanned}</div>
+                            <div style={{ ...s.statValue, color: 'var(--accent)' }}>{stats.totalScanned}</div>
                             <div style={s.statLabel}>EMAILS SCANNED</div>
                         </div>
                         <div style={s.statCard}>
@@ -252,7 +252,7 @@ export default function ColdEmailBlocker() {
                                             <td style={s.td}>
                                                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                                     {signals.slice(0, 3).map((sig: any, si: number) => (
-                                                        <span key={si} style={{ padding: '1px 6px', borderRadius: '3px', background: 'rgba(214,254,81,0.1)', color: '#D6FE51', fontSize: '10px' }}>
+                                                        <span key={si} style={{ padding: '1px 6px', borderRadius: '3px', background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', fontSize: '10px' }}>
                                                             {sig.signal}
                                                         </span>
                                                     ))}
@@ -318,7 +318,7 @@ export default function ColdEmailBlocker() {
                                 <div style={{ fontWeight: 700, fontSize: '13px' }}>🎯 Detection Threshold</div>
                                 <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>Higher = fewer false positives, lower = catch more cold emails</div>
                             </div>
-                            <div style={{ fontSize: '20px', fontWeight: 800, color: '#D6FE51' }}>{config.threshold.toFixed(2)}</div>
+                            <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent)' }}>{config.threshold.toFixed(2)}</div>
                         </div>
                         <input
                             type="range"

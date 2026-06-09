@@ -39,7 +39,7 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
                     <span key={tag} style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'rgba(214,254,81,0.15)', color: '#D6FE51',
+                        background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)',
                     }}>
                         {tag}
                         <span onClick={() => onRemove(tag)} style={{ cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>×</span>
@@ -53,7 +53,7 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
                     placeholder={selected.length === 0 ? placeholder : ''}
                     style={{
                         flex: 1, minWidth: 80, background: 'none', border: 'none',
-                        color: '#e2e8f0', fontSize: 12, outline: 'none',
+                        color: 'var(--text-primary)', fontSize: 12, outline: 'none',
                     }}
                 />
             </div>
@@ -69,10 +69,10 @@ function TagInput({ suggestions, selected, onAdd, onRemove, placeholder }: {
                             key={s}
                             onMouseDown={() => { onAdd(s); setQuery(''); }}
                             style={{
-                                padding: '8px 12px', fontSize: 12, color: '#cbd5e1',
+                                padding: '8px 12px', fontSize: 12, color: 'var(--text-secondary)',
                                 cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)',
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(214,254,81,0.1)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'}
                             onMouseLeave={e => e.currentTarget.style.background = ''}
                         >{s}</div>
                     ))}
@@ -236,7 +236,7 @@ export default function LegalModule() {
         switch (p) {
             case 'high': return '#ef4444';
             case 'medium': return '#f59e0b';
-            case 'low': return '#10b981';
+            case 'low': return '#22c55e';
             default: return '#64748b';
         }
     };
@@ -267,12 +267,12 @@ export default function LegalModule() {
                     borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
                     flex: 1, maxWidth: 300,
                 }}>
-                    <Search size={14} style={{ color: '#64748b' }} />
+                    <Search size={14} style={{ color: 'var(--text-tertiary)' }} />
                     <input
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search issues or tags…"
-                        style={{ flex: 1, background: 'none', border: 'none', color: '#e2e8f0', fontSize: 12, outline: 'none' }}
+                        style={{ flex: 1, background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 12, outline: 'none' }}
                     />
                 </div>
                 {['all', 'open', 'in_progress', 'review', 'completed'].map(s => (
@@ -281,8 +281,8 @@ export default function LegalModule() {
                         onClick={() => setStatusFilter(s)}
                         style={{
                             padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                            border: statusFilter === s ? '1px solid rgba(214,254,81,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                            background: statusFilter === s ? 'rgba(214,254,81,0.15)' : 'rgba(255,255,255,0.03)',
+                            border: statusFilter === s ? '1px solid color-mix(in srgb, var(--accent) 50%, transparent)' : '1px solid rgba(255,255,255,0.08)',
+                            background: statusFilter === s ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'rgba(255,255,255,0.03)',
                             color: statusFilter === s ? '#D6FE51' : '#64748b',
                             cursor: 'pointer', textTransform: 'capitalize',
                         }}
@@ -296,7 +296,7 @@ export default function LegalModule() {
             ) : error ? (
                 <ErrorState message={error} onRetry={fetchAll} />
             ) : filtered.length === 0 ? (
-                <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
+                <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                     <Scale size={40} strokeWidth={1} style={{ marginBottom: 12, opacity: 0.4 }} />
                     <p style={{ margin: 0, fontSize: 14 }}>
                         {items.length === 0 ? 'No legal issues tracked yet. Create your first one!' : 'No issues match your search.'}
@@ -325,7 +325,7 @@ export default function LegalModule() {
                                     <AlertTriangle size={16} style={{ color: getPriorityColor(wi.priority), flexShrink: 0 }} />
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontWeight: 600, fontSize: 14, color: '#e2e8f0' }}>{wi.title}</span>
+                                            <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{wi.title}</span>
                                             {(wi.metadata as any)?.accessList?.length > 0 && (
                                                 <span title="Restricted access"><Lock size={12} style={{ color: '#f59e0b', flexShrink: 0 }} /></span>
                                             )}
@@ -337,9 +337,9 @@ export default function LegalModule() {
                                                         fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 600,
                                                         background: tag.startsWith('Property:') ? 'rgba(59,130,246,0.12)' :
                                                             tag.startsWith('Tenant:') ? 'rgba(16,185,129,0.12)' :
-                                                                'rgba(214,254,81,0.12)',
+                                                                'color-mix(in srgb, var(--accent) 12%, transparent)',
                                                         color: tag.startsWith('Property:') ? '#60a5fa' :
-                                                            tag.startsWith('Tenant:') ? '#34d399' :
+                                                            tag.startsWith('Tenant:') ? '#22c55e' :
                                                                 '#D6FE51',
                                                     }}>
                                                         {tag.startsWith('Property:') ? <Building2 size={9} style={{ verticalAlign: -1, marginRight: 3 }} /> :
@@ -352,7 +352,7 @@ export default function LegalModule() {
                                         )}
                                     </div>
                                     <span className={`s-badge ${wi.status}`} style={{ fontSize: '0.65rem', flexShrink: 0 }}>{wi.status.replace('_', ' ')}</span>
-                                    <span style={{ fontSize: 10, color: '#64748b', flexShrink: 0 }}>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>
                                         {new Date(wi.createdAt).toLocaleDateString()}
                                     </span>
                                     {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -370,7 +370,7 @@ export default function LegalModule() {
                                                 { key: 'links', icon: <Link2 size={11} />, label: 'Links' },
                                             ].map(t => (
                                                 <button key={t.key} onClick={() => { setActiveTab(t.key); if (t.key !== 'details') loadMatterData(wi.id); }}
-                                                    style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: 'none', background: activeTab === t.key ? 'rgba(214,254,81,0.15)' : 'transparent', color: activeTab === t.key ? '#D6FE51' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: 'none', background: activeTab === t.key ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent', color: activeTab === t.key ? '#D6FE51' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     {t.icon} {t.label}
                                                 </button>
                                             ))}
@@ -378,8 +378,8 @@ export default function LegalModule() {
 
                                         {/* Details Tab */}
                                         {activeTab === 'details' && (<>
-                                            {wi.description && <p style={{ margin: '0 0 12px', fontSize: 13, color: '#94a3b8', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{wi.description}</p>}
-                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, fontSize: 11, color: '#64748b' }}>
+                                            {wi.description && <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{wi.description}</p>}
+                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, fontSize: 11, color: 'var(--text-tertiary)' }}>
                                                 <span><Clock size={11} style={{ verticalAlign: -2 }} /> Created: {new Date(wi.createdAt).toLocaleString()}</span>
                                                 {wi.dueDate && <span>Due: {wi.dueDate}</span>}
                                                 {(wi.metadata as any)?.legalType && <span>Type: {(wi.metadata as any).legalType}</span>}
@@ -387,14 +387,14 @@ export default function LegalModule() {
                                             {(wi.metadata as any)?.accessList?.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', marginBottom: 12, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 8, flexWrap: 'wrap' }}>
                                                     <Shield size={13} style={{ color: '#f59e0b' }} />
-                                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#fbbf24' }}>Restricted:</span>
+                                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>Restricted:</span>
                                                     {((wi.metadata as any).accessList as string[]).map((uid: string) => (
-                                                        <span key={uid} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 600, background: 'rgba(245,158,11,0.12)', color: '#fbbf24' }}>{userIdToLabel.get(uid) || uid.slice(0, 8) + '…'}</span>
+                                                        <span key={uid} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 600, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>{userIdToLabel.get(uid) || uid.slice(0, 8) + '…'}</span>
                                                     ))}
                                                 </div>
                                             )}
                                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                                                <span style={{ fontSize: 10, color: '#64748b', lineHeight: '24px' }}>Status:</span>
+                                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: '24px' }}>Status:</span>
                                                 {['open', 'in_progress', 'review', 'completed'].map(s => (
                                                     <button key={s} onClick={() => handleStatusChange(wi.id, s)} disabled={wi.status === s}
                                                         style={{ padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: wi.status === s ? '#D6FE51' : '#94a3b8', cursor: wi.status === s ? 'default' : 'pointer', textTransform: 'capitalize', opacity: wi.status === s ? 0.6 : 1 }}
@@ -404,29 +404,29 @@ export default function LegalModule() {
                                             {/* Action buttons */}
                                             <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                                                 <button onClick={() => handleEscalate(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><ArrowUpCircle size={11} /> Escalate</button>
-                                                <button onClick={() => handleClose(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.08)', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><XCircle size={11} /> Close</button>
+                                                <button onClick={() => handleClose(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.08)', color: '#22c55e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><XCircle size={11} /> Close</button>
                                             </div>
                                         </>)}
 
                                         {/* Comments Tab */}
                                         {activeTab === 'comments' && (
                                             <div>
-                                                {comments.length === 0 ? <p style={{ fontSize: 12, color: '#475569' }}>No comments yet</p> : comments.map(c => (
+                                                {comments.length === 0 ? <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No comments yet</p> : comments.map(c => (
                                                     <div key={c.id} style={{ padding: '8px 10px', borderRadius: 6, marginBottom: 4, background: c.isPrivileged ? 'rgba(245,158,11,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${c.isPrivileged ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)'}` }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', marginBottom: 4 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4 }}>
                                                             <span style={{ fontWeight: 600 }}>{c.author}</span>
                                                             <span>{new Date(c.createdAt).toLocaleString()}</span>
                                                         </div>
-                                                        {c.isPrivileged && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(245,158,11,0.15)', color: '#fbbf24', fontWeight: 700, marginBottom: 4, display: 'inline-block' }}>PRIVILEGED</span>}
-                                                        <p style={{ margin: 0, fontSize: 12, color: '#cbd5e1', whiteSpace: 'pre-wrap' }}>{c.body}</p>
+                                                        {c.isPrivileged && <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 700, marginBottom: 4, display: 'inline-block' }}>PRIVILEGED</span>}
+                                                        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{c.body}</p>
                                                     </div>
                                                 ))}
                                                 <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-                                                    <input value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Add comment…" style={{ flex: 1, padding: '6px 10px', borderRadius: 6, fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', outline: 'none' }} />
+                                                    <input value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Add comment…" style={{ flex: 1, padding: '6px 10px', borderRadius: 6, fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', outline: 'none' }} />
                                                     <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#f59e0b', cursor: 'pointer' }}>
                                                         <input type="checkbox" checked={isPrivileged} onChange={e => setIsPrivileged(e.target.checked)} style={{ width: 12, height: 12 }} /> Privileged
                                                     </label>
-                                                    <button onClick={() => handleAddComment(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.2)', color: '#D6FE51', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}><Send size={10} /> Send</button>
+                                                    <button onClick={() => handleAddComment(wi.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}><Send size={10} /> Send</button>
                                                 </div>
                                             </div>
                                         )}
@@ -434,11 +434,11 @@ export default function LegalModule() {
                                         {/* Evidence Tab */}
                                         {activeTab === 'evidence' && (
                                             <div>
-                                                {(matterLinks?.evidence || []).length === 0 ? <p style={{ fontSize: 12, color: '#475569' }}>No evidence attached</p> : (matterLinks.evidence as any[]).map((ev: any) => (
+                                                {(matterLinks?.evidence || []).length === 0 ? <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No evidence attached</p> : (matterLinks.evidence as any[]).map((ev: any) => (
                                                     <div key={ev.id} style={{ padding: '6px 10px', borderRadius: 6, marginBottom: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
-                                                        <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', textTransform: 'uppercase' }}>{ev.type}</span>
-                                                        <span style={{ flex: 1, color: '#cbd5e1' }}>{ev.description}</span>
-                                                        <span style={{ color: '#475569', fontSize: 10 }}>{new Date(ev.created_at).toLocaleDateString()}</span>
+                                                        <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', textTransform: 'uppercase' }}>{ev.type}</span>
+                                                        <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{ev.description}</span>
+                                                        <span style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>{new Date(ev.created_at).toLocaleDateString()}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -448,20 +448,20 @@ export default function LegalModule() {
                                         {activeTab === 'history' && (
                                             <div>
                                                 {(matterLinks?.decisions || []).length > 0 && (<>
-                                                    <h5 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '0 0 6px' }}>Decisions</h5>
+                                                    <h5 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', margin: '0 0 6px' }}>Decisions</h5>
                                                     {(matterLinks.decisions as any[]).map((d: any) => (
                                                         <div key={d.id} style={{ padding: '6px 10px', borderRadius: 6, marginBottom: 3, background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.1)', fontSize: 11 }}>
-                                                            <span style={{ fontWeight: 600, color: '#34d399' }}>{d.decision_type}</span> — <span style={{ color: '#cbd5e1' }}>{d.rationale}</span>
-                                                            <span style={{ float: 'right', fontSize: 10, color: '#475569' }}>{d.decided_by} · {new Date(d.created_at).toLocaleDateString()}</span>
+                                                            <span style={{ fontWeight: 600, color: '#22c55e' }}>{d.decision_type}</span> — <span style={{ color: 'var(--text-secondary)' }}>{d.rationale}</span>
+                                                            <span style={{ float: 'right', fontSize: 10, color: 'var(--text-tertiary)' }}>{d.decided_by} · {new Date(d.created_at).toLocaleDateString()}</span>
                                                         </div>
                                                     ))}
                                                 </>)}
-                                                <h5 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '8px 0 6px' }}>Audit Trail</h5>
-                                                {(matterLinks?.auditTrail || []).length === 0 ? <p style={{ fontSize: 12, color: '#475569' }}>No audit entries</p> : (matterLinks.auditTrail as any[]).map((a: any, i: number) => (
-                                                    <div key={i} style={{ padding: '4px 10px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.02)', fontSize: 10, color: '#94a3b8', display: 'flex', gap: 8 }}>
-                                                        <span style={{ fontWeight: 600, color: '#D6FE51' }}>{a.action}</span>
+                                                <h5 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', margin: '8px 0 6px' }}>Audit Trail</h5>
+                                                {(matterLinks?.auditTrail || []).length === 0 ? <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No audit entries</p> : (matterLinks.auditTrail as any[]).map((a: any, i: number) => (
+                                                    <div key={i} style={{ padding: '4px 10px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.02)', fontSize: 10, color: 'var(--text-secondary)', display: 'flex', gap: 8 }}>
+                                                        <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{a.action}</span>
                                                         <span style={{ flex: 1 }}>{a.userId}</span>
-                                                        <span style={{ color: '#475569' }}>{new Date(a.createdAt).toLocaleString()}</span>
+                                                        <span style={{ color: 'var(--text-tertiary)' }}>{new Date(a.createdAt).toLocaleString()}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -477,9 +477,9 @@ export default function LegalModule() {
                                                     { key: 'relatedMatters', label: 'Related Matters', items: matterLinks?.relatedMatters, render: (m: any) => `${m.title} (${m.status})` },
                                                 ].map(section => (
                                                     <div key={section.key} style={{ marginBottom: 10 }}>
-                                                        <h5 style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '0 0 4px' }}>{section.label} ({(section.items || []).length})</h5>
-                                                        {(section.items || []).length === 0 ? <p style={{ fontSize: 10, color: '#475569', margin: 0 }}>None linked</p> : (section.items as any[]).map((item: any) => (
-                                                            <div key={item.id} style={{ padding: '4px 10px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.02)', fontSize: 10, color: '#cbd5e1' }}>{section.render(item)}</div>
+                                                        <h5 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', margin: '0 0 4px' }}>{section.label} ({(section.items || []).length})</h5>
+                                                        {(section.items || []).length === 0 ? <p style={{ fontSize: 10, color: 'var(--text-tertiary)', margin: 0 }}>None linked</p> : (section.items as any[]).map((item: any) => (
+                                                            <div key={item.id} style={{ padding: '4px 10px', borderRadius: 4, marginBottom: 2, background: 'rgba(255,255,255,0.02)', fontSize: 10, color: 'var(--text-secondary)' }}>{section.render(item)}</div>
                                                         ))}
                                                     </div>
                                                 ))}
@@ -547,7 +547,7 @@ export default function LegalModule() {
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Lock size={14} style={{ color: '#f59e0b' }} />
                                     Access Control
-                                    <span style={{ fontSize: 10, color: '#64748b', fontWeight: 400 }}>(only selected users can view this issue)</span>
+                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 400 }}>(only selected users can view this issue)</span>
                                 </label>
                                 <TagInput
                                     suggestions={userSuggestions}
@@ -564,7 +564,7 @@ export default function LegalModule() {
                                     }}
                                     placeholder="Type to search users…"
                                 />
-                                <p style={{ margin: '4px 0 0', fontSize: 10, color: '#64748b' }}>
+                                <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-tertiary)' }}>
                                     {formAccessList.length === 0
                                         ? '🌐 No restrictions — all users can view this issue'
                                         : `🔒 ${formAccessList.length + 1} user(s) will have access (you are always included)`}

@@ -88,11 +88,11 @@ export default function OpenTracker() {
     };
 
     const s = {
-        wrap: { padding: 16, color: '#e2e8f0', fontFamily: 'inherit' } as React.CSSProperties,
+        wrap: { padding: 16, color: 'var(--text-primary)', fontFamily: 'inherit' } as React.CSSProperties,
         title: { fontSize: 16, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 } as React.CSSProperties,
         form: { display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' as const } as React.CSSProperties,
-        input: { flex: '1 1 200px', padding: '8px 12px', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', fontSize: 12, fontFamily: 'inherit' } as React.CSSProperties,
-        btn: { padding: '8px 16px', borderRadius: 6, border: 'none', background: '#D6FE51', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' } as React.CSSProperties,
+        input: { flex: '1 1 200px', padding: '8px 12px', borderRadius: 6, border: '1px solid #334155', background: '#0f172a', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit' } as React.CSSProperties,
+        btn: { padding: '8px 16px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' } as React.CSSProperties,
         card: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 12, marginBottom: 8 } as React.CSSProperties,
         badge: (count: number) => ({
             display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -101,15 +101,15 @@ export default function OpenTracker() {
             color: count > 0 ? '#22c55e' : '#64748b',
             border: `1px solid ${count > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(100,116,139,0.2)'}`,
         }) as React.CSSProperties,
-        snippet: { background: '#0f172a', border: '1px solid #334155', borderRadius: 6, padding: '8px 12px', fontSize: 11, fontFamily: 'monospace', color: '#94a3b8', position: 'relative' as const, marginTop: 8 } as React.CSSProperties,
-        copyBtn: { position: 'absolute' as const, top: 6, right: 6, padding: '3px 8px', borderRadius: 4, border: '1px solid #475569', background: '#1e293b', color: '#94a3b8', fontSize: 10, cursor: 'pointer' } as React.CSSProperties,
+        snippet: { background: '#0f172a', border: '1px solid #334155', borderRadius: 6, padding: '8px 12px', fontSize: 11, fontFamily: 'monospace', color: 'var(--text-secondary)', position: 'relative' as const, marginTop: 8 } as React.CSSProperties,
+        copyBtn: { position: 'absolute' as const, top: 6, right: 6, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border-strong)', background: '#1e293b', color: 'var(--text-secondary)', fontSize: 10, cursor: 'pointer' } as React.CSSProperties,
     };
 
     return (
         <div style={s.wrap}>
             <div style={s.title}>
                 👁️ Email Open Tracker
-                <span style={{ fontSize: 11, fontWeight: 400, color: '#64748b' }}>
+                <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
                     Track if recipients opened your emails
                 </span>
             </div>
@@ -138,10 +138,10 @@ export default function OpenTracker() {
             </div>
 
             {/* Trackers list */}
-            {loading && <div style={{ color: '#64748b', fontSize: 12 }}>Loading trackers…</div>}
+            {loading && <div style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>Loading trackers…</div>}
 
             {!loading && trackers.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 32, color: '#475569' }}>
+                <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-tertiary)' }}>
                     <div style={{ fontSize: 32, marginBottom: 8 }}>📧</div>
                     <div style={{ fontSize: 13 }}>No trackers yet. Create one above to start tracking email opens.</div>
                 </div>
@@ -152,7 +152,7 @@ export default function OpenTracker() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{t.subject}</div>
-                            <div style={{ fontSize: 11, color: '#94a3b8' }}>To: {t.recipient} · {formatTime(t.createdAt)}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>To: {t.recipient} · {formatTime(t.createdAt)}</div>
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                             <span style={s.badge(t.openCount)}>
@@ -160,7 +160,7 @@ export default function OpenTracker() {
                             </span>
                             <button
                                 onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
-                                style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
                             >
                                 {expandedId === t.id ? '▼' : '▶'}
                             </button>
@@ -183,7 +183,7 @@ export default function OpenTracker() {
                     {expandedId === t.id && (
                         <div style={{ marginTop: 10 }}>
                             {/* Pixel HTML snippet */}
-                            <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>📋 Pixel HTML (paste in email body):</div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>📋 Pixel HTML (paste in email body):</div>
                             <div style={s.snippet}>
                                 <code>{`<img src="${window.location.origin}/api/inbox/tracker/${t.id}/pixel.gif" width="1" height="1" style="display:none" />`}</code>
                                 <button
@@ -200,10 +200,10 @@ export default function OpenTracker() {
                             {/* Opens log */}
                             {t.opens && t.opens.length > 0 && (
                                 <div style={{ marginTop: 10 }}>
-                                    <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>📊 Open History:</div>
+                                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>📊 Open History:</div>
                                     <div style={{ maxHeight: 150, overflowY: 'auto' }}>
                                         {t.opens.map((open, i) => (
-                                            <div key={i} style={{ display: 'flex', gap: 12, fontSize: 10, color: '#64748b', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                            <div key={i} style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-tertiary)', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                                 <span>📅 {new Date(open.timestamp).toLocaleString()}</span>
                                                 <span>🌐 {open.ip}</span>
                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>

@@ -30,7 +30,7 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #f8fafc;
+    color: var(--text-primary);
 }
 
 .qualia-terminal__meta {
@@ -38,7 +38,7 @@
     gap: 8px;
     flex-wrap: wrap;
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     margin-top: 4px;
 }
 
@@ -55,7 +55,7 @@
 .qualia-terminal__quick-btn,
 .qualia-terminal__send,
 .qualia-terminal__signal {
-    border: 1px solid rgba(214, 254, 81, 0.25);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
     background: rgba(30, 41, 59, 0.72);
     color: #dbeafe;
     border-radius: 9px;
@@ -72,7 +72,7 @@
 .qualia-terminal__signal:hover {
     transform: translateY(-1px);
     background: rgba(37, 99, 235, 0.18);
-    border-color: rgba(214, 254, 81, 0.4);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .qualia-terminal__action:disabled,
@@ -93,7 +93,7 @@
 .qualia-terminal__tool {
     border: 1px solid rgba(100, 116, 139, 0.22);
     background: rgba(15, 23, 42, 0.65);
-    color: #94a3b8;
+    color: var(--text-secondary);
     border-radius: 999px;
     padding: 4px 9px;
     font-size: 10px;
@@ -130,7 +130,7 @@
     word-break: break-word;
     font-size: 12px;
     line-height: 1.5;
-    color: #e2e8f0;
+    color: var(--text-primary);
 }
 
 .qualia-terminal__input-capture {
@@ -155,20 +155,20 @@
     min-width: 220px;
     border: 1px solid rgba(100, 116, 139, 0.25);
     background: rgba(15, 23, 42, 0.8);
-    color: #f8fafc;
+    color: var(--text-primary);
     border-radius: 10px;
     padding: 10px 12px;
     font: inherit;
 }
 
 .qualia-terminal__command-input:focus {
-    outline: 1px solid rgba(214, 254, 81, 0.6);
-    border-color: rgba(214, 254, 81, 0.45);
+    outline: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .qualia-terminal__cursor {
     font-size: 11px;
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 .qualia-terminal__status {
@@ -184,5 +184,5 @@
 
 .qualia-terminal__status--error {
     background: rgba(239, 68, 68, 0.15);
-    color: #fca5a5;
+    color: var(--danger);
 }

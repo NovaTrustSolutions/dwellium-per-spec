@@ -22,6 +22,15 @@ class MockResizeObserver {
 }
 globalThis.ResizeObserver = MockResizeObserver as any;
 
+// ── Mock xterm.js — the live session renders through it; assert on term.write ──
+const mockTerm = vi.hoisted(() => ({
+    open: vi.fn(), write: vi.fn(), onData: vi.fn(), clear: vi.fn(),
+    dispose: vi.fn(), loadAddon: vi.fn(), focus: vi.fn(), cols: 80, rows: 24,
+}));
+vi.mock('@xterm/xterm', () => ({ Terminal: class { constructor() { return mockTerm; } } }));
+vi.mock('@xterm/addon-fit', () => ({ FitAddon: class { fit = vi.fn(); } }));
+vi.mock('@xterm/xterm/css/xterm.css', () => ({}));
+
 import Terminal from '../components/Terminal/Terminal';
 
 function json(data: any, ok = true, status = 200): Response {
@@ -31,6 +40,9 @@ function json(data: any, ok = true, status = 200): Response {
 describe('Terminal', () => {
     beforeEach(() => {
         mockAuthFetch.mockReset();
+        mockTerm.write.mockClear();
+        mockTerm.onData.mockClear();
+        mockTerm.clear.mockClear();
 
         // Capabilities + session creation
         mockAuthFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
@@ -93,8 +105,9 @@ describe('Terminal', () => {
 
     it('shows initial output from session creation', async () => {
         render(<Terminal />);
+        // Live output renders through xterm.js now; assert it received the chunk.
         await waitFor(() => {
-            expect(screen.getByText(/\$/)).toBeInTheDocument();
+            expect(mockTerm.write).toHaveBeenCalledWith('$ ');
         });
     });
 
@@ -124,7 +137,7 @@ describe('Terminal', () => {
 
         // Wait for session to be created
         await waitFor(() => {
-            expect(screen.getByText(/\$/)).toBeInTheDocument();
+            expect(mockTerm.write).toHaveBeenCalled();
         });
 
         const commandInput = screen.getByPlaceholderText('Run a command or launch a CLI like claude');
@@ -146,7 +159,7 @@ describe('Terminal', () => {
         render(<Terminal />);
 
         await waitFor(() => {
-            expect(screen.getByText(/\$/)).toBeInTheDocument();
+            expect(mockTerm.write).toHaveBeenCalled();
         });
 
         await user.click(screen.getByText('Ctrl+C'));
@@ -196,5 +209,36 @@ describe('Terminal', () => {
         });
         // The cryptic crash text must NOT appear.
         expect(screen.queryByText(/Cannot read properties/i)).not.toBeInTheDocument();
+    });
+
+    it('connects with the REAL flat backend response shape + streams data.output (live fix)', async () => {
+        // The backend returns capabilities + sessions FLAT ({ success, shell, cwd,
+        // tools } / { success, session }) and output as data.output (a STRING) — not
+        // the nested {data:{…}} / chunks[] shape the frontend originally assumed.
+        // Before the fix this ALWAYS dropped to the offline shell, so commands never
+        // hit the real backend. Now it must connect and stream.
+        mockAuthFetch.mockReset();
+        mockAuthFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            if (String(url).includes('/capabilities')) {
+                return json({ success: true, shell: '/bin/zsh', cwd: '/Users/test', tools: [{ name: 'git', available: true }] });
+            }
+            if (String(url).includes('/sessions') && opts?.method === 'POST') {
+                return json({ success: true, session: { id: 'sess-flat', shell: '/bin/zsh', cwd: '/Users/test', cols: 80, rows: 24, startedAt: new Date().toISOString(), lastActiveAt: new Date().toISOString(), closedAt: null, exitCode: null } });
+            }
+            if (String(url).includes('/output')) {
+                return json({ success: true, data: { output: 'flat-shell-live\n', cursor: 10, session: null } });
+            }
+            return json({ success: true });
+        });
+        render(<Terminal />);
+        // Capabilities parsed from the FLAT shape → tools render, and we are NOT offline.
+        await waitFor(() => {
+            expect(screen.getByText('git')).toBeInTheDocument();
+        });
+        expect(screen.queryByText(/Backend terminal unavailable/i)).not.toBeInTheDocument();
+        // Output streamed via data.output (string) → rendered through xterm.write.
+        await waitFor(() => {
+            expect(mockTerm.write).toHaveBeenCalledWith('flat-shell-live\n');
+        });
     });
 });

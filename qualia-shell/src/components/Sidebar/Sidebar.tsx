@@ -7,6 +7,8 @@ import { HierarchyItem } from '../../data/types';
 import { rankWidgetSearchResults, WidgetSearchMatch } from './widgetSearch';
 import { getIcon, isLucideKey } from './iconMap';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import SpacesSwitcher from './SpacesSwitcher';
+import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce } from '../../lib/hiddenWidgetsStore';
 import { useGridLock } from '../../hooks/useGridLock';
 import { Lock, Unlock } from 'lucide-react';
 import './Sidebar.css';
@@ -63,10 +65,12 @@ export const domainsCollapsedStore = createLocalStorageStore<boolean>(
 export const iconOnlyStore = createLocalStorageStore<boolean>(
     () => {
         try {
-            return localStorage.getItem(ICON_ONLY_KEY) === 'true';
-        } catch { return false; }
+            const saved = localStorage.getItem(ICON_ONLY_KEY);
+            if (saved !== null) return saved === 'true';
+        } catch { /* ignore */ }
+        return true; // icon-rail by default — calmer initial canvas (one-click expand via »)
     },
-    false,
+    true,
 );
 
 export const sidebarGroupsStore = createLocalStorageStore<Set<string>>(
@@ -255,6 +259,18 @@ export default function Sidebar() {
     const { locked: gridLocked, toggle: toggleGridLock } = useGridLock();
 
     const canSaveLayout = hasMinRole('corporate');
+
+    // Add / remove widgets: hidden set filters the sidebar; the gallery re-adds.
+    const hidden = useHiddenWidgets();
+    const hiddenSet = useMemo(() => new Set(hidden), [hidden]);
+    const [galleryOpen, setGalleryOpen] = useState(false);
+    const removeWidget = useCallback((component: string) => {
+        hideWidget(component);
+        windows.filter(w => w.component === component).forEach(w => closeWindow(w.id));
+    }, [windows, closeWindow]);
+
+    // Heavy fold: retire the standalone agent widgets into the Agent Lab once.
+    useEffect(() => { foldStandaloneAgentsOnce(); }, []);
 
     // Layout UI State
     const [saveFlash, setSaveFlash] = useState(false);
@@ -566,6 +582,9 @@ export default function Sidebar() {
                 </button>
             </div>
 
+            {/* Spaces (Way 2) — one click swaps the whole canvas */}
+            <SpacesSwitcher compact={iconOnly} />
+
             {/* Personalized greeting + temperature */}
             {!iconOnly && !collapsed && user && (
                 <div className="sidebar__greeting">
@@ -751,7 +770,7 @@ export default function Sidebar() {
                                 const query = searchQuery.trim();
                                 const searchActive = query.length > 0;
                                 // 2026-05-26: exclude control-panel — Settings is now opened from the gear button next to the Domains header, not from the widgets list.
-                                const permittedItems = dockItems.filter(item => can(`widget:${item.component}`) && item.component !== 'control-panel');
+                                const permittedItems = dockItems.filter(item => can(`widget:${item.component}`) && item.component !== 'control-panel' && !hiddenSet.has(item.component));
                                 const searchMatches = searchActive
                                     ? rankWidgetSearchResults(permittedItems, query, new Set(windows.map(w => w.component)))
                                     : [];
@@ -834,6 +853,17 @@ export default function Sidebar() {
                                                 </span>
                                             )}
                                             {isOpen && <span className="sidebar-widget__dot" />}
+                                            {!collapsed && !searchActive && (
+                                                <span
+                                                    role="button"
+                                                    aria-label={`Remove ${item.label} from sidebar`}
+                                                    title="Remove from sidebar (closes it)"
+                                                    className="sidebar-widget__remove"
+                                                    onClick={e => { e.stopPropagation(); removeWidget(item.component); }}
+                                                >
+                                                    ×
+                                                </span>
+                                            )}
                                         </button>
                                     );
                                 };
@@ -906,6 +936,16 @@ export default function Sidebar() {
                                     </>
                                 );
                             })()}
+                            {!searchQuery && (
+                                <button
+                                    className="sidebar__add-widget"
+                                    onClick={() => setGalleryOpen(true)}
+                                    title="Add or remove widgets"
+                                >
+                                    <span className="sidebar__add-widget-plus">+</span>
+                                    {!collapsed && <span>Add widget{hidden.length > 0 ? ` · ${hidden.length} hidden` : ''}</span>}
+                                </button>
+                            )}
                         </div>
 
                     </div>
@@ -1039,6 +1079,43 @@ export default function Sidebar() {
 
             {/* Resize Handle (horizontal width) — hidden in icon-only mode */}
             {!iconOnly && <div className="sidebar__resize-handle" onMouseDown={onResizeStart} />}
+
+            {/* Add / remove widgets gallery */}
+            {galleryOpen && (
+                <div className="widget-gallery-overlay" onClick={() => setGalleryOpen(false)}>
+                    <div className="widget-gallery" onClick={e => e.stopPropagation()}>
+                        <div className="widget-gallery__head">
+                            <span className="widget-gallery__title">Widgets</span>
+                            <button className="widget-gallery__close" onClick={() => setGalleryOpen(false)} aria-label="Close">×</button>
+                        </div>
+                        <div className="widget-gallery__sub">Add widgets to your sidebar, or remove ones you don’t use. Hidden widgets are dimmed.</div>
+                        <div className="widget-gallery__grid">
+                            {dockItems
+                                .filter(it => can(`widget:${it.component}`) && it.component !== 'control-panel')
+                                .map(it => {
+                                    const isHidden = hiddenSet.has(it.component);
+                                    return (
+                                        <div key={it.id} className={`widget-gallery__card ${isHidden ? 'widget-gallery__card--hidden' : ''}`}>
+                                            <span className="widget-gallery__icon"><SidebarIcon iconKey={it.icon} size={20} /></span>
+                                            <span className="widget-gallery__label" title={it.label}>{it.label}</span>
+                                            {isHidden ? (
+                                                <button
+                                                    className="widget-gallery__btn widget-gallery__btn--add"
+                                                    onClick={() => { unhideWidget(it.component); openWindow(it.component, it.label, it.icon); }}
+                                                >+ Add</button>
+                                            ) : (
+                                                <button
+                                                    className="widget-gallery__btn"
+                                                    onClick={() => removeWidget(it.component)}
+                                                >Remove</button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </aside>
     );
 }

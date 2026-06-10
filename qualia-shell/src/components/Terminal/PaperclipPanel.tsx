@@ -9,6 +9,7 @@
  * fallback. The instance URL is configurable and persisted per browser.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { launchService } from '../../lib/serviceLaunch';
 import './PaperclipPanel.css';
 
 const LS_URL = 'dwellium-paperclip-url';
@@ -84,6 +85,7 @@ export default function PaperclipPanel() {
                 ) : (
                     <>
                         <span className="pc-url" title={url}>{url}</span>
+                        <button className="pc-btn pc-btn--primary" onClick={() => launchService('paperclip')} title="Run 'npx paperclipai onboard --yes' in the Terminal">Launch ▸</button>
                         <button className="pc-btn" onClick={() => { setDraft(url); setEditing(true); }}>Change</button>
                         <button className="pc-btn" onClick={() => setIframeKey(k => k + 1)} title="Reload the embedded app">Reload</button>
                         <button className="pc-btn" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} title="Open in a new window">Open ↗</button>

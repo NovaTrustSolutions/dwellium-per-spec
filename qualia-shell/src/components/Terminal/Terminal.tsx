@@ -5,6 +5,7 @@ import CrewAIPanel from './CrewAIPanel';
 import { API_BASE } from '../../config';
 import { useUser } from '../../context/UserContext';
 import { runLocalCommand } from './localShell';
+import { consumePendingTerminalRun } from '../../lib/terminalLaunch';
 import './Terminal.css';
 
 interface TerminalToolCapability {
@@ -278,6 +279,23 @@ export default function Terminal() {
         }
         await sendRawInput(`${trimmed}\r`);
     }, [offline, focusTerminal, sendRawInput]);
+
+    // Launch bridge: a Launch button elsewhere (System Health / service panels)
+    // opens this widget and queues a command via terminalLaunch. Consume it on
+    // mount (just-opened) AND on the event (already-open); single-shot so it
+    // never double-runs.
+    useEffect(() => {
+        const handle = () => {
+            const p = consumePendingTerminalRun();
+            if (!p) return;
+            if (p.tab) setTab(p.tab);
+            setCommandInput(p.command);
+            if (p.run !== false) void runCommand(p.command);
+        };
+        handle();
+        window.addEventListener('dwellium:terminal-run', handle);
+        return () => window.removeEventListener('dwellium:terminal-run', handle);
+    }, [runCommand]);
 
     const sendSignal = useCallback(async (signal: 'SIGINT' | 'SIGTERM' | 'EOF') => {
         if (!sessionIdRef.current) return;

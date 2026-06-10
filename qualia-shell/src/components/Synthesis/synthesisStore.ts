@@ -10,6 +10,7 @@
  * Storage key:  dwellium:synthesis:<userId>   (fallback :_anonymous)
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface Synthesis {
     id: string;
@@ -39,11 +40,14 @@ function deserialize(raw: string | null): Synthesis[] {
     }
 }
 
-export const synthesisStore = createLocalStorageStore<Synthesis[]>({
-    key: resolveSynthesisKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const synthesisStore = withSync(
+    createLocalStorageStore<Synthesis[]>({
+        key: resolveSynthesisKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'synthesis', holder: synthesisUserIdHolder, resolveKey: resolveSynthesisKey },
+);
 
 function newId(): string {
     try { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); } catch { /* */ }

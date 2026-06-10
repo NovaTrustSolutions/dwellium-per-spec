@@ -20,6 +20,7 @@
  */
 
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface LocalCapture {
     id: string;
@@ -52,11 +53,14 @@ function deserialize(raw: string | null): LocalCapture[] {
     }
 }
 
-export const thoughtWeaverStore = createLocalStorageStore<LocalCapture[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const thoughtWeaverStore = withSync(
+    createLocalStorageStore<LocalCapture[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'thought-weaver', holder: thoughtWeaverUserIdHolder, resolveKey },
+);
 
 /** Append one capture, persist, notify. Most-recent-first ordering. */
 export function appendLocalCapture(entry: Omit<LocalCapture, 'source'>): void {

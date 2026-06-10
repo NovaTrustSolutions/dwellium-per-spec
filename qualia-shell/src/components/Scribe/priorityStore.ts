@@ -10,6 +10,7 @@
  */
 
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export type DocPriority = 'none' | 'low' | 'medium' | 'high';
 
@@ -47,11 +48,14 @@ function deserialize(raw: string | null): PriorityMap {
     }
 }
 
-export const priorityStore = createLocalStorageStore<PriorityMap>({
-    key: resolvePriorityKey,
-    deserializer: deserialize,
-    defaultValue: {},
-});
+export const priorityStore = withSync(
+    createLocalStorageStore<PriorityMap>({
+        key: resolvePriorityKey,
+        deserializer: deserialize,
+        defaultValue: {},
+    }),
+    { objectType: 'scribe-priority', holder: priorityUserIdHolder, resolveKey: resolvePriorityKey },
+);
 
 export function getDocPriority(map: PriorityMap, filepath: string | null): DocPriority {
     if (!filepath) return 'none';

@@ -52,7 +52,10 @@ import '../src/utils/spotlight';
  */
 export function Layout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en">
+        // suppressHydrationWarning: the FOUC IIFE below sets <html class="theme-X">
+        // from localStorage BEFORE hydration, so this element's className legitimately
+        // differs from the server render. This is the canonical React opt-out for it.
+        <html lang="en" suppressHydrationWarning>
             <head>
                 <meta charSet="UTF-8" />
                 <link rel="icon" type="image/svg+xml" href="/vite.svg" />

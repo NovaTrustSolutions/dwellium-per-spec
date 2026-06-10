@@ -7,6 +7,7 @@
  * wire /api/files/tree and populate the entries list.
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export type ViewMode = 'tree' | 'flat';
 /** Sort order applied in flat view. Tree view uses backend sort (folders first, then a→z). */
@@ -63,14 +64,17 @@ function normalize(raw: unknown): FileExplorerState {
     };
 }
 
-export const fileExplorerStore = createLocalStorageStore<FileExplorerState>({
-    key: resolveKey,
-    deserializer: (raw) => {
-        if (!raw) return DEFAULT_STATE;
-        try { return normalize(JSON.parse(raw)); } catch { return DEFAULT_STATE; }
-    },
-    defaultValue: DEFAULT_STATE,
-});
+export const fileExplorerStore = withSync(
+    createLocalStorageStore<FileExplorerState>({
+        key: resolveKey,
+        deserializer: (raw) => {
+            if (!raw) return DEFAULT_STATE;
+            try { return normalize(JSON.parse(raw)); } catch { return DEFAULT_STATE; }
+        },
+        defaultValue: DEFAULT_STATE,
+    }),
+    { objectType: 'file-explorer', holder: fileExplorerUserIdHolder, resolveKey },
+);
 
 export function saveFileExplorer(patch: Partial<FileExplorerState>): void {
     const prev = fileExplorerStore.getSnapshot();

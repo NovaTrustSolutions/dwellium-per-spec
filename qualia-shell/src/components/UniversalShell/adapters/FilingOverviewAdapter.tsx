@@ -14,66 +14,31 @@
  * It is surface-agnostic: both Astra and Strata show it.
  */
 
-import { FolderTree, Notebook, LayoutDashboard, Cpu } from 'lucide-react';
 import type { AdapterColumnSpec, ContainerAdapter } from '../types';
+import { FilingCabinetHome, ScratchPadHome, CanvasHome, OrchestratorHome } from './WorkspaceHomeColumns';
 
+// Home container columns wired to real content (2026-06-09). Each renders a
+// functional component that drives the real app via the same events the
+// sidebar / ⌘K use. The domain adapters (Strata / Astra) still show their own
+// container-scoped columns when selected from the switcher.
 const filingCabinet: AdapterColumnSpec = {
-    subtitle: 'Starting point — pick a container to drill down',
-    render: () => (
-        <div className="us-adapter-stub">
-            <FolderTree size={20} />
-            <div className="us-adapter-stub__title">Filing Cabinet</div>
-            <div className="us-adapter-stub__body">
-                Select a container from the switcher. Each container exposes its
-                own domain-scoped file browser in this column. No documents are
-                loaded until a container is active — Ilya&apos;s PB15-074 dev priority.
-            </div>
-        </div>
-    ),
+    subtitle: 'Your files + documents',
+    render: () => <FilingCabinetHome />,
 };
 
 const scratchPad: AdapterColumnSpec = {
-    subtitle: 'Container-scoped brain dump',
-    render: () => (
-        <div className="us-adapter-stub">
-            <Notebook size={20} />
-            <div className="us-adapter-stub__title">Scratch Pad</div>
-            <div className="us-adapter-stub__body">
-                Column 2 is populated by the active container&apos;s adapter. Open
-                a container to start a scratch note bound to it.
-            </div>
-        </div>
-    ),
+    subtitle: 'A quick note, saved as you type',
+    render: () => <ScratchPadHome />,
 };
 
 const canvas: AdapterColumnSpec = {
-    subtitle: 'Canvas — outputs + C-9 hybrid boards',
-    render: () => (
-        <div className="us-adapter-stub">
-            <LayoutDashboard size={20} />
-            <div className="us-adapter-stub__title">Canvas</div>
-            <div className="us-adapter-stub__body">
-                Container output renders here. Per C-9 (Phase 3-E §3.3), project
-                boards live inside Column 3 of each container. The hybrid board
-                renderer ships in a later session.
-            </div>
-        </div>
-    ),
+    subtitle: "What's open right now",
+    render: () => <CanvasHome />,
 };
 
 const orchestrator: AdapterColumnSpec = {
-    subtitle: 'Agent reasoning + unclassifiable email triage',
-    render: () => (
-        <div className="us-adapter-stub">
-            <Cpu size={20} />
-            <div className="us-adapter-stub__title">Orchestrator</div>
-            <div className="us-adapter-stub__body">
-                Column 4 shows the AI agent reasoning for the active container.
-                Per C-1, unclassifiable emails route to a lightweight Triage
-                card here instead of to an Inbox Zero UI.
-            </div>
-        </div>
-    ),
+    subtitle: 'Talk to the Conductor (ARA)',
+    render: () => <OrchestratorHome />,
 };
 
 export const filingOverviewAdapter: ContainerAdapter = {

@@ -10,6 +10,7 @@
  * Storage key:  dwellium:foundry:<userId>   (fallback :_anonymous)
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export type FoundryStatus = 'captured' | 'triaged' | 'admitted' | 'rejected';
 export type FoundrySourceType = 'paste' | 'url';
@@ -52,11 +53,14 @@ function deserialize(raw: string | null): FoundryItem[] {
     }
 }
 
-export const foundryStore = createLocalStorageStore<FoundryItem[]>({
-    key: resolveFoundryKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const foundryStore = withSync(
+    createLocalStorageStore<FoundryItem[]>({
+        key: resolveFoundryKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'foundry', holder: foundryUserIdHolder, resolveKey: resolveFoundryKey },
+);
 
 function newId(): string {
     try { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); } catch { /* */ }

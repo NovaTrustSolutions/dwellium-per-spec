@@ -13,6 +13,7 @@
  * wires the views that read/write these prefs.
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 /** Sort order for a tier list (domaines / projects / threads). */
 export type WorkspaceSort = 'name-asc' | 'modified-desc' | 'position-asc';
@@ -65,14 +66,17 @@ function normalize(raw: unknown): WorkspaceUiState {
     };
 }
 
-export const workspaceUiStore = createLocalStorageStore<WorkspaceUiState>({
-    key: resolveKey,
-    deserializer: (raw) => {
-        if (!raw) return DEFAULT_STATE;
-        try { return normalize(JSON.parse(raw)); } catch { return DEFAULT_STATE; }
-    },
-    defaultValue: DEFAULT_STATE,
-});
+export const workspaceUiStore = withSync(
+    createLocalStorageStore<WorkspaceUiState>({
+        key: resolveKey,
+        deserializer: (raw) => {
+            if (!raw) return DEFAULT_STATE;
+            try { return normalize(JSON.parse(raw)); } catch { return DEFAULT_STATE; }
+        },
+        defaultValue: DEFAULT_STATE,
+    }),
+    { objectType: 'workspace-ui', holder: workspaceUserIdHolder, resolveKey },
+);
 
 export function saveWorkspaceUi(patch: Partial<WorkspaceUiState>): void {
     const prev = workspaceUiStore.getSnapshot();

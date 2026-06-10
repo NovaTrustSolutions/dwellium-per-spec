@@ -29,6 +29,8 @@ export interface InboxItem {
     id: string;
     source: string;
     sourceId?: string;
+    /** The connected Gmail account this email was fetched from (multi-account). */
+    sourceAccount?: string;
     subject: string;
     sender: string;
     snippet: string;

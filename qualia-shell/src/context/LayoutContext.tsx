@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useSyncExternalStore, ReactNode } from 'react';
 import { LayoutSettings, SnapGuide, WindowState, RegionLayout, RegionRect } from '../data/types';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSyncStatic } from '../lib/oneSaveStore';
 
 const STORAGE_KEY = 'dwellium-layout-settings';
 
@@ -39,17 +40,20 @@ const DEFAULT_SETTINGS: LayoutSettings = {
 // useState lazy-init behavior byte-for-byte).
 // Exported for unit test access at src/test/appfolioParity/.
 
-export const layoutSettingsStore = createLocalStorageStore<LayoutSettings>(
-    () => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
-            }
-        } catch { /* ignore */ }
-        return DEFAULT_SETTINGS;
-    },
-    DEFAULT_SETTINGS,
+export const layoutSettingsStore = withSyncStatic(
+    createLocalStorageStore<LayoutSettings>(
+        () => {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+                }
+            } catch { /* ignore */ }
+            return DEFAULT_SETTINGS;
+        },
+        DEFAULT_SETTINGS,
+    ),
+    { objectType: 'layout-settings', storageKey: STORAGE_KEY },
 );
 
 /** Compute region rectangles for a given layout and desktop dimensions */

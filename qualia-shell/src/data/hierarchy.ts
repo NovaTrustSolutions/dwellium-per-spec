@@ -24,6 +24,7 @@ export const defaultDockItems: DockItem[] = [
    // dock-settings removed 2026-05-26 — Settings is now opened from the inline gear button next to the Domains header in Sidebar.tsx. Filter at Sidebar.tsx::permittedItems (component !== 'control-panel') also drops it for existing installs that have it in their saved layout.
    { id: 'dock-tenant-portal', label: 'Tenant Portal', icon: 'home', component: 'tenant-portal-mgmt', pinned: true, group: 'Property Management' },
    // ── AI Tools ──
+   { id: 'dock-agent-lab', label: 'Agent Lab', icon: 'bot', component: 'agent-lab', pinned: true, group: 'AI Tools' },
    { id: 'dock-thought-weaver', label: 'Thought Weaver', icon: 'brain-circuit', component: 'thought-weaver', pinned: true, group: 'AI Tools' },
    { id: 'dock-notebooklm', label: 'NotebookLM', icon: 'book-open', component: 'notebooklm-context', pinned: true, group: 'AI Tools' },
 

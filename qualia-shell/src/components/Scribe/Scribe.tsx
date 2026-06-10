@@ -3,7 +3,7 @@
  * AI redlines, inline comments, versioning, and table of contents.
  */
 
-import { useEffect, useRef, useCallback, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useCallback, useMemo, useState, type ChangeEvent } from 'react';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { search } from '@codemirror/search';
@@ -136,7 +136,15 @@ export default function Scribe() {
     }
 
     return (
-        <div className="scribe">
+        <div
+            className="scribe"
+            onMouseMove={(e) => {
+                const el = e.currentTarget;
+                const r = el.getBoundingClientRect();
+                el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+                el.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+            }}
+        >
             {/* Focus mode (spec §5.11) collapses the tab bar + toolbar so only the
                 editor column remains; a small floating chip restores it. */}
             {!focusMode && (
@@ -161,7 +169,13 @@ export default function Scribe() {
             {loading && <div className="scribe__status">Loading...</div>}
             {error && <div className="scribe__status scribe__status--error">{error}</div>}
             {redlineLoading && <div className="scribe__status">AI is thinking...</div>}
-            <div className="scribe__editor-area" style={{ position: 'relative' }}>
+            <div className="scribe__cols">
+                {!focusMode && (
+                    <aside className="scribe__tree-col">
+                        <ScribeTreeColumn />
+                    </aside>
+                )}
+                <div className="scribe__editor-area" style={{ position: 'relative' }}>
                 <FindReplace getView={() => viewRef.current} />
                 {focusMode && <FocusExitChip />}
                 <div className="scribe__editor" ref={containerRef} />
@@ -196,11 +210,140 @@ export default function Scribe() {
                         </div>
                     </>
                 )}
+                </div>
+                {!focusMode && <AraMiniPanel />}
             </div>
             <SelectionToolbar />
             <CommentEditor getView={() => viewRef.current} />
             <ContextMenu getView={() => viewRef.current} />
-            <AraMiniPanel />
+        </div>
+    );
+}
+
+/**
+ * ScribeTreeColumn — persistent left "Explorer" pane (the 3-pane layout's
+ * left column). Loads the file list and renders the FileTree; the open file
+ * is highlighted. Re-loads when the open-file set or active file changes so
+ * newly-created/ingested files appear.
+ */
+function ScribeTreeColumn() {
+    const openFile = useScribeStore((s) => s.openFile);
+    const activeFilepath = useScribeStore((s) => s.activeFilepath);
+    const openFiles = useScribeStore((s) => s.openFiles);
+    const setActiveFile = useScribeStore((s) => s.setActiveFile);
+    const closeFile = useScribeStore((s) => s.closeFile);
+    const [files, setFiles] = useState<FileEntry[]>([]);
+    // Workspace/project layer: a "project" is a top-level folder in the file store.
+    // The switcher scopes the Explorer tree to one project (functional Agenteryx parity).
+    const [activeWs, setActiveWs] = useState<string | null>(null);
+    const [wsMenuOpen, setWsMenuOpen] = useState(false);
+    const [creatingWs, setCreatingWs] = useState(false);
+    const [wsDraft, setWsDraft] = useState('');
+    useEffect(() => {
+        try { const v = localStorage.getItem('scribe-active-workspace'); if (v) setActiveWs(v); } catch { /* sandboxed */ }
+    }, []);
+    useEffect(() => {
+        let alive = true;
+        void useScribeStore.getState().listFiles().then((f) => { if (alive) setFiles(f); }).catch(() => { /* offline */ });
+        return () => { alive = false; };
+    }, [openFiles.length, activeFilepath]);
+    const baseName = (p: string) => p.split('/').pop() || p;
+    const workspaces = useMemo(() => {
+        const set = new Set<string>();
+        for (const f of files) { const i = f.filepath.indexOf('/'); if (i > 0) set.add(f.filepath.slice(0, i)); }
+        return [...set].sort((a, b) => a.localeCompare(b));
+    }, [files]);
+    const displayFiles = useMemo(
+        () => (activeWs ? files.filter((f) => f.filepath.startsWith(`${activeWs}/`)) : files),
+        [files, activeWs],
+    );
+    const selectWs = (ws: string | null) => {
+        setActiveWs(ws);
+        setWsMenuOpen(false);
+        try { if (ws) localStorage.setItem('scribe-active-workspace', ws); else localStorage.removeItem('scribe-active-workspace'); } catch { /* sandboxed */ }
+    };
+    const confirmNewWs = () => {
+        const name = wsDraft.trim().replace(/[\\/]+/g, '-');
+        setCreatingWs(false);
+        setWsDraft('');
+        if (!name) return;
+        const path = `${name}/Untitled.md`;
+        void useScribeStore.getState().createFile(path).then(() => useScribeStore.getState().openFile(path)).catch(() => { /* ignore */ });
+        selectWs(name);
+    };
+    return (
+        <div className="scribe__tree">
+            {/* Workspace switcher — functional: scopes the tree to a project folder (Agenteryx parity) */}
+            <div className="scribe__ws">
+                <button className="scribe__ws-chip" onClick={() => setWsMenuOpen((o) => !o)} title="Switch project">
+                    <span className="scribe__ws-icon" aria-hidden>▦</span>
+                    <span className="scribe__ws-name">{activeWs || 'All Files'}</span>
+                    <span className="scribe__ws-caret" aria-hidden>▾</span>
+                </button>
+                {wsMenuOpen && (
+                    <div className="scribe__ws-menu" role="menu">
+                        <button className={`scribe__ws-item ${!activeWs ? 'scribe__ws-item--active' : ''}`} onClick={() => selectWs(null)}>All Files</button>
+                        {workspaces.map((ws) => (
+                            <button key={ws} className={`scribe__ws-item ${activeWs === ws ? 'scribe__ws-item--active' : ''}`} onClick={() => selectWs(ws)}>{ws}</button>
+                        ))}
+                        <div className="scribe__ws-sep" />
+                        <button className="scribe__ws-item scribe__ws-new" onClick={() => { setWsMenuOpen(false); setCreatingWs(true); }}>+ New project…</button>
+                    </div>
+                )}
+                {creatingWs && (
+                    <input
+                        autoFocus
+                        className="scribe__ws-input"
+                        placeholder="Project name…"
+                        value={wsDraft}
+                        onChange={(e) => setWsDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') confirmNewWs(); else if (e.key === 'Escape') { setCreatingWs(false); setWsDraft(''); } }}
+                        onBlur={confirmNewWs}
+                    />
+                )}
+            </div>
+            {/* OPEN FILES — functional: click switches the active tab, × closes it (Agenteryx parity) */}
+            {openFiles.length > 0 && (
+                <div className="scribe__open">
+                    <div className="scribe__section-label">Open Files</div>
+                    <div className="scribe__open-list">
+                        {openFiles.map((f) => (
+                            <div
+                                key={f.filepath}
+                                className={`scribe__open-row ${f.filepath === activeFilepath ? 'scribe__open-row--active' : ''}`}
+                                onClick={() => setActiveFile(f.filepath)}
+                                title={f.filepath}
+                            >
+                                <span className="scribe__open-name">{baseName(f.filepath)}</span>
+                                {f.dirty && <span className="scribe__open-dirty" title="Unsaved changes">●</span>}
+                                <button
+                                    className="scribe__open-close"
+                                    onClick={(e) => { e.stopPropagation(); closeFile(f.filepath); }}
+                                    aria-label={`Close ${baseName(f.filepath)}`}
+                                >×</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            <div className="scribe__tree-header">
+                <span className="scribe__tree-header-label">Explorer</span>
+                <span className="scribe__tree-header-count">{displayFiles.length}</span>
+            </div>
+            <div className="scribe__tree-scroll">
+                <FileTree files={displayFiles} onOpen={(p) => void openFile(p)} activePath={activeFilepath || undefined} />
+            </div>
+            {/* Branch/version bar — functional: "+ Version" calls the store's createVersion (Agenteryx parity) */}
+            <div className="scribe__branch-bar" title={activeFilepath || 'No file open'}>
+                <span className="scribe__branch-icon" aria-hidden>⎇</span>
+                <span className="scribe__branch-name">{activeFilepath ? baseName(activeFilepath).replace(/\.md$/i, '') : 'main'}</span>
+                <button
+                    className="scribe__branch-version"
+                    disabled={!activeFilepath}
+                    onClick={() => { if (activeFilepath) void useScribeStore.getState().createVersion(activeFilepath); }}
+                    title="Save a new version of this document"
+                >+ Version</button>
+            </div>
         </div>
     );
 }

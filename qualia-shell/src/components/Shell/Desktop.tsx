@@ -1,6 +1,7 @@
 import { useWindows, COMPONENT_DEFAULT_SIZES } from '../../context/WindowContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
+import type { RegionLayout } from '../../data/types';
 import { useGridLock } from '../../hooks/useGridLock';
 import { useTheme } from '../../context/ThemeContext';
 import { API_BASE } from '../../config';
@@ -10,7 +11,7 @@ import React, { useState, useRef, useEffect, Suspense, useCallback, useMemo } fr
 import Window from '../Window/Window';
 
 // Widget Registry — single source of truth for all widget components
-import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS } from '../../registry/widgetRegistry';
+import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAutoOpenHoncho } from './honchoAutoOpen';
 
 import QuickLook from '../QuickLook/QuickLook';
@@ -553,8 +554,14 @@ export const WINDOW_COMPONENTS: Record<string, React.FC> = {
 } as Record<string, React.FC>;
 
 export default function Desktop() {
-    const { windows, closeWindow, openWindow } = useWindows();
-    const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab, assignWindowToRegion, moveTabToRegion, isInteracting } = useLayout();
+    const { windows, closeWindow, openWindow, updateWindowPosition, focusWindow, restoreWindow, minimizeWindow, maximizeWindow } = useWindows();
+    const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab, assignWindowToRegion, clearWindowRegion, moveTabToRegion, isInteracting } = useLayout();
+    // Windows the user explicitly tore off (drag a tab to empty desktop) — exempt
+    // from the auto-snap effect below so they stay free-floating instead of being
+    // immediately re-snapped back into a region.
+    const manuallyFreedRef = useRef<Set<string>>(new Set());
+    // Last drag coordinate (fallback for browsers that report 0,0 on dragend, e.g. Safari).
+    const lastDragPointRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const { toggleTheme } = useTheme();
     const { locked: gridLocked } = useGridLock();
     const desktopRef = useRef<HTMLDivElement>(null);
@@ -632,6 +639,7 @@ export default function Desktop() {
         // the explicit size was set to avoid (e.g., Strata's 3-column grid).
         for (const win of windows) {
             if (win.minimized || assignedIds.has(win.id)) continue;
+            if (manuallyFreedRef.current.has(win.id)) continue; // user tore this off — leave it free
             if (COMPONENT_DEFAULT_SIZES[win.component]) continue;
             // Find least-occupied region
             const occupancy = regions.map(r => ({
@@ -761,6 +769,159 @@ export default function Desktop() {
     const regionRects = settings.regionsEnabled
         ? getRegionRects(settings.regionLayout, desktopSize.w, desktopSize.h)
         : [];
+
+    // ── Spaces (Way 2): switching a Space fills the WHOLE canvas ──────────
+    // Fired by the SpacesSwitcher + dwelliumCommands (⌘K / ARA). Opens/restores
+    // the Space's widgets, minimizes everything else (the canvas becomes the
+    // Space), then tiles the Space across the entire desktop using regions:
+    //   1 widget  → maximize to fill the canvas
+    //   2 widgets → halves   ·  3 → thirds  ·  4+ → quadrants (overflow tabs)
+    // Regions holding 2+ widgets keep full browser-tab behavior (switch /
+    // reorder / close-reveals-behind / tear-off). Handled HERE (not in
+    // WindowContext) because openWindow returns ids synchronously, so we can
+    // place them in the same tick with no race.
+    useEffect(() => {
+        const handler = (ev: Event) => {
+            const detail = (ev as CustomEvent).detail || {};
+            const wids: string[] = Array.isArray(detail.widgets) ? detail.widgets : [];
+            if (wids.length === 0) return;
+
+            // pre-handler maximize state (newly-opened windows aren't in `windows`
+            // yet → treated as not maximized, which is their construction default).
+            const wasMax = (id: string) => windows.find(w => w.id === id)?.maximized ?? false;
+
+            const openedIds: string[] = [];
+            for (const component of wids) {
+                const existing = windows.find(w => w.component === component);
+                if (existing) {
+                    if (existing.minimized) restoreWindow(existing.id);
+                    openedIds.push(existing.id);
+                } else {
+                    const meta = WIDGET_REGISTRY[component];
+                    const id = openWindow(component, meta?.label || component, meta?.icon || '');
+                    if (id) openedIds.push(id);
+                }
+            }
+            if (openedIds.length === 0) return;
+
+            // These windows are deliberately (re)placed by the Space — drop any
+            // tear-off exemption so the auto-region effect doesn't fight us.
+            openedIds.forEach(id => manuallyFreedRef.current.delete(id));
+
+            // Group mode ("group X and Y into tabs"): stack all into a single
+            // region as browser-style tabs. Additive — does NOT minimize others.
+            if (detail.mode === 'tabbed') {
+                let rects = regionRects;
+                if (rects.length === 0) {
+                    updateSettings({ regionLayout: 'halves-h', regionsEnabled: true });
+                    rects = getRegionRects('halves-h', desktopSize.w, desktopSize.h);
+                }
+                const region = rects[0];
+                if (region) {
+                    openedIds.forEach(id => assignWindowToRegion(id, region.id, windows));
+                    setActiveRegionTab(region.id, openedIds[0]);
+                } else {
+                    focusWindow(openedIds[0]);
+                }
+                return;
+            }
+
+            // Minimize windows NOT in this Space so the canvas *is* the Space.
+            for (const w of windows) {
+                if (!openedIds.includes(w.id) && !w.minimized) minimizeWindow(w.id);
+            }
+
+            const n = openedIds.length;
+            if (n === 1) {
+                // Single widget → free it from any region + maximize to fill canvas.
+                clearWindowRegion(openedIds[0]);
+                if (!wasMax(openedIds[0])) maximizeWindow(openedIds[0]);
+                focusWindow(openedIds[0]);
+                return;
+            }
+
+            // Multi-widget → un-maximize any maximized ones, then tile into regions.
+            openedIds.forEach(id => { if (wasMax(id)) maximizeWindow(id); });
+            const layout = n === 2 ? 'halves-h' : n === 3 ? 'thirds-h' : 'quadrants';
+            updateSettings({ regionLayout: layout, regionsEnabled: true });
+            const rects = getRegionRects(layout, desktopSize.w, desktopSize.h);
+            const rc = rects.length || 1;
+            const firstPerRegion: Record<string, string> = {};
+            openedIds.forEach((id, i) => {
+                const region = rects[i % rc];
+                if (!region) return;
+                assignWindowToRegion(id, region.id, windows);
+                if (!(region.id in firstPerRegion)) firstPerRegion[region.id] = id;
+            });
+            // Activate the first tab in each region.
+            Object.entries(firstPerRegion).forEach(([rid, id]) => setActiveRegionTab(rid, id));
+            focusWindow(openedIds[0]);
+        };
+        window.addEventListener('dwellium:apply-space', handler);
+        return () => window.removeEventListener('dwellium:apply-space', handler);
+    }, [windows, regionRects, openWindow, restoreWindow, focusWindow, minimizeWindow, maximizeWindow,
+        clearWindowRegion, assignWindowToRegion, setActiveRegionTab, updateSettings, desktopSize]);
+
+    // ── Conductor: place / close / minimize / maximize a widget by name ──────
+    // Fired by dwelliumCommands (⌘K / ARA talk-to-customize). `place-widget`
+    // opens the widget and docks it into a named region (left/right/quadrant),
+    // realizing "put Strata on the left, Scribe on the right". The close/min/max
+    // events resolve a spoken widget to its window and act on it.
+    useEffect(() => {
+        const findWin = (component: string) => windows.find(w => w.component === component);
+
+        const onPlace = (ev: Event) => {
+            const d = (ev as CustomEvent).detail || {};
+            const component: string = d.widgetId;
+            const regionId: string = d.regionId;
+            const layout = d.layout as RegionLayout;
+            if (!component || !regionId || !layout) return;
+            const rects = getRegionRects(layout, desktopSize.w, desktopSize.h);
+            if (!rects.some(r => r.id === regionId)) return;
+
+            let id: string | undefined;
+            const existing = findWin(component);
+            if (existing) {
+                if (existing.minimized) restoreWindow(existing.id);
+                if (existing.maximized) maximizeWindow(existing.id);
+                id = existing.id;
+            } else {
+                const meta = WIDGET_REGISTRY[component];
+                id = openWindow(component, meta?.label || component, meta?.icon || '') || undefined;
+            }
+            if (!id) return;
+            manuallyFreedRef.current.delete(id);
+            updateSettings({ regionLayout: layout, regionsEnabled: true });
+            assignWindowToRegion(id, regionId, windows);
+            setActiveRegionTab(regionId, id);
+            focusWindow(id);
+        };
+
+        const onClose = (ev: Event) => {
+            const w = findWin((ev as CustomEvent).detail?.widgetId);
+            if (w) { clearWindowRegion(w.id); closeWindow(w.id); }
+        };
+        const onMinimize = (ev: Event) => {
+            const w = findWin((ev as CustomEvent).detail?.widgetId);
+            if (w && !w.minimized) minimizeWindow(w.id);
+        };
+        const onMaximize = (ev: Event) => {
+            const w = findWin((ev as CustomEvent).detail?.widgetId);
+            if (w) { if (w.minimized) restoreWindow(w.id); maximizeWindow(w.id); focusWindow(w.id); }
+        };
+
+        window.addEventListener('dwellium:place-widget', onPlace);
+        window.addEventListener('dwellium:close-widget', onClose);
+        window.addEventListener('dwellium:minimize-widget', onMinimize);
+        window.addEventListener('dwellium:maximize-widget', onMaximize);
+        return () => {
+            window.removeEventListener('dwellium:place-widget', onPlace);
+            window.removeEventListener('dwellium:close-widget', onClose);
+            window.removeEventListener('dwellium:minimize-widget', onMinimize);
+            window.removeEventListener('dwellium:maximize-widget', onMaximize);
+        };
+    }, [windows, openWindow, closeWindow, restoreWindow, focusWindow, minimizeWindow, maximizeWindow,
+        clearWindowRegion, assignWindowToRegion, setActiveRegionTab, updateSettings, desktopSize]);
 
     const handleDesktopDoubleClick = (e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('.window')) return;
@@ -913,6 +1074,7 @@ export default function Desktop() {
                                 if (oldIdx >= 0 && oldIdx < insertIdx) insertIdx--;
                             }
 
+                            manuallyFreedRef.current.delete(draggedWindowId); // re-docked into a region
                             moveTabToRegion(draggedWindowId, region.id, insertIdx);
                         }}
                         style={{
@@ -942,8 +1104,52 @@ export default function Desktop() {
                                         el.style.opacity = '0.5';
                                         setTimeout(() => { el.style.opacity = '1'; }, 0);
                                     }}
+                                    onDrag={e => {
+                                        if (e.clientX || e.clientY) lastDragPointRef.current = { x: e.clientX, y: e.clientY };
+                                    }}
                                     onDragEnd={e => {
                                         (e.currentTarget as HTMLElement).style.opacity = '1';
+                                        // Browser-tab tear-off (coordinate-based — reliable, unlike
+                                        // dropEffect which the always-accepting desktop drop target
+                                        // pins to 'move'). A reorder/move release lands inside a
+                                        // region's 30px tab strip and was already handled by the
+                                        // bar/tab onDrop. A release ANYWHERE ELSE detaches this tab
+                                        // into its own free-floating window at the drop point — exactly
+                                        // how dragging a browser tab away pops it out.
+                                        const deskEl = desktopRef.current;
+                                        if (!deskEl) return;
+                                        const rect = deskEl.getBoundingClientRect();
+                                        let vx = e.clientX, vy = e.clientY;
+                                        if (vx === 0 && vy === 0) { vx = lastDragPointRef.current.x; vy = lastDragPointRef.current.y; }
+                                        const onAnyTabStrip = regionRects.some(r =>
+                                            vx >= rect.left + r.x && vx <= rect.left + r.x + r.w &&
+                                            vy >= rect.top + r.y && vy <= rect.top + r.y + 30,
+                                        );
+                                        if (onAnyTabStrip) return; // reorder/move — already handled
+                                        const localX = vx - rect.left;
+                                        const localY = vy - rect.top;
+                                        manuallyFreedRef.current.add(wid);
+                                        clearWindowRegion(wid);
+                                        updateWindowPosition(wid, Math.max(0, localX - 90), Math.max(40, localY - 14));
+                                        focusWindow(wid);
+                                    }}
+                                    onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                                    onDrop={e => {
+                                        // Reliable reorder: dropping on a tab inserts the dragged tab
+                                        // BEFORE it (left half) or AFTER it (right half) — so "drop
+                                        // between two tabs" lands exactly there. stopPropagation keeps
+                                        // the bar-level onDrop from double-handling.
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const draggedWid = e.dataTransfer.getData('text/tab-window-id');
+                                        if (!draggedWid || draggedWid === wid) return;
+                                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                        const after = e.clientX > r.left + r.width / 2;
+                                        let targetIdx = ids.indexOf(wid) + (after ? 1 : 0);
+                                        const fromIdx = ids.indexOf(draggedWid);
+                                        if (fromIdx >= 0 && fromIdx < targetIdx) targetIdx--;
+                                        manuallyFreedRef.current.delete(draggedWid);
+                                        moveTabToRegion(draggedWid, region.id, targetIdx);
                                     }}
                                     onClick={() => setActiveRegionTab(region.id, wid)}
                                     style={{
@@ -964,7 +1170,14 @@ export default function Desktop() {
                                     <span
                                         role="button"
                                         aria-label={`Close ${win.title}`}
-                                        onClick={e => { e.stopPropagation(); closeWindow(win.id); }}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            // Browser behavior: closing a tab reveals the one behind it.
+                                            // Remove it from the region FIRST so the array shifts and the
+                                            // next tab takes the active (index-0) slot, then close it.
+                                            clearWindowRegion(win.id);
+                                            closeWindow(win.id);
+                                        }}
                                         style={{
                                             flexShrink: 0, marginLeft: 2,
                                             width: 14, height: 14,

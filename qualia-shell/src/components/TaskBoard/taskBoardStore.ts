@@ -14,6 +14,7 @@
  * Storage key:  taskboard:<userId>   (anon → taskboard:_anonymous)
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 import {
     type BoardState, type BoardAction, type BoardColumn, type TaskCard, type Actor, type Urgency, type AuditEntry, type CardPatch,
     type Assignee, type Attachment,
@@ -53,11 +54,14 @@ function deserialize(raw: string | null): BoardState {
     }
 }
 
-export const taskBoardStore = createLocalStorageStore<BoardState>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: createInitialBoard(),
-});
+export const taskBoardStore = withSync(
+    createLocalStorageStore<BoardState>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: createInitialBoard(),
+    }),
+    { objectType: 'task-board', holder: taskBoardUserIdHolder, resolveKey },
+);
 
 // Real (non-deterministic) context for production. Tests use the pure model
 // directly with an injected deterministic ctx.

@@ -193,6 +193,23 @@ ipcMain.handle('dwellium:setDataRoot', (_e, p) => {
     return writeConfig({ dataRoot: p });
 });
 ipcMain.handle('dwellium:relaunch', () => { app.relaunch(); app.exit(0); });
+// Restart just the backend sidecar (System Health → Launch backend) without a
+// full app relaunch. Kills the current child, then re-spawns via startBackend().
+ipcMain.handle('dwellium:restartBackend', async () => {
+    try {
+        const proc = backendProc; backendProc = null;
+        if (proc) {
+            try { proc.kill('SIGTERM'); } catch { /* */ }
+            await new Promise((r) => setTimeout(r, 800));
+            try { if (!proc.killed) proc.kill('SIGKILL'); } catch { /* */ }
+        }
+        startBackend();
+        return true;
+    } catch (err) {
+        logBackend('restart failed: ' + (err && err.message));
+        return false;
+    }
+});
 // Synchronous read so the preload can inject window.__dwelliumWorkspaceRoot
 // BEFORE the SPA's first render (the File Explorer header reads it synchronously).
 ipcMain.on('dwellium:dataRootSync', (e) => { e.returnValue = DATA_ROOT; });

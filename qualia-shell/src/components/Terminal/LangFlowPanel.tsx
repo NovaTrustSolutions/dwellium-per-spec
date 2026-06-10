@@ -14,6 +14,7 @@
  * persisted per browser.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { launchService } from '../../lib/serviceLaunch';
 import './LangFlowPanel.css';
 
 const LS_URL = 'dwellium-langflow-url';
@@ -91,6 +92,7 @@ export default function LangFlowPanel() {
                 ) : (
                     <>
                         <span className="lf-url" title={url}>{url}</span>
+                        <button className="lf-btn lf-btn--primary" onClick={() => launchService('langflow')} title="Run 'uv tool install langflow && langflow run' in the Terminal">Launch ▸</button>
                         <button className="lf-btn" onClick={() => { setDraft(url); setEditing(true); }}>Change</button>
                         <button className="lf-btn" onClick={() => setIframeKey(k => k + 1)} title="Reload the embedded app">Reload</button>
                         <button className="lf-btn" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} title="Open in a new window">Open ↗</button>

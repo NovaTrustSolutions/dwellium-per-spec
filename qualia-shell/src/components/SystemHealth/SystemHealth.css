@@ -77,6 +77,20 @@
 }
 .sysh-connect:hover { filter: brightness(1.06); }
 
+.sysh-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.sysh-launch {
+    padding: 6px 13px;
+    border-radius: 8px;
+    border: 1px solid var(--accent, #6366f1);
+    background: color-mix(in srgb, var(--accent, #6366f1) 16%, transparent);
+    color: var(--accent, #818cf8);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.sysh-launch:hover { background: color-mix(in srgb, var(--accent, #6366f1) 28%, transparent); }
+
 /* ── Login readiness banner ── */
 .sysh-banner {
     position: fixed;

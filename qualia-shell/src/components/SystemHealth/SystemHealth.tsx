@@ -7,7 +7,12 @@
 import { useWindows } from '../../context/WindowContext';
 import { useSystemHealth } from '../../hooks/useSystemHealth';
 import type { HealthStatus } from '../../lib/systemHealth';
+import { launchBackend, launchService, type ServiceId } from '../../lib/serviceLaunch';
 import './SystemHealth.css';
+
+const SERVICE_IDS: ServiceId[] = ['langflow', 'paperclip', 'open-notebook'];
+const isService = (id: string): id is ServiceId => (SERVICE_IDS as string[]).includes(id);
+const toast = (msg: string) => { try { window.dispatchEvent(new CustomEvent('qualia-toast', { detail: msg })); } catch { /* */ } };
 
 // Where "Connect" sends you (= open the right settings / widget).
 const OPEN: Record<string, [string, string]> = {
@@ -32,6 +37,18 @@ export default function SystemHealth() {
         if (!widget) return;
         const [title, icon] = OPEN[widget] || [widget, ''];
         try { openWindow(widget, title, icon); } catch { /* ignore */ }
+    };
+
+    const launchBackendNow = async () => {
+        const r = await launchBackend();
+        toast(r.message);
+        // Give the backend a moment to come up, then re-probe.
+        setTimeout(() => recheck(), 2500);
+    };
+    const launchServiceNow = (id: ServiceId) => {
+        launchService(id);
+        toast(`Launching ${id} in the Terminal…`);
+        setTimeout(() => recheck(), 3000);
     };
 
     return (
@@ -60,10 +77,24 @@ export default function SystemHealth() {
                             <div className="sysh-label">{item.label}</div>
                             <div className="sysh-detail">{detailFor(status, item.okText, item.downText)}</div>
                         </div>
-                        {(status === 'down' || status === 'degraded') && item.connectWidget && (
-                            <button className="sysh-connect" onClick={() => connect(item.connectWidget)}>
-                                {item.connectLabel || 'Connect'}
-                            </button>
+                        {(status === 'down' || status === 'degraded') && (
+                            <div className="sysh-actions">
+                                {item.id === 'backend' && (
+                                    <button className="sysh-launch" onClick={() => void launchBackendNow()}>
+                                        Launch backend
+                                    </button>
+                                )}
+                                {isService(item.id) && (
+                                    <button className="sysh-launch" onClick={() => launchServiceNow(item.id as ServiceId)}>
+                                        Launch
+                                    </button>
+                                )}
+                                {item.connectWidget && (
+                                    <button className="sysh-connect" onClick={() => connect(item.connectWidget)}>
+                                        {item.connectLabel || 'Connect'}
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
                 ))}

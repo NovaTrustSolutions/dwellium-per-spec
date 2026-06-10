@@ -9,6 +9,7 @@
  * new window" fallback. The instance URL is configurable and persisted per browser.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { launchService } from '../../lib/serviceLaunch';
 import './OpenNotebookPanel.css';
 
 const LS_URL = 'dwellium-open-notebook-url';
@@ -109,6 +110,7 @@ export default function OpenNotebookPanel() {
                 ) : (
                     <>
                         <span className="onb-url" title={url}>{url}</span>
+                        <button className="onb-btn onb-btn--primary" onClick={() => launchService('open-notebook')} title="Run the Open Notebook Docker command in the Terminal">Launch ▸</button>
                         <button className="onb-btn" onClick={() => { setDraft(url); setEditing(true); }}>Change</button>
                         <button className="onb-btn" onClick={() => setIframeKey(k => k + 1)} title="Reload the embedded app">Reload</button>
                         <button className="onb-btn" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} title="Open in a new window">Open ↗</button>
@@ -149,7 +151,8 @@ export default function OpenNotebookPanel() {
                         <p className="onb-empty-title">Open Notebook isn’t reachable at {url}</p>
                         <p className="onb-empty-sub">Start it with Docker, then Reload. Click <strong>Setup</strong> above for the exact commands.</p>
                         <div className="onb-empty-actions">
-                            <button className="onb-btn onb-btn--primary" onClick={() => setShowSetup(true)}>Show setup</button>
+                            <button className="onb-btn onb-btn--primary" onClick={() => launchService('open-notebook')} title="Run the Docker command in the Terminal">Launch ▸</button>
+                            <button className="onb-btn" onClick={() => setShowSetup(true)}>Show setup</button>
                             <button className="onb-btn" onClick={() => checkReach(url)}>Re-check</button>
                             <button className="onb-btn" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>Open ↗</button>
                         </div>

@@ -4,6 +4,7 @@ import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
+import { parseCommand } from '../../lib/dwelliumCommands';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -1029,6 +1030,20 @@ export default function ARAConsole() {
     ]);
 
     const sendMessage = useCallback(async () => {
+        // One Conductor: a direct command ("switch to research", "make accent teal",
+        // "open strata", "save space Morning") runs immediately and skips the LLM.
+        const text = input.trim();
+        const cmd = text ? parseCommand(text) : null;
+        if (cmd) {
+            cmd.run();
+            setMessages(prev => [
+                ...prev,
+                createChatMessage({ role: 'user', content: text }),
+                createChatMessage({ role: 'assistant', content: `✓ ${cmd.label}` }),
+            ]);
+            setInput('');
+            return;
+        }
         await sendPrompt(input);
     }, [input, sendPrompt]);
 

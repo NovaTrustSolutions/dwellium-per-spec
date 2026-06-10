@@ -26,9 +26,11 @@ const STORAGE_OPEN_KEY = 'scribe-ara-mini-open';
 
 export function AraMiniPanel() {
     const { integrations } = useIntegrations();
+    // Docked at the bottom of Scribe and EXPANDED by default; `open` now means
+    // "expanded" (collapsing leaves just the header bar). Persisted as before.
     const [open, setOpen] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return false;
-        try { return localStorage.getItem(STORAGE_OPEN_KEY) === '1'; } catch { return false; }
+        if (typeof window === 'undefined') return true;
+        try { return localStorage.getItem(STORAGE_OPEN_KEY) !== '0'; } catch { return true; }
     });
     const [messages, setMessages] = useState<Msg[]>([]);
     const [input, setInput] = useState('');
@@ -107,93 +109,94 @@ export function AraMiniPanel() {
         }
     };
 
-    if (!open) {
-        return (
-            <button
-                className="scribe-ara-fab"
-                onClick={() => setOpen(true)}
-                title="Open ARA"
-                aria-label="Open ARA panel"
-            >
-                ARA
-            </button>
-        );
-    }
-
     return (
-        <div className="scribe-ara-panel" role="complementary" aria-label="ARA chat">
-            <div className="scribe-ara-panel__header">
-                <span className="scribe-ara-panel__title">
-                    <span className="scribe-ara-panel__dot" aria-hidden /> ARA
+        <div
+            className={`scribe-ara-dock ${open ? '' : 'scribe-ara-dock--collapsed'}`}
+            role="complementary"
+            aria-label="ARA assistant"
+        >
+            <div
+                className="scribe-ara-dock__header"
+                onClick={() => setOpen(o => !o)}
+                title={open ? 'Collapse ARA' : 'Expand ARA'}
+            >
+                <span className="scribe-ara-dock__title">
+                    <span className="scribe-ara-dock__dot" aria-hidden /> ARA
                 </span>
+                <span className="scribe-ara-dock__model" title="Active model">Local ▾</span>
+                <span className="scribe-ara-dock__grow" />
                 <button
-                    className="scribe-ara-panel__btn-icon"
-                    onClick={() => setMessages([])}
+                    className="scribe-ara-dock__icon"
+                    onClick={(e) => { e.stopPropagation(); setMessages([]); }}
                     title="Clear chat"
                     disabled={messages.length === 0}
                 >
-                    🧹
+                    Clear
                 </button>
                 <button
-                    className="scribe-ara-panel__btn-icon"
-                    onClick={() => setOpen(false)}
-                    title="Close"
-                    aria-label="Close ARA panel"
+                    className="scribe-ara-dock__icon scribe-ara-dock__chev"
+                    onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+                    title={open ? 'Collapse' : 'Expand'}
+                    aria-label={open ? 'Collapse ARA' : 'Expand ARA'}
                 >
-                    ✕
+                    {open ? '▾' : '▴'}
                 </button>
             </div>
-            {(() => {
-                const tokens = sumTokens([SYSTEM_PROMPT, ...messages.map(m => m.content)]);
-                const w = buildContextWarning(tokens, integrations.llm);
-                if (w.level === 'ok') return null;
-                return (
-                    <div className={`scribe-ara-ctx-warn scribe-ara-ctx-warn--${w.level}`}>
-                        <span>{w.level === 'warn' ? '⚠️' : '🛑'}</span>
-                        <span style={{ flex: 1 }}>{w.message}</span>
+            {open && (
+                <>
+                    {(() => {
+                        const tokens = sumTokens([SYSTEM_PROMPT, ...messages.map(m => m.content)]);
+                        const w = buildContextWarning(tokens, integrations.llm);
+                        if (w.level === 'ok') return null;
+                        return (
+                            <div className={`scribe-ara-ctx-warn scribe-ara-ctx-warn--${w.level}`}>
+                                <span>{w.level === 'warn' ? '⚠️' : '🛑'}</span>
+                                <span style={{ flex: 1 }}>{w.message}</span>
+                                <button
+                                    className="scribe-ara-ctx-warn-btn"
+                                    onClick={() => setMessages([])}
+                                    title="Start a fresh ARA chat"
+                                >
+                                    New
+                                </button>
+                            </div>
+                        );
+                    })()}
+                    <div className="scribe-ara-dock__messages">
+                        {messages.length === 0 && !busy && (
+                            <p className="scribe-ara-dock__empty">
+                                Ask anything about your document. Selected text can be sent here from the Comment / Redline toolbar.
+                            </p>
+                        )}
+                        {messages.map(m => (
+                            <div key={m.id} className={`scribe-ara-msg scribe-ara-msg--${m.role}`}>
+                                {m.content}
+                            </div>
+                        ))}
+                        {busy && <div className="scribe-ara-msg scribe-ara-msg--assistant scribe-ara-msg--busy">…</div>}
+                        <div ref={endRef} />
+                    </div>
+                    <div className="scribe-ara-dock__composer">
+                        <textarea
+                            ref={inputRef}
+                            className="scribe-ara-dock__input"
+                            placeholder={llmReady ? 'Message ARA…  (⌘↩ to send)' : 'Configure an LLM key in Settings → API Keys'}
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={onKeyDown}
+                            rows={1}
+                        />
                         <button
-                            className="scribe-ara-ctx-warn-btn"
-                            onClick={() => setMessages([])}
-                            title="Start a fresh ARA chat"
+                            className="scribe-ara-dock__send"
+                            onClick={() => void ask(input)}
+                            disabled={!input.trim() || busy}
+                            title="Send (⌘↩)"
                         >
-                            New
+                            Send
                         </button>
                     </div>
-                );
-            })()}
-            <div className="scribe-ara-panel__messages">
-                {messages.length === 0 && !busy && (
-                    <p className="scribe-ara-panel__empty">
-                        Ask anything about your document. Selected text from Scribe can be sent here from the Comment / Redline toolbar.
-                    </p>
-                )}
-                {messages.map(m => (
-                    <div key={m.id} className={`scribe-ara-msg scribe-ara-msg--${m.role}`}>
-                        {m.content}
-                    </div>
-                ))}
-                {busy && <div className="scribe-ara-msg scribe-ara-msg--assistant scribe-ara-msg--busy">…</div>}
-                <div ref={endRef} />
-            </div>
-            <div className="scribe-ara-panel__composer">
-                <textarea
-                    ref={inputRef}
-                    className="scribe-ara-panel__input"
-                    placeholder={llmReady ? 'Ask ARA…  (⌘↩ to send)' : 'Configure an LLM key to chat'}
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    rows={2}
-                />
-                <button
-                    className="scribe-ara-panel__send"
-                    onClick={() => void ask(input)}
-                    disabled={!input.trim() || busy}
-                    title="Send (⌘↩)"
-                >
-                    ➤
-                </button>
-            </div>
+                </>
+            )}
         </div>
     );
 }

@@ -1016,6 +1016,16 @@ export default function InboxZero() {
                                                     <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                                                         {item.sender?.match(/<(.+?)>/)?.[1] || item.sender?.match(/\S+@\S+/)?.[0] || ''}
                                                     </span>
+                                                    {item.sourceAccount && (
+                                                        <span title={`Received in your ${item.sourceAccount} mailbox`} style={{
+                                                            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                                                            background: 'color-mix(in srgb, var(--accent, #6366f1) 14%, transparent)',
+                                                            color: 'var(--accent, #818cf8)',
+                                                            border: '1px solid color-mix(in srgb, var(--accent, #6366f1) 35%, transparent)',
+                                                            display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200,
+                                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                        }}>✉ {item.sourceAccount}</span>
+                                                    )}
                                                     {item.urgency === 'high' && (
                                                         <span style={{
                                                             fontSize: 10, fontWeight: 700, padding: '2px 8px',

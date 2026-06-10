@@ -1,6 +1,7 @@
 import { createContext, useContext, useCallback, useEffect, useSyncExternalStore, ReactNode } from 'react';
 import { Theme, FontPairing } from '../data/types';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSyncStatic } from '../lib/oneSaveStore';
 
 // ============================================
 // FONT PAIRING DEFINITIONS
@@ -133,36 +134,61 @@ const LEGACY_THEME_STORAGE_KEY = 'qualia-theme';
 // HTML matches IIFE-set className by construction (no hydration mismatch).
 // Exported for unit test access at src/test/appfolioParity/.
 
-export const themeStore = createLocalStorageStore<Theme>(
-    () => (
-        (localStorage.getItem(THEME_STORAGE_KEY) as Theme) ||
-        (localStorage.getItem(LEGACY_THEME_STORAGE_KEY) as Theme) ||
-        'dark'
+export const themeStore = withSyncStatic(
+    createLocalStorageStore<Theme>(
+        () => (
+            (localStorage.getItem(THEME_STORAGE_KEY) as Theme) ||
+            (localStorage.getItem(LEGACY_THEME_STORAGE_KEY) as Theme) ||
+            'dark'
+        ),
+        'dark',
     ),
-    'dark',
+    { objectType: 'theme', storageKey: THEME_STORAGE_KEY, serialize: (v) => v },
 );
 
-export const fontPairingStore = createLocalStorageStore<FontPairing>(
-    () => (localStorage.getItem(FONT_STORAGE_KEY) as FontPairing) || 'default',
-    'default',
-);
-
-export const accentColorStore = createLocalStorageStore<string>(
-    () => (
-        localStorage.getItem(ACCENT_STORAGE_KEY) ||
-        localStorage.getItem(LEGACY_ACCENT_STORAGE_KEY) ||
-        '#0088cc'
+export const fontPairingStore = withSyncStatic(
+    createLocalStorageStore<FontPairing>(
+        () => (localStorage.getItem(FONT_STORAGE_KEY) as FontPairing) || 'default',
+        'default',
     ),
-    '#0088cc',
+    { objectType: 'font-pairing', storageKey: FONT_STORAGE_KEY, serialize: (v) => v },
 );
 
-export const animationsEnabledStore = createLocalStorageStore<boolean>(
-    () => {
-        const stored = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
-        return stored !== null ? stored === 'true' : true;
-    },
-    true,
+export const accentColorStore = withSyncStatic(
+    createLocalStorageStore<string>(
+        () => (
+            localStorage.getItem(ACCENT_STORAGE_KEY) ||
+            localStorage.getItem(LEGACY_ACCENT_STORAGE_KEY) ||
+            '#0088cc'
+        ),
+        '#0088cc',
+    ),
+    { objectType: 'accent-color', storageKey: ACCENT_STORAGE_KEY, serialize: (v) => v },
 );
+
+export const animationsEnabledStore = withSyncStatic(
+    createLocalStorageStore<boolean>(
+        () => {
+            const stored = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
+            return stored !== null ? stored === 'true' : true;
+        },
+        true,
+    ),
+    { objectType: 'animations-enabled', storageKey: ANIMATIONS_STORAGE_KEY, serialize: (v) => String(v) },
+);
+
+/* ── Imperative setters (for dwelliumCommands / ARA — no React context needed).
+   ThemeProvider subscribes to these stores via useSyncExternalStore and
+   re-applies the theme on change, so setting the store IS applying it. ── */
+export function applyThemeValue(theme: Theme): void {
+    themeStore.set(theme, () => { try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* ignore */ } });
+}
+export function applyAccentValue(color: string): void {
+    accentColorStore.set(color, () => { try { localStorage.setItem(ACCENT_STORAGE_KEY, color); } catch { /* ignore */ } });
+}
+export function applyAnimationsValue(on: boolean): void {
+    animationsEnabledStore.set(on, () => { try { localStorage.setItem(ANIMATIONS_STORAGE_KEY, String(on)); } catch { /* ignore */ } });
+}
 
 // ============================================
 // THEME REGISTRY — Dwellium built-ins + the v3 "Master Pack" (themes-master.css)
@@ -237,6 +263,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const root = document.documentElement;
         root.className = `theme-${theme}`;
+        // Mirror onto data-theme so the v3 master-pack border/animation selectors
+        // ([data-theme="X"] .bento / .bv-* / body.master-glow::after) resolve.
+        root.setAttribute('data-theme', theme);
         root.style.setProperty('--accent', accentColor);
     }, [theme, accentColor]);
 
@@ -252,13 +281,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Apply animations toggle
     useEffect(() => {
         document.body.classList.toggle('animations-off', !animationsEnabled);
+        // Drive the v3 [data-anim] selectors (bento hover springs, AOS reveals,
+        // spotlight). 'medium' = source default; 'none' disables them — verbatim
+        // to the source's animation-level dial.
+        document.documentElement.setAttribute('data-anim', animationsEnabled ? 'medium' : 'none');
     }, [animationsEnabled]);
 
-    // Master Pack: ambient cursor-glow (the doc's radial follow) only on master themes
+    // Agenteryx look (Phase B): ambient cursor-glow app-wide (master-design radial
+    // spotlight, theme-accent colored). Was master-themes-only; now always on so the
+    // whole app gets the signature glow. Honors the animations-off toggle via CSS.
     useEffect(() => {
-        const isMaster = MASTER_THEME_IDS.includes(theme);
-        document.body.classList.toggle('master-glow', isMaster);
-        if (!isMaster) return;
+        document.body.classList.add('master-glow');
         const onMove = (e: MouseEvent) => {
             const r = document.documentElement;
             r.style.setProperty('--mx', `${(e.clientX / window.innerWidth) * 100}%`);
@@ -266,7 +299,32 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         };
         window.addEventListener('mousemove', onMove);
         return () => window.removeEventListener('mousemove', onMove);
-    }, [theme]);
+    }, []);
+
+    // Master Pack: AOS scroll-reveal (the doc's fade-in-on-scroll). Elements opt
+    // in via data-aos="fade-up|fade-down|fade-left|fade-right|zoom-in"; the CSS in
+    // themes-master.css hides them (html.aos-ready) until they intersect. Mirrors
+    // the source AOS.init (offset 60, threshold .05, once) byte-for-byte in behavior.
+    useEffect(() => {
+        if (typeof IntersectionObserver === 'undefined') return; // jsdom/SSR-safe
+        const els = Array.from(document.querySelectorAll('[data-aos]'));
+        if (!animationsEnabled || els.length === 0) {
+            document.documentElement.classList.remove('aos-ready');
+            return;
+        }
+        document.documentElement.classList.add('aos-ready');
+        const io = new IntersectionObserver((entries) => {
+            for (const e of entries) {
+                if (!e.isIntersecting) continue;
+                const delay = parseInt(e.target.getAttribute('data-aos-delay') || '0', 10);
+                (e.target as HTMLElement).style.transitionDelay = `${delay}ms`;
+                e.target.classList.add('aos-animate');
+                io.unobserve(e.target);
+            }
+        }, { rootMargin: '0px 0px -60px 0px', threshold: 0.05 });
+        els.forEach((el) => io.observe(el));
+        return () => io.disconnect();
+    }, [theme, animationsEnabled]);
 
     // Re-apply any persisted custom-token overrides (Settings theme editor) on load + theme change
     useEffect(() => {

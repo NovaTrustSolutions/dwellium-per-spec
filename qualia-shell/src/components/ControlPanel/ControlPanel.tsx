@@ -6,6 +6,7 @@ import { API_BASE } from '../../config';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
 import DataFolderSection from './DataFolderSection';
 import GoogleDriveSection from './GoogleDriveSection';
+import GoogleAccountsSection from './GoogleAccountsSection';
 import SystemUpdateSection from './SystemUpdateSection';
 import ScribeSettings from '../Scribe/ScribeSettings';
 import './ControlPanel.css';
@@ -299,6 +300,9 @@ export default function ControlPanel() {
                 </div>
             </section>
 
+            {/* Scribe editor — moved directly under Appearance per Ilya 2026-06-10 */}
+            <ScribeSettings />
+
             <section className="cp-section">
                 <h3 className="cp-section__title">Layout</h3>
 
@@ -535,15 +539,15 @@ export default function ControlPanel() {
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />
 
+            {/* Multi-account Gmail + Calendar (OAuth via backend) — 2026-06-10 */}
+            <GoogleAccountsSection />
+
             {/* Storage boxes — local disk (desktop data folder) + Google Drive backup */}
             <DataFolderSection />
             <GoogleDriveSection />
 
             {/* App updates — git pull + rebuild + restart (2026-05-28) */}
             <SystemUpdateSection />
-
-            {/* Scribe editor theme picker — Cycle 10 */}
-            <ScribeSettings />
 
             <section className="cp-section">
                 <h3 className="cp-section__title">Integrations (Backend)</h3>

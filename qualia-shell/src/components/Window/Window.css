@@ -69,9 +69,10 @@
     justify-content: flex-start;
     gap: 10px;
     flex-direction: row;
-    /* spec §3.5 — title bar ≤28–32px; content area is why the window exists. */
-    height: 30px;
-    padding: 0 14px 0 12px;
+    /* spec §3.5 — title bar ≤28–32px; content area is why the window exists.
+       Phase B: slimmed to the 28px Agenteryx chrome target. */
+    height: 28px;
+    padding: 0 12px 0 10px;
     background: linear-gradient(180deg, var(--window-titlebar), rgba(0, 0, 0, 0.08));
     border-bottom: 1px solid var(--border-subtle);
     cursor: grab;

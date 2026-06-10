@@ -9,6 +9,7 @@
  * TOC or 2000px minimap.
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface ScribeLayout {
     tocWidth: number;
@@ -56,14 +57,17 @@ function normalize(raw: unknown): ScribeLayout {
     };
 }
 
-export const scribeLayoutStore = createLocalStorageStore<ScribeLayout>({
-    key: resolveKey,
-    deserializer: (raw) => {
-        if (!raw) return DEFAULT_LAYOUT;
-        try { return normalize(JSON.parse(raw)); } catch { return DEFAULT_LAYOUT; }
-    },
-    defaultValue: DEFAULT_LAYOUT,
-});
+export const scribeLayoutStore = withSync(
+    createLocalStorageStore<ScribeLayout>({
+        key: resolveKey,
+        deserializer: (raw) => {
+            if (!raw) return DEFAULT_LAYOUT;
+            try { return normalize(JSON.parse(raw)); } catch { return DEFAULT_LAYOUT; }
+        },
+        defaultValue: DEFAULT_LAYOUT,
+    }),
+    { objectType: 'scribe-layout', holder: scribeLayoutUserIdHolder, resolveKey },
+);
 
 export function saveScribeLayout(patch: Partial<ScribeLayout>): void {
     const prev = scribeLayoutStore.getSnapshot();

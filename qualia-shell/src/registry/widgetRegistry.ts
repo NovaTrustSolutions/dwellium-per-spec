@@ -272,6 +272,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     // ═══════════════════════════════════════
     //  AI — Intelligence Tools
     // ═══════════════════════════════════════
+    'agent-lab': {
+        id: 'agent-lab',
+        label: 'Agent Lab',
+        icon: 'bot',
+        component: lazyWithReload(() => import('../components/AgentLab/AgentLab')),
+        minWidth: 760,
+        minHeight: 540,
+        category: 'ai',
+    },
     'ara-console': {
         id: 'ara-console',
         label: 'ARA Console',

@@ -3,6 +3,7 @@ import { HierarchyItem } from '../data/types';
 import { defaultHierarchy } from '../data/hierarchy';
 import { API_BASE } from '../config';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSyncStatic } from '../lib/oneSaveStore';
 
 const STORAGE_KEY = 'dwellium-hierarchy';
 const IMPORTED_DOMAIN_ID = 'imported-files-domain';
@@ -176,9 +177,12 @@ function saveHierarchy(items: HierarchyItem[]) {
 // loadHierarchy()'s catch branch). Exported for unit test access at
 // src/test/appfolioParity/.
 
-export const hierarchyStore = createLocalStorageStore<HierarchyItem[]>(
-    loadHierarchy,
-    deepClone(defaultHierarchy),
+export const hierarchyStore = withSyncStatic(
+    createLocalStorageStore<HierarchyItem[]>(
+        loadHierarchy,
+        deepClone(defaultHierarchy),
+    ),
+    { objectType: 'hierarchy', storageKey: STORAGE_KEY },
 );
 
 /* ── context ───────────────────────────────────── */

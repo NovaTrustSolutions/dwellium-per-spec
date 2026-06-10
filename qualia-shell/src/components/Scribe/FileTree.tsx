@@ -6,9 +6,11 @@
 import { useState, useMemo } from 'react';
 import { buildDocTree, flattenTree } from './docTree';
 
-export function FileTree({ files, onOpen }: {
+export function FileTree({ files, onOpen, activePath }: {
     files: Array<{ filepath: string }>;
     onOpen: (path: string) => void;
+    /** Currently-open file — highlighted in the tree (3-pane Explorer column). */
+    activePath?: string;
 }) {
     const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
     const tree = useMemo(() => buildDocTree(files.map(f => f.filepath)), [files]);
@@ -23,10 +25,12 @@ export function FileTree({ files, onOpen }: {
 
     return (
         <div className="scribe__file-tree">
-            {rows.map(({ node, depth }) => (
+            {rows.map(({ node, depth }) => {
+                const ext = node.isFile ? (node.name.split('.').pop() || '').toLowerCase() : '';
+                return (
                 <button
                     key={node.path}
-                    className={`scribe__file-item ${node.isFile ? '' : 'scribe__file-item--folder'}`}
+                    className={`scribe__file-item ${node.isFile ? '' : 'scribe__file-item--folder'} ${node.isFile && node.path === activePath ? 'scribe__file-item--active' : ''}`}
                     style={{ paddingLeft: 8 + depth * 14 }}
                     title={node.path}
                     aria-label={node.isFile ? `Open ${node.path}` : `Toggle folder ${node.name}`}
@@ -35,8 +39,12 @@ export function FileTree({ files, onOpen }: {
                     <span className="scribe__file-name">
                         {node.isFile ? '📄 ' : expanded.has(node.path) ? '📂 ' : '📁 '}{node.name}
                     </span>
+                    {node.isFile && ext && (
+                        <span className={`scribe__file-badge scribe__file-badge--${ext}`}>{ext}</span>
+                    )}
                 </button>
-            ))}
+                );
+            })}
         </div>
     );
 }

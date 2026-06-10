@@ -340,3 +340,69 @@ body.transitioning * {
     overflow: auto !important;
     min-height: 0;
 }
+/* ════════════════════════════════════════════════════════════════
+   AGENTERYX LOOK (Phase B) — master-design motion app-wide:
+   gradient-mask lit edges on windows + spring transitions on sidebar/dock.
+   (The theme-accent cursor spotlight is enabled app-wide in ThemeContext.)
+   ════════════════════════════════════════════════════════════════ */
+
+/* Window lit edge — the .bento::before gradient-mask technique, theme accent */
+.window::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(160deg,
+        color-mix(in srgb, var(--accent) 55%, transparent) 0%,
+        color-mix(in srgb, var(--accent) 22%, transparent) 15%,
+        color-mix(in srgb, var(--accent) 6%, transparent) 40%,
+        transparent 72%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 6;
+}
+
+body.animations-off .window::before { display: none; }
+
+/* Spring transitions + subtle lift on sidebar widgets + dock items */
+.sidebar-widget,
+.dock__item,
+.sidebar__icon-rail-btn {
+    transition: background 0.18s ease, color 0.18s ease,
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+body:not(.animations-off) .sidebar-widget:hover,
+body:not(.animations-off) .sidebar__icon-rail-btn:hover {
+    transform: translateX(2px);
+}
+
+body:not(.animations-off) .dock__item:hover {
+    transform: translateY(-2px);
+}
+
+/* Card lit edge — same gradient-mask technique as windows, on Strata glass
+   cards. Uses ::after because .s-glass-card::before is the hover top-line.
+   The theme-accent cursor spotlight is already app-wide (body.master-glow). */
+.strata-dashboard .s-glass-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(160deg,
+        color-mix(in srgb, var(--accent) 38%, transparent) 0%,
+        color-mix(in srgb, var(--accent) 14%, transparent) 18%,
+        color-mix(in srgb, var(--accent) 4%, transparent) 46%,
+        transparent 74%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+}
+
+body.animations-off .strata-dashboard .s-glass-card::after { display: none; }

@@ -9,6 +9,7 @@
  * Storage key:  dwellium:wiki:<userId>   (fallback :_anonymous)
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface WikiPage {
     path: string;
@@ -42,11 +43,14 @@ function deserialize(raw: string | null): WikiMap {
     }
 }
 
-export const wikiStore = createLocalStorageStore<WikiMap>({
-    key: resolveWikiKey,
-    deserializer: deserialize,
-    defaultValue: {},
-});
+export const wikiStore = withSync(
+    createLocalStorageStore<WikiMap>({
+        key: resolveWikiKey,
+        deserializer: deserialize,
+        defaultValue: {},
+    }),
+    { objectType: 'wiki', holder: wikiUserIdHolder, resolveKey: resolveWikiKey },
+);
 
 export function getWikiPage(map: WikiMap, path: string | null): WikiPage | null {
     if (!path) return null;

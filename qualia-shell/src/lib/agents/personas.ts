@@ -12,6 +12,7 @@
  * learning log groups runs sensibly.
  */
 import type { TaskType } from '../../components/HonchoHermesPanel/hermesLearningStore';
+import { skillIdsForDiscipline } from './skills';
 
 export type Discipline =
     | 'orchestrator'
@@ -155,7 +156,7 @@ export const ORCHESTRATOR_ID = 'orchestrator';
 const RIGOR = 'Be concrete and concise. Cite which provided source supports each factual claim; if a claim is not supported by the sources, say so explicitly rather than guessing.';
 
 /** Built-in discipline specialists. Several mirror folded standalone agents. */
-export const DEFAULT_PERSONAS: Persona[] = [
+export const DEFAULT_PERSONAS: Persona[] = ([
     {
         id: ORCHESTRATOR_ID,
         name: 'Orchestrator',
@@ -227,7 +228,13 @@ export const DEFAULT_PERSONAS: Persona[] = [
         systemPrompt: `You are an incisive Strategist. You frame the real decision, lay out options with trade-offs, and recommend a path with the reasoning behind it. ${RIGOR}`,
         builtin: true,
     },
-];
+] as Persona[]).map((p): Persona => ({
+    // LibreChat skills arc (2026-06-10): every built-in persona ships equipped
+    // with the AI Skills its discipline needs (lib/agents/skills.ts ids exist
+    // 1:1 in stellaToolCatalog so PersonaWorkspace renders them as chips).
+    ...p,
+    tools: [...new Set([...(p.tools ?? []), ...skillIdsForDiscipline(p.discipline)])],
+}));
 
 /** Built-in teams (the orchestrator is implicit; members are specialists). */
 export const DEFAULT_TEAMS: AgentTeam[] = [

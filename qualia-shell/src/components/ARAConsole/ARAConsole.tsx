@@ -5,6 +5,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
 import { parseCommand } from '../../lib/dwelliumCommands';
+import { matchSkill } from '../../lib/agents/skills';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -1133,8 +1134,33 @@ export default function ARAConsole() {
             if (ttsEnabled) void speakText(ack);
             return;
         }
+        // LibreChat-derived skills (web search / calculator / image gen /
+        // weather / code / memory) run browser-side before any LLM round-trip.
+        const skillHit = text ? matchSkill(text) : null;
+        if (skillHit) {
+            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text })]);
+            setInput('');
+            setIsLoading(true);
+            try {
+                const result = await skillHit.skill.run(skillHit.arg, { llm: integrations.llm });
+                setMessages(prev => [...prev, createChatMessage({
+                    role: 'assistant',
+                    content: `${result.text}\n\nWhat would you like me to do next?`,
+                })]);
+                if (ttsEnabled && !result.text.startsWith('![')) void speakText(result.text);
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                setMessages(prev => [...prev, createChatMessage({
+                    role: 'assistant',
+                    content: `Hmm, that ${skillHit.skill.name.toLowerCase()} run hit a snag — ${msg}. Want me to try again?`,
+                })]);
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
         await sendPrompt(input);
-    }, [input, sendPrompt, ttsEnabled, speakText]);
+    }, [input, sendPrompt, ttsEnabled, speakText, integrations.llm]);
 
     const retryLastRequest = useCallback(async () => {
         if (!lastRequest || isLoading) return;

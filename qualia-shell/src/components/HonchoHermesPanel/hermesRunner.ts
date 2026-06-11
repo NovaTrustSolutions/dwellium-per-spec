@@ -52,6 +52,8 @@ export interface HermesRunResult {
     recordId?: string;
     /** Error message when the network/parse failed. */
     error?: string;
+    /** Which path produced the result (LibreChat skills arc 2026-06-10). */
+    via?: 'backend' | 'skill' | 'llm' | 'none';
 }
 
 /** Minimal `fetch`-shaped function (UserContext.authFetch satisfies this). */
@@ -75,6 +77,15 @@ export interface RunHermesDeps {
     classifyTaskTypeFn?: (prompt: string) => TaskType;
     recordRunFn?: (input: RunInput) => HermesRunRecord;
     learningSnapshot?: () => HermesRunRecord[];
+    /**
+     * LibreChat skills arc (2026-06-10): offline fallbacks. When the backend
+     * delegate fails, Hermes first tries a direct browser-side skill match
+     * (calculator / web search / weather / image gen / memory — see
+     * lib/agents/skills.ts), then a single-shot run through the user's own
+     * LLM key. Injectable so the runner stays unit-testable with no network.
+     */
+    skillFallbackFn?: (task: string) => Promise<{ ok: boolean; text: string; skillName: string } | null>;
+    llmFallbackFn?: (task: string, fewShot: string) => Promise<string | null>;
 }
 
 /**
@@ -120,6 +131,34 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
     let outcome: 'success' | 'fail' = 'fail';
     let usedTools: string[] = [];
     let error: string | undefined;
+    let via: 'backend' | 'skill' | 'llm' | 'none' = 'none';
+
+    /** Offline chain: browser-side skill → user's own LLM key. */
+    const tryFallbacks = async (reason: string): Promise<void> => {
+        if (deps.skillFallbackFn) {
+            try {
+                const hit = await deps.skillFallbackFn(task);
+                if (hit && hit.ok) {
+                    steps.push({ type: 'action', content: `Backend unavailable (${reason}) — ran the ${hit.skillName} skill locally.`, timestamp: now() });
+                    steps.push({ type: 'final_answer', content: hit.text, timestamp: now() });
+                    result = hit.text; outcome = 'success'; via = 'skill';
+                    usedTools = [hit.skillName]; error = undefined;
+                    return;
+                }
+            } catch { /* fall through to LLM */ }
+        }
+        if (deps.llmFallbackFn) {
+            try {
+                const answer = await deps.llmFallbackFn(task, fewShot);
+                if (answer) {
+                    steps.push({ type: 'action', content: `Backend unavailable (${reason}) — answered via your LLM key.`, timestamp: now() });
+                    steps.push({ type: 'final_answer', content: answer, timestamp: now() });
+                    result = answer; outcome = 'success'; via = 'llm'; error = undefined;
+                    return;
+                }
+            } catch { /* keep original failure */ }
+        }
+    };
 
     try {
         const res = await deps.authFetch(endpoint, {
@@ -135,15 +174,18 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
             result = d.answer || d.result || '';
             steps.push({ type: 'final_answer', content: result || 'Task completed.', timestamp: now() });
             outcome = result ? 'success' : 'fail';
+            if (outcome === 'success') via = 'backend';
             usedTools = Array.isArray(d.toolsUsed) ? d.toolsUsed : deriveUsedTools(steps, toolNames);
         } else {
             const msg: string = data?.error || 'Task failed.';
             error = msg;
-            steps.push({ type: 'final_answer', content: msg, timestamp: now() });
+            await tryFallbacks(msg);
+            if (outcome === 'fail') steps.push({ type: 'final_answer', content: msg, timestamp: now() });
         }
     } catch (err: any) {
         error = err?.message || String(err);
-        steps.push({ type: 'final_answer', content: `Error: ${error}`, timestamp: now() });
+        await tryFallbacks(error ?? 'network error');
+        if (outcome === 'fail') steps.push({ type: 'final_answer', content: `Error: ${error}`, timestamp: now() });
     }
 
     let recordId: string | undefined;
@@ -170,5 +212,6 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
         fewShotCount: pastRuns.length,
         recordId,
         error,
+        via,
     };
 }

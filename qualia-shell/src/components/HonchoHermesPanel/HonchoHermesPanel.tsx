@@ -12,6 +12,9 @@ import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
 import { hermesLearningUserIdHolder, rateRun } from './hermesLearningStore';
 import { memoryStore, memoryUserIdHolder, addLocalMemory, deleteLocalMemory } from './honchoMemoryStore';
 import { runHermes } from './hermesRunner';
+import { useIntegrations } from '../../hooks/useIntegrations';
+import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { runSkillForInput, describeSkillsForPrompt, AGENT_SKILLS } from '../../lib/agents/skills';
 import {
     arrangeMarkdownFiles,
     displayName,
@@ -76,6 +79,7 @@ export type TabId = 'memory' | 'dreams' | 'hermes' | 'agents' | 'graph' | 'files
 
 export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTab?: TabId } = {}) {
     const { user, authFetch } = useUser();
+    const { integrations } = useIntegrations();
 
     /* ─── DREAMS TAB STATE (per-user dream/reflection abilities) ─── */
     // Update the dynamic-key holder DURING render before the store read, so the
@@ -116,6 +120,8 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
 
     /* ─── HERMES TAB STATE ─── */
     const [hermesOnline, setHermesOnline] = useState(false);
+    /** How Hermes will run: backend Ollama, the user's own LLM key, or not at all. */
+    const [hermesVia, setHermesVia] = useState<'backend' | 'llm' | 'offline'>('offline');
     const [hermesTools, setHermesTools] = useState<HermesTool[]>([]);
     const [hermesPrompt, setHermesPrompt] = useState('');
     const [hermesSteps, setHermesSteps] = useState<HermesStep[]>([]);
@@ -167,14 +173,23 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
         } catch { /* silent */ }
     }, [authFetch]);
 
+    // F-Hermes-offline fix (2026-06-10): "online" used to mean ONLY "the
+    // backend's Ollama daemon is up" — the user's own API keys were never
+    // consulted, so Hermes showed Offline even with two keys configured.
+    // Now: backend Ollama → 'backend'; else an active per-user LLM key →
+    // 'llm' (runs route browser-side via skills + llmClient); else offline.
     const fetchHermesStatus = useCallback(async () => {
+        let backendUp = false;
         try {
             const res = await authFetch('/api/hermes/status');
-            if (!res.ok) { setHermesOnline(false); return; }
-            const data = await res.json();
-            setHermesOnline(data.data?.ollamaOnline || false);
-        } catch { setHermesOnline(false); }
-    }, [authFetch]);
+            if (res.ok) {
+                const data = await res.json();
+                backendUp = !!data.data?.ollamaOnline;
+            }
+        } catch { /* backend unreachable */ }
+        setHermesVia(backendUp ? 'backend' : hasActiveLlm(integrations.llm) ? 'llm' : 'offline');
+        setHermesOnline(backendUp || hasActiveLlm(integrations.llm));
+    }, [authFetch, integrations.llm]);
 
     const fetchHermesTools = useCallback(async () => {
         try {
@@ -273,6 +288,26 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
         const run = await runHermes(task, {
             authFetch,
             toolNames: hermesTools.map(t => t.name),
+            // LibreChat skills arc: when the backend can't serve the run,
+            // try a browser-side skill, then the user's own LLM key.
+            skillFallbackFn: async (t) => {
+                const hit = await runSkillForInput(t, { llm: integrations.llm });
+                return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
+            },
+            llmFallbackFn: async (t, fewShot) => {
+                if (!hasActiveLlm(integrations.llm)) return null;
+                const res = await callLlm({
+                    systemPrompt:
+                        'You are Hermes, a pragmatic autonomous task agent inside the Dwellium app. ' +
+                        'The Hermes backend is offline, so answer the task directly from reasoning and general knowledge. ' +
+                        'Be concrete and actionable; say plainly when a step would need live tools or property data.\n' +
+                        `Skills available browser-side for follow-ups:\n${describeSkillsForPrompt()}`,
+                    prompt: fewShot ? `${fewShot}\n\nTask: ${t}` : `Task: ${t}`,
+                    maxTokens: 1024,
+                    temperature: 0.4,
+                }, integrations.llm).catch(() => null);
+                return res?.text ?? null;
+            },
         });
 
         setHermesSteps(run.steps);
@@ -362,7 +397,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                         <p className="hhp__subtitle">
                             Memory &amp; Intelligence · {(memoryStats?.totalMemories || 0) + localMemories.length} memories
                             <span className={`hhp__status-dot ${hermesOnline ? 'online' : 'offline'}`} />
-                            {hermesOnline ? 'Hermes Online' : 'Hermes Offline'}
+                            {hermesVia === 'backend' ? 'Hermes Online' : hermesVia === 'llm' ? `Hermes Online (${integrations.llm.active} key)` : 'Hermes Offline'}
                         </p>
                     </div>
                 </div>
@@ -591,16 +626,29 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     <div className={`hhp__hermes-status ${hermesOnline ? 'online' : 'offline'}`}>
                         <span className="hhp__hermes-status-icon">{hermesOnline ? '⚡' : '💤'}</span>
                         <div>
-                            <strong>{hermesOnline ? 'Hermes Online' : 'Hermes Offline'}</strong>
-                            <p>{hermesOnline ? 'ReAct reasoning loop ready. Local LLM connected.' : 'Ollama not available. Start Ollama to enable Hermes.'}</p>
+                            <strong>
+                                {hermesVia === 'backend' ? 'Hermes Online'
+                                    : hermesVia === 'llm' ? `Hermes Online — via your ${integrations.llm.active} key`
+                                    : 'Hermes Offline'}
+                            </strong>
+                            <p>
+                                {hermesVia === 'backend' ? 'ReAct reasoning loop ready. Local LLM connected.'
+                                    : hermesVia === 'llm' ? 'Backend Ollama is down — runs route through your API key + browser-side skills.'
+                                    : 'No backend Ollama and no API key. Add a key in Control Panel → API Keys to bring Hermes up.'}
+                            </p>
                         </div>
                     </div>
 
-                    {/* Tool Registry */}
+                    {/* Tool Registry — backend tools when up, browser-side skills otherwise */}
                     <div className="hhp__tools-section">
-                        <h3 className="hhp__section-title">🔧 Registered Tools ({hermesTools.length})</h3>
+                        <h3 className="hhp__section-title">
+                            🔧 {hermesTools.length > 0 ? `Registered Tools (${hermesTools.length})` : `Browser-side Skills (${AGENT_SKILLS.length})`}
+                        </h3>
                         <div className="hhp__tools-grid">
-                            {hermesTools.map(t => (
+                            {(hermesTools.length > 0
+                                ? hermesTools
+                                : AGENT_SKILLS.map(s => ({ name: `${s.icon} ${s.name}`, description: s.description }))
+                            ).map(t => (
                                 <div key={t.name} className="hhp__tool-card">
                                     <span className="hhp__tool-name">{t.name}</span>
                                     <span className="hhp__tool-desc">{t.description}</span>

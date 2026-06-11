@@ -8,6 +8,7 @@ import { parseCommand, stripPoliteness } from '../../lib/dwelliumCommands';
 import { matchSkill } from '../../lib/agents/skills';
 import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } from '../../lib/agents/spawn';
 import { parseChain, executeChain } from '../../lib/conductorChain';
+import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
@@ -1235,28 +1236,29 @@ export default function ARAConsole() {
         setHermesVotes(prev => ({ ...prev, [runId]: value }));
     }, [user]);
 
-    const sendMessage = useCallback(async () => {
-        const text = input.trim();
-        // Phase-10 A1: spawn imperatives typed into ARA's own composer run the
-        // orchestrator here directly (no event round-trip, no duplicate echo) —
-        // checked BEFORE parseCommand, whose spawn rule otherwise matches too.
-        const spawnReq = text ? parseSpawn(stripPoliteness(text)) : null;
+    // ── Conductor tier dispatch (Phase-10 B2 refactor) ─────────────────────
+    // The four exact-parser tiers (spawn → chain → command → skill), extracted
+    // so they can run twice: once on the raw utterance, and once on the
+    // llmRouter's NORMALIZED form when the raw pass misses ("can you get the
+    // strata thing up" → "open strata"). `parseText` is what the parsers see;
+    // `echoText` is what appears as the user's chat message (always the raw
+    // utterance, so the transcript reflects what was actually said).
+    const dispatchTiers = useCallback(async (parseText: string, echoText: string): Promise<boolean> => {
+        const text = parseText.trim();
+        if (!text) return false;
+        // Tier 1 — spawn (A1): orchestrator run hosted in chat.
+        const spawnReq = parseSpawn(stripPoliteness(text));
         if (spawnReq) {
-            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text })]);
+            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: echoText })]);
             setInput('');
             void runSpawn(spawnReq, false);
-            return;
+            return true;
         }
-        // Phase-10 A3: multi-step command+skill chains ("open notepad and
-        // calculate 15% of 2400") execute sequentially with per-step results
-        // streamed into one progressive message. parseChain only claims the
-        // input when EVERY clause resolves and ≥1 is a skill — command-only
-        // chains keep the parseCommand ack path; any chat-shaped clause sends
-        // the whole input to the LLM untouched.
-        const chain = text ? parseChain(text) : null;
+        // Tier 2 — chain (A3): multi-step command+skill sequences.
+        const chain = parseChain(text);
         if (chain) {
             const progress = createChatMessage({ role: 'assistant', content: `Running ${chain.steps.length} steps…` });
-            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text }), progress]);
+            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: echoText }), progress]);
             setInput('');
             setIsLoading(true);
             try {
@@ -1270,28 +1272,26 @@ export default function ARAConsole() {
             } finally {
                 setIsLoading(false);
             }
-            return;
+            return true;
         }
-        // One Conductor: a direct command ("switch to research", "make accent teal",
-        // "open strata", "save space Morning") runs immediately and skips the LLM.
-        const cmd = text ? parseCommand(text) : null;
+        // Tier 3 — One Conductor direct command.
+        const cmd = parseCommand(text);
         if (cmd) {
             cmd.run();
             const ack = humanizeCommandAck(cmd.label);
             setMessages(prev => [
                 ...prev,
-                createChatMessage({ role: 'user', content: text }),
+                createChatMessage({ role: 'user', content: echoText }),
                 createChatMessage({ role: 'assistant', content: ack }),
             ]);
             setInput('');
             if (ttsEnabled) void speakText(ack);
-            return;
+            return true;
         }
-        // LibreChat-derived skills (web search / calculator / image gen /
-        // weather / code / memory) run browser-side before any LLM round-trip.
-        const skillHit = text ? matchSkill(text) : null;
+        // Tier 4 — browser-side skills.
+        const skillHit = matchSkill(text);
         if (skillHit) {
-            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text })]);
+            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: echoText })]);
             setInput('');
             setIsLoading(true);
             try {
@@ -1310,10 +1310,51 @@ export default function ARAConsole() {
             } finally {
                 setIsLoading(false);
             }
-            return;
+            return true;
+        }
+        return false;
+    }, [runSpawn, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
+
+    const sendMessage = useCallback(async () => {
+        const text = input.trim();
+        if (!text || isLoading) return;
+        // Pass 1 — exact parsers on the raw utterance (zero latency).
+        if (await dispatchTiers(text, text)) return;
+        // Pass 2 — Phase-10 B2 (heuristic-first, LLM-on-miss per Ilya's 10.6
+        // call): classify fuzzy-but-actionable inputs with llmRouter and
+        // re-dispatch the normalized form through the same tiers. Questions /
+        // long texts skip this (looksActionable) so chat latency is unchanged.
+        if (hasActiveLlm(integrations.llm) && looksActionable(text)) {
+            try {
+                hermesLearningUserIdHolder.current = user?.id ?? null;
+                const decision = await classifyIntent(text, { llm: integrations.llm });
+                recordRoutingDecision(text, decision);
+                if (decision.via === 'llm' && decision.intent !== 'chat' && decision.normalized
+                    && decision.normalized.trim().toLowerCase() !== text.toLowerCase()) {
+                    if (await dispatchTiers(decision.normalized, text)) return;
+                }
+            } catch { /* classification is best-effort — fall through to chat */ }
         }
         await sendPrompt(input);
-    }, [input, sendPrompt, runSpawn, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
+    }, [input, isLoading, dispatchTiers, sendPrompt, integrations.llm, user]);
+
+    // ⌘K hand-off: the palette routes unparseable queries here ("Ask ARA").
+    // Pending-slot covers the palette→ARA-mount race (lazy chunk loading).
+    useEffect(() => {
+        const route = (text: string) => void (async () => {
+            if (await dispatchTiers(text, text)) return;
+            await sendPrompt(text);
+        })();
+        const handler = (ev: Event) => {
+            consumePendingAraPrompt(); // live event supersedes the slot
+            const text = String((ev as CustomEvent).detail?.text ?? '').trim();
+            if (text) route(text);
+        };
+        window.addEventListener(ARA_PROMPT_EVENT, handler);
+        const pending = consumePendingAraPrompt(); // fired before ARA mounted
+        if (pending) route(pending);
+        return () => window.removeEventListener(ARA_PROMPT_EVENT, handler);
+    }, [dispatchTiers, sendPrompt]);
 
     const retryLastRequest = useCallback(async () => {
         if (!lastRequest || isLoading) return;

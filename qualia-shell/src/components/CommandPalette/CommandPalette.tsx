@@ -5,6 +5,7 @@ import { rankWidgetSearchResults } from '../Sidebar/widgetSearch';
 import { API_BASE } from '../../config';
 import { getIcon } from '../Sidebar/iconMap';
 import { parseCommand, recallMemory, type ParsedCommand } from '../../lib/dwelliumCommands';
+import { requestAraPrompt } from '../../lib/llmRouter';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -784,12 +785,19 @@ export default function CommandPalette() {
         const commandResults: CommandResult[] = parsedCmd
             ? [{ id: `command:${parsedCmd.label}`, kind: 'command', score: 1000, icon: 'wand-2', title: parsedCmd.label, subtitle: 'Run this command', meta: 'talk-to-customize', reason: 'matched intent', actionLabel: 'Run', payload: parsedCmd }]
             : [];
+        // Phase-10 B2: multi-word queries no exact parser claims get an
+        // "Ask ARA" row — ARA re-runs the tiers + llmRouter normalization
+        // ("can you get the strata thing up" → "open strata"). Low score so
+        // real matches always rank above it.
+        const askAraResults: CommandResult[] = (!parsedCmd && queryValue.trim().split(/\s+/).length >= 2)
+            ? [{ id: 'command:ask-ara', kind: 'command', score: 24, icon: 'sparkles', title: `Ask ARA: "${queryValue.trim().slice(0, 60)}"`, subtitle: 'Route with AI', meta: 'ara-route', reason: 'no exact command match', actionLabel: 'Send', payload: { araRoute: true as const, text: queryValue.trim() } }]
+            : [];
         // One Memory: recall across honcho + copaw + thought-weaver.
         const memoryResults: CommandResult[] = (queryValue.length >= 3 ? recallMemory(queryValue) : [])
             .slice(0, 6)
             .map(h => ({ id: `memory:${h.id}`, kind: 'memory', score: 28 + h.score, icon: 'brain', title: h.text.slice(0, 90), subtitle: `Memory · ${h.source}`, meta: h.source, reason: 'recall', actionLabel: 'Open Honcho', payload: h }));
 
-        const merged = [...commandResults, ...windowResults, ...widgetResults, ...memoryResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
+        const merged = [...commandResults, ...askAraResults, ...windowResults, ...widgetResults, ...memoryResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
             .sort((a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
@@ -843,7 +851,16 @@ export default function CommandPalette() {
 
     const handleRun = useCallback((result: CommandResult) => {
         if (result.kind === 'command') {
-            (result.payload as ParsedCommand).run();
+            const payload = result.payload as ParsedCommand | { araRoute: true; text: string };
+            if ('araRoute' in payload) {
+                // Phase-10 B2: hand the query to ARA (pending-slot bus covers
+                // the lazy-chunk mount race) and bring ARA forward.
+                window.dispatchEvent(new CustomEvent('dwellium:open-widget', { detail: { widgetId: 'ara-console' } }));
+                requestAraPrompt(payload.text);
+                closePalette();
+                return;
+            }
+            payload.run();
             closePalette();
             return;
         }

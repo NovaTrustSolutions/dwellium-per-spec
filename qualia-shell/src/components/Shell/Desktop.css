@@ -1,7 +1,15 @@
 .desktop {
     flex: 1;
     position: relative;
+    /* `clip` (not `hidden`): an overflow-hidden box can still be SCROLLED
+       programmatically (autofocus/scrollIntoView from a widget below the
+       fold), and with no scrollbar there's no way back — the whole canvas
+       sticks shifted up (top cut off + dead gap at the bottom; 2026-06-11
+       boundary regression: .desktop scrollTop was 179.5px). `clip` clips
+       without creating a scroll container, so the canvas can never shift.
+       `hidden` kept first as the old-browser fallback. */
     overflow: hidden;
+    overflow: clip;
 }
 
 /* --- Region Overlays --- */

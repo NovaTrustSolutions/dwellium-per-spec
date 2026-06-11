@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parseCommand, resolveWidget, findSpace } from '../lib/dwelliumCommands';
+import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
 import { spacesStore } from '../lib/spacesStore';
 
 beforeEach(() => {
@@ -126,6 +127,39 @@ describe('resolveWidget', () => {
         expect(resolveWidget('the scribe')).toBe('scribe');
         expect(resolveWidget('inbox zero')).toBe('inbox');
         expect(resolveWidget('gibberish')).toBeNull();
+    });
+    it('reaches EVERY registry widget by id and by label — no exceptions', () => {
+        for (const [id, reg] of Object.entries(WIDGET_REGISTRY)) {
+            // Some short ids are curated to a preferred sibling ("tasks" →
+            // task-board); the requirement is reachability, not identity.
+            expect(resolveWidget(id), `id "${id}" unresolvable`).toBeTruthy();
+            expect(resolveWidget(reg.label), `label "${reg.label}" unresolvable`).toBeTruthy();
+        }
+    });
+    it('tolerates filler words ("the notepad app please")', () => {
+        expect(resolveWidget('the notepad app please')).toBe('notepad');
+        expect(resolveWidget('my strata dashboard view')).toBe('strata-dashboard');
+    });
+});
+
+describe('ARA natural phrasing (humanized command access)', () => {
+    it('parses "Open up Notepad"', () => {
+        expect(parseCommand('Open up Notepad')?.label).toMatch(/open notepad/i);
+    });
+    it('strips politeness: "Hey ARA, could you open up notepad for me please?"', () => {
+        expect(parseCommand('Hey ARA, could you open up notepad for me please?')?.label).toMatch(/open notepad/i);
+        expect(parseCommand('please show me the terminal')?.label).toMatch(/open terminal/i);
+    });
+    it('opens on a bare widget name but not on questions', () => {
+        expect(parseCommand('notepad')?.label).toMatch(/open notepad/i);
+        expect(parseCommand('What should I do next?')).toBeNull();
+        expect(parseCommand('what is in my inbox today and why is it so full')).toBeNull();
+    });
+    it('reaches newly-derived registry widgets that had no curated alias', () => {
+        expect(parseCommand('open knowledge graph')?.label).toMatch(/Open/);
+        expect(parseCommand('open thought weaver')?.label).toMatch(/Open/);
+        expect(parseCommand('open system health')?.label).toMatch(/Open/);
+        expect(parseCommand('open georgia code')?.label).toMatch(/Open/);
     });
 });
 

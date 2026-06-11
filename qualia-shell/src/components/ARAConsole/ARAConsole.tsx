@@ -197,6 +197,32 @@ const EXECUTIVE_ASSISTANT_MODE: ARAMode = {
     entityGuardianRequired: false,
 };
 
+/**
+ * Humanized acknowledgment for a just-run Conductor command. Varies phrasing
+ * (no two in a row feel canned) and always ends by asking what's next — ARA
+ * is a colleague, not a status line.
+ */
+function humanizeCommandAck(label: string): string {
+    const openMatch = label.match(/^Open\s+(.+)$/i);
+    if (openMatch) {
+        const thing = openMatch[1];
+        const variants = [
+            `On it — ${thing} is open. What would you like me to do next?`,
+            `Done! ${thing}'s up. What would you like me to do next?`,
+            `There you go, ${thing} is open. What's next?`,
+            `Got it — ${thing}'s ready for you. What would you like me to do next?`,
+            `${thing} is up. Anything else I can grab for you?`,
+        ];
+        return variants[Math.floor(Math.random() * variants.length)];
+    }
+    const generic = [
+        `Done — ${label.toLowerCase()}. What would you like me to do next?`,
+        `All set: ${label.toLowerCase()}. What's next?`,
+        `That's done. What would you like me to do next?`,
+    ];
+    return generic[Math.floor(Math.random() * generic.length)];
+}
+
 function createChatMessage(
     partial: Omit<ChatMessage, 'id' | 'timestamp'> & Partial<Pick<ChatMessage, 'timestamp'>>
 ): ChatMessage {
@@ -969,10 +995,12 @@ export default function ARAConsole() {
         // toggle is on. Frontend-only — no backend change needed. The LLM
         // honors this style guidance for its reply.
         const HUMANIZE_PREFIX =
-            "[Reply style: warm and conversational. Use contractions (don't, you're, we'll). " +
-            "Short sentences. Plain language — no corporate jargon, no hedging, no excessive bullet lists. " +
-            "Sound like a thoughtful friend talking, not a chatbot. " +
-            "If you must list things, lead with a single sentence first, then the list.]\n\n";
+            "[Reply style: you're a sharp, warm human assistant mid-conversation — never a chatbot. " +
+            "Use contractions (don't, you're, we'll). Short sentences. Plain language — no corporate jargon, " +
+            "no hedging, no 'As an AI', no robotic acknowledgments like 'Acknowledged' or 'Processing'. " +
+            "React naturally ('Nice.', 'Got it.', 'Oof, okay —'). Vary how you start replies. " +
+            "If you must list things, lead with a single sentence first, then the list. " +
+            "When you finish a task, ask a natural follow-up like 'What would you like me to do next?']\n\n";
         const outgoingMessage = humanizeEnabled ? HUMANIZE_PREFIX + text : text;
 
         try {
@@ -1035,8 +1063,10 @@ export default function ARAConsole() {
                 try {
                     const llmRes = await callLlm({
                         systemPrompt:
-                            `You are ARA, an AI chief-of-staff inside the Dwellium property-management app, ` +
+                            `You are ARA, the human-feeling chief-of-staff inside the Dwellium property-management app, ` +
                             `currently operating in "${modeToUse}" mode${jurisdictionToUse ? ` (jurisdiction: ${jurisdictionToUse})` : ''}. ` +
+                            `Speak like a warm, sharp colleague: contractions, short sentences, no corporate jargon, ` +
+                            `no robotic phrasing — never say "As an AI" or "Acknowledged". ` +
                             `The ARA backend is offline, so deep context retrieval is unavailable — answer from general knowledge, ` +
                             `be concise and direct, and note when a question would need live property data. Use Markdown when helpful.`,
                         prompt: outgoingMessage,
@@ -1064,7 +1094,7 @@ export default function ARAConsole() {
             setRequestError(message);
             setMessages(prev => [...prev, createChatMessage({
                 role: 'assistant',
-                content: `[Error] ${message}`,
+                content: `Hmm, I hit a snag — ${message} Want me to try that again in a moment?`,
                 mode: modeToUse,
             })]);
         } finally {
@@ -1093,16 +1123,18 @@ export default function ARAConsole() {
         const cmd = text ? parseCommand(text) : null;
         if (cmd) {
             cmd.run();
+            const ack = humanizeCommandAck(cmd.label);
             setMessages(prev => [
                 ...prev,
                 createChatMessage({ role: 'user', content: text }),
-                createChatMessage({ role: 'assistant', content: `✓ ${cmd.label}` }),
+                createChatMessage({ role: 'assistant', content: ack }),
             ]);
             setInput('');
+            if (ttsEnabled) void speakText(ack);
             return;
         }
         await sendPrompt(input);
-    }, [input, sendPrompt]);
+    }, [input, sendPrompt, ttsEnabled, speakText]);
 
     const retryLastRequest = useCallback(async () => {
         if (!lastRequest || isLoading) return;

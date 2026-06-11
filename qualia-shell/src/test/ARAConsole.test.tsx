@@ -269,9 +269,9 @@ describe('ARAConsole', () => {
         await user.type(textbox, 'What should I do next?');
         await user.click(screen.getByRole('button', { name: 'Send message' }));
 
-        // Error banner + inline [Error] assistant message; no LLM fallback attempted.
+        // Error banner + humanized inline assistant message; no LLM fallback attempted.
         expect(await screen.findByText(/Last request failed:/)).toBeInTheDocument();
-        expect(await screen.findByText(/\[Error\] Backend unreachable/)).toBeInTheDocument();
+        expect(await screen.findByText(/I hit a snag — Backend unreachable/)).toBeInTheDocument();
         expect(callLlmMock).not.toHaveBeenCalled();
     });
 

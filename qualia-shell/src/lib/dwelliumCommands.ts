@@ -12,6 +12,7 @@ import type { Theme } from '../data/types';
 import { applyThemeValue, applyAccentValue, applyAnimationsValue } from '../context/ThemeContext';
 import { spacesStore, saveCurrentAsSpace, type DwelliumSpace } from './spacesStore';
 import { recall, remember, type MemoryHit } from './unifiedMemory';
+import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
 
 const VALID_THEMES: Theme[] = ['dark', 'light', 'trust', 'vibrant', 'luxury', 'healthcare', 'creative', 'dark-excellence', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
 
@@ -22,8 +23,8 @@ const COLOR_NAMES: Record<string, string> = {
     gray: '#808080', grey: '#808080', black: '#0c0c0c',
 };
 
-/** Common spoken names → registry component ids. */
-const WIDGET_ALIASES: Record<string, string> = {
+/** Curated spoken names → registry component ids (win over derived aliases). */
+const CURATED_ALIASES: Record<string, string> = {
     scribe: 'scribe', editor: 'scribe', docs: 'doc-viewer', 'doc viewer': 'doc-viewer', notepad: 'notepad', notes: 'notepad',
     strata: 'strata-dashboard', 'strata dashboard': 'strata-dashboard', astra: 'astra-dashboard', 'astra dashboard': 'astra-dashboard',
     'tenant portal': 'tenant-portal-mgmt', tenant: 'tenant-portal-mgmt', tasks: 'task-board', 'task board': 'task-board', 'task menu': 'tasks', trello: 'trello-board',
@@ -36,21 +37,94 @@ const WIDGET_ALIASES: Record<string, string> = {
     workspace: 'workspace', 'control panel': 'control-panel', settings: 'control-panel',
 };
 
+/**
+ * Full-registry alias map — EVERY widget in WIDGET_REGISTRY is reachable, no
+ * exceptions: by id ("memory-graph-rag"), id-with-spaces ("memory graph rag"),
+ * label ("Memory Graph"), and — when unambiguous — the label's first word.
+ * Curated aliases above override derived ones on conflict.
+ */
+function buildWidgetAliases(): Record<string, string> {
+    const out: Record<string, string> = {};
+    const entries = Object.entries(WIDGET_REGISTRY);
+    for (const [id, reg] of entries) {
+        out[id] = id;
+        out[id.replace(/-/g, ' ')] = id;
+        const label = reg.label.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        if (label) out[label] = id;
+    }
+    // First-word shortcuts ("synthesis", "foundry", "georgia") — only when the
+    // word isn't already claimed, so "task"/"file" stay unambiguous.
+    for (const [id, reg] of entries) {
+        const first = reg.label.toLowerCase().split(/[^a-z0-9]+/)[0];
+        if (first && first.length >= 4 && !out[first]) out[first] = id;
+    }
+    return { ...out, ...CURATED_ALIASES };
+}
+const WIDGET_ALIASES: Record<string, string> = buildWidgetAliases();
+
 function dispatch(name: string, detail?: unknown): void {
     try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch { /* SSR / sandbox */ }
 }
 function toast(msg: string): void { dispatch('qualia-toast', msg); }
 
-/** Resolve a spoken widget name to a registry component id, or null. */
-export function resolveWidget(name: string): string | null {
-    const n = name.trim().toLowerCase()
-        .replace(/^(?:the|my|up|a)\s+/, '')                       // "the inbox", "up transcription"
-        .replace(/\s+(?:widget|tab|panel|window|app|view|screen|page)$/, '') // "transcription tab"
+/**
+ * Resolve a spoken widget name to a registry component id, or null.
+ * `fuzzy` (default true) allows whole-word substring matches ("that notepad
+ * thing"); pass false for strict alias-only resolution (bare-input path).
+ */
+export function resolveWidget(name: string, fuzzy: boolean = true): string | null {
+    let n = name.trim().toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, ' ')   // "(RAG)" → " rag ", "ARA's" → "ara s"
+        .replace(/\s+/g, ' ')
         .trim();
+    // Strip filler repeatedly so "the notepad app please" → "notepad".
+    for (let i = 0; i < 4; i++) {
+        const before = n;
+        n = n
+            .replace(/^(?:the|my|up|a|an)\s+/, '')                    // "the inbox", "up transcription"
+            .replace(/\s+(?:widget|tab|panel|window|app|application|view|screen|page)$/, '') // "transcription tab"
+            .replace(/\s+(?:please|now|for\s+me|real\s+quick|right\s+now|thanks?)$/, '')
+            .trim();
+        if (n === before) break;
+    }
     if (WIDGET_ALIASES[n]) return WIDGET_ALIASES[n];
     // direct component-id match (e.g. "strata-dashboard")
     if (/^[a-z][a-z0-9-]+$/.test(n) && Object.values(WIDGET_ALIASES).includes(n)) return n;
-    return null;
+    if (!fuzzy) return null;
+    // Fuzzy last resort: longest alias contained in the phrase as whole words
+    // ("that notepad thing", "my main strata dashboard view").
+    let best: { key: string; id: string } | null = null;
+    for (const [key, id] of Object.entries(WIDGET_ALIASES)) {
+        if (key.length < 3) continue;
+        const re = new RegExp(`(?:^|\\s)${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
+        if (re.test(n) && (!best || key.length > best.key.length)) best = { key, id };
+    }
+    return best ? best.id : null;
+}
+
+/** Human-readable widget label for a component id ("notepad" → "Notepad"). */
+export function widgetLabel(componentId: string): string {
+    return WIDGET_REGISTRY[componentId]?.label ?? componentId;
+}
+
+/**
+ * Strip conversational padding so polite, natural requests parse as commands:
+ * "Hey ARA, could you open up Notepad for me please?" → "open up notepad".
+ */
+export function stripPoliteness(input: string): string {
+    let l = input.trim().toLowerCase().replace(/[?!.]+$/, '').trim();
+    for (let i = 0; i < 4; i++) {
+        const before = l;
+        l = l
+            .replace(/^(?:hey|hi|hello|ok|okay|yo|um|uh|so)[,!]?\s+/, '')
+            .replace(/^ara[,!:]?\s+/, '')
+            .replace(/^(?:can|could|would|will)\s+you\s+(?:please\s+)?/, '')
+            .replace(/^(?:please|just|go\s+ahead\s+and|i\s+(?:need|want)\s+you\s+to|i'?d\s+like\s+you\s+to)\s+/, '')
+            .replace(/\s+(?:please|for\s+me|thanks?|thank\s+you|real\s+quick)$/, '')
+            .trim();
+        if (l === before) break;
+    }
+    return l;
 }
 
 // ── tool primitives ──
@@ -158,7 +232,8 @@ const REGION_WORDS = 'top left|top right|bottom left|bottom right|top-left|top-r
 function parseSingle(input: string): ParsedCommand | null {
     const s = input.trim();
     if (!s) return null;
-    const l = s.toLowerCase();
+    const l = stripPoliteness(s);
+    if (!l) return null;
     let m: RegExpMatchArray | null;
 
     // theme
@@ -229,9 +304,21 @@ function parseSingle(input: string): ParsedCommand | null {
         || (m = l.match(/^(?:go|jump|navigate|switch|take\s+me|head)\s+(?:to\s+)?(?:the\s+|my\s+)?(.+)$/))) {
         const id = resolveWidget(m[1]);
         if (id) {
-            const pretty = m[1].replace(/\s+(?:tab|panel|window|app|view|screen|page)$/, '').trim();
-            return { label: `Open ${pretty}`, run: () => openWidget(id) };
+            const pretty = m[1]
+                .replace(/\s+(?:widget|tab|panel|window|app|application|view|screen|page)$/, '')
+                .replace(/\s+(?:please|now|for\s+me|real\s+quick|thanks?)$/, '')
+                .trim();
+            return { label: `Open ${pretty || widgetLabel(id)}`, run: () => openWidget(id) };
         }
+    }
+    // Bare widget name ("notepad", "strata dashboard") → open it. Last resort
+    // so command verbs above always win; gives ARA no-exceptions access to the
+    // full registry even with one-word requests. Guarded to short, non-question
+    // inputs so real questions ("what's in my inbox?") still reach the chat.
+    const isQuestion = /^(?:what|who|why|how|when|where|which|is|are|am|do|does|did|should|tell|explain|summarize|write|draft|help|create|make|add|build|generate|find|send|reply|schedule)\b/.test(l);
+    if (!isQuestion && l.split(/\s+/).length <= 4) {
+        const bare = resolveWidget(l, false); // strict: whole input must BE a widget name
+        if (bare) return { label: `Open ${widgetLabel(bare)}`, run: () => openWidget(bare) };
     }
     return null;
 }

@@ -91,7 +91,7 @@ export function PriorityBadge() {
                             >
                                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: m.color, flexShrink: 0 }} />
                                 {m.label}
-                                {active && <span style={{ marginLeft: 'auto', color: '#D6FE51' }}>✓</span>}
+                                {active && <span style={{ marginLeft: 'auto', color: 'var(--accent)' }}>✓</span>}
                             </button>
                         );
                     })}

@@ -175,8 +175,8 @@ export function CommentEditor({ getView }: Props) {
             ref={wrapperRef}
             style={{
                 position: 'fixed', top, left, zIndex: 45, width: 340,
-                background: '#111', border: '1px solid rgba(214,254,81,0.3)',
-                borderLeft: '3px solid #D6FE51', borderRadius: 8,
+                background: '#111', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                borderLeft: '3px solid var(--accent)', borderRadius: 8,
                 boxShadow: '0 8px 24px rgba(0,0,0,0.6)', padding: 12,
                 fontSize: 12, fontFamily: 'inherit',
             }}
@@ -190,7 +190,7 @@ export function CommentEditor({ getView }: Props) {
                 <span style={{ flex: 1 }} />
                 <button
                     onClick={() => { discardIfEmpty(); useScribeStore.getState().setEditingCommentId(null); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', fontSize: 14 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14 }}
                 >&times;</button>
             </div>
 
@@ -207,15 +207,15 @@ export function CommentEditor({ getView }: Props) {
                     placeholder="Add a comment..."
                     style={{
                         width: '100%', boxSizing: 'border-box',
-                        background: '#0a0a0a', border: '1px solid #333',
+                        background: 'var(--bg-desktop)', border: '1px solid #333',
                         borderRadius: 4, padding: '6px 8px',
-                        color: '#fff', fontSize: 12, fontFamily: 'inherit',
+                        color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit',
                         outline: 'none', resize: 'vertical',
                     }}
                 />
             ) : (
-                <div style={{ color: '#ccc', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginBottom: 8 }}>
-                    {comment.body || <span style={{ color: '#555', fontStyle: 'italic' }}>(empty)</span>}
+                <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.5, marginBottom: 8 }}>
+                    {comment.body || <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>(empty)</span>}
                 </div>
             )}
 

@@ -5,13 +5,9 @@ import { Page, expect } from '@playwright/test';
  *
  * Replicates the Dwellium login flow:
  *  1. Click the splash overlay ("Click to Access Terminal")
- *  2. Click the avatar for the given user
- *  3. Enter the passphrase in the gate modal
- *  4. Wait for the Shell to load (Sidebar with "DWELLIUM" visible)
+ *  2. Click the avatar for the given user (passwordless quick-select)
+ *  3. Wait for the Shell to load (Sidebar with "DWELLIUM" visible)
  */
-
-/** Default gate passphrase (matches LoginScreen.tsx) */
-const GATE_PASSPHRASE = 'Comet2878!';
 
 interface QuickUser {
   name: string;
@@ -40,14 +36,19 @@ export async function loginAs(
   page: Page,
   user: QuickUser = USERS.andy,
 ): Promise<void> {
-  // Seed before goto: cold-start Sidebar useState (Sidebar.tsx:226-232) reads this Set
-  // synchronously; without seeding, all widget groups default to collapsed.
+  // Seed before goto: cold-start Sidebar useSyncExternalStore reads these
+  // synchronously during render.
+  //  - qualia_sidebar_groups: expand the groups the nav specs traverse.
+  //  - qualia_sidebar_icon_only=false: render the EXPANDED sidebar. Real users
+  //    now default to the icon-rail, but the nav specs + screenshot baselines
+  //    expect the expanded sidebar (and .sidebar__logo-text only renders then).
   await page.addInitScript(() => {
     try {
       localStorage.setItem(
         'qualia_sidebar_groups',
         '["Property Management","AI Tools","Filing Cabinet"]',
       );
+      localStorage.setItem('qualia_sidebar_icon_only', 'false');
     } catch { /* private-mode storage denial */ }
   });
 
@@ -59,21 +60,12 @@ export async function loginAs(
   await expect(overlay).toBeVisible({ timeout: 10_000 });
   await overlay.click();
 
-  // 2. Wait for login card to appear, then click the user's avatar
+  // 2. Click the user's avatar — quick-select logs straight in (passwordless).
   const avatarButton = page.locator('.login-avatar', {
     has: page.locator('.login-avatar__name', { hasText: user.name }),
   });
   await expect(avatarButton).toBeVisible({ timeout: 5_000 });
   await avatarButton.click();
-
-  // 3. Enter the gate passphrase
-  const passphraseInput = page.locator('input[placeholder="Passphrase..."]');
-  await expect(passphraseInput).toBeVisible({ timeout: 5_000 });
-  await passphraseInput.fill(GATE_PASSPHRASE);
-
-  // 4. Click "Unlock"
-  const unlockBtn = page.locator('button[type="submit"]', { hasText: 'Unlock' });
-  await unlockBtn.click();
 
   // 5. Wait for the shell to load — sidebar logo text is the indicator
   const sidebarLogo = page.locator('.sidebar__logo-text', { hasText: 'DWELLIUM' });

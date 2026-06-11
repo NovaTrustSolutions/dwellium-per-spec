@@ -42,9 +42,9 @@ const CATEGORIES = [
     { id: 'other', label: 'Other', icon: <AlertTriangle size={12} /> },
 ];
 
-const SEVERITY_COLORS: Record<string, string> = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' };
+const SEVERITY_COLORS: Record<string, string> = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' };
 const STATUS_COLORS: Record<string, string> = {
-    open: '#3b82f6', investigating: '#f59e0b', resolved: '#10b981', closed: '#64748b',
+    open: '#3b82f6', investigating: '#f59e0b', resolved: '#22c55e', closed: '#64748b',
 };
 
 export default function IncidentModule() {
@@ -201,7 +201,7 @@ Generated: ${new Date().toLocaleString()}
                 {[
                     { label: 'Open', count: stats.open, color: '#3b82f6' },
                     { label: 'Investigating', count: stats.investigating, color: '#f59e0b' },
-                    { label: 'Resolved', count: stats.resolved, color: '#10b981' },
+                    { label: 'Resolved', count: stats.resolved, color: '#22c55e' },
                     { label: 'High Severity', count: stats.highSeverity, color: '#ef4444' },
                 ].map(s => (
                     <div key={s.label} style={{
@@ -210,7 +210,7 @@ Generated: ${new Date().toLocaleString()}
                         textAlign: 'center', minWidth: 90,
                     }}>
                         <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.count}</div>
-                        <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>{s.label}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600 }}>{s.label}</div>
                     </div>
                 ))}
             </div>
@@ -222,18 +222,18 @@ Generated: ${new Date().toLocaleString()}
                     background: 'rgba(255,255,255,0.04)', borderRadius: 8,
                     border: '1px solid rgba(255,255,255,0.08)', flex: 1, maxWidth: 280,
                 }}>
-                    <Search size={13} style={{ color: '#64748b' }} />
+                    <Search size={13} style={{ color: 'var(--text-tertiary)' }} />
                     <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search incidents…"
-                        style={{ flex: 1, background: 'none', border: 'none', color: '#e2e8f0', fontSize: 11, outline: 'none' }} />
+                        style={{ flex: 1, background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 11, outline: 'none' }} />
                 </div>
                 <select value={filterProperty} onChange={e => setFilterProperty(e.target.value)}
-                    style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', outline: 'none' }}>
+                    style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', outline: 'none' }}>
                     <option value="all">All Properties</option>
                     {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', outline: 'none' }}>
+                    style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', outline: 'none' }}>
                     <option value="all">All Status</option>
                     <option value="open">Open</option>
                     <option value="investigating">Investigating</option>
@@ -248,7 +248,7 @@ Generated: ${new Date().toLocaleString()}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {loading ? <div className="s-loading">Loading incidents…</div> :
                         filtered.length === 0 ? (
-                            <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
+                            <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                                 <AlertTriangle size={40} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 12 }} />
                                 <p style={{ margin: 0, fontSize: 14 }}>No incidents recorded</p>
                             </div>
@@ -259,8 +259,8 @@ Generated: ${new Date().toLocaleString()}
                                     onClick={() => setSelected(inc)}
                                     style={{
                                         padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                                        background: selected?.id === inc.id ? 'rgba(214,254,81,0.08)' : 'rgba(255,255,255,0.02)',
-                                        border: `1px solid ${selected?.id === inc.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)'}`,
+                                        background: selected?.id === inc.id ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'rgba(255,255,255,0.02)',
+                                        border: `1px solid ${selected?.id === inc.id ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(255,255,255,0.04)'}`,
                                         borderLeft: `3px solid ${SEVERITY_COLORS[inc.severity] || '#64748b'}`,
                                         transition: 'all 0.15s',
                                     }}
@@ -269,7 +269,7 @@ Generated: ${new Date().toLocaleString()}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                         <span style={{ color: SEVERITY_COLORS[inc.severity] }}>{getCategoryIcon(inc.category)}</span>
-                                        <span style={{ fontWeight: 600, fontSize: 13, color: '#e2e8f0', flex: 1 }}>{inc.title}</span>
+                                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{inc.title}</span>
                                         <span style={{
                                             fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                                             background: `${STATUS_COLORS[inc.status]}15`,
@@ -281,7 +281,7 @@ Generated: ${new Date().toLocaleString()}
                                             color: SEVERITY_COLORS[inc.severity], textTransform: 'uppercase',
                                         }}>{inc.severity}</span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 8, fontSize: 10, color: '#475569' }}>
+                                    <div style={{ display: 'flex', gap: 8, fontSize: 10, color: 'var(--text-tertiary)' }}>
                                         {prop && <span><Building2 size={9} style={{ verticalAlign: -1 }} /> <button className="s-property-link" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(inc.propertyId); }}>{prop.name}</button></span>}
                                         <span><Clock size={9} style={{ verticalAlign: -1 }} /> {new Date(inc.createdAt).toLocaleDateString()}</span>
                                         {inc.reportedBy && <span><User size={9} style={{ verticalAlign: -1 }} /> {inc.reportedBy}</span>}
@@ -301,13 +301,13 @@ Generated: ${new Date().toLocaleString()}
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ color: SEVERITY_COLORS[selected.severity] }}>{getCategoryIcon(selected.category)}</span>
-                                <h3 style={{ margin: 0, fontSize: 16, color: '#e2e8f0', flex: 1 }}>{selected.title}</h3>
+                                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-primary)', flex: 1 }}>{selected.title}</h3>
                                 <button className="s-btn s-btn-ghost" onClick={() => setSelected(null)}><X size={14} /></button>
                             </div>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: `${STATUS_COLORS[selected.status]}15`, color: STATUS_COLORS[selected.status], fontWeight: 700, textTransform: 'uppercase' }}>{selected.status}</span>
                                 <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: `${SEVERITY_COLORS[selected.severity]}15`, color: SEVERITY_COLORS[selected.severity], fontWeight: 700, textTransform: 'uppercase' }}>{selected.severity} severity</span>
-                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.05)', color: '#94a3b8' }}>{selected.category}</span>
+                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}>{selected.category}</span>
                             </div>
                         </div>
 
@@ -315,15 +315,15 @@ Generated: ${new Date().toLocaleString()}
                         <div style={{ padding: '16px 20px', maxHeight: 500, overflowY: 'auto' }}>
                             {/* Property */}
                             <div style={{ marginBottom: 14 }}>
-                                <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Property</label>
+                                <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Property</label>
                                 <button className="s-property-link" style={{ fontSize: 13 }} onClick={() => navigateToProperty(selected.propertyId)}>{propMap.get(selected.propertyId)?.name || selected.propertyId}</button>
-                                {selected.unitId && <span style={{ marginLeft: 8, fontSize: 11, color: '#64748b' }}>Unit: <button className="s-unit-link" style={{ fontSize: 11 }} onClick={() => navigateToUnit(selected.unitId!, selected.propertyId)}>{selected.unitId}</button></span>}
+                                {selected.unitId && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>Unit: <button className="s-unit-link" style={{ fontSize: 11 }} onClick={() => navigateToUnit(selected.unitId!, selected.propertyId)}>{selected.unitId}</button></span>}
                             </div>
 
                             {/* Description */}
                             <div style={{ marginBottom: 14 }}>
-                                <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Description</label>
-                                <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Description</label>
+                                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                     {selected.description || 'No description provided.'}
                                 </p>
                             </div>
@@ -331,34 +331,34 @@ Generated: ${new Date().toLocaleString()}
                             {/* Details grid */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
                                 <div>
-                                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Reported By</label>
-                                    <span style={{ fontSize: 12, color: '#cbd5e1' }}>{selected.reportedBy || '—'}</span>
+                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Reported By</label>
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.reportedBy || '—'}</span>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Incident Date</label>
-                                    <span style={{ fontSize: 12, color: '#cbd5e1' }}>{selected.reportedAt ? new Date(selected.reportedAt).toLocaleString() : '—'}</span>
+                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Incident Date</label>
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.reportedAt ? new Date(selected.reportedAt).toLocaleString() : '—'}</span>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Police Report #</label>
-                                    <span style={{ fontSize: 12, color: '#cbd5e1' }}>{selected.policeReportNumber || '—'}</span>
+                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Police Report #</label>
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.policeReportNumber || '—'}</span>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Insurance Claim</label>
-                                    <span style={{ fontSize: 12, color: '#cbd5e1' }}>{selected.insuranceClaimId || '—'}</span>
+                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Insurance Claim</label>
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selected.insuranceClaimId || '—'}</span>
                                 </div>
                             </div>
 
                             {/* Witnesses */}
                             {selected.witnesses.length > 0 && (
                                 <div style={{ marginBottom: 14 }}>
-                                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
                                         <Users size={10} style={{ verticalAlign: -1, marginRight: 4 }} /> Witnesses
                                     </label>
                                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                         {selected.witnesses.map((w, i) => (
                                             <span key={i} style={{
                                                 padding: '2px 8px', borderRadius: 4, fontSize: 11,
-                                                background: 'rgba(255,255,255,0.04)', color: '#cbd5e1',
+                                                background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)',
                                                 border: '1px solid rgba(255,255,255,0.06)',
                                             }}>{w}</span>
                                         ))}
@@ -369,15 +369,15 @@ Generated: ${new Date().toLocaleString()}
                             {/* Resolution */}
                             {selected.resolution && (
                                 <div style={{ marginBottom: 14 }}>
-                                    <label style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Resolution</label>
-                                    <p style={{ margin: 0, fontSize: 12, color: '#10b981', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                    <label style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Resolution</label>
+                                    <p style={{ margin: 0, fontSize: 12, color: '#22c55e', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                         {selected.resolution}
                                     </p>
                                 </div>
                             )}
 
                             {/* Timestamps */}
-                            <div style={{ fontSize: 10, color: '#475569', display: 'flex', gap: 12, marginBottom: 16, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 10 }}>
+                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', gap: 12, marginBottom: 16, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 10 }}>
                                 <span>Created: {new Date(selected.createdAt).toLocaleString()}</span>
                                 <span>Updated: {new Date(selected.updatedAt).toLocaleString()}</span>
                             </div>
@@ -394,18 +394,18 @@ Generated: ${new Date().toLocaleString()}
                                     <button className="s-btn s-btn-ghost" onClick={() => {
                                         const res = prompt('Enter resolution notes:');
                                         if (res) updateStatus(selected.id, 'resolved', res);
-                                    }} style={{ borderColor: 'rgba(16,185,129,0.3)', color: '#10b981' }}>
+                                    }} style={{ borderColor: 'rgba(16,185,129,0.3)', color: '#22c55e' }}>
                                         <CheckCircle2 size={11} /> Resolve
                                     </button>
                                 )}
                                 {selected.status === 'resolved' && (
                                     <button className="s-btn s-btn-ghost" onClick={() => updateStatus(selected.id, 'closed')}
-                                        style={{ borderColor: 'rgba(100,116,139,0.3)', color: '#64748b' }}>
+                                        style={{ borderColor: 'rgba(100,116,139,0.3)', color: 'var(--text-tertiary)' }}>
                                         <X size={11} /> Close
                                     </button>
                                 )}
                                 <button className="s-btn s-btn-ghost" onClick={() => generateReport(selected)}
-                                    style={{ borderColor: 'rgba(214,254,81,0.3)', color: '#D6FE51' }}>
+                                    style={{ borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)', color: 'var(--accent)' }}>
                                     <ClipboardCopy size={11} /> Copy Formal Report
                                 </button>
                             </div>
@@ -426,7 +426,7 @@ Generated: ${new Date().toLocaleString()}
                         width: 480, maxHeight: '85vh', overflowY: 'auto',
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                            <h3 style={{ margin: 0, color: '#e2e8f0' }}>
+                            <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>
                                 <AlertOctagon size={18} style={{ verticalAlign: -3, marginRight: 8, color: '#ef4444' }} />
                                 Log Incident
                             </h3>

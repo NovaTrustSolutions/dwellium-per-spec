@@ -61,12 +61,12 @@ export default function BuilderAgents() {
     const setField = (k: string, v: string) => setValues((p) => ({ ...p, [k]: v }));
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#000', color: '#ccc', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
             {/* Header + mode tabs */}
             <div style={{ padding: '10px 16px', borderBottom: '1px solid #222', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <Bot size={15} style={{ color: ACCENT }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888' }}>Builder Agents</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Builder Agents</span>
                     {!llmReady && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#666' }}>add an LLM in Settings to run</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
@@ -82,18 +82,18 @@ export default function BuilderAgents() {
             <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
                 {/* Inputs */}
                 <div style={{ width: '46%', minWidth: 280, flexShrink: 0, borderRight: '1px solid #222', display: 'flex', flexDirection: 'column', padding: 14, gap: 10, overflowY: 'auto' }}>
-                    <div style={{ fontSize: 11, color: '#888' }}>{def.blurb}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{def.blurb}</div>
                     {def.fields.map((f) => (
                         <div key={f.key}>
-                            <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#777', marginBottom: 4 }}>{f.label}</label>
+                            <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 4 }}>{f.label}</label>
                             {f.kind === 'select' ? (
                                 <select value={values[f.key] ?? f.options?.[0] ?? ''} onChange={(e) => setField(f.key, e.target.value)}
-                                    style={{ width: '100%', background: '#0a0a0a', color: '#ddd', border: '1px solid #333', borderRadius: 6, padding: '7px 9px', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}>
+                                    style={{ width: '100%', background: 'var(--bg-desktop)', color: '#ddd', border: '1px solid #333', borderRadius: 6, padding: '7px 9px', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}>
                                     {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                                 </select>
                             ) : (
                                 <textarea value={values[f.key] ?? ''} onChange={(e) => setField(f.key, e.target.value)} placeholder={f.placeholder} rows={f.rows ?? 5}
-                                    style={{ width: '100%', boxSizing: 'border-box', background: '#0a0a0a', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 12, padding: '8px 10px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }} />
+                                    style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-desktop)', border: '1px solid #333', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, padding: '8px 10px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }} />
                             )}
                         </div>
                     ))}
@@ -118,7 +118,7 @@ export default function BuilderAgents() {
                         {output ? (
                             <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#ddd', fontSize: 12, lineHeight: 1.65, fontFamily: "'JetBrains Mono','Fira Code',monospace" }}>{output}</pre>
                         ) : (
-                            <div style={{ color: '#555', fontSize: 13, lineHeight: 1.7 }}>
+                            <div style={{ color: 'var(--text-tertiary)', fontSize: 13, lineHeight: 1.7 }}>
                                 {def.label} output will appear here. Fill the inputs and click <strong style={{ color: ACCENT }}>Run</strong>.
                             </div>
                         )}
@@ -132,6 +132,6 @@ export default function BuilderAgents() {
 
 const iconBtn: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 5,
-    border: '1px solid #333', background: 'transparent', color: '#ccc', fontSize: 11, fontWeight: 600,
+    border: '1px solid #333', background: 'transparent', color: 'var(--text-secondary)', fontSize: 11, fontWeight: 600,
     cursor: 'pointer', fontFamily: 'inherit',
 };

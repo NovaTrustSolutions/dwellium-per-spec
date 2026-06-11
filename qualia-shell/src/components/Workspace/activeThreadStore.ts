@@ -7,6 +7,7 @@
  * Storage key:  dwellium:active-thread:<userId>   (fallback :_anonymous)
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface ActiveThread {
     /** Tree path of the selected node (thread/project/domain/folder). */
@@ -37,11 +38,14 @@ function deserialize(raw: string | null): ActiveThread | null {
     }
 }
 
-export const activeThreadStore = createLocalStorageStore<ActiveThread | null>({
-    key: resolveActiveThreadKey,
-    deserializer: deserialize,
-    defaultValue: null,
-});
+export const activeThreadStore = withSync(
+    createLocalStorageStore<ActiveThread | null>({
+        key: resolveActiveThreadKey,
+        deserializer: deserialize,
+        defaultValue: null,
+    }),
+    { objectType: 'active-thread', holder: activeThreadUserIdHolder, resolveKey: resolveActiveThreadKey },
+);
 
 /** Set (or clear, when null) the active thread for the current user. */
 export function setActiveThread(t: ActiveThread | null): void {

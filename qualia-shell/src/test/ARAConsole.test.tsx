@@ -175,7 +175,7 @@ describe('ARAConsole', () => {
         const user = userEvent.setup();
         render(<ARAConsole />);
 
-        const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
         await user.type(textbox, 'What should I do next?');
         await user.click(screen.getByRole('button', { name: 'Send message' }));
 
@@ -204,7 +204,7 @@ describe('ARAConsole', () => {
         const user = userEvent.setup();
         render(<ARAConsole />);
 
-        const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
         await user.type(textbox, 'Create follow-up tasks');
         await user.click(screen.getByRole('button', { name: 'Send message' }));
         await screen.findByText('I can help with that.');
@@ -243,7 +243,7 @@ describe('ARAConsole', () => {
     });
 
     it('restores the saved conversation for the active mode from local storage', async () => {
-        localStorage.setItem('dwellium-ara-session-chief-of-staff', JSON.stringify({
+        localStorage.setItem('dwellium-ara-session-executive-assistant', JSON.stringify({
             sessionId: 'session-restored',
             lastRequest: null,
             messages: [{
@@ -251,7 +251,7 @@ describe('ARAConsole', () => {
                 role: 'assistant',
                 content: 'Restored conversation reply.',
                 timestamp: Date.now(),
-                mode: 'chief-of-staff',
+                mode: 'executive-assistant',
             }],
         }));
 
@@ -265,13 +265,13 @@ describe('ARAConsole', () => {
         const user = userEvent.setup();
         render(<ARAConsole />);
 
-        const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
         await user.type(textbox, 'What should I do next?');
         await user.click(screen.getByRole('button', { name: 'Send message' }));
 
-        // Error banner + inline [Error] assistant message; no LLM fallback attempted.
+        // Error banner + humanized inline assistant message; no LLM fallback attempted.
         expect(await screen.findByText(/Last request failed:/)).toBeInTheDocument();
-        expect(await screen.findByText(/\[Error\] Backend unreachable/)).toBeInTheDocument();
+        expect(await screen.findByText(/I hit a snag — Backend unreachable/)).toBeInTheDocument();
         expect(callLlmMock).not.toHaveBeenCalled();
     });
 
@@ -282,7 +282,7 @@ describe('ARAConsole', () => {
         const user = userEvent.setup();
         render(<ARAConsole />);
 
-        const textbox = await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
         await user.type(textbox, 'What should I do next?');
         await user.click(screen.getByRole('button', { name: 'Send message' }));
 
@@ -297,7 +297,7 @@ describe('ARAConsole', () => {
         render(<ARAConsole />);
 
         // Wait for the input bar to render (modes resolved).
-        await screen.findByPlaceholderText('Message ARA (Chief of Staff)');
+        await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
 
         // The send button previously had NO accessible name (bare ➤ glyph).
         expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument();

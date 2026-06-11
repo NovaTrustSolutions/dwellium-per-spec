@@ -408,15 +408,16 @@ select:focus-visible,
     overflow: hidden;
 }
 
+/* UIX-20: shimmer carries a faint accent tint — loading feels on-brand */
 .skeleton::after {
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(90deg,
             transparent 0%,
-            rgba(255, 255, 255, 0.04) 40%,
-            rgba(255, 255, 255, 0.08) 50%,
-            rgba(255, 255, 255, 0.04) 60%,
+            rgba(255, 255, 255, 0.04) 38%,
+            color-mix(in srgb, var(--accent) 7%, rgba(255, 255, 255, 0.07)) 50%,
+            rgba(255, 255, 255, 0.04) 62%,
             transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;

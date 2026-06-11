@@ -6,6 +6,7 @@
  * Storage key:  dwellium:copaw-memory:<userId>   (fallback :_anonymous)
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface MemoryFact {
     id: string;
@@ -31,11 +32,14 @@ function deserialize(raw: string | null): MemoryFact[] {
     }
 }
 
-export const copawStore = createLocalStorageStore<MemoryFact[]>({
-    key: resolveCopawKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const copawStore = withSync(
+    createLocalStorageStore<MemoryFact[]>({
+        key: resolveCopawKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'copaw', holder: copawUserIdHolder, resolveKey: resolveCopawKey },
+);
 
 /**
  * Heuristic fact extractor — pure + testable. Pulls declarative, self-contained

@@ -60,6 +60,19 @@
   --transition-base: 200ms ease;
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* --- UIX-1: Motion tokens (fey.com-grade easing) --- */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: 320ms var(--ease-spring);
+
+  /* --- UIX-2: Gradient tokens (theme-accent aware) --- */
+  --gradient-accent: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, var(--brand-orange)) 100%);
+  --gradient-accent-soft: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, transparent) 0%, color-mix(in srgb, var(--accent) 4%, transparent) 100%);
+  --gradient-hero-text: linear-gradient(180deg, #ffffff 0%, #b8bec5 55%, #868F97 100%);
+  --gradient-surface-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 55%);
+  --gradient-edge-line: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 45%, transparent) 50%, transparent);
+  --shadow-glow-accent: 0 0 20px color-mix(in srgb, var(--accent) 18%, transparent);
+
   /* --- Z-Index Scale --- */
   --z-base: 1;
   --z-sidebar: 100;

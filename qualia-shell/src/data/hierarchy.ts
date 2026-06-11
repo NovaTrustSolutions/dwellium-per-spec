@@ -24,6 +24,7 @@ export const defaultDockItems: DockItem[] = [
    // dock-settings removed 2026-05-26 — Settings is now opened from the inline gear button next to the Domains header in Sidebar.tsx. Filter at Sidebar.tsx::permittedItems (component !== 'control-panel') also drops it for existing installs that have it in their saved layout.
    { id: 'dock-tenant-portal', label: 'Tenant Portal', icon: 'home', component: 'tenant-portal-mgmt', pinned: true, group: 'Property Management' },
    // ── AI Tools ──
+   { id: 'dock-agent-lab', label: 'Agent Lab', icon: 'bot', component: 'agent-lab', pinned: true, group: 'AI Tools' },
    { id: 'dock-thought-weaver', label: 'Thought Weaver', icon: 'brain-circuit', component: 'thought-weaver', pinned: true, group: 'AI Tools' },
    { id: 'dock-notebooklm', label: 'NotebookLM', icon: 'book-open', component: 'notebooklm-context', pinned: true, group: 'AI Tools' },
 
@@ -37,6 +38,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-stella', label: 'Stella', icon: 'sparkles', component: 'stella-agent', pinned: true, group: 'AI Tools' },
    { id: 'dock-honcho', label: 'Honcho', icon: 'brain-circuit', component: 'honcho', pinned: true, group: 'AI Tools' },
    { id: 'dock-memory-graph-rag', label: 'Cognitive M Network', icon: 'earth', component: 'memory-graph-rag', pinned: true, group: 'AI Tools' },
+   { id: 'dock-system-health', label: 'System Health', icon: 'layout-grid', component: 'system-health', pinned: true, group: 'AI Tools' },
    // ── Filing Cabinet ──
    { id: 'dock-hierarchy', label: 'Explorer', icon: 'folder-tree', component: 'hierarchy-browser', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-tasks', label: 'Tasks', icon: 'check-square', component: 'tasks', pinned: true, group: 'Filing Cabinet' },

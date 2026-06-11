@@ -27,11 +27,11 @@ const TABS: { id: CommTab; label: string; icon: typeof Mail }[] = [
 const LETTER_TEMPLATES = [
     { id: '3-day-notice', name: '3-Day Notice to Pay or Quit', category: 'Legal', color: '#ef4444' },
     { id: '30-day-notice', name: '30-Day Notice to Vacate', category: 'Legal', color: '#f59e0b' },
-    { id: 'lease-renewal', name: 'Lease Renewal Offer', category: 'Leasing', color: '#D6FE51' },
+    { id: 'lease-renewal', name: 'Lease Renewal Offer', category: 'Leasing', color: 'var(--accent)' },
     { id: 'rent-increase', name: 'Rent Increase Notice', category: 'Leasing', color: '#0ea5e9' },
-    { id: 'welcome', name: 'Welcome Letter', category: 'Onboarding', color: '#10b981' },
-    { id: 'move-out', name: 'Move-Out Instructions', category: 'Move-Out', color: '#D6FE51' },
-    { id: 'maintenance-notice', name: 'Maintenance Entry Notice', category: 'Maintenance', color: '#D6FE51' },
+    { id: 'welcome', name: 'Welcome Letter', category: 'Onboarding', color: '#22c55e' },
+    { id: 'move-out', name: 'Move-Out Instructions', category: 'Move-Out', color: 'var(--accent)' },
+    { id: 'maintenance-notice', name: 'Maintenance Entry Notice', category: 'Maintenance', color: 'var(--accent)' },
     { id: 'late-rent', name: 'Late Rent Reminder', category: 'Collections', color: '#ef4444' },
 ];
 
@@ -47,7 +47,7 @@ const FORM_TEMPLATES = [
 function channelColor(ch: string): string {
     switch (ch) {
         case 'email': return '#D6FE51';
-        case 'sms': return '#10b981';
+        case 'sms': return '#22c55e';
         case 'phone': return '#f59e0b';
         default: return '#94a3b8';
     }
@@ -100,7 +100,7 @@ export default function CommunicationModule() {
     });
 
     return (
-        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Communication module unavailable.</div>}>
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Communication module unavailable.</div>}>
         <div className="s-module" data-testid="communication-module">
             <div className="s-module-header">
                 <div>
@@ -122,7 +122,7 @@ export default function CommunicationModule() {
                             onClick={() => { setTab(t.id); setSelected(null); }}
                             style={{
                                 padding: '6px 12px', border: 'none', borderRadius: 6,
-                                background: tab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                background: tab === t.id ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(255,255,255,0.04)',
                                 color: tab === t.id ? '#D6FE51' : '#94a3b8',
                                 cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
                                 display: 'flex', alignItems: 'center', gap: 4,
@@ -139,7 +139,7 @@ export default function CommunicationModule() {
                 <>
                     {/* Search */}
                     <div style={{ marginBottom: 12, position: 'relative' }}>
-                        <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+                        <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                         <input
                             type="text"
                             placeholder="Search messages…"
@@ -148,7 +148,7 @@ export default function CommunicationModule() {
                             style={{
                                 width: '100%', padding: '8px 12px 8px 32px', borderRadius: 8,
                                 border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
-                                color: '#e2e8f0', fontSize: 13, outline: 'none',
+                                color: 'var(--text-primary)', fontSize: 13, outline: 'none',
                             }}
                         />
                     </div>
@@ -190,7 +190,7 @@ export default function CommunicationModule() {
                                                         {msg.direction === 'inbound' ? msg.fromAddress : msg.toAddress}
                                                     </span>
                                                 </div>
-                                                <span style={{ fontSize: 10, color: '#475569', whiteSpace: 'nowrap' }}>
+                                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                                                     {new Date(msg.createdAt).toLocaleDateString()}
                                                 </span>
                                             </div>
@@ -202,16 +202,16 @@ export default function CommunicationModule() {
                             <div className="s-detail-panel" data-testid="communication-detail">
                                 {selected ? (
                                     <div className="s-glass-card">
-                                        <h3 style={{ margin: '0 0 6px', color: '#e2e8f0', fontSize: 16 }}>{selected.subject || '(No subject)'}</h3>
+                                        <h3 style={{ margin: '0 0 6px', color: 'var(--text-primary)', fontSize: 16 }}>{selected.subject || '(No subject)'}</h3>
                                         <div style={{ display: 'flex', gap: 8, marginBottom: 12, fontSize: 12 }}>
-                                            <span style={{ color: '#64748b' }}>From: <span style={{ color: '#94a3b8' }}>{selected.fromAddress}</span></span>
-                                            <span style={{ color: '#64748b' }}>To: <span style={{ color: '#94a3b8' }}>{selected.toAddress}</span></span>
+                                            <span style={{ color: 'var(--text-tertiary)' }}>From: <span style={{ color: 'var(--text-secondary)' }}>{selected.fromAddress}</span></span>
+                                            <span style={{ color: 'var(--text-tertiary)' }}>To: <span style={{ color: 'var(--text-secondary)' }}>{selected.toAddress}</span></span>
                                         </div>
                                         <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
                                             <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${channelColor(selected.channel)}15`, color: channelColor(selected.channel), fontWeight: 600, textTransform: 'uppercase' }}>{selected.channel}</span>
-                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: '#94a3b8', fontWeight: 500 }}>{selected.direction}</span>
+                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', fontWeight: 500 }}>{selected.direction}</span>
                                         </div>
-                                        <div style={{ padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.06)', color: '#94a3b8', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                        <div style={{ padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                             {selected.body || 'No message body'}
                                         </div>
                                     </div>
@@ -230,7 +230,7 @@ export default function CommunicationModule() {
             {/* Letters Tab */}
             {tab === 'letters' && (
                 <div className="s-glass-card">
-                    <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <h3 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <FileText size={14} /> Letter Templates
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
@@ -247,8 +247,8 @@ export default function CommunicationModule() {
                             >
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: lt.color, flexShrink: 0 }} />
                                 <div>
-                                    <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 13 }}>{lt.name}</div>
-                                    <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>{lt.category}</div>
+                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{lt.name}</div>
+                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>{lt.category}</div>
                                 </div>
                             </button>
                         ))}
@@ -260,12 +260,12 @@ export default function CommunicationModule() {
             {tab === 'forms' && (
                 <div className="s-glass-card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Clipboard size={14} /> Form Templates
                         </h3>
                         <button style={{
-                            padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(214,254,81,0.3)',
-                            background: 'rgba(214,254,81,0.1)', color: '#D6FE51', cursor: 'pointer',
+                            padding: '4px 10px', borderRadius: 6, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                            background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer',
                             fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
                         }}>
                             <Plus size={12} /> New Form
@@ -278,11 +278,11 @@ export default function CommunicationModule() {
                                 background: 'rgba(255,255,255,0.02)', borderRadius: 6,
                                 border: '1px solid rgba(255,255,255,0.04)',
                             }}>
-                                <FileText size={14} style={{ color: '#D6FE51', flexShrink: 0 }} />
+                                <FileText size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 500 }}>{ft.name}</div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{ft.name}</div>
                                 </div>
-                                <span style={{ fontSize: 11, color: '#64748b' }}>{ft.submissions} submissions</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{ft.submissions} submissions</span>
                             </div>
                         ))}
                     </div>

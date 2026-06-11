@@ -82,7 +82,7 @@ export default function ManagerHome() {
     };
     const headerStyle: React.CSSProperties = {
         padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 14, color: '#e2e8f0',
+        display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)',
     };
     const rowStyle: React.CSSProperties = {
         padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
@@ -103,13 +103,13 @@ export default function ManagerHome() {
                             <span style={{
                                 fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600,
                                 background: m.type === 'Move-In' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-                                color: m.type === 'Move-In' ? '#10b981' : '#ef4444',
+                                color: m.type === 'Move-In' ? '#22c55e' : '#ef4444',
                             }}>{m.type}</span>
-                            <span style={{ color: '#e2e8f0' }}>{m.tenant}</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{m.tenant}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 12, color: '#64748b', fontSize: 12 }}>
+                        <div style={{ display: 'flex', gap: 12, color: 'var(--text-tertiary)', fontSize: 12 }}>
                             <span>{m.unit} · {m.property}</span>
-                            <span style={{ color: '#94a3b8' }}>{m.date}</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>{m.date}</span>
                         </div>
                     </div>
                 ))}
@@ -122,12 +122,12 @@ export default function ManagerHome() {
                     <span style={{ marginLeft: 'auto', fontSize: 11, color: '#f59e0b', fontWeight: 700 }}>{workOrders.length}</span>
                 </div>
                 {workOrders.length === 0 ? (
-                    <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>
+                    <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
                         <CheckCircle size={20} style={{ marginBottom: 6 }} /><br />All clear!
                     </div>
                 ) : workOrders.map(wo => (
                     <div key={wo.id} style={rowStyle}>
-                        <span style={{ color: '#e2e8f0' }}>{wo.title}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{wo.title}</span>
                         <span style={{
                             fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600,
                             background: wo.priority === 'critical' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)',
@@ -145,8 +145,8 @@ export default function ManagerHome() {
                 {leases.map((l, i) => (
                     <div key={i} style={rowStyle}>
                         <div>
-                            <div style={{ color: '#e2e8f0' }}>{l.tenant}</div>
-                            <div style={{ color: '#64748b', fontSize: 11 }}>{l.unit} · {l.property}</div>
+                            <div style={{ color: 'var(--text-primary)' }}>{l.tenant}</div>
+                            <div style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{l.unit} · {l.property}</div>
                         </div>
                         <span style={{
                             fontSize: 12, fontWeight: 600,
@@ -163,16 +163,16 @@ export default function ManagerHome() {
             <div style={cardStyle}>
                 <div style={headerStyle}>
                     <ClipboardList size={16} color="#818cf8" /> My Tasks
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#D6FE51', fontWeight: 700 }}>{tasks.length}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{tasks.length}</span>
                 </div>
                 {tasks.length === 0 ? (
-                    <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13 }}>
+                    <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
                         <CheckCircle size={20} style={{ marginBottom: 6 }} /><br />No pending tasks
                     </div>
                 ) : tasks.map(t => (
                     <div key={t.id} style={rowStyle}>
-                        <span style={{ color: '#e2e8f0' }}>{t.title}</span>
-                        <span style={{ fontSize: 11, color: '#64748b' }}>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{t.title}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</span>
                     </div>
                 ))}
             </div>
@@ -185,11 +185,11 @@ export default function ManagerHome() {
                 {apCalendar.map((ap, i) => (
                     <div key={i} style={rowStyle}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ color: '#94a3b8', fontSize: 12, minWidth: 50 }}>{ap.date}</span>
-                            <span style={{ color: '#e2e8f0' }}>{ap.vendor}</span>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: 12, minWidth: 50 }}>{ap.date}</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{ap.vendor}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ color: '#e2e8f0', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{ap.amount}</span>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{ap.amount}</span>
                             <span style={{
                                 fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600,
                                 background: ap.status === 'due' ? 'rgba(239,68,68,0.12)' : ap.status === 'pending' ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)',
@@ -203,24 +203,24 @@ export default function ManagerHome() {
             {/* ── Portfolio Expected Income ── */}
             <div style={cardStyle}>
                 <div style={headerStyle}>
-                    <TrendingUp size={16} color="#10b981" /> Portfolio Yearning
+                    <TrendingUp size={16} color="#22c55e" /> Portfolio Yearning
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                             {['Property', 'Expected', 'Collected', 'Rate'].map(h => (
-                                <th key={h} style={{ padding: '6px 16px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                <th key={h} style={{ padding: '6px 16px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                             ))}
                         </tr>
                     </thead>
                     <tbody>
                         {portfolioIncome.map((p, i) => (
                             <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                <td style={{ padding: '8px 16px', color: '#e2e8f0' }}>{p.property}</td>
-                                <td style={{ padding: '8px 16px', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{p.expected}</td>
-                                <td style={{ padding: '8px 16px', color: '#e2e8f0', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{p.collected}</td>
+                                <td style={{ padding: '8px 16px', color: 'var(--text-primary)' }}>{p.property}</td>
+                                <td style={{ padding: '8px 16px', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{p.expected}</td>
+                                <td style={{ padding: '8px 16px', color: 'var(--text-primary)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{p.collected}</td>
                                 <td style={{ padding: '8px 16px' }}>
-                                    <span style={{ color: parseFloat(p.rate) >= 95 ? '#10b981' : parseFloat(p.rate) >= 90 ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
+                                    <span style={{ color: parseFloat(p.rate) >= 95 ? '#22c55e' : parseFloat(p.rate) >= 90 ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
                                         {p.rate}
                                     </span>
                                 </td>

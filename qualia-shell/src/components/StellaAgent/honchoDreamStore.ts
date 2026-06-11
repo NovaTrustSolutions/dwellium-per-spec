@@ -11,6 +11,7 @@
  * Storage key:  honcho:dreams:<userId>
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface DreamEntry {
     id: string;
@@ -40,11 +41,14 @@ function deserialize(raw: string | null): DreamEntry[] {
     }
 }
 
-export const dreamStore = createLocalStorageStore<DreamEntry[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const dreamStore = withSync(
+    createLocalStorageStore<DreamEntry[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'honcho-dream', holder: dreamUserIdHolder, resolveKey },
+);
 
 function persist(next: DreamEntry[]) {
     dreamStore.set(next, () => {

@@ -12,7 +12,7 @@ import { UserContext } from '../context/UserContext';
 import {
     integrationsStore,
     integrationsUserIdHolder,
-    saveIntegrations,
+    saveIntegrationsSecure,
     clearIntegrations,
 } from '../utils/integrationsStore';
 import type { IntegrationsBundle } from '../types/integrations';
@@ -42,13 +42,13 @@ export function useIntegrations() {
      */
     const update = useCallback((updater: (current: IntegrationsBundle) => IntegrationsBundle) => {
         const next = updater(bundle);
-        saveIntegrations(next);
-    }, [bundle]);
+        void saveIntegrationsSecure(next, userId); // plaintext to memory now, ciphertext to disk async
+    }, [bundle, userId]);
 
     /** Replace the bundle wholesale (used by import-from-JSON UI later). */
     const replace = useCallback((next: IntegrationsBundle) => {
-        saveIntegrations(next);
-    }, []);
+        void saveIntegrationsSecure(next, userId);
+    }, [userId]);
 
     /** Clear the active user's integrations entirely. */
     const clear = useCallback(() => {

@@ -50,7 +50,7 @@ export const DWELLIUM_DEFAULT: ScribeColorTheme = {
 };
 
 export const AGENTERYX: ScribeColorTheme = {
-    name: 'Agenteryx',
+    name: 'Agenteryx Default',
     isCustom: false,
     tokens: {
         h1: '#ff9f0a',

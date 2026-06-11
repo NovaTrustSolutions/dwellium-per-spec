@@ -210,10 +210,10 @@ export default function AuditModule() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Shield size={22} style={{ color: '#D6FE51' }} />
+                        <Shield size={22} style={{ color: 'var(--accent)' }} />
                         Audit &amp; Archive
                     </h2>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                         {total > 0 ? `${total.toLocaleString()} actions recorded` : 'No actions recorded yet'}
                     </p>
                 </div>
@@ -223,8 +223,8 @@ export default function AuditModule() {
                         style={{
                             display: 'flex', alignItems: 'center', gap: 6,
                             padding: '8px 14px', borderRadius: 8,
-                            background: 'rgba(214,254,81,0.12)', border: '1px solid rgba(214,254,81,0.3)',
-                            color: '#D6FE51', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                            background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                            color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
                         }}
                     >
                         <Plus size={14} /> Log Historical Event
@@ -235,7 +235,7 @@ export default function AuditModule() {
                             display: 'flex', alignItems: 'center', gap: 6,
                             padding: '8px 16px', borderRadius: 8,
                             background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                            color: '#e2e8f0', cursor: 'pointer', fontSize: 13,
+                            color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13,
                         }}
                     >
                         <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
@@ -257,7 +257,7 @@ export default function AuditModule() {
                         }}
                         style={{
                             padding: '6px 14px', border: 'none', borderRadius: 6,
-                            background: viewTab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                            background: viewTab === t.id ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(255,255,255,0.04)',
                             color: viewTab === t.id ? '#D6FE51' : '#94a3b8',
                             cursor: 'pointer', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4,
                         }}>
@@ -272,7 +272,7 @@ export default function AuditModule() {
                     {/* Search & Filters */}
                     <div style={{ display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap' }}>
                         <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-                            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                             <input
                                 value={search}
                                 onChange={e => { setSearch(e.target.value); setPage(0); }}
@@ -280,20 +280,20 @@ export default function AuditModule() {
                                 style={{
                                     width: '100%', padding: '10px 10px 10px 36px', borderRadius: 8,
                                     background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                                    color: '#e2e8f0', fontSize: 13, outline: 'none',
+                                    color: 'var(--text-primary)', fontSize: 13, outline: 'none',
                                 }}
                             />
                         </div>
                         {uniqueUsers.length > 0 && (
                             <div style={{ position: 'relative' }}>
-                                <Filter size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                                <Filter size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                                 <select
                                     value={userFilter}
                                     onChange={e => { setUserFilter(e.target.value); setPage(0); }}
                                     style={{
                                         padding: '10px 14px 10px 32px', borderRadius: 8,
                                         background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                                        color: '#e2e8f0', fontSize: 13, outline: 'none', cursor: 'pointer',
+                                        color: 'var(--text-primary)', fontSize: 13, outline: 'none', cursor: 'pointer',
                                         appearance: 'none' as const, minWidth: 160,
                                     }}
                                 >
@@ -314,11 +314,11 @@ export default function AuditModule() {
                         overflow: 'hidden',
                     }}>
                         {loading && entries.length === 0 ? (
-                            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                                 Loading audit log...
                             </div>
                         ) : entries.length === 0 ? (
-                            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                                 <Shield size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
                                 <p style={{ margin: 0, fontSize: 14 }}>No audit entries found</p>
                                 <p style={{ margin: '4px 0 0', fontSize: 12, opacity: 0.6 }}>
@@ -344,7 +344,7 @@ export default function AuditModule() {
                                         onClick={() => setExpanded(isExpanded ? null : entry.id)}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            {isExpanded ? <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} /> : <ChevronRight size={14} style={{ color: '#475569', flexShrink: 0 }} />}
+                                            {isExpanded ? <ChevronDown size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} /> : <ChevronRight size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
 
                                             <span style={{
                                                 fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
@@ -355,7 +355,7 @@ export default function AuditModule() {
                                                 {formatAction(entry.action)}
                                             </span>
 
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#e2e8f0', fontWeight: 500 }}>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
                                                 <User size={12} style={{ color: roleColor }} />
                                                 {entry.userName}
                                             </span>
@@ -369,13 +369,13 @@ export default function AuditModule() {
                                             </span>
 
                                             {entry.entityType && (
-                                                <span style={{ fontSize: 12, color: '#94a3b8' }}>
-                                                    on <span style={{ color: '#cbd5e1', fontWeight: 500 }}>{entry.entityType}</span>
+                                                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                                    on <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{entry.entityType}</span>
                                                     {entry.entityId && <span style={{ opacity: 0.6 }}> #{entry.entityId.slice(0, 8)}</span>}
                                                 </span>
                                             )}
 
-                                            <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#64748b', flexShrink: 0 }}>
+                                            <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>
                                                 <Clock size={11} />
                                                 {formatTimestamp(entry.createdAt)}
                                             </span>
@@ -387,35 +387,35 @@ export default function AuditModule() {
                                                 background: 'rgba(0,0,0,0.2)', borderRadius: 8,
                                                 fontSize: 12, lineHeight: 1.6,
                                             }}>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '4px 12px', color: '#94a3b8' }}>
-                                                    <span style={{ fontWeight: 600, color: '#64748b' }}>Full Timestamp</span>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '4px 12px', color: 'var(--text-secondary)' }}>
+                                                    <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Full Timestamp</span>
                                                     <span>{new Date(entry.createdAt).toLocaleString()}</span>
 
-                                                    <span style={{ fontWeight: 600, color: '#64748b' }}>User ID</span>
+                                                    <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>User ID</span>
                                                     <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{entry.userId}</span>
 
                                                     {entry.entityType && <>
-                                                        <span style={{ fontWeight: 600, color: '#64748b' }}>Entity Type</span>
+                                                        <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Entity Type</span>
                                                         <span>{entry.entityType}</span>
                                                     </>}
 
                                                     {entry.entityId && <>
-                                                        <span style={{ fontWeight: 600, color: '#64748b' }}>Entity ID</span>
+                                                        <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>Entity ID</span>
                                                         <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{entry.entityId}</span>
                                                     </>}
 
                                                     {entry.ipAddress && <>
-                                                        <span style={{ fontWeight: 600, color: '#64748b' }}>IP Address</span>
+                                                        <span style={{ fontWeight: 600, color: 'var(--text-tertiary)' }}>IP Address</span>
                                                         <span>{entry.ipAddress}</span>
                                                     </>}
                                                 </div>
 
                                                 {Object.keys(entry.details).length > 0 && (
                                                     <div style={{ marginTop: 10 }}>
-                                                        <span style={{ fontWeight: 600, color: '#64748b', fontSize: 11 }}>Details</span>
+                                                        <span style={{ fontWeight: 600, color: 'var(--text-tertiary)', fontSize: 11 }}>Details</span>
                                                         <pre style={{
                                                             margin: '4px 0 0', padding: 10, borderRadius: 6,
-                                                            background: 'rgba(0,0,0,0.3)', color: '#D6FE51',
+                                                            background: 'rgba(0,0,0,0.3)', color: 'var(--accent)',
                                                             fontSize: 11, overflow: 'auto', maxHeight: 200,
                                                             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                                                         }}>
@@ -435,7 +435,7 @@ export default function AuditModule() {
                     {total > PAGE_SIZE && (
                         <div style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            gap: 16, marginTop: '1rem', fontSize: 13, color: '#94a3b8',
+                            gap: 16, marginTop: '1rem', fontSize: 13, color: 'var(--text-secondary)',
                         }}>
                             <button
                                 disabled={page === 0}
@@ -472,7 +472,7 @@ export default function AuditModule() {
             {viewTab === 'archive' && (
                 <>
                     <div style={{ position: 'relative', marginBottom: 16 }}>
-                        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                         <input
                             value={archiveSearch}
                             onChange={e => {
@@ -484,11 +484,11 @@ export default function AuditModule() {
                             style={{
                                 width: '100%', padding: '12px 12px 12px 36px', borderRadius: 10,
                                 background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                                color: '#e2e8f0', fontSize: 13, outline: 'none',
+                                color: 'var(--text-primary)', fontSize: 13, outline: 'none',
                             }}
                         />
                     </div>
-                    {archiveLoading && <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>Searching…</div>}
+                    {archiveLoading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)' }}>Searching…</div>}
                     {archiveResults.length > 0 && (
                         <div style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                             {archiveResults.map((r: any, i: number) => (
@@ -500,20 +500,20 @@ export default function AuditModule() {
                                     <span style={{
                                         fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
                                         padding: '2px 6px', borderRadius: 10,
-                                        background: 'rgba(214,254,81,0.12)', color: '#D6FE51',
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
                                         flexShrink: 0, marginTop: 2,
                                     }}>{r.type}</span>
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{r.title}</div>
-                                        {r.snippet && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{r.snippet}</div>}
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{r.title}</div>
+                                        {r.snippet && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{r.snippet}</div>}
                                     </div>
-                                    <span style={{ fontSize: 11, color: '#475569' }}>{(r.score * 100).toFixed(0)}%</span>
+                                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{(r.score * 100).toFixed(0)}%</span>
                                 </div>
                             ))}
                         </div>
                     )}
                     {archiveSearch.length >= 2 && !archiveLoading && archiveResults.length === 0 && (
-                        <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+                        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                             <Archive size={40} strokeWidth={1} style={{ opacity: 0.3, marginBottom: 12 }} />
                             <p style={{ fontSize: 13 }}>No archived results for &quot;<strong>{archiveSearch}</strong>&quot;</p>
                         </div>
@@ -526,22 +526,22 @@ export default function AuditModule() {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onClick={() => setShowHistForm(false)}
                 >
-                    <div style={{ background: '#111827', borderRadius: 16, border: '1px solid rgba(214,254,81,0.25)', width: 480, maxWidth: '90vw', overflow: 'hidden' }}
+                    <div style={{ background: '#111827', borderRadius: 16, border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)', width: 480, maxWidth: '90vw', overflow: 'hidden' }}
                         onClick={e => e.stopPropagation()}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #1e2a3d' }}>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Log Historical Event</h3>
-                            <button onClick={() => setShowHistForm(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
+                            <button onClick={() => setShowHistForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
                         </div>
                         <form onSubmit={handleLogHistorical} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                 <div>
-                                    <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: 4 }}>Date</label>
-                                    <input name="date" type="date" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 13, outline: 'none' }} />
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Date</label>
+                                    <input name="date" type="date" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: 4 }}>Entity Type</label>
-                                    <select name="entityType" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 13, outline: 'none' }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Entity Type</label>
+                                    <select name="entityType" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }}>
                                         <option value="property">Property</option>
                                         <option value="tenant">Tenant</option>
                                         <option value="vendor">Vendor</option>
@@ -553,12 +553,12 @@ export default function AuditModule() {
                                 </div>
                             </div>
                             <div>
-                                <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: 4 }}>Entity Name</label>
-                                <input name="entity" required placeholder="e.g. 128 Buena Vista Dr" style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 13, outline: 'none' }} />
+                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Entity Name</label>
+                                <input name="entity" required placeholder="e.g. 128 Buena Vista Dr" style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
                             </div>
                             <div>
-                                <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: 4 }}>Event Type</label>
-                                <select name="eventType" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 13, outline: 'none' }}>
+                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Event Type</label>
+                                <select name="eventType" required style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }}>
                                     <option value="financial">Financial</option>
                                     <option value="legal">Legal</option>
                                     <option value="maintenance">Maintenance</option>
@@ -569,12 +569,12 @@ export default function AuditModule() {
                                 </select>
                             </div>
                             <div>
-                                <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
-                                <textarea name="description" required rows={3} placeholder="Describe the historical event..." style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 13, outline: 'none', resize: 'vertical' }} />
+                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
+                                <textarea name="description" required rows={3} placeholder="Describe the historical event..." style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)', fontSize: 13, outline: 'none', resize: 'vertical' }} />
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
-                                <button type="button" onClick={() => setShowHistForm(false)} style={{ padding: '8px 16px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}>Cancel</button>
-                                <button type="submit" style={{ padding: '8px 20px', borderRadius: 6, background: '#D6FE51', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Log Event</button>
+                                <button type="button" onClick={() => setShowHistForm(false)} style={{ padding: '8px 16px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>Cancel</button>
+                                <button type="submit" style={{ padding: '8px 20px', borderRadius: 6, background: 'var(--accent)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Log Event</button>
                             </div>
                         </form>
                     </div>
@@ -591,12 +591,12 @@ export default function AuditModule() {
                         background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.12)',
                     }}>
                         <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <Zap size={14} style={{ color: '#10b981' }} /> Proactive Compliance Auditor
+                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Zap size={14} style={{ color: '#22c55e' }} /> Proactive Compliance Auditor
                             </div>
-                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
                                 Scans compliance docs for expirations, missing documents, COI gaps, and W-9 tax year issues.
-                                {complianceRunId && <span style={{ color: '#10b981' }}> · Last run: {complianceRunId.slice(0, 8)}…</span>}
+                                {complianceRunId && <span style={{ color: '#22c55e' }}> · Last run: {complianceRunId.slice(0, 8)}…</span>}
                             </div>
                         </div>
                         <button
@@ -615,7 +615,7 @@ export default function AuditModule() {
                                 padding: '8px 18px', borderRadius: 8,
                                 background: complianceLoading ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.15)',
                                 border: '1px solid rgba(16,185,129,0.3)',
-                                color: '#10b981', cursor: complianceLoading ? 'wait' : 'pointer',
+                                color: '#22c55e', cursor: complianceLoading ? 'wait' : 'pointer',
                                 fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6,
                             }}
                         >
@@ -626,18 +626,18 @@ export default function AuditModule() {
                     {/* Summary cards */}
                     {complianceSummary && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, marginBottom: 16 }}>
-                            {[{ label: 'Total', value: complianceSummary.total, color: '#e2e8f0', bg: 'rgba(255,255,255,0.04)' },
+                            {[{ label: 'Total', value: complianceSummary.total, color: 'var(--text-primary)', bg: 'rgba(255,255,255,0.04)' },
                             { label: 'Critical', value: complianceSummary.critical, color: '#ef4444', bg: 'rgba(239,68,68,0.06)' },
                             { label: 'High', value: complianceSummary.high, color: '#f59e0b', bg: 'rgba(245,158,11,0.06)' },
                             { label: 'Medium', value: complianceSummary.medium, color: '#3b82f6', bg: 'rgba(59,130,246,0.06)' },
-                            { label: 'Low', value: complianceSummary.low, color: '#10b981', bg: 'rgba(16,185,129,0.06)' },
+                            { label: 'Low', value: complianceSummary.low, color: '#22c55e', bg: 'rgba(16,185,129,0.06)' },
                             ].map(c => (
                                 <div key={c.label} style={{
                                     padding: '10px 12px', borderRadius: 8, textAlign: 'center',
                                     background: c.bg, border: `1px solid ${c.color}15`,
                                 }}>
                                     <div style={{ fontSize: 22, fontWeight: 800, color: c.color }}>{c.value}</div>
-                                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>{c.label}</div>
+                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>{c.label}</div>
                                 </div>
                             ))}
                         </div>
@@ -646,12 +646,12 @@ export default function AuditModule() {
                     {/* Category breakdown */}
                     {complianceSummary?.byCategory && Object.keys(complianceSummary.byCategory).length > 0 && (
                         <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>By Category</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>By Category</div>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                 {Object.entries(complianceSummary.byCategory as Record<string, number>).map(([cat, count]) => (
                                     <span key={cat} style={{
                                         padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 600,
-                                        background: 'rgba(214,254,81,0.08)', border: '1px solid rgba(214,254,81,0.15)', color: '#D6FE51',
+                                        background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)',
                                     }}>
                                         {cat.replace(/_/g, ' ')}: {count}
                                     </span>
@@ -665,7 +665,7 @@ export default function AuditModule() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {complianceFindings.map((f: any, i: number) => {
                                 const sevColors: Record<string, string> = {
-                                    critical: '#ef4444', high: '#f59e0b', medium: '#3b82f6', low: '#10b981',
+                                    critical: '#ef4444', high: '#f59e0b', medium: '#3b82f6', low: '#22c55e',
                                 };
                                 const col = sevColors[f.severity] || '#64748b';
                                 return (
@@ -676,16 +676,16 @@ export default function AuditModule() {
                                     }}>
                                         <AlertTriangle size={14} style={{ color: col, flexShrink: 0, marginTop: 2 }} />
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{f.title}</div>
-                                            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{f.description}</div>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{f.title}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{f.description}</div>
                                             <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                                                 <span style={{
                                                     padding: '1px 8px', borderRadius: 20, fontSize: 9, fontWeight: 700,
                                                     background: `${col}15`, color: col, textTransform: 'uppercase',
                                                 }}>{f.severity}</span>
-                                                <span style={{ fontSize: 9, color: '#475569' }}>{f.type?.replace(/_/g, ' ')}</span>
+                                                <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>{f.type?.replace(/_/g, ' ')}</span>
                                                 {f.details?.entityName && (
-                                                    <span style={{ fontSize: 9, color: '#64748b' }}>Entity: {f.details.entityName}</span>
+                                                    <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>Entity: {f.details.entityName}</span>
                                                 )}
                                             </div>
                                         </div>
@@ -698,8 +698,8 @@ export default function AuditModule() {
                             padding: '40px 20px', textAlign: 'center', borderRadius: 10,
                             background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.06)',
                         }}>
-                            <ShieldCheck size={36} strokeWidth={1} style={{ color: '#475569', marginBottom: 8 }} />
-                            <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Run a compliance scan to check for expirations, missing documents, and coverage gaps.</p>
+                            <ShieldCheck size={36} strokeWidth={1} style={{ color: 'var(--text-tertiary)', marginBottom: 8 }} />
+                            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: 0 }}>Run a compliance scan to check for expirations, missing documents, and coverage gaps.</p>
                         </div>
                     )}
                 </div>
@@ -711,17 +711,17 @@ export default function AuditModule() {
                 AuditEvent list with explicit per-event `source` provenance.
                 ErrorBoundary wraps the surface per GR-13. */}
             {viewTab === 'unified' && (
-                <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Unified timeline unavailable.</div>}>
+                <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Unified timeline unavailable.</div>}>
                     <div data-testid="audit-unified-timeline" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {/* Source breakdown header */}
                         {unifiedBreakdown && (
                             <div data-testid="audit-unified-source-breakdown" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginRight: 8 }}>Sources</span>
+                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginRight: 8 }}>Sources</span>
                                 {(['compliance', 'insurance', 'workitem', 'audit_log', 'communication'] as const).map(src => (
                                     <span key={src} style={{
                                         fontSize: 11, fontWeight: 600,
                                         padding: '2px 8px', borderRadius: 5,
-                                        background: 'rgba(214,254,81,0.1)', color: '#D6FE51',
+                                        background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)',
                                     }}>
                                         {src.replace('_', ' ')}: {unifiedBreakdown[src] ?? 0}
                                     </span>
@@ -730,7 +730,7 @@ export default function AuditModule() {
                         )}
 
                         {unifiedLoading && (
-                            <div style={{ padding: '24px 14px', color: '#64748b', fontSize: 12, textAlign: 'center' }}>
+                            <div style={{ padding: '24px 14px', color: 'var(--text-tertiary)', fontSize: 12, textAlign: 'center' }}>
                                 <RefreshCw size={14} className="spin" /> Loading unified timeline…
                             </div>
                         )}
@@ -740,8 +740,8 @@ export default function AuditModule() {
                                 data-testid="audit-unified-empty"
                                 style={{ padding: '40px 20px', textAlign: 'center', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.06)' }}
                             >
-                                <Activity size={36} strokeWidth={1} style={{ color: '#475569', marginBottom: 8 }} />
-                                <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>No unified-timeline events yet. Events appear as compliance, insurance, work-orders, and system actions accumulate across the portfolio.</p>
+                                <Activity size={36} strokeWidth={1} style={{ color: 'var(--text-tertiary)', marginBottom: 8 }} />
+                                <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: 0 }}>No unified-timeline events yet. Events appear as compliance, insurance, work-orders, and system actions accumulate across the portfolio.</p>
                             </div>
                         )}
 
@@ -778,12 +778,12 @@ export default function AuditModule() {
                                             >
                                                 {sev}
                                             </span>
-                                            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{ev.title}</span>
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{ev.title}</span>
                                         </div>
                                         {ev.description && (
-                                            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>{ev.description}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{ev.description}</div>
                                         )}
-                                        <div style={{ fontSize: 10, color: '#64748b', display: 'flex', gap: 10 }}>
+                                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', gap: 10 }}>
                                             {ev.actor && <span>{ev.actor}</span>}
                                             <span>{formatTimestamp(ev.timestamp)}</span>
                                         </div>

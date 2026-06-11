@@ -95,15 +95,15 @@ const MOCK_DIAGNOSTICS: { id: string; type: string; message: string; action: str
 ];
 
 function statusColor(s: string) {
-    switch (s) { case 'paid': case 'posted': return '#10b981'; case 'pending': return '#f59e0b'; case 'overdue': return '#ef4444'; default: return '#94a3b8'; }
+    switch (s) { case 'paid': case 'posted': return '#22c55e'; case 'pending': return '#f59e0b'; case 'overdue': return '#ef4444'; default: return '#94a3b8'; }
 }
 
 function typeColor(t: string) {
-    switch (t) { case 'Asset': return '#0ea5e9'; case 'Liability': return '#f59e0b'; case 'Revenue': return '#10b981'; case 'Expense': return '#ef4444'; default: return '#94a3b8'; }
+    switch (t) { case 'Asset': return '#0ea5e9'; case 'Liability': return '#f59e0b'; case 'Revenue': return '#22c55e'; case 'Expense': return '#ef4444'; default: return '#94a3b8'; }
 }
 
 function diagColor(t: string) {
-    switch (t) { case 'success': return '#10b981'; case 'warning': return '#f59e0b'; case 'info': return '#D6FE51'; default: return '#94a3b8'; }
+    switch (t) { case 'success': return '#22c55e'; case 'warning': return '#f59e0b'; case 'info': return '#D6FE51'; default: return '#94a3b8'; }
 }
 
 export default function AccountingModule() {
@@ -195,7 +195,7 @@ export default function AccountingModule() {
                         <button key={t.id} onClick={() => { setTab(t.id); setSearch(''); }}
                             style={{
                                 padding: '6px 12px', border: 'none', borderRadius: 6,
-                                background: tab === t.id ? 'rgba(214,254,81,0.2)' : 'rgba(255,255,255,0.04)',
+                                background: tab === t.id ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(255,255,255,0.04)',
                                 color: tab === t.id ? '#D6FE51' : '#94a3b8',
                                 cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
                                 display: 'flex', alignItems: 'center', gap: 4,
@@ -212,19 +212,19 @@ export default function AccountingModule() {
             {tab === 'overview' && !loading && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                     {[
-                        { label: 'Total Receivable', value: `$${totalAR.toLocaleString()}`, color: '#10b981', icon: <ArrowUpRight size={18} /> },
+                        { label: 'Total Receivable', value: `$${totalAR.toLocaleString()}`, color: '#22c55e', icon: <ArrowUpRight size={18} /> },
                         { label: 'Total Payable', value: `$${totalAP.toLocaleString()}`, color: '#ef4444', icon: <ArrowDownRight size={18} /> },
-                        { label: 'Net Position', value: `$${(totalAR - totalAP).toLocaleString()}`, color: totalAR > totalAP ? '#10b981' : '#ef4444', icon: <TrendingUp size={18} /> },
+                        { label: 'Net Position', value: `$${(totalAR - totalAP).toLocaleString()}`, color: totalAR > totalAP ? '#22c55e' : '#ef4444', icon: <TrendingUp size={18} /> },
                         { label: 'Overdue AR', value: `${overdueAR.length} ($${overdueAR.reduce((s, i) => s + i.amount, 0).toLocaleString()})`, color: '#f59e0b', icon: <Clock size={18} /> },
                         { label: 'Overdue AP', value: `${overdueAP.length} ($${overdueAP.reduce((s, i) => s + i.amount, 0).toLocaleString()})`, color: '#ef4444', icon: <AlertTriangle size={18} /> },
-                        { label: 'Bank Balance', value: `$${MOCK_BANK_ACCOUNTS.reduce((s, b) => s + b.balance, 0).toLocaleString()}`, color: '#D6FE51', icon: <Landmark size={18} /> },
+                        { label: 'Bank Balance', value: `$${MOCK_BANK_ACCOUNTS.reduce((s, b) => s + b.balance, 0).toLocaleString()}`, color: 'var(--accent)', icon: <Landmark size={18} /> },
                     ].map(m => (
                         <div key={m.label} className="s-glass-card" style={{ padding: '16px 20px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                                 <span style={{ color: m.color }}>{m.icon}</span>
-                                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>{m.label}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>{m.label}</span>
                             </div>
-                            <div style={{ fontSize: 24, fontWeight: 700, color: '#e2e8f0' }}>{m.value}</div>
+                            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>{m.value}</div>
                         </div>
                     ))}
                 </div>
@@ -235,26 +235,26 @@ export default function AccountingModule() {
                 <div className="s-glass-card">
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ position: 'relative', flex: 1 }}>
-                            <Search size={14} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+                            <Search size={14} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                             <input type="text" placeholder="Search receivables…" value={search} onChange={e => setSearch(e.target.value)}
-                                style={{ width: '100%', padding: '6px 8px 6px 28px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#e2e8f0', fontSize: 12, outline: 'none' }} />
+                                style={{ width: '100%', padding: '6px 8px 6px 28px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-primary)', fontSize: 12, outline: 'none' }} />
                         </div>
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                 {['Tenant', 'Description', 'Amount', 'Due Date', 'Status'].map(h => (
-                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {filteredAR.map(i => (
                                 <tr key={i.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>{i.vendorOrTenant}</td>
-                                    <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{i.description}</td>
-                                    <td style={{ padding: '8px 12px', color: '#10b981', fontWeight: 600 }}>${i.amount.toLocaleString()}</td>
-                                    <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{i.dueDate}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{i.vendorOrTenant}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{i.description}</td>
+                                    <td style={{ padding: '8px 12px', color: '#22c55e', fontWeight: 600 }}>${i.amount.toLocaleString()}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{i.dueDate}</td>
                                     <td style={{ padding: '8px 12px' }}>
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(i.status)}15`, color: statusColor(i.status), fontWeight: 600, textTransform: 'uppercase' }}>{i.status}</span>
                                     </td>
@@ -270,26 +270,26 @@ export default function AccountingModule() {
                 <div className="s-glass-card">
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ position: 'relative', flex: 1 }}>
-                            <Search size={14} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+                            <Search size={14} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                             <input type="text" placeholder="Search payables…" value={search} onChange={e => setSearch(e.target.value)}
-                                style={{ width: '100%', padding: '6px 8px 6px 28px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#e2e8f0', fontSize: 12, outline: 'none' }} />
+                                style={{ width: '100%', padding: '6px 8px 6px 28px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-primary)', fontSize: 12, outline: 'none' }} />
                         </div>
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                 {['Vendor', 'Description', 'Amount', 'Due Date', 'Status'].map(h => (
-                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {filteredAP.map(i => (
                                 <tr key={i.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>{i.vendorOrTenant}</td>
-                                    <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{i.description}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{i.vendorOrTenant}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{i.description}</td>
                                     <td style={{ padding: '8px 12px', color: '#ef4444', fontWeight: 600 }}>${i.amount.toLocaleString()}</td>
-                                    <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{i.dueDate}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{i.dueDate}</td>
                                     <td style={{ padding: '8px 12px' }}>
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(i.status)}15`, color: statusColor(i.status), fontWeight: 600, textTransform: 'uppercase' }}>{i.status}</span>
                                     </td>
@@ -303,27 +303,27 @@ export default function AccountingModule() {
             {/* ══════════ BANK ACCOUNTS ══════════ */}
             {tab === 'bank-accounts' && !loading && (
                 <div className="s-glass-card">
-                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: '#e2e8f0', fontSize: 14 }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
                         <Landmark size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Bank Accounts — Total: ${MOCK_BANK_ACCOUNTS.reduce((s, b) => s + b.balance, 0).toLocaleString()}
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                 {['Account Name', 'Bank', 'Account #', 'Type', 'Balance'].map(h => (
-                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {MOCK_BANK_ACCOUNTS.map(ba => (
                                 <tr key={ba.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>{ba.name}</td>
-                                    <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{ba.bank}</td>
-                                    <td style={{ padding: '8px 12px', color: '#64748b', fontFamily: 'monospace' }}>{ba.number}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{ba.name}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{ba.bank}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{ba.number}</td>
                                     <td style={{ padding: '8px 12px' }}>
-                                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600 }}>{ba.type}</span>
+                                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600 }}>{ba.type}</span>
                                     </td>
-                                    <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 700, fontSize: 14 }}>${ba.balance.toLocaleString()}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 700, fontSize: 14 }}>${ba.balance.toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -334,24 +334,24 @@ export default function AccountingModule() {
             {/* ══════════ JOURNAL ENTRIES ══════════ */}
             {tab === 'journal-entries' && !loading && (
                 <div className="s-glass-card">
-                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: '#e2e8f0', fontSize: 14 }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
                         <BookOpen size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Journal Entries
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                 {['Date', 'Reference', 'Description', 'Debit', 'Credit', 'Status'].map(h => (
-                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {MOCK_JOURNAL_ENTRIES.map(je => (
                                 <tr key={je.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{je.date}</td>
-                                    <td style={{ padding: '8px 12px', color: '#D6FE51', fontFamily: 'monospace', fontWeight: 600 }}>{je.reference}</td>
-                                    <td style={{ padding: '8px 12px', color: '#e2e8f0' }}>{je.description}</td>
-                                    <td style={{ padding: '8px 12px', color: '#10b981', fontWeight: 600 }}>${je.debit.toLocaleString()}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{je.date}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--accent)', fontFamily: 'monospace', fontWeight: 600 }}>{je.reference}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)' }}>{je.description}</td>
+                                    <td style={{ padding: '8px 12px', color: '#22c55e', fontWeight: 600 }}>${je.debit.toLocaleString()}</td>
                                     <td style={{ padding: '8px 12px', color: '#ef4444', fontWeight: 600 }}>${je.credit.toLocaleString()}</td>
                                     <td style={{ padding: '8px 12px' }}>
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(je.status)}15`, color: statusColor(je.status), fontWeight: 600, textTransform: 'uppercase' }}>{je.status}</span>
@@ -366,17 +366,17 @@ export default function AccountingModule() {
             {/* ══════════ BANK TRANSFERS ══════════ */}
             {tab === 'bank-transfers' && !loading && (
                 <div className="s-glass-card" style={{ textAlign: 'center', padding: 40 }}>
-                    <ArrowLeftRight size={40} strokeWidth={1} style={{ color: '#475569', marginBottom: 12 }} />
-                    <h3 style={{ color: '#e2e8f0', margin: '0 0 6px' }}>Bank Transfers</h3>
-                    <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 12px' }}>Transfer funds between bank accounts</p>
+                    <ArrowLeftRight size={40} strokeWidth={1} style={{ color: 'var(--text-tertiary)', marginBottom: 12 }} />
+                    <h3 style={{ color: 'var(--text-primary)', margin: '0 0 6px' }}>Bank Transfers</h3>
+                    <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: '0 0 12px' }}>Transfer funds between bank accounts</p>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                         {MOCK_BANK_ACCOUNTS.filter(b => b.type !== 'Cash').map(ba => (
-                            <span key={ba.id} style={{ padding: '6px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8', fontSize: 12 }}>
+                            <span key={ba.id} style={{ padding: '6px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontSize: 12 }}>
                                 {ba.name}: ${ba.balance.toLocaleString()}
                             </span>
                         ))}
                     </div>
-                    <button style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(214,254,81,0.3)', background: 'rgba(214,254,81,0.12)', color: '#D6FE51', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                    <button style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                         <ArrowLeftRight size={14} style={{ verticalAlign: -2, marginRight: 4 }} /> New Transfer
                     </button>
                 </div>
@@ -385,26 +385,26 @@ export default function AccountingModule() {
             {/* ══════════ GL ACCOUNTS ══════════ */}
             {tab === 'gl-accounts' && !loading && (
                 <div className="s-glass-card">
-                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: '#e2e8f0', fontSize: 14 }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
                         <FileText size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Chart of Accounts
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                 {['Account #', 'Name', 'Type', 'Balance'].map(h => (
-                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {MOCK_GL_ACCOUNTS.map(gl => (
                                 <tr key={gl.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '8px 12px', color: '#D6FE51', fontFamily: 'monospace', fontWeight: 600 }}>{gl.number}</td>
-                                    <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 500 }}>{gl.name}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--accent)', fontFamily: 'monospace', fontWeight: 600 }}>{gl.number}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 500 }}>{gl.name}</td>
                                     <td style={{ padding: '8px 12px' }}>
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${typeColor(gl.type)}15`, color: typeColor(gl.type), fontWeight: 600 }}>{gl.type}</span>
                                     </td>
-                                    <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>${gl.balance.toLocaleString()}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>${gl.balance.toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -420,14 +420,14 @@ export default function AccountingModule() {
                         return (
                             <div key={tl.id} className="s-glass-card">
                                 <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 13 }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>
                                         <CreditCard size={13} style={{ verticalAlign: -2, marginRight: 6 }} />{tl.tenant}
-                                        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 400, marginLeft: 8 }}>{tl.unit}</span>
+                                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400, marginLeft: 8 }}>{tl.unit}</span>
                                     </span>
                                     <span style={{
                                         fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 700,
                                         background: lastBalance > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)',
-                                        color: lastBalance > 0 ? '#ef4444' : '#10b981',
+                                        color: lastBalance > 0 ? '#ef4444' : '#22c55e',
                                     }}>
                                         {lastBalance > 0 ? `Owes $${lastBalance.toLocaleString()}` : 'Paid in Full'}
                                     </span>
@@ -436,22 +436,22 @@ export default function AccountingModule() {
                                     <thead>
                                         <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                             {['Date', 'Description', 'Charge', 'Payment', 'Balance'].map(h => (
-                                                <th key={h} style={{ padding: '6px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>
+                                                <th key={h} style={{ padding: '6px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {tl.entries.map((e, i) => (
                                             <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                                <td style={{ padding: '6px 12px', color: '#94a3b8' }}>{e.date}</td>
-                                                <td style={{ padding: '6px 12px', color: '#e2e8f0' }}>{e.description}</td>
+                                                <td style={{ padding: '6px 12px', color: 'var(--text-secondary)' }}>{e.date}</td>
+                                                <td style={{ padding: '6px 12px', color: 'var(--text-primary)' }}>{e.description}</td>
                                                 <td style={{ padding: '6px 12px', color: e.charge > 0 ? '#ef4444' : '#475569', fontWeight: e.charge > 0 ? 600 : 400 }}>
                                                     {e.charge > 0 ? `$${e.charge.toLocaleString()}` : '—'}
                                                 </td>
-                                                <td style={{ padding: '6px 12px', color: e.payment > 0 ? '#10b981' : '#475569', fontWeight: e.payment > 0 ? 600 : 400 }}>
+                                                <td style={{ padding: '6px 12px', color: e.payment > 0 ? '#22c55e' : '#475569', fontWeight: e.payment > 0 ? 600 : 400 }}>
                                                     {e.payment > 0 ? `$${e.payment.toLocaleString()}` : '—'}
                                                 </td>
-                                                <td style={{ padding: '6px 12px', color: e.balance > 0 ? '#f59e0b' : '#10b981', fontWeight: 700 }}>
+                                                <td style={{ padding: '6px 12px', color: e.balance > 0 ? '#f59e0b' : '#22c55e', fontWeight: 700 }}>
                                                     ${e.balance.toLocaleString()}
                                                 </td>
                                             </tr>
@@ -466,43 +466,43 @@ export default function AccountingModule() {
 
             {/* ══════════ RECURRING CHARGES (Task 1.5) ══════════ */}
             {tab === 'recurring-charges' && (
-                <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Recurring Charges tab unavailable.</div>}>
+                <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Recurring Charges tab unavailable.</div>}>
                     <div className="s-glass-card" data-testid="recurring-charges-tab">
-                        <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: '#e2e8f0', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Repeat size={14} />Recurring Charges
-                            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#64748b', fontWeight: 400 }}>{recurringCharges.length} row{recurringCharges.length === 1 ? '' : 's'}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>{recurringCharges.length} row{recurringCharges.length === 1 ? '' : 's'}</span>
                         </div>
                         {recurringLoading ? (
-                            <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 12 }}>Loading…</div>
+                            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>Loading…</div>
                         ) : recurringError ? (
-                            <div style={{ padding: 24, textAlign: 'center', color: '#f87171', fontSize: 12 }}>{recurringError}</div>
+                            <div style={{ padding: 24, textAlign: 'center', color: '#ef4444', fontSize: 12 }}>{recurringError}</div>
                         ) : recurringCharges.length === 0 ? (
-                            <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 12 }}>No recurring charges on file.</div>
+                            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>No recurring charges on file.</div>
                         ) : (
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                                         {['Account', 'Amount', 'Payment Method', 'Start', 'End', 'Next', 'Previous', 'Status', 'Notes'].map(h => (
-                                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {recurringCharges.map(rc => (
                                         <tr key={rc.id} data-testid={`recurring-charge-row-${rc.id}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                            <td style={{ padding: '8px 12px', color: '#e2e8f0', fontWeight: 600 }}>{rc.account}</td>
-                                            <td style={{ padding: '8px 12px', color: '#10b981', fontWeight: 700 }}>${rc.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.paymentMethod ?? '—'}</td>
-                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.startDate ?? '—'}</td>
-                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.endDate ?? '—'}</td>
-                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.nextChargeDate ?? '—'}</td>
-                                            <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{rc.previousChargeDate ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{rc.account}</td>
+                                            <td style={{ padding: '8px 12px', color: '#22c55e', fontWeight: 700 }}>${rc.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{rc.paymentMethod ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{rc.startDate ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{rc.endDate ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{rc.nextChargeDate ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{rc.previousChargeDate ?? '—'}</td>
                                             <td style={{ padding: '8px 12px' }}>
                                                 {rc.previousStatus ? (
                                                     <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${statusColor(rc.previousStatus.toLowerCase() === 'paid' ? 'paid' : rc.previousStatus.toLowerCase() === 'partial' ? 'pending' : 'overdue')}15`, color: statusColor(rc.previousStatus.toLowerCase() === 'paid' ? 'paid' : rc.previousStatus.toLowerCase() === 'partial' ? 'pending' : 'overdue'), fontWeight: 600 }}>{rc.previousStatus}</span>
                                                 ) : '—'}
                                             </td>
-                                            <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 11, fontStyle: rc.notes ? 'italic' : 'normal' }}>{rc.notes ?? '—'}</td>
+                                            <td style={{ padding: '8px 12px', color: 'var(--text-tertiary)', fontSize: 11, fontStyle: rc.notes ? 'italic' : 'normal' }}>{rc.notes ?? '—'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -515,7 +515,7 @@ export default function AccountingModule() {
             {/* ══════════ DIAGNOSTICS ══════════ */}
             {tab === 'diagnostics' && !loading && (
                 <div className="s-glass-card">
-                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: '#e2e8f0', fontSize: 14 }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
                         <AlertTriangle size={14} style={{ verticalAlign: -2, marginRight: 6 }} />Accounting Diagnostics
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 12 }}>
@@ -529,7 +529,7 @@ export default function AccountingModule() {
                                 {d.type === 'success' ? <CheckCircle size={16} style={{ color: diagColor(d.type), flexShrink: 0 }} /> :
                                     d.type === 'warning' ? <AlertTriangle size={16} style={{ color: diagColor(d.type), flexShrink: 0 }} /> :
                                         <Clock size={16} style={{ color: diagColor(d.type), flexShrink: 0 }} />}
-                                <span style={{ fontSize: 13, color: '#e2e8f0', flex: 1 }}>{d.message}</span>
+                                <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{d.message}</span>
                                 {d.action && (
                                     <button style={{
                                         padding: '4px 10px', borderRadius: 6, border: `1px solid ${diagColor(d.type)}30`,

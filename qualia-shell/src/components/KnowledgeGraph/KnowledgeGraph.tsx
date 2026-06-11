@@ -15,7 +15,7 @@ import { useScribeStore } from '../Scribe/scribeStore';
 import { buildGraph, communities, isolatedNodes, simulate, type GraphNode } from './forceLayout';
 
 const W = 760, H = 470;
-const PALETTE = ['#D6FE51', '#74c4ff', '#ff7a93', '#ffce3a', '#a78bfa', '#4ade80', '#fb923c', '#22d3ee'];
+const PALETTE = ['#D6FE51', '#74c4ff', '#ff7a93', '#ffce3a', '#a78bfa', '#22c55e', '#f59e0b', '#22d3ee'];
 
 function allFiles(tree: FileEntry[]): string[] {
     const out: string[] = [];
@@ -62,10 +62,10 @@ export default function KnowledgeGraph() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#000', color: '#ccc', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-desktop)', color: 'var(--text-secondary)', fontFamily: 'inherit', fontSize: 13, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid #222', flexShrink: 0 }}>
-                <Share2 size={15} style={{ color: '#D6FE51' }} />
-                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888' }}>Knowledge Graph</span>
+                <Share2 size={15} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Knowledge Graph</span>
                 <div style={{ flex: 1 }} />
                 <span style={{ fontSize: 11, color: '#666' }}>{nodes.length} nodes · {links.length} edges</span>
                 {isoCount > 0 && (
@@ -74,7 +74,7 @@ export default function KnowledgeGraph() {
                     </span>
                 )}
                 <select value={domain} onChange={(e) => setDomain(e.target.value)} title="Filter by domain"
-                    style={{ background: '#0a0a0a', color: '#ccc', border: '1px solid #333', borderRadius: 5, padding: '3px 6px', fontSize: 11, fontFamily: 'inherit', outline: 'none' }}>
+                    style={{ background: 'var(--bg-desktop)', color: 'var(--text-secondary)', border: '1px solid #333', borderRadius: 5, padding: '3px 6px', fontSize: 11, fontFamily: 'inherit', outline: 'none' }}>
                     <option value="all">All domains</option>
                     {domains.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
@@ -109,7 +109,7 @@ export default function KnowledgeGraph() {
                         })}
                     </svg>
                 )}
-                <div style={{ position: 'absolute', bottom: 8, left: 12, fontSize: 10, color: '#555' }}>
+                <div style={{ position: 'absolute', bottom: 8, left: 12, fontSize: 10, color: 'var(--text-tertiary)' }}>
                     Double-click a node to open it in Scribe · edges = shared domain + project
                 </div>
             </div>
@@ -118,5 +118,5 @@ export default function KnowledgeGraph() {
 }
 
 function Center({ text }: { text: string }) {
-    return <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 13, padding: 24, textAlign: 'center' }}>{text}</div>;
+    return <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: 24, textAlign: 'center' }}>{text}</div>;
 }

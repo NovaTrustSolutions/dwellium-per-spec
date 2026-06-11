@@ -19,6 +19,7 @@
  */
 
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export type DashboardColumn = 'left' | 'center' | 'right';
 export const DASHBOARD_COLUMNS: DashboardColumn[] = ['left', 'center', 'right'];
@@ -189,11 +190,14 @@ function deserialize(raw: string | null): DashboardLayout {
     }
 }
 
-export const dashboardLayoutStore = createLocalStorageStore<DashboardLayout>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: DEFAULT_LAYOUT,
-});
+export const dashboardLayoutStore = withSync(
+    createLocalStorageStore<DashboardLayout>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: DEFAULT_LAYOUT,
+    }),
+    { objectType: 'dashboard-layout', holder: dashboardLayoutUserIdHolder, resolveKey },
+);
 
 /** Persist a layout to the active user's namespace. */
 export function saveDashboardLayout(layout: DashboardLayout): void {

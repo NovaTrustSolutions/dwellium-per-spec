@@ -934,7 +934,7 @@ function ActiveWorkitems({ items, loading, error }: PanelProps & { items: Active
         <div className="a-card">
             <div className="a-card-header">
                 <ClipboardList size={16} /> Active Workitems
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#D6FE51', fontWeight: 700 }}>{items.length}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{items.length}</span>
             </div>
             <PanelStatus loading={loading} error={error} empty={items.length === 0} emptyLabel="No open workitems" />
             {ready && (
@@ -948,21 +948,21 @@ function ActiveWorkitems({ items, loading, error }: PanelProps & { items: Active
                             width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
                             background: wi.priority === 'critical' ? '#ef4444' : wi.priority === 'high' ? '#f59e0b' : '#94a3b8',
                         }} />
-                        <span style={{ flex: 1, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span style={{ flex: 1, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {wi.title}
                         </span>
                         <span style={{
                             fontSize: 10, padding: '1px 5px', borderRadius: 3,
-                            background: 'rgba(214,254,81,0.12)', color: '#D6FE51',
+                            background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
                         }}>{wi.domain}</span>
-                        <span style={{ color: '#64748b', fontSize: 11, minWidth: 22 }}>{wi.age}</span>
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: 11, minWidth: 22 }}>{wi.age}</span>
                         <button
                             onClick={() => handlePromote(wi.id)}
                             title="Promote to Strata"
                             style={{
                                 background: promoting === wi.id ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.04)',
                                 border: 'none', borderRadius: 4, padding: '2px 6px',
-                                color: promoting === wi.id ? '#10b981' : '#64748b',
+                                color: promoting === wi.id ? '#22c55e' : '#64748b',
                                 cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', gap: 2,
                                 transition: 'all 0.2s',
                             }}
@@ -994,14 +994,14 @@ function CrossDomainSnapshots({ snapshots, loading, error }: PanelProps & { snap
                     <div key={d.domain} style={{
                         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 12,
                     }}>
-                        <span style={{ minWidth: 80, color: '#94a3b8' }}>{d.domain}</span>
+                        <span style={{ minWidth: 80, color: 'var(--text-secondary)' }}>{d.domain}</span>
                         <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
                             <div style={{
                                 width: `${(d.count / maxCount) * 100}%`, height: '100%',
                                 borderRadius: 3, background: d.color, transition: 'width 0.5s',
                             }} />
                         </div>
-                        <span style={{ minWidth: 20, color: '#e2e8f0', fontWeight: 600, textAlign: 'right' }}>{d.count}</span>
+                        <span style={{ minWidth: 20, color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right' }}>{d.count}</span>
                         {d.critical > 0 && (
                             <span style={{
                                 fontSize: 10, padding: '1px 4px', borderRadius: 3,
@@ -1021,7 +1021,7 @@ function CrossDomainSnapshots({ snapshots, loading, error }: PanelProps & { snap
 const ARBITRAGE_OPPORTUNITIES: { id: string; title: string; roi: string; confidence: number; window: string; type: 'lease' | 'maintenance' | 'finance' | 'revenue' }[] = [];
 
 const ARB_COLORS: Record<string, string> = {
-    lease: '#3b82f6', maintenance: '#f97316', finance: '#10b981', revenue: '#D6FE51',
+    lease: '#3b82f6', maintenance: '#f97316', finance: '#22c55e', revenue: '#D6FE51',
 };
 
 function QuickArbitrage() {
@@ -1037,7 +1037,7 @@ function QuickArbitrage() {
                     }}>
                         <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#ddd' }}>{opp.title}</div>
-                            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
                                 Window: {opp.window} • Confidence: {opp.confidence}%
                             </div>
                         </div>
@@ -1057,7 +1057,7 @@ function QuickArbitrage() {
                 </div>
             )}
             {ARBITRAGE_OPPORTUNITIES.length === 0 && (
-                <div style={{ marginTop: 10, fontSize: 11, color: '#555', textAlign: 'center' }}>
+                <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                     No opportunities identified yet.
                 </div>
             )}
@@ -1082,7 +1082,7 @@ function DomainViews() {
                     }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: view.color }}>{view.name}</div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                            <span style={{ fontSize: 11, color: '#888' }}>{view.module}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{view.module}</span>
                             <span style={{
                                 background: `${view.color}22`, color: view.color,
                                 padding: '1px 8px', borderRadius: 10, fontSize: 12, fontWeight: 700,

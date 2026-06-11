@@ -1,6 +1,7 @@
 import { createContext, useContext, useCallback, useEffect, useSyncExternalStore, ReactNode } from 'react';
 import { Theme, FontPairing } from '../data/types';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSyncStatic } from '../lib/oneSaveStore';
 
 // ============================================
 // FONT PAIRING DEFINITIONS
@@ -133,36 +134,100 @@ const LEGACY_THEME_STORAGE_KEY = 'qualia-theme';
 // HTML matches IIFE-set className by construction (no hydration mismatch).
 // Exported for unit test access at src/test/appfolioParity/.
 
-export const themeStore = createLocalStorageStore<Theme>(
-    () => (
-        (localStorage.getItem(THEME_STORAGE_KEY) as Theme) ||
-        (localStorage.getItem(LEGACY_THEME_STORAGE_KEY) as Theme) ||
-        'dark'
+export const themeStore = withSyncStatic(
+    createLocalStorageStore<Theme>(
+        () => (
+            (localStorage.getItem(THEME_STORAGE_KEY) as Theme) ||
+            (localStorage.getItem(LEGACY_THEME_STORAGE_KEY) as Theme) ||
+            'dark'
+        ),
+        'dark',
     ),
-    'dark',
+    { objectType: 'theme', storageKey: THEME_STORAGE_KEY, serialize: (v) => v },
 );
 
-export const fontPairingStore = createLocalStorageStore<FontPairing>(
-    () => (localStorage.getItem(FONT_STORAGE_KEY) as FontPairing) || 'default',
-    'default',
-);
-
-export const accentColorStore = createLocalStorageStore<string>(
-    () => (
-        localStorage.getItem(ACCENT_STORAGE_KEY) ||
-        localStorage.getItem(LEGACY_ACCENT_STORAGE_KEY) ||
-        '#0088cc'
+export const fontPairingStore = withSyncStatic(
+    createLocalStorageStore<FontPairing>(
+        () => (localStorage.getItem(FONT_STORAGE_KEY) as FontPairing) || 'default',
+        'default',
     ),
-    '#0088cc',
+    { objectType: 'font-pairing', storageKey: FONT_STORAGE_KEY, serialize: (v) => v },
 );
 
-export const animationsEnabledStore = createLocalStorageStore<boolean>(
-    () => {
-        const stored = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
-        return stored !== null ? stored === 'true' : true;
-    },
-    true,
+export const accentColorStore = withSyncStatic(
+    createLocalStorageStore<string>(
+        () => (
+            localStorage.getItem(ACCENT_STORAGE_KEY) ||
+            localStorage.getItem(LEGACY_ACCENT_STORAGE_KEY) ||
+            '#0088cc'
+        ),
+        '#0088cc',
+    ),
+    { objectType: 'accent-color', storageKey: ACCENT_STORAGE_KEY, serialize: (v) => v },
 );
+
+export const animationsEnabledStore = withSyncStatic(
+    createLocalStorageStore<boolean>(
+        () => {
+            const stored = localStorage.getItem(ANIMATIONS_STORAGE_KEY);
+            return stored !== null ? stored === 'true' : true;
+        },
+        true,
+    ),
+    { objectType: 'animations-enabled', storageKey: ANIMATIONS_STORAGE_KEY, serialize: (v) => String(v) },
+);
+
+/* ── Imperative setters (for dwelliumCommands / ARA — no React context needed).
+   ThemeProvider subscribes to these stores via useSyncExternalStore and
+   re-applies the theme on change, so setting the store IS applying it. ── */
+export function applyThemeValue(theme: Theme): void {
+    themeStore.set(theme, () => { try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* ignore */ } });
+}
+export function applyAccentValue(color: string): void {
+    accentColorStore.set(color, () => { try { localStorage.setItem(ACCENT_STORAGE_KEY, color); } catch { /* ignore */ } });
+}
+export function applyAnimationsValue(on: boolean): void {
+    animationsEnabledStore.set(on, () => { try { localStorage.setItem(ANIMATIONS_STORAGE_KEY, String(on)); } catch { /* ignore */ } });
+}
+
+// ============================================
+// THEME REGISTRY — Dwellium built-ins + the v3 "Master Pack" (themes-master.css)
+// ============================================
+
+export interface ThemeDef { id: Theme; label: string; group: 'Dwellium' | 'Master Pack'; bg: string; accent: string; }
+
+/** Master-pack ids (theme-{id} classes); used to toggle the ambient cursor-glow. */
+export const MASTER_THEME_IDS: Theme[] = ['terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
+
+export const THEMES: ThemeDef[] = [
+    { id: 'dark', label: 'Dwellium Dark', group: 'Dwellium', bg: '#000000', accent: '#D6FE51' },
+    { id: 'light', label: 'Dwellium Light', group: 'Dwellium', bg: '#e8ecf1', accent: '#0369a1' },
+    { id: 'trust', label: 'Trust', group: 'Dwellium', bg: '#f4f6fb', accent: '#0369a1' },
+    { id: 'vibrant', label: 'Vibrant', group: 'Dwellium', bg: '#0f1020', accent: '#6366f1' },
+    { id: 'luxury', label: 'Luxury', group: 'Dwellium', bg: '#1a1714', accent: '#ca8a04' },
+    { id: 'healthcare', label: 'Healthcare', group: 'Dwellium', bg: '#f0f7f5', accent: '#0ea5a4' },
+    { id: 'creative', label: 'Creative', group: 'Dwellium', bg: '#150f1f', accent: '#a855f7' },
+    { id: 'dark-excellence', label: 'Dark Excellence', group: 'Dwellium', bg: '#08080c', accent: '#D6FE51' },
+    { id: 'terminal-bl4', label: 'Terminal · BL4', group: 'Dwellium', bg: '#000000', accent: '#D6FE51' },
+    { id: 'cosmos', label: 'Cosmos', group: 'Master Pack', bg: '#08081a', accent: '#4d8aff' },
+    { id: 'deep-dark', label: 'Deep Dark', group: 'Master Pack', bg: '#030305', accent: '#4d82ff' },
+    { id: 'simple-black', label: 'Simple Black', group: 'Master Pack', bg: '#000000', accent: '#3b82f6' },
+    { id: 'cyberpunk', label: 'Cyberpunk', group: 'Master Pack', bg: '#060606', accent: '#f5e642' },
+    { id: 'synthwave', label: 'Synthwave', group: 'Master Pack', bg: '#040d1a', accent: '#ff00aa' },
+    { id: 'solarized', label: 'Solarized', group: 'Master Pack', bg: '#002b36', accent: '#268bd2' },
+    { id: 'rose-pine', label: 'Rosé Pine', group: 'Master Pack', bg: '#191724', accent: '#c4a7e7' },
+    { id: 'mocha', label: 'Mocha', group: 'Master Pack', bg: '#1e1e2e', accent: '#89b4fa' },
+    { id: 'dracula', label: 'Dracula', group: 'Master Pack', bg: '#1e1f29', accent: '#6272a4' },
+    { id: 'obsidian', label: 'Obsidian', group: 'Master Pack', bg: '#0a0a0f', accent: '#479ffa' },
+    { id: 'tokyo-night', label: 'Tokyo Night', group: 'Master Pack', bg: '#1a1b2e', accent: '#7aa2f7' },
+    { id: 'gruvbox', label: 'Gruvbox', group: 'Master Pack', bg: '#282828', accent: '#83a598' },
+    { id: 'apple-dark', label: 'Apple Dark', group: 'Master Pack', bg: '#1c1c1e', accent: '#0a84ff' },
+    { id: 'nord', label: 'Nord', group: 'Master Pack', bg: '#2e3440', accent: '#81a1c1' },
+    { id: 'latte', label: 'Latte', group: 'Master Pack', bg: '#ede8ff', accent: '#6d28d9' },
+    { id: 'corporate', label: 'Corporate', group: 'Master Pack', bg: '#f4f5f7', accent: '#0070c9' },
+];
+
+export const CUSTOM_TOKENS_KEY = 'dwellium-custom-tokens';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const theme = useSyncExternalStore(themeStore.subscribe, themeStore.getSnapshot, themeStore.getServerSnapshot);
@@ -199,6 +264,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const root = document.documentElement;
         root.className = `theme-${theme}`;
+        // Mirror onto data-theme so the v3 master-pack border/animation selectors
+        // ([data-theme="X"] .bento / .bv-* / body.master-glow::after) resolve.
+        root.setAttribute('data-theme', theme);
         root.style.setProperty('--accent', accentColor);
     }, [theme, accentColor]);
 
@@ -214,7 +282,61 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Apply animations toggle
     useEffect(() => {
         document.body.classList.toggle('animations-off', !animationsEnabled);
+        // Drive the v3 [data-anim] selectors (bento hover springs, AOS reveals,
+        // spotlight). 'medium' = source default; 'none' disables them — verbatim
+        // to the source's animation-level dial.
+        document.documentElement.setAttribute('data-anim', animationsEnabled ? 'medium' : 'none');
     }, [animationsEnabled]);
+
+    // Agenteryx look (Phase B): ambient cursor-glow app-wide (master-design radial
+    // spotlight, theme-accent colored). Was master-themes-only; now always on so the
+    // whole app gets the signature glow. Honors the animations-off toggle via CSS.
+    useEffect(() => {
+        document.body.classList.add('master-glow');
+        const onMove = (e: MouseEvent) => {
+            const r = document.documentElement;
+            r.style.setProperty('--mx', `${(e.clientX / window.innerWidth) * 100}%`);
+            r.style.setProperty('--my', `${(e.clientY / window.innerHeight) * 100}%`);
+        };
+        window.addEventListener('mousemove', onMove);
+        return () => window.removeEventListener('mousemove', onMove);
+    }, []);
+
+    // Master Pack: AOS scroll-reveal (the doc's fade-in-on-scroll). Elements opt
+    // in via data-aos="fade-up|fade-down|fade-left|fade-right|zoom-in"; the CSS in
+    // themes-master.css hides them (html.aos-ready) until they intersect. Mirrors
+    // the source AOS.init (offset 60, threshold .05, once) byte-for-byte in behavior.
+    useEffect(() => {
+        if (typeof IntersectionObserver === 'undefined') return; // jsdom/SSR-safe
+        const els = Array.from(document.querySelectorAll('[data-aos]'));
+        if (!animationsEnabled || els.length === 0) {
+            document.documentElement.classList.remove('aos-ready');
+            return;
+        }
+        document.documentElement.classList.add('aos-ready');
+        const io = new IntersectionObserver((entries) => {
+            for (const e of entries) {
+                if (!e.isIntersecting) continue;
+                const delay = parseInt(e.target.getAttribute('data-aos-delay') || '0', 10);
+                (e.target as HTMLElement).style.transitionDelay = `${delay}ms`;
+                e.target.classList.add('aos-animate');
+                io.unobserve(e.target);
+            }
+        }, { rootMargin: '0px 0px -60px 0px', threshold: 0.05 });
+        els.forEach((el) => io.observe(el));
+        return () => io.disconnect();
+    }, [theme, animationsEnabled]);
+
+    // Re-apply any persisted custom-token overrides (Settings theme editor) on load + theme change
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(CUSTOM_TOKENS_KEY);
+            if (!raw) return;
+            const tokens = JSON.parse(raw) as Record<string, string>;
+            const r = document.documentElement;
+            for (const [k, v] of Object.entries(tokens)) r.style.setProperty(k, v);
+        } catch { /* ignore */ }
+    }, [theme]);
 
     return (
         <ThemeContext.Provider value={{ theme, fontPairing, accentColor, animationsEnabled, toggleTheme, setTheme, setFontPairing, setAccentColor, setAnimationsEnabled }}>

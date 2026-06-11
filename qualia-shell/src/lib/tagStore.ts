@@ -13,6 +13,7 @@
  * Storage key:  tags:<userId>   (anon → tags:_anonymous)
  */
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSync } from './oneSaveStore';
 
 export interface TaggedItem {
     id: string;          // `${source}:${sourceId}` — stable identity of the tagged thing
@@ -132,11 +133,14 @@ function deserialize(raw: string | null): TaggedItem[] {
     }
 }
 
-export const tagStore = createLocalStorageStore<TaggedItem[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const tagStore = withSync(
+    createLocalStorageStore<TaggedItem[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'tags', holder: tagStoreUserIdHolder, resolveKey },
+);
 
 function nowIso(): string { return new Date().toISOString(); }
 

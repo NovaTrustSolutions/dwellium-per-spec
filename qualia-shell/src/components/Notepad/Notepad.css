@@ -34,16 +34,16 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #6b7280;
+    color: var(--text-tertiary);
 }
 
 .np-sidebar__new-btn {
     width: 30px;
     height: 30px;
     border-radius: 8px;
-    border: 1px solid rgba(214, 254, 81, 0.2);
-    background: rgba(214, 254, 81, 0.08);
-    color: #D6FE51;
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
     font-size: 18px;
     cursor: pointer;
     display: flex;
@@ -53,10 +53,10 @@
 }
 
 .np-sidebar__new-btn:hover {
-    background: rgba(214, 254, 81, 0.18);
-    border-color: rgba(214, 254, 81, 0.35);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
     transform: translateY(-1px) scale(1.05);
-    box-shadow: 0 2px 12px rgba(214, 254, 81, 0.15);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .np-sidebar__search {
@@ -65,7 +65,7 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(255, 255, 255, 0.03);
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     outline: none;
     transition: all 0.2s;
@@ -73,8 +73,8 @@
 }
 
 .np-sidebar__search:focus {
-    border-color: rgba(214, 254, 81, 0.35);
-    box-shadow: 0 0 12px rgba(214, 254, 81, 0.08);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 8%, transparent);
     background: rgba(255, 255, 255, 0.05);
 }
 
@@ -111,15 +111,15 @@
 }
 
 .np-note-item--active {
-    background: rgba(214, 254, 81, 0.08);
-    border-left-color: #D6FE51;
-    box-shadow: inset 0 0 20px rgba(214, 254, 81, 0.04);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-left-color: var(--accent);
+    box-shadow: inset 0 0 20px color-mix(in srgb, var(--accent) 4%, transparent);
 }
 
 .np-note-item__title {
     font-size: 13px;
     font-weight: 700;
-    color: #d1d5db;
+    color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -128,12 +128,12 @@
 }
 
 .np-note-item--active .np-note-item__title {
-    color: #e0e0e0;
+    color: var(--text-primary);
 }
 
 .np-note-item__preview {
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -169,7 +169,7 @@
     border-radius: 6px;
     border: none;
     background: transparent;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 14px;
     cursor: pointer;
     display: flex;
@@ -180,13 +180,13 @@
 
 .np-editor__toolbar-btn:hover {
     background: rgba(255, 255, 255, 0.06);
-    color: #d1d5db;
+    color: var(--text-secondary);
     transform: translateY(-1px);
 }
 
 .np-editor__toolbar-btn:active {
-    background: rgba(214, 254, 81, 0.15);
-    color: #D6FE51;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
 }
 
 .np-editor__toolbar-divider {
@@ -201,7 +201,7 @@
     padding: 14px 20px 6px;
     background: transparent;
     border: none;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 22px;
     font-weight: 800;
     outline: none;
@@ -224,7 +224,7 @@
     padding: 8px 20px 20px;
     background: transparent;
     border: none;
-    color: #d1d5db;
+    color: var(--text-secondary);
     font-size: 14px;
     line-height: 1.8;
     font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
@@ -263,7 +263,7 @@
 .np-editor__preview h1 {
     font-size: 1.6em;
     margin: 0.5em 0;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-weight: 800;
     letter-spacing: -0.5px;
 }
@@ -271,7 +271,7 @@
 .np-editor__preview h2 {
     font-size: 1.3em;
     margin: 0.5em 0;
-    color: #d1d5db;
+    color: var(--text-secondary);
     font-weight: 700;
     padding-bottom: 4px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -280,17 +280,17 @@
 .np-editor__preview h3 {
     font-size: 1.1em;
     margin: 0.5em 0;
-    color: #d1d5db;
+    color: var(--text-secondary);
     font-weight: 700;
 }
 
 .np-editor__preview p {
     margin: 0.5em 0;
-    color: #d1d5db;
+    color: var(--text-secondary);
 }
 
 .np-editor__preview strong {
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-weight: 700;
 }
 
@@ -312,12 +312,12 @@
 }
 
 .np-editor__preview blockquote {
-    border-left: 3px solid #D6FE51;
+    border-left: 3px solid var(--accent);
     padding-left: 14px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     margin: 0.5em 0;
     font-style: italic;
-    background: rgba(214, 254, 81, 0.04);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
     padding: 8px 14px;
     border-radius: 0 8px 8px 0;
 }
@@ -328,14 +328,14 @@
 }
 
 .np-editor__preview a {
-    color: #D6FE51;
+    color: var(--accent);
     text-decoration: none;
-    border-bottom: 1px solid rgba(214, 254, 81, 0.3);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     transition: all 0.2s;
 }
 
 .np-editor__preview a:hover {
-    border-bottom-color: #D6FE51;
+    border-bottom-color: var(--accent);
 }
 
 /* ===== MENTION DROPDOWN ===== */
@@ -388,7 +388,7 @@
 }
 
 .np-mention__item:hover {
-    background: rgba(214, 254, 81, 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     transform: translateX(2px);
 }
 
@@ -403,7 +403,7 @@
 
 .np-mention__item-type {
     font-size: 10px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     background: rgba(255, 255, 255, 0.04);
     padding: 1px 6px;
     border-radius: 6px;
@@ -418,7 +418,7 @@
     align-items: center;
     gap: 8px;
     font-size: 11px;
-    color: #4b5563;
+    color: var(--text-tertiary);
     background: rgba(255, 255, 255, 0.01);
 }
 
@@ -426,13 +426,13 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #34d399;
+    background: var(--success);
     box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
     transition: all 0.3s;
 }
 
 .np-save__dot--saving {
-    background: #fbbf24;
+    background: var(--warning);
     box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
     animation: pulse-save 0.8s infinite;
 }
@@ -459,7 +459,7 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    color: #4b5563;
+    color: var(--text-tertiary);
 }
 
 .np-empty__icon {

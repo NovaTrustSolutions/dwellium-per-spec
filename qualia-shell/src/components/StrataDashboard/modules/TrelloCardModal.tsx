@@ -134,7 +134,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                         position: 'sticky', top: 0, background: 'rgba(20,24,40,0.98)', zIndex: 1,
                     }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3 }}>
+                            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                                 {workitem.title}
                             </h2>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
@@ -148,7 +148,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                     }}>{workitem.priority}</span>
                                 )}
                                 {boardName && (
-                                    <span style={{ fontSize: 11, color: '#64748b' }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                                         {boardName} {listName ? `› ${listName}` : ''}
                                     </span>
                                 )}
@@ -160,7 +160,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 4,
                                         padding: '6px 12px', borderRadius: 6,
-                                        background: 'rgba(214,254,81,0.12)', color: '#D6FE51',
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
                                         fontSize: 11, fontWeight: 600, textDecoration: 'none',
                                     }}
                                 >
@@ -173,7 +173,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     width: 32, height: 32, borderRadius: 8,
                                     background: 'rgba(255,255,255,0.06)', border: 'none',
-                                    color: '#94a3b8', cursor: 'pointer',
+                                    color: 'var(--text-secondary)', cursor: 'pointer',
                                 }}
                             >
                                 <X size={18} />
@@ -184,7 +184,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                     {/* Body */}
                     <div style={{ padding: '18px 24px' }}>
                         {loading ? (
-                            <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-tertiary)' }}>
                                 <Loader size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: 8 }} />
                                 <p style={{ margin: 0, fontSize: 13 }}>Loading card details…</p>
                             </div>
@@ -211,7 +211,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                 {due && (
                                     <div style={{
                                         display: 'flex', alignItems: 'center', gap: 6,
-                                        marginBottom: 16, fontSize: 12, color: '#94a3b8',
+                                        marginBottom: 16, fontSize: 12, color: 'var(--text-secondary)',
                                     }}>
                                         <Calendar size={13} />
                                         Due: {new Date(due).toLocaleDateString()}
@@ -221,11 +221,11 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                 {/* Description */}
                                 {cardDesc && (
                                     <div style={{ marginBottom: 20 }}>
-                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Description</h4>
+                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Description</h4>
                                         <div style={{
                                             padding: '12px 16px', borderRadius: 10,
                                             background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                                            fontSize: 13, lineHeight: 1.7, color: '#cbd5e1',
+                                            fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)',
                                             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                                         }}>
                                             {cardDesc}
@@ -236,7 +236,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                 {/* Images */}
                                 {images.length > 0 && (
                                     <div style={{ marginBottom: 20 }}>
-                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <ImageIcon size={14} /> Images ({images.length})
                                         </h4>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
@@ -269,7 +269,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                 {/* Other attachments */}
                                 {otherAttachments.length > 0 && (
                                     <div style={{ marginBottom: 20 }}>
-                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <Paperclip size={14} /> Attachments ({otherAttachments.length})
                                         </h4>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -280,7 +280,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                                         display: 'flex', alignItems: 'center', gap: 8,
                                                         padding: '8px 12px', borderRadius: 8,
                                                         background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                                                        color: '#D6FE51', fontSize: 12, textDecoration: 'none',
+                                                        color: 'var(--accent)', fontSize: 12, textDecoration: 'none',
                                                     }}
                                                 >
                                                     <Paperclip size={12} />
@@ -301,7 +301,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                                             return (
                                                 <div key={cl.id} style={{ marginBottom: 12 }}>
-                                                    <h4 style={{ margin: '0 0 6px', fontSize: 13, color: '#94a3b8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <h4 style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         <CheckSquare size={14} /> {cl.name}
                                                         <span style={{ fontSize: 11, opacity: 0.6 }}>({done}/{total} · {pct}%)</span>
                                                     </h4>
@@ -320,7 +320,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                                         }}>
                                                             {item.state === 'complete'
                                                                 ? <CheckSquare size={13} style={{ color: '#22c55e' }} />
-                                                                : <Square size={13} style={{ color: '#475569' }} />
+                                                                : <Square size={13} style={{ color: 'var(--text-tertiary)' }} />
                                                             }
                                                             {item.name}
                                                         </div>
@@ -334,12 +334,12 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                 {/* Tags */}
                                 {(workitem.tags || []).length > 0 && (
                                     <div style={{ marginBottom: 16 }}>
-                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Tags</h4>
+                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase' }}>Tags</h4>
                                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                             {workitem.tags.map((tag, i) => (
                                                 <span key={i} style={{
                                                     padding: '3px 10px', borderRadius: 6, fontSize: 11,
-                                                    background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 500,
+                                                    background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 500,
                                                 }}>{tag}</span>
                                             ))}
                                         </div>
@@ -349,7 +349,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                 {/* Activity */}
                                 {activity.length > 0 && (
                                     <div>
-                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <h4 style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <MessageSquare size={14} /> Recent Activity
                                         </h4>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -357,13 +357,13 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                                 <div key={i} style={{
                                                     padding: '8px 12px', borderRadius: 8,
                                                     background: 'rgba(255,255,255,0.02)',
-                                                    fontSize: 12, color: '#94a3b8', lineHeight: 1.5,
+                                                    fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5,
                                                 }}>
-                                                    <span style={{ fontWeight: 500, color: '#cbd5e1' }}>
+                                                    <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>
                                                         {act.memberCreator?.fullName || 'Unknown'}
                                                     </span>
                                                     {' '}{act.data?.text || act.type?.replace(/([A-Z])/g, ' $1').toLowerCase()}
-                                                    <div style={{ marginTop: 2, fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <div style={{ marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                         <Clock size={9} />
                                                         {new Date(act.date).toLocaleString()}
                                                     </div>
@@ -374,7 +374,7 @@ export default function TrelloCardModal({ workitem, onClose }: Props) {
                                 )}
 
                                 {/* Footer info */}
-                                <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 11, color: '#475569' }}>
+                                <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 11, color: 'var(--text-tertiary)' }}>
                                     {workitem.domain} • {workitem.type}
                                     {cardId && ` • Card: ${cardId.slice(0, 12)}…`}
                                 </div>

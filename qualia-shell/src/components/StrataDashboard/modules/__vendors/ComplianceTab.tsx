@@ -19,14 +19,14 @@ export function expirationColor(
     date: string | null | undefined,
     now: Date = new Date(),
 ): { status: ExpirationStatus; color: string } {
-    if (!date) return { status: 'Missing', color: '#64748b' };
+    if (!date) return { status: 'Missing', color: 'var(--text-tertiary)' };
     const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) return { status: 'Missing', color: '#64748b' };
+    if (Number.isNaN(parsed.getTime())) return { status: 'Missing', color: 'var(--text-tertiary)' };
     const msPerDay = 86_400_000;
     const daysUntil = Math.floor((parsed.getTime() - now.getTime()) / msPerDay);
     if (daysUntil < 0) return { status: 'Expired', color: '#ef4444' };
     if (daysUntil <= 90) return { status: 'Expiring', color: '#f59e0b' };
-    return { status: 'Valid', color: '#10b981' };
+    return { status: 'Valid', color: '#22c55e' };
 }
 
 const ROWS: Array<{ label: string; key: keyof NonNullable<EntityProfile['vendorCompliance']> }> = [
@@ -84,9 +84,9 @@ export default function ComplianceTab({ vendor, now }: ComplianceTabProps) {
                                 border: '1px solid rgba(255,255,255,0.06)',
                             }}
                         >
-                            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>{row.label}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{row.label}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: 12, color: '#e2e8f0', fontFamily: 'ui-monospace, monospace' }}>
+                                <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: 'ui-monospace, monospace' }}>
                                     {value ?? '—'}
                                 </span>
                                 <span
@@ -125,9 +125,9 @@ export default function ComplianceTab({ vendor, now }: ComplianceTabProps) {
                         borderRadius: 8,
                         fontSize: 12,
                         fontWeight: 600,
-                        background: 'rgba(214,254,81,0.15)',
-                        border: '1px solid rgba(214,254,81,0.3)',
-                        color: '#D6FE51',
+                        background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                        border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                        color: 'var(--accent)',
                         cursor: 'pointer',
                         fontFamily: 'inherit',
                     }}

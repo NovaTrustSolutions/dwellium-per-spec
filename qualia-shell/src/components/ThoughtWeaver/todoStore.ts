@@ -8,6 +8,7 @@
  * Storage key:  thought-weaver:todo:<userId>
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface TodoItem {
     id: string;
@@ -39,11 +40,14 @@ function deserialize(raw: string | null): TodoItem[] {
     }
 }
 
-export const todoStore = createLocalStorageStore<TodoItem[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const todoStore = withSync(
+    createLocalStorageStore<TodoItem[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'tw-todo', holder: todoUserIdHolder, resolveKey },
+);
 
 function persist(next: TodoItem[]) {
     todoStore.set(next, () => {

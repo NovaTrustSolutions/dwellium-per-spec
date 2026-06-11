@@ -129,14 +129,14 @@ function OccupancyTooltip({ active, payload }: OccupancyTooltipProps) {
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
             <p style={{ color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>{data.payload.name}</p>
-            <p style={{ color: '#D6FE51', fontSize: '0.8125rem', fontWeight: 600 }}>{data.value}% occupied</p>
+            <p style={{ color: 'var(--accent)', fontSize: '0.8125rem', fontWeight: 600 }}>{data.value}% occupied</p>
             <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}>{data.payload.units} total units</p>
         </div>
     );
 }
 
 const getBarColor = (occupancy: number) => {
-    if (occupancy >= 95) return '#10b981';
+    if (occupancy >= 95) return '#22c55e';
     if (occupancy >= 90) return '#D6FE51';
     return '#f59e0b';
 };
@@ -194,8 +194,8 @@ interface CommEntry {
 }
 
 const channelIconMap: Record<string, { icon: typeof DollarSign; color: string; bg: string }> = {
-    email: { icon: Mail, color: '#D6FE51', bg: 'rgba(214, 254, 81, 0.12)' },
-    phone: { icon: Phone, color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
+    email: { icon: Mail, color: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
+    phone: { icon: Phone, color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
     sms: { icon: MessageSquare, color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
     internal: { icon: Bell, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
 };
@@ -295,12 +295,12 @@ function UpcomingEvents({ events }: { events: CalEvent[] }) {
    ======================================== */
 
 const quickActions = [
-    { id: 1, label: 'New Lease', sublabel: 'Start application', icon: FileKey2, color: '#D6FE51', bg: 'rgba(214, 254, 81, 0.12)' },
+    { id: 1, label: 'New Lease', sublabel: 'Start application', icon: FileKey2, color: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
     { id: 2, label: 'Work Order', sublabel: 'Create request', icon: Wrench, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
-    { id: 3, label: 'Record Payment', sublabel: 'Manual entry', icon: DollarSign, color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
+    { id: 3, label: 'Record Payment', sublabel: 'Manual entry', icon: DollarSign, color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
     { id: 4, label: 'Send Notice', sublabel: 'Broadcast', icon: Bell, color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.12)' },
     { id: 5, label: 'Run Report', sublabel: 'Financials', icon: BarChart3, color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' },
-    { id: 6, label: 'Ask Aria', sublabel: 'AI assistant', icon: Sparkles, color: '#D6FE51', bg: 'rgba(214, 254, 81, 0.12)' },
+    { id: 6, label: 'Ask Aria', sublabel: 'AI assistant', icon: Sparkles, color: 'var(--accent)', bg: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
 ];
 
 function QuickActions() {
@@ -474,11 +474,11 @@ function OverviewContent() {
             {/* ══════════ AppFolio: Payment Collection + Financial Health + Portal ══════════ */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10, margin: '12px 0' }}>
                 {[
-                    { label: 'Rent Collected', value: '87%', sub: '$127,450 of $146,500', color: '#10b981', icon: <DollarSign size={16} /> },
+                    { label: 'Rent Collected', value: '87%', sub: '$127,450 of $146,500', color: '#22c55e', icon: <DollarSign size={16} /> },
                     { label: 'Outstanding', value: '13%', sub: '$19,050 past due', color: '#f59e0b', icon: <AlertTriangle size={16} /> },
                     { label: 'Online Payments', value: '60%', sub: '$76,470 auto-pay', color: '#0ea5e9', icon: <CreditCard size={16} /> },
-                    { label: 'Portal Adoption', value: '51%', sub: '139 of 272 tenants', color: '#D6FE51', icon: <Globe size={16} /> },
-                    { label: 'Leases Expiring', value: '7', sub: 'Next 90 days', color: '#D6FE51', icon: <FileKey2 size={16} /> },
+                    { label: 'Portal Adoption', value: '51%', sub: '139 of 272 tenants', color: 'var(--accent)', icon: <Globe size={16} /> },
+                    { label: 'Leases Expiring', value: '7', sub: 'Next 90 days', color: 'var(--accent)', icon: <FileKey2 size={16} /> },
                     { label: 'Delinquency Rate', value: '4.2%', sub: '12 tenants', color: '#ef4444', icon: <AlertTriangle size={16} /> },
                 ].map(m => (
                     <div key={m.label} className="s-glass-card" style={{ padding: '12px 16px' }}>
@@ -495,7 +495,7 @@ function OverviewContent() {
             {/* ══════════ Move-In / Move-Out Tables ══════════ */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, margin: '8px 0' }}>
                 <div className="s-glass-card">
-                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, color: '#10b981', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, color: '#22c55e', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <ArrowUpRight size={14} />Upcoming Move-Ins
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -550,7 +550,7 @@ function OverviewContent() {
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🔴 <strong style={{ color: '#ef4444' }}>12 delinquent</strong> accounts ($19,050)</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🟡 <strong style={{ color: '#f59e0b' }}>7 leases</strong> expiring in 90 days</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🟢 <strong style={{ color: '#10b981' }}>87%</strong> rent collected this month</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🟢 <strong style={{ color: '#22c55e' }}>87%</strong> rent collected this month</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>🔵 <strong style={{ color: '#0ea5e9' }}>3 new move-ins</strong> scheduled</span>
                 </div>
             </div>
@@ -655,7 +655,7 @@ const INTEGRATION_CARDS: IntegrationCard[] = [
         id: 'dayflow',
         name: 'DayFlow',
         icon: <Clock size={24} />,
-        color: '#D6FE51',
+        color: 'var(--accent)',
         description: 'Productivity logs — track daily activities, summaries, and batch imports.',
         features: ['Activity Logging', 'Daily Summaries', 'Batch Import', 'User Analytics'],
         endpoint: '/api/integrations/dayflow',
@@ -665,7 +665,7 @@ const INTEGRATION_CARDS: IntegrationCard[] = [
         id: 'messaging',
         name: 'Messaging Hub',
         icon: <MessageSquare size={24} />,
-        color: '#0088cc',
+        color: 'var(--accent)',
         description: 'Telegram Bot API and iMessage bridge for property communications.',
         features: ['Telegram Bot', 'iMessage Bridge', 'Message Logging', 'Webhook Integration'],
         endpoint: '/api/integrations/messaging',
@@ -739,7 +739,7 @@ function IntegrationsModule() {
 
     const sectionCardStyle = {
         background: 'rgba(30,33,48,0.9)',
-        border: '1px solid rgba(214,254,81,0.12)',
+        border: '1px solid color-mix(in srgb, var(--accent) 12%, transparent)',
         borderRadius: '12px',
         padding: '18px 20px',
     } as const;
@@ -1137,7 +1137,7 @@ function IntegrationsModule() {
                                 {status && !status.loading && (
                                     <div style={{
                                         display: 'flex', alignItems: 'center', gap: '4px',
-                                        color: status.connected ? '#10b981' : '#ef4444',
+                                        color: status.connected ? '#22c55e' : '#ef4444',
                                         fontSize: '12px', fontWeight: 600,
                                     }}>
                                         {status.connected ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
@@ -1150,8 +1150,8 @@ function IntegrationsModule() {
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {card.features.map(f => (
                                     <span key={f} style={{
-                                        background: 'rgba(214,254,81,0.12)',
-                                        color: '#D6FE51',
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                                        color: 'var(--accent)',
                                         padding: '3px 8px',
                                         borderRadius: '6px',
                                         fontSize: '11px',
@@ -1162,7 +1162,7 @@ function IntegrationsModule() {
 
                             {/* Env vars hint */}
                             {card.envVars.length > 0 && (
-                                <div style={{ color: '#475569', fontSize: '11px', fontFamily: 'monospace' }}>
+                                <div style={{ color: 'var(--text-tertiary)', fontSize: '11px', fontFamily: 'monospace' }}>
                                     Requires: {card.envVars.join(', ')}
                                 </div>
                             )}
@@ -1174,9 +1174,9 @@ function IntegrationsModule() {
                                     disabled={status?.loading}
                                     style={{
                                         flex: 1, padding: '8px 12px', borderRadius: '8px',
-                                        border: '1px solid rgba(214,254,81,0.3)',
-                                        background: 'rgba(214,254,81,0.1)',
-                                        color: '#D6FE51', cursor: 'pointer',
+                                        border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                                        background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+                                        color: 'var(--accent)', cursor: 'pointer',
                                         fontSize: '12px', fontWeight: 600,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                                     }}
@@ -1206,7 +1206,7 @@ function IntegrationsModule() {
 
                             {/* Last sync */}
                             {status?.lastSync && (
-                                <div style={{ color: '#475569', fontSize: '11px' }}>
+                                <div style={{ color: 'var(--text-tertiary)', fontSize: '11px' }}>
                                     Last sync: {new Date(status.lastSync).toLocaleString()}
                                 </div>
                             )}
@@ -1249,7 +1249,7 @@ function IntegrationsModule() {
                         border: `1px solid ${notebookMessage.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
                         borderRadius: '10px',
                         padding: '12px 14px',
-                        color: notebookMessage.type === 'success' ? '#86efac' : '#fca5a5',
+                        color: notebookMessage.type === 'success' ? '#86efac' : '#ef4444',
                         fontSize: '12px',
                     }}>
                         {notebookMessage.text}
@@ -1324,7 +1324,7 @@ function IntegrationsModule() {
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', gap: '10px', flexWrap: 'wrap' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: notebookStatus?.connected ? '#10b981' : '#f59e0b', fontSize: '12px', fontWeight: 600 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: notebookStatus?.connected ? '#22c55e' : '#f59e0b', fontSize: '12px', fontWeight: 600 }}>
                                         {notebookStatus?.connected ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
                                         {notebookStatus?.connected ? 'NotebookLM connected' : (notebookStatus?.lastError || 'NotebookLM not connected')}
                                     </div>
@@ -1462,7 +1462,7 @@ function IntegrationsModule() {
                                 {selectedNotebook ? (
                                     <div style={{ display: 'grid', gap: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                         <div>
-                                            <div style={{ fontSize: '16px', fontWeight: 700, color: '#f8fafc' }}>{selectedNotebook.title || selectedNotebook.id}</div>
+                                            <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedNotebook.title || selectedNotebook.id}</div>
                                             <div style={{ color: 'var(--text-tertiary)', marginTop: '4px' }}>{selectedNotebook.description || 'No description yet'}</div>
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', color: 'var(--text-secondary)', fontSize: '11px' }}>
@@ -1537,7 +1537,7 @@ function IntegrationsModule() {
             {/* ── Trello → Strata Sync ── */}
             <div style={{
                 background: 'rgba(30,33,48,0.9)',
-                border: '1px solid rgba(214,254,81,0.2)',
+                border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                 borderRadius: '12px',
                 padding: '20px',
                 marginBottom: '16px',
@@ -1546,7 +1546,7 @@ function IntegrationsModule() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
                             width: 44, height: 44, borderRadius: '10px',
-                            background: 'rgba(214,254,81,0.15)', color: '#D6FE51',
+                            background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                             <RefreshCw size={20} />
@@ -1562,8 +1562,8 @@ function IntegrationsModule() {
                         style={{
                             padding: '10px 20px', borderRadius: '8px',
                             border: 'none',
-                            background: trelloSync.syncing ? 'rgba(214,254,81,0.2)' : 'rgba(214,254,81,0.8)',
-                            color: '#fff', cursor: trelloSync.syncing ? 'not-allowed' : 'pointer',
+                            background: trelloSync.syncing ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'color-mix(in srgb, var(--accent) 80%, transparent)',
+                            color: 'var(--text-primary)', cursor: trelloSync.syncing ? 'not-allowed' : 'pointer',
                             fontSize: '13px', fontWeight: 700,
                             display: 'flex', alignItems: 'center', gap: '8px',
                             transition: 'all 0.2s',
@@ -1586,8 +1586,8 @@ function IntegrationsModule() {
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
                                 {[
-                                    { label: 'Boards Synced', value: trelloSync.result.boardsSynced, color: '#D6FE51' },
-                                    { label: 'Workitems Created', value: trelloSync.result.workitemsCreated, color: '#10b981' },
+                                    { label: 'Boards Synced', value: trelloSync.result.boardsSynced, color: 'var(--accent)' },
+                                    { label: 'Workitems Created', value: trelloSync.result.workitemsCreated, color: '#22c55e' },
                                     { label: 'Workitems Updated', value: trelloSync.result.workitemsUpdated, color: '#3b82f6' },
                                     { label: 'Vendors Created', value: trelloSync.result.vendorsCreated, color: '#f59e0b' },
                                     { label: 'Vendors Updated', value: trelloSync.result.vendorsUpdated, color: '#f59e0b' },
@@ -1611,7 +1611,7 @@ function IntegrationsModule() {
                     </div>
                 )}
 
-                <div style={{ marginTop: 10, fontSize: 11, color: '#475569' }}>
+                <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-tertiary)' }}>
                     Syncs 16 boards → workitems (maintenance, leasing, corporate) + vendor profiles. Uses trelloCardId for dedup.
                 </div>
             </div>
@@ -1652,13 +1652,13 @@ function IntegrationsModule() {
                     ].map(ep => (
                         <div key={ep.path} style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '12px' }}>
                             <span style={{
-                                background: ep.method === 'GET' ? 'rgba(16,185,129,0.15)' : 'rgba(214,254,81,0.15)',
-                                color: ep.method === 'GET' ? '#10b981' : '#D6FE51',
+                                background: ep.method === 'GET' ? 'rgba(16,185,129,0.15)' : 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                                color: ep.method === 'GET' ? '#22c55e' : '#D6FE51',
                                 padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace',
                                 fontWeight: 700, fontSize: '10px', minWidth: '36px', textAlign: 'center' as const,
                             }}>{ep.method}</span>
                             <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '11px' }}>{ep.path}</span>
-                            <span style={{ color: '#475569', marginLeft: 'auto', fontSize: '11px' }}>{ep.label}</span>
+                            <span style={{ color: 'var(--text-tertiary)', marginLeft: 'auto', fontSize: '11px' }}>{ep.label}</span>
                         </div>
                     ))}
                 </div>

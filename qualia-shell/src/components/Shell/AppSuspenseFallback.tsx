@@ -26,7 +26,7 @@ export default function AppSuspenseFallback({ variant, label }: Props) {
         return (
             <div style={{
                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#D6FE51', fontSize: 13,
+                color: 'var(--accent)', fontSize: 13,
             }}>
                 {label ?? 'Loading widget…'}
             </div>
@@ -34,18 +34,22 @@ export default function AppSuspenseFallback({ variant, label }: Props) {
     }
 
     // variant === 'viewport'
+    // UIX-21: branded loading screen — token bg + ambient accent glow + glowing
+    // ring (lazy boundaries fire app-wide, so this screen is seen often)
     return (
         <div style={{
             position: 'fixed', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: '#0a0e1a', color: '#64748b', fontSize: 14,
-            fontFamily: 'Inter, -apple-system, sans-serif',
+            background: 'radial-gradient(60% 50% at 50% 40%, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 70%), var(--bg-desktop, #000)',
+            color: 'var(--text-tertiary)', fontSize: 14,
+            fontFamily: 'var(--font-primary, "Hanken Grotesk", -apple-system, sans-serif)',
         }}>
             <div style={{ textAlign: 'center' }}>
                 <div style={{
-                    width: 24, height: 24, margin: '0 auto 12px',
-                    border: '2px solid rgba(214,254,81,0.3)', borderTopColor: '#D6FE51',
+                    width: 28, height: 28, margin: '0 auto 14px',
+                    border: '2px solid color-mix(in srgb, var(--accent) 25%, transparent)', borderTopColor: 'var(--accent)',
                     borderRadius: '50%', animation: 'spin 0.6s linear infinite',
+                    boxShadow: '0 0 16px color-mix(in srgb, var(--accent) 20%, transparent)',
                 }} />
                 {label ?? 'Loading…'}
             </div>

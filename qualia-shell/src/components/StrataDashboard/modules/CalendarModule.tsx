@@ -28,7 +28,7 @@ const typeColor: Record<string, string> = {
     lease: '#D6FE51',
     inspection: '#D6FE51',
     work_order: '#f59e0b',
-    task: '#10b981',
+    task: '#22c55e',
     payment: '#0ea5e9',
     recurring: '#D6FE51',
 };
@@ -164,7 +164,7 @@ export default function CalendarModule() {
     const webcalUrl = `webcal://localhost:3000/api/calendar/export/ics`;
 
     return (
-        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Calendar module unavailable.</div>}>
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Calendar module unavailable.</div>}>
         <div className="s-module" data-testid="calendar-module">
             <div className="s-module-header">
                 <div>
@@ -176,14 +176,14 @@ export default function CalendarModule() {
                     <div style={{ display: 'inline-flex', borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', marginRight: 8 }}>
                         <button
                             className="s-btn s-btn-ghost"
-                            style={{ padding: '5px 10px', borderRadius: 0, background: tab === 'calendar' ? 'rgba(214,254,81,0.2)' : 'transparent', color: tab === 'calendar' ? '#D6FE51' : 'var(--s-text-secondary)' }}
+                            style={{ padding: '5px 10px', borderRadius: 0, background: tab === 'calendar' ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'transparent', color: tab === 'calendar' ? '#D6FE51' : 'var(--s-text-secondary)' }}
                             onClick={() => setTab('calendar')}
                         >
                             <CalendarDays size={14} /> Calendar
                         </button>
                         <button
                             className="s-btn s-btn-ghost"
-                            style={{ padding: '5px 10px', borderRadius: 0, background: tab === 'integrations' ? 'rgba(214,254,81,0.2)' : 'transparent', color: tab === 'integrations' ? '#D6FE51' : 'var(--s-text-secondary)' }}
+                            style={{ padding: '5px 10px', borderRadius: 0, background: tab === 'integrations' ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'transparent', color: tab === 'integrations' ? '#D6FE51' : 'var(--s-text-secondary)' }}
                             onClick={() => setTab('integrations')}
                         >
                             <Settings size={14} /> Integrations
@@ -207,13 +207,13 @@ export default function CalendarModule() {
                                 <CalendarDays size={22} color="#fff" />
                             </div>
                             <div style={{ flex: 1 }}>
-                                <h3 style={{ margin: 0, fontSize: '1rem', color: '#e2e8f0' }}>Google Calendar</h3>
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Google Calendar</h3>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
                                     Sync property events, lease expirations, and inspections
                                 </p>
                             </div>
                             {gcalLoading ? (
-                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Checking…</span>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Checking…</span>
                             ) : gcalStatus?.connected ? (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#22c55e', fontSize: '0.82rem', fontWeight: 600 }}>
                                     <CheckCircle2 size={14} /> Connected
@@ -229,27 +229,27 @@ export default function CalendarModule() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Connected Account</div>
-                                        <div style={{ fontSize: '0.9rem', color: '#e2e8f0', fontWeight: 500 }}>{gcalStatus.watchEmail || 'Service Account'}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Connected Account</div>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500 }}>{gcalStatus.watchEmail || 'Service Account'}</div>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Calendar</div>
-                                        <div style={{ fontSize: '0.85rem', color: '#D6FE51' }}>{gcalStatus.defaultCalendarId}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Calendar</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>{gcalStatus.defaultCalendarId}</div>
                                     </div>
                                 </div>
 
                                 {/* Upcoming Google Events */}
                                 {googleEvents.length > 0 && (
                                     <div>
-                                        <h4 style={{ margin: '8px 0 6px', fontSize: '0.85rem', color: '#94a3b8' }}>Upcoming Google Calendar Events</h4>
+                                        <h4 style={{ margin: '8px 0 6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Upcoming Google Calendar Events</h4>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
                                             {googleEvents.slice(0, 10).map(ev => (
                                                 <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(66,133,244,0.06)', borderRadius: 6, border: '1px solid rgba(66,133,244,0.12)' }}>
                                                     <Clock size={12} style={{ color: '#4285f4', flexShrink: 0 }} />
                                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ fontSize: '0.82rem', color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.summary}</div>
+                                                        <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.summary}</div>
                                                     </div>
-                                                    <span style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                                                         {new Date(ev.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                     </span>
                                                     {ev.htmlLink && (
@@ -266,10 +266,10 @@ export default function CalendarModule() {
                         )}
 
                         {gcalStatus && !gcalStatus.connected && (
-                            <div style={{ padding: '12px 14px', background: 'rgba(239,68,68,0.06)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.15)', fontSize: '0.82rem', color: '#f87171' }}>
+                            <div style={{ padding: '12px 14px', background: 'rgba(239,68,68,0.06)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.15)', fontSize: '0.82rem', color: '#ef4444' }}>
                                 <p style={{ margin: 0 }}>Google Calendar requires OAuth2 setup. Configure your credentials in the backend <code>.env</code> file with Google service account or OAuth2 tokens.</p>
                                 {gcalStatus.error && (
-                                    <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>Error: {gcalStatus.error}</p>
+                                    <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Error: {gcalStatus.error}</p>
                                 )}
                             </div>
                         )}
@@ -286,8 +286,8 @@ export default function CalendarModule() {
                                 <CalendarDays size={22} color="#fff" />
                             </div>
                             <div style={{ flex: 1 }}>
-                                <h3 style={{ margin: 0, fontSize: '1rem', color: '#e2e8f0' }}>Apple Calendar</h3>
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Apple Calendar</h3>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
                                     Subscribe or download property calendar events to Apple Calendar
                                 </p>
                             </div>
@@ -305,12 +305,12 @@ export default function CalendarModule() {
                             >
                                 <Link2 size={18} style={{ color: '#FF3B30', flexShrink: 0 }} />
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.88rem', color: '#e2e8f0', fontWeight: 600 }}>Subscribe to Calendar</div>
-                                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                                    <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600 }}>Subscribe to Calendar</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                                         Auto-sync events in Apple Calendar via iCal subscription. Events update automatically.
                                     </div>
                                 </div>
-                                <ExternalLink size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+                                <ExternalLink size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                             </div>
 
                             {/* Download ICS */}
@@ -324,17 +324,17 @@ export default function CalendarModule() {
                             >
                                 <Download size={18} style={{ color: '#FF9500', flexShrink: 0 }} />
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.88rem', color: '#e2e8f0', fontWeight: 600 }}>Download .ics File</div>
-                                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                                    <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600 }}>Download .ics File</div>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                                         One-time download of all upcoming events. Import into Apple Calendar, Outlook, or any app that supports .ics files.
                                     </div>
                                 </div>
-                                <ExternalLink size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+                                <ExternalLink size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                             </div>
 
                             {/* Info */}
-                            <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, fontSize: '0.78rem', color: '#64748b', lineHeight: 1.5 }}>
-                                <strong style={{ color: '#94a3b8' }}>How it works:</strong> Calendar subscription keeps Apple Calendar in sync with property events (lease expirations, inspections, maintenance). The .ics download is a snapshot you can import manually.
+                            <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, fontSize: '0.78rem', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+                                <strong style={{ color: 'var(--text-secondary)' }}>How it works:</strong> Calendar subscription keeps Apple Calendar in sync with property events (lease expirations, inspections, maintenance). The .ics download is a snapshot you can import manually.
                             </div>
                         </div>
                     </div>
@@ -350,12 +350,12 @@ export default function CalendarModule() {
                                 <CalendarDays size={22} color="#fff" />
                             </div>
                             <div style={{ flex: 1 }}>
-                                <h3 style={{ margin: 0, fontSize: '1rem', color: '#94a3b8' }}>Microsoft Outlook</h3>
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#475569' }}>
+                                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-secondary)' }}>Microsoft Outlook</h3>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
                                     Coming soon — Use the .ics download above for manual import in the meantime.
                                 </p>
                             </div>
-                            <span className="s-badge" style={{ background: 'rgba(255,255,255,0.06)', color: '#64748b' }}>Planned</span>
+                            <span className="s-badge" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-tertiary)' }}>Planned</span>
                         </div>
                     </div>
                 </div>
@@ -376,7 +376,7 @@ export default function CalendarModule() {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                                     <button className="s-btn s-btn-ghost s-btn-sm" onClick={prevMonth}><ChevronLeft size={16} /></button>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: 18, fontWeight: 600 }}>
+                                        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: 18, fontWeight: 600 }}>
                                             {MONTHS[month]} {year}
                                         </h3>
                                         <button className="s-btn s-btn-ghost s-btn-sm" onClick={today} style={{ fontSize: 11 }}>Today</button>
@@ -387,7 +387,7 @@ export default function CalendarModule() {
                                 {/* Day Headers */}
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
                                     {DAYS.map(d => (
-                                        <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#64748b', fontWeight: 600, padding: '4px 0', textTransform: 'uppercase' }}>{d}</div>
+                                        <div key={d} style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, padding: '4px 0', textTransform: 'uppercase' }}>{d}</div>
                                     ))}
                                 </div>
 
@@ -410,12 +410,12 @@ export default function CalendarModule() {
                                                     padding: '4px 6px',
                                                     borderRadius: 6,
                                                     cursor: 'pointer',
-                                                    background: isSelected ? 'rgba(214,254,81,0.15)' : isToday ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.02)',
-                                                    border: `1px solid ${isSelected ? 'rgba(214,254,81,0.4)' : isToday ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.04)'}`,
+                                                    background: isSelected ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : isToday ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.02)',
+                                                    border: `1px solid ${isSelected ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : isToday ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.04)'}`,
                                                     transition: 'all 0.15s',
                                                 }}
                                             >
-                                                <div style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isToday ? '#10b981' : '#94a3b8', marginBottom: 2 }}>{day}</div>
+                                                <div style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isToday ? '#22c55e' : '#94a3b8', marginBottom: 2 }}>{day}</div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}>
                                                     {dayEvents.slice(0, 3).map((ev, idx) => (
                                                         <div
@@ -431,7 +431,7 @@ export default function CalendarModule() {
                                                         </div>
                                                     ))}
                                                     {dayEvents.length > 3 && (
-                                                        <div style={{ fontSize: 9, color: '#64748b' }}>+{dayEvents.length - 3} more</div>
+                                                        <div style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>+{dayEvents.length - 3} more</div>
                                                     )}
                                                 </div>
                                             </div>
@@ -446,7 +446,7 @@ export default function CalendarModule() {
                     {hasPermission('strata:calendar:day-detail') && (
                         <div style={{ flex: 1, minWidth: 260 }} data-testid="calendar-event-detail">
                             <div className="s-glass-card" style={{ padding: 16 }}>
-                                <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <h3 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CalendarDays size={16} />
                                     {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Select a Date'}
                                 </h3>
@@ -461,9 +461,9 @@ export default function CalendarModule() {
                                                 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                                         <span style={{ color: typeColor[ev.type] || '#D6FE51' }}>{typeIcon(ev.type)}</span>
-                                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{ev.title}</span>
+                                                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{ev.title}</span>
                                                     </div>
-                                                    <div style={{ fontSize: 11, color: '#64748b' }}>{ev.description || 'No description'}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{ev.description || 'No description'}</div>
                                                     <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                                                         <span style={{
                                                             fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 600, textTransform: 'uppercase',
@@ -475,10 +475,10 @@ export default function CalendarModule() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <p data-testid="calendar-empty" style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>No events on this date</p>
+                                        <p data-testid="calendar-empty" style={{ color: 'var(--text-tertiary)', fontSize: 12, textAlign: 'center', padding: 20 }}>No events on this date</p>
                                     )
                                 ) : (
-                                    <p style={{ color: '#475569', fontSize: 12, textAlign: 'center', padding: 20 }}>Click a date to view events</p>
+                                    <p style={{ color: 'var(--text-tertiary)', fontSize: 12, textAlign: 'center', padding: 20 }}>Click a date to view events</p>
                                 )}
                             </div>
 
@@ -486,7 +486,7 @@ export default function CalendarModule() {
                                 9 AHA inspection seed can render alongside other
                                 upcoming events without pre-filter capping. */}
                             <div className="s-glass-card" style={{ padding: 16, marginTop: 12 }}>
-                                <h3 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14, fontWeight: 600 }}>Upcoming</h3>
+                                <h3 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600 }}>Upcoming</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                     {events
                                         .filter(e => e.dueDate && e.dueDate >= todayStr)
@@ -518,16 +518,16 @@ export default function CalendarModule() {
                                             >
                                                 <span style={{ color: typeColor[ev.type] || '#D6FE51' }}>{typeIcon(ev.type)}</span>
                                                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                                                    <div style={{ fontSize: 12, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
+                                                    <div style={{ fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
                                                 </div>
-                                                <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap' }}>
+                                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                                                     {ev.dueDate ? new Date(ev.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
                                                 </span>
                                             </div>
                                         ))
                                     }
                                     {events.filter(e => e.dueDate && e.dueDate >= todayStr).length === 0 && (
-                                        <p style={{ color: '#475569', fontSize: 12, textAlign: 'center' }}>No upcoming events</p>
+                                        <p style={{ color: 'var(--text-tertiary)', fontSize: 12, textAlign: 'center' }}>No upcoming events</p>
                                     )}
                                 </div>
                             </div>

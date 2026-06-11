@@ -387,7 +387,7 @@ function formatTimestamp(iso: string): string {
 const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
     active: { color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
     paused: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-    draft: { color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
+    draft: { color: 'var(--text-tertiary)', bg: 'rgba(100,116,139,0.12)' },
 };
 
 const RESULT_COLORS: Record<string, { color: string; icon: string }> = {

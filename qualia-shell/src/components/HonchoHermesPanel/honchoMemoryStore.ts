@@ -14,6 +14,7 @@
  * Storage key:  honcho:memories:<userId>
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface LocalMemory {
     id: string;
@@ -47,11 +48,14 @@ function deserialize(raw: string | null): LocalMemory[] {
     }
 }
 
-export const memoryStore = createLocalStorageStore<LocalMemory[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const memoryStore = withSync(
+    createLocalStorageStore<LocalMemory[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'honcho-memory', holder: memoryUserIdHolder, resolveKey },
+);
 
 function persist(next: LocalMemory[]) {
     memoryStore.set(next, () => {

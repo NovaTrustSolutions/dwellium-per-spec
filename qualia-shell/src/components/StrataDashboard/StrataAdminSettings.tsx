@@ -82,7 +82,7 @@ const accordionHeaderStyle: React.CSSProperties = {
     transition: 'all 0.2s ease',
     width: '100%',
     textAlign: 'left',
-    color: '#e2e8f0',
+    color: 'var(--text-primary)',
     fontSize: '14px',
     fontWeight: 600,
 };
@@ -93,9 +93,9 @@ const toggleStyle: React.CSSProperties = {
     gap: '6px',
     padding: '4px 10px',
     borderRadius: '6px',
-    border: '1px solid rgba(214,254,81,0.25)',
-    background: 'rgba(214,254,81,0.08)',
-    color: '#D6FE51',
+    border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+    background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
+    color: 'var(--accent)',
     cursor: 'pointer',
     fontSize: '11px',
     fontWeight: 600,
@@ -265,16 +265,16 @@ export default function StrataAdminSettings() {
                                     style={{
                                         padding: '12px',
                                         borderRadius: '8px',
-                                        background: selectedUserId === u.id ? 'rgba(214, 254, 81, 0.15)' : 'rgba(255,255,255,0.03)',
-                                        border: `1px solid ${selectedUserId === u.id ? 'rgba(214, 254, 81, 0.4)' : 'transparent'}`,
+                                        background: selectedUserId === u.id ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'rgba(255,255,255,0.03)',
+                                        border: `1px solid ${selectedUserId === u.id ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'transparent'}`,
                                         textAlign: 'left',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
-                                        color: '#e2e8f0',
+                                        color: 'var(--text-primary)',
                                     }}
                                 >
                                     <div style={{ fontWeight: 600, fontSize: '14px' }}>{u.name}</div>
-                                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                                         {u.role}
                                         {u.role === 'god' && <span style={{ color: '#f59e0b', marginLeft: '6px' }}>★</span>}
                                     </div>
@@ -291,9 +291,9 @@ export default function StrataAdminSettings() {
                             background: 'rgba(0,0,0,0.2)',
                             borderRadius: '8px',
                             fontSize: '12px',
-                            color: '#94a3b8',
+                            color: 'var(--text-secondary)',
                         }}>
-                            <div style={{ fontWeight: 600, color: '#e2e8f0', marginBottom: '6px' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                                 {selectedUser?.name || '—'}
                             </div>
                             <div style={{
@@ -356,7 +356,7 @@ export default function StrataAdminSettings() {
                                         padding: '8px 12px',
                                         border: '1px solid rgba(255,255,255,0.08)',
                                     }}>
-                                        <Search size={16} style={{ color: '#64748b', flexShrink: 0 }} />
+                                        <Search size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                                         <input
                                             type="text"
                                             placeholder="Search permissions..."
@@ -366,7 +366,7 @@ export default function StrataAdminSettings() {
                                                 background: 'transparent',
                                                 border: 'none',
                                                 outline: 'none',
-                                                color: '#e2e8f0',
+                                                color: 'var(--text-primary)',
                                                 fontSize: '13px',
                                                 width: '100%',
                                             }}
@@ -393,7 +393,7 @@ export default function StrataAdminSettings() {
 
                                 {successMsg && (
                                     <div style={{
-                                        color: '#10b981',
+                                        color: '#22c55e',
                                         padding: '10px 12px',
                                         background: 'rgba(16, 185, 129, 0.1)',
                                         borderRadius: '8px',
@@ -421,18 +421,18 @@ export default function StrataAdminSettings() {
                                             onClick={() => toggleGroupExpanded(group.label)}
                                             style={{
                                                 ...accordionHeaderStyle,
-                                                borderColor: isExpanded ? 'rgba(214,254,81,0.3)' : 'rgba(255,255,255,0.06)',
+                                                borderColor: isExpanded ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'rgba(255,255,255,0.06)',
                                             }}
                                         >
                                             {isExpanded
-                                                ? <ChevronDown size={16} style={{ color: '#D6FE51', flexShrink: 0 }} />
-                                                : <ChevronRight size={16} style={{ color: '#64748b', flexShrink: 0 }} />
+                                                ? <ChevronDown size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                                                : <ChevronRight size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                                             }
                                             <span style={{ flex: 1 }}>{group.label}</span>
                                             <span style={{
                                                 fontSize: '11px',
                                                 fontWeight: 500,
-                                                color: allGranted ? '#10b981' : noneGranted ? '#ef4444' : '#f59e0b',
+                                                color: allGranted ? '#22c55e' : noneGranted ? '#ef4444' : '#f59e0b',
                                                 background: allGranted ? 'rgba(16,185,129,0.12)' : noneGranted ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
                                                 padding: '2px 8px',
                                                 borderRadius: '10px',
@@ -446,7 +446,7 @@ export default function StrataAdminSettings() {
                                                 padding: '12px 16px 16px',
                                                 background: 'rgba(15,23,42,0.4)',
                                                 borderRadius: '0 0 10px 10px',
-                                                border: '1px solid rgba(214,254,81,0.15)',
+                                                border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)',
                                                 borderTop: 'none',
                                                 marginTop: '-4px',
                                             }}>
@@ -466,7 +466,7 @@ export default function StrataAdminSettings() {
                                                     </button>
                                                     <button
                                                         onClick={() => handleBulkToggle(group.keys, false)}
-                                                        style={{ ...toggleStyle, color: '#f87171', borderColor: 'rgba(248,113,113,0.25)', background: 'rgba(248,113,113,0.08)' }}
+                                                        style={{ ...toggleStyle, color: '#ef4444', borderColor: 'rgba(248,113,113,0.25)', background: 'rgba(248,113,113,0.08)' }}
                                                     >
                                                         <ToggleLeft size={14} /> Deselect All
                                                     </button>
@@ -483,10 +483,10 @@ export default function StrataAdminSettings() {
                                                             alignItems: 'center',
                                                             gap: '10px',
                                                             padding: '10px 12px',
-                                                            background: permissions[key] ? 'rgba(214,254,81,0.08)' : 'rgba(0,0,0,0.2)',
+                                                            background: permissions[key] ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'rgba(0,0,0,0.2)',
                                                             borderRadius: '8px',
                                                             cursor: 'pointer',
-                                                            border: permissions[key] ? '1px solid rgba(214,254,81,0.25)' : '1px solid transparent',
+                                                            border: permissions[key] ? '1px solid color-mix(in srgb, var(--accent) 25%, transparent)' : '1px solid transparent',
                                                             transition: 'all 0.15s ease',
                                                         }}>
                                                             <input
@@ -505,7 +505,7 @@ export default function StrataAdminSettings() {
                                                                 </span>
                                                                 <span style={{
                                                                     fontSize: '10px',
-                                                                    color: '#475569',
+                                                                    color: 'var(--text-tertiary)',
                                                                     fontFamily: 'monospace',
                                                                     overflow: 'hidden',
                                                                     textOverflow: 'ellipsis',
@@ -527,7 +527,7 @@ export default function StrataAdminSettings() {
                                 <div style={{
                                     textAlign: 'center',
                                     padding: '40px',
-                                    color: '#64748b',
+                                    color: 'var(--text-tertiary)',
                                     fontSize: '14px',
                                 }}>
                                     No permissions matching "{searchQuery}"

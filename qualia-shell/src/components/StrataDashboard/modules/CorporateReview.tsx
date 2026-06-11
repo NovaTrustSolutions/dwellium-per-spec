@@ -214,7 +214,7 @@ function CorporateReviewInner() {
                 <div
                     className="s-glass-card"
                     style={{
-                        padding: '8px 12px', color: '#fbbf24', fontSize: 12,
+                        padding: '8px 12px', color: '#f59e0b', fontSize: 12,
                         borderColor: 'rgba(251,191,36,0.4)', display: 'flex', alignItems: 'center', gap: 8,
                     }}
                 >
@@ -244,8 +244,8 @@ function CorporateReviewInner() {
                     data-testid="corporate-review-upload-btn"
                     onClick={() => setShowUpload(true)}
                     style={{
-                        padding: '6px 16px', borderRadius: 8, border: 'none', background: '#D6FE51',
-                        color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)',
+                        color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
                     }}
                 >
                     <Upload size={14} /> Upload Document
@@ -254,16 +254,16 @@ function CorporateReviewInner() {
 
             {/* Search */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '6px 12px' }}>
-                <Search size={14} style={{ color: '#888' }} />
+                <Search size={14} style={{ color: 'var(--text-tertiary)' }} />
                 <input
                     data-testid="corporate-review-search-input"
                     value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents..."
-                    style={{ flex: 1, background: 'transparent', border: 'none', color: '#eee', fontSize: 13, outline: 'none' }}
+                    style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }}
                 />
                 <button
                     data-testid="corporate-review-refresh-btn"
                     onClick={fetchDocs}
-                    style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
                 >
                     <RefreshCw size={14} />
                 </button>
@@ -289,17 +289,17 @@ function CorporateReviewInner() {
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <FileText size={16} style={{ color: '#D6FE51' }} />
-                            <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: '#eee' }}>{doc.filename}</span>
+                            <FileText size={16} style={{ color: 'var(--accent)' }} />
+                            <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{doc.filename}</span>
                             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: STATUS_COLORS[doc.status] + '22', color: STATUS_COLORS[doc.status], fontWeight: 600 }}>
                                 {doc.status.toUpperCase()}
                             </span>
                             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: PRIORITY_COLORS[doc.priority] + '22', color: PRIORITY_COLORS[doc.priority], fontWeight: 600 }}>
                                 {doc.priority}
                             </span>
-                            <span style={{ fontSize: 11, color: '#888' }}>{doc.category}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{doc.category}</span>
                         </div>
-                        {doc.notes && <p style={{ fontSize: 12, color: '#999', margin: '6px 0 0 26px' }}>{doc.notes}</p>}
+                        {doc.notes && <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0 26px' }}>{doc.notes}</p>}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, paddingLeft: 26, fontSize: 11, color: '#666' }}>
                             <Clock size={11} /> {new Date(doc.createdAt).toLocaleDateString()} • by {doc.uploadedBy}
                             {doc.workitemId && <span style={{ color: '#22c55e' }}>• Workitem linked</span>}
@@ -364,29 +364,29 @@ function CorporateReviewInner() {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}
                     onClick={() => setShowUpload(false)}>
                     <div style={{ ...cardStyle, width: 420, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
-                        <h3 style={{ margin: '0 0 16px', color: '#eee', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Upload size={16} /> Upload Document for Review
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <input type="file" onChange={e => setUploadFile(e.target.files?.[0] || null)}
-                                style={{ color: '#ccc', fontSize: 13 }} />
-                            <label style={{ fontSize: 12, color: '#888' }}>Category</label>
+                                style={{ color: 'var(--text-secondary)', fontSize: 13 }} />
+                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Category</label>
                             <select value={uploadCategory} onChange={e => setUploadCategory(e.target.value)}
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: '#eee', fontSize: 13 }}>
+                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13 }}>
                                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                            <label style={{ fontSize: 12, color: '#888' }}>Priority</label>
+                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Priority</label>
                             <select value={uploadPriority} onChange={e => setUploadPriority(e.target.value as DocPriority)}
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: '#eee', fontSize: 13 }}>
+                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13 }}>
                                 <option value="critical">Critical</option>
                                 <option value="high">High</option>
                                 <option value="medium">Medium</option>
                                 <option value="low">Low</option>
                             </select>
-                            <label style={{ fontSize: 12, color: '#888' }}>Notes</label>
+                            <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Notes</label>
                             <textarea value={uploadNotes} onChange={e => setUploadNotes(e.target.value)}
                                 rows={3} placeholder="Additional notes..."
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: '#eee', fontSize: 13, resize: 'vertical' }} />
+                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 13, resize: 'vertical' }} />
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
                                 <button onClick={() => setShowUpload(false)} style={btnStyle('#666')}>Cancel</button>
                                 <button onClick={handleUpload} disabled={!uploadFile || loading} style={btnStyle('#D6FE51')}>
@@ -402,8 +402,8 @@ function CorporateReviewInner() {
             {feedback && (
                 <div style={{
                     position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-                    background: '#1a1a2e', border: '1px solid rgba(214,254,81,0.4)', borderRadius: 8,
-                    padding: '10px 20px', color: '#eee', fontSize: 13, zIndex: 1000,
+                    background: '#1a1a2e', border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', borderRadius: 8,
+                    padding: '10px 20px', color: 'var(--text-primary)', fontSize: 13, zIndex: 1000,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
                 }}>
                     {feedback}
@@ -424,7 +424,7 @@ export default function CorporateReview() {
     return (
         <ErrorBoundary
             fallback={
-                <div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>
+                <div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>
                     Corporate Review module unavailable.
                 </div>
             }

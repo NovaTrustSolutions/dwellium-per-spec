@@ -533,7 +533,7 @@
     overflow: hidden;
 }
 .cp-group:hover, .settings-section:hover, .cp-section:hover {
-    border-color: rgba(214, 254, 81, 0.12);
+    border-color: color-mix(in srgb, var(--accent) 12%, transparent);
     box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
@@ -542,7 +542,7 @@
     transition: background 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease;
 }
 .cp-toggle-checked .cp-toggle-track, .settings-toggle-on {
-    box-shadow: 0 0 12px rgba(214, 254, 81, 0.25), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 25%, transparent), inset 0 1px 0 rgba(255,255,255,0.1) !important;
 }
 .cp-toggle-thumb, .settings-toggle-knob {
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
@@ -550,15 +550,15 @@
 
 /* [P3] Value input focus glow */
 .cp-input:focus, .settings-input:focus {
-    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.15), 0 0 16px rgba(214, 254, 81, 0.08) !important;
-    border-color: rgba(214, 254, 81, 0.35) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent), 0 0 16px color-mix(in srgb, var(--accent) 8%, transparent) !important;
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent) !important;
 }
 
 /* [P4] Section divider gradient */
 .cp-divider, .settings-divider {
     height: 1px;
     border: none;
-    background: linear-gradient(90deg, transparent, rgba(214, 254, 81, 0.15), transparent) !important;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 15%, transparent), transparent) !important;
     margin: 16px 0;
 }
 
@@ -569,7 +569,7 @@
     transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 .cp-save-btn:hover, .settings-save:hover {
-    box-shadow: 0 4px 20px rgba(214, 254, 81, 0.25), inset 0 1px 0 rgba(255,255,255,0.12);
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 25%, transparent), inset 0 1px 0 rgba(255,255,255,0.12);
     transform: translateY(-2px);
 }
 .cp-save-btn::after, .settings-save::after {
@@ -607,7 +607,7 @@
 .cp-update-card__label {
     width: 88px;
     flex-shrink: 0;
-    color: #9ca3af;
+    color: var(--text-secondary);
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -620,11 +620,11 @@
 }
 
 .cp-update-card__subject {
-    color: #d1d5db;
+    color: var(--text-secondary);
 }
 
 .cp-update-card__age {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 12px;
 }
 
@@ -637,8 +637,8 @@
     margin-right: 6px;
 }
 
-.cp-update-pill--ok { background: rgba(16, 185, 129, 0.12); color: #34d399; }
-.cp-update-pill--warn { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+.cp-update-pill--ok { background: rgba(16, 185, 129, 0.12); color: var(--success); }
+.cp-update-pill--warn { background: rgba(251, 191, 36, 0.12); color: var(--warning); }
 .cp-update-pill--info { background: rgba(99, 102, 241, 0.12); color: #a5b4fc; }
 
 .cp-update-card__actions {
@@ -663,13 +663,13 @@
 .cp-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .cp-btn--primary {
-    background: #d6fe51;
-    color: #000;
-    border-color: #d6fe51;
+    background: var(--accent);
+    color: var(--text-inverse);
+    border-color: var(--accent);
     font-weight: 600;
 }
 
-.cp-btn--primary:hover:not(:disabled) { background: #e8ff7a; }
+.cp-btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
 
 .cp-update-incoming {
     background: rgba(99, 102, 241, 0.06);
@@ -697,12 +697,12 @@
 .cp-update-incoming li {
     font-family: 'SF Mono', 'Fira Code', monospace;
     font-size: 11px;
-    color: #d1d5db;
+    color: var(--text-secondary);
     line-height: 1.6;
 }
 
 .cp-update-log {
-    background: #0a0a0a;
+    background: var(--bg-desktop);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 6px;
     font-size: 11px;
@@ -711,13 +711,13 @@
 .cp-update-log summary {
     cursor: pointer;
     padding: 6px 10px;
-    color: #9ca3af;
+    color: var(--text-secondary);
 }
 
 .cp-update-log pre {
     margin: 0;
     padding: 8px 12px;
-    color: #d1d5db;
+    color: var(--text-secondary);
     max-height: 240px;
     overflow-y: auto;
     font-family: 'SF Mono', 'Fira Code', monospace;
@@ -726,7 +726,7 @@
 .cp-update-error {
     background: rgba(239, 68, 68, 0.08);
     border: 1px solid rgba(239, 68, 68, 0.22);
-    color: #fca5a5;
+    color: var(--danger);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 12px;

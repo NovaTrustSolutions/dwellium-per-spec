@@ -42,11 +42,11 @@ const card: React.CSSProperties = {
 const thStyle: React.CSSProperties = {
     textAlign: 'left', padding: '10px 14px', fontSize: 10,
     fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase',
-    color: '#64748b', borderBottom: '1px solid rgba(255,255,255,0.06)',
+    color: 'var(--text-tertiary)', borderBottom: '1px solid rgba(255,255,255,0.06)',
 };
 
 const tdStyle: React.CSSProperties = {
-    padding: '10px 14px', fontSize: 13, color: '#cbd5e1',
+    padding: '10px 14px', fontSize: 13, color: 'var(--text-secondary)',
     borderBottom: '1px solid rgba(255,255,255,0.04)',
 };
 
@@ -116,7 +116,7 @@ export default function ProfilesModule() {
     /* ── Status badge ── */
     const statusBadge = (s: string) => {
         const colors: Record<string, string> = {
-            active: '#10b981', occupied: '#3b82f6', vacant: '#f59e0b',
+            active: '#22c55e', occupied: '#3b82f6', vacant: '#f59e0b',
             inactive: '#64748b', maintenance: '#ef4444',
         };
         return (
@@ -141,7 +141,7 @@ export default function ProfilesModule() {
                         style={{
                             display: 'flex', alignItems: 'center', gap: 6,
                             padding: '7px 14px', border: 'none', borderRadius: 8,
-                            background: tab === t.id ? 'rgba(214,254,81,0.15)' : 'transparent',
+                            background: tab === t.id ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                             color: tab === t.id ? '#D6FE51' : '#94a3b8',
                             fontSize: 12, fontWeight: 600, cursor: 'pointer',
                             fontFamily: 'inherit', transition: 'all 0.15s',
@@ -153,7 +153,7 @@ export default function ProfilesModule() {
 
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                     <div style={{ position: 'relative' }}>
-                        <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                        <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                         <input
                             placeholder="Search…"
                             value={search}
@@ -161,7 +161,7 @@ export default function ProfilesModule() {
                             style={{
                                 padding: '6px 12px 6px 30px', border: '1px solid rgba(255,255,255,0.08)',
                                 borderRadius: 8, background: 'rgba(255,255,255,0.04)',
-                                color: '#e2e8f0', fontSize: 12, fontFamily: 'inherit',
+                                color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit',
                                 outline: 'none', width: 180,
                             }}
                         />
@@ -172,7 +172,7 @@ export default function ProfilesModule() {
                             display: 'flex', alignItems: 'center', gap: 4,
                             padding: '6px 10px', border: '1px solid rgba(255,255,255,0.08)',
                             borderRadius: 8, background: 'rgba(255,255,255,0.04)',
-                            color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                            color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                         }}
                     >
                         <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
@@ -197,7 +197,7 @@ export default function ProfilesModule() {
                                 </thead>
                                 <tbody>
                                     {filteredProperties.length === 0 ? (
-                                        <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>
+                                        <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                                             {loading ? 'Loading…' : 'No properties found'}
                                         </td></tr>
                                     ) : filteredProperties.map(p => (
@@ -231,7 +231,7 @@ export default function ProfilesModule() {
                                 </thead>
                                 <tbody>
                                     {filteredUnits.length === 0 ? (
-                                        <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>
+                                        <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                                             {loading ? 'Loading…' : 'No units found'}
                                         </td></tr>
                                     ) : filteredUnits.map(u => (
@@ -261,7 +261,7 @@ export default function ProfilesModule() {
                                 </thead>
                                 <tbody>
                                     {filteredEntities.length === 0 ? (
-                                        <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#64748b' }}>
+                                        <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                                             {loading ? 'Loading…' : `No ${tab} found`}
                                         </td></tr>
                                     ) : filteredEntities.map(e => (
@@ -305,12 +305,12 @@ export default function ProfilesModule() {
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
                                     {selectedEntity.name}
                                 </h3>
                                 <span style={{
                                     fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                                    letterSpacing: 1, color: '#D6FE51',
+                                    letterSpacing: 1, color: 'var(--accent)',
                                 }}>
                                     {selectedEntity.entityType}
                                 </span>
@@ -318,7 +318,7 @@ export default function ProfilesModule() {
                             <button
                                 onClick={() => setSelectedEntity(null)}
                                 style={{
-                                    background: 'none', border: 'none', color: '#64748b',
+                                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
                                     cursor: 'pointer', fontSize: 18, lineHeight: 1,
                                 }}
                             >×</button>
@@ -326,17 +326,17 @@ export default function ProfilesModule() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
                             {selectedEntity.email && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
                                     <Mail size={14} color="#64748b" /> {selectedEntity.email}
                                 </div>
                             )}
                             {selectedEntity.phone && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
                                     <Phone size={14} color="#64748b" /> {selectedEntity.phone}
                                 </div>
                             )}
                             {selectedEntity.address && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
                                     <MapPin size={14} color="#64748b" /> {selectedEntity.address}
                                 </div>
                             )}
@@ -346,18 +346,18 @@ export default function ProfilesModule() {
                                 background: 'rgba(255,255,255,0.02)', borderRadius: 8,
                                 border: '1px solid rgba(255,255,255,0.04)',
                             }}>
-                                <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
                                     Properties
                                 </div>
                                 {selectedEntity.propertyIds.length > 0 ? (
                                     selectedEntity.propertyIds.map(pid => (
-                                        <div key={pid} style={{ fontSize: 12, color: '#94a3b8', padding: '2px 0' }}>
+                                        <div key={pid} style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '2px 0' }}>
                                             <Building2 size={11} style={{ marginRight: 6, verticalAlign: -1 }} />
                                             <button className="s-property-link" style={{ fontSize: 12 }} onClick={() => navigateToProperty(pid)}>{pid}</button>
                                         </div>
                                     ))
                                 ) : (
-                                    <div style={{ fontSize: 12, color: '#475569' }}>No linked properties</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>No linked properties</div>
                                 )}
                             </div>
 
@@ -366,18 +366,18 @@ export default function ProfilesModule() {
                                 background: 'rgba(255,255,255,0.02)', borderRadius: 8,
                                 border: '1px solid rgba(255,255,255,0.04)',
                             }}>
-                                <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
                                     Metadata
                                 </div>
                                 <pre style={{
-                                    margin: 0, fontSize: 11, color: '#94a3b8',
+                                    margin: 0, fontSize: 11, color: 'var(--text-secondary)',
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                 }}>
                                     {JSON.stringify(selectedEntity.metadata, null, 2)}
                                 </pre>
                             </div>
 
-                            <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
                                 Created {new Date(selectedEntity.createdAt).toLocaleDateString()}
                             </div>
                         </div>

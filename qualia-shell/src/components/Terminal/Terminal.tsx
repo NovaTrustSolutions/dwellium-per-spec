@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import PaperclipPanel from './PaperclipPanel';
+import LangFlowPanel from './LangFlowPanel';
+import CrewAIPanel from './CrewAIPanel';
 import { API_BASE } from '../../config';
 import { useUser } from '../../context/UserContext';
 import { runLocalCommand } from './localShell';
+import { consumePendingTerminalRun } from '../../lib/terminalLaunch';
+import type { Terminal as XTermTerminal } from '@xterm/xterm';
+import '@xterm/xterm/css/xterm.css';
 import './Terminal.css';
 
 interface TerminalToolCapability {
@@ -71,6 +77,7 @@ export default function Terminal() {
     // True when the backend PTY routes are unreachable — the widget falls back
     // to a clearly-labeled local offline shell instead of looking dead.
     const [offline, setOffline] = useState(false);
+    const [tab, setTab] = useState<'terminal' | 'paperclip' | 'langflow' | 'crewai'>('terminal');
     const surfaceRef = useRef<HTMLDivElement | null>(null);
     const inputCaptureRef = useRef<HTMLTextAreaElement | null>(null);
     const scrollRef = useRef<HTMLPreElement | null>(null);
@@ -78,6 +85,13 @@ export default function Terminal() {
     const sessionIdRef = useRef<string | null>(null);
     const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const closedRef = useRef(false);
+    // xterm.js terminal emulator — interprets ANSI + full-screen apps (vim, etc.).
+    // Created client-side via dynamic import (SSR-safe) when a live session is up.
+    const xtermHostRef = useRef<HTMLDivElement | null>(null);
+    const termRef = useRef<XTermTerminal | null>(null);
+    const fitRef = useRef<{ fit: () => void } | null>(null);
+    const pendingWriteRef = useRef<string>('');
+    const onDataRef = useRef<(d: string) => void>(() => {});
 
     const toolMap = useMemo(() => {
         const map = new Map<string, boolean>();
@@ -88,7 +102,15 @@ export default function Terminal() {
     }, [capabilities]);
 
     const focusTerminal = useCallback(() => {
+        if (termRef.current) { termRef.current.focus(); return; }
         inputCaptureRef.current?.focus();
+    }, []);
+
+    /** Write live PTY output to the xterm emulator, buffering until it mounts. */
+    const writeToTerm = useCallback((text: string) => {
+        if (!text) return;
+        if (termRef.current) termRef.current.write(text);
+        else pendingWriteRef.current += text;
     }, []);
 
     const sendRawInput = useCallback(async (input: string) => {
@@ -103,12 +125,16 @@ export default function Terminal() {
         }
     }, [authFetch]);
 
+    // Keep the live keystroke handler current without recreating the xterm instance.
+    onDataRef.current = (d: string) => { void sendRawInput(d); };
+
     const pollOutput = useCallback(async () => {
         if (!sessionIdRef.current || closedRef.current) return;
         try {
             const res = await authFetch(`${API_TERMINAL}/sessions/${sessionIdRef.current}/output?cursor=${cursorRef.current}`);
             const json = await res.json().catch(() => null);
-            if (!res.ok || !json?.success || !json?.data) {
+            const d = json?.data ?? json;
+            if (!res.ok || !json?.success || !d) {
                 if (res.status === 404) {
                     closedRef.current = true;
                 } else {
@@ -117,27 +143,34 @@ export default function Terminal() {
                 return;
             }
 
-            const nextChunks = Array.isArray(json.data.chunks) ? json.data.chunks : [];
-            if (nextChunks.length > 0) {
-                const chunkText = nextChunks.map((chunk: { data: string }) => chunk.data).join('');
-                startTransition(() => {
-                    setOutput(prev => trimOutput(prev + chunkText));
-                });
-            }
+            // Backend returns incremental output as data.output (a STRING); older
+            // builds used data.chunks[{data}]. Accept either.
+            const chunkText = typeof d.output === 'string'
+                ? d.output
+                : (Array.isArray(d.chunks) ? d.chunks.map((chunk: { data: string }) => chunk.data).join('') : '');
+            if (chunkText) writeToTerm(chunkText);
 
-            cursorRef.current = json.data.nextCursor || cursorRef.current;
+            cursorRef.current = (typeof d.cursor === 'number' ? d.cursor : d.nextCursor) ?? cursorRef.current;
             setCursor(cursorRef.current);
-            setSession(json.data.session || null);
+            if (d.session) setSession(d.session);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Terminal poll failed');
         }
-    }, [authFetch]);
+    }, [authFetch, writeToTerm]);
 
     const resizeSession = useCallback(async () => {
-        if (!surfaceRef.current || !sessionIdRef.current) return;
-        const rect = surfaceRef.current.getBoundingClientRect();
-        const cols = Math.max(40, Math.floor((rect.width - 24) / 9));
-        const rows = Math.max(12, Math.floor((rect.height - 24) / 19));
+        if (!sessionIdRef.current) return;
+        // Reflow the xterm grid to the container, then tell the PTY the new size
+        // (critical for full-screen apps like vim to lay out correctly).
+        try { fitRef.current?.fit(); } catch { /* host not measured yet */ }
+        let cols = termRef.current?.cols ?? 0;
+        let rows = termRef.current?.rows ?? 0;
+        if ((!cols || !rows) && surfaceRef.current) {
+            const rect = surfaceRef.current.getBoundingClientRect();
+            cols = Math.max(40, Math.floor((rect.width - 24) / 9));
+            rows = Math.max(12, Math.floor((rect.height - 24) / 19));
+        }
+        if (!cols || !rows) return;
         try {
             await authFetch(`${API_TERMINAL}/sessions/${sessionIdRef.current}/resize`, {
                 method: 'POST',
@@ -167,6 +200,8 @@ export default function Terminal() {
         setError(null);
         setSaveMsg(null);
         setOutput('');
+        termRef.current?.clear();
+        pendingWriteRef.current = '';
         setCursor(0);
         cursorRef.current = 0;
         closedRef.current = false;
@@ -187,31 +222,37 @@ export default function Terminal() {
             if (!capsRes.ok || !capsJson?.success) {
                 throw new Error(capsJson?.error || `Failed to load terminal capabilities (${capsRes.status})`);
             }
-            // Backend responded but the payload is malformed (no cwd). The old
-            // code crashed here with "Cannot read properties of undefined
-            // (reading 'cwd')" — surfaced live this session. Fail clearly and
-            // fall through to the offline shell instead.
-            if (!capsJson.data || typeof capsJson.data.cwd === 'undefined') {
+            // The backend returns capabilities FLAT ({ success, shell, cwd, tools });
+            // some builds nested them under `data`. Tolerate BOTH so the terminal
+            // connects to the real backend shell instead of silently dropping to
+            // the offline fake shell (the live root-cause of "commands do nothing").
+            const caps = capsJson.data ?? capsJson;
+            if (!caps || typeof caps.cwd === 'undefined') {
                 throw new Error('Terminal backend unavailable — capabilities response was malformed (no cwd).');
             }
-            setCapabilities(capsJson.data);
+            setCapabilities(caps);
 
             const res = await authFetch(`${API_TERMINAL}/sessions`, {
                 method: 'POST',
-                body: JSON.stringify({ cwd: capsJson.data.cwd }),
+                body: JSON.stringify({ cwd: caps.cwd }),
             });
             const json = await res.json();
-            if (!res.ok || !json?.success || !json?.data?.session) {
+            // Session response is also flat ({ success, session }) on the backend;
+            // accept either shape.
+            const sdata = json?.data ?? json;
+            if (!res.ok || !json?.success || !sdata?.session) {
                 throw new Error(json?.error || `Failed to start terminal session (${res.status})`);
             }
 
-            sessionIdRef.current = json.data.session.id;
-            setSession(json.data.session);
+            sessionIdRef.current = sdata.session.id;
+            setSession(sdata.session);
             setOffline(false);
-            cursorRef.current = json.data.nextCursor || 0;
+            cursorRef.current = sdata.nextCursor ?? sdata.cursor ?? 0;
             setCursor(cursorRef.current);
-            const initialOutput = (json.data.chunks || []).map((chunk: { data: string }) => chunk.data).join('');
-            setOutput(initialOutput);
+            const initialOutput = typeof sdata.output === 'string'
+                ? sdata.output
+                : (Array.isArray(sdata.chunks) ? sdata.chunks.map((chunk: { data: string }) => chunk.data).join('') : '');
+            writeToTerm(initialOutput);
             setSaveMsg('Live session connected');
             setTimeout(() => setSaveMsg(null), 2500);
         } catch (err) {
@@ -222,7 +263,7 @@ export default function Terminal() {
             setIsConnecting(false);
             setIsBusy(false);
         }
-    }, [authFetch]);
+    }, [authFetch, writeToTerm]);
 
     useEffect(() => {
         void createSession();
@@ -239,6 +280,45 @@ export default function Terminal() {
         }, POLL_INTERVAL_MS);
         return () => clearInterval(timer);
     }, [pollOutput, session?.id]);
+
+    // Mount the xterm.js emulator for a live session (client-only dynamic import
+    // → SSR-safe). It interprets ANSI + full-screen apps (vim). The OFFLINE shell
+    // uses the plain <pre> below instead.
+    useEffect(() => {
+        if (offline) return;
+        let disposed = false;
+        let term: XTermTerminal | null = null;
+        void (async () => {
+            if (!xtermHostRef.current) return;
+            const [{ Terminal }, { FitAddon }] = await Promise.all([
+                import('@xterm/xterm'),
+                import('@xterm/addon-fit'),
+            ]);
+            if (disposed || !xtermHostRef.current) return;
+            term = new Terminal({
+                cursorBlink: true,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontSize: 13,
+                convertEol: false,
+                scrollback: 5000,
+                theme: { background: '#00000000', foreground: '#e6e6e6' },
+            });
+            const fit = new FitAddon();
+            term.loadAddon(fit);
+            term.open(xtermHostRef.current);
+            try { fit.fit(); } catch { /* host not measured yet */ }
+            term.onData((d) => onDataRef.current(d));
+            termRef.current = term;
+            fitRef.current = fit;
+            if (pendingWriteRef.current) { term.write(pendingWriteRef.current); pendingWriteRef.current = ''; }
+        })();
+        return () => {
+            disposed = true;
+            try { term?.dispose(); } catch { /* */ }
+            if (termRef.current === term) termRef.current = null;
+            fitRef.current = null;
+        };
+    }, [offline]);
 
     useEffect(() => {
         const observer = new ResizeObserver(() => {
@@ -275,6 +355,23 @@ export default function Terminal() {
         await sendRawInput(`${trimmed}\r`);
     }, [offline, focusTerminal, sendRawInput]);
 
+    // Launch bridge: a Launch button elsewhere (System Health / service panels)
+    // opens this widget and queues a command via terminalLaunch. Consume it on
+    // mount (just-opened) AND on the event (already-open); single-shot so it
+    // never double-runs.
+    useEffect(() => {
+        const handle = () => {
+            const p = consumePendingTerminalRun();
+            if (!p) return;
+            if (p.tab) setTab(p.tab);
+            setCommandInput(p.command);
+            if (p.run !== false) void runCommand(p.command);
+        };
+        handle();
+        window.addEventListener('dwellium:terminal-run', handle);
+        return () => window.removeEventListener('dwellium:terminal-run', handle);
+    }, [runCommand]);
+
     const sendSignal = useCallback(async (signal: 'SIGINT' | 'SIGTERM' | 'EOF') => {
         if (!sessionIdRef.current) return;
         try {
@@ -297,6 +394,22 @@ export default function Terminal() {
 
     return (
         <div className="qualia-terminal">
+            <div style={{ display: 'flex', gap: 4, padding: '6px 10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+                {(['terminal', 'paperclip', 'langflow', 'crewai'] as const).map(t => (
+                    <button
+                        key={t}
+                        onClick={() => setTab(t)}
+                        style={{
+                            padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            border: 'none', background: 'transparent',
+                            borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+                            color: tab === t ? '#D6FE51' : '#888',
+                        }}
+                    >{({ terminal: 'Terminal', paperclip: 'Paperclip', langflow: 'LangFlow', crewai: 'CrewAI' } as const)[t]}</button>
+                ))}
+            </div>
+            {tab === 'paperclip' ? <PaperclipPanel /> : tab === 'langflow' ? <LangFlowPanel /> : tab === 'crewai' ? <CrewAIPanel /> : (
+            <>
             <div className="qualia-terminal__header">
                 <div>
                     <div className="qualia-terminal__title">Workspace Terminal</div>
@@ -367,9 +480,13 @@ export default function Terminal() {
                     }
                 }}
             >
-                <pre ref={scrollRef} className="qualia-terminal__output">
-                    {output || (isConnecting ? 'Connecting terminal…' : offline ? 'Offline shell ready — type "help" then press Run. Connect the backend for a full PTY shell.' : 'Terminal ready. Click here and start typing.')}
-                </pre>
+                {offline ? (
+                    <pre ref={scrollRef} className="qualia-terminal__output">
+                        {output || (isConnecting ? 'Connecting terminal…' : 'Offline shell ready — type "help" then press Run. Connect the backend for a full PTY shell.')}
+                    </pre>
+                ) : (
+                    <div ref={xtermHostRef} className="qualia-terminal__xterm" />
+                )}
                 <textarea
                     ref={inputCaptureRef}
                     className="qualia-terminal__input-capture"
@@ -421,6 +538,8 @@ export default function Terminal() {
                     <span className="qualia-terminal__cursor">cursor {cursor}</span>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

@@ -62,7 +62,7 @@ export default function LlmIntegrationsSection() {
             <div style={{
                 background: 'rgba(245,158,11,0.08)',
                 border: '1px solid rgba(245,158,11,0.3)',
-                color: '#fbbf24',
+                color: '#f59e0b',
                 fontSize: 12,
                 padding: '8px 12px',
                 borderRadius: 6,

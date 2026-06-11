@@ -19,6 +19,7 @@
 
 import { createLocalStorageStore } from './createLocalStorageStore';
 import { emptyIntegrations, IntegrationsBundle } from '../types/integrations';
+import { encryptBundle, decryptBundle, bundleHasPlaintextSecret } from './integrationsCrypto';
 
 /** Holder updated by UserProvider during render BEFORE useSyncExternalStore reads. */
 export const integrationsUserIdHolder: { current: string | null } = { current: null };
@@ -68,6 +69,68 @@ export function saveIntegrations(bundle: IntegrationsBundle): void {
             // localStorage full / sandboxed — fail silently; in-memory cache still up to date.
         }
     });
+}
+
+/**
+ * Publish a bundle to the in-memory snapshot WITHOUT persisting. Consumers read
+ * the snapshot via useSyncExternalStore, so this makes plaintext secrets
+ * available to them while localStorage keeps only ciphertext.
+ */
+function setMemoryOnly(bundle: IntegrationsBundle): void {
+    integrationsStore.set(bundle, () => { /* no write-through */ });
+}
+
+// Monotonic guard so out-of-order async encryptions never clobber a newer save
+// (the UI calls saveIntegrationsSecure on every keystroke).
+let persistSeq = 0;
+
+/**
+ * Persist a bundle with its secret fields ENCRYPTED at rest. The in-memory
+ * snapshot stays PLAINTEXT — every consumer (llmClient, Stella, ARA, Supabase,
+ * Postgres, …) keeps reading the bundle exactly as before. Only localStorage
+ * holds `enc:v1:` ciphertext. Falls back to a plaintext write if WebCrypto is
+ * unavailable (never loses the user's keys).
+ */
+export async function saveIntegrationsSecure(bundle: IntegrationsBundle, userId: string | null): Promise<void> {
+    if (typeof window === 'undefined') return;
+    // Make the new plaintext visible to consumers immediately (synchronous).
+    setMemoryOnly(bundle);
+    const seq = ++persistSeq;
+    const key = resolveKey();
+    try {
+        const encrypted = await encryptBundle(bundle, userId);
+        if (seq !== persistSeq) return; // a newer save superseded this one
+        localStorage.setItem(key, JSON.stringify(encrypted));
+    } catch {
+        try { localStorage.setItem(key, JSON.stringify(bundle)); } catch { /* storage full / sandboxed */ }
+    }
+}
+
+/**
+ * Decrypt the active user's at-rest bundle into the in-memory snapshot. Call on
+ * login (UserProvider bootstrap). Idempotent + safe: legacy plaintext fields
+ * pass through unchanged (transparent migration), and a wrong-key/tampered
+ * value resolves to '' rather than leaking ciphertext to a provider.
+ */
+export async function unlockIntegrations(userId: string | null): Promise<void> {
+    if (typeof window === 'undefined') return;
+    integrationsUserIdHolder.current = userId; // ensure resolveKey() targets this user
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(resolveKey()); } catch { return; }
+    if (!raw) return;
+    const parsed = deserialize(raw);
+    try {
+        const decrypted = await decryptBundle(parsed, userId);
+        setMemoryOnly(decrypted);
+        // Proactive migration: if the at-rest copy still holds legacy plaintext
+        // secrets, re-persist them encrypted now (don't wait for a manual save).
+        if (bundleHasPlaintextSecret(parsed)) {
+            const encrypted = await encryptBundle(decrypted, userId);
+            try { localStorage.setItem(resolveKey(), JSON.stringify(encrypted)); } catch { /* sandboxed */ }
+        }
+    } catch {
+        /* leave snapshot as-is */
+    }
 }
 
 /** Clear active user's integrations (e.g., manual reset from UI). */

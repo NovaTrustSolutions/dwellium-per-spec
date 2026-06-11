@@ -47,7 +47,7 @@ const PROJECT_NAMES: Record<string, string> = {
 
 const SIGNAL_BADGES: Record<string, { label: string; color: string }> = {
     signal: { label: 'Signal', color: '#22c55e' },
-    noise: { label: 'Noise', color: '#6b7280' },
+    noise: { label: 'Noise', color: 'var(--text-tertiary)' },
     low_priority: { label: 'Low Priority', color: '#eab308' },
 };
 
@@ -219,18 +219,18 @@ export default function InboxWidget() {
                     {error.retryable && (
                         <button onClick={() => handleRetry(error.itemId)} style={{ padding: '3px 10px', borderRadius: 4, border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>🔄 Retry</button>
                     )}
-                    <button onClick={() => setError(null)} style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: 14 }}>×</button>
+                    <button onClick={() => setError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 14 }}>×</button>
                 </div>
             )}
 
             {/* Metrics Strip */}
             {metrics && (
-                <div style={{ display: 'flex', gap: 12, padding: '6px 0', marginBottom: 6, fontSize: 10, color: '#94a3b8', overflowX: 'auto', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 12, padding: '6px 0', marginBottom: 6, fontSize: 10, color: 'var(--text-secondary)', overflowX: 'auto', flexWrap: 'wrap' }}>
                     <span>📊 Today: <b style={{ color: '#22c55e' }}>{metrics.throughputToday}</b></span>
                     <span>📈 Week: <b style={{ color: '#3b82f6' }}>{metrics.throughputWeek}</b></span>
                     <span>⏱ Avg: <b style={{ color: '#f59e0b' }}>{metrics.avgResponseMinutes}m</b></span>
                     <span>📥 Queue: <b style={{ color: metrics.approvalQueueDepth > 10 ? '#ef4444' : '#22c55e' }}>{metrics.approvalQueueDepth}</b></span>
-                    <span style={{ color: '#475569' }}>Fresh: {metrics.backlogByAge.fresh} | Aging: {metrics.backlogByAge.aging} | Stale: <span style={{ color: metrics.backlogByAge.stale > 0 ? '#ef4444' : '#475569' }}>{metrics.backlogByAge.stale}</span></span>
+                    <span style={{ color: 'var(--text-tertiary)' }}>Fresh: {metrics.backlogByAge.fresh} | Aging: {metrics.backlogByAge.aging} | Stale: <span style={{ color: metrics.backlogByAge.stale > 0 ? '#ef4444' : '#475569' }}>{metrics.backlogByAge.stale}</span></span>
                 </div>
             )}
 
@@ -250,19 +250,19 @@ export default function InboxWidget() {
                         <span className="stat-num">{stats.approved || 0}</span> approved
                     </span>
                     <button onClick={() => { setShowSettings(!showSettings); if (!showSettings) loadSettings(); }}
-                        style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 14 }}>⚙️</button>
+                        style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 14 }}>⚙️</button>
                 </div>
             )}
 
             {/* Settings Panel */}
             {showSettings && (
                 <div style={{ padding: 10, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 8, fontSize: 11 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6, color: '#94a3b8' }}>⚙️ Inbox Settings</div>
+                    <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>⚙️ Inbox Settings</div>
                     {Object.entries(settings).map(([key, value]) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                            <span style={{ color: '#64748b', flex: 1, fontSize: 10 }}>{key}:</span>
+                            <span style={{ color: 'var(--text-tertiary)', flex: 1, fontSize: 10 }}>{key}:</span>
                             <input value={value} onChange={e => setSettings({ ...settings, [key]: e.target.value })}
-                                style={{ width: 80, padding: '2px 6px', borderRadius: 3, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', fontSize: 10 }} />
+                                style={{ width: 80, padding: '2px 6px', borderRadius: 3, border: '1px solid #334155', background: '#0f172a', color: 'var(--text-primary)', fontSize: 10 }} />
                         </div>
                     ))}
                     <button onClick={saveSettings} style={{ marginTop: 4, padding: '3px 10px', borderRadius: 4, border: '1px solid #3b82f6', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>Save Settings</button>
@@ -289,18 +289,18 @@ export default function InboxWidget() {
             {approvalDialog && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={() => setApprovalDialog(null)}>
                     <div style={{ background: '#1e1e2e', border: '1px solid #334155', borderRadius: 8, padding: 20, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
-                        <h4 style={{ margin: '0 0 12px', color: '#e2e8f0', fontSize: 14 }}>✅ Approve & Route</h4>
-                        <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>Provide a reason for this approval (required per B.L.A.S.T. Rule 1):</p>
+                        <h4 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14 }}>✅ Approve & Route</h4>
+                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>Provide a reason for this approval (required per B.L.A.S.T. Rule 1):</p>
                         <textarea
                             value={approvalReason}
                             onChange={e => setApprovalReason(e.target.value)}
                             placeholder="Approval reasoning..."
-                            style={{ width: '100%', height: 60, padding: 8, borderRadius: 4, border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', fontSize: 11, resize: 'none', boxSizing: 'border-box' }}
+                            style={{ width: '100%', height: 60, padding: 8, borderRadius: 4, border: '1px solid #334155', background: '#0f172a', color: 'var(--text-primary)', fontSize: 11, resize: 'none', boxSizing: 'border-box' }}
                         />
                         <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
-                            <button onClick={() => { setApprovalDialog(null); setApprovalReason(''); }} style={{ padding: '5px 12px', borderRadius: 4, border: '1px solid #475569', background: 'transparent', color: '#94a3b8', cursor: 'pointer', fontSize: 11 }}>Cancel</button>
+                            <button onClick={() => { setApprovalDialog(null); setApprovalReason(''); }} style={{ padding: '5px 12px', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 11 }}>Cancel</button>
                             <button onClick={() => handleApprove(approvalDialog.id, approvalDialog.projectId, approvalReason)} disabled={!approvalReason.trim()}
-                                style={{ padding: '5px 12px', borderRadius: 4, border: 'none', background: approvalReason.trim() ? '#22c55e' : '#334155', color: '#fff', cursor: approvalReason.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 600 }}>Confirm Approval</button>
+                                style={{ padding: '5px 12px', borderRadius: 4, border: 'none', background: approvalReason.trim() ? '#22c55e' : '#334155', color: 'var(--text-primary)', cursor: approvalReason.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 600 }}>Confirm Approval</button>
                         </div>
                     </div>
                 </div>
@@ -368,7 +368,7 @@ export default function InboxWidget() {
                                             <html>
                                                 <head>
                                                     <style>
-                                                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 12px; margin: 0; background: #fff; color: #111; word-wrap: break-word; }
+                                                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 12px; margin: 0; background: var(--bg-surface); color: #111; word-wrap: break-word; }
                                                         img { max-width: 100%; height: auto; }
                                                         a { color: #2563eb; }
                                                     </style>
@@ -381,14 +381,14 @@ export default function InboxWidget() {
                                             height: '400px',
                                             border: 'none',
                                             borderRadius: '8px',
-                                            background: '#ffffff',
+                                            background: 'var(--bg-surface)',
                                             marginBottom: '16px',
                                             boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
                                         }}
                                         sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
                                     />
                                 ) : (
-                                    <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 8, marginBottom: 16, color: '#94a3b8', fontStyle: 'italic', fontSize: 13 }}>
+                                    <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 8, marginBottom: 16, color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: 13 }}>
                                         No rich content available. Viewing summary only.
                                     </div>
                                 )}
@@ -399,7 +399,7 @@ export default function InboxWidget() {
 
                                 {/* Audit Trail (if loaded) */}
                                 {item.auditLog && item.auditLog.length > 0 && (
-                                    <div style={{ marginBottom: 8, fontSize: 10, color: '#64748b' }}>
+                                    <div style={{ marginBottom: 8, fontSize: 10, color: 'var(--text-tertiary)' }}>
                                         <span style={{ fontWeight: 600 }}>Audit:</span>
                                         {item.auditLog.slice(0, 3).map((log: any, i: number) => (
                                             <span key={i} style={{ marginLeft: 4 }}>{log.action} by {log.actor || 'system'} · </span>

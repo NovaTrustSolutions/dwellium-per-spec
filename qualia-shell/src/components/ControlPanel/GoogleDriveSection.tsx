@@ -24,7 +24,7 @@ const btn: React.CSSProperties = {
     padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
     border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)',
 };
-const btnPrimary: React.CSSProperties = { ...btn, background: '#D6FE51', color: '#0a0a0a', border: 'none' };
+const btnPrimary: React.CSSProperties = { ...btn, background: 'var(--accent)', color: 'var(--text-inverse)', border: 'none' };
 
 export default function GoogleDriveSection() {
     const userCtx = useContext(UserContext);

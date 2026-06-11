@@ -22,11 +22,11 @@ function fmtMoney(n: number | null): string {
 export default function LaborTable({ entries }: Props) {
     return (
         <div className="s-glass-card" data-testid="labor-table" style={{ padding: '12px 14px', marginBottom: 10 }}>
-            <h4 style={{ fontSize: 12, color: '#94a3b8', margin: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+            <h4 style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
                 <Hammer size={12} color="#818cf8" /> Labor
             </h4>
             {entries.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#64748b', fontSize: 12, padding: 8 }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, padding: 8 }}>
                     No labor logged.
                 </div>
             ) : (
@@ -50,7 +50,7 @@ export default function LaborTable({ entries }: Props) {
                                     <td>{e.hours ?? '—'}</td>
                                     <td>{fmtMoney(e.rate)}</td>
                                     <td>{fmtMoney(e.totalCost)}</td>
-                                    <td style={{ color: '#94a3b8' }}>{e.description ?? '—'}</td>
+                                    <td style={{ color: 'var(--text-secondary)' }}>{e.description ?? '—'}</td>
                                 </tr>
                             ))}
                         </tbody>

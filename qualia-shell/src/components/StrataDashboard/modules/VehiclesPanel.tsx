@@ -80,7 +80,7 @@ export default function VehiclesPanel({ tenantId, propertyId }: Props) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <h3 style={{ margin: 0, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Car size={14} /> Vehicles
-                    {vehicles.length > 0 && <span style={{ fontSize: 10, color: '#64748b', fontWeight: 400 }}>({vehicles.length})</span>}
+                    {vehicles.length > 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 400 }}>({vehicles.length})</span>}
                 </h3>
                 <button className="s-btn s-btn-primary" style={{ fontSize: 11, padding: '4px 12px' }}
                     onClick={() => { setEditing(null); setShowForm(!showForm); }}>
@@ -91,7 +91,7 @@ export default function VehiclesPanel({ tenantId, propertyId }: Props) {
             {showForm && (
                 <form onSubmit={handleSubmit} style={{
                     padding: 12, borderRadius: 8, marginBottom: 12,
-                    background: 'rgba(214,254,81,0.04)', border: '1px solid rgba(214,254,81,0.15)',
+                    background: 'color-mix(in srgb, var(--accent) 4%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)',
                 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 8, marginBottom: 8 }}>
                         <input name="make" placeholder="Make" defaultValue={editing?.make || ''} required className="s-input" style={{ fontSize: 11 }} />
@@ -122,31 +122,31 @@ export default function VehiclesPanel({ tenantId, propertyId }: Props) {
                             display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                             borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
                         }}>
-                            <Car size={16} style={{ color: '#D6FE51', flexShrink: 0 }} />
+                            <Car size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                                     {v.year ? v.year + ' ' : ''}{v.make} {v.model}
-                                    {v.color && <span style={{ color: '#64748b', fontWeight: 400 }}> — {v.color}</span>}
+                                    {v.color && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> — {v.color}</span>}
                                 </div>
-                                <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 12, marginTop: 2 }}>
-                                    {v.licensePlate && <span>Plate: <strong style={{ color: '#94a3b8' }}>{v.licensePlate}</strong>{v.state ? ` (${v.state})` : ''}</span>}
+                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', gap: 12, marginTop: 2 }}>
+                                    {v.licensePlate && <span>Plate: <strong style={{ color: 'var(--text-secondary)' }}>{v.licensePlate}</strong>{v.state ? ` (${v.state})` : ''}</span>}
                                     {v.parkingSpot && <span>Spot: {v.parkingSpot}</span>}
                                     {v.stickerNumber && <span>Sticker: {v.stickerNumber}</span>}
                                 </div>
                             </div>
                             <button onClick={() => { setEditing(v); setShowForm(true); }}
-                                style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 4 }} title="Edit">
+                                style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }} title="Edit">
                                 <Edit2 size={12} />
                             </button>
                             <button onClick={() => handleDelete(v.id)}
-                                style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 4 }} title="Delete">
+                                style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }} title="Delete">
                                 <Trash2 size={12} />
                             </button>
                         </div>
                     ))}
                 </div>
             ) : (
-                <div style={{ textAlign: 'center', padding: 16, color: '#475569', fontSize: 12 }}>
+                <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>
                     <Car size={20} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 6 }} />
                     <p style={{ margin: 0 }}>No vehicles registered</p>
                 </div>

@@ -48,6 +48,7 @@ export interface StellaTool {
 
 /** Canonical display order for the catalog's category sections. */
 export const CATEGORY_ORDER: readonly string[] = [
+    'AI Skills',
     'Agents & Automation',
     'Thoughts & Insights',
     'Memory & Knowledge',
@@ -64,6 +65,73 @@ export const CATEGORY_ORDER: readonly string[] = [
  * tab never renders an ambiguous duplicate label.
  */
 export const STELLA_TOOL_CATALOG: ReadonlyArray<StellaTool> = [
+    // ── AI Skills (LibreChat-derived executable layer; lib/agents/skills.ts) ──
+    // Ids intentionally match AGENT_SKILLS ids so Agent Lab personas can equip
+    // them via Persona.tools. `chat-command` prefills a working trigger phrase.
+    {
+        id: 'skill-web-search',
+        name: 'Web Search',
+        category: 'AI Skills',
+        description: 'Search the live web and summarize findings with sources (Anthropic web-search tool via your key).',
+        icon: '🔎',
+        keywords: ['search', 'web', 'google', 'tavily', 'internet', 'online', 'librechat'],
+        action: { kind: 'chat-command', command: 'search the web for ' },
+    },
+    {
+        id: 'skill-calculator',
+        name: 'Calculator',
+        category: 'AI Skills',
+        description: 'Exact arithmetic — percentages, powers, roots, trig. Instant, keyless.',
+        icon: '🧮',
+        keywords: ['calculator', 'math', 'compute', 'arithmetic', 'percent', 'librechat'],
+        action: { kind: 'chat-command', command: 'calculate ' },
+    },
+    {
+        id: 'skill-image-gen',
+        name: 'Image Generation',
+        category: 'AI Skills',
+        description: 'Generate images from a description (DALL-E 3 via your OpenAI key).',
+        icon: '🎨',
+        keywords: ['image', 'picture', 'dall-e', 'dalle', 'flux', 'art', 'generate', 'librechat'],
+        action: { kind: 'chat-command', command: 'generate an image of ' },
+    },
+    {
+        id: 'skill-weather',
+        name: 'Weather',
+        category: 'AI Skills',
+        description: 'Current conditions + today\'s range for any city — keyless, always works.',
+        icon: '🌤️',
+        keywords: ['weather', 'forecast', 'temperature', 'openweather', 'librechat'],
+        action: { kind: 'chat-command', command: 'weather in ' },
+    },
+    {
+        id: 'skill-code-runner',
+        name: 'Code Runner (JS)',
+        category: 'AI Skills',
+        description: 'Run a JavaScript snippet in a sandboxed scope and show the result.',
+        icon: '⚙️',
+        keywords: ['code', 'javascript', 'run', 'execute', 'interpreter', 'sandbox', 'librechat'],
+        action: { kind: 'chat-command', command: 'run js: ' },
+    },
+    {
+        id: 'skill-memory-recall',
+        name: 'Memory Recall',
+        category: 'AI Skills',
+        description: 'Search everything you\'ve asked Dwellium to remember.',
+        icon: '🧠',
+        keywords: ['memory', 'recall', 'remember', 'history', 'librechat'],
+        action: { kind: 'chat-command', command: 'recall ' },
+    },
+    {
+        id: 'skill-memory-remember',
+        name: 'Remember',
+        category: 'AI Skills',
+        description: 'Pin a fact to persistent memory — every agent can recall it later.',
+        icon: '📌',
+        keywords: ['memory', 'remember', 'note', 'pin', 'save', 'librechat'],
+        action: { kind: 'chat-command', command: 'remember that ' },
+    },
+
     // ── Agents & Automation ───────────────────────────────────────────────
     {
         id: 'spawn-hermes',

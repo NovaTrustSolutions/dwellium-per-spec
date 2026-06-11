@@ -451,11 +451,15 @@ export default function TranscriptionHub() {
         } catch { return []; }
     });
 
+    // --- Backend reachability (surfaced, not silently swallowed) ---
+    const [backendOffline, setBackendOffline] = useState(false);
+
     // --- Load transcriptions from backend on mount (source of truth) ---
     useEffect(() => {
         (async () => {
             try {
                 const res = await fetch(`${API_TRANSCRIBE}/logs?limit=200`);
+                setBackendOffline(!res.ok);
                 if (res.ok) {
                     const json = await res.json();
                     if (json.success && json.data?.length > 0) {
@@ -480,6 +484,7 @@ export default function TranscriptionHub() {
                     }
                 }
             } catch (err) {
+                setBackendOffline(true);
                 console.warn('[TranscriptionHub] Could not load logs from backend, using localStorage fallback:', err);
             }
         })();
@@ -726,41 +731,39 @@ export default function TranscriptionHub() {
     }, [contradictionQueue, contradictionRunning]);
 
     // ---- Meeting Manager Queue Processing ----
+    // Latest meeting inputs in a ref so the poller interval is created ONCE per
+    // recording session — not re-created on every `elapsed`/`segments` tick
+    // (that churn was the "stuck in a loop"). This effect only updates a ref, so
+    // it never triggers a re-render.
+    const meetingDataRef = useRef({ segments, elapsed, meetingScript });
+    meetingDataRef.current = { segments, elapsed, meetingScript };
+
     useEffect(() => {
+        if (state !== 'recording' || backendOffline) return; // don't poll a dead backend in a loop
+
         const processMeetingQueue = async () => {
-            if (isProcessingMeeting.current || state !== 'recording') return;
-
+            if (isProcessingMeeting.current) return;
             const now = Date.now();
-            if (now - lastMeetingCheckRef.current < 5000) return; // Check every 5s for near real-time
+            if (now - lastMeetingCheckRef.current < 5000) return; // every 5s for near real-time
 
-            // Get last ~3 minutes of conversation for context
-            const recentSegments = segments
-                .filter(s => s.end >= elapsed - 180) // Use elapsed instead of recordingTime
+            const { segments: segs, elapsed: el, meetingScript: script } = meetingDataRef.current;
+            const recentSegments = segs
+                .filter(s => s.end >= el - 180)
                 .map(s => `[${s.speaker}] ${s.text}`)
                 .join('\n');
-
             if (!recentSegments.trim()) return;
 
             isProcessingMeeting.current = true;
             lastMeetingCheckRef.current = now;
-
-            // Use dynamic meeting script from state (or a generic fallback if empty)
-            const scriptToUse = meetingScript.trim() || 'No specific script loaded. Provide general coaching: keep the speaker on topic, professional, and concise. Flag any unprofessional language or tangents.';
+            const scriptToUse = script.trim() || 'No specific script loaded. Provide general coaching: keep the speaker on topic, professional, and concise. Flag any unprofessional language or tangents.';
 
             try {
                 const authToken = localStorage.getItem('dwellium-token') || '';
                 const response = await fetch(`${API_BASE}/api/ara/meeting-manager`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
-                    },
-                    body: JSON.stringify({
-                        transcript: recentSegments,
-                        scriptContent: scriptToUse
-                    })
+                    headers: { 'Content-Type': 'application/json', ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}) },
+                    body: JSON.stringify({ transcript: recentSegments, scriptContent: scriptToUse }),
                 });
-
                 const json = await response.json();
                 if (json.success && json.data) {
                     setCoachingStatus(json.data.status);
@@ -774,15 +777,9 @@ export default function TranscriptionHub() {
             }
         };
 
-        const interval = setInterval(() => {
-            // processQueue(); // This is handled by a separate debounced useEffect
-            // processLegalQueue(); // This is handled by a separate debounced useEffect
-            // processContradictionQueue(); // This is handled by a separate debounced useEffect
-            processMeetingQueue();
-        }, 1000); // Check every second, but processMeetingQueue has its own 15s internal debounce
-
+        const interval = setInterval(processMeetingQueue, 1000);
         return () => clearInterval(interval);
-    }, [segments, state, elapsed, legalScanQueue, legalShieldEnabled, legalScanRunning, contradictionQueue, contradictionRunning]);
+    }, [state, backendOffline]);
 
 
     // ---- UTILITY FUNCTIONS ----
@@ -2053,6 +2050,11 @@ export default function TranscriptionHub() {
     // ---- RENDER ----
     return (
         <div className="transcription-hub">
+            {backendOffline && (
+                <div role="status" style={{ padding: '8px 14px', background: 'rgba(251,191,36,0.12)', borderBottom: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24', fontSize: 12.5 }}>
+                    ⚠ Backend transcription is offline — live/local capture still works, but upload &amp; saved logs need the backend running. Check <strong>System Health</strong> to reconnect.
+                </div>
+            )}
             {/* ========== TAB BAR ========== */}
             <div className="th-tabs">
                 <button

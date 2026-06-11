@@ -377,7 +377,7 @@ export default function TenantPortal() {
                                 {payments.map(p => (
                                     <tr key={p.id}>
                                         <td>{new Date(p.createdAt).toLocaleDateString()}</td>
-                                        <td style={{ color: '#e2e8f0' }}>{p.title}</td>
+                                        <td style={{ color: 'var(--text-primary)' }}>{p.title}</td>
                                         <td>
                                             <span className={`tp-wo-badge ${p.status}`}>
                                                 {p.status.replace('_', ' ')}
@@ -610,8 +610,8 @@ export default function TenantPortal() {
                 </div>
 
                 <div className="tp-sidebar-footer">
-                    <div style={{ padding: '8px 12px', fontSize: 12, color: '#64748b' }}>
-                        <div style={{ fontWeight: 600, color: '#94a3b8' }}>{user?.name}</div>
+                    <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-tertiary)' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{user?.name}</div>
                         <div>{user?.email}</div>
                     </div>
                     <button className="tp-nav-item" onClick={logout}>

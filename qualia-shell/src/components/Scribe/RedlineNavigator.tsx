@@ -85,13 +85,13 @@ export function RedlineNavigator({ getView }: { getView: () => EditorView | null
             alignItems: 'center',
             gap: 14,
             padding: '8px 18px',
-            background: '#D6FE51',
+            background: 'var(--accent)',
             border: '1px solid rgba(0,0,0,0.15)',
             borderRadius: 999,
-            boxShadow: '0 6px 20px rgba(214,254,81,0.3), 0 2px 6px rgba(0,0,0,0.25)',
+            boxShadow: '0 6px 20px color-mix(in srgb, var(--accent) 30%, transparent), 0 2px 6px rgba(0,0,0,0.25)',
             fontSize: 13,
             fontFamily: 'inherit',
-            color: '#000',
+            color: 'var(--text-inverse)',
             userSelect: 'none',
             whiteSpace: 'nowrap',
             minWidth: 340,
@@ -120,7 +120,7 @@ function NavBtn({ label, title, onClick, disabled, accept, reject }: {
     const isChip = accept || reject;
     const baseBg = accept ? '#1a7a2e' : reject ? '#c0392b' : 'rgba(0,0,0,0.08)';
     const baseColor = accept || reject ? '#fff' : '#000';
-    const hoverBg = accept ? '#22903a' : reject ? '#e74c3c' : 'rgba(0,0,0,0.15)';
+    const hoverBg = accept ? '#22903a' : reject ? '#ef4444' : 'rgba(0,0,0,0.15)';
     return (
         <button
             onClick={onClick}

@@ -10,6 +10,7 @@ import { renderSafeMarkdown, sanitizeSvg } from '../../utils/safeMarkdown';
 import { getAuthToken, UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { TTS_VOICE_CATALOG, HUMANIZE_PREFIX, speakText } from '../../lib/ttsVoices';
 import { buildContextWarning, sumTokens } from '../../lib/contextWindow';
 import {
     dreamStore,
@@ -289,6 +290,22 @@ export default function StellaAgent() {
     const [voiceUrl, setVoiceUrl] = useState('http://localhost:3001');
     const [voiceChecked, setVoiceChecked] = useState(false);
 
+    // ── TTS voice + Humanize (ARA-parity: the same 9 voices + humanize reply style) ──
+    const openaiKey = integrations?.llm?.openai?.apiKey ?? (integrations?.llm as any)?.providers?.openai?.apiKey ?? '';
+    const [ttsVoice, setTtsVoice] = useState<string>(() => { try { return localStorage.getItem('dwellium-stella-voice') || 'openai-alloy'; } catch { return 'openai-alloy'; } });
+    const [ttsSpeak, setTtsSpeak] = useState<boolean>(() => { try { return localStorage.getItem('dwellium-stella-tts') === 'true'; } catch { return false; } });
+    const [humanizeEnabled, setHumanizeEnabled] = useState<boolean>(() => { try { const s = localStorage.getItem('dwellium-stella-humanize'); return s === null ? true : s === 'true'; } catch { return true; } });
+    const [stellaSpeaking, setStellaSpeaking] = useState(false);
+    const speakHandleRef = useRef<{ stop: () => void } | null>(null);
+    const lastSpokenIdRef = useRef<string>('');
+    const setVoicePersist = (v: string) => { setTtsVoice(v); try { localStorage.setItem('dwellium-stella-voice', v); } catch { /* ignore */ } };
+    const toggleTts = () => setTtsSpeak(p => { const n = !p; try { localStorage.setItem('dwellium-stella-tts', String(n)); } catch { /* ignore */ } if (!n) { speakHandleRef.current?.stop(); setStellaSpeaking(false); } return n; });
+    const toggleHumanize = () => setHumanizeEnabled(p => { const n = !p; try { localStorage.setItem('dwellium-stella-humanize', String(n)); } catch { /* ignore */ } return n; });
+    const speakStella = useCallback((t: string) => {
+        speakHandleRef.current?.stop();
+        speakText(t, ttsVoice, openaiKey, { onStart: () => setStellaSpeaking(true), onEnd: () => setStellaSpeaking(false) }).then(h => { speakHandleRef.current = h; });
+    }, [ttsVoice, openaiKey]);
+
     // Automation (cron) state
     const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
     const [cronLoading, setCronLoading] = useState(false);
@@ -524,6 +541,20 @@ export default function StellaAgent() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isTyping]);
 
+    // Speak new assistant replies aloud when TTS is on (covers both LLM + backend paths)
+    useEffect(() => {
+        if (!ttsSpeak) return;
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'assistant') {
+                if (messages[i].id !== lastSpokenIdRef.current) {
+                    lastSpokenIdRef.current = messages[i].id;
+                    speakStella(messages[i].content);
+                }
+                break;
+            }
+        }
+    }, [messages, ttsSpeak, speakStella]);
+
     // ─── Chat ─────────────────────────────────────────
     // ── Stella → Hermes first-class spawn (Cycle 17B) ──
     // Dispatch the ONE shared self-improving Hermes run path (hermesRunner via
@@ -595,7 +626,7 @@ export default function StellaAgent() {
             try {
                 const llmRes = await callLlm({
                     systemPrompt: `You are Stella, a helpful personal AI assistant inside the Dwellium property-management app. Be concise, direct, and useful. Help with tasks, research, file management, and general questions. Use Markdown for formatting when appropriate.`,
-                    prompt: text,
+                    prompt: humanizeEnabled ? HUMANIZE_PREFIX + text : text,
                     maxTokens: 1024,
                     temperature: 0.4,
                 }, integrations.llm);
@@ -630,7 +661,7 @@ export default function StellaAgent() {
             const resp = await fetch(`${API_BASE}/chat`, {
                 method: 'POST',
                 headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({ message: text }),
+                body: JSON.stringify({ message: humanizeEnabled ? HUMANIZE_PREFIX + text : text, humanize: humanizeEnabled }),
             });
 
             const contentType = resp.headers.get('content-type') || '';
@@ -2261,6 +2292,38 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
             {/* Voice Tab */}
             {tab === 'voice' && (
                 <div className="stella__voice-panel">
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-default, rgba(255,255,255,0.08))' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                            <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Text-to-Speech</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Read Stella's replies aloud{openaiKey ? '' : ' · browser voices (add an OpenAI key in Settings → API Keys for premium voices)'}</div>
+                            </div>
+                            <button onClick={toggleTts} style={{ fontSize: 12, padding: '6px 14px', borderRadius: 999, cursor: 'pointer', border: '1px solid var(--border-default, rgba(255,255,255,0.15))', background: ttsSpeak ? 'var(--accent)' : 'transparent', color: ttsSpeak ? 'var(--text-inverse, #000)' : 'var(--text-primary)' }}>
+                                {ttsSpeak ? '🔊 Speaking On' : '🔈 Speak Off'}{stellaSpeaking ? ' …' : ''}
+                            </button>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Voice</label>
+                            <select value={ttsVoice} onChange={e => setVoicePersist(e.target.value)} style={{ flex: 1, minWidth: 180, fontSize: 12, padding: '6px 8px', borderRadius: 6, background: 'var(--bg-surface, #1a1a1a)', color: 'var(--text-primary)', border: '1px solid var(--border-default, rgba(255,255,255,0.15))' }}>
+                                <optgroup label="OpenAI — premium (needs OpenAI key)">
+                                    {TTS_VOICE_CATALOG.filter(v => v.provider === 'openai').map(v => <option key={v.id} value={v.id}>{v.label} — {v.description.replace('OpenAI — ', '')}</option>)}
+                                </optgroup>
+                                <optgroup label="Browser — macOS (no key needed)">
+                                    {TTS_VOICE_CATALOG.filter(v => v.provider === 'browser').map(v => <option key={v.id} value={v.id}>{v.label} — {v.description.replace('Apple — ', '')}</option>)}
+                                </optgroup>
+                            </select>
+                            <button onClick={() => speakStella('Hi, this is Stella. This is how I sound with this voice.')} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-default, rgba(255,255,255,0.15))', background: 'transparent', color: 'var(--text-primary)' }}>▶︎ Preview</button>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.05))' }}>
+                            <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Humanize replies</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Warmer and more conversational — less robotic. Applies to every Stella reply.</div>
+                            </div>
+                            <button onClick={toggleHumanize} style={{ fontSize: 12, padding: '6px 14px', borderRadius: 999, cursor: 'pointer', border: '1px solid var(--border-default, rgba(255,255,255,0.15))', background: humanizeEnabled ? 'var(--accent)' : 'transparent', color: humanizeEnabled ? 'var(--text-inverse, #000)' : 'var(--text-primary)' }}>
+                                {humanizeEnabled ? '✨ On' : 'Off'}
+                            </button>
+                        </div>
+                    </div>
                     {!voiceChecked ? (
                         <div className="stella__loading">
                             <div className="stella__spinner" /> Checking voice service…

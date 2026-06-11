@@ -135,6 +135,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 520,
         category: 'ai',
     },
+    // Pre-launch AI readiness check
+    'system-health': {
+        id: 'system-health',
+        label: 'System Health',
+        icon: 'layout-grid',
+        component: lazyWithReload(() => import('../components/SystemHealth/SystemHealth')),
+        minWidth: 480,
+        minHeight: 560,
+        category: 'ai',
+    },
     // System-wide content search (spec §2.5)
     'content-search': {
         id: 'content-search',
@@ -262,6 +272,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     // ═══════════════════════════════════════
     //  AI — Intelligence Tools
     // ═══════════════════════════════════════
+    'agent-lab': {
+        id: 'agent-lab',
+        label: 'Agent Lab',
+        icon: 'bot',
+        component: lazyWithReload(() => import('../components/AgentLab/AgentLab')),
+        minWidth: 760,
+        minHeight: 540,
+        category: 'ai',
+    },
     'ara-console': {
         id: 'ara-console',
         label: 'ARA Console',

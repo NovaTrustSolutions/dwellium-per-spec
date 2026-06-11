@@ -65,6 +65,26 @@ export interface GoogleCalendarConfig {
 }
 
 /**
+ * A connected Google account for MULTI-ACCOUNT Gmail + Calendar.
+ *
+ * OAuth tokens live server-side (the backend makes the Google API calls and
+ * stores per-account tokens); the frontend keeps only this lightweight record
+ * for display + per-account preferences. The list is synced from the backend's
+ * `GET /api/google/accounts` when available, and mirrored here for offline view.
+ */
+export interface GoogleAccount {
+    /** Stable backend id for this connection. */
+    id: string;
+    email: string;
+    /** Which Google scopes this account granted. */
+    scopes: Array<'gmail' | 'calendar'>;
+    /** unix ms the account was connected. */
+    connectedAt?: number;
+    /** User preference: include this account in fetch / aggregation. */
+    enabled: boolean;
+}
+
+/**
  * Google Drive storage box — back up / restore the user's local data (Wiki,
  * Thought Weaver, File Explorer cache, Honcho memory) to a folder on their own
  * Google Drive. Frontend-only via Google Identity Services + the Drive REST API
@@ -140,6 +160,8 @@ export interface IntegrationsBundle {
     google: {
         gmail?: GoogleGmailConfig;
         calendar?: GoogleCalendarConfig;
+        /** Multi-account: connected Google accounts (Gmail + Calendar). Tokens are backend-side. */
+        accounts?: GoogleAccount[];
     };
     supabase?: SupabaseConfig;
     postgres?: PostgresConfig;

@@ -63,8 +63,8 @@ function fmtIsoDate(d: Date | null): string {
 function BlockRow({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }}>
-            <span style={{ color: '#64748b', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>{label}</span>
-            <span style={{ color: '#cbd5e1', textAlign: 'right', wordBreak: 'break-word', fontSize: 12 }}>{value}</span>
+            <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', fontSize: 10 }}>{label}</span>
+            <span style={{ color: 'var(--text-secondary)', textAlign: 'right', wordBreak: 'break-word', fontSize: 12 }}>{value}</span>
         </div>
     );
 }
@@ -89,7 +89,7 @@ function BlockSection({
                 style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                     padding: 0, border: 'none', background: 'none',
-                    color: '#e2e8f0', fontSize: 13, fontWeight: 700, letterSpacing: 0.4,
+                    color: 'var(--text-primary)', fontSize: 13, fontWeight: 700, letterSpacing: 0.4,
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                 }}
             >
@@ -103,8 +103,8 @@ function BlockSection({
 
 const xLinkBtnStyle: React.CSSProperties = {
     marginTop: 8, padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-    background: 'rgba(214,254,81,0.1)', border: '1px solid rgba(214,254,81,0.25)',
-    color: '#D6FE51', fontFamily: 'inherit',
+    background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+    color: 'var(--accent)', fontFamily: 'inherit',
     display: 'inline-flex', alignItems: 'center', gap: 4,
 };
 
@@ -229,7 +229,7 @@ export function BlockCompliance({
             <BlockRow
                 label="Expired"
                 value={
-                    <span style={expired.length > 0 ? { color: '#f87171', fontWeight: 700 } : undefined}>
+                    <span style={expired.length > 0 ? { color: '#ef4444', fontWeight: 700 } : undefined}>
                         {expired.length} expired
                     </span>
                 }
@@ -249,7 +249,7 @@ export function BlockCompliance({
 // ── Block 8: Survey (stub per v1 L168 — no schema fields) ──
 export function BlockSurvey(_props: { vendor: EntityProfile }) {
     return (
-        <div data-testid="vendor-block-survey" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="vendor-block-survey" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             Survey responses not yet captured. Coming soon — Phase-5 wires vendor satisfaction survey responses (NPS, response rate, last-completed timestamp) once the survey-collection pipeline lands.
         </div>
     );
@@ -265,9 +265,9 @@ export function BlockNotes({ vendor }: { vendor: EntityProfile }) {
                     const body = (n && typeof n === 'object' && (n.body ?? n.content)) || (typeof n === 'string' ? n : String(n));
                     const meta = n && typeof n === 'object' ? [n.posted_by, n.ts].filter(Boolean).join(' · ') : '';
                     return (
-                        <div key={i} style={{ fontSize: 12, color: '#94a3b8', padding: '6px 0', borderBottom: i < raw.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                        <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '6px 0', borderBottom: i < raw.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                             <div>{body}</div>
-                            {meta && <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>{meta}</div>}
+                            {meta && <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>{meta}</div>}
                         </div>
                     );
                 })}
@@ -276,13 +276,13 @@ export function BlockNotes({ vendor }: { vendor: EntityProfile }) {
     }
     if (typeof raw === 'string' && raw.trim().length > 0) {
         return (
-            <div data-testid="vendor-block-notes" style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'pre-line' }}>
+            <div data-testid="vendor-block-notes" style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-line' }}>
                 {raw}
             </div>
         );
     }
     return (
-        <div data-testid="vendor-block-notes" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="vendor-block-notes" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             No notes recorded.
         </div>
     );
@@ -291,7 +291,7 @@ export function BlockNotes({ vendor }: { vendor: EntityProfile }) {
 // ── Block 10: Activity (stub per v1 L168 — no schema fields) ──
 export function BlockActivity(_props: { vendor: EntityProfile }) {
     return (
-        <div data-testid="vendor-block-activity" style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+        <div data-testid="vendor-block-activity" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             Activity log not yet captured. Coming soon — Phase-5 wires per-vendor audit log (timestamp + actor + event + detail) once the audit-pipeline lands.
         </div>
     );
@@ -680,8 +680,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                     onClick={() => setVendorTypeFilter('all')}
                     style={{
                         padding: '4px 12px', borderRadius: 14, border: '1px solid',
-                        borderColor: vendorTypeFilter === 'all' ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)',
-                        background: vendorTypeFilter === 'all' ? 'rgba(214,254,81,0.15)' : 'transparent',
+                        borderColor: vendorTypeFilter === 'all' ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'rgba(255,255,255,0.08)',
+                        background: vendorTypeFilter === 'all' ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                         color: vendorTypeFilter === 'all' ? '#D6FE51' : '#64748b',
                         fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                     }}
@@ -709,7 +709,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                 <select aria-label="Filter vendors by compliance status" value={complianceFilter} onChange={e => setComplianceFilter(e.target.value as any)} style={{
                     padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
                     border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-                    color: '#e2e8f0', fontFamily: 'inherit',
+                    color: 'var(--text-primary)', fontFamily: 'inherit',
                 }}>
                     <option value="all">All Compliance</option>
                     <option value="compliant">✅ Compliant</option>
@@ -719,7 +719,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                 <select aria-label="Filter vendors by property" value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} style={{
                     padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
                     border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-                    color: '#e2e8f0', fontFamily: 'inherit',
+                    color: 'var(--text-primary)', fontFamily: 'inherit',
                 }}>
                     <option value="">All Properties</option>
                     {allProperties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -765,11 +765,11 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                         {vTags.slice(0, 3).map(t => (
                                             <span key={t} style={{
                                                 fontSize: 9, padding: '1px 6px', borderRadius: 6, fontWeight: 600,
-                                                background: 'rgba(214,254,81,0.1)', color: '#D6FE51',
+                                                background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)',
                                             }}>{t}</span>
                                         ))}
                                         {vTags.length > 3 && (
-                                            <span style={{ fontSize: 9, color: '#475569' }}>+{vTags.length - 3}</span>
+                                            <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>+{vTags.length - 3}</span>
                                         )}
                                     </div>
                                     {hasPermission('strata:vendors:coi-status') && (
@@ -824,15 +824,15 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             <button onClick={() => handleDeactivate(selected.id)} style={{
                                                 flex: 1, padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
                                                 background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
-                                                color: '#fbbf24', cursor: 'pointer', fontFamily: 'inherit',
+                                                color: '#f59e0b', cursor: 'pointer', fontFamily: 'inherit',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                                             }}><UserX size={12} />Deactivate</button>
                                         )}
                                         {selected.metadata?.pendingAction && (
                                             <button onClick={() => handleApprove(selected.id)} style={{
                                                 flex: 1, padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                                                background: 'rgba(214,254,81,0.1)', border: '1px solid rgba(214,254,81,0.25)',
-                                                color: '#D6FE51', cursor: 'pointer', fontFamily: 'inherit',
+                                                background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
+                                                color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                                             }}><CheckCircle size={12} />Approve {selected.metadata.pendingAction}</button>
                                         )}
@@ -842,8 +842,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                                             flex: 1, padding: '7px 12px', borderRadius: 8,
                                             fontSize: 11, fontWeight: 600,
-                                            background: 'rgba(214,254,81,0.08)', border: '1px solid rgba(214,254,81,0.2)',
-                                            color: '#D6FE51', cursor: 'pointer', fontFamily: 'inherit',
+                                            background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
+                                            color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit',
                                         }}>
                                             <Settings2 size={12} /> Edit Vendor
                                         </button>
@@ -852,7 +852,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             flex: 1, padding: '7px 12px', borderRadius: 8,
                                             fontSize: 11, fontWeight: 600,
                                             background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                                            color: '#fca5a5', cursor: 'pointer', fontFamily: 'inherit',
+                                            color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit',
                                         }}>
                                             <Trash2 size={12} /> Delete Vendor
                                         </button>
@@ -876,18 +876,18 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             <span key={t} style={{
                                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                                                 fontSize: 11, padding: '3px 10px', borderRadius: 12,
-                                                background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600,
-                                                border: '1px solid rgba(214,254,81,0.2)',
+                                                background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600,
+                                                border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                                             }}>
                                                 {t}
                                                 <button onClick={() => handleRemoveTag(selected, t)} style={{
-                                                    background: 'none', border: 'none', color: '#64748b',
+                                                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
                                                     cursor: 'pointer', padding: 0, display: 'flex', fontSize: 12,
                                                 }}><X size={10} /></button>
                                             </span>
                                         ))}
                                         {(selected.metadata?.serviceTags || []).length === 0 && (
-                                            <span style={{ fontSize: 11, color: '#475569' }}>No tags yet</span>
+                                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>No tags yet</span>
                                         )}
                                     </div>
                                     <div style={{ display: 'flex', gap: 6 }}>
@@ -900,13 +900,13 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             style={{
                                                 flex: 1, padding: '6px 10px', borderRadius: 8, fontSize: 12,
                                                 border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
-                                                color: '#e2e8f0', fontFamily: 'inherit', outline: 'none',
+                                                color: 'var(--text-primary)', fontFamily: 'inherit', outline: 'none',
                                             }}
                                         />
                                         <button onClick={() => handleAddTag(selected)} style={{
                                             padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                                            background: 'rgba(214,254,81,0.15)', border: '1px solid rgba(214,254,81,0.3)',
-                                            color: '#D6FE51', cursor: 'pointer', fontFamily: 'inherit',
+                                            background: 'color-mix(in srgb, var(--accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                                            color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit',
                                         }}>Add</button>
                                     </div>
                                 </div>
@@ -930,7 +930,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                     <>
 
                                         {/* ── Task 3.2: 10-Block AppFolio Parity Layout (per v1 plan L166) ── */}
-                                        <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#f87171' }}>Vendor detail unavailable.</div>}>
+                                        <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#ef4444' }}>Vendor detail unavailable.</div>}>
                                             <BlockSection title="Identity" slug="identity" expanded={blockExpanded.identity} onToggle={(n) => toggleBlock('identity', n)}>
                                                 <BlockIdentity vendor={selected} />
                                             </BlockSection>
@@ -994,7 +994,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                         <div className="s-glass-card">
                                             <h3 style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
                                                 <Building2 size={14} color="#3b82f6" /> Property Associations
-                                                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 400 }}>({associations.length})</span>
+                                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 400 }}>({associations.length})</span>
                                                 <button onClick={() => setShowLinkForm(!showLinkForm)} style={{
                                                     marginLeft: 'auto', padding: '3px 10px', borderRadius: 8, fontSize: 10, fontWeight: 600,
                                                     background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)',
@@ -1012,7 +1012,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                         <select value={linkPropertyId} onChange={e => setLinkPropertyId(e.target.value)} style={{
                                                             flex: 2, padding: '6px 8px', borderRadius: 6, fontSize: 11,
                                                             border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-                                                            color: '#e2e8f0', fontFamily: 'inherit',
+                                                            color: 'var(--text-primary)', fontFamily: 'inherit',
                                                         }}>
                                                             <option value="">Select property…</option>
                                                             {allProperties
@@ -1027,7 +1027,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                             style={{
                                                                 flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 11,
                                                                 border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-                                                                color: '#e2e8f0', fontFamily: 'inherit',
+                                                                color: 'var(--text-primary)', fontFamily: 'inherit',
                                                             }}
                                                         />
                                                     </div>
@@ -1035,7 +1035,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                         <button onClick={() => setShowLinkForm(false)} style={{
                                                             padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
                                                             background: 'none', border: '1px solid rgba(255,255,255,0.1)',
-                                                            color: '#64748b', cursor: 'pointer', fontFamily: 'inherit',
+                                                            color: 'var(--text-tertiary)', cursor: 'pointer', fontFamily: 'inherit',
                                                         }}>Cancel</button>
                                                         <button onClick={() => handleLinkProperty(selected.id)} style={{
                                                             padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
@@ -1061,7 +1061,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                             }}>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                                     <Building2 size={12} color="#3b82f6" />
-                                                                    <span style={{ flex: 1, fontWeight: 600, color: '#e2e8f0' }}>
+                                                                    <span style={{ flex: 1, fontWeight: 600, color: 'var(--text-primary)' }}>
                                                                         <button className="s-property-link" style={{ fontSize: 12, fontWeight: 600 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(assoc.propertyId); }}>{prop?.name || assoc.propertyId}</button>
                                                                     </span>
                                                                     <button onClick={() => handleToggleAssocStatus(assoc, selected.id)} style={{
@@ -1070,12 +1070,12 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                                         cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase',
                                                                     }}>{assoc.status}</button>
                                                                     <button onClick={() => handleUnlinkAssoc(assoc.id, selected.id)} style={{
-                                                                        background: 'none', border: 'none', color: '#475569',
+                                                                        background: 'none', border: 'none', color: 'var(--text-tertiary)',
                                                                         cursor: 'pointer', padding: '2px', display: 'flex',
                                                                     }}><Unlink size={11} /></button>
                                                                 </div>
                                                                 {(assoc.accountNumber || assoc.contractStart || assoc.contractEnd) && (
-                                                                    <div style={{ display: 'flex', gap: 10, fontSize: 10, color: '#64748b' }}>
+                                                                    <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--text-tertiary)' }}>
                                                                         {assoc.accountNumber && <span>Acct: {assoc.accountNumber}</span>}
                                                                         {assoc.contractStart && <span>Start: {assoc.contractStart?.slice(0, 10)}</span>}
                                                                         {assoc.contractEnd && <span>End: {assoc.contractEnd?.slice(0, 10)}</span>}
@@ -1086,7 +1086,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                     })}
                                                 </div>
                                             ) : (
-                                                <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>No property associations</p>
+                                                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>No property associations</p>
                                             )}
                                         </div>
 
@@ -1107,11 +1107,11 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                                 background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
                                                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                                             }}>
-                                                                <span style={{ color: '#e2e8f0' }}>{wo.title}</span>
+                                                                <span style={{ color: 'var(--text-primary)' }}>{wo.title}</span>
                                                                 <span style={{
                                                                     fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 600,
                                                                     background: wo.status === 'open' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)',
-                                                                    color: wo.status === 'open' ? '#f59e0b' : '#10b981',
+                                                                    color: wo.status === 'open' ? '#f59e0b' : '#22c55e',
                                                                 }}>{wo.status}</span>
                                                             </div>
                                                         ))}
@@ -1130,7 +1130,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                                                 <h3 style={{ margin: 0, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                                                     <DollarSign size={14} /> Vendor Ledger
-                                                    <span style={{ fontSize: 11, color: vendorBalance >= 0 ? '#10b981' : '#f97316', fontWeight: 600 }}>
+                                                    <span style={{ fontSize: 11, color: vendorBalance >= 0 ? '#22c55e' : '#f97316', fontWeight: 600 }}>
                                                         {'Balance: $' + Math.abs(vendorBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                                         {vendorBalance < 0 ? ' (owed)' : ''}
                                                     </span>
@@ -1153,7 +1153,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                         display: 'flex', alignItems: 'center', gap: 10,
                                                     }}>
                                                         <AlertTriangle size={16} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                                                        <div style={{ flex: 1, fontSize: 12, color: '#fbbf24' }}>
+                                                        <div style={{ flex: 1, fontSize: 12, color: '#f59e0b' }}>
                                                             <strong>W9 not received for {currentYear}.</strong> Recommend withholding payment until submitted.
                                                         </div>
                                                         <button className="s-btn s-btn-ghost" style={{ fontSize: 10, padding: '3px 10px', color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)' }}>
@@ -1176,7 +1176,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                     });
                                                     setShowLedgerForm(false);
                                                     fetchLedger(selected.id);
-                                                }} style={{ padding: 12, borderRadius: 8, marginBottom: 12, background: 'rgba(214,254,81,0.04)', border: '1px solid rgba(214,254,81,0.15)' }}>
+                                                }} style={{ padding: 12, borderRadius: 8, marginBottom: 12, background: 'color-mix(in srgb, var(--accent) 4%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)' }}>
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
                                                         <input name="date" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="s-input" style={{ fontSize: 11 }} />
                                                         <input name="amount" type="number" step="0.01" placeholder="Amount" required className="s-input" style={{ fontSize: 11 }} />
@@ -1202,34 +1202,34 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                                         <thead>
                                                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                                                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Date</th>
-                                                                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Description</th>
-                                                                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Category</th>
-                                                                <th style={{ padding: '6px 8px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Debit</th>
-                                                                <th style={{ padding: '6px 8px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Credit</th>
-                                                                <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Ref</th>
+                                                                <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 600 }}>Date</th>
+                                                                <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 600 }}>Description</th>
+                                                                <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 600 }}>Category</th>
+                                                                <th style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-tertiary)', fontWeight: 600 }}>Debit</th>
+                                                                <th style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-tertiary)', fontWeight: 600 }}>Credit</th>
+                                                                <th style={{ padding: '6px 8px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 600 }}>Ref</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {ledger.map((entry: any) => (
                                                                 <tr key={entry.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                                                    <td style={{ padding: '8px', color: '#94a3b8' }}>{entry.date}</td>
-                                                                    <td style={{ padding: '8px', color: '#e2e8f0' }}>{entry.description}</td>
-                                                                    <td style={{ padding: '8px', color: '#64748b' }}>{entry.category}</td>
+                                                                    <td style={{ padding: '8px', color: 'var(--text-secondary)' }}>{entry.date}</td>
+                                                                    <td style={{ padding: '8px', color: 'var(--text-primary)' }}>{entry.description}</td>
+                                                                    <td style={{ padding: '8px', color: 'var(--text-tertiary)' }}>{entry.category}</td>
                                                                     <td style={{ padding: '8px', textAlign: 'right', color: '#f97316' }}>
                                                                         {entry.type === 'debit' ? '$' + entry.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }) : ''}
                                                                     </td>
-                                                                    <td style={{ padding: '8px', textAlign: 'right', color: '#10b981' }}>
+                                                                    <td style={{ padding: '8px', textAlign: 'right', color: '#22c55e' }}>
                                                                         {entry.type === 'credit' ? '$' + entry.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }) : ''}
                                                                     </td>
-                                                                    <td style={{ padding: '8px', color: '#475569', fontSize: 10 }}>{entry.reference}</td>
+                                                                    <td style={{ padding: '8px', color: 'var(--text-tertiary)', fontSize: 10 }}>{entry.reference}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
                                                     </table>
                                                 </div>
                                             ) : (
-                                                <div style={{ textAlign: 'center', padding: 20, color: '#475569', fontSize: 12 }}>
+                                                <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)', fontSize: 12 }}>
                                                     <DollarSign size={24} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 8 }} />
                                                     <p style={{ margin: 0 }}>No ledger entries yet</p>
                                                 </div>
@@ -1251,13 +1251,13 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                             {showDocForm && (
                                                 <form onSubmit={(e) => handleAddDocument(selected.id, e)} style={{
                                                     padding: 12, borderRadius: 8, marginBottom: 12,
-                                                    background: 'rgba(214,254,81,0.04)', border: '1px solid rgba(214,254,81,0.15)',
+                                                    background: 'color-mix(in srgb, var(--accent) 4%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)',
                                                 }}>
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
                                                         <select name="docType" required style={{
                                                             padding: '6px 8px', borderRadius: 6, fontSize: 11,
                                                             border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-                                                            color: '#e2e8f0', fontFamily: 'inherit',
+                                                            color: 'var(--text-primary)', fontFamily: 'inherit',
                                                         }}>
                                                             <option value="w9">W-9</option>
                                                             <option value="coi">COI</option>
@@ -1281,7 +1281,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                     {vendorDocs.map(doc => {
                                                         const typeColors: Record<string, string> = {
                                                             w9: '#f59e0b', coi: '#3b82f6', agreement: '#D6FE51',
-                                                            certification: '#10b981', license: '#06b6d4', other: '#64748b',
+                                                            certification: '#22c55e', license: '#06b6d4', other: '#64748b',
                                                         };
                                                         const tc = typeColors[doc.type] || '#64748b';
                                                         const isExpired = doc.expirationDate && new Date(doc.expirationDate) < new Date();
@@ -1295,19 +1295,19 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                                     fontSize: 9, padding: '2px 7px', borderRadius: 6, fontWeight: 700,
                                                                     background: `${tc}18`, color: tc, textTransform: 'uppercase',
                                                                 }}>{doc.type}</span>
-                                                                <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1 }}>{doc.description}</span>
+                                                                <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{doc.description}</span>
                                                                 {doc.expirationDate && (
                                                                     <span style={{ fontSize: 10, color: isExpired ? '#ef4444' : '#64748b' }}>
                                                                         {isExpired ? '⚠ Expired' : 'Exp'}: {doc.expirationDate.slice(0, 10)}
                                                                     </span>
                                                                 )}
-                                                                <span style={{ fontSize: 10, color: '#475569' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>
+                                                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>
                                                             </div>
                                                         );
                                                     })}
                                                 </div>
                                             ) : (
-                                                <div style={{ textAlign: 'center', padding: 20, color: '#475569', fontSize: 12 }}>
+                                                <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)', fontSize: 12 }}>
                                                     <FileText size={24} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 8 }} />
                                                     <p style={{ margin: 0 }}>No documents on file</p>
                                                 </div>
@@ -1324,10 +1324,10 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                 <>
                                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
                                                         {[
-                                                            { label: 'Work Orders', value: performance.totalWorkOrders, color: '#D6FE51', icon: <Truck size={14} /> },
-                                                            { label: 'Completed', value: performance.completedWorkOrders, color: '#10b981', icon: <CheckCircle size={14} /> },
+                                                            { label: 'Work Orders', value: performance.totalWorkOrders, color: 'var(--accent)', icon: <Truck size={14} /> },
+                                                            { label: 'Completed', value: performance.completedWorkOrders, color: '#22c55e', icon: <CheckCircle size={14} /> },
                                                             { label: 'Avg Resolution', value: performance.avgResolutionHours ? `${performance.avgResolutionHours}h` : 'N/A', color: '#f59e0b', icon: <Clock size={14} /> },
-                                                            { label: 'Satisfaction', value: performance.avgSatisfaction ? `${performance.avgSatisfaction}/5` : 'N/A', color: '#D6FE51', icon: <Award size={14} /> },
+                                                            { label: 'Satisfaction', value: performance.avgSatisfaction ? `${performance.avgSatisfaction}/5` : 'N/A', color: 'var(--accent)', icon: <Award size={14} /> },
                                                             { label: 'Total Spend', value: `$${performance.totalSpend.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, color: '#f97316', icon: <DollarSign size={14} /> },
                                                             { label: 'Properties', value: performance.propertiesServed, color: '#3b82f6', icon: <Building2 size={14} /> },
                                                         ].map(k => (
@@ -1337,16 +1337,16 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                             }}>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                                                     <span style={{ color: k.color }}>{k.icon}</span>
-                                                                    <span style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{k.label}</span>
+                                                                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>{k.label}</span>
                                                                 </div>
-                                                                <div style={{ fontSize: 20, fontWeight: 700, color: '#e2e8f0' }}>{k.value}</div>
+                                                                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{k.value}</div>
                                                             </div>
                                                         ))}
                                                     </div>
 
                                                     {performance.recentActivity?.length > 0 && (
                                                         <>
-                                                            <h4 style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginBottom: 8, marginTop: 0 }}>Recent Activity</h4>
+                                                            <h4 style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 8, marginTop: 0 }}>Recent Activity</h4>
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                                                 {performance.recentActivity.map((a: any) => (
                                                                     <div key={a.id} style={{
@@ -1354,13 +1354,13 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                                         background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
                                                                         display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
                                                                     }}>
-                                                                        <span style={{ color: '#e2e8f0', flex: 1 }}>{a.title}</span>
+                                                                        <span style={{ color: 'var(--text-primary)', flex: 1 }}>{a.title}</span>
                                                                         <span style={{
                                                                             fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 600,
                                                                             background: a.status === 'resolved' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
-                                                                            color: a.status === 'resolved' ? '#10b981' : '#f59e0b',
+                                                                            color: a.status === 'resolved' ? '#22c55e' : '#f59e0b',
                                                                         }}>{a.status}</span>
-                                                                        <span style={{ fontSize: 10, color: '#475569' }}>{new Date(a.createdAt).toLocaleDateString()}</span>
+                                                                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{new Date(a.createdAt).toLocaleDateString()}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -1368,7 +1368,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                     )}
                                                 </>
                                             ) : (
-                                                <div style={{ textAlign: 'center', padding: 20, color: '#475569', fontSize: 12 }}>
+                                                <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-tertiary)', fontSize: 12 }}>
                                                     <BarChart3 size={24} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 8 }} />
                                                     <p style={{ margin: 0 }}>No performance data available</p>
                                                 </div>
@@ -1376,11 +1376,11 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                         </div>
                                     </>
                                 ) : detailTab === 'compliance' ? (
-                                    <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#f87171' }}>Tab unavailable.</div>}>
+                                    <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#ef4444' }}>Tab unavailable.</div>}>
                                         <ComplianceTab vendor={selected} />
                                     </ErrorBoundary>
                                 ) : detailTab === 'accounting' ? (
-                                    <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#f87171' }}>Tab unavailable.</div>}>
+                                    <ErrorBoundary fallback={<div className="s-glass-card" style={{ color: '#ef4444' }}>Tab unavailable.</div>}>
                                         <AccountingTab vendor={selected} />
                                     </ErrorBoundary>
                                 ) : detailTab === 'spaces' ? (
@@ -1444,7 +1444,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Service Tags <span style={{ fontSize: 10, color: '#64748b' }}>(comma-separated)</span></label>
+                                    <label>Service Tags <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>(comma-separated)</span></label>
                                     <input name="serviceTags" placeholder="e.g. emergency, 24hr, licensed" className="s-input" />
                                 </div>
                                 <div className="s-form-group">
@@ -1464,57 +1464,57 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
             {/* Edit Vendor Modal */}
             {showEditForm && selected && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowEditForm(false)}>
-                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid rgba(214,254,81,0.2)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ width: 560, maxWidth: '90vw', maxHeight: '85vh', background: '#1e293b', borderRadius: 16, padding: 0, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Edit Vendor</h3>
-                            <button onClick={() => setShowEditForm(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Edit Vendor</h3>
+                            <button onClick={() => setShowEditForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}><X size={18} /></button>
                         </div>
                         <form onSubmit={handleEditVendorSave} style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
-                            <div style={{ padding: '10px 14px', background: 'rgba(214,254,81,0.08)', borderRadius: 8, border: '1px solid rgba(214,254,81,0.2)', marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>Editing: {selected.name}</div>
-                                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Update vendor details, compliance info, and entity tags.</div>
+                            <div style={{ padding: '10px 14px', background: 'color-mix(in srgb, var(--accent) 8%, transparent)', borderRadius: 8, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', marginBottom: 16 }}>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Editing: {selected.name}</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>Update vendor details, compliance info, and entity tags.</div>
                             </div>
 
-                            <h4 style={{ fontSize: 11, color: '#D6FE51', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
+                            <h4 style={{ fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Contact Info</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                                <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Vendor Name</label><input className="s-input" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input className="s-input" type="email" value={editFormData.email || ''} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Phone</label><input className="s-input" value={editFormData.phone || ''} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
+                                <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Vendor Name</label><input className="s-input" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</label><input className="s-input" type="email" value={editFormData.email || ''} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Phone</label><input className="s-input" value={editFormData.phone || ''} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
                             </div>
 
-                            <h4 style={{ fontSize: 11, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Service Details</h4>
+                            <h4 style={{ fontSize: 11, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Service Details</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Specialty</label><input className="s-input" value={editFormData.specialty || ''} onChange={e => setEditFormData({...editFormData, specialty: e.target.value})} placeholder="e.g. Plumbing & HVAC" /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Vendor Type</label><select className="s-input" value={editFormData.vendorType || 'Other'} onChange={e => setEditFormData({...editFormData, vendorType: e.target.value})}>{VENDOR_TYPES.map(vt => <option key={vt} value={vt}>{vt}</option>)}</select></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Specialty</label><input className="s-input" value={editFormData.specialty || ''} onChange={e => setEditFormData({...editFormData, specialty: e.target.value})} placeholder="e.g. Plumbing & HVAC" /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Vendor Type</label><select className="s-input" value={editFormData.vendorType || 'Other'} onChange={e => setEditFormData({...editFormData, vendorType: e.target.value})}>{VENDOR_TYPES.map(vt => <option key={vt} value={vt}>{vt}</option>)}</select></div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>COI Expiry</label><input className="s-input" type="date" value={editFormData.coiExpiry || ''} onChange={e => setEditFormData({...editFormData, coiExpiry: e.target.value})} /></div>
-                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Rating (0-5)</label><input className="s-input" type="number" min="0" max="5" step="0.5" value={editFormData.rating || 0} onChange={e => setEditFormData({...editFormData, rating: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>COI Expiry</label><input className="s-input" type="date" value={editFormData.coiExpiry || ''} onChange={e => setEditFormData({...editFormData, coiExpiry: e.target.value})} /></div>
+                                <div><label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Rating (0-5)</label><input className="s-input" type="number" min="0" max="5" step="0.5" value={editFormData.rating || 0} onChange={e => setEditFormData({...editFormData, rating: e.target.value})} /></div>
                             </div>
 
                             <div style={{ marginBottom: 16 }}>
-                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</label>
+                                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes</label>
                                 <textarea className="s-input" style={{ minHeight: 50, resize: 'vertical' }} value={editFormData.notes || ''} onChange={e => setEditFormData({...editFormData, notes: e.target.value})} placeholder="Internal notes about this vendor…" />
                             </div>
 
                             <h4 style={{ fontSize: 11, color: '#06b6d4', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Entity Tags</h4>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                                 {(editFormData.entityTags || []).map((tag: string) => (
-                                    <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '3px 10px', borderRadius: 12, background: 'rgba(168,85,247,0.12)', color: '#E8FF7A', fontWeight: 600, border: '1px solid rgba(168,85,247,0.2)' }}>
+                                    <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '3px 10px', borderRadius: 12, background: 'rgba(168,85,247,0.12)', color: 'var(--accent-hover)', fontWeight: 600, border: '1px solid rgba(168,85,247,0.2)' }}>
                                         <Tag size={10} /> {tag}
-                                        <button onClick={() => handleRemoveVendorEditTag(tag)} type="button" style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex' }}><X size={10} /></button>
+                                        <button onClick={() => handleRemoveVendorEditTag(tag)} type="button" style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, display: 'flex' }}><X size={10} /></button>
                                     </span>
                                 ))}
-                                {(editFormData.entityTags || []).length === 0 && <span style={{ fontSize: 11, color: '#475569' }}>No tags — link to properties, owners, tenants</span>}
+                                {(editFormData.entityTags || []).length === 0 && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>No tags — link to properties, owners, tenants</span>}
                             </div>
                             <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
-                                <input value={editVendorTagInput} onChange={e => setEditVendorTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddVendorEditTag(); } }} placeholder="Add tag (property, owner, tenant name)…" style={{ flex: 1, padding: '6px 10px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#e2e8f0', fontFamily: 'inherit', outline: 'none' }} />
-                                <button type="button" onClick={handleAddVendorEditTag} style={{ padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)', color: '#E8FF7A', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                                <input value={editVendorTagInput} onChange={e => setEditVendorTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddVendorEditTag(); } }} placeholder="Add tag (property, owner, tenant name)…" style={{ flex: 1, padding: '6px 10px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-primary)', fontFamily: 'inherit', outline: 'none' }} />
+                                <button type="button" onClick={handleAddVendorEditTag} style={{ padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)', color: 'var(--accent-hover)', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16 }}>
-                                <button type="button" onClick={() => setShowEditForm(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                                <button type="submit" style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Save Changes</button>
+                                <button type="button" onClick={() => setShowEditForm(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                                <button type="submit" style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Save Changes</button>
                             </div>
                         </form>
                     </div>
@@ -1525,12 +1525,12 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
             {confirmDelete && (
                 <div className="s-modal-overlay" onClick={() => setConfirmDelete(null)}>
                     <div className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
-                        <Trash2 size={32} style={{ color: '#f87171', marginBottom: 12 }} />
+                        <Trash2 size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
                         <h3 style={{ margin: '0 0 8px' }}>Delete Vendor?</h3>
                         <p className="s-text-muted" style={{ marginBottom: 20 }}>This action cannot be undone. The vendor record will be permanently removed.</p>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
                             <button className="s-btn s-btn-ghost" onClick={() => setConfirmDelete(null)}>Cancel</button>
-                            <button className="s-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #f87171)', color: '#fff', border: 'none' }}
+                            <button className="s-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #ef4444)', color: 'var(--text-primary)', border: 'none' }}
                                 onClick={() => handleDelete(confirmDelete)}>Delete</button>
                         </div>
                     </div>

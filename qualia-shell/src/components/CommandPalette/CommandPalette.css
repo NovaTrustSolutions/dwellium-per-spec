@@ -95,7 +95,7 @@
     background: transparent;
     border: 0;
     outline: none;
-    color: #f8fafc;
+    color: var(--text-primary);
     font-size: 15px;
     font-weight: 500;
 }
@@ -191,11 +191,11 @@
 }
 
 .command-palette__result--active {
-    border-color: rgba(214, 254, 81, 0.35);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
     background:
-        linear-gradient(135deg, rgba(214, 254, 81, 0.08), rgba(14, 165, 233, 0.04)),
+        linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), rgba(14, 165, 233, 0.04)),
         rgba(255, 255, 255, 0.02);
-    box-shadow: 0 0 0 1px rgba(214, 254, 81, 0.1) inset;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent) inset;
     transform: translateY(-1px);
 }
 
@@ -223,7 +223,7 @@
 }
 
 .command-palette__result-title {
-    color: #f8fafc;
+    color: var(--text-primary);
     font-weight: 600;
     font-size: 13px;
     white-space: nowrap;
@@ -251,13 +251,13 @@
 }
 
 .command-palette__kind--window {
-    color: #E8FF7A;
-    border-color: rgba(214, 254, 81, 0.22);
-    background: rgba(214, 254, 81, 0.08);
+    color: var(--accent-hover);
+    border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .command-palette__kind--task {
-    color: #fca5a5;
+    color: var(--danger);
     border-color: rgba(239, 68, 68, 0.2);
     background: rgba(239, 68, 68, 0.07);
 }
@@ -321,7 +321,7 @@
 }
 
 .command-palette__result-score {
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-size: 11px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
@@ -352,7 +352,7 @@
 }
 
 .command-palette__empty-title {
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-weight: 600;
 }
 
@@ -382,7 +382,7 @@
     border-radius: 5px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.04);
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-size: 10px;
     font-weight: 700;
     margin-right: 3px;

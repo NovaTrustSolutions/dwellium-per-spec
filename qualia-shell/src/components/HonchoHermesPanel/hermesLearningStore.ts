@@ -30,6 +30,7 @@
  * localStorage, no clock.
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 /* ─── Types ─── */
 export type RunOutcome = 'success' | 'fail';
@@ -278,11 +279,14 @@ function deserialize(raw: string | null): HermesRunRecord[] {
     }
 }
 
-export const hermesLearningStore = createLocalStorageStore<HermesRunRecord[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const hermesLearningStore = withSync(
+    createLocalStorageStore<HermesRunRecord[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'hermes-learning', holder: hermesLearningUserIdHolder, resolveKey },
+);
 
 function persist(next: HermesRunRecord[]) {
     hermesLearningStore.set(next, () => {

@@ -1,0 +1,114 @@
+/* OpenNotebookPanel — embedded Open Notebook tab inside the NotebookLM widget. */
+
+.onb-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 520px;
+    background: var(--bg-desktop);
+    color: var(--text-primary, #f2f2f2);
+}
+
+.onb-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
+.onb-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.onb-url {
+    flex: 1;
+    font-size: 12px;
+    color: #b0b0b0;
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.onb-url-input {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 9px;
+    background: var(--bg-desktop);
+    color: var(--text-primary);
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+}
+.onb-btn {
+    padding: 5px 11px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid var(--border-strong);
+    border-radius: 5px;
+    background: transparent;
+    color: #b0b0b0;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.14s ease;
+}
+.onb-btn:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+.onb-btn--primary { background: var(--accent); color: var(--text-inverse); border-color: var(--accent); }
+
+.onb-setup {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-default);
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: #c5c5c5;
+    background: #0c0c0c;
+    max-height: 46%;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+.onb-setup-lead { margin: 0 0 8px; }
+.onb-setup a { color: var(--accent); }
+.onb-steps { margin: 0 0 10px; padding-left: 18px; }
+.onb-steps li { margin-bottom: 4px; }
+.onb-setup code { background: var(--border-subtle); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; }
+.onb-snippet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+}
+.onb-snippet {
+    margin: 0;
+    padding: 10px;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #cde;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+}
+.onb-setup-note { margin: 10px 0 0; color: var(--text-tertiary); font-size: 11.5px; }
+
+.onb-frame-wrap { flex: 1; min-height: 0; position: relative; display: flex; }
+.onb-frame { flex: 1; width: 100%; height: 100%; border: none; background: var(--bg-surface); }
+
+.onb-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-tertiary);
+}
+.onb-empty-icon { font-size: 38px; }
+.onb-empty-title { font-size: 14px; font-weight: 600; color: #ddd; margin: 0; }
+.onb-empty-sub { font-size: 12.5px; margin: 0; max-width: 380px; }
+.onb-empty-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }

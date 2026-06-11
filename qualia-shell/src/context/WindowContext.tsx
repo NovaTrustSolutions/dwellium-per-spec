@@ -3,6 +3,7 @@ import { WindowState, DockItem, LayoutState, SavedLayout } from '../data/types';
 import { useUser } from './UserContext';
 import { defaultDockItems } from '../data/hierarchy';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSync, withSyncStatic } from '../lib/oneSaveStore';
 
 const LAYOUT_STORAGE_KEY = 'dwellium-layout';
 const LEGACY_LAYOUT_STORAGE_KEY = 'qualia-layout';
@@ -31,7 +32,8 @@ const MIN_HEIGHT = 380;
 //
 // Exported for unit test access at src/test/appfolioParity/.
 
-export const dockItemsStore = createLocalStorageStore<DockItem[]>(
+export const dockItemsStore = withSyncStatic(
+    createLocalStorageStore<DockItem[]>(
     () => {
         try {
             const storedVersion = localStorage.getItem(DOCK_VERSION_KEY);
@@ -71,6 +73,20 @@ export const dockItemsStore = createLocalStorageStore<DockItem[]>(
         return defaultDockItems;
     },
     defaultDockItems,
+    ),
+    {
+        objectType: 'dock-items',
+        // dockItems live inside the composite dwellium-layout blob (not their own
+        // key), so hydrate merges them back rather than doing a flat setItem.
+        persistLocal: (items: DockItem[]) => {
+            try {
+                const raw = localStorage.getItem(LAYOUT_STORAGE_KEY) || localStorage.getItem(LEGACY_LAYOUT_STORAGE_KEY);
+                const layout = raw ? JSON.parse(raw) : {};
+                layout.dockItems = items;
+                localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+            } catch { /* sandboxed */ }
+        },
+    },
 );
 
 /**
@@ -87,16 +103,19 @@ function resolveSavedLayoutsKey(): string {
         : 'qualia_saved_layouts_guest';
 }
 
-export const savedLayoutsStore = createLocalStorageStore<SavedLayout[]>({
-    key: resolveSavedLayoutsKey,
-    deserializer: (raw) => {
-        try {
-            if (raw) return JSON.parse(raw);
-        } catch { /* ignore */ }
-        return [];
-    },
-    defaultValue: [],
-});
+export const savedLayoutsStore = withSync(
+    createLocalStorageStore<SavedLayout[]>({
+        key: resolveSavedLayoutsKey,
+        deserializer: (raw) => {
+            try {
+                if (raw) return JSON.parse(raw);
+            } catch { /* ignore */ }
+            return [];
+        },
+        defaultValue: [],
+    }),
+    { objectType: 'saved-layouts', holder: savedLayoutsUserIdHolder, resolveKey: resolveSavedLayoutsKey },
+);
 
 // Per-component default-size overrides for apps whose layouts require more
 // real-estate than the quadrant-spawn default. The Strata dashboard uses a
@@ -110,6 +129,8 @@ export const savedLayoutsStore = createLocalStorageStore<SavedLayout[]>({
 // halves-h region would re-introduce the layout collapse).
 export const COMPONENT_DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
     'strata-dashboard': { w: 1100, h: 800 },
+    // ARA opens roomy enough for the chat + the docked Honcho/Hermes/Tools drawer.
+    'ara-console': { w: 1080, h: 760 },
 };
 
 interface WindowContextValue {
@@ -256,9 +277,9 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         const winX = explicit
             ? Math.round((desktopW - winW) / 2)
             : Math.round(qAbsX + (qAbsW - winW) / 2);
-        const winY = explicit
+        const winY = Math.max(8, explicit
             ? Math.round((desktopH - winH) / 2)
-            : Math.round(qAbsY + (qAbsH - winH) / 2);
+            : Math.round(qAbsY + (qAbsH - winH) / 2));
 
         const newId = generateId();
         const newWindow: WindowState = {
@@ -307,8 +328,12 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const updateWindowPosition = useCallback((id: string, x: number, y: number) => {
+        // Central titlebar-rescue clamp (2026-06-10): y may NEVER go negative —
+        // a window whose titlebar is above the desktop top is undraggable and
+        // looks "cut off". Covers every caller (drag, spaces, regions, tile,
+        // restore) in one place.
         setWindows(prev => prev.map(w =>
-            w.id === id ? { ...w, x, y } : w
+            w.id === id ? { ...w, x, y: Math.max(0, y) } : w
         ));
     }, []);
 
@@ -438,7 +463,9 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     const loadNamedLayout = useCallback((id: string) => {
         const layoutToLoad = savedLayouts.find(l => l.id === id);
         if (layoutToLoad) {
-            setWindows(layoutToLoad.layout.windows || []);
+            // titlebar-rescue clamp: saved layouts from a different viewport
+            // size must never restore a window above the desktop top.
+            setWindows((layoutToLoad.layout.windows || []).map(w => ({ ...w, y: Math.max(0, w.y) })));
             setDockItems(layoutToLoad.layout.dockItems || defaultDockItems);
             window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Layout "${layoutToLoad.name}" loaded` }));
         }
@@ -466,6 +493,39 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         window.addEventListener('dwellium:open-widget', handler);
         return () => window.removeEventListener('dwellium:open-widget', handler);
     }, [openWindow]);
+
+    // Spaces (dwellium:apply-space) handling lives in Desktop.tsx — it has BOTH
+    // the window manager and the region/tab context, so it opens the Space's
+    // widgets AND tabs them into one region in a single tick (no race).
+
+    // ── Tile/arrange bus (proposal §4 talk-to-customize) ─────────────
+    // `dwellium:tile` { components?: string[] } grids the visible windows (or
+    // just the named set) across the canvas. Fired by dwelliumCommands.
+    useEffect(() => {
+        const handler = (ev: Event) => {
+            const detail = (ev as CustomEvent).detail || {};
+            const filter: string[] | null = Array.isArray(detail.components) ? detail.components : null;
+            const targets = windowsRef.current.filter(w => !w.minimized && (!filter || filter.includes(w.component)));
+            const n = targets.length;
+            if (n === 0) return;
+            const pad = 12;
+            const top = 48;
+            const W = window.innerWidth;
+            const H = window.innerHeight - top;
+            const cols = Math.ceil(Math.sqrt(n));
+            const rows = Math.ceil(n / cols);
+            const cw = Math.floor((W - pad * (cols + 1)) / cols);
+            const ch = Math.floor((H - pad * (rows + 1)) / rows);
+            targets.forEach((w, i) => {
+                const c = i % cols;
+                const r = Math.floor(i / cols);
+                updateWindowPosition(w.id, pad + c * (cw + pad), top + pad + r * (ch + pad));
+                updateWindowSize(w.id, cw, ch);
+            });
+        };
+        window.addEventListener('dwellium:tile', handler);
+        return () => window.removeEventListener('dwellium:tile', handler);
+    }, [updateWindowPosition, updateWindowSize]);
 
     return (
         <WindowContext.Provider value={{

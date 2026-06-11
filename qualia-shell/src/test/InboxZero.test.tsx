@@ -117,6 +117,20 @@ describe('InboxZero', () => {
         expect(screen.queryByText('Couldn’t load inbox')).not.toBeInTheDocument();
     });
 
+    it('tags an email card with its source Gmail account (multi-account)', async () => {
+        authFetch.mockImplementation(
+            routeFetch(() => jsonResponse({ success: true, data: [{ ...ITEM, sourceAccount: 'andy@dwellium.com' }], pagination: { hasMore: false } }))
+        );
+
+        renderInbox();
+
+        await waitFor(() => {
+            expect(screen.getByText('Lease renewal for Unit 4B')).toBeInTheDocument();
+        });
+        // The source-account badge surfaces which mailbox the email came from.
+        expect(screen.getByText(/andy@dwellium\.com/)).toBeInTheDocument();
+    });
+
     it('shows the celebratory empty state only when the fetch genuinely returns zero items', async () => {
         authFetch.mockImplementation(
             routeFetch(() => jsonResponse({ success: true, data: [], pagination: { hasMore: false } }))

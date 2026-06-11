@@ -11,6 +11,8 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, us
 import { API_BASE } from '../config';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { backendStatusStore } from '../lib/backendStatusStore';
+import { oneSaveSync } from '../lib/oneSaveStore';
+import { unlockIntegrations } from '../utils/integrationsStore';
 
 // API_BASE imported from config
 const TOKEN_KEY = 'dwellium-auth-token';
@@ -390,7 +392,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
     /* ── Auto-validate stored token on mount ──────────── */
 
     useEffect(() => {
-        if (!token) {
+        // Read the token straight from localStorage — NOT the `token` render
+        // variable. During the SSR-hydration window, useSyncExternalStore returns
+        // getServerSnapshot (null) until after the first commit, so the render var
+        // is null here even when a valid token exists. Relying on it made this
+        // effect bail early and flash the LOGIN screen for a perfectly valid
+        // session. localStorage always holds the real value on the client.
+        let storedToken: string | null = null;
+        try { storedToken = localStorage.getItem(TOKEN_KEY); } catch { /* ignore */ }
+        if (!storedToken) {
             setIsLoading(false);
             return;
         }
@@ -408,7 +418,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         } catch { /* ignore */ }
 
         // Static token — restored from localStorage only (no backend round-trip).
-        if (token.startsWith('static-')) {
+        if (storedToken.startsWith('static-')) {
             if (!restored) clearTokens();
             setIsLoading(false);
             return;
@@ -453,6 +463,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
             window.removeEventListener('online', onWake);
         };
     }, [validateSession]);
+
+    /* ── One Save: hydrate durable stores + backfill local-only ones on login.
+     * Inert unless VITE_ONE_SAVE is on (oneSaveSync.bootstrap no-ops). ── */
+    useEffect(() => {
+        void oneSaveSync.bootstrap(user?.id ?? null);
+        // Decrypt at-rest API keys for this user into the in-memory snapshot so
+        // every consumer reads plaintext while localStorage keeps ciphertext.
+        void unlockIntegrations(user?.id ?? null);
+    }, [user?.id]);
 
     return (
         <UserContext.Provider value={{

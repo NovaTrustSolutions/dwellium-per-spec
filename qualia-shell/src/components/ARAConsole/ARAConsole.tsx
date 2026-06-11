@@ -4,12 +4,16 @@ import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
+import { parseCommand } from '../../lib/dwelliumCommands';
+import { matchSkill } from '../../lib/agents/skills';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
 import VoiceVisualizer from './VoiceVisualizer';
+import AraIntroVideo from './AraIntroVideo';
+import AraSidePanel, { type AraSidePanelView } from './AraSidePanel';
 
 // ── TTS voice catalog (Cycle 1 of ARA voice arc — 2026-05-28) ────────────
 // Two tiers: OpenAI TTS (high quality, 6 voices, requires the user's OpenAI
@@ -123,9 +127,9 @@ const PERSONA_THEMES: Record<string, { accent: string; accentRgb: string; gradie
         bgTint: 'rgba(56, 152, 236, 0.04)',
     },
     'clinical-analyst': {
-        accent: '#10b981',
+        accent: '#22c55e',
         accentRgb: '16, 185, 129',
-        gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        gradient: 'linear-gradient(135deg, #22c55e 0%, #059669 100%)',
         bgTint: 'rgba(16, 185, 129, 0.04)',
     },
     'lead-counsel': {
@@ -138,12 +142,12 @@ const PERSONA_THEMES: Record<string, { accent: string; accentRgb: string; gradie
         accent: '#D6FE51',
         accentRgb: '139, 92, 246',
         gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-        bgTint: 'rgba(214, 254, 81, 0.04)',
+        bgTint: 'color-mix(in srgb, var(--accent) 4%, transparent)',
     },
     'devils-advocate': {
         accent: '#ef4444',
         accentRgb: '239, 68, 68',
-        gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        gradient: 'linear-gradient(135deg, #ef4444 0%, #ef4444 100%)',
         bgTint: 'rgba(239, 68, 68, 0.04)',
     },
     'research-synthesizer': {
@@ -164,6 +168,12 @@ const PERSONA_THEMES: Record<string, { accent: string; accentRgb: string; gradie
         gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
         bgTint: 'rgba(236, 72, 153, 0.04)',
     },
+    'executive-assistant': {
+        accent: '#6366f1',
+        accentRgb: '99, 102, 241',
+        gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+        bgTint: 'rgba(99, 102, 241, 0.05)',
+    },
 };
 
 const DEFAULT_THEME = {
@@ -172,6 +182,48 @@ const DEFAULT_THEME = {
     gradient: 'linear-gradient(135deg, #3898ec 0%, #2563eb 100%)',
     bgTint: 'rgba(56, 152, 236, 0.04)',
 };
+
+// ARA's default lens. Used as a client-side fallback so the persona exists even
+// before the backend /api/ara/modes endpoint ships the matching mode.
+const EXECUTIVE_ASSISTANT_MODE: ARAMode = {
+    id: 'executive-assistant',
+    name: 'Executive Assistant',
+    icon: '🗂️',
+    shortDescription: 'Your default right hand — coordinates everything and routes to the right tool or specialist lens.',
+    lens: 'General-purpose executive support: triage, summarize, schedule, draft, navigate, and delegate.',
+    logic: 'Clarify intent, take the most direct useful action, and hand off to a specialist lens when depth is needed.',
+    voice: 'Warm, concise, proactive.',
+    forbiddenBehavior: 'No legal, medical, or financial advice presented as professional counsel.',
+    bestFor: 'Day-to-day coordination, navigating the workspace, and getting things done fast.',
+    entityGuardianRequired: false,
+};
+
+/**
+ * Humanized acknowledgment for a just-run Conductor command. Varies phrasing
+ * (no two in a row feel canned) and always ends by asking what's next — ARA
+ * is a colleague, not a status line.
+ */
+function humanizeCommandAck(label: string): string {
+    const openMatch = label.match(/^Open\s+(.+)$/i);
+    if (openMatch) {
+        const raw = openMatch[1];
+        const thing = raw.charAt(0).toUpperCase() + raw.slice(1); // "settings" → "Settings"
+        const variants = [
+            `On it — ${thing} is open. What would you like me to do next?`,
+            `Done! ${thing}'s up. What would you like me to do next?`,
+            `There you go, ${thing} is open. What's next?`,
+            `Got it — ${thing}'s ready for you. What would you like me to do next?`,
+            `${thing} is up. Anything else I can grab for you?`,
+        ];
+        return variants[Math.floor(Math.random() * variants.length)];
+    }
+    const generic = [
+        `Done — ${label.toLowerCase()}. What would you like me to do next?`,
+        `All set: ${label.toLowerCase()}. What's next?`,
+        `That's done. What would you like me to do next?`,
+    ];
+    return generic[Math.floor(Math.random() * generic.length)];
+}
 
 function createChatMessage(
     partial: Omit<ChatMessage, 'id' | 'timestamp'> & Partial<Pick<ChatMessage, 'timestamp'>>
@@ -253,13 +305,38 @@ export default function ARAConsole() {
             ?? '';
     }, [integrations]);
     const [modes, setModes] = useState<ARAMode[]>([]);
-    const [activeMode, setActiveMode] = useState<string>('chief-of-staff');
+    // Executive Assistant is ARA's default lens (the general-purpose persona).
+    const [activeMode, setActiveMode] = useState<string>('executive-assistant');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [modePickerOpen, setModePickerOpen] = useState(false);
     const [expandedTooltipId, setExpandedTooltipId] = useState<string | null>(null);
     const [jurisdiction, setJurisdiction] = useState<'georgia' | 'florida'>('georgia');
+    // Docked tools drawer (Honcho / Hermes / Tools / Settings) + its resizable width.
+    const [sidePanel, setSidePanel] = useState<AraSidePanelView | 'none'>('none');
+    const [sideWidth, setSideWidth] = useState<number>(() => {
+        try { return Math.min(640, Math.max(280, Number(localStorage.getItem('dwellium-ara-side-w')) || 380)); }
+        catch { return 380; }
+    });
+    const beginSideResize = useCallback((e: React.PointerEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startW = sideWidth;
+        let latest = startW;
+        const onMove = (ev: PointerEvent) => {
+            // Panel is docked right, so dragging the divider left widens it.
+            latest = Math.min(640, Math.max(280, startW + (startX - ev.clientX)));
+            setSideWidth(latest);
+        };
+        const onUp = () => {
+            try { localStorage.setItem('dwellium-ara-side-w', String(latest)); } catch { /* sandboxed */ }
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+    }, [sideWidth]);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const sessionId = useRef(`session-${Date.now()}`);
@@ -770,11 +847,20 @@ export default function ARAConsole() {
             })
             .then(data => {
                 if (data.success) {
-                    setModes(data.data);
-                    console.log(`[ARA] Loaded ${data.data.length} personalities`);
+                    // Always surface Executive Assistant first (use the backend's
+                    // version if it ships one, else the client-side fallback).
+                    const fetched: ARAMode[] = Array.isArray(data.data) ? data.data : [];
+                    const ea = fetched.find(m => m.id === 'executive-assistant') || EXECUTIVE_ASSISTANT_MODE;
+                    const others = fetched.filter(m => m.id !== 'executive-assistant');
+                    setModes([ea, ...others]);
+                    console.log(`[ARA] Loaded ${others.length + 1} personalities`);
                 }
             })
-            .catch(err => console.error('[ARA] Failed to fetch modes:', err));
+            .catch(err => {
+                console.error('[ARA] Failed to fetch modes:', err);
+                // Even if the backend is unreachable, keep ARA usable with the default lens.
+                setModes(prev => (prev.length ? prev : [EXECUTIVE_ASSISTANT_MODE]));
+            });
     }, [authFetch, isAuthenticated]);
 
     // Auto-scroll to bottom on new messages
@@ -911,10 +997,12 @@ export default function ARAConsole() {
         // toggle is on. Frontend-only — no backend change needed. The LLM
         // honors this style guidance for its reply.
         const HUMANIZE_PREFIX =
-            "[Reply style: warm and conversational. Use contractions (don't, you're, we'll). " +
-            "Short sentences. Plain language — no corporate jargon, no hedging, no excessive bullet lists. " +
-            "Sound like a thoughtful friend talking, not a chatbot. " +
-            "If you must list things, lead with a single sentence first, then the list.]\n\n";
+            "[Reply style: you're a sharp, warm human assistant mid-conversation — never a chatbot. " +
+            "Use contractions (don't, you're, we'll). Short sentences. Plain language — no corporate jargon, " +
+            "no hedging, no 'As an AI', no robotic acknowledgments like 'Acknowledged' or 'Processing'. " +
+            "React naturally ('Nice.', 'Got it.', 'Oof, okay —'). Vary how you start replies. " +
+            "If you must list things, lead with a single sentence first, then the list. " +
+            "When you finish a task, ask a natural follow-up like 'What would you like me to do next?']\n\n";
         const outgoingMessage = humanizeEnabled ? HUMANIZE_PREFIX + text : text;
 
         try {
@@ -977,8 +1065,10 @@ export default function ARAConsole() {
                 try {
                     const llmRes = await callLlm({
                         systemPrompt:
-                            `You are ARA, an AI chief-of-staff inside the Dwellium property-management app, ` +
+                            `You are ARA, the human-feeling chief-of-staff inside the Dwellium property-management app, ` +
                             `currently operating in "${modeToUse}" mode${jurisdictionToUse ? ` (jurisdiction: ${jurisdictionToUse})` : ''}. ` +
+                            `Speak like a warm, sharp colleague: contractions, short sentences, no corporate jargon, ` +
+                            `no robotic phrasing — never say "As an AI" or "Acknowledged". ` +
                             `The ARA backend is offline, so deep context retrieval is unavailable — answer from general knowledge, ` +
                             `be concise and direct, and note when a question would need live property data. Use Markdown when helpful.`,
                         prompt: outgoingMessage,
@@ -1006,7 +1096,7 @@ export default function ARAConsole() {
             setRequestError(message);
             setMessages(prev => [...prev, createChatMessage({
                 role: 'assistant',
-                content: `[Error] ${message}`,
+                content: `Hmm, I hit a snag — ${message} Want me to try that again in a moment?`,
                 mode: modeToUse,
             })]);
         } finally {
@@ -1029,8 +1119,49 @@ export default function ARAConsole() {
     ]);
 
     const sendMessage = useCallback(async () => {
+        // One Conductor: a direct command ("switch to research", "make accent teal",
+        // "open strata", "save space Morning") runs immediately and skips the LLM.
+        const text = input.trim();
+        const cmd = text ? parseCommand(text) : null;
+        if (cmd) {
+            cmd.run();
+            const ack = humanizeCommandAck(cmd.label);
+            setMessages(prev => [
+                ...prev,
+                createChatMessage({ role: 'user', content: text }),
+                createChatMessage({ role: 'assistant', content: ack }),
+            ]);
+            setInput('');
+            if (ttsEnabled) void speakText(ack);
+            return;
+        }
+        // LibreChat-derived skills (web search / calculator / image gen /
+        // weather / code / memory) run browser-side before any LLM round-trip.
+        const skillHit = text ? matchSkill(text) : null;
+        if (skillHit) {
+            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text })]);
+            setInput('');
+            setIsLoading(true);
+            try {
+                const result = await skillHit.skill.run(skillHit.arg, { llm: integrations.llm });
+                setMessages(prev => [...prev, createChatMessage({
+                    role: 'assistant',
+                    content: `${result.text}\n\nWhat would you like me to do next?`,
+                })]);
+                if (ttsEnabled && !result.text.startsWith('![')) void speakText(result.text);
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                setMessages(prev => [...prev, createChatMessage({
+                    role: 'assistant',
+                    content: `Hmm, that ${skillHit.skill.name.toLowerCase()} run hit a snag — ${msg}. Want me to try again?`,
+                })]);
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
         await sendPrompt(input);
-    }, [input, sendPrompt]);
+    }, [input, sendPrompt, ttsEnabled, speakText, integrations.llm]);
 
     const retryLastRequest = useCallback(async () => {
         if (!lastRequest || isLoading) return;
@@ -1295,14 +1426,18 @@ export default function ARAConsole() {
 
     return (
         <div
-            className="ara-console"
+            className={`ara-console ${sidePanel !== 'none' ? 'ara-console--paneled' : ''}`}
             style={{
                 '--ara-accent': theme.accent,
                 '--ara-accent-rgb': theme.accentRgb,
                 '--ara-gradient': theme.gradient,
                 '--ara-bg-tint': theme.bgTint,
+                '--ara-side-w': sidePanel !== 'none' ? `${sideWidth}px` : '0px',
             } as React.CSSProperties}
         >
+            {/* Startup intro — plays a video each time ARA opens (skippable). */}
+            <AraIntroVideo />
+
             {/* Voice-reactive visualizer overlay — fades in only while ARA (Aura)
                 is speaking; taps the live TTS audio for real audio reactivity.
                 Switchable templates (Galaxy / Orb / Bars / Waveform). */}
@@ -1315,7 +1450,10 @@ export default function ARAConsole() {
                         ref={triggerRef}
                         className={`ara-mode-trigger ${modePickerOpen ? 'ara-mode-trigger--open' : ''}`}
                         onClick={() => { setModePickerOpen(!modePickerOpen); setExpandedTooltipId(null); }}
+                        title="Personas — switch ARA's lens"
+                        aria-label="Personas"
                     >
+                        <span className="ara-mode-eyebrow">Personas</span>
                         <span className="ara-mode-icon">{currentMode?.icon || '🧠'}</span>
                         <span className="ara-mode-name">{currentMode?.name || 'Loading...'}</span>
                         <span className="ara-mode-chevron">{modePickerOpen ? '▲' : '▼'}</span>
@@ -1330,8 +1468,8 @@ export default function ARAConsole() {
                             />
                             <div ref={dropdownRef} className="ara-mode-dropdown">
                                 <div className="ara-dropdown-header">
-                                    <span className="ara-dropdown-title">ARA Personalities</span>
-                                    <span className="ara-dropdown-count">{modes.length} modes</span>
+                                    <span className="ara-dropdown-title">Personas</span>
+                                    <span className="ara-dropdown-count">{modes.length} lenses</span>
                                 </div>
                                 <div className="ara-dropdown-list">
                                     {modes.map(mode => {
@@ -1395,6 +1533,28 @@ export default function ARAConsole() {
                             </div>
                         </>
                     )}
+                </div>
+
+                <div className="ara-mode-views">
+                    {([
+                        { id: 'honcho', icon: '🧠', label: 'Honcho' },
+                        { id: 'hermes', icon: '⚡', label: 'Hermes' },
+                        { id: 'tools', icon: '🧰', label: 'Tools' },
+                        { id: 'settings', icon: '⚙️', label: 'Settings' },
+                    ] as { id: AraSidePanelView; icon: string; label: string }[]).map(v => (
+                        <button
+                            key={v.id}
+                            type="button"
+                            className={`ara-view-btn ${sidePanel === v.id ? 'ara-view-btn--active' : ''}`}
+                            onClick={() => setSidePanel(prev => (prev === v.id ? 'none' : v.id))}
+                            title={v.label}
+                            aria-label={v.label}
+                            aria-pressed={sidePanel === v.id}
+                        >
+                            <span aria-hidden>{v.icon}</span>
+                            <span className="ara-view-btn__label">{v.label}</span>
+                        </button>
+                    ))}
                 </div>
 
                 <div className="ara-mode-status">
@@ -1968,7 +2128,7 @@ export default function ARAConsole() {
                                                 <span className="ara-voice-item-name">
                                                     {v.provider === 'openai' ? '🌐' : '💻'} {v.label}
                                                 </span>
-                                                <span style={{ fontSize: 10, color: '#888' }}>{v.description}</span>
+                                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{v.description}</span>
                                             </span>
                                         </button>
                                     </div>
@@ -2138,6 +2298,26 @@ export default function ARAConsole() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Docked tools drawer — Honcho / Hermes / Tools / Settings, with a
+                draggable divider between it and the chat. */}
+            {sidePanel !== 'none' && (
+                <>
+                    <div
+                        className="ara-side-divider"
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-label="Resize ARA panel"
+                        onPointerDown={beginSideResize}
+                    />
+                    <AraSidePanel
+                        view={sidePanel}
+                        onSelectView={setSidePanel}
+                        onClose={() => setSidePanel('none')}
+                        onPrefill={(t) => { setInput(t); inputRef.current?.focus(); }}
+                    />
+                </>
             )}
         </div>
     );

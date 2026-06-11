@@ -184,13 +184,13 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                                     <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <Building2 size={16} /> Owner Overview
                                     </h3>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, color: '#94a3b8' }}>
-                                        <div>Entity Type: <strong style={{ color: '#e2e8f0', textTransform: 'uppercase' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, color: 'var(--text-secondary)' }}>
+                                        <div>Entity Type: <strong style={{ color: 'var(--text-primary)', textTransform: 'uppercase' }}>
                                             {selected.entityType === 'llc' ? 'LLC' : selected.entityType === 'corporate' ? 'Corp' : selected.entityType === 'trust' ? 'Trust' : 'Individual'}
                                         </strong></div>
-                                        <div>Status: <strong style={{ color: '#e2e8f0' }}>{selected.status}</strong></div>
-                                        <div>Properties: <strong style={{ color: '#e2e8f0' }}>{(selected.propertyIds || []).length}</strong></div>
-                                        <div>Vehicles: <strong style={{ color: '#e2e8f0' }}>{vehicles.length}</strong></div>
+                                        <div>Status: <strong style={{ color: 'var(--text-primary)' }}>{selected.status}</strong></div>
+                                        <div>Properties: <strong style={{ color: 'var(--text-primary)' }}>{(selected.propertyIds || []).length}</strong></div>
+                                        <div>Vehicles: <strong style={{ color: 'var(--text-primary)' }}>{vehicles.length}</strong></div>
                                     </div>
                                 </div>
                             )}

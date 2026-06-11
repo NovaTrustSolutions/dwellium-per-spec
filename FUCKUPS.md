@@ -40,6 +40,33 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-011 — "My session work disappeared": :5173 was a stale launchd-served COPY, not the repo
+- **Problem:** Ilya kept opening localhost:5173 and seeing none of the session's
+  work — looked like sessions were being lost. They never were; the work was
+  always in `~/Downloads/Dwellium -Per Spec` (uncommitted until 2026-06-10).
+- **Root cause:** A past session created `com.dwellium.frontend.plist`
+  (launchd, RunAtLoad + KeepAlive) serving a pre-built copy at
+  `~/Library/Application Support/Dwellium/frontend-build` (919MB, stale since
+  May 28) on :5173 — placed there because launchd can't read ~/Downloads (TCC).
+  It silently squatted :5173 and respawned when killed, so any real
+  `npm run dev` got bumped to :5174 while the browser showed the stale copy.
+- **Fix (2026-06-10):** `launchctl bootout gui/$UID/com.dwellium.frontend`;
+  moved frontend-build + start-frontend.sh + the plist to Trash. Backend agent
+  (`com.dwellium.backend`) intentionally KEPT. Verified :5173 now serves from
+  the repo (lsof cwd check + UIX marker present in /src/styles/variables.css).
+- **Prevention:** Before concluding "work is missing," verify WHAT the preview
+  server is serving: `lsof -p $(lsof -tnP -iTCP:5173 -sTCP:LISTEN) | grep cwd`.
+  Don't re-create a launchd frontend agent serving a copied build unless Ilya
+  asks; if one is needed it must rebuild from the repo on login, not serve a
+  frozen snapshot.
+
+### F-010 — Tried to live-boot the backend in the Cowork Linux sandbox to smoke-test new routes; can't (Mac-native better-sqlite3)
+- **Problem:** Wanted to verify the new Gmail/Calendar routes by booting `ai-dashboard369-file-manager` (`npm run dev`) + curling them in-sandbox. The server crashes at startup before listening.
+- **Root cause:** `node_modules/better-sqlite3/build/Release/better_sqlite3.node: invalid ELF header` — the mounted `node_modules` is compiled for macOS (Darwin/arm64); the Cowork sandbox is Linux x86. The native addon can't load. Sister to F-001 (sandbox can't run the full build/boot).
+- **Do NOT "fix" with `npm rebuild`/`npm install` in the sandbox** — that overwrites the Mac's native binary with a Linux one and breaks the backend on the Mac.
+- **Verification used instead:** `npx tsc --noEmit` in the backend → exit 0, 0 errors (proves the new routes compile + the service signatures match). The live route smoke-test (boot + `curl /api/integrations/status`, `/api/gmail/test`, `/api/calendar/events`) must run on the Mac.
+- **Prevention:** For backend changes, verify with `tsc` in-sandbox; run any live boot/curl on the Mac. Never rebuild native modules against the mounted `node_modules`.
+
 ### F-009 — Claimed the "click a widget → bounced to login" bug was fixed + verified; it wasn't (missed a second vector)
 - **Problem:** Told Ilya the logout-on-widget-click bug was fixed and verified.
   It still happened — and then on *multiple* widgets. The earlier work hardened

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dwellium Installer</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="app">
+        <!-- Left rail: stepper -->
+        <aside class="rail">
+            <div class="brand">
+                <div class="brand-mark">◆</div>
+                <div class="brand-text">
+                    <div class="brand-title">Dwellium</div>
+                    <div class="brand-sub">Installer</div>
+                </div>
+            </div>
+            <ol class="steps" id="steps"></ol>
+            <div class="rail-foot">Step <span id="stepNum">1</span> of <span id="stepTotal">8</span></div>
+        </aside>
+
+        <!-- Main panel -->
+        <main class="main">
+            <header class="head">
+                <h1 id="title">Welcome</h1>
+                <p id="blurb">Let's get Dwellium running on this machine.</p>
+            </header>
+
+            <section class="body" id="body"><!-- step-specific controls injected here --></section>
+
+            <section class="console-wrap" id="consoleWrap" hidden>
+                <div class="console-head"><span>Installation log</span><span id="consoleStatus"></span></div>
+                <pre class="console" id="console"></pre>
+            </section>
+
+            <footer class="foot">
+                <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+                <div class="foot-btns">
+                    <button class="btn btn-ghost" id="backBtn">Back</button>
+                    <button class="btn btn-primary" id="primaryBtn">Begin</button>
+                </div>
+            </footer>
+        </main>
+    </div>
+    <script src="wizard.js"></script>
+</body>
+</html>

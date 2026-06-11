@@ -102,8 +102,8 @@ describe('Phase-8+ Task 8.10 — AdminShell-tree SSR-safety: getServerSnapshot c
         expect(domainsCollapsedStore.getServerSnapshot()).toBe(true);
     });
 
-    it('iconOnlyStore.getServerSnapshot() returns false (Sidebar expanded by default)', () => {
-        expect(iconOnlyStore.getServerSnapshot()).toBe(false);
+    it('iconOnlyStore.getServerSnapshot() returns true (Sidebar icon-rail by default; one-click expand via »)', () => {
+        expect(iconOnlyStore.getServerSnapshot()).toBe(true);
     });
 
     it('sidebarGroupsStore.getServerSnapshot() returns empty Set (all widget groups collapsed by default)', () => {

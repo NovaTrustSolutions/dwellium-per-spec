@@ -64,7 +64,7 @@ test.describe('AppFolio parity — WO 19511-1 round-trip (Brianna Jackson)', () 
 
   test('Maintenance → WO 19511-1 → 15-section DetailPanel + 3 windows + 2 actions log', async ({ page }) => {
     // 1. Open Strata via sidebar widget (pattern from strata-nav.spec.ts L44-58)
-    const strataWidget = page.locator('.sidebar-widget', {
+    const strataWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: 'Strata' }),
     });
     await strataWidget.click();

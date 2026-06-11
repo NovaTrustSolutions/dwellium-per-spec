@@ -22,11 +22,11 @@ function fmtMoney(n: number | null): string {
 export default function PurchaseOrderLinks({ purchaseOrders }: Props) {
     return (
         <div className="s-glass-card" data-testid="purchase-orders-list" style={{ padding: '12px 14px', marginBottom: 10 }}>
-            <h4 style={{ fontSize: 12, color: '#94a3b8', margin: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+            <h4 style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
                 <FileSpreadsheet size={12} color="#818cf8" /> Purchase Orders
             </h4>
             {purchaseOrders.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#64748b', fontSize: 12, padding: 8 }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, padding: 8 }}>
                     No purchase orders linked.
                 </div>
             ) : (

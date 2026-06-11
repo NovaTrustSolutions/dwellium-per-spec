@@ -22,6 +22,7 @@
  * the factory's getServerSnapshot returns the documented default.
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 /** One generated daily report (free-text summary of a day's captures). */
 export interface DailyReport {
@@ -104,11 +105,14 @@ function deserialize(raw: string | null): ReportData {
     }
 }
 
-export const reportStore = createLocalStorageStore<ReportData>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: EMPTY,
-});
+export const reportStore = withSync(
+    createLocalStorageStore<ReportData>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: EMPTY,
+    }),
+    { objectType: 'tw-report', holder: reportUserIdHolder, resolveKey },
+);
 
 function persist(next: ReportData) {
     reportStore.set(next, () => {

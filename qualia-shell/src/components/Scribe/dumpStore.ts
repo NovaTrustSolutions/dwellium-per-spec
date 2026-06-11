@@ -25,6 +25,7 @@
  */
 
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 
 export interface DumpEntry {
     /** Stable id (uuid when available, timestamp fallback). */
@@ -61,11 +62,14 @@ function deserialize(raw: string | null): DumpEntry[] {
     }
 }
 
-export const dumpStore = createLocalStorageStore<DumpEntry[]>({
-    key: resolveDumpKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const dumpStore = withSync(
+    createLocalStorageStore<DumpEntry[]>({
+        key: resolveDumpKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'scribe-dump', holder: dumpUserIdHolder, resolveKey: resolveDumpKey },
+);
 
 function newId(): string {
     try {

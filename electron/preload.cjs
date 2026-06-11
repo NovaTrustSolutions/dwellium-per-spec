@@ -26,4 +26,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setDataRoot: (p) => ipcRenderer.invoke('dwellium:setDataRoot', p),
     /** Relaunch the app (to apply a new data folder). */
     relaunch: () => ipcRenderer.invoke('dwellium:relaunch'),
+    /** Restart just the backend sidecar (System Health → Launch backend). */
+    restartBackend: () => ipcRenderer.invoke('dwellium:restartBackend'),
 });

@@ -2,7 +2,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--bg-secondary, #0e0e0e);
+    background: var(--bg-secondary, var(--bg-surface));
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
     color: var(--text-primary, #e2e8f0);
     overflow: hidden;
@@ -13,8 +13,8 @@
     display: flex;
     gap: 2px;
     padding: 8px 12px 0;
-    background: linear-gradient(180deg, rgba(214, 254, 81, 0.06) 0%, transparent 100%);
-    border-bottom: 1px solid rgba(214, 254, 81, 0.12);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent) 0%, transparent 100%);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     flex-shrink: 0;
 }
 
@@ -34,13 +34,13 @@
 
 .stella__tab:hover {
     color: var(--text-primary, #e2e8f0);
-    background: rgba(214, 254, 81, 0.06);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .stella__tab--active {
-    color: #D6FE51;
-    border-bottom-color: #D6FE51;
-    background: rgba(214, 254, 81, 0.08);
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 /* ─── Status Bar ───────────────────────────────────── */
@@ -65,19 +65,19 @@
 }
 
 .stella__status-dot--online {
-    background: #34d399;
-    box-shadow: 0 0 6px #34d399;
+    background: var(--success);
+    box-shadow: 0 0 6px var(--success);
 }
 
 .stella__status-dot--offline {
-    background: #f87171;
-    box-shadow: 0 0 6px #f87171;
+    background: var(--danger);
+    box-shadow: 0 0 6px var(--danger);
     animation: none;
 }
 
 .stella__status-dot--loading {
-    background: #fbbf24;
-    box-shadow: 0 0 6px #fbbf24;
+    background: var(--warning);
+    box-shadow: 0 0 6px var(--warning);
 }
 
 @keyframes stella-pulse {
@@ -98,7 +98,7 @@
     margin-left: auto;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 10px;
-    color: rgba(214, 254, 81, 0.5);
+    color: color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 /* ─── Chat Tab ─────────────────────────────────────── */
@@ -117,7 +117,7 @@
     flex-direction: column;
     gap: 10px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(214, 254, 81, 0.2) transparent;
+    scrollbar-color: color-mix(in srgb, var(--accent) 20%, transparent) transparent;
 }
 
 .stella__messages::-webkit-scrollbar {
@@ -125,7 +125,7 @@
 }
 
 .stella__messages::-webkit-scrollbar-thumb {
-    background: rgba(214, 254, 81, 0.2);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 4px;
 }
 
@@ -153,9 +153,9 @@
 
 .stella__msg--user {
     align-self: flex-end;
-    background: linear-gradient(135deg, #D6FE51, #D6FE51);
-    /* 2026-05-26: black text + black-tinted timestamp for WCAG AA contrast on acid lime (#D6FE51 / 5.02:1+) */
-    color: #000;
+    background: linear-gradient(135deg, var(--accent), var(--accent));
+    /* 2026-05-26: black text + black-tinted timestamp for WCAG AA contrast on acid lime (var(--accent) / 5.02:1+) */
+    color: var(--text-inverse);
     border-bottom-right-radius: 4px;
     /* spec §5.9 — the user's message stays pinned at the top of the viewport
        while scrolling through a long agent response (position: sticky; top: 0). */
@@ -172,7 +172,7 @@
 .stella__msg--assistant {
     align-self: flex-start;
     background: rgba(27, 27, 27, 0.9);
-    border: 1px solid rgba(214, 254, 81, 0.1);
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
     border-bottom-left-radius: 4px;
     backdrop-filter: none;
 }
@@ -180,7 +180,7 @@
 .stella__msg--system {
     align-self: center;
     max-width: 100%;
-    background: rgba(214, 254, 81, 0.06);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
     color: var(--text-secondary, #94a3b8);
     font-size: 11px;
     border-radius: 8px;
@@ -202,12 +202,12 @@
 
 .stella__msg-html strong {
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--text-primary);
 }
 
 .stella__msg-html em {
     font-style: italic;
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 .stella__msg-html h4,
@@ -215,7 +215,7 @@
 .stella__msg-html h6 {
     margin: 10px 0 4px;
     font-weight: 600;
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 .stella__msg-html h4 {
@@ -250,19 +250,19 @@
 }
 
 .stella__msg-html code {
-    background: rgba(214, 254, 81, 0.15);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
     padding: 1px 5px;
     border-radius: 4px;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 12px;
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 .stella__msg-html pre {
     margin: 8px 0;
     padding: 10px 12px;
     background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(214, 254, 81, 0.12);
+    border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-radius: 8px;
     overflow-x: auto;
 }
@@ -271,31 +271,31 @@
     background: none;
     padding: 0;
     font-size: 12px;
-    color: #e2e8f0;
+    color: var(--text-primary);
     white-space: pre;
 }
 
 .stella__msg-html blockquote {
     margin: 6px 0;
     padding: 4px 10px;
-    border-left: 3px solid rgba(214, 254, 81, 0.4);
+    border-left: 3px solid color-mix(in srgb, var(--accent) 40%, transparent);
     color: var(--text-secondary, #94a3b8);
     font-style: italic;
 }
 
 .stella__msg-html a {
-    color: #D6FE51;
+    color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 2px;
 }
 
 .stella__msg-html a:hover {
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 .stella__msg-html hr {
     border: none;
-    border-top: 1px solid rgba(214, 254, 81, 0.15);
+    border-top: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     margin: 8px 0;
 }
 
@@ -319,14 +319,14 @@
     padding: 12px 16px;
     background: rgba(27, 27, 27, 0.9);
     border-radius: 8px;
-    border: 1px solid rgba(214, 254, 81, 0.1);
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .stella__typing-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #D6FE51;
+    background: var(--accent);
     animation: stella-bounce 1.4s ease-in-out infinite;
 }
 
@@ -358,7 +358,7 @@
     display: flex;
     gap: 8px;
     padding: 10px 12px;
-    border-top: 1px solid rgba(214, 254, 81, 0.1);
+    border-top: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
     background: rgba(0, 0, 0, 0.15);
     flex-shrink: 0;
 }
@@ -367,21 +367,21 @@
     flex: 1;
     padding: 10px 14px;
     background: rgba(14, 14, 14, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.15);
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     border-radius: 6px;
     color: var(--text-primary, #e2e8f0);
     font-size: 13px;
     font-family: inherit;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
-    resize: none;
-    min-height: 38px;
-    max-height: 120px;
+    resize: vertical;
+    min-height: 128px;
+    max-height: 400px;
 }
 
 .stella__input:focus {
-    border-color: rgba(214, 254, 81, 0.4);
-    box-shadow: 0 0 0 3px rgba(214, 254, 81, 0.08);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .stella__input::placeholder {
@@ -392,9 +392,9 @@
     width: 38px;
     height: 38px;
     border-radius: 6px;
-    background: linear-gradient(135deg, #D6FE51, #D6FE51);
+    background: linear-gradient(135deg, var(--accent), var(--accent));
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 16px;
     cursor: pointer;
     display: flex;
@@ -407,7 +407,7 @@
 
 .stella__send-btn:hover {
     transform: scale(1.06);
-    box-shadow: 0 2px 12px rgba(214, 254, 81, 0.4);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .stella__send-btn:active {
@@ -426,7 +426,7 @@
     overflow-y: auto;
     padding: 14px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(214, 254, 81, 0.2) transparent;
+    scrollbar-color: color-mix(in srgb, var(--accent) 20%, transparent) transparent;
 }
 
 .stella__panel::-webkit-scrollbar {
@@ -434,7 +434,7 @@
 }
 
 .stella__panel::-webkit-scrollbar-thumb {
-    background: rgba(214, 254, 81, 0.2);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 4px;
 }
 
@@ -444,14 +444,14 @@
     gap: 12px;
     padding: 12px 14px;
     background: rgba(27, 27, 27, 0.6);
-    border: 1px solid rgba(214, 254, 81, 0.08);
+    border: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
     border-radius: 6px;
     margin-bottom: 8px;
     transition: border-color 0.2s, background 0.2s;
 }
 
 .stella__skill-card:hover {
-    border-color: rgba(214, 254, 81, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
     background: rgba(27, 27, 27, 0.8);
 }
 
@@ -459,7 +459,7 @@
     width: 36px;
     height: 36px;
     border-radius: 8px;
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15), rgba(214, 254, 81, 0.1));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -498,7 +498,7 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #D6FE51;
+    color: var(--accent);
     margin: 6px 0 6px;
     opacity: 0.85;
 }
@@ -511,7 +511,7 @@
     text-align: left;
     padding: 10px 12px;
     background: rgba(27, 27, 27, 0.6);
-    border: 1px solid rgba(214, 254, 81, 0.08);
+    border: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
     border-radius: 6px;
     margin-bottom: 6px;
     cursor: pointer;
@@ -520,20 +520,20 @@
 
 .stella__tool-card:hover,
 .stella__tool-card:focus-visible {
-    border-color: rgba(214, 254, 81, 0.3);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
     background: rgba(27, 27, 27, 0.85);
     outline: none;
 }
 
 .stella__tool-card:focus-visible {
-    box-shadow: 0 0 0 2px rgba(214, 254, 81, 0.4);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .stella__tool-icon {
     width: 30px;
     height: 30px;
     border-radius: 8px;
-    background: linear-gradient(135deg, rgba(214, 254, 81, 0.15), rgba(214, 254, 81, 0.1));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -557,12 +557,12 @@
 
 .stella__tool-desc {
     font-size: 11px;
-    color: var(--text-tertiary, #808080);
+    color: var(--text-tertiary, var(--text-tertiary));
     line-height: 1.35;
 }
 
 .stella__tool-go {
-    color: #D6FE51;
+    color: var(--accent);
     font-size: 14px;
     flex-shrink: 0;
     opacity: 0.6;
@@ -585,7 +585,7 @@
 }
 
 .stella__skill-toggle--on {
-    background: #D6FE51;
+    background: var(--accent);
 }
 
 .stella__skill-toggle--off {
@@ -598,7 +598,7 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--bg-surface);
     top: 3px;
     transition: transform 0.2s;
 }
@@ -615,7 +615,7 @@
 .stella__memory-file {
     padding: 10px 14px;
     background: rgba(27, 27, 27, 0.6);
-    border: 1px solid rgba(214, 254, 81, 0.08);
+    border: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
     border-radius: 6px;
     margin-bottom: 8px;
     cursor: pointer;
@@ -623,7 +623,7 @@
 }
 
 .stella__memory-file:hover {
-    border-color: rgba(214, 254, 81, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
     background: rgba(27, 27, 27, 0.8);
 }
 
@@ -692,8 +692,8 @@
 .stella__spinner {
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(214, 254, 81, 0.2);
-    border-top-color: #D6FE51;
+    border: 2px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
 }
@@ -709,7 +709,7 @@
     padding: 10px 14px;
     background: rgba(248, 113, 113, 0.08);
     border-bottom: 1px solid rgba(248, 113, 113, 0.15);
-    color: #fca5a5;
+    color: var(--danger);
     font-size: 12px;
     text-align: center;
     flex-shrink: 0;
@@ -724,7 +724,7 @@
     border-radius: 6px;
     background: rgba(248, 113, 113, 0.15);
     border: 1px solid rgba(248, 113, 113, 0.2);
-    color: #fca5a5;
+    color: var(--danger);
     font-size: 11px;
     cursor: pointer;
     transition: background 0.2s;
@@ -736,20 +736,20 @@
 
 /* ─── Status Bar Extras ──────────────────────────── */
 .stella__status-dot--starting {
-    background: #fbbf24;
-    box-shadow: 0 0 6px #fbbf24;
+    background: var(--warning);
+    box-shadow: 0 0 6px var(--warning);
 }
 
 .stella__status-dot--degraded {
-    background: #f59e0b;
-    box-shadow: 0 0 6px #f59e0b;
+    background: var(--warning);
+    box-shadow: 0 0 6px var(--warning);
     animation: none;
 }
 
 .stella__latency {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 10px;
-    color: #34d399;
+    color: var(--success);
     background: rgba(52, 211, 153, 0.1);
     padding: 1px 6px;
     border-radius: 4px;
@@ -793,7 +793,7 @@
 .stella__settings-select {
     padding: 8px 12px;
     background: rgba(14, 14, 14, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.15);
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     border-radius: 8px;
     color: var(--text-primary, #e2e8f0);
     font-size: 13px;
@@ -809,20 +809,20 @@
 }
 
 .stella__settings-select:focus {
-    border-color: rgba(214, 254, 81, 0.4);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .stella__settings-select option {
-    background: #1b1b1b;
-    color: #e2e8f0;
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
 }
 
 .stella__settings-btn {
     padding: 8px 16px;
     border-radius: 8px;
-    background: rgba(214, 254, 81, 0.12);
-    border: 1px solid rgba(214, 254, 81, 0.2);
-    color: #D6FE51;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent);
     font-size: 12px;
     font-weight: 500;
     font-family: inherit;
@@ -831,8 +831,8 @@
 }
 
 .stella__settings-btn:hover {
-    background: rgba(214, 254, 81, 0.2);
-    border-color: rgba(214, 254, 81, 0.3);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
     transform: translateY(-1px);
 }
 
@@ -847,20 +847,20 @@
 }
 
 .stella__settings-btn--primary {
-    background: linear-gradient(135deg, #D6FE51, #D6FE51);
+    background: linear-gradient(135deg, var(--accent), var(--accent));
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-weight: 600;
 }
 
 .stella__settings-btn--primary:hover {
-    box-shadow: 0 2px 12px rgba(214, 254, 81, 0.3);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .stella__settings-btn--danger {
     background: rgba(239, 68, 68, 0.1);
     border-color: rgba(239, 68, 68, 0.2);
-    color: #fca5a5;
+    color: var(--danger);
 }
 
 .stella__settings-btn--danger:hover {
@@ -870,7 +870,7 @@
 
 .stella__settings-divider {
     border: none;
-    border-top: 1px solid rgba(214, 254, 81, 0.08);
+    border-top: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
     margin: 4px 0;
 }
 
@@ -884,7 +884,7 @@
     padding: 12px 14px;
     background: rgba(0, 0, 0, 0.25);
     border-radius: 6px;
-    border: 1px solid rgba(214, 254, 81, 0.08);
+    border: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -912,7 +912,7 @@
     height: 100%;
     border: none;
     flex: 1;
-    background: #000000;
+    background: var(--bg-desktop);
     border-radius: 0;
 }
 
@@ -924,12 +924,12 @@
     display: inline-block;
     margin-top: 8px;
     padding: 6px 10px;
-    background: rgba(214, 254, 81, 0.1);
-    border: 1px solid rgba(214, 254, 81, 0.15);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     border-radius: 6px;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 11px;
-    color: #D6FE51;
+    color: var(--accent);
     word-break: break-all;
 }
 
@@ -940,27 +940,27 @@
     color: var(--text-primary, #e2e8f0);
     margin: 0 0 12px;
     padding-bottom: 8px;
-    border-bottom: 1px solid rgba(214, 254, 81, 0.12);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .stella__btn-sm {
     padding: 4px 10px;
     font-size: 11px;
     font-weight: 500;
-    border: 1px solid rgba(214, 254, 81, 0.2);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 6px;
-    background: rgba(214, 254, 81, 0.08);
-    color: #D6FE51;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
 }
 .stella__btn-sm:hover {
-    background: rgba(214, 254, 81, 0.16);
-    border-color: rgba(214, 254, 81, 0.3);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .stella__btn-sm--danger {
-    color: #f87171;
+    color: var(--danger);
     border-color: rgba(248, 113, 113, 0.2);
     background: rgba(248, 113, 113, 0.06);
 }
@@ -969,7 +969,7 @@
     border-color: rgba(248, 113, 113, 0.3);
 }
 .stella__btn-sm--install {
-    color: #34d399;
+    color: var(--success);
     border-color: rgba(52, 211, 153, 0.2);
     background: rgba(52, 211, 153, 0.06);
 }
@@ -984,15 +984,15 @@
     font-weight: 600;
     border: none;
     border-radius: 8px;
-    background: linear-gradient(135deg, #D6FE51, #D6FE51);
-    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent));
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s;
     margin-top: 12px;
 }
 .stella__btn-primary:hover {
     filter: brightness(1.1);
-    box-shadow: 0 4px 12px rgba(214, 254, 81, 0.3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .stella__empty {
@@ -1021,8 +1021,8 @@
     gap: 8px;
     margin-bottom: 16px;
     padding: 12px;
-    background: rgba(214, 254, 81, 0.04);
-    border: 1px solid rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
     border-radius: 6px;
 }
 
@@ -1037,8 +1037,8 @@
     font-weight: 700;
     color: var(--text-primary, #e2e8f0);
 }
-.stella__cron-stat-value.stella__cron-stat--active { color: #34d399; }
-.stella__cron-stat-value.stella__cron-stat--paused { color: #fbbf24; }
+.stella__cron-stat-value.stella__cron-stat--active { color: var(--success); }
+.stella__cron-stat-value.stella__cron-stat--paused { color: var(--warning); }
 .stella__cron-stat-label {
     font-size: 10px;
     text-transform: uppercase;
@@ -1054,14 +1054,14 @@
 
 .stella__cron-card {
     padding: 12px;
-    background: rgba(214, 254, 81, 0.04);
-    border: 1px solid rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
     border-radius: 6px;
     transition: all 0.2s;
 }
 .stella__cron-card:hover {
-    border-color: rgba(214, 254, 81, 0.2);
-    background: rgba(214, 254, 81, 0.06);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 .stella__cron-card--paused {
     opacity: 0.6;
@@ -1079,11 +1079,11 @@
     border-radius: 8px;
 }
 .stella__cron-badge--active {
-    color: #34d399;
+    color: var(--success);
     background: rgba(52, 211, 153, 0.1);
 }
 .stella__cron-badge--paused {
-    color: #fbbf24;
+    color: var(--warning);
     background: rgba(251, 191, 36, 0.1);
 }
 .stella__cron-schedule {
@@ -1106,13 +1106,13 @@
 
 .stella__mcp-card {
     padding: 12px;
-    background: rgba(214, 254, 81, 0.04);
-    border: 1px solid rgba(214, 254, 81, 0.1);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
     border-radius: 6px;
     transition: all 0.2s;
 }
 .stella__mcp-card:hover {
-    border-color: rgba(214, 254, 81, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 .stella__mcp-card-header {
     display: flex;
@@ -1127,7 +1127,7 @@
     border-radius: 8px;
 }
 .stella__mcp-badge--on {
-    color: #34d399;
+    color: var(--success);
     background: rgba(52, 211, 153, 0.1);
 }
 .stella__mcp-badge--off {
@@ -1161,14 +1161,14 @@
     padding: 8px 12px;
     font-size: 12px;
     background: rgba(14, 14, 14, 0.6);
-    border: 1px solid rgba(214, 254, 81, 0.15);
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     border-radius: 8px;
     color: var(--text-primary, #e2e8f0);
     outline: none;
     transition: border-color 0.2s;
 }
 .stella__skill-search-input:focus {
-    border-color: #D6FE51;
+    border-color: var(--accent);
 }
 .stella__skill-hub-results {
     margin-bottom: 16px;
@@ -1208,7 +1208,7 @@
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     line-height: 1.6;
     background: rgba(14, 14, 14, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.2);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 8px;
     color: var(--text-primary, #e2e8f0);
     resize: vertical;
@@ -1216,7 +1216,7 @@
     box-sizing: border-box;
 }
 .stella__memory-editor:focus {
-    border-color: #D6FE51;
+    border-color: var(--accent);
 }
 .stella__memory-edit-actions {
     display: flex;
@@ -1250,12 +1250,12 @@
 .stella__bootstrap-result--ok {
     background: rgba(16, 185, 129, 0.1);
     border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #10b981;
+    color: var(--success);
 }
 .stella__bootstrap-result--err {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 /* ─── Phase 3: Settings Hint ─────────────────────── */
@@ -1268,10 +1268,10 @@
 
 /* ─── Phase 4.2: Circuit Breaker Indicators ──────── */
 .stella__circuit-ok {
-    color: #10b981;
+    color: var(--success);
 }
 .stella__circuit-warn {
-    color: #f59e0b;
+    color: var(--warning);
     animation: stella-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1287,7 +1287,7 @@
     padding: 12px 14px;
     margin-bottom: 12px;
     border-radius: 6px;
-    border: 1px solid rgba(214, 254, 81, 0.1);
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
     background: rgba(27, 27, 27, 0.5);
     transition: all 0.3s ease;
 }
@@ -1328,9 +1328,9 @@
 .stella__honcho-learn-btn {
     padding: 6px 14px;
     border-radius: 8px;
-    border: 1px solid rgba(214, 254, 81, 0.2);
-    background: rgba(214, 254, 81, 0.1);
-    color: #D6FE51;
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
     font-size: 11px;
     font-weight: 700;
     font-family: inherit;
@@ -1341,21 +1341,21 @@
 }
 
 .stella__honcho-learn-btn:hover {
-    background: rgba(214, 254, 81, 0.2);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
     transform: scale(1.05);
 }
 
 .stella__honcho-learn-btn--on {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.15));
     border-color: rgba(52, 211, 153, 0.3);
-    color: #34d399;
+    color: var(--success);
     animation: honcho-learn-pulse 2s ease-in-out infinite;
 }
 
 .stella__honcho-learn-btn--on:hover {
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.3);
-    color: #f87171;
+    color: var(--danger);
     animation: none;
 }
 
@@ -1375,7 +1375,7 @@
 .stella__honcho-stat {
     padding: 10px 8px;
     background: rgba(27, 27, 27, 0.6);
-    border: 1px solid rgba(214, 254, 81, 0.06);
+    border: 1px solid color-mix(in srgb, var(--accent) 6%, transparent);
     border-radius: 8px;
     text-align: center;
 }
@@ -1411,7 +1411,7 @@
     flex: 1;
     padding: 7px 12px;
     background: rgba(14, 14, 14, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.12);
+    border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-radius: 8px;
     color: var(--text-primary, #e2e8f0);
     font-size: 12px;
@@ -1421,13 +1421,13 @@
 }
 
 .stella__honcho-search:focus {
-    border-color: rgba(214, 254, 81, 0.3);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .stella__honcho-type-filter {
     padding: 7px 10px;
     background: rgba(14, 14, 14, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.12);
+    border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-radius: 8px;
     color: var(--text-primary, #e2e8f0);
     font-size: 11px;
@@ -1437,16 +1437,16 @@
 }
 
 .stella__honcho-type-filter option {
-    background: #1b1b1b;
-    color: #e2e8f0;
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
 }
 
 /* ── Honcho Add Form ─── */
 .stella__honcho-add-form {
     padding: 12px;
     margin-bottom: 10px;
-    background: rgba(214, 254, 81, 0.04);
-    border: 1px solid rgba(214, 254, 81, 0.12);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-radius: 6px;
 }
 
@@ -1454,7 +1454,7 @@
     width: 100%;
     padding: 8px 12px;
     background: rgba(14, 14, 14, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.12);
+    border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-radius: 8px;
     color: var(--text-primary, #e2e8f0);
     font-size: 12px;
@@ -1474,7 +1474,7 @@
 .stella__honcho-add-row select {
     padding: 5px 8px;
     background: rgba(14, 14, 14, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.12);
+    border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     border-radius: 6px;
     color: var(--text-primary, #e2e8f0);
     font-size: 11px;
@@ -1504,14 +1504,14 @@
 .stella__honcho-memory {
     padding: 10px 12px;
     background: rgba(27, 27, 27, 0.6);
-    border: 1px solid rgba(214, 254, 81, 0.06);
-    border-left: 3px solid #D6FE51;
+    border: 1px solid color-mix(in srgb, var(--accent) 6%, transparent);
+    border-left: 3px solid var(--accent);
     border-radius: 8px;
     transition: border-color 0.2s, background 0.2s;
 }
 
 .stella__honcho-memory:hover {
-    border-color: rgba(214, 254, 81, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
     background: rgba(27, 27, 27, 0.8);
 }
 
@@ -1541,22 +1541,22 @@
 
 .stella__honcho-importance.imp-low {
     background: rgba(148, 163, 184, 0.1);
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .stella__honcho-importance.imp-medium {
     background: rgba(251, 191, 36, 0.1);
-    color: #fbbf24;
+    color: var(--warning);
 }
 
 .stella__honcho-importance.imp-high {
     background: rgba(239, 68, 68, 0.1);
-    color: #f87171;
+    color: var(--danger);
 }
 
 .stella__honcho-importance.imp-critical {
     background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    color: var(--danger);
     animation: honcho-learn-pulse 2s ease-in-out infinite;
 }
 
@@ -1597,7 +1597,7 @@
 .stella__honcho-nav {
     width: 160px;
     min-width: 160px;
-    border-right: 1px solid rgba(214, 254, 81, 0.08);
+    border-right: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
     background: rgba(14, 14, 14, 0.4);
     display: flex;
     flex-direction: column;
@@ -1611,7 +1611,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px 12px;
-    border-bottom: 1px solid rgba(214, 254, 81, 0.06);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 6%, transparent);
     margin-bottom: 6px;
 }
 .stella__honcho-nav-logo { font-size: 20px; }
@@ -1635,12 +1635,12 @@
 }
 .stella__honcho-nav-item:hover {
     color: var(--text-primary, #e2e8f0);
-    background: rgba(214, 254, 81, 0.04);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 .stella__honcho-nav-item--active {
-    color: #D6FE51;
-    background: rgba(214, 254, 81, 0.08);
-    border-left-color: #D6FE51;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border-left-color: var(--accent);
     font-weight: 600;
 }
 .stella__honcho-nav-icon { font-size: 13px; flex-shrink: 0; }
@@ -1659,7 +1659,7 @@
     min-height: 260px;
     border-radius: 6px;
     background: rgba(14, 14, 14, 0.5);
-    border: 1px solid rgba(214, 254, 81, 0.06);
+    border: 1px solid color-mix(in srgb, var(--accent) 6%, transparent);
     overflow: hidden;
 }
 .stella__honcho-network-node {
@@ -1667,7 +1667,7 @@
     padding: 6px 10px;
     border-radius: 8px;
     background: rgba(27, 27, 27, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.15);
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     font-size: 10px;
     color: var(--text-secondary, #94a3b8);
     cursor: pointer;
@@ -1680,8 +1680,8 @@
 }
 .stella__honcho-network-node:hover {
     transform: scale(1.1);
-    border-color: #D6FE51;
-    box-shadow: 0 0 15px rgba(214, 254, 81, 0.2);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px color-mix(in srgb, var(--accent) 20%, transparent);
     z-index: 2;
 }
 .stella__honcho-network-text {
@@ -1709,7 +1709,7 @@
     min-height: 350px;
     border-radius: 8px;
     background: rgba(14, 14, 14, 0.7);
-    border: 1px solid rgba(214, 254, 81, 0.06);
+    border: 1px solid color-mix(in srgb, var(--accent) 6%, transparent);
     position: relative;
     overflow: hidden;
 }
@@ -1744,7 +1744,7 @@
 }
 .stella__settings-divider {
     border: none;
-    border-top: 1px solid rgba(214, 254, 81, 0.08);
+    border-top: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
     margin: 12px 0;
 }
 .stella__settings-actions {
@@ -1755,7 +1755,7 @@
 .stella__settings-btn {
     padding: 7px 14px;
     border-radius: 8px;
-    border: 1px solid rgba(214, 254, 81, 0.12);
+    border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
     background: rgba(27, 27, 27, 0.5);
     color: var(--text-primary, #e2e8f0);
     font-size: 12px;
@@ -1763,12 +1763,12 @@
     transition: all 0.2s ease;
 }
 .stella__settings-btn:hover {
-    border-color: rgba(214, 254, 81, 0.3);
-    background: rgba(214, 254, 81, 0.08);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 .stella__settings-btn--danger {
     border-color: rgba(239, 68, 68, 0.15);
-    color: #f87171;
+    color: var(--danger);
 }
 .stella__settings-btn--danger:hover {
     border-color: rgba(239, 68, 68, 0.3);
@@ -1786,7 +1786,7 @@
     padding: 12px 14px;
     border-radius: 6px;
     margin-bottom: 14px;
-    border: 1px solid rgba(214, 254, 81, 0.08);
+    border: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .stella__hermes-status--online {
@@ -1831,20 +1831,20 @@
 .stella__hermes-tool {
     padding: 8px 12px;
     background: rgba(27, 27, 27, 0.6);
-    border: 1px solid rgba(214, 254, 81, 0.06);
+    border: 1px solid color-mix(in srgb, var(--accent) 6%, transparent);
     border-radius: 8px;
     transition: border-color 0.2s;
 }
 
 .stella__hermes-tool:hover {
-    border-color: rgba(214, 254, 81, 0.2);
+    border-color: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .stella__hermes-tool-name {
     display: block;
     font-size: 12px;
     font-weight: 600;
-    color: #D6FE51;
+    color: var(--accent);
     margin-bottom: 2px;
 }
 
@@ -1866,7 +1866,7 @@
     flex: 1;
     padding: 9px 14px;
     background: rgba(14, 14, 14, 0.8);
-    border: 1px solid rgba(214, 254, 81, 0.15);
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
     border-radius: 6px;
     color: var(--text-primary, #e2e8f0);
     font-size: 13px;
@@ -1876,7 +1876,7 @@
 }
 
 .stella__hermes-input:focus {
-    border-color: rgba(214, 254, 81, 0.4);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 /* ── ReAct Steps ─── */
@@ -1898,19 +1898,19 @@
 }
 
 .stella__hermes-step--thought {
-    border-left-color: #D6FE51;
+    border-left-color: var(--accent);
 }
 
 .stella__hermes-step--action {
-    border-left-color: #fbbf24;
+    border-left-color: var(--warning);
 }
 
 .stella__hermes-step--observation {
-    border-left-color: #D6FE51;
+    border-left-color: var(--accent);
 }
 
 .stella__hermes-step--final_answer {
-    border-left-color: #34d399;
+    border-left-color: var(--success);
     background: rgba(16, 185, 129, 0.04);
 }
 
@@ -1954,7 +1954,7 @@
 .stella__hermes-result h5 {
     font-size: 12px;
     font-weight: 700;
-    color: #34d399;
+    color: var(--success);
     margin: 0 0 8px;
 }
 
@@ -1984,8 +1984,8 @@
     box-sizing: border-box;
 }
 .stella__settings-input:focus {
-    border-color: rgba(214,254,81,0.5);
-    background: rgba(214,254,81,0.04);
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 .stella__settings-input::placeholder { color: #6e7681; }
 
@@ -2082,7 +2082,7 @@
     background: rgba(255,255,255,0.06);
     padding: 1px 5px;
     border-radius: 3px;
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 /* ── Honcho Dream + Interactions sections ── */
@@ -2103,9 +2103,9 @@
 
 .stella__honcho-dream-btn,
 .stella__honcho-interactions-btn {
-    background: rgba(214, 254, 81, 0.12);
-    color: #d6fe51;
-    border: 1px solid rgba(214, 254, 81, 0.22);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
     padding: 6px 14px;
     border-radius: 6px;
     cursor: pointer;
@@ -2115,7 +2115,7 @@
 
 .stella__honcho-dream-btn:hover:not(:disabled),
 .stella__honcho-interactions-btn:hover {
-    background: rgba(214, 254, 81, 0.22);
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .stella__honcho-dream-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -2123,7 +2123,7 @@
 .stella__honcho-interactions-btn--on {
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.35);
-    color: #fca5a5;
+    color: var(--danger);
 }
 
 .stella__honcho-dream-auto {
@@ -2131,16 +2131,16 @@
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     cursor: pointer;
 }
 
-.stella__honcho-dream-auto input { accent-color: #d6fe51; }
+.stella__honcho-dream-auto input { accent-color: var(--accent); }
 
 .stella__honcho-dream-clear {
     background: rgba(156, 163, 175, 0.08);
     border: 1px solid rgba(156, 163, 175, 0.22);
-    color: #9ca3af;
+    color: var(--text-secondary);
     padding: 5px 10px;
     border-radius: 6px;
     font-size: 11px;
@@ -2148,7 +2148,7 @@
 }
 
 .stella__honcho-dream-desc {
-    color: #9ca3af;
+    color: var(--text-secondary);
     font-size: 12px;
     line-height: 1.55;
     margin-bottom: 14px;
@@ -2156,7 +2156,7 @@
 
 .stella__honcho-empty {
     text-align: center;
-    color: #6b7280;
+    color: var(--text-tertiary);
     padding: 30px 10px;
 }
 
@@ -2195,21 +2195,21 @@
 
 .stella__honcho-dream-time {
     font-size: 10px;
-    color: #9ca3af;
+    color: var(--text-secondary);
 }
 
 .stella__honcho-dream-del {
     background: transparent;
     border: none;
-    color: #6b7280;
+    color: var(--text-tertiary);
     cursor: pointer;
     font-size: 14px;
 }
 
-.stella__honcho-dream-del:hover { color: #fca5a5; }
+.stella__honcho-dream-del:hover { color: var(--danger); }
 
 .stella__honcho-dream-text {
-    color: #d1d5db;
+    color: var(--text-secondary);
     font-size: 13px;
     line-height: 1.55;
     white-space: pre-wrap;
@@ -2218,7 +2218,7 @@
 
 .stella__honcho-dream-sources {
     font-size: 10px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-style: italic;
     margin: 0;
 }
@@ -2260,7 +2260,7 @@
 }
 
 .stella__honcho-interaction-time {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 10px;
 }
 
@@ -2288,21 +2288,21 @@
 
 .stella__diagnose-body strong {
     display: block;
-    color: #fbbf24;
+    color: var(--warning);
     font-size: 13px;
     margin-bottom: 3px;
 }
 
 .stella__diagnose-body p {
     margin: 0;
-    color: #d1d5db;
+    color: var(--text-secondary);
     font-size: 12px;
     line-height: 1.45;
 }
 
 .stella__diagnose-cta {
-    background: #d6fe51;
-    color: #000;
+    background: var(--accent);
+    color: var(--text-inverse);
     border: none;
     padding: 6px 12px;
     border-radius: 6px;
@@ -2313,7 +2313,7 @@
     align-self: center;
 }
 
-.stella__diagnose-cta:hover { background: #e8ff7a; }
+.stella__diagnose-cta:hover { background: var(--accent-hover); }
 
 /* ── S2 cross-widget handoff row (additive; mirrors ARA's .ara-handoff-row) ── */
 .stella__handoff-row {
@@ -2328,21 +2328,21 @@
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.02em;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .stella__handoff-btn {
     padding: 5px 10px;
     font-size: 11px;
     font-weight: 600;
-    color: #d6fe51;
-    background: rgba(214, 254, 81, 0.08);
-    border: 1px solid rgba(214, 254, 81, 0.35);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 6px;
     cursor: pointer;
 }
 
-.stella__handoff-btn:hover { background: rgba(214, 254, 81, 0.16); }
+.stella__handoff-btn:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 
 /* ── Context-window warning ── */
 .stella__ctx-warn {
@@ -2358,13 +2358,13 @@
 .stella__ctx-warn--warn {
     background: rgba(251, 191, 36, 0.08);
     border: 1px solid rgba(251, 191, 36, 0.28);
-    color: #fbbf24;
+    color: var(--warning);
 }
 
 .stella__ctx-warn--danger {
     background: rgba(239, 68, 68, 0.10);
     border: 1px solid rgba(239, 68, 68, 0.32);
-    color: #fca5a5;
+    color: var(--danger);
 }
 
 .stella__ctx-warn-btn {

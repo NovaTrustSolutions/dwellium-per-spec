@@ -51,23 +51,23 @@ interface ModuleRegistryEntry {
 
 /* Lightweight placeholder modules for optional tabs that don't have dedicated components yet */
 function ResidentsPlaceholder({ propertyId }: { propertyId: string }) {
-    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Residents</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Residents</div>
         <div style={{ fontSize: 12 }}>View and manage residents for this property in the Residents module.</div>
     </div>;
 }
 function LegalPlaceholder({ propertyId }: { propertyId: string }) {
-    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>⚖️</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Legal Issues</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Legal Issues</div>
         <div style={{ fontSize: 12 }}>Legal workitems for this property appear in the Work tab under the Legal domain filter.</div>
     </div>;
 }
 function IncidentsPlaceholder({ propertyId }: { propertyId: string }) {
-    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+    return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🚨</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Incidents</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Incidents</div>
         <div style={{ fontSize: 12 }}>Incident logs linked to this property.</div>
     </div>;
 }
@@ -78,30 +78,30 @@ function IncidentsPlaceholder({ propertyId }: { propertyId: string }) {
  * 32px emoji / 14px title bold / 12px body. data-testid on the root div
  * carries the per-tab content anchor used by render tests + CDP probe. ── */
 export function BudgetPlaceholder({ propertyId }: { propertyId: string }) {
-    return <div className="s-glass-card" data-testid="property-tab-content-budget" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+    return <div className="s-glass-card" data-testid="property-tab-content-budget" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>💰</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Budget</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Budget</div>
         <div style={{ fontSize: 12 }}>Budget tab — property-level budget tracking will land in Phase 5 (P&amp;L, variance vs forecast, vendor spend rollup).</div>
     </div>;
 }
 export function MarketingPlaceholder({ propertyId }: { propertyId: string }) {
-    return <div className="s-glass-card" data-testid="property-tab-content-marketing" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+    return <div className="s-glass-card" data-testid="property-tab-content-marketing" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>📣</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Marketing</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Marketing</div>
         <div style={{ fontSize: 12 }}>Marketing tab — listing syndication, photo management, and campaign ROI will land in Phase 5.</div>
     </div>;
 }
 export function ComparablesPlaceholder({ propertyId }: { propertyId: string }) {
-    return <div className="s-glass-card" data-testid="property-tab-content-comparables" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+    return <div className="s-glass-card" data-testid="property-tab-content-comparables" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>📊</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Comparables</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Comparables</div>
         <div style={{ fontSize: 12 }}>Comparables tab — comparable property data, sales/rent comps, and market-band positioning will land in Phase 5.</div>
     </div>;
 }
 export function ShowingSettingsPlaceholder({ propertyId }: { propertyId: string }) {
-    return <div className="s-glass-card" data-testid="property-tab-content-showing-settings" style={{ padding: '24px 20px', textAlign: 'center', color: '#94a3b8' }}>
+    return <div className="s-glass-card" data-testid="property-tab-content-showing-settings" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🗓️</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>Showing Settings</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Showing Settings</div>
         <div style={{ fontSize: 12 }}>Showing Settings tab — showing schedule, agent access, and self-tour configuration will land in Phase 5.</div>
     </div>;
 }
@@ -135,7 +135,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit, onTo
                 style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                     padding: '10px 14px', border: 'none', background: 'none',
-                    color: '#94a3b8', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
+                    color: 'var(--text-secondary)', fontSize: 11, fontWeight: 700, letterSpacing: 0.8,
                     textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit',
                 }}
             >
@@ -144,7 +144,7 @@ function DetailSection({ title, icon, children, defaultOpen = true, onEdit, onTo
                     {onEdit && (
                         <span
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'rgba(214,254,81,0.1)', color: '#D6FE51', cursor: 'pointer', transition: 'all 0.15s' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', cursor: 'pointer', transition: 'all 0.15s' }}
                             title={`Edit ${title}`}
                         >
                             <Settings2 size={11} />
@@ -166,8 +166,8 @@ function Field({ label, value, full }: { label: string; value?: string; full?: b
     if (!value && value !== '0') return null;
     return (
         <div style={{ gridColumn: full ? '1 / -1' : undefined }}>
-            <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</div>
-            <div style={{ fontSize: 13, color: '#cbd5e1', marginTop: 1, wordBreak: 'break-word' }}>{value || '—'}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 1, wordBreak: 'break-word' }}>{value || '—'}</div>
         </div>
     );
 }
@@ -506,7 +506,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'occupied': return 'var(--s-success, #10b981)';
+            case 'occupied': return 'var(--s-success, #22c55e)';
             case 'vacant': return 'var(--s-info, #3b82f6)';
             case 'maintenance': return 'var(--s-warning, #f59e0b)';
             case 'turn': return 'var(--s-danger, #ef4444)';
@@ -533,7 +533,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     className="s-btn s-btn-ghost"
                                     style={{
                                         padding: '5px 8px', borderRadius: 0, margin: 0,
-                                        background: cardView === mode ? 'rgba(214,254,81,0.2)' : 'transparent',
+                                        background: cardView === mode ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'transparent',
                                         color: cardView === mode ? 'var(--s-accent, #6366f1)' : 'var(--s-text-secondary)',
                                     }}
                                     onClick={() => setCardView(mode)}
@@ -563,7 +563,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     padding: '5px 14px',
                                     borderRadius: 20,
                                     border: isActive ? '1px solid var(--s-accent, #6366f1)' : '1px solid rgba(255,255,255,0.1)',
-                                    background: isActive ? 'rgba(214,254,81,0.15)' : 'rgba(255,255,255,0.04)',
+                                    background: isActive ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'rgba(255,255,255,0.04)',
                                     color: isActive ? 'var(--s-accent, #6366f1)' : 'var(--s-text-secondary)',
                                     cursor: 'pointer',
                                     fontSize: 12, fontWeight: 600,
@@ -786,13 +786,13 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                             </div>
                             <form onSubmit={handleUpdate} style={{ flex: 1, overflowY: 'auto' }}>
                                 <div className="s-form-group" style={{ marginBottom: 20 }}>
-                                    <div style={{ padding: '12px 16px', background: 'rgba(214,254,81,0.08)', borderRadius: 8, border: '1px solid rgba(214,254,81,0.2)' }}>
-                                        <h4 style={{ margin: '0 0 4px 0', fontSize: 13, color: '#e2e8f0' }}>Editing: {selected.name}</h4>
-                                        <div style={{ fontSize: 11, color: '#94a3b8' }}>Update the extended property details tracked in Dwellium for AppFolio sync.</div>
+                                    <div style={{ padding: '12px 16px', background: 'color-mix(in srgb, var(--accent) 8%, transparent)', borderRadius: 8, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}>
+                                        <h4 style={{ margin: '0 0 4px 0', fontSize: 13, color: 'var(--text-primary)' }}>Editing: {selected.name}</h4>
+                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Update the extended property details tracked in Dwellium for AppFolio sync.</div>
                                     </div>
                                 </div>
                                 
-                                <h4 style={{ fontSize: 12, color: '#D6FE51', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
+                                <h4 style={{ fontSize: 12, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
                                 <div className="s-form-row">
                                     <div className="s-form-group">
                                         <label>Rent Ready (Yes/No)</label>
@@ -923,12 +923,12 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                 padding: '10px 14px', background: 'rgba(255,255,255,0.02)',
                 borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)', marginBottom: 6,
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 10, color: '#64748b' }}>
-                    {note.isEdited ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>EDITED</span> : <span style={{ color: '#D6FE51', fontWeight: 600 }}>POSTED</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 10, color: 'var(--text-tertiary)' }}>
+                    {note.isEdited ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>EDITED</span> : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>POSTED</span>}
                     <span>Last edited – {note.author} on {note.editedAt || note.postedAt}</span>
                 </div>
                 <div style={{
-                    fontSize: 12, color: '#94a3b8', lineHeight: 1.6, whiteSpace: 'pre-line',
+                    fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line',
                     maxHeight: expanded ? 'none' : 100, overflow: 'hidden',
                 }}>
                     {note.content}
@@ -937,7 +937,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                     <button
                         onClick={() => setExpanded(!expanded)}
                         style={{
-                            background: 'none', border: 'none', color: '#D6FE51', fontSize: 11,
+                            background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11,
                             cursor: 'pointer', padding: '4px 0', fontWeight: 600, fontFamily: 'inherit',
                         }}
                     >
@@ -1003,20 +1003,20 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                         {showModuleManager && (
                             <div style={{
                                 position: 'absolute', top: '100%', right: 0, zIndex: 50,
-                                background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(214,254,81,0.2)',
+                                background: 'rgba(15,23,42,0.95)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                                 borderRadius: 10, padding: 12, minWidth: 220,
                                 backdropFilter: 'blur(12px)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
                             }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
                                     Optional Modules
                                 </div>
                                 {MODULE_REGISTRY.map(mod => (
                                     <div key={mod.key} style={{
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                         padding: '6px 8px', borderRadius: 6, marginBottom: 4,
-                                        background: moduleConfig[mod.key] ? 'rgba(214,254,81,0.08)' : 'transparent',
+                                        background: moduleConfig[mod.key] ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent',
                                     }}>
-                                        <span style={{ fontSize: 12, color: '#e2e8f0' }}>{mod.icon} {mod.label}</span>
+                                        <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{mod.icon} {mod.label}</span>
                                         <button
                                             onClick={() => handleToggleModule(mod.key)}
                                             style={{
@@ -1026,7 +1026,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                             }}
                                         >
                                             <div style={{
-                                                width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                                                width: 14, height: 14, borderRadius: '50%', background: 'var(--bg-surface)',
                                                 position: 'absolute', top: 3,
                                                 left: moduleConfig[mod.key] ? 19 : 3,
                                                 transition: 'left 0.2s',
@@ -1034,7 +1034,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         </button>
                                     </div>
                                 ))}
-                                <div style={{ fontSize: 10, color: '#475569', marginTop: 8 }}>Changes saved per property</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 8 }}>Changes saved per property</div>
                             </div>
                         )}
                     </div>
@@ -1067,7 +1067,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                             {pm.propertyType && (
                                                 <span style={{
                                                     fontSize: 10, padding: '2px 8px', borderRadius: 4,
-                                                    background: 'rgba(214,254,81,0.12)', color: '#D6FE51', fontWeight: 600,
+                                                    background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', fontWeight: 600,
                                                 }}>{pm.propertyType}</span>
                                             )}
                                             <div style={{ display: 'flex', gap: 6 }}>
@@ -1079,8 +1079,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     style={{
                                                         display: 'flex', alignItems: 'center', gap: 4, marginTop: 4,
                                                         padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
-                                                        background: 'rgba(214,254,81,0.1)', border: '1px solid rgba(214,254,81,0.2)',
-                                                        color: '#D6FE51', cursor: 'pointer', fontFamily: 'inherit',
+                                                        background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
+                                                        color: 'var(--accent)', cursor: 'pointer', fontFamily: 'inherit',
                                                     }}
                                                 >
                                                     <Settings2 size={10} /> Edit
@@ -1089,7 +1089,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     display: 'flex', alignItems: 'center', gap: 4, marginTop: 4,
                                                     padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
                                                     background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                                                    color: '#fca5a5', cursor: 'pointer', fontFamily: 'inherit',
+                                                    color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit',
                                                 }}>
                                                     <Trash2 size={10} /> Delete
                                                 </button>
@@ -1187,13 +1187,13 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     {pm.leaseTemplates && (
                                         <>
                                             <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-                                                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Default New Lease Templates</div>
+                                                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Default New Lease Templates</div>
                                                 <Field label="Lease Template" value={pm.leaseTemplates.newLease?.leaseTemplate} />
                                                 <Field label="Addenda Templates" value={pm.leaseTemplates.newLease?.addendaTemplates} />
                                                 <Field label="Lease Attachments" value={pm.leaseTemplates.newLease?.leaseAttachments} />
                                             </div>
                                             <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-                                                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Default Renewal Templates</div>
+                                                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Default Renewal Templates</div>
                                                 <Field label="Lease Template" value={pm.leaseTemplates.renewal?.leaseTemplate} />
                                                 <Field label="Addenda Templates" value={pm.leaseTemplates.renewal?.addendaTemplates} />
                                                 <Field label="Lease Attachments" value={pm.leaseTemplates.renewal?.leaseAttachments} />
@@ -1203,7 +1203,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     <Field label="Renewal Letter Template" value={pm.renewalLetterTemplate} full />
                                     {pm.renewalOptions?.length > 0 && (
                                         <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-                                            <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Renewal Options</div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>Renewal Options</div>
                                             <div className="s-table-wrap">
                                                 <table className="s-table" style={{ fontSize: 12 }}>
                                                     <thead><tr><th>Term</th><th>Change by $</th><th>Additional Fee</th></tr></thead>
@@ -1284,7 +1284,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     } catch { /* Sentry no-op when DSN unset */ }
                                 };
                                 return (
-                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Purchase History unavailable.</div>}>
+                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Purchase History unavailable.</div>}>
                                         <DetailSection title="Purchase History" icon={<History size={12} />} defaultOpen={false} onToggle={crumb}>
                                             <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="purchase-history-section">
                                                 {ph.map((p, i) => (
@@ -1318,7 +1318,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     } catch { /* no-op */ }
                                 };
                                 return (
-                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Late Fee Policy unavailable.</div>}>
+                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Late Fee Policy unavailable.</div>}>
                                         <DetailSection title="Late Fee Policy" icon={<AlertTriangle size={12} />} defaultOpen={false} onToggle={crumb}>
                                             <Field label="Effective On" value={lfp.effectiveOn ?? undefined} />
                                             <Field label="Base Amount" value={lfp.baseAmount ?? undefined} />
@@ -1338,8 +1338,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         <button 
                                             onClick={() => setShowInspectionForm(true)}
                                             style={{
-                                                background: 'rgba(214,254,81,0.1)', border: '1px solid rgba(214,254,81,0.2)',
-                                                color: '#D6FE51', padding: '4px 10px', borderRadius: 6, fontSize: 10,
+                                                background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
+                                                color: 'var(--accent)', padding: '4px 10px', borderRadius: 6, fontSize: 10,
                                                 fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
                                             }}
                                         ><Plus size={10} /> Add Inspection</button>
@@ -1351,17 +1351,17 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 <tbody>
                                                     {[...pm.inspections].sort((a,b) => b.date.localeCompare(a.date)).map((insp: any) => (
                                                         <tr key={insp.id}>
-                                                            <td style={{ whiteSpace: 'nowrap', color: '#cbd5e1' }}>{insp.date}</td>
+                                                            <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{insp.date}</td>
                                                             <td><span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>{insp.type}</span></td>
                                                             <td><span className={`s-badge ${insp.status === 'Pass' ? 'active' : insp.status === 'Fail' ? 'turn' : 'maintenance'}`}>{insp.status} {insp.score ? `(${insp.score})` : ''}</span></td>
-                                                            <td style={{ color: '#94a3b8' }}>{insp.notes || '—'}</td>
+                                                            <td style={{ color: 'var(--text-secondary)' }}>{insp.notes || '—'}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
                                     ) : (
-                                        <div style={{ textAlign: 'center', color: '#64748b', fontSize: 11, padding: 12 }}>No inspections recorded.</div>
+                                        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 11, padding: 12 }}>No inspections recorded.</div>
                                     )}
                                 </div>
                             </DetailSection>
@@ -1372,8 +1372,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     <button 
                                         onClick={() => { setBudgetFormData(pm.budgets || {}); setShowBudgetForm(true); }}
                                         style={{
-                                            background: 'rgba(214,254,81,0.1)', border: '1px solid rgba(214,254,81,0.2)',
-                                            color: '#D6FE51', padding: '4px 10px', borderRadius: 6, fontSize: 10,
+                                            background: 'color-mix(in srgb, var(--accent) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
+                                            color: 'var(--accent)', padding: '4px 10px', borderRadius: 6, fontSize: 10,
                                             fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
                                         }}
                                     ><Settings2 size={10} /> Update Budgets</button>
@@ -1409,7 +1409,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     } catch { /* no-op */ }
                                 };
                                 return (
-                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Maintenance Configuration unavailable.</div>}>
+                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Maintenance Configuration unavailable.</div>}>
                                         <DetailSection title="Maintenance Configuration" icon={<Wrench size={12} />} defaultOpen={false} onToggle={crumb}>
                                             <Field label="Maintenance Limit" value={limit} />
                                             <Field label="Insurance Expiration" value={insuranceExp} />
@@ -1443,7 +1443,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     } catch { /* no-op */ }
                                 };
                                 return (
-                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#f87171', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Fixed Assets unavailable.</div>}>
+                                    <ErrorBoundary fallback={<div style={{ padding: '8px 14px', fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, marginBottom: 10 }}>Fixed Assets unavailable.</div>}>
                                         <div className="s-glass-card" data-testid="fixed-assets-collapsible">
                                             <div
                                                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isOpen ? '1rem' : 0 }}
@@ -1496,17 +1496,17 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     {pm.bankAccounts.map((ba: any, i: number) => (
                                                         <tr key={i}>
                                                             <td className="s-td-bold" style={{ whiteSpace: 'nowrap' }}>{ba.glAccount}</td>
-                                                            <td style={{ fontSize: 11, color: '#94a3b8' }}>
+                                                            <td style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                                                                 {ba.bankAccount}
                                                                 {ba.purpose && (
-                                                                    <div style={{ fontSize: 10, color: '#475569', marginTop: 1 }}>({ba.purpose})</div>
+                                                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 1 }}>({ba.purpose})</div>
                                                                 )}
                                                             </td>
                                                             <td>
                                                                 <span style={{
                                                                     fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 600,
                                                                     background: ba.paymentsEnabled ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
-                                                                    color: ba.paymentsEnabled ? '#10b981' : '#64748b',
+                                                                    color: ba.paymentsEnabled ? '#22c55e' : '#64748b',
                                                                 }}>{ba.paymentsEnabled ? 'Enabled' : 'Not Enabled'}</span>
                                                             </td>
                                                         </tr>
@@ -1583,7 +1583,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                         onClick={() => selectUnit(u)}
                                                         style={{
                                                             cursor: 'pointer',
-                                                            background: selectedUnit?.id === u.id ? 'rgba(214,254,81,0.08)' : undefined,
+                                                            background: selectedUnit?.id === u.id ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : undefined,
                                                             borderLeft: selectedUnit?.id === u.id ? '3px solid #6366f1' : '3px solid transparent',
                                                             transition: 'all 0.15s ease',
                                                         }}
@@ -1624,7 +1624,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                         style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
                                                     />
                                                     <div style={{
-                                                        padding: '4px 8px', fontSize: 10, color: '#94a3b8',
+                                                        padding: '4px 8px', fontSize: 10, color: 'var(--text-secondary)',
                                                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                                                     }}>{photo.name}</div>
                                                     <button
@@ -1641,14 +1641,14 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     {/* Upload Area */}
                                     <label style={{
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                        padding: '16px 20px', border: '2px dashed rgba(214,254,81,0.25)',
+                                        padding: '16px 20px', border: '2px dashed color-mix(in srgb, var(--accent) 25%, transparent)',
                                         borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s',
-                                        color: '#D6FE51', fontSize: 12, fontWeight: 600,
-                                        background: 'rgba(214,254,81,0.04)',
+                                        color: 'var(--accent)', fontSize: 12, fontWeight: 600,
+                                        background: 'color-mix(in srgb, var(--accent) 4%, transparent)',
                                     }}
-                                        onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#D6FE51'; e.currentTarget.style.background = 'rgba(214,254,81,0.1)'; }}
-                                        onDragLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(214,254,81,0.25)'; e.currentTarget.style.background = 'rgba(214,254,81,0.04)'; }}
-                                        onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'rgba(214,254,81,0.25)'; addPhotos(e.dataTransfer.files); }}
+                                        onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#D6FE51'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'; }}
+                                        onDragLeave={(e) => { e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 25%, transparent)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 4%, transparent)'; }}
+                                        onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 25%, transparent)'; addPhotos(e.dataTransfer.files); }}
                                     >
                                         <input
                                             type="file"
@@ -1671,8 +1671,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 <div style={{ gridColumn: '1 / -1' }}>
                                     {/* Add Note Form */}
                                     <div style={{
-                                        marginBottom: 12, padding: '10px 14px', background: 'rgba(214,254,81,0.05)',
-                                        borderRadius: 10, border: '1px solid rgba(214,254,81,0.15)',
+                                        marginBottom: 12, padding: '10px 14px', background: 'color-mix(in srgb, var(--accent) 5%, transparent)',
+                                        borderRadius: 10, border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)',
                                     }}>
                                         <textarea
                                             value={newNoteText}
@@ -1681,7 +1681,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                             style={{
                                                 width: '100%', minHeight: 60, background: 'rgba(0,0,0,0.2)',
                                                 border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
-                                                padding: '8px 12px', color: '#e2e8f0', fontSize: 12,
+                                                padding: '8px 12px', color: 'var(--text-primary)', fontSize: 12,
                                                 fontFamily: 'inherit', resize: 'vertical',
                                             }}
                                         />
@@ -1693,7 +1693,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     display: 'flex', alignItems: 'center', gap: 6,
                                                     padding: '6px 14px', borderRadius: 6,
                                                     background: newNoteText.trim() ? '#D6FE51' : 'rgba(100,116,139,0.2)',
-                                                    border: 'none', color: '#fff', fontSize: 11,
+                                                    border: 'none', color: 'var(--text-primary)', fontSize: 11,
                                                     fontWeight: 600, cursor: newNoteText.trim() ? 'pointer' : 'not-allowed',
                                                     transition: 'all 0.15s',
                                                 }}
@@ -1712,7 +1712,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 title="Delete note"
                                                 style={{
                                                     position: 'absolute', top: 10, right: 10,
-                                                    background: 'none', border: 'none', color: '#475569',
+                                                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
                                                     cursor: 'pointer', padding: 2, borderRadius: 4,
                                                     transition: 'color 0.15s',
                                                 }}
@@ -1724,7 +1724,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         </div>
                                     ))}
                                     {(!Array.isArray(pm.notes) || pm.notes.length === 0) && (
-                                        <div style={{ textAlign: 'center', padding: '12px', color: '#475569', fontSize: 12 }}>
+                                        <div style={{ textAlign: 'center', padding: '12px', color: 'var(--text-tertiary)', fontSize: 12 }}>
                                             No notes yet. Add one above.
                                         </div>
                                     )}
@@ -1803,10 +1803,10 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         {/* ── Header ── */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                                             <ListChecks size={18} color="#818cf8" />
-                                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#e2e8f0' }}>Work Items</h3>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Work Items</h3>
                                             <span style={{
                                                 fontSize: 11, padding: '2px 8px', borderRadius: 10,
-                                                background: 'rgba(214,254,81,0.15)', color: '#D6FE51', fontWeight: 600,
+                                                background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', fontWeight: 600,
                                             }}>{activeItems.length} active / {inactiveItems.length} inactive</span>
                                         </div>
 
@@ -1817,7 +1817,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 style={{
                                                     padding: '6px 16px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600,
                                                     cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-                                                    background: workTrackingFilter === 'active' ? 'rgba(214,254,81,0.25)' : 'transparent',
+                                                    background: workTrackingFilter === 'active' ? 'color-mix(in srgb, var(--accent) 25%, transparent)' : 'transparent',
                                                     color: workTrackingFilter === 'active' ? '#D6FE51' : '#64748b',
                                                 }}
                                             >
@@ -1830,7 +1830,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     padding: '6px 16px', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600,
                                                     cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
                                                     background: workTrackingFilter === 'inactive' ? 'rgba(239,68,68,0.15)' : 'transparent',
-                                                    color: workTrackingFilter === 'inactive' ? '#fca5a5' : '#64748b',
+                                                    color: workTrackingFilter === 'inactive' ? '#ef4444' : '#64748b',
                                                 }}
                                             >
                                                 <Archive size={12} style={{ marginRight: 4, verticalAlign: -2 }} />
@@ -1845,8 +1845,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 onClick={() => setWorkStatusFilter('all')}
                                                 style={{
                                                     padding: '3px 10px', borderRadius: 12, border: '1px solid',
-                                                    borderColor: workStatusFilter === 'all' ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)',
-                                                    background: workStatusFilter === 'all' ? 'rgba(214,254,81,0.15)' : 'transparent',
+                                                    borderColor: workStatusFilter === 'all' ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'rgba(255,255,255,0.08)',
+                                                    background: workStatusFilter === 'all' ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                                                     color: workStatusFilter === 'all' ? '#D6FE51' : '#64748b',
                                                     fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                                                 }}
@@ -1869,8 +1869,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 onClick={() => setWorkPriorityFilter('all')}
                                                 style={{
                                                     padding: '3px 10px', borderRadius: 12, border: '1px solid',
-                                                    borderColor: workPriorityFilter === 'all' ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)',
-                                                    background: workPriorityFilter === 'all' ? 'rgba(214,254,81,0.15)' : 'transparent',
+                                                    borderColor: workPriorityFilter === 'all' ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'rgba(255,255,255,0.08)',
+                                                    background: workPriorityFilter === 'all' ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                                                     color: workPriorityFilter === 'all' ? '#D6FE51' : '#64748b',
                                                     fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                                                 }}
@@ -1894,8 +1894,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 onClick={() => setWorkDomainFilter('all')}
                                                 style={{
                                                     padding: '3px 10px', borderRadius: 12, border: '1px solid',
-                                                    borderColor: workDomainFilter === 'all' ? 'rgba(214,254,81,0.4)' : 'rgba(255,255,255,0.08)',
-                                                    background: workDomainFilter === 'all' ? 'rgba(214,254,81,0.15)' : 'transparent',
+                                                    borderColor: workDomainFilter === 'all' ? 'color-mix(in srgb, var(--accent) 40%, transparent)' : 'rgba(255,255,255,0.08)',
+                                                    background: workDomainFilter === 'all' ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                                                     color: workDomainFilter === 'all' ? '#D6FE51' : '#64748b',
                                                     fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                                                 }}
@@ -1918,7 +1918,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         {/* ── Search (shown on inactive view) ── */}
                                         {workTrackingFilter === 'inactive' && (
                                             <div style={{ position: 'relative', marginBottom: 12 }}>
-                                                <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: '#475569' }} />
+                                                <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: 'var(--text-tertiary)' }} />
                                                 <input
                                                     type="text"
                                                     placeholder="Search inactive items..."
@@ -1927,7 +1927,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     style={{
                                                         width: '100%', padding: '8px 10px 8px 32px', borderRadius: 8,
                                                         border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
-                                                        color: '#e2e8f0', fontSize: 12, fontFamily: 'inherit', outline: 'none',
+                                                        color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit', outline: 'none',
                                                     }}
                                                 />
                                             </div>
@@ -1935,7 +1935,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
 
                                         {/* ── Card Grid ── */}
                                         {filtered.length === 0 ? (
-                                            <div style={{ textAlign: 'center', color: '#475569', fontSize: 13, padding: '24px 0' }}>
+                                            <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: '24px 0' }}>
                                                 {workTrackingFilter === 'active' ? 'No active work items' : 'No inactive items found'}
                                             </div>
                                         ) : (
@@ -1950,12 +1950,12 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                             background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)',
                                                             cursor: 'pointer', transition: 'all 0.2s',
                                                         }}
-                                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(214,254,81,0.3)'; }}
+                                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 30%, transparent)'; }}
                                                         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.025)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
                                                     >
                                                         {/* Card header — title + badges */}
                                                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-                                                            <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: '#e2e8f0', lineHeight: 1.3 }}>{item.title}</span>
+                                                            <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.3 }}>{item.title}</span>
                                                         </div>
                                                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
                                                             <span style={{
@@ -1968,17 +1968,17 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                             }}>{item.priority}</span>
                                                             <span style={{
                                                                 fontSize: 9, padding: '2px 7px', borderRadius: 6, fontWeight: 600,
-                                                                background: 'rgba(214,254,81,0.1)', color: '#D6FE51',
+                                                                background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)',
                                                             }}>{item.domain}</span>
                                                         </div>
                                                         {/* Description snippet */}
                                                         {item.description && (
-                                                            <p style={{ margin: '0 0 8px', fontSize: 11, color: '#94a3b8', lineHeight: 1.4, maxHeight: 36, overflow: 'hidden' }}>
+                                                            <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4, maxHeight: 36, overflow: 'hidden' }}>
                                                                 {item.description.slice(0, 120)}{item.description.length > 120 ? '…' : ''}
                                                             </p>
                                                         )}
                                                         {/* Footer — meta + action */}
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: '#475569' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-tertiary)' }}>
                                                             <span>{item.type}{item.dueDate ? ` • Due ${item.dueDate.slice(0, 10)}` : ''}</span>
                                                             {workTrackingFilter === 'active' ? (
                                                                 <button
@@ -1987,7 +1987,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                                     style={{
                                                                         display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px',
                                                                         borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.08)',
-                                                                        color: '#fca5a5', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                                                        color: '#ef4444', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                                                                     }}
                                                                 >
                                                                     <Archive size={10} /> Deactivate
@@ -2024,11 +2024,11 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 borderBottom: i < pm.auditLog.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                                                 fontSize: 12, alignItems: 'flex-start',
                                             }}>
-                                                <div style={{ color: '#475569', fontSize: 11, whiteSpace: 'nowrap', minWidth: 120 }}>
+                                                <div style={{ color: 'var(--text-tertiary)', fontSize: 11, whiteSpace: 'nowrap', minWidth: 120 }}>
                                                     {entry.date} {entry.time}
                                                 </div>
-                                                <div style={{ color: '#94a3b8', flex: 1 }}>{entry.action}</div>
-                                                <div style={{ color: '#D6FE51', fontSize: 11, whiteSpace: 'nowrap', fontWeight: 500 }}>
+                                                <div style={{ color: 'var(--text-secondary)', flex: 1 }}>{entry.action}</div>
+                                                <div style={{ color: 'var(--accent)', fontSize: 11, whiteSpace: 'nowrap', fontWeight: 500 }}>
                                                     {entry.user}
                                                 </div>
                                             </div>
@@ -2050,11 +2050,11 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                             <td>
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                                     <FileText size={13} color="#6366f1" />
-                                                                    <span style={{ color: '#cbd5e1' }}>{att.name}</span>
+                                                                    <span style={{ color: 'var(--text-secondary)' }}>{att.name}</span>
                                                                 </div>
                                                             </td>
-                                                            <td style={{ color: '#94a3b8' }}>{att.uploadedBy}</td>
-                                                            <td style={{ color: '#64748b', whiteSpace: 'nowrap' }}>{att.date}</td>
+                                                            <td style={{ color: 'var(--text-secondary)' }}>{att.uploadedBy}</td>
+                                                            <td style={{ color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{att.date}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -2072,7 +2072,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Linked Items</h3>
                                         <span style={{
                                             fontSize: 11, padding: '2px 8px', borderRadius: 10,
-                                            background: linkedData.summary.total > 0 ? 'rgba(214,254,81,0.15)' : 'rgba(100,116,139,0.1)',
+                                            background: linkedData.summary.total > 0 ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'rgba(100,116,139,0.1)',
                                             color: linkedData.summary.total > 0 ? '#D6FE51' : '#64748b', fontWeight: 600,
                                         }}>{linkedData.summary.total} total</span>
                                     </div>
@@ -2080,7 +2080,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     {/* ── WorkItems Section ── */}
                                     {(() => {
                                         const sections: { key: string; label: string; icon: React.ReactNode; items: any[]; color: string; emptyMsg: string }[] = [
-                                            { key: 'workitems', label: 'Workitems', icon: <Wrench size={14} />, items: linkedData.workitems, color: '#D6FE51', emptyMsg: 'No workitems linked' },
+                                            { key: 'workitems', label: 'Workitems', icon: <Wrench size={14} />, items: linkedData.workitems, color: 'var(--accent)', emptyMsg: 'No workitems linked' },
                                             { key: 'legal', label: 'Legal Issues', icon: <Scale size={14} />, items: linkedData.legal, color: '#f59e0b', emptyMsg: 'No legal issues' },
                                             { key: 'compliance', label: 'Compliance', icon: <ClipboardCheck size={14} />, items: linkedData.compliance, color: '#22c55e', emptyMsg: 'No compliance items' },
                                             { key: 'incidents', label: 'Incidents', icon: <AlertTriangle size={14} />, items: linkedData.incidents, color: '#ef4444', emptyMsg: 'No incidents reported' },
@@ -2096,7 +2096,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     style={{
                                                         width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                                                         padding: '10px 14px', border: 'none', background: 'none',
-                                                        color: '#e2e8f0', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                                                        color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                                                     }}
                                                 >
                                                     <span style={{ color: sec.color, display: 'flex' }}>{sec.icon}</span>
@@ -2104,9 +2104,9 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     <span style={{
                                                         fontSize: 10, padding: '1px 6px', borderRadius: 8, marginLeft: 4,
                                                         background: sec.items.length > 0 ? `${sec.color}15` : 'rgba(100,116,139,0.1)',
-                                                        color: sec.items.length > 0 ? sec.color : '#475569', fontWeight: 700,
+                                                        color: sec.items.length > 0 ? sec.color : 'var(--text-tertiary)', fontWeight: 700,
                                                     }}>{sec.items.length}</span>
-                                                    <span style={{ marginLeft: 'auto', color: '#475569' }}>
+                                                    <span style={{ marginLeft: 'auto', color: 'var(--text-tertiary)' }}>
                                                         {expandedLinkedSection === sec.key ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                                     </span>
                                                 </button>
@@ -2114,7 +2114,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 {expandedLinkedSection === sec.key && (
                                                     <div style={{ padding: '0 14px 12px' }}>
                                                         {sec.items.length === 0 ? (
-                                                            <div style={{ textAlign: 'center', color: '#475569', fontSize: 12, padding: '8px 0' }}>
+                                                            <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, padding: '8px 0' }}>
                                                                 {sec.emptyMsg}
                                                             </div>
                                                         ) : (
@@ -2126,11 +2126,11 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                                             <div key={item.id} style={{
                                                                                 padding: '8px 12px', borderRadius: 8,
                                                                                 background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                                                                                fontSize: 12, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 8,
+                                                                                fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8,
                                                                             }}>
                                                                                 <Link2 size={12} color="#06b6d4" />
                                                                                 <span style={{ fontWeight: 600 }}>{item.targetType}</span>
-                                                                                <span style={{ color: '#64748b' }}>→</span>
+                                                                                <span style={{ color: 'var(--text-tertiary)' }}>→</span>
                                                                                 <span>{item.note || item.linkType || 'related'}</span>
                                                                             </div>
                                                                         );
@@ -2149,14 +2149,14 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                                                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
                                                                             >
                                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                                                                                    <span style={{ fontWeight: 600, fontSize: 13, color: '#e2e8f0' }}>{item.title}</span>
+                                                                                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{item.title}</span>
                                                                                     <span style={{
                                                                                         fontSize: 9, padding: '1px 6px', borderRadius: 6,
                                                                                         background: `${sevColor}15`, color: sevColor, fontWeight: 700, textTransform: 'uppercase',
                                                                                     }}>{item.severity}</span>
                                                                                     <span className={`s-badge ${item.status}`} style={{ fontSize: '0.55rem' }}>{item.status}</span>
                                                                                 </div>
-                                                                                <div style={{ fontSize: 11, color: '#64748b' }}>{item.category} • {item.reportedAt || item.createdAt}</div>
+                                                                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{item.category} • {item.reportedAt || item.createdAt}</div>
                                                                             </div>
                                                                         );
                                                                     }
@@ -2175,7 +2175,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                                             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
                                                                         >
                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                                                                                <span style={{ fontWeight: 600, fontSize: 13, color: '#e2e8f0' }}>{item.title}</span>
+                                                                                <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{item.title}</span>
                                                                                 <span className={`s-badge ${item.status}`} style={{ fontSize: '0.55rem' }}>{item.status}</span>
                                                                                 {item.priority && (
                                                                                     <span style={{
@@ -2186,13 +2186,13 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                                                 )}
                                                                             </div>
                                                                             {item.description && (
-                                                                                <p style={{ margin: 0, fontSize: 11, color: '#94a3b8', lineHeight: 1.4, maxHeight: 40, overflow: 'hidden' }}>
+                                                                                <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4, maxHeight: 40, overflow: 'hidden' }}>
                                                                                     {item.description.slice(0, 150)}{item.description.length > 150 ? '…' : ''}
                                                                                 </p>
                                                                             )}
-                                                                            <div style={{ marginTop: 4, fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                            <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                                                 <span>{item.domain} • {item.type}{(item.metadata as any)?.trelloCardId && ' • via Trello'}</span>
-                                                                                <span style={{ color: '#D6FE51', fontWeight: 500 }}>Click to expand →</span>
+                                                                                <span style={{ color: 'var(--accent)', fontWeight: 500 }}>Click to expand →</span>
                                                                             </div>
                                                                         </div>
                                                                     );
@@ -2233,21 +2233,21 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                 {/* Unit header */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                                     <div>
-                                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#e2e8f0' }}>
+                                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>
                                             Unit {selectedUnit.unitNumber}
                                         </h3>
                                         <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                                             <span style={{
                                                 padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600,
                                                 background: selectedUnit.status === 'occupied' ? 'rgba(16,185,129,0.12)' : 'rgba(59,130,246,0.12)',
-                                                color: selectedUnit.status === 'occupied' ? '#10b981' : '#3b82f6',
+                                                color: selectedUnit.status === 'occupied' ? '#22c55e' : '#3b82f6',
                                                 textTransform: 'uppercase',
                                             }}>{selectedUnit.status}</span>
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => { setSelectedUnit(null); setMatchedTenant(null); }}
-                                        style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
                                     >×</button>
                                 </div>
 
@@ -2258,16 +2258,16 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     border: '1px solid rgba(255,255,255,0.04)',
                                 }}>
                                     <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>{selectedUnit.bedrooms ?? 0}/{selectedUnit.bathrooms ?? 0}</div>
-                                        <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Bed/Bath</div>
+                                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{selectedUnit.bedrooms ?? 0}/{selectedUnit.bathrooms ?? 0}</div>
+                                        <div style={{ fontSize: 9, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Bed/Bath</div>
                                     </div>
                                     <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>{(selectedUnit.sqFt ?? 0).toLocaleString()}</div>
-                                        <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Sq Ft</div>
+                                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{(selectedUnit.sqFt ?? 0).toLocaleString()}</div>
+                                        <div style={{ fontSize: 9, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Sq Ft</div>
                                     </div>
                                     <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: 16, fontWeight: 700, color: '#10b981' }}>${(selectedUnit.rentAmount ?? 0).toLocaleString()}</div>
-                                        <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Rent</div>
+                                        <div style={{ fontSize: 16, fontWeight: 700, color: '#22c55e' }}>${(selectedUnit.rentAmount ?? 0).toLocaleString()}</div>
+                                        <div style={{ fontSize: 9, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Rent</div>
                                     </div>
                                 </div>
 
@@ -2276,12 +2276,12 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     <>
                                         <div style={{
                                             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14,
-                                            padding: '10px 14px', background: 'rgba(214,254,81,0.06)', borderRadius: 10,
-                                            border: '1px solid rgba(214,254,81,0.15)',
+                                            padding: '10px 14px', background: 'color-mix(in srgb, var(--accent) 6%, transparent)', borderRadius: 10,
+                                            border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)',
                                         }}>
                                             <div style={{
                                                 width: 36, height: 36, borderRadius: '50%',
-                                                background: 'rgba(214,254,81,0.2)', color: '#D6FE51',
+                                                background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 fontWeight: 700, fontSize: 14,
                                             }}>
@@ -2293,13 +2293,13 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                     <span style={{
                                                         padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 600,
                                                         background: matchedTenant.status === 'active' ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
-                                                        color: matchedTenant.status === 'active' ? '#10b981' : '#64748b',
+                                                        color: matchedTenant.status === 'active' ? '#22c55e' : '#64748b',
                                                         textTransform: 'uppercase',
                                                     }}>{matchedTenant.status}</span>
                                                     {md.tenantType && (
                                                         <span style={{
                                                             padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 600,
-                                                            background: 'rgba(214,254,81,0.12)', color: '#D6FE51',
+                                                            background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)',
                                                         }}>{md.tenantType}</span>
                                                     )}
                                                 </div>
@@ -2307,7 +2307,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         </div>
 
                                         {/* Contact */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14, fontSize: 13, color: '#94a3b8' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
                                             {matchedTenant.email && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Mail size={13} color="#64748b" /> {matchedTenant.email}</div>}
                                             {matchedTenant.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Phone size={13} color="#64748b" /> {matchedTenant.phone}</div>}
                                         </div>
@@ -2366,7 +2366,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     </>
                                 ) : (
                                     <div style={{
-                                        padding: 24, textAlign: 'center', color: '#475569',
+                                        padding: 24, textAlign: 'center', color: 'var(--text-tertiary)',
                                         background: 'rgba(255,255,255,0.02)', borderRadius: 10,
                                         border: '1px solid rgba(255,255,255,0.04)',
                                     }}>
@@ -2467,7 +2467,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                     <input type="number" className="s-input" value={budgetFormData.capexBudget || ''} onChange={e => setBudgetFormData({...budgetFormData, capexBudget: e.target.value})} />
                                 </div>
                             </div>
-                            <h4 style={{ fontSize: 13, color: '#e2e8f0', margin: '16px 0 8px', paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Operating Variance Thresholds</h4>
+                            <h4 style={{ fontSize: 13, color: 'var(--text-primary)', margin: '16px 0 8px', paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Operating Variance Thresholds</h4>
                             <div className="s-form-row">
                                 <div className="s-form-group">
                                     <label>Amount Threshold ($)</label>
@@ -2498,12 +2498,12 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
             {confirmDeleteProp && (
                 <div className="s-modal-overlay" onClick={() => setConfirmDeleteProp(null)}>
                     <div className="s-modal" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 380 }}>
-                        <Trash2 size={32} style={{ color: '#f87171', marginBottom: 12 }} />
+                        <Trash2 size={32} style={{ color: '#ef4444', marginBottom: 12 }} />
                         <h3 style={{ margin: '0 0 8px' }}>Delete Property?</h3>
                         <p className="s-text-muted" style={{ marginBottom: 20 }}>This will permanently remove the property and all associated data. This action cannot be undone.</p>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
                             <button className="s-btn s-btn-ghost" onClick={() => setConfirmDeleteProp(null)}>Cancel</button>
-                            <button className="s-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #f87171)', color: '#fff', border: 'none' }}
+                            <button className="s-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #ef4444)', color: 'var(--text-primary)', border: 'none' }}
                                 onClick={() => handleDeleteProp(confirmDeleteProp)}>Delete</button>
                         </div>
                     </div>
@@ -2520,12 +2520,12 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                         </div>
                         <form onSubmit={handleUpdate} style={{ flex: 1, overflowY: 'auto' }}>
                             <div className="s-form-group" style={{ marginBottom: 20 }}>
-                                <div style={{ padding: '12px 16px', background: 'rgba(214,254,81,0.08)', borderRadius: 8, border: '1px solid rgba(214,254,81,0.2)' }}>
-                                    <h4 style={{ margin: '0 0 4px 0', fontSize: 13, color: '#e2e8f0' }}>Editing: {selected.name}</h4>
-                                    <div style={{ fontSize: 11, color: '#94a3b8' }}>Update the extended property details tracked in Dwellium.</div>
+                                <div style={{ padding: '12px 16px', background: 'color-mix(in srgb, var(--accent) 8%, transparent)', borderRadius: 8, border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}>
+                                    <h4 style={{ margin: '0 0 4px 0', fontSize: 13, color: 'var(--text-primary)' }}>Editing: {selected.name}</h4>
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Update the extended property details tracked in Dwellium.</div>
                                 </div>
                             </div>
-                            <h4 style={{ fontSize: 12, color: '#D6FE51', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
+                            <h4 style={{ fontSize: 12, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>Turn & Showing</h4>
                             <div className="s-form-row">
                                 <div className="s-form-group">
                                     <label>Rent Ready (Yes/No)</label>

@@ -58,7 +58,7 @@ const BLANK_HEAD: Omit<HydraHead, 'id'> = {
     provider: 'openai',
     model: '',
     icon: '🤖',
-    color: '#D6FE51',
+    color: 'var(--accent)',
     colorRgb: '99, 102, 241',
     enabled: true,
     endpoint: '',

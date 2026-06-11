@@ -10,6 +10,7 @@
  * Storage key:  tw:speakers:<userId>   (anon → tw:speakers:_anonymous)
  */
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { withSync } from '../../lib/oneSaveStore';
 import { updateCentroid, l2normalize, type EnrolledSpeaker } from './speakerLibrary';
 
 export const speakerLibraryUserIdHolder: { current: string | null } = { current: null };
@@ -32,11 +33,14 @@ function deserialize(raw: string | null): EnrolledSpeaker[] {
     }
 }
 
-export const speakerLibraryStore = createLocalStorageStore<EnrolledSpeaker[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const speakerLibraryStore = withSync(
+    createLocalStorageStore<EnrolledSpeaker[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'speaker-library', holder: speakerLibraryUserIdHolder, resolveKey },
+);
 
 function persist(next: EnrolledSpeaker[]): void {
     speakerLibraryStore.set(next, () => {

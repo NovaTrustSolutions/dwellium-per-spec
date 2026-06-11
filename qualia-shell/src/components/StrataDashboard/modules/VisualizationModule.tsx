@@ -32,7 +32,7 @@ interface EntityLink {
 const ENTITY_COLORS: Record<string, string> = {
     property: '#D6FE51',
     vendor: '#f59e0b',
-    tenant: '#10b981',
+    tenant: '#22c55e',
     owner: '#3b82f6',
     workitem: '#D6FE51',
     legal: '#ef4444',
@@ -178,7 +178,7 @@ export default function VisualizationModule() {
             case 'open': return '#3b82f6';
             case 'in_progress': return '#f59e0b';
             case 'review': return '#D6FE51';
-            case 'completed': return '#10b981';
+            case 'completed': return '#22c55e';
             case 'cancelled': return '#ef4444';
             default: return '#64748b';
         }
@@ -189,7 +189,7 @@ export default function VisualizationModule() {
             <div className="s-module-header">
                 <div>
                     <h2 className="s-module-title">
-                        <Network size={22} style={{ verticalAlign: -4, marginRight: 8, color: '#D6FE51' }} />
+                        <Network size={22} style={{ verticalAlign: -4, marginRight: 8, color: 'var(--accent)' }} />
                         Visualization
                     </h2>
                     <p className="s-module-subtitle">
@@ -208,7 +208,7 @@ export default function VisualizationModule() {
                                 className="s-btn s-btn-ghost"
                                 style={{
                                     padding: '5px 10px', borderRadius: 0, margin: 0, gap: 4,
-                                    background: mode === m ? 'rgba(214,254,81,0.2)' : 'transparent',
+                                    background: mode === m ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'transparent',
                                     color: mode === m ? '#D6FE51' : '#64748b', fontSize: 11,
                                 }}
                                 onClick={() => setMode(m)}
@@ -228,12 +228,12 @@ export default function VisualizationModule() {
                     padding: '6px 12px', background: 'rgba(255,255,255,0.04)',
                     borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', flex: 1, maxWidth: 300,
                 }}>
-                    <Search size={13} style={{ color: '#64748b' }} />
+                    <Search size={13} style={{ color: 'var(--text-tertiary)' }} />
                     <input
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search…"
-                        style={{ flex: 1, background: 'none', border: 'none', color: '#e2e8f0', fontSize: 11, outline: 'none' }}
+                        style={{ flex: 1, background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: 11, outline: 'none' }}
                     />
                 </div>
                 <select
@@ -242,7 +242,7 @@ export default function VisualizationModule() {
                     style={{
                         padding: '6px 10px', borderRadius: 6, fontSize: 11,
                         background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                        color: '#e2e8f0', outline: 'none',
+                        color: 'var(--text-primary)', outline: 'none',
                     }}
                 >
                     <option value="all">All Properties</option>
@@ -253,7 +253,7 @@ export default function VisualizationModule() {
                 {mode === 'timeline' && (
                     <div style={{ display: 'flex', gap: 4 }}>
                         <button className="s-btn s-btn-ghost" style={{ padding: '4px 6px' }} onClick={() => setTimelineZoom(z => Math.max(0.5, z - 0.25))}><ZoomOut size={13} /></button>
-                        <span style={{ fontSize: 10, color: '#64748b', alignSelf: 'center', minWidth: 30, textAlign: 'center' }}>{(timelineZoom * 100).toFixed(0)}%</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', alignSelf: 'center', minWidth: 30, textAlign: 'center' }}>{(timelineZoom * 100).toFixed(0)}%</span>
                         <button className="s-btn s-btn-ghost" style={{ padding: '4px 6px' }} onClick={() => setTimelineZoom(z => Math.min(3, z + 0.25))}><ZoomIn size={13} /></button>
                     </div>
                 )}
@@ -269,12 +269,12 @@ export default function VisualizationModule() {
                     {/* Vertical line */}
                     <div style={{
                         position: 'absolute', left: 12, top: 0, bottom: 0, width: 2,
-                        background: 'linear-gradient(to bottom, #6366f1, rgba(214,254,81,0.1))',
+                        background: 'linear-gradient(to bottom, #6366f1, color-mix(in srgb, var(--accent) 10%, transparent))',
                         borderRadius: 1,
                     }} />
 
                     {timelineGroups.length === 0 ? (
-                        <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
+                        <div className="s-glass-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                             <Clock size={40} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 12 }} />
                             <p style={{ margin: 0 }}>No events match your filters</p>
                         </div>
@@ -286,12 +286,12 @@ export default function VisualizationModule() {
                             }}>
                                 <div style={{
                                     position: 'absolute', left: -22, width: 10, height: 10, borderRadius: '50%',
-                                    background: '#D6FE51', border: '2px solid #1e1b4b',
+                                    background: 'var(--accent)', border: '2px solid #1e1b4b',
                                 }} />
-                                <span style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0' }}>
+                                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
                                     {new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
                                 </span>
-                                <span style={{ fontSize: 10, color: '#64748b', padding: '2px 6px', borderRadius: 8, background: 'rgba(255,255,255,0.04)' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 8, background: 'rgba(255,255,255,0.04)' }}>
                                     {items.length} events
                                 </span>
                             </div>
@@ -316,19 +316,19 @@ export default function VisualizationModule() {
                                         }} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                                <span style={{ fontWeight: 600, fontSize: 12, color: '#e2e8f0' }}>
+                                                <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-primary)' }}>
                                                     {wi.title}
                                                 </span>
                                                 <span className={`s-badge ${wi.status}`} style={{ fontSize: '0.5rem' }}>
                                                     {wi.status.replace('_', ' ')}
                                                 </span>
                                             </div>
-                                            <div style={{ display: 'flex', gap: 8, fontSize: 10, color: '#475569', flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', gap: 8, fontSize: 10, color: 'var(--text-tertiary)', flexWrap: 'wrap' }}>
                                                 <span>{new Date(wi.createdAt).toLocaleDateString()}</span>
                                                 {wi.domain && <span>• {wi.domain}</span>}
                                                 {wi.type && <span>• {wi.type}</span>}
                                                 {wi.propertyId && (
-                                                    <button className="s-property-link" style={{ fontSize: 'inherit', color: '#D6FE51' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
+                                                    <button className="s-property-link" style={{ fontSize: 'inherit', color: 'var(--accent)' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
                                                         🏠 {properties.find(p => p.id === wi.propertyId)?.name || 'Unknown'}
                                                     </button>
                                                 )}
@@ -354,7 +354,7 @@ export default function VisualizationModule() {
                                         key={`${node.id}-${connId}`}
                                         x1={node.x} y1={node.y}
                                         x2={target.x} y2={target.y}
-                                        stroke="rgba(214,254,81,0.2)" strokeWidth={1.5}
+                                        stroke="color-mix(in srgb, var(--accent) 20%, transparent)" strokeWidth={1.5}
                                         strokeDasharray="4,4"
                                     />
                                 );
@@ -400,7 +400,7 @@ export default function VisualizationModule() {
                     {mindMapNodes.length === 0 && (
                         <div style={{
                             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                            textAlign: 'center', color: '#475569',
+                            textAlign: 'center', color: 'var(--text-tertiary)',
                         }}>
                             <Network size={40} strokeWidth={1} style={{ opacity: 0.4, marginBottom: 8 }} />
                             <p style={{ margin: 0, fontSize: 13 }}>No entities to visualize</p>
@@ -410,8 +410,8 @@ export default function VisualizationModule() {
             ) : (
                 /* ═══ FLOWCHART ═══ */
                 <div className="s-glass-card">
-                    <h3 style={{ margin: '0 0 16px', fontSize: 14, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <GitBranch size={16} style={{ color: '#D6FE51' }} />
+                    <h3 style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <GitBranch size={16} style={{ color: 'var(--accent)' }} />
                         Workitem Status Flow
                     </h3>
 
@@ -439,10 +439,10 @@ export default function VisualizationModule() {
                                         background: getStatusColor(status),
                                     }} />
                                     <div style={{ fontSize: 20, fontWeight: 800, color: getStatusColor(status) }}>{count}</div>
-                                    <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'capitalize', fontWeight: 600, marginTop: 4 }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'capitalize', fontWeight: 600, marginTop: 4 }}>
                                         {status.replace('_', ' ')}
                                     </div>
-                                    <div style={{ fontSize: 9, color: '#475569', marginTop: 2 }}>{pct}%</div>
+                                    <div style={{ fontSize: 9, color: 'var(--text-tertiary)', marginTop: 2 }}>{pct}%</div>
                                 </div>
                             );
                         })}
@@ -472,7 +472,7 @@ export default function VisualizationModule() {
                     </div>
 
                     {/* Domain breakdown */}
-                    <h4 style={{ margin: '0 0 10px', fontSize: 13, color: '#94a3b8' }}>By Domain</h4>
+                    <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary)' }}>By Domain</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {Array.from(flowchartData.domainCounts.entries())
                             .sort((a, b) => {
@@ -488,10 +488,10 @@ export default function VisualizationModule() {
                                         background: 'rgba(255,255,255,0.02)', borderRadius: 8,
                                         border: '1px solid rgba(255,255,255,0.04)',
                                     }}>
-                                        <span style={{ fontWeight: 700, fontSize: 12, color: '#e2e8f0', minWidth: 100, textTransform: 'capitalize' }}>
+                                        <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)', minWidth: 100, textTransform: 'capitalize' }}>
                                             {domain}
                                         </span>
-                                        <span style={{ fontSize: 11, color: '#64748b', minWidth: 40 }}>{total}</span>
+                                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', minWidth: 40 }}>{total}</span>
                                         <div style={{ flex: 1, display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: 'rgba(255,255,255,0.03)' }}>
                                             {flowchartData.statuses.map(status => {
                                                 const count = counts.get(status) || 0;

@@ -27,7 +27,8 @@ import { WindowProvider, useWindows } from '../../context/WindowContext';
 import Sidebar from '../Sidebar/Sidebar';
 import Desktop from './Desktop';
 import CommandPalette from '../CommandPalette/CommandPalette';
-import OpenJarvisWidget from '../OpenJarvis/OpenJarvis';
+import AssistantLauncher from '../AssistantLauncher/AssistantLauncher';
+import SystemHealthBanner from '../SystemHealth/SystemHealthBanner';
 import type { DockBackMessage } from '../PopupShell/PopupShell';
 
 function ShellLayout() {
@@ -147,7 +148,8 @@ function ShellLayout() {
             <Sidebar />
             <Desktop />
             <CommandPalette />
-            <OpenJarvisWidget />
+            <AssistantLauncher />
+            <SystemHealthBanner />
         </div>
     );
 }

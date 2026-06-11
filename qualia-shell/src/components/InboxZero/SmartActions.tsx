@@ -57,7 +57,7 @@ const styles: Record<string, React.CSSProperties> = {
         cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s',
     },
     tabBtnActive: {
-        background: 'var(--accent, #0088cc)', color: '#fff', borderColor: 'var(--accent, #0088cc)',
+        background: 'var(--accent, var(--accent))', color: 'var(--text-primary)', borderColor: 'var(--accent, var(--accent))',
     },
     card: {
         background: 'var(--bg-secondary, #16191f)', borderRadius: '12px',
@@ -80,8 +80,8 @@ const styles: Record<string, React.CSSProperties> = {
         padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
         fontSize: '13px', fontWeight: 500, transition: 'all 0.2s',
     },
-    btnPrimary: { background: 'var(--accent, #0088cc)', color: '#fff' },
-    btnDanger: { background: '#dc2626', color: '#fff' },
+    btnPrimary: { background: 'var(--accent, var(--accent))', color: 'var(--text-primary)' },
+    btnDanger: { background: '#ef4444', color: 'var(--text-primary)' },
     btnGhost: { background: 'transparent', color: 'var(--text-secondary, #8b8f98)', border: '1px solid var(--border-subtle, #2a2d35)' },
     badge: {
         display: 'inline-block', padding: '2px 8px', borderRadius: '10px', fontSize: '11px',
@@ -89,7 +89,7 @@ const styles: Record<string, React.CSSProperties> = {
     },
     grid: { display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' },
     statusMsg: { padding: '12px', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' },
-    success: { background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' },
+    success: { background: 'rgba(16, 185, 129, 0.15)', color: '#22c55e', border: '1px solid rgba(16, 185, 129, 0.3)' },
     error: { background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' },
     section: { marginBottom: '24px' },
     sectionTitle: { fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #e8eaed)', marginBottom: '12px' },
@@ -110,7 +110,7 @@ function confidencePillStyle(confidence: number): React.CSSProperties {
         display: 'inline-block', padding: '2px 8px', borderRadius: '10px', fontSize: '11px',
         fontWeight: 600, marginLeft: '6px',
         background: confidence >= 0.7 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-        color: confidence >= 0.7 ? '#10b981' : '#f59e0b',
+        color: confidence >= 0.7 ? '#22c55e' : '#f59e0b',
     };
 }
 
@@ -362,7 +362,7 @@ export default function SmartActions() {
                     >
                         {tab.label}
                         {tab.count !== undefined && tab.count > 0 && (
-                            <span style={{ ...styles.badge, background: 'rgba(0,136,204,0.2)', color: '#0088cc' }}>
+                            <span style={{ ...styles.badge, background: 'rgba(0,136,204,0.2)', color: 'var(--accent)' }}>
                                 {tab.count}
                             </span>
                         )}
@@ -392,7 +392,7 @@ export default function SmartActions() {
 
                     {/* Template Form */}
                     {showForm && (
-                        <div style={{ ...styles.card, borderColor: 'var(--accent, #0088cc)' }}>
+                        <div style={{ ...styles.card, borderColor: 'var(--accent, var(--accent))' }}>
                             <div style={styles.cardTitle}>{editingId ? 'Edit Template' : 'New Template'}</div>
                             <input style={styles.input} placeholder="Template name" value={formName} onChange={e => setFormName(e.target.value)} />
                             <input style={styles.input} placeholder="Subject template (optional, use {{variable}})" value={formSubject} onChange={e => setFormSubject(e.target.value)} />
@@ -421,7 +421,7 @@ export default function SmartActions() {
                                 <div key={t.id} style={styles.card}>
                                     <div style={styles.cardTitle}>
                                         {t.name}
-                                        <span style={{ ...styles.badge, background: 'rgba(214, 254, 81, 0.2)', color: '#D6FE51' }}>
+                                        <span style={{ ...styles.badge, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>
                                             used {t.useCount}x
                                         </span>
                                     </div>

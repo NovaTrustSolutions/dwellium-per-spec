@@ -212,7 +212,7 @@ export default function GeorgiaCode() {
                         borderRadius: 8,
                         background: 'rgba(245, 158, 11, 0.12)',
                         border: '1px solid rgba(245, 158, 11, 0.35)',
-                        color: '#fbbf24',
+                        color: '#f59e0b',
                         fontSize: 13,
                         lineHeight: 1.5,
                     }}

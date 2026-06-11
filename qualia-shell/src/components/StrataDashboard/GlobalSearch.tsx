@@ -56,7 +56,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-    property: '#3b82f6', unit: '#D6FE51', tenant: '#10b981', vendor: '#f59e0b', owner: '#D6FE51',
+    property: '#3b82f6', unit: '#D6FE51', tenant: '#22c55e', vendor: '#f59e0b', owner: '#D6FE51',
     vehicle: '#ec4899', workitem: '#06b6d4', insurance: '#22c55e',
     compliance: '#14b8a6', incident: '#ef4444', legal: '#a855f7',
 };
@@ -196,7 +196,7 @@ export default function GlobalSearch({ onNavigate }: Props) {
                 {/* Save button */}
                 <button onClick={handleSaveSearch} title="Save search" style={{ background: 'transparent', border: 'none', color: '#f59e0b', cursor: 'pointer', padding: '2px', opacity: query ? 1 : 0.3 }}><Star size={13} /></button>
                 {/* Saved Searches toggle */}
-                <button onClick={() => setShowSaved(!showSaved)} title="Saved searches" style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px' }}><Activity size={13} /></button>
+                <button onClick={() => setShowSaved(!showSaved)} title="Saved searches" style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '2px' }}><Activity size={13} /></button>
                 {query && (
                     <button onClick={() => { setQuery(''); setResponse(null); setIsOpen(false); }} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '2px' }}><X size={14} /></button>
                 )}
@@ -208,7 +208,7 @@ export default function GlobalSearch({ onNavigate }: Props) {
                 {FACET_OPTIONS.map(f => (
                     <button key={f} onClick={() => handleFacetClick(f)} style={{
                         padding: '2px 8px', borderRadius: 10, fontSize: 9, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                        background: activeFacet === f ? 'rgba(214,254,81,0.15)' : 'rgba(255,255,255,0.04)',
+                        background: activeFacet === f ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'rgba(255,255,255,0.04)',
                         color: activeFacet === f ? '#D6FE51' : '#64748b',
                     }}>
                         {f === 'all' ? 'All' : TYPE_LABELS[f] || f}
@@ -222,10 +222,10 @@ export default function GlobalSearch({ onNavigate }: Props) {
                 <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--bg-secondary, #1e1e2e)', border: '1px solid var(--border-subtle)', borderRadius: 8, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: 200, overflowY: 'auto', zIndex: 9999, padding: 4 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', padding: '6px 10px' }}>⭐ Saved Searches</div>
                     {savedSearches.map(s => (
-                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: '#e2e8f0' }}
+                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)' }}
                             onClick={() => handleLoadSaved(s)}>
                             <span style={{ flex: 1 }}>{s.name}</span>
-                            <span style={{ fontSize: 10, color: '#64748b' }}>{s.query}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{s.query}</span>
                             <button onClick={e => { e.stopPropagation(); handleDeleteSaved(s.id); }} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 2px', fontSize: 10 }}>×</button>
                         </div>
                     ))}
@@ -237,8 +237,8 @@ export default function GlobalSearch({ onNavigate }: Props) {
                 <div ref={dropdownRef} style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--bg-secondary, #1e1e2e)', border: '1px solid var(--border-subtle)', borderRadius: 8, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: 420, overflowY: 'auto', zIndex: 9999, padding: 4 }}>
                     {results.length === 0 ? (
                         <div style={{ padding: '20px 16px', textAlign: 'center' }}>
-                            <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 8px' }}>No results for "{query}"</p>
-                            <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>Try: property names, tenant names, vendor names, policy numbers, or broader terms</p>
+                            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 8px' }}>No results for "{query}"</p>
+                            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>Try: property names, tenant names, vendor names, policy numbers, or broader terms</p>
                         </div>
                     ) : (<>
                         {Object.entries(grouped).map(([type, items]) => (
@@ -254,16 +254,16 @@ export default function GlobalSearch({ onNavigate }: Props) {
                                             <span style={{ color: TYPE_COLORS[r.type], flexShrink: 0 }}>{TYPE_ICONS[r.type]}</span>
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-                                                {r.context && <div style={{ fontSize: 10, color: '#64748b', fontStyle: 'italic', marginTop: 1 }}>{r.context}</div>}
+                                                {r.context && <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontStyle: 'italic', marginTop: 1 }}>{r.context}</div>}
                                             </div>
                                             <span style={{ color: 'var(--text-tertiary)', fontSize: 11, flexShrink: 0 }}>{r.subtitle}</span>
-                                            {r.module && <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: 'rgba(255,255,255,0.05)', color: '#475569', fontWeight: 600 }}>{r.module}</span>}
+                                            {r.module && <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 3, background: 'rgba(255,255,255,0.05)', color: 'var(--text-tertiary)', fontWeight: 600 }}>{r.module}</span>}
                                         </button>
                                     );
                                 })}
                             </div>
                         ))}
-                        <div style={{ padding: '6px 10px', fontSize: 10, color: '#475569', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ padding: '6px 10px', fontSize: 10, color: 'var(--text-tertiary)', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span>{response?.totalResults} results</span>
                             <span>↑↓ navigate · ↵ select · esc close</span>
                         </div>

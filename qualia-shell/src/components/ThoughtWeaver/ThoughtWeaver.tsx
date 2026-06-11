@@ -138,10 +138,10 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 ];
 
 const BUCKETS: { id: BucketId; label: string; icon: string; color: string }[] = [
-    { id: 'people', label: 'People', icon: '👤', color: '#D6FE51' },
+    { id: 'people', label: 'People', icon: '👤', color: 'var(--accent)' },
     { id: 'projects', label: 'Projects', icon: '📁', color: '#60a5fa' },
-    { id: 'ideas', label: 'Ideas', icon: '💡', color: '#fbbf24' },
-    { id: 'admin', label: 'Tasks', icon: '📋', color: '#34d399' },
+    { id: 'ideas', label: 'Ideas', icon: '💡', color: '#f59e0b' },
+    { id: 'admin', label: 'Tasks', icon: '📋', color: '#22c55e' },
 ];
 
 const TEMPLATES = [
@@ -186,7 +186,7 @@ function confidenceLabel(c: number): string {
 
 function bucketColor(bucket: string): string {
     const found = BUCKETS.find(b => b.id === bucket);
-    return found ? found.color : '#6b7280';
+    return found ? found.color : 'var(--text-tertiary)';
 }
 
 function bucketIcon(bucket: string): string {
@@ -624,10 +624,10 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     <h2 className="tw-title">🧠 Thought Weaver</h2>
                     {effectiveStats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: '#D6FE51' }}>👤 {effectiveStats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent)' }}>👤 {effectiveStats.activePeople}</span>
                             <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>📁 {effectiveStats.activeProjects}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#fbbf24' }}>💡 {effectiveStats.totalIdeas}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#34d399' }}>📋 {effectiveStats.tasksDue}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#f59e0b' }}>💡 {effectiveStats.totalIdeas}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#22c55e' }}>📋 {effectiveStats.tasksDue}</span>
                         </div>
                     )}
                 </div>
@@ -1020,12 +1020,12 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {effectiveStats && (
                         <div className="tw-stats-bar">
                             {[
-                                { icon: '🧠', label: 'Captures', value: effectiveStats.totalCaptures, color: '#D6FE51' },
+                                { icon: '🧠', label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent)' },
                                 { icon: '📥', label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
-                                { icon: '👤', label: 'People', value: effectiveStats.activePeople, color: '#D6FE51' },
+                                { icon: '👤', label: 'People', value: effectiveStats.activePeople, color: 'var(--accent)' },
                                 { icon: '📁', label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
-                                { icon: '💡', label: 'Ideas', value: effectiveStats.totalIdeas, color: '#fbbf24' },
-                                { icon: '📋', label: 'Due', value: effectiveStats.tasksDue, color: '#34d399', highlight: effectiveStats.tasksDue > 0 },
+                                { icon: '💡', label: 'Ideas', value: effectiveStats.totalIdeas, color: '#f59e0b' },
+                                { icon: '📋', label: 'Due', value: effectiveStats.tasksDue, color: '#22c55e', highlight: effectiveStats.tasksDue > 0 },
                             ].map(s => (
                                 <div key={s.label} className={`tw-stat-card ${s.highlight ? 'tw-stat-card--highlight' : ''}`}>
                                     <span className="tw-stat-card__icon">{s.icon}</span>

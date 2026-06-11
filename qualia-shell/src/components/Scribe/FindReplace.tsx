@@ -142,7 +142,7 @@ export function FindReplace({ getView }: { getView: () => EditorView | null }) {
                 position: 'absolute', top: 8, right: 16, zIndex: 50,
                 display: 'flex', flexDirection: 'column', gap: 6,
                 padding: 8, borderRadius: 8,
-                background: '#0d0d0d', border: '1px solid #333',
+                background: 'var(--bg-surface)', border: '1px solid #333',
                 boxShadow: '0 8px 28px rgba(0,0,0,0.6)',
                 width: showReplace ? 380 : 340,
                 fontFamily: 'inherit',
@@ -173,7 +173,7 @@ export function FindReplace({ getView }: { getView: () => EditorView | null }) {
                 }}>{countLabel}</span>
                 <button onClick={() => nav(-1)} title="Previous (⇧⏎)" style={navBtnStyle} aria-label="Previous match">‹</button>
                 <button onClick={() => nav(1)} title="Next (⏎)" style={navBtnStyle} aria-label="Next match">›</button>
-                <button onClick={close} title="Close (Esc)" style={{ ...navBtnStyle, color: '#888' }} aria-label="Close">×</button>
+                <button onClick={close} title="Close (Esc)" style={{ ...navBtnStyle, color: 'var(--text-tertiary)' }} aria-label="Close">×</button>
             </div>
 
             {/* Replace row */}
@@ -197,14 +197,14 @@ export function FindReplace({ getView }: { getView: () => EditorView | null }) {
 
 const inputStyle: React.CSSProperties = {
     flex: 1, minWidth: 0, height: 28, padding: '0 8px',
-    background: '#000', border: '1px solid #333', borderRadius: 5,
-    color: '#fff', fontSize: 12, fontFamily: 'inherit', outline: 'none',
+    background: 'var(--bg-desktop)', border: '1px solid #333', borderRadius: 5,
+    color: 'var(--text-primary)', fontSize: 12, fontFamily: 'inherit', outline: 'none',
 };
 
 const navBtnStyle: React.CSSProperties = {
     flexShrink: 0, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 5,
-    color: '#ccc', cursor: 'pointer', fontSize: 15, lineHeight: 1, fontFamily: 'inherit',
+    color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 15, lineHeight: 1, fontFamily: 'inherit',
 };
 
 const chevStyle: React.CSSProperties = {
@@ -215,7 +215,7 @@ const chevStyle: React.CSSProperties = {
 const actionBtnStyle: React.CSSProperties = {
     flexShrink: 0, height: 28, padding: '0 12px',
     background: 'transparent', border: '1px solid #333', borderRadius: 5,
-    color: '#ccc', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
 };
 
 function Tg({ label, title, active, onClick }: { label: string; title: string; active: boolean; onClick: () => void }) {

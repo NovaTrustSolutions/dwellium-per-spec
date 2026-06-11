@@ -20,7 +20,7 @@ export default function ActionsLogList({ entries }: Props) {
             <div
                 className="s-glass-card"
                 data-testid="actions-log-list"
-                style={{ padding: 14, textAlign: 'center', color: '#64748b', fontSize: 12 }}
+                style={{ padding: 14, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}
             >
                 No actions recorded yet.
             </div>
@@ -28,7 +28,7 @@ export default function ActionsLogList({ entries }: Props) {
     }
     return (
         <div className="s-glass-card" data-testid="actions-log-list" style={{ padding: '12px 14px', marginBottom: 10 }}>
-            <h4 style={{ fontSize: 12, color: '#94a3b8', margin: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+            <h4 style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
                 <Activity size={12} color="#818cf8" /> Actions Log
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -42,14 +42,14 @@ export default function ActionsLogList({ entries }: Props) {
                             display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 10, rowGap: 2, fontSize: 11.5,
                         }}
                     >
-                        <span style={{ color: '#D6FE51', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             {e.actor === 'System' ? <Cpu size={11} /> : <User size={11} />}
                             <span style={{ fontWeight: 600 }}>{e.actor}</span>
                         </span>
-                        <span style={{ color: '#e2e8f0' }}>{e.event}</span>
-                        <span style={{ color: '#64748b', fontSize: 10, fontFamily: 'ui-monospace, monospace' }}>{e.ts}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{e.event}</span>
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: 10, fontFamily: 'ui-monospace, monospace' }}>{e.ts}</span>
                         {e.detail && (
-                            <span style={{ color: '#94a3b8', fontSize: 11 }}>{e.detail}</span>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{e.detail}</span>
                         )}
                     </div>
                 ))}

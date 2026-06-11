@@ -24,7 +24,7 @@ import { loginAs, USERS } from './helpers/auth';
 
 /** Open the Stella widget from the sidebar */
 async function openStella(page: import('@playwright/test').Page) {
-    const stellaWidget = page.locator('.sidebar-widget', {
+    const stellaWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
         has: page.locator('.sidebar-widget__label', { hasText: /stella/i }),
     });
     await expect(stellaWidget).toBeVisible({ timeout: 10_000 });

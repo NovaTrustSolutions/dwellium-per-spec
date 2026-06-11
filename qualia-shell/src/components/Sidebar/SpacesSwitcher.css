@@ -1,0 +1,79 @@
+/* SpacesSwitcher — Way 2 sidebar surface. All colors via tokens. */
+.spaces-switcher {
+    padding: 8px 8px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.spaces-switcher__label {
+    font-size: 10px;
+    font-weight: var(--fw-semibold, 600);
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    padding: 0 4px 6px;
+}
+
+.spaces-switcher__row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.spaces-switcher--compact .spaces-switcher__row {
+    align-items: center;
+}
+
+.spaces-switcher__btn {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2, 8px);
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0 6px 6px 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--fs-sm, 13px);
+    font-family: var(--font-primary, inherit);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.18s ease, color 0.18s ease,
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.18s ease;
+}
+
+.spaces-switcher--compact .spaces-switcher__btn {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+    border-left: none;
+    border-radius: 8px;
+}
+
+body:not(.animations-off) .spaces-switcher__btn:hover {
+    transform: translateX(2px);
+}
+.spaces-switcher--compact.spaces-switcher--compact .spaces-switcher__btn:hover {
+    transform: scale(1.08);
+}
+
+.spaces-switcher__btn:hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.spaces-switcher__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.spaces-switcher__name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

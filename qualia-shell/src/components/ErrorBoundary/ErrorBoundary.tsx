@@ -22,13 +22,13 @@ function DefaultFallback({ error, onReset }: { error?: Error | null; onReset?: (
             background: 'rgba(239, 68, 68, 0.06)',
             border: '1px solid rgba(239, 68, 68, 0.2)',
             borderRadius: 12, margin: 8, minHeight: 120,
-            color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif',
+            color: 'var(--text-primary)', fontFamily: 'Inter, system-ui, sans-serif',
         }}>
             <span style={{ fontSize: 28 }}>⚠️</span>
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#ef4444' }}>
                 Something went wrong
             </h3>
-            <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', maxWidth: 400, textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', maxWidth: 400, textAlign: 'center' }}>
                 {error?.message || 'An unexpected error occurred in this component.'}
             </p>
             {onReset && (
@@ -36,7 +36,7 @@ function DefaultFallback({ error, onReset }: { error?: Error | null; onReset?: (
                     onClick={onReset}
                     style={{
                         padding: '6px 16px', borderRadius: 6, border: 'none',
-                        background: '#ef4444', color: '#fff', fontSize: 13,
+                        background: '#ef4444', color: 'var(--text-primary)', fontSize: 13,
                         fontWeight: 600, cursor: 'pointer',
                     }}
                 >

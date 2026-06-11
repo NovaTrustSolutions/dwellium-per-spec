@@ -38,7 +38,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #e2e8f0;
+    color: var(--text-primary);
 }
 
 .intel-panel-header h3 {
@@ -49,8 +49,8 @@
 }
 
 .intel-badge {
-    background: rgba(214, 254, 81, 0.3);
-    color: #E8FF7A;
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+    color: var(--accent-hover);
     padding: 2px 8px;
     border-radius: 10px;
     font-size: 11px;
@@ -73,13 +73,13 @@
 }
 
 .intel-btn-primary {
-    background: rgba(214, 254, 81, 0.25);
-    color: #E8FF7A;
-    border: 1px solid rgba(214, 254, 81, 0.4);
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    color: var(--accent-hover);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .intel-btn-primary:hover {
-    background: rgba(214, 254, 81, 0.4);
+    background: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .intel-btn-primary:disabled {
@@ -89,7 +89,7 @@
 
 .intel-btn-secondary {
     background: rgba(255, 255, 255, 0.06);
-    color: #94a3b8;
+    color: var(--text-secondary);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -100,7 +100,7 @@
 .intel-btn-small {
     background: transparent;
     border: 1px solid rgba(34, 197, 94, 0.3);
-    color: #22c55e;
+    color: var(--success);
     padding: 4px 8px;
     border-radius: 6px;
     cursor: pointer;
@@ -148,7 +148,7 @@
 }
 
 .intel-duration {
-    color: #64748b;
+    color: var(--text-tertiary);
     margin-left: 8px;
 }
 
@@ -177,11 +177,11 @@
 }
 
 .intel-status-completed {
-    color: #22c55e;
+    color: var(--success);
 }
 
 .intel-status-error {
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .intel-status-running {
@@ -190,17 +190,17 @@
 
 .intel-run-summary {
     flex: 1;
-    color: #cbd5e1;
+    color: var(--text-secondary);
 }
 
 .intel-run-meta {
-    color: #475569;
+    color: var(--text-tertiary);
     font-size: 10px;
     white-space: nowrap;
 }
 
 .intel-empty {
-    color: #475569;
+    color: var(--text-tertiary);
     font-size: 12px;
     text-align: center;
     padding: 20px;
@@ -220,7 +220,7 @@
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: transparent;
-    color: #64748b;
+    color: var(--text-tertiary);
     font-size: 11px;
     cursor: pointer;
     text-transform: capitalize;
@@ -228,14 +228,14 @@
 }
 
 .intel-filter-btn:hover {
-    color: #94a3b8;
+    color: var(--text-secondary);
     border-color: rgba(255, 255, 255, 0.15);
 }
 
 .intel-filter-btn.active {
-    background: rgba(214, 254, 81, 0.2);
-    color: #E8FF7A;
-    border-color: rgba(214, 254, 81, 0.4);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent-hover);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 /* ── Anomaly List ──────────────────────────────── */
@@ -282,17 +282,17 @@
 }
 
 .intel-anomaly-content strong {
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-size: 12px;
 }
 
 .intel-anomaly-desc {
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 11px;
 }
 
 .intel-anomaly-meta {
-    color: #475569;
+    color: var(--text-tertiary);
     font-size: 10px;
 }
 
@@ -309,17 +309,17 @@
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-size: 12px;
     outline: none;
 }
 
 .intel-roi-input input::placeholder {
-    color: #475569;
+    color: var(--text-tertiary);
 }
 
 .intel-roi-input input:focus {
-    border-color: rgba(214, 254, 81, 0.4);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .intel-roi-card {
@@ -343,7 +343,7 @@
 
 .intel-metric-label {
     font-size: 10px;
-    color: #64748b;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -351,15 +351,15 @@
 .intel-metric-value {
     font-size: 16px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--text-primary);
 }
 
 .intel-red {
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .intel-green {
-    color: #22c55e;
+    color: var(--success);
 }
 
 .intel-roi-recommendation {
@@ -378,7 +378,7 @@
 }
 
 .intel-rec-risk {
-    color: #64748b;
+    color: var(--text-tertiary);
     font-size: 11px;
 }
 
@@ -392,20 +392,20 @@
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 .intel-search-bar input {
     flex: 1;
     background: transparent;
     border: none;
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-size: 12px;
     outline: none;
 }
 
 .intel-search-bar input::placeholder {
-    color: #475569;
+    color: var(--text-tertiary);
 }
 
 /* ── Lessons List ──────────────────────────────── */
@@ -428,7 +428,7 @@
 }
 
 .intel-lesson-item strong {
-    color: #e2e8f0;
+    color: var(--text-primary);
     font-size: 12px;
 }
 
@@ -442,17 +442,17 @@
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #D6FE51;
+    color: var(--accent);
     font-weight: 600;
 }
 
 .intel-lesson-score {
     font-size: 10px;
-    color: #64748b;
+    color: var(--text-tertiary);
 }
 
 .intel-lesson-body {
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 11px;
     margin: 0;
     line-height: 1.5;
@@ -466,8 +466,8 @@
 
 .intel-tag {
     padding: 2px 6px;
-    background: rgba(214, 254, 81, 0.15);
-    color: #D6FE51;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
     border-radius: 4px;
     font-size: 10px;
 }
@@ -490,7 +490,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    color: #64748b;
+    color: var(--text-tertiary);
     padding: 40px;
     font-size: 13px;
 }
@@ -521,12 +521,12 @@
 }
 
 .obs-kpi-icon {
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 .obs-kpi-label {
     font-size: 10px;
-    color: #64748b;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -534,7 +534,7 @@
 .obs-kpi-value {
     font-size: 18px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--text-primary);
 }
 
 /* ── Sections ──────────────────────────────────── */
@@ -550,7 +550,7 @@
     margin: 0 0 12px 0;
     font-size: 13px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -578,7 +578,7 @@
 .obs-agent-name {
     font-size: 12px;
     font-weight: 600;
-    color: #E8FF7A;
+    color: var(--accent-hover);
     margin-bottom: 6px;
 }
 
@@ -593,11 +593,11 @@
     align-items: center;
     gap: 3px;
     font-size: 10px;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .obs-error-count {
-    color: #ef4444 !important;
+    color: var(--danger) !important;
 }
 
 /* ── Run Table ─────────────────────────────────── */
@@ -617,7 +617,7 @@
 }
 
 .obs-run-header {
-    color: #64748b;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-size: 10px;
@@ -627,7 +627,7 @@
 }
 
 .obs-run-row {
-    color: #cbd5e1;
+    color: var(--text-secondary);
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
@@ -637,7 +637,7 @@
 
 .obs-run-agent {
     font-weight: 500;
-    color: #e2e8f0;
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -651,11 +651,11 @@
 }
 
 .obs-status-completed {
-    color: #22c55e;
+    color: var(--success);
 }
 
 .obs-status-error {
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .obs-status-running {
@@ -663,14 +663,14 @@
 }
 
 .obs-run-summary {
-    color: #94a3b8;
+    color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .obs-run-time {
-    color: #475569;
+    color: var(--text-tertiary);
 }
 
 /* ── Latency Chart ─────────────────────────────── */
@@ -699,11 +699,11 @@
 }
 
 .obs-bar-completed {
-    background: linear-gradient(180deg, #D6FE51, #6d28d9);
+    background: linear-gradient(180deg, var(--accent), #6d28d9);
 }
 
 .obs-bar-error {
-    background: linear-gradient(180deg, #ef4444, #dc2626);
+    background: linear-gradient(180deg, var(--danger), var(--danger));
 }
 
 .obs-bar-running {
@@ -712,7 +712,7 @@
 
 .obs-bar-label {
     font-size: 9px;
-    color: #475569;
+    color: var(--text-tertiary);
 }
 
 .obs-refresh {

@@ -128,16 +128,16 @@ function SentimentModuleInner() {
     const displayTrends = activeView === 'atRisk' ? atRisk : trends;
 
     return (
-        <div data-testid="sentiment-module" style={{ padding: 20, fontFamily: 'Inter, sans-serif', color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div data-testid="sentiment-module" style={{ padding: 20, fontFamily: 'Inter, sans-serif', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: 22, color: '#f1f5f9', fontWeight: 700 }}>🗞️ Tenant Sentiment</h2>
-                    <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 13 }}>Pulse surveys &amp; satisfaction trends across the portfolio</p>
+                    <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary)', fontWeight: 700 }}>🗞️ Tenant Sentiment</h2>
+                    <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>Pulse surveys &amp; satisfaction trends across the portfolio</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     {atRisk.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#450a0a', border: '1px solid #ef4444', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fca5a5' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#450a0a', border: '1px solid #ef4444', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#ef4444' }}>
                             <AlertTriangle size={12} /> {atRisk.length} at-risk tenant{atRisk.length > 1 ? 's' : ''}
                         </div>
                     )}
@@ -147,13 +147,13 @@ function SentimentModuleInner() {
             {/* Stats bar */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                 {[
-                    { label: 'Total Tracked', value: trends.length, color: '#D6FE51' },
+                    { label: 'Total Tracked', value: trends.length, color: 'var(--accent)' },
                     { label: 'At Risk', value: atRisk.length, color: '#ef4444' },
                     { label: 'Improving', value: trends.filter(t => t.trend === 'improving').length, color: '#22c55e' },
                     { label: 'Avg Score', value: trends.length ? (trends.reduce((s, t) => s + t.avgScore, 0) / trends.length).toFixed(1) + '/5' : 'N/A', color: '#eab308' },
                 ].map(s => (
                     <div key={s.label} data-testid="sentiment-stats-card" style={{ background: '#1e2537', borderRadius: 10, padding: 14 }}>
-                        <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{s.label}</div>
                         <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
                     </div>
                 ))}
@@ -173,46 +173,46 @@ function SentimentModuleInner() {
             {/* Add survey form */}
             {activeView === 'add' && (
                 <div style={{ background: '#1e2537', borderRadius: 12, padding: 20 }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#f1f5f9' }}>Record New Survey Response</h3>
+                    <h3 style={{ margin: '0 0 16px', fontSize: 15, color: 'var(--text-primary)' }}>Record New Survey Response</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Tenant</label>
+                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Tenant</label>
                             <select value={newSurvey.tenantId} onChange={e => setNewSurvey(s => ({ ...s, tenantId: e.target.value }))}
-                                style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: '#e2e8f0', fontSize: 13 }}>
+                                style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}>
                                 <option value="">Select tenant...</option>
                                 {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Channel</label>
+                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Channel</label>
                             <select value={newSurvey.channel} onChange={e => setNewSurvey(s => ({ ...s, channel: e.target.value }))}
-                                style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: '#e2e8f0', fontSize: 13 }}>
+                                style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13 }}>
                                 <option value="manual">Manual (phone/in-person)</option>
                                 <option value="email">Email</option>
                                 <option value="sms">SMS</option>
                             </select>
                         </div>
                         <div style={{ gridColumn: '1/-1' }}>
-                            <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>Satisfaction Score: {SCORE_LABELS[newSurvey.score]}</label>
+                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Satisfaction Score: {SCORE_LABELS[newSurvey.score]}</label>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 {[1, 2, 3, 4, 5].map(n => (
                                     <button key={n} onClick={() => setNewSurvey(s => ({ ...s, score: n }))}
-                                        style={{ flex: 1, padding: '12px 0', background: newSurvey.score === n ? SCORE_COLORS[n] : '#0f1624', border: `2px solid ${newSurvey.score === n ? SCORE_COLORS[n] : '#334155'}`, borderRadius: 8, color: '#fff', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}>
+                                        style={{ flex: 1, padding: '12px 0', background: newSurvey.score === n ? SCORE_COLORS[n] : '#0f1624', border: `2px solid ${newSurvey.score === n ? SCORE_COLORS[n] : '#334155'}`, borderRadius: 8, color: 'var(--text-primary)', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}>
                                         {n}
                                     </button>
                                 ))}
                             </div>
                         </div>
                         <div style={{ gridColumn: '1/-1' }}>
-                            <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Comments (optional)</label>
+                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Comments (optional)</label>
                             <textarea value={newSurvey.comments} onChange={e => setNewSurvey(s => ({ ...s, comments: e.target.value }))} rows={3}
                                 placeholder="Any notes from the conversation..."
-                                style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: '#e2e8f0', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
+                                style={{ width: '100%', padding: '8px 10px', background: '#0f1624', border: '1px solid #334155', borderRadius: 6, color: 'var(--text-primary)', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
                         <button onClick={submitSurvey}
-                            style={{ padding: '10px 20px', background: '#D6FE51', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '10px 20px', background: 'var(--accent)', border: 'none', borderRadius: 8, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                             <CheckCircle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Save Response
                         </button>
                         {submitMsg && <span style={{ fontSize: 13, color: submitMsg.startsWith('✅') ? '#22c55e' : '#ef4444' }}>{submitMsg}</span>}
@@ -225,15 +225,15 @@ function SentimentModuleInner() {
                 <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 360px' : '1fr', gap: 16 }}>
                     <div style={{ background: '#1e2537', borderRadius: 12, overflow: 'hidden' }}>
                         {loading ? (
-                            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Loading sentiment data...</div>
+                            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Loading sentiment data...</div>
                         ) : displayTrends.length === 0 ? (
-                            <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
                                 No sentiment data yet. Click "+ Record Survey" to add the first response.
                             </div>
                         ) : (
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                 <thead>
-                                    <tr style={{ color: '#94a3b8', textAlign: 'left' }}>
+                                    <tr style={{ color: 'var(--text-secondary)', textAlign: 'left' }}>
                                         {['Tenant', 'Unit', 'Property', 'Score', 'Trend', 'Avg', ''].map(h => (
                                             <th key={h} style={{ padding: '10px 14px', borderBottom: '1px solid #334155', fontWeight: 500 }}>{h}</th>
                                         ))}
@@ -245,20 +245,20 @@ function SentimentModuleInner() {
                                             data-testid="sentiment-tenant-row"
                                             {...(t.atRisk ? { 'data-atrisk': 'true' } : {})}
                                             style={{ borderBottom: '1px solid #1a2233', cursor: 'pointer', background: selected?.tenantId === t.tenantId ? '#293244' : 'transparent', transition: 'background 0.15s' }}>
-                                            <td style={{ padding: '10px 14px', color: '#f1f5f9', fontWeight: 500 }}>
+                                            <td style={{ padding: '10px 14px', color: 'var(--text-primary)', fontWeight: 500 }}>
                                                 {t.atRisk && <AlertTriangle size={12} color="#ef4444" style={{ marginRight: 6, verticalAlign: 'middle' }} />}
                                                 {t.tenantName}
                                             </td>
-                                            <td style={{ padding: '10px 14px', color: '#94a3b8' }}>{t.unit}</td>
-                                            <td style={{ padding: '10px 14px', color: '#94a3b8', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{t.unit}</td>
+                                            <td style={{ padding: '10px 14px', color: 'var(--text-secondary)', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {t.propertyId ? (
                                                     <button className="s-property-link" style={{ fontSize: 'inherit' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(t.propertyId); }}>{t.propertyName}</button>
                                                 ) : t.propertyName}
                                             </td>
                                             <td style={{ padding: '10px 14px' }}><ScoreBadge score={t.latestScore} /></td>
                                             <td style={{ padding: '10px 14px' }}><TrendIcon trend={t.trend} /></td>
-                                            <td style={{ padding: '10px 14px', color: '#94a3b8' }}>{t.avgScore}</td>
-                                            <td style={{ padding: '10px 14px', color: '#D6FE51', fontSize: 12 }}>View ›</td>
+                                            <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{t.avgScore}</td>
+                                            <td style={{ padding: '10px 14px', color: 'var(--accent)', fontSize: 12 }}>View ›</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -271,14 +271,14 @@ function SentimentModuleInner() {
                         <div data-testid="sentiment-detail-panel" style={{ background: '#1e2537', borderRadius: 12, padding: 18 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                                 <div>
-                                    <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>{selected.tenantName}</div>
-                                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{selected.tenantName}</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                                         {selected.unit} · {selected.propertyId ? (
                                             <button className="s-property-link" style={{ fontSize: 12 }} onClick={() => navigateToProperty(selected.propertyId)}>{selected.propertyName}</button>
                                         ) : selected.propertyName}
                                     </div>
                                 </div>
-                                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 18 }}>×</button>
+                                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 18 }}>×</button>
                             </div>
 
                             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
@@ -291,12 +291,12 @@ function SentimentModuleInner() {
 
                             {selected.responses.length > 1 && (
                                 <div style={{ marginBottom: 14 }}>
-                                    <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>Score History</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Score History</div>
                                     <ResponsiveContainer width="100%" height={100}>
                                         <LineChart data={[...selected.responses].reverse().map(r => ({ date: r.surveyDate.slice(0, 10), score: r.score }))}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                                            <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#94a3b8' }} />
-                                            <YAxis domain={[1, 5]} tick={{ fontSize: 9, fill: '#94a3b8' }} />
+                                            <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-secondary)' }} />
+                                            <YAxis domain={[1, 5]} tick={{ fontSize: 9, fill: 'var(--text-secondary)' }} />
                                             <Tooltip contentStyle={{ background: '#0f1624', border: '1px solid #334155', fontSize: 11 }} />
                                             <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2} dot={{ r: 3, fill: '#D6FE51' }} />
                                         </LineChart>
@@ -305,14 +305,14 @@ function SentimentModuleInner() {
                             )}
 
                             <div>
-                                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>Response History</div>
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Response History</div>
                                 {selected.responses.slice(0, 5).map(r => (
                                     <div key={r.id} style={{ padding: '10px 12px', background: '#0f1624', borderRadius: 8, marginBottom: 8 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                             <ScoreBadge score={r.score} />
-                                            <span style={{ fontSize: 11, color: '#64748b' }}>{r.surveyDate.slice(0, 10)} · {r.channel}</span>
+                                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{r.surveyDate.slice(0, 10)} · {r.channel}</span>
                                         </div>
-                                        {r.comments && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>"{r.comments}"</div>}
+                                        {r.comments && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>"{r.comments}"</div>}
                                     </div>
                                 ))}
                             </div>
@@ -330,7 +330,7 @@ function SentimentModuleInner() {
 // degrades gracefully instead of taking the whole shell down.
 export default function SentimentModule() {
     return (
-        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#f87171', fontSize: 12 }}>Sentiment module unavailable.</div>}>
+        <ErrorBoundary fallback={<div className="s-glass-card" style={{ padding: 14, color: '#ef4444', fontSize: 12 }}>Sentiment module unavailable.</div>}>
             <SentimentModuleInner />
         </ErrorBoundary>
     );

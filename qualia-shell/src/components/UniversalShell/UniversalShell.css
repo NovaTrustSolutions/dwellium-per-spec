@@ -1,6 +1,6 @@
 /**
  * UniversalShell.css — fey.com parity styling.
- * Pure black base, #121212 cards, #222222 borders, Hanken Grotesk + JetBrains Mono,
+ * Pure black base, var(--bg-surface-elevated) cards, var(--border-default) borders, Hanken Grotesk + JetBrains Mono,
  * acid lime accents, no glass/blur, no shadows.
  */
 
@@ -10,7 +10,7 @@
     width: 100%;
     height: 100%;
     min-height: 0;
-    background: #000000;
+    background: var(--bg-desktop);
     color: var(--text-primary, #ffffff);
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
 }
@@ -27,8 +27,8 @@
     align-items: center;
     gap: 12px;
     padding: 10px 16px;
-    border-bottom: 1px solid #222222;
-    background: #0e0e0e;
+    border-bottom: 1px solid var(--border-default);
+    background: var(--bg-surface);
 }
 
 .us-header__brand {
@@ -40,21 +40,21 @@
 
 .us-header__glyph {
     font-size: 18px;
-    color: #D6FE51;
+    color: var(--accent);
 }
 
 .us-header__title {
     font-weight: 600;
     letter-spacing: -0.01em;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .us-header__surface {
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 4px;
-    background: rgba(214, 254, 81, 0.08);
-    color: #D6FE51;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
     letter-spacing: 0.08em;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
@@ -69,9 +69,9 @@
 
 .us-switcher__item {
     appearance: none;
-    border: 1px solid #222222;
+    border: 1px solid var(--border-default);
     background: transparent;
-    color: var(--text-secondary, #868F97);
+    color: var(--text-secondary, var(--text-secondary));
     padding: 6px 10px;
     border-radius: 4px;
     font-size: 12px;
@@ -82,13 +82,13 @@
 
 .us-switcher__item:hover {
     border-color: #444444;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .us-switcher__item--active {
-    background: #ffffff;
-    border-color: #ffffff;
-    color: #000000;
+    background: var(--bg-surface);
+    border-color: var(--text-primary);
+    color: var(--text-inverse);
 }
 
 /* ── Columns ── */
@@ -106,15 +106,15 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    background: #121212;
-    border: 1px solid #222222;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-default);
     border-radius: 8px;
     overflow: hidden;
 }
 
 .us-column__header {
     padding: 10px 12px;
-    border-bottom: 1px solid #222222;
+    border-bottom: 1px solid var(--border-default);
     background: rgba(255, 255, 255, 0.02);
 }
 
@@ -123,7 +123,7 @@
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #D6FE51;
+    color: var(--accent);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
 }
 
@@ -161,8 +161,8 @@
     padding: 12px;
     border-radius: 4px;
     background: rgba(255, 255, 255, 0.02);
-    border: 1px dashed #333333;
-    color: var(--text-secondary, #868F97);
+    border: 1px dashed var(--border-strong);
+    color: var(--text-secondary, var(--text-secondary));
     font-size: 12.5px;
     line-height: 1.5;
 }
@@ -170,11 +170,11 @@
 .us-adapter-stub__title {
     font-weight: 600;
     font-size: 13px;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .us-adapter-stub__body {
-    color: var(--text-secondary, #868F97);
+    color: var(--text-secondary, var(--text-secondary));
 }
 
 .us-adapter-stub code {
@@ -208,7 +208,7 @@
 
 .us-column-empty__label {
     font-weight: 600;
-    color: #D6FE51;
+    color: var(--accent);
     font-style: normal;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 11px;
@@ -224,7 +224,7 @@
     font-weight: 600;
     font-size: 14px;
     margin-bottom: 6px;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .us-empty-state__body {
@@ -284,5 +284,88 @@
 
 .us-column-error__retry:hover {
     border-color: #ffa16c;
-    color: #ffffff;
+    color: var(--text-primary);
 }
+
+/* ── Workspace-home columns (real, functional content) ──────────────── */
+.ush-col { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; }
+.ush-col-hint { font-size: 12px; color: var(--text-tertiary, #888); }
+
+.ush-launch-grid { display: flex; flex-direction: column; gap: 6px; }
+.ush-launch {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 11px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-primary, #eee);
+    font-size: 12.5px; font-weight: 600; text-align: left;
+    cursor: pointer;
+    transition: all .15s ease;
+}
+.ush-launch:hover { border-color: var(--accent, #6366f1); background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent); }
+.ush-launch--full { justify-content: center; margin-top: auto; }
+.ush-launch svg { color: var(--accent, #818cf8); flex-shrink: 0; }
+
+.ush-scratch {
+    flex: 1; min-height: 140px; resize: none;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-primary, #eee);
+    font-size: 13px; line-height: 1.55;
+    font-family: inherit;
+}
+.ush-scratch:focus { outline: none; border-color: var(--accent, #6366f1); }
+
+.ush-empty {
+    padding: 14px; border-radius: 10px;
+    border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.14));
+    color: var(--text-tertiary, #888); font-size: 12.5px; text-align: center;
+}
+.ush-win-list { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; }
+.ush-win {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 11px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-primary, #eee);
+    font-size: 12.5px; text-align: left; cursor: pointer;
+    transition: all .12s ease;
+}
+.ush-win:hover { border-color: var(--accent, #6366f1); }
+.ush-win--min { opacity: 0.6; }
+.ush-win-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ush-win-badge { font-size: 10px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; }
+
+.ush-orch-input { display: flex; gap: 6px; }
+.ush-orch-input input {
+    flex: 1; min-width: 0;
+    padding: 8px 11px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-primary, #eee);
+    font-size: 12.5px; font-family: inherit;
+}
+.ush-orch-input input:focus { outline: none; border-color: var(--accent, #6366f1); }
+.ush-orch-input button {
+    flex-shrink: 0;
+    width: 34px; display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 9px;
+    background: var(--accent, #6366f1); color: var(--text-inverse, #fff);
+    cursor: pointer;
+}
+.ush-orch-input button:hover { filter: brightness(1.08); }
+.ush-orch-last { font-size: 11.5px; color: var(--text-tertiary, #999); line-height: 1.4; }
+.ush-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ush-chip {
+    padding: 4px 9px; border-radius: 999px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+    background: transparent; color: var(--text-secondary, #aaa);
+    font-size: 11px; cursor: pointer; transition: all .12s ease;
+}
+.ush-chip:hover { border-color: var(--accent, #6366f1); color: var(--accent, #818cf8); }

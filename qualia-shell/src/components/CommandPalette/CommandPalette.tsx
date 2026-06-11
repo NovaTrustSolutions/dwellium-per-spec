@@ -4,6 +4,7 @@ import { useWindows } from '../../context/WindowContext';
 import { rankWidgetSearchResults } from '../Sidebar/widgetSearch';
 import { API_BASE } from '../../config';
 import { getIcon } from '../Sidebar/iconMap';
+import { parseCommand, recallMemory, type ParsedCommand } from '../../lib/dwelliumCommands';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -55,7 +56,7 @@ interface InboxMessageItem {
     updatedAt?: string;
 }
 
-type CommandResultKind = 'widget' | 'window' | 'task' | 'inbox' | 'file' | 'note';
+type CommandResultKind = 'command' | 'memory' | 'widget' | 'window' | 'task' | 'inbox' | 'file' | 'note';
 
 interface CommandResult {
     id: string;
@@ -85,6 +86,8 @@ const PROJECT_NAMES: Record<string, string> = {
 };
 
 const KIND_LABELS: Record<CommandResultKind, string> = {
+    command: 'Command',
+    memory: 'Memory',
     widget: 'Widget',
     window: 'Open Window',
     task: 'Task',
@@ -93,8 +96,10 @@ const KIND_LABELS: Record<CommandResultKind, string> = {
     note: 'Note',
 };
 
-const SECTION_ORDER: CommandResultKind[] = ['window', 'widget', 'task', 'inbox', 'file', 'note'];
+const SECTION_ORDER: CommandResultKind[] = ['command', 'window', 'widget', 'memory', 'task', 'inbox', 'file', 'note'];
 const SECTION_TITLES: Record<CommandResultKind, string> = {
+    command: 'Command',
+    memory: 'Memory',
     window: 'Open Windows',
     widget: 'Widgets',
     task: 'Tasks',
@@ -103,6 +108,8 @@ const SECTION_TITLES: Record<CommandResultKind, string> = {
     note: 'Notes',
 };
 const SECTION_LIMITS: Record<CommandResultKind, number> = {
+    command: 3,
+    memory: 5,
     window: 5,
     widget: 6,
     task: 6,
@@ -771,7 +778,18 @@ export default function CommandPalette() {
         const fileResults = buildFileResults(files, queryValue, semanticHits);
         const noteResults = buildNoteResults(notes, queryValue);
 
-        const merged = [...windowResults, ...widgetResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
+        // Talk-to-customize: a parsed command ("switch to research", "accent teal",
+        // "save space Morning", "open strata") runs straight from the palette.
+        const parsedCmd = queryValue ? parseCommand(queryValue) : null;
+        const commandResults: CommandResult[] = parsedCmd
+            ? [{ id: `command:${parsedCmd.label}`, kind: 'command', score: 1000, icon: 'wand-2', title: parsedCmd.label, subtitle: 'Run this command', meta: 'talk-to-customize', reason: 'matched intent', actionLabel: 'Run', payload: parsedCmd }]
+            : [];
+        // One Memory: recall across honcho + copaw + thought-weaver.
+        const memoryResults: CommandResult[] = (queryValue.length >= 3 ? recallMemory(queryValue) : [])
+            .slice(0, 6)
+            .map(h => ({ id: `memory:${h.id}`, kind: 'memory', score: 28 + h.score, icon: 'brain', title: h.text.slice(0, 90), subtitle: `Memory · ${h.source}`, meta: h.source, reason: 'recall', actionLabel: 'Open Honcho', payload: h }));
+
+        const merged = [...commandResults, ...windowResults, ...widgetResults, ...memoryResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
             .sort((a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
@@ -824,6 +842,16 @@ export default function CommandPalette() {
     }, []);
 
     const handleRun = useCallback((result: CommandResult) => {
+        if (result.kind === 'command') {
+            (result.payload as ParsedCommand).run();
+            closePalette();
+            return;
+        }
+        if (result.kind === 'memory') {
+            openWindow('honcho', 'Honcho', 'brain');
+            closePalette();
+            return;
+        }
         if (result.kind === 'widget') {
             const item = result.payload as DockItem;
             const existing = windows.find(w => w.component === item.component);

@@ -67,7 +67,7 @@ test.describe('AppFolio parity — 2-STORY Technical Roofing compliance', () => 
 
   test('Vendors → 2-STORY → Compliance tab → 6 rows + only General Liability populated', async ({ page }) => {
     // 1. Open Strata via sidebar widget (pattern from strata-nav.spec.ts L44-58)
-    const strataWidget = page.locator('.sidebar-widget', {
+    const strataWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: 'Strata' }),
     });
     await strataWidget.click();

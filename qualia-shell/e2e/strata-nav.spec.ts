@@ -29,7 +29,7 @@ test.describe('Strata Module Navigation', () => {
 
   test('can open Strata widget from sidebar', async ({ page }) => {
     // Find and click the Strata widget in the sidebar
-    const strataWidget = page.locator('.sidebar-widget', {
+    const strataWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: 'Strata' }),
     });
     await strataWidget.click();
@@ -42,7 +42,7 @@ test.describe('Strata Module Navigation', () => {
   for (const mod of MODULES_TO_TEST) {
     test(`navigating to "${mod.label}" does not crash`, async ({ page }) => {
       // Open Strata
-      const strataWidget = page.locator('.sidebar-widget', {
+      const strataWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
         has: page.locator('.sidebar-widget__label', { hasText: 'Strata' }),
       });
       await strataWidget.click();

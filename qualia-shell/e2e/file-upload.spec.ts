@@ -32,7 +32,7 @@ test.describe('File Upload', () => {
 
   test('can open File Manager and upload a file', async ({ page }) => {
     // 1. Open File Manager from sidebar
-    const fmWidget = page.locator('.sidebar-widget', {
+    const fmWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: /file/i }),
     });
     await fmWidget.click();
@@ -76,7 +76,7 @@ test.describe('File Upload', () => {
 
   test('File Manager loads without crashing', async ({ page }) => {
     // Open File Manager
-    const fmWidget = page.locator('.sidebar-widget', {
+    const fmWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: /file/i }),
     });
     await fmWidget.click();

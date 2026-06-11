@@ -65,7 +65,7 @@ async function ensurePropertyManagementExpanded(page: Page) {
   const pmGroup = page.locator('.sidebar__widget-group', {
     has: page.locator('.sidebar__widget-group-label', { hasText: 'Property Management' }),
   });
-  const strataWidget = pmGroup.locator('.sidebar-widget', {
+  const strataWidget = pmGroup.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
     has: page.locator('.sidebar-widget__label', { hasText: 'Strata' }),
   });
   if (!(await strataWidget.isVisible().catch(() => false))) {
@@ -78,7 +78,7 @@ async function openStrataAndNavigate(page: Page, label: string) {
   const strataNav = page.locator('.s-sidebar-nav');
   if (!(await strataNav.isVisible().catch(() => false))) {
     await ensurePropertyManagementExpanded(page);
-    const strataWidget = page.locator('.sidebar-widget', {
+    const strataWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: 'Strata' }),
     });
     await strataWidget.click();

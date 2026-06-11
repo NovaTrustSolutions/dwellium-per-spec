@@ -20,7 +20,7 @@ test.describe('ARA Chat', () => {
 
   test('can open ARA console and send a message', async ({ page }) => {
     // 1. Open ARA Console from sidebar
-    const araWidget = page.locator('.sidebar-widget', {
+    const araWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: 'ARA' }),
     });
     await araWidget.click();
@@ -56,7 +56,7 @@ test.describe('ARA Chat', () => {
 
   test('ARA console loads without crashing', async ({ page }) => {
     // Open ARA
-    const araWidget = page.locator('.sidebar-widget', {
+    const araWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: 'ARA' }),
     });
     await araWidget.click();

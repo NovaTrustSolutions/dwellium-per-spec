@@ -18,7 +18,7 @@ test.describe('Create Workitem', () => {
 
   test('can create a new work order from the Maintenance module', async ({ page }) => {
     // 1. Open Strata widget
-    const strataWidget = page.locator('.sidebar-widget', {
+    const strataWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
       has: page.locator('.sidebar-widget__label', { hasText: 'Strata' }),
     });
     await strataWidget.click();

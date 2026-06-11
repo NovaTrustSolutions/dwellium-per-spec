@@ -195,11 +195,16 @@
     }
 }
 
+/* UIX-18: gradient wordmark (fey hero typography) */
 .sidebar__logo-text {
     font-size: var(--fs-md);
     font-weight: 800;
     letter-spacing: 5px;
-    color: var(--text-primary);
+    background: var(--gradient-hero-text, linear-gradient(180deg, #fff, #868F97));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
     text-transform: uppercase;
 }
 
@@ -302,9 +307,9 @@
     width: 100%;
 }
 
+/* UIX-19: hover tint now theme-accent (was hardcoded off-brand blue) */
 .sidebar-widget:hover {
-    background: linear-gradient(90deg, rgba(100, 180, 255, 0.06) 0%, transparent 100%);
-    /* [9] blue tint */
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent) 0%, transparent 100%);
     color: var(--text-primary);
     transform: scale(1.02) translateX(2px);
 }
@@ -342,8 +347,8 @@
 }
 
 .sidebar-widget:hover .sidebar-widget__icon {
-    filter: drop-shadow(0 0 4px rgba(100, 180, 255, 0.4));
-    /* [12] icon glow */
+    /* UIX-19b: icon glow follows theme accent */
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 45%, transparent));
 }
 
 .sidebar-widget__label {

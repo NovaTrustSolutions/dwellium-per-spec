@@ -1247,6 +1247,8 @@ export default function Desktop() {
                     <div className="desktop__empty-logo">◆</div>
                     <h1 className="desktop__empty-title">DWELLIUM</h1>
                     <p className="desktop__empty-sub">Click an icon in the sidebar to get started</p>
+                    {/* UIX-15: command-palette discovery hint */}
+                    <p className="desktop__empty-kbd">Press <kbd>⌘K</kbd> to open anything</p>
                 </div>
             )}
 

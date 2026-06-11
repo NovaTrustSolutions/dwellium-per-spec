@@ -129,6 +129,8 @@ export const savedLayoutsStore = withSync(
 // halves-h region would re-introduce the layout collapse).
 export const COMPONENT_DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
     'strata-dashboard': { w: 1100, h: 800 },
+    // ARA opens roomy enough for the chat + the docked Honcho/Hermes/Tools drawer.
+    'ara-console': { w: 1080, h: 760 },
 };
 
 interface WindowContextValue {

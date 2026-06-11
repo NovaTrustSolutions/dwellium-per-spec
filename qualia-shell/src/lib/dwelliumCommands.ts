@@ -43,7 +43,10 @@ function toast(msg: string): void { dispatch('qualia-toast', msg); }
 
 /** Resolve a spoken widget name to a registry component id, or null. */
 export function resolveWidget(name: string): string | null {
-    const n = name.trim().toLowerCase().replace(/^the\s+/, '').replace(/\s+widget$/, '');
+    const n = name.trim().toLowerCase()
+        .replace(/^(?:the|my|up|a)\s+/, '')                       // "the inbox", "up transcription"
+        .replace(/\s+(?:widget|tab|panel|window|app|view|screen|page)$/, '') // "transcription tab"
+        .trim();
     if (WIDGET_ALIASES[n]) return WIDGET_ALIASES[n];
     // direct component-id match (e.g. "strata-dashboard")
     if (/^[a-z][a-z0-9-]+$/.test(n) && Object.values(WIDGET_ALIASES).includes(n)) return n;
@@ -218,10 +221,17 @@ function parseSingle(input: string): ParsedCommand | null {
     if ((/^(?:spawn|assemble)\b/.test(l) && /\b(team|agent|agents|squad|crew|persona)\b/.test(l)) || l === 'agent lab' || l === 'agents') {
         return { label: 'Open Agent Lab', run: () => openWidget('agent-lab') };
     }
-    // open widget ("open strata", "show inbox", "launch terminal")
-    if ((m = l.match(/^(?:open|show|launch|start)\s+(.+)$/))) {
+    // open / navigate to a widget. Handles natural phrasings:
+    //   "open strata", "open up transcription", "show me the inbox",
+    //   "pull up scribe", "bring up terminal", "go to transcription",
+    //   "take me to ara", "navigate to files", "switch to terminal"
+    if ((m = l.match(/^(?:open|show|launch|start|reveal|display|pull|bring|access|load)(?:\s+(?:up|me))?\s+(?:to\s+)?(?:the\s+|my\s+)?(.+)$/))
+        || (m = l.match(/^(?:go|jump|navigate|switch|take\s+me|head)\s+(?:to\s+)?(?:the\s+|my\s+)?(.+)$/))) {
         const id = resolveWidget(m[1]);
-        if (id) { return { label: `Open ${m[1]}`, run: () => openWidget(id) }; }
+        if (id) {
+            const pretty = m[1].replace(/\s+(?:tab|panel|window|app|view|screen|page)$/, '').trim();
+            return { label: `Open ${pretty}`, run: () => openWidget(id) };
+        }
     }
     return null;
 }

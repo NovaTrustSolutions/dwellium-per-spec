@@ -33,6 +33,13 @@ describe('parseCommand (talk-to-customize)', () => {
         expect(parseCommand('open strata')?.label).toMatch(/Open/);
         expect(parseCommand('show inbox')?.label).toMatch(/Open/);
     });
+    it('parses natural navigation phrasings (ARA "open up transcription")', () => {
+        expect(parseCommand('open up transcription')?.label).toMatch(/Open transcription/i);
+        expect(parseCommand('go to terminal')?.label).toMatch(/Open terminal/i);
+        expect(parseCommand('pull up scribe')?.label).toMatch(/Open scribe/i);
+        expect(parseCommand('show me the inbox')?.label).toMatch(/Open inbox/i);
+        expect(parseCommand('navigate to files')?.label).toMatch(/Open files/i);
+    });
     it('parses arrange/tile', () => {
         expect(parseCommand('tile')?.label).toMatch(/Arrange/);
         expect(parseCommand('arrange windows')?.label).toMatch(/Arrange/);

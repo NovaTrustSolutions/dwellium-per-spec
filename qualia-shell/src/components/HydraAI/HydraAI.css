@@ -139,10 +139,12 @@
     color: var(--text-primary);
     font-family: inherit;
     font-size: 13px;
-    resize: none;
+    resize: vertical;
     outline: none;
     transition: border-color 0.2s;
     line-height: 1.4;
+    min-height: 128px;
+    max-height: 400px;
 }
 
 .hydra-input:focus {

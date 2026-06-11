@@ -282,8 +282,9 @@
 .alc-input-bar { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08)); flex-shrink: 0; }
 .alc-input {
     flex: 1;
-    resize: none;
-    max-height: 120px;
+    resize: vertical;
+    min-height: 128px;
+    max-height: 400px;
     padding: 9px 12px;
     border-radius: 10px;
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));

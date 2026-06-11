@@ -72,9 +72,9 @@ const TYPE_COLORS: Record<string, string> = {
 };
 const IMPORTANCE_LABELS = ['Low', 'Medium', 'High', 'Critical'];
 
-type TabId = 'memory' | 'dreams' | 'hermes' | 'agents' | 'graph' | 'files';
+export type TabId = 'memory' | 'dreams' | 'hermes' | 'agents' | 'graph' | 'files';
 
-export default function HonchoHermesPanel() {
+export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTab?: TabId } = {}) {
     const { user, authFetch } = useUser();
 
     /* ─── DREAMS TAB STATE (per-user dream/reflection abilities) ─── */
@@ -103,7 +103,7 @@ export default function HonchoHermesPanel() {
     );
     const [newDream, setNewDream] = useState({ title: '', text: '' });
     const [showAddDream, setShowAddDream] = useState(false);
-    const [activeTab, setActiveTab] = useState<TabId>('memory');
+    const [activeTab, setActiveTab] = useState<TabId>(initialTab);
     const [loading, setLoading] = useState(true);
 
     /* ─── MEMORY TAB STATE ─── */

@@ -374,9 +374,9 @@
     font-family: inherit;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
-    resize: none;
-    min-height: 38px;
-    max-height: 120px;
+    resize: vertical;
+    min-height: 128px;
+    max-height: 400px;
 }
 
 .stella__input:focus {

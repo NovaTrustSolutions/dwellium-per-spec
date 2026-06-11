@@ -6,8 +6,16 @@ interactive programs (vim, less, top, ssh prompts, REPLs) with proper colors,
 cursor control, and resize.
 
 **Repo:** `ai-dashboard369-file-manager` · file: `src/routes/terminalRoutes.ts`.
-`node-pty` is already a dependency and **already installed** in `node_modules`,
-so no new install is needed. Read-only — apply it yourself.
+`node-pty` is already a dependency and **already installed** (darwin-arm64 prebuild
+present), so no new install is needed.
+
+> **STATUS: APPLIED to your `dwellium-backend` working copy on 2026-06-10 and verified**
+> (`tsc --noEmit` green + a runtime harness exercising the real route). The applied
+> version goes beyond the sketch below in two ways: (1) it **falls back to
+> child_process pipes** if node-pty can't load on a given platform, so the terminal
+> never hard-breaks; (2) in fallback mode it **translates Enter (CR→LF)** so commands
+> actually execute without a tty. The **backend commit is yours** (I don't commit the
+> backend) — `git status` will also show the earlier One Save P0 files.
 
 The HTTP API and response shapes are **unchanged** (`/capabilities` flat,
 `/sessions` flat, `/output` → `data.output` string), so the frontend (now an
@@ -132,20 +140,22 @@ if (session.pty) { try { session.pty.kill(); } catch { /* already dead */ } }
 
 ---
 
-## Apply + test
+## Verify on your Mac (already applied — just confirm + restart)
 
 ```
-cd ai-dashboard369-file-manager
-# rebuild node-pty against your current Node if needed:
-npm rebuild node-pty
-npx tsc --noEmit
-npm run dev          # backend on :3000
+cd ~/dwellium-backend/ai-dashboard369-file-manager
+npx tsc --noEmit                       # type-check (verified green here too)
+npx jest tests/terminalRoutes.test.ts  # realigned to the real flat shape
+# restart the backend so it picks up node-pty:
+launchctl kickstart -k gui/$(id -u)/com.dwellium.backend   # or however you run it
 ```
 
-Then **reload the app**, open the Terminal (it'll connect via the xterm.js
-emulator that already shipped), and run `vim`, `top`, `htop`, `python3`, or
-`ssh` — they should render and accept input like a real terminal. Resize the
-window and vim reflows.
+On your Mac node-pty loads its darwin-arm64 prebuild, so the **PTY path** is
+active (sandbox here only verified the fallback path). Then **reload the app**,
+open the Terminal, and run `vim`, `top`, `htop`, `python3`, or `ssh` — they
+should render and accept input like a real terminal; resize the window and vim
+reflows. `GET /api/terminal/capabilities` now returns `pty: true` when the PTY
+path is live.
 
 ## Notes
 

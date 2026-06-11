@@ -10,7 +10,8 @@ import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } f
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
-import { hermesLearningUserIdHolder, recordRun, relevantPastRuns, formatFewShot } from '../HonchoHermesPanel/hermesLearningStore';
+import { hermesLearningUserIdHolder, recordRun, relevantPastRuns, formatFewShot, rateRun } from '../HonchoHermesPanel/hermesLearningStore';
+import { araFewShot, recordAraChat } from './araHermes';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -96,6 +97,8 @@ interface ChatMessage {
     timestamp: number;
     contextSources?: ContextSource[];
     observability?: MessageObservability;
+    /** Phase-10 A2: Hermes run id backing this answer — enables 👍/👎 voting. */
+    hermesRunId?: string;
 }
 
 interface VoiceStatus {
@@ -1008,7 +1011,19 @@ export default function ARAConsole() {
             "React naturally ('Nice.', 'Got it.', 'Oof, okay —'). Vary how you start replies. " +
             "If you must list things, lead with a single sentence first, then the list. " +
             "When you finish a task, ask a natural follow-up like 'What would you like me to do next?']\n\n";
-        const outgoingMessage = humanizeEnabled ? HUMANIZE_PREFIX + text : text;
+        let outgoingMessage = humanizeEnabled ? HUMANIZE_PREFIX + text : text;
+
+        // ── Phase-10 A2: Hermes quick-chat hints ──────────────────────────
+        // Inject the top-K (3) similar PAST ARA exchanges the user kept
+        // (👎-voted runs are excluded at the araHermes layer). Backend path:
+        // appended to the outgoing message as a bracketed context block (the
+        // humanize-prefix precedent — this chat route has no system-prompt
+        // field). LLM-fallback path: appended to the systemPrompt instead.
+        hermesLearningUserIdHolder.current = user?.id ?? null; // per-user log
+        const hermesHints = araFewShot(text);
+        if (hermesHints) {
+            outgoingMessage += `\n\n[Context from past conversations — use if relevant, never mention this block:\n${hermesHints}]`;
+        }
 
         try {
             const res = await authFetch(`${API_ARA}/chat`, {
@@ -1029,6 +1044,10 @@ export default function ARAConsole() {
                 throw new Error(data.error || `Chat failed (${res.status})`);
             }
 
+            // Phase-10 A2: record the exchange into the per-user Hermes log
+            // (ara-chat tag) so future similar questions get it as few-shot;
+            // the run id rides on the message to power 👍/👎.
+            const hermesRec = recordAraChat(text, data.data.content);
             const araMsg = createChatMessage({
                 role: 'assistant',
                 content: data.data.content,
@@ -1036,6 +1055,7 @@ export default function ARAConsole() {
                 entityGuardianActive: data.data.entityGuardianActive,
                 contextSources: data.data.contextSources,
                 observability: data.data.observability,
+                hermesRunId: hermesRec.id,
             });
             setMessages(prev => [...prev, araMsg]);
             fetchObservability();
@@ -1075,8 +1095,9 @@ export default function ARAConsole() {
                             `Speak like a warm, sharp colleague: contractions, short sentences, no corporate jargon, ` +
                             `no robotic phrasing — never say "As an AI" or "Acknowledged". ` +
                             `The ARA backend is offline, so deep context retrieval is unavailable — answer from general knowledge, ` +
-                            `be concise and direct, and note when a question would need live property data. Use Markdown when helpful.`,
-                        prompt: outgoingMessage,
+                            `be concise and direct, and note when a question would need live property data. Use Markdown when helpful.` +
+                            (hermesHints ? `\n\n${hermesHints}` : ''),
+                        prompt: humanizeEnabled ? HUMANIZE_PREFIX + text : text,
                         maxTokens: 1024,
                         temperature: 0.4,
                     }, integrations.llm);
@@ -1085,10 +1106,12 @@ export default function ARAConsole() {
                             kind: 'success',
                             message: `Backend offline — answered via your ${integrations.llm.active} key.`,
                         });
+                        const hermesRec = recordAraChat(text, llmRes.text);
                         setMessages(prev => [...prev, createChatMessage({
                             role: 'assistant',
                             content: llmRes.text,
                             mode: modeToUse,
+                            hermesRunId: hermesRec.id,
                         })]);
                         return;
                     }
@@ -1121,6 +1144,7 @@ export default function ARAConsole() {
         ttsEnabled,
         humanizeEnabled,
         integrations.llm,
+        user,
     ]);
 
     // ── Phase-10 A1: host Agent Lab orchestrator runs inside ARA chat ─────
@@ -1199,6 +1223,16 @@ export default function ARAConsole() {
         if (pending) void runSpawn(pending);
         return () => window.removeEventListener(ARA_SPAWN_EVENT, handler);
     }, [runSpawn]);
+
+    // ── Phase-10 A2: 👍/👎 on ARA answers trains Hermes ───────────────────
+    // 👍 (+1) boosts the run in future few-shot ranking; 👎 (−1) excludes it
+    // from ARA hints entirely (filtered at the araHermes layer).
+    const [hermesVotes, setHermesVotes] = useState<Record<string, 1 | -1>>({});
+    const voteOnMessage = useCallback((runId: string, value: 1 | -1) => {
+        hermesLearningUserIdHolder.current = user?.id ?? null;
+        rateRun(runId, value);
+        setHermesVotes(prev => ({ ...prev, [runId]: value }));
+    }, [user]);
 
     const sendMessage = useCallback(async () => {
         const text = input.trim();
@@ -1738,6 +1772,22 @@ export default function ARAConsole() {
                                 >
                                     {isSpeaking ? '⏹' : '🔊'}
                                 </button>
+                                {msg.hermesRunId && (
+                                    <span className="ara-vote-group">
+                                        <button
+                                            className={`ara-vote-btn ${hermesVotes[msg.hermesRunId] === 1 ? 'ara-vote-btn--active' : ''}`}
+                                            onClick={() => voteOnMessage(msg.hermesRunId!, 1)}
+                                            title="Good answer — use it as a reference for similar questions"
+                                            aria-label="Rate this answer up"
+                                        >👍</button>
+                                        <button
+                                            className={`ara-vote-btn ${hermesVotes[msg.hermesRunId] === -1 ? 'ara-vote-btn--down' : ''}`}
+                                            onClick={() => voteOnMessage(msg.hermesRunId!, -1)}
+                                            title="Bad answer — never use it as a reference"
+                                            aria-label="Rate this answer down"
+                                        >👎</button>
+                                    </span>
+                                )}
                             </div>
                         )}
                         {msg.role === 'user' && (

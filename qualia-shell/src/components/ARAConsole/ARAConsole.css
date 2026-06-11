@@ -1353,6 +1353,55 @@
     opacity: 1;
 }
 
+/* Phase-10 A2: 👍/👎 Hermes vote chips (sister styling to .ara-speak-btn) */
+.ara-vote-group {
+    display: inline-flex;
+    gap: 1px;
+}
+
+.ara-vote-btn {
+    background: none;
+    border: none;
+    color: #3f3f46;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0;
+    filter: grayscale(1);
+}
+
+.ara-message--assistant:hover .ara-vote-btn {
+    opacity: 0.85;
+}
+
+.ara-vote-btn:hover {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);
+    filter: grayscale(0);
+    opacity: 1;
+}
+
+.ara-vote-btn--active,
+.ara-vote-btn--down {
+    opacity: 1;
+    filter: grayscale(0);
+}
+
+.ara-vote-btn--active {
+    background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.14);
+}
+
+.ara-vote-btn--down {
+    background: rgba(239, 68, 68, 0.14);
+}
+
+.ara-vote-btn:focus-visible {
+    outline: 2px solid var(--ara-accent, var(--accent));
+    outline-offset: 2px;
+    opacity: 1;
+}
+
 .ara-speak-btn:hover {
     color: var(--ara-accent, var(--accent));
     background: rgba(var(--ara-accent-rgb, 56, 152, 236), 0.08);

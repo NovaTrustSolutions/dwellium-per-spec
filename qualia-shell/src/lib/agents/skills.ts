@@ -194,7 +194,10 @@ const imageGenSkill: AgentSkill = {
     derivedFrom: 'LibreChat: DALL-E-3 / Flux / Gemini Image Tools',
     requires: 'openai-key',
     triggers: [
-        /^(?:generate|create|make|draw|render)\s+(?:me\s+)?(?:an?\s+)?(?:image|picture|photo|illustration|logo|drawing)\s*(?:of|for|showing|with|:)?\s*(.+)$/i,
+        // "create an image of a lighthouse"
+        /^(?:generate|create|make|draw|render|paint)\s+(?:me\s+)?(?:an?\s+)?(?:image|picture|photo|illustration|logo|drawing)\s*(?:of|for|showing|with|:)?\s*(.+)$/i,
+        // "create a lighthouse image" (subject-first phrasing)
+        /^(?:generate|create|make|draw|render|paint)\s+(?:me\s+)?(?:an?\s+)?(.+?)\s+(?:image|picture|photo|illustration|logo|drawing)$/i,
     ],
     run: async (prompt, ctx) => {
         const key = ctx.llm.openai?.apiKey;
@@ -309,7 +312,7 @@ export function matchSkill(
     input: string,
     catalog: ReadonlyArray<AgentSkill> = AGENT_SKILLS,
 ): { skill: AgentSkill; arg: string } | null {
-    const s = input.trim();
+    const s = input.trim().replace(/[.!?]+$/, '').trim(); // "Create a lighthouse image."
     if (!s) return null;
     for (const skill of catalog) {
         for (const re of skill.triggers) {

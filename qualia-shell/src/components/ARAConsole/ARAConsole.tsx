@@ -206,7 +206,8 @@ const EXECUTIVE_ASSISTANT_MODE: ARAMode = {
 function humanizeCommandAck(label: string): string {
     const openMatch = label.match(/^Open\s+(.+)$/i);
     if (openMatch) {
-        const thing = openMatch[1];
+        const raw = openMatch[1];
+        const thing = raw.charAt(0).toUpperCase() + raw.slice(1); // "settings" → "Settings"
         const variants = [
             `On it — ${thing} is open. What would you like me to do next?`,
             `Done! ${thing}'s up. What would you like me to do next?`,

@@ -277,9 +277,9 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         const winX = explicit
             ? Math.round((desktopW - winW) / 2)
             : Math.round(qAbsX + (qAbsW - winW) / 2);
-        const winY = explicit
+        const winY = Math.max(8, explicit
             ? Math.round((desktopH - winH) / 2)
-            : Math.round(qAbsY + (qAbsH - winH) / 2);
+            : Math.round(qAbsY + (qAbsH - winH) / 2));
 
         const newId = generateId();
         const newWindow: WindowState = {
@@ -328,8 +328,12 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const updateWindowPosition = useCallback((id: string, x: number, y: number) => {
+        // Central titlebar-rescue clamp (2026-06-10): y may NEVER go negative —
+        // a window whose titlebar is above the desktop top is undraggable and
+        // looks "cut off". Covers every caller (drag, spaces, regions, tile,
+        // restore) in one place.
         setWindows(prev => prev.map(w =>
-            w.id === id ? { ...w, x, y } : w
+            w.id === id ? { ...w, x, y: Math.max(0, y) } : w
         ));
     }, []);
 
@@ -459,7 +463,9 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     const loadNamedLayout = useCallback((id: string) => {
         const layoutToLoad = savedLayouts.find(l => l.id === id);
         if (layoutToLoad) {
-            setWindows(layoutToLoad.layout.windows || []);
+            // titlebar-rescue clamp: saved layouts from a different viewport
+            // size must never restore a window above the desktop top.
+            setWindows((layoutToLoad.layout.windows || []).map(w => ({ ...w, y: Math.max(0, w.y) })));
             setDockItems(layoutToLoad.layout.dockItems || defaultDockItems);
             window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Layout "${layoutToLoad.name}" loaded` }));
         }

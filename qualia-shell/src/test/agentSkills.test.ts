@@ -40,6 +40,10 @@ describe('matchSkill triggers', () => {
         expect(matchSkill("what's 2+2?")?.skill.id).toBe('skill-calculator');
         expect(matchSkill('search the web for georgia hb 404')?.skill.id).toBe('skill-web-search');
         expect(matchSkill('generate an image of a lighthouse at dusk')?.skill.id).toBe('skill-image-gen');
+        // subject-first phrasing + trailing punctuation (live bug 2026-06-10)
+        expect(matchSkill('Create a lighthouse image.')?.skill.id).toBe('skill-image-gen');
+        expect(matchSkill('Create a lighthouse image.')?.arg).toBe('lighthouse');
+        expect(matchSkill('draw me a floor plan picture')?.skill.id).toBe('skill-image-gen');
         expect(matchSkill('weather in Atlanta')?.skill.id).toBe('skill-weather');
         expect(matchSkill('run js: 1 + 1')?.skill.id).toBe('skill-code-runner');
         expect(matchSkill('recall gate code')?.skill.id).toBe('skill-memory-recall');

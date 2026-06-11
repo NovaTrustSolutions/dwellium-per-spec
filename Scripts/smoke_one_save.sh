@@ -43,27 +43,27 @@ echo "0) GET /health → HTTP $code"
 echo
 
 # 1. PUT (upsert)
-put=$(curl -s -X PUT "$BACKEND/api/objects/$ID" "${AUTH[@]}" \
+put=$(curl -s -X PUT "$BACKEND/api/objects/$ID" ${AUTH[@]+"${AUTH[@]}"} \
   -H 'Content-Type: application/json' \
   -d '{"type":"smoke","payload":{"hello":"world","n":42}}')
 echo "1) PUT /api/objects/$ID"
 if echo "$put" | grep -q '"success":true'; then ok "upsert acknowledged"; else no "upsert acknowledged → $put"; fi
 
 # 2. GET back, payload intact
-got=$(curl -s "$BACKEND/api/objects/$ID" "${AUTH[@]}")
+got=$(curl -s "$BACKEND/api/objects/$ID" ${AUTH[@]+"${AUTH[@]}"})
 echo "2) GET /api/objects/$ID"
 echo "$got" | grep -q '"hello":"world"' && ok "payload.hello round-trips" || no "payload.hello round-trips → $got"
 echo "$got" | grep -q '"n":42' && ok "payload.n round-trips" || no "payload.n round-trips"
 echo "$got" | grep -q '"deletedAt":null' && ok "not tombstoned" || no "not tombstoned"
 
 # 3. list by type
-lst=$(curl -s "$BACKEND/api/objects?type=smoke" "${AUTH[@]}")
+lst=$(curl -s "$BACKEND/api/objects?type=smoke" ${AUTH[@]+"${AUTH[@]}"})
 echo "3) GET /api/objects?type=smoke"
 echo "$lst" | grep -q "$ID" && ok "appears in owner-scoped list" || no "appears in owner-scoped list"
 
 # 4. soft-delete → excluded from list, still on disk
-curl -s -X DELETE "$BACKEND/api/objects/$ID" "${AUTH[@]}" >/dev/null
-lst2=$(curl -s "$BACKEND/api/objects?type=smoke" "${AUTH[@]}")
+curl -s -X DELETE "$BACKEND/api/objects/$ID" ${AUTH[@]+"${AUTH[@]}"} >/dev/null
+lst2=$(curl -s "$BACKEND/api/objects?type=smoke" ${AUTH[@]+"${AUTH[@]}"})
 echo "4) DELETE (soft) then re-list"
 if echo "$lst2" | grep -q "$ID"; then no "removed from list after soft-delete"; else ok "removed from list after soft-delete"; fi
 

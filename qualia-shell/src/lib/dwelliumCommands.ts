@@ -13,6 +13,7 @@ import { applyThemeValue, applyAccentValue, applyAnimationsValue } from '../cont
 import { spacesStore, saveCurrentAsSpace, type DwelliumSpace } from './spacesStore';
 import { recall, remember, type MemoryHit } from './unifiedMemory';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
+import { parseSpawn, requestSpawn } from './agents/spawn';
 
 const VALID_THEMES: Theme[] = ['dark', 'light', 'trust', 'vibrant', 'luxury', 'healthcare', 'creative', 'dark-excellence', 'terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
 
@@ -333,6 +334,19 @@ function parseSingle(input: string): ParsedCommand | null {
 export function parseCommand(input: string): ParsedCommand | null {
     const s = input.trim();
     if (!s) return null;
+
+    // Phase-10 A1: "spawn research squad on X" / "run a deal desk analysis of Y"
+    // / "solo researcher on Z" → orchestrator run hosted inside ARA's chat.
+    // Checked BEFORE compound-split so goals containing "and" stay intact;
+    // parseSpawn only fires when the target resolves against the Agent Lab
+    // catalog, so "run tests on the build" still falls through to chat.
+    const spawn = parseSpawn(stripPoliteness(s));
+    if (spawn) {
+        return {
+            label: `Spawn ${spawn.name} → ${spawn.goal.slice(0, 48)}`,
+            run: () => { openWidget('ara-console'); requestSpawn(spawn); },
+        };
+    }
 
     // Verbs whose argument legitimately contains "and" / commas — parse whole,
     // never split (group lists, free-text memory, space names, multi-placement).

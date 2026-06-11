@@ -4,8 +4,13 @@ import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
-import { parseCommand } from '../../lib/dwelliumCommands';
+import { parseCommand, stripPoliteness } from '../../lib/dwelliumCommands';
 import { matchSkill } from '../../lib/agents/skills';
+import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } from '../../lib/agents/spawn';
+import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
+import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
+import { findPersona } from '../../lib/agents/personas';
+import { hermesLearningUserIdHolder, recordRun, relevantPastRuns, formatFewShot } from '../HonchoHermesPanel/hermesLearningStore';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -290,7 +295,7 @@ function getSafetyNotice(text: string, mode: string): string | null {
 }
 
 export default function ARAConsole() {
-    const { authFetch, isAuthenticated } = useUser();
+    const { user, authFetch, isAuthenticated } = useUser();
     const { selectedId, getSelectedItem, getBreadcrumb } = useHierarchy();
     const { integrations } = useIntegrations();
     // OpenAI key from per-user integrations (set in Settings → API Keys).
@@ -1118,10 +1123,97 @@ export default function ARAConsole() {
         integrations.llm,
     ]);
 
+    // ── Phase-10 A1: host Agent Lab orchestrator runs inside ARA chat ─────
+    // "spawn research squad on X" / "run a deal desk analysis of Y" / "solo
+    // researcher on Z" — typed into ARA's composer OR fired from ⌘K via the
+    // `dwellium:ara-spawn` event (pending-slot covers the ⌘K→mount race). The
+    // run streams its decompose/execute/verify/merge phases into one
+    // progressive assistant message, mirroring AgentLab.tsx's deps wiring
+    // (callLlm + Hermes recall/record) so agents keep learning regardless of
+    // which door the run came through.
+    const updateMessageContent = useCallback((id: string, transform: (content: string) => string) => {
+        setMessages(prev => prev.map(m => (m.id === id ? { ...m, content: transform(m.content) } : m)));
+    }, []);
+
+    const runSpawn = useCallback(async (req: SpawnRequest, echoUser: boolean = true) => {
+        hermesLearningUserIdHolder.current = user?.id ?? null;
+        const progress = createChatMessage({
+            role: 'assistant',
+            content: `**${req.name}** taking on: _${req.goal}_`,
+        });
+        setMessages(prev => (echoUser
+            ? [...prev, createChatMessage({ role: 'user', content: `${req.kind === 'team' ? 'Spawn' : 'Solo'} ${req.name}: ${req.goal}` }), progress]
+            : [...prev, progress]));
+        const line = (s: string) => updateMessageContent(progress.id, c => `${c}\n\n${s}`);
+        if (!hasActiveLlm(integrations.llm)) {
+            line('⚠ No LLM configured — add a key in Control Panel → API Keys, then try again.');
+            return;
+        }
+        setIsLoading(true);
+        const deps: OrchestratorDeps = {
+            invoke: async (r) => (await callLlm(r, integrations.llm))?.text ?? null,
+            recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
+            record: (rec) => { recordRun(rec); },
+        };
+        try {
+            const { teams, personas } = agentTeamsStore.getSnapshot();
+            if (req.kind === 'team') {
+                const team = teams.find(t => t.id === req.id);
+                if (!team) { line(`⚠ Team "${req.name}" not found in the Agent Lab catalog.`); return; }
+                const result = await runTeam({
+                    goal: req.goal, sources: '', team, personas, deps,
+                    onEvent: e => line(`\`${e.phase}\` ${e.message}`),
+                });
+                if (result.error) {
+                    line(`⚠ ${result.error}`);
+                } else {
+                    recordRun({ prompt: req.goal, taskType: 'planning', outcome: 'success', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
+                    line(`---\n\n${result.final}`);
+                    if (ttsEnabled) void speakText(`${req.name} has finished.`);
+                }
+            } else {
+                const persona = findPersona(personas, req.id);
+                if (!persona) { line(`⚠ "${req.name}" not found in the Agent Lab catalog.`); return; }
+                line(`\`execute\` ${persona.name} is working…`);
+                const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
+                recordRun({ prompt: req.goal, taskType: 'general', outcome: out.output ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
+                const text = out.verified || out.output;
+                line(text ? `---\n\n${text}` : '⚠ No output — the model returned nothing.');
+                if (text && ttsEnabled) void speakText(`${persona.name} has finished.`);
+            }
+        } catch (err) {
+            line(`⚠ Run failed — ${err instanceof Error ? err.message : String(err)}.`);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, integrations.llm, updateMessageContent, ttsEnabled, speakText]);
+
+    useEffect(() => {
+        const handler = (ev: Event) => {
+            consumePendingSpawn(); // live event supersedes the mount-race slot
+            const req = (ev as CustomEvent).detail as SpawnRequest | null;
+            if (req?.goal) void runSpawn(req);
+        };
+        window.addEventListener(ARA_SPAWN_EVENT, handler);
+        const pending = consumePendingSpawn(); // spawn fired before ARA mounted
+        if (pending) void runSpawn(pending);
+        return () => window.removeEventListener(ARA_SPAWN_EVENT, handler);
+    }, [runSpawn]);
+
     const sendMessage = useCallback(async () => {
+        const text = input.trim();
+        // Phase-10 A1: spawn imperatives typed into ARA's own composer run the
+        // orchestrator here directly (no event round-trip, no duplicate echo) —
+        // checked BEFORE parseCommand, whose spawn rule otherwise matches too.
+        const spawnReq = text ? parseSpawn(stripPoliteness(text)) : null;
+        if (spawnReq) {
+            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text })]);
+            setInput('');
+            void runSpawn(spawnReq, false);
+            return;
+        }
         // One Conductor: a direct command ("switch to research", "make accent teal",
         // "open strata", "save space Morning") runs immediately and skips the LLM.
-        const text = input.trim();
         const cmd = text ? parseCommand(text) : null;
         if (cmd) {
             cmd.run();
@@ -1161,7 +1253,7 @@ export default function ARAConsole() {
             return;
         }
         await sendPrompt(input);
-    }, [input, sendPrompt, ttsEnabled, speakText, integrations.llm]);
+    }, [input, sendPrompt, runSpawn, ttsEnabled, speakText, integrations.llm]);
 
     const retryLastRequest = useCallback(async () => {
         if (!lastRequest || isLoading) return;

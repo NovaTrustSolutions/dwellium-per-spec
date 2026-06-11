@@ -50,6 +50,16 @@ export interface RunEvent {
     message: string;
 }
 
+/** Fired per team member so the UI can drop the subtask into that persona's task list. */
+export interface MemberTaskEvent {
+    phase: 'assigned' | 'start' | 'done';
+    personaId: string;
+    title: string;
+    durationMs?: number;
+    result?: string;
+    ok?: boolean;
+}
+
 export interface PersonaOutput {
     personaId: string;
     personaName: string;
@@ -197,10 +207,13 @@ export async function runTeam(params: {
     personas: Persona[];
     deps: OrchestratorDeps;
     onEvent?: (e: RunEvent) => void;
+    onMemberTask?: (e: MemberTaskEvent) => void;
 }): Promise<TeamRunResult> {
     const { goal, team, personas, deps } = params;
     const sources = params.sources ?? '';
     const emit = params.onEvent ?? (() => {});
+    const onMemberTask = params.onMemberTask ?? (() => {});
+    const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
     if (!goal.trim()) return { assignments: [], outputs: [], final: '', error: 'Give the team a goal first.' };
 
@@ -211,10 +224,15 @@ export async function runTeam(params: {
     for (const a of assignments) {
         const persona = findPersona(personas, a.personaId);
         if (!persona) continue;
+        const title = a.tasks.join('; ') || goal;
+        onMemberTask({ phase: 'assigned', personaId: persona.id, title });
+        onMemberTask({ phase: 'start', personaId: persona.id, title });
+        const t0 = now();
         emit({ phase: 'execute', personaId: persona.id, message: `${persona.name} is working…` });
-        const { output } = await execute(goal, sources, persona, a.tasks, deps);
+        const { output, ok } = await execute(goal, sources, persona, a.tasks, deps);
         emit({ phase: 'verify', personaId: persona.id, message: `Verifying ${persona.name}'s output…` });
         const { verified, supported } = await verify(output, sources, deps);
+        onMemberTask({ phase: 'done', personaId: persona.id, title, durationMs: now() - t0, result: verified.slice(0, 400), ok });
         outputs.push({ personaId: persona.id, personaName: persona.name, tasks: a.tasks, output, verified, supported });
     }
 

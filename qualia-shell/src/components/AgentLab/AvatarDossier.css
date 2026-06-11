@@ -1,0 +1,240 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');
+
+/* ── Neural Identity Dossier (editable) — ported from the supplied wireframe,
+   scoped under .avd so nothing leaks into the rest of the app. ──────────── */
+.avd {
+    --avd-text: #e2f3ff;
+    --avd-muted: #86a3b8;
+    --avd-primary: #51d4ff;
+    --avd-primary-2: #a78bfa;
+    --avd-border: rgba(125, 211, 252, .16);
+    --avd-display: 'Orbitron', 'Hanken Grotesk', system-ui, sans-serif;
+    color: var(--avd-text);
+    font-size: 14px;
+    line-height: 1.45;
+}
+.avd *, .avd *::before, .avd *::after { box-sizing: border-box; }
+
+.avd-frame {
+    position: relative;
+    border: 1px solid var(--avd-border);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(11, 19, 32, .92), rgba(7, 12, 20, .97));
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+    overflow: hidden;
+}
+.avd-frame::before, .avd-frame::after {
+    content: ""; position: absolute; inset: 14px;
+    border: 1px solid rgba(81, 212, 255, .08); pointer-events: none; border-radius: 8px;
+}
+
+/* Topbar */
+.avd-topbar {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 18px; border-bottom: 1px solid var(--avd-border);
+    background: rgba(255, 255, 255, .02);
+}
+.avd-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--avd-display); text-transform: uppercase; letter-spacing: .18em; font-size: 12px;
+}
+.avd-logo { width: 28px; height: 28px; border: 1px solid currentColor; border-radius: 50%; position: relative; flex-shrink: 0; }
+.avd-logo::before, .avd-logo::after { content: ""; position: absolute; border: 1px solid currentColor; border-radius: 50%; opacity: .45; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.avd-logo::before { width: 16px; height: 16px; }
+.avd-logo::after { width: 7px; height: 7px; background: currentColor; opacity: .9; }
+.avd-status { display: flex; gap: 14px; flex-wrap: wrap; }
+.avd-status label {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--avd-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .14em;
+}
+.avd-status-edit { width: 84px; }
+
+/* Grid */
+.avd-grid { display: grid; grid-template-columns: 260px minmax(300px, 1fr) 300px; }
+.avd-panel { padding: 18px; border-right: 1px solid var(--avd-border); min-width: 0; }
+.avd-panel:last-child { border-right: none; }
+.avd-section { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid rgba(81, 212, 255, .08); }
+.avd-section:last-child { border-bottom: none; margin-bottom: 0; }
+.avd-eyebrow { font-family: var(--avd-display); font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--avd-primary); margin-bottom: 8px; }
+.avd-h1, .avd-h2 { font-family: var(--avd-display); text-transform: uppercase; line-height: 1.15; }
+.avd-h1 { font-size: 20px; margin-bottom: 8px; }
+.avd-h2 { font-size: 15px; margin-bottom: 10px; }
+.avd-desc { color: var(--avd-muted); font-size: 13px; }
+
+/* Inline editable fields — blend in until hover/focus */
+.avd-edit {
+    font: inherit; color: inherit; background: transparent;
+    border: none; border-bottom: 1px dashed transparent; border-radius: 4px;
+    padding: 2px 3px; width: 100%; min-width: 0; transition: background 120ms ease, border-color 120ms ease;
+}
+.avd-edit:hover { border-bottom-color: rgba(81, 212, 255, .22); }
+.avd-edit:focus { outline: none; border-bottom-color: var(--avd-primary); background: rgba(81, 212, 255, .07); }
+.avd-edit::placeholder { color: rgba(134, 163, 184, .5); }
+textarea.avd-desc, .avd-note-body {
+    font: inherit; color: var(--avd-muted); background: rgba(255, 255, 255, .02);
+    border: 1px solid rgba(81, 212, 255, .1); border-radius: 8px; padding: 8px; width: 100%;
+    resize: vertical; min-height: 52px; line-height: 1.5;
+}
+textarea.avd-desc:focus, .avd-note-body:focus { outline: none; border-color: var(--avd-primary); }
+.avd-h1.avd-edit { font-family: var(--avd-display); text-transform: uppercase; }
+
+/* KV lists */
+.avd-list { list-style: none; display: grid; gap: 4px; padding: 0; margin: 0; }
+.avd-row { display: grid; grid-template-columns: 1fr 1.1fr auto; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px dashed rgba(134, 163, 184, .18); }
+.avd-row-label { color: var(--avd-muted); text-transform: uppercase; letter-spacing: .1em; font-size: 10px; }
+.avd-row-value { font-weight: 600; font-size: 13px; text-align: right; }
+.avd-del {
+    width: 20px; height: 20px; flex-shrink: 0; border: none; border-radius: 5px; cursor: pointer;
+    background: transparent; color: rgba(134, 163, 184, .55); font-size: 11px; opacity: 0; transition: opacity 120ms ease;
+}
+.avd-row:hover .avd-del, .avd-channel:hover .avd-del, .avd-note:hover .avd-del { opacity: 1; }
+.avd-del:hover { background: rgba(239, 68, 68, .18); color: #fca5a5; }
+.avd-add {
+    margin-top: 4px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
+    color: var(--avd-primary); background: rgba(81, 212, 255, .06);
+    border: 1px dashed rgba(81, 212, 255, .3); border-radius: 6px;
+}
+.avd-add:hover { background: rgba(81, 212, 255, .12); }
+
+/* Avatar stage */
+.avd-stage {
+    position: relative; display: grid; place-items: center; gap: 12px; padding: 18px;
+    background:
+        linear-gradient(rgba(81, 212, 255, .06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(81, 212, 255, .06) 1px, transparent 1px),
+        radial-gradient(circle at center, rgba(81, 212, 255, .14), transparent 50%);
+    background-size: 32px 32px, 32px 32px, 100% 100%;
+}
+.avd-avatar { position: relative; width: min(100%, 340px); aspect-ratio: 1 / 1; display: grid; place-items: center; }
+.avd-ring, .avd-ring2, .avd-ring3 { position: absolute; border-radius: 50%; border: 1px solid rgba(81, 212, 255, .3); }
+.avd-ring { inset: 6%; }
+.avd-ring2 { inset: 16%; border-style: dashed; animation: avd-spin 22s linear infinite; }
+.avd-ring3 { inset: 27%; opacity: .6; }
+.avd-crosshair { position: absolute; inset: 50% auto auto 50%; width: 78%; height: 78%; transform: translate(-50%, -50%); border: 1px solid rgba(167, 139, 250, .16); }
+.avd-crosshair::before, .avd-crosshair::after { content: ""; position: absolute; background: rgba(81, 212, 255, .22); }
+.avd-crosshair::before { width: 1px; height: 100%; left: 50%; top: 0; }
+.avd-crosshair::after { height: 1px; width: 100%; top: 50%; left: 0; }
+.avd-head { position: relative; width: 42%; aspect-ratio: 0.78 / 1; border: 1.5px solid var(--avd-primary); border-radius: 42% 42% 38% 38% / 28% 28% 52% 52%; filter: drop-shadow(0 0 16px rgba(81, 212, 255, .22)); }
+.avd-head::before { content: ""; position: absolute; left: 50%; top: 20%; width: 54%; height: 24%; transform: translateX(-50%); border-top: 1px solid rgba(81, 212, 255, .7); border-bottom: 1px solid rgba(81, 212, 255, .35); border-radius: 50%; }
+.avd-head::after { content: ""; position: absolute; left: 50%; bottom: 17%; width: 28%; height: 11%; transform: translateX(-50%); border-bottom: 1px solid rgba(81, 212, 255, .7); border-radius: 0 0 60px 60px; }
+.avd-wire {
+    position: absolute; inset: 0; border-radius: inherit; mix-blend-mode: screen;
+    background:
+        linear-gradient(90deg, transparent 0 18%, rgba(81, 212, 255, .28) 18% 18.4%, transparent 18.4% 49%, rgba(81, 212, 255, .28) 49% 49.4%, transparent 49.4% 82%, rgba(81, 212, 255, .28) 82% 82.4%, transparent 82.4%),
+        linear-gradient(180deg, transparent 0 30%, rgba(81, 212, 255, .2) 30% 30.4%, transparent 30.4% 65%, rgba(81, 212, 255, .18) 65% 65.4%, transparent 65.4%);
+}
+.avd-neck { position: absolute; width: 16%; height: 11%; border: 1px solid var(--avd-primary); border-top: none; bottom: 19%; }
+.avd-shoulders { position: absolute; width: 56%; height: 20%; bottom: 8%; border: 1px solid rgba(81, 212, 255, .5); border-top: none; border-radius: 0 0 120px 120px; }
+.avd-tag {
+    position: absolute; padding: 5px 8px; border: 1px solid rgba(81, 212, 255, .24);
+    background: rgba(5, 10, 18, .85); font-size: 10px; max-width: 44%;
+}
+.avd-tag--1 { top: 8%; left: 0; }
+.avd-tag--2 { top: 26%; right: 0; }
+.avd-tag--3 { bottom: 26%; left: 0; }
+.avd-tag--4 { bottom: 8%; right: 0; }
+.avd-tag-label { text-transform: uppercase; letter-spacing: .1em; color: var(--avd-muted); font-size: 9px; }
+.avd-tag-value { color: var(--avd-primary); font-family: var(--avd-display); font-size: 12px; }
+
+/* Metrics */
+.avd-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+.avd-metric { border: 1px solid rgba(81, 212, 255, .16); padding: 10px; background: rgba(255, 255, 255, .02); text-align: center; }
+.avd-metric-value { font-family: var(--avd-display); font-size: 16px; color: var(--avd-text); text-align: center; }
+.avd-metric-label { font-size: 9px; text-transform: uppercase; letter-spacing: .12em; color: var(--avd-muted); text-align: center; }
+
+/* Channels */
+.avd-channels { display: grid; gap: 12px; }
+.avd-channel-head { display: flex; align-items: center; gap: 6px; }
+.avd-channel-label { flex: 1; font-size: 12px; color: var(--avd-muted); }
+.avd-channel-pct { width: 52px; font: inherit; font-size: 12px; text-align: right; color: var(--avd-text); background: transparent; border: 1px solid rgba(81, 212, 255, .18); border-radius: 5px; padding: 2px 4px; }
+.avd-channel-pct:focus { outline: none; border-color: var(--avd-primary); }
+.avd-channel-unit { color: var(--avd-muted); font-size: 11px; }
+.avd-bar { height: 8px; background: rgba(134, 163, 184, .14); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.avd-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--avd-primary), var(--avd-primary-2)); }
+
+/* Notes */
+.avd-notes { display: grid; gap: 10px; }
+.avd-note { padding: 8px 10px; border-left: 1px solid rgba(81, 212, 255, .35); background: linear-gradient(90deg, rgba(81, 212, 255, .07), transparent); }
+.avd-note-head { display: flex; align-items: center; gap: 6px; }
+.avd-note-title { font-family: var(--avd-display); text-transform: uppercase; font-size: 11px; letter-spacing: .14em; color: var(--avd-primary); }
+.avd-note-body { margin-top: 6px; }
+
+/* Footer */
+.avd-footer {
+    display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    padding: 10px 18px; border-top: 1px solid var(--avd-border);
+    color: var(--avd-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .16em;
+}
+
+/* Neural video / image avatar (replaces the wireframe head) */
+.avd-media {
+    width: 62%; aspect-ratio: 1 / 1; object-fit: cover;
+    border-radius: 26px; border: 1.5px solid var(--avd-primary);
+    box-shadow: 0 0 28px rgba(81, 212, 255, .3); background: #04080f; z-index: 1;
+}
+.avd-avatar-tools { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 100%; }
+.avd-avatar-select, .avd-avatar-btn {
+    font: inherit; font-size: 11px; padding: 4px 9px; cursor: pointer;
+    color: var(--avd-text); background: rgba(255, 255, 255, .03);
+    border: 1px solid rgba(81, 212, 255, .22); border-radius: 7px;
+}
+.avd-avatar-btn:hover, .avd-avatar-select:hover { background: rgba(81, 212, 255, .12); }
+
+/* Hide / restore controls */
+.avd-hide {
+    margin-left: 6px; width: 18px; height: 18px; flex-shrink: 0; vertical-align: middle;
+    border: none; border-radius: 5px; cursor: pointer; font-size: 11px;
+    background: transparent; color: rgba(134, 163, 184, .55); opacity: 0; transition: opacity 120ms ease;
+}
+.avd-section:hover .avd-hide, .avd-fieldrow:hover .avd-hide, .avd-status label:hover .avd-hide, .avd-sectaghide .avd-hide { opacity: 1; }
+.avd-hide:hover { background: rgba(81, 212, 255, .16); color: var(--avd-primary); }
+.avd-fieldrow { display: flex; align-items: flex-start; gap: 4px; }
+.avd-fieldrow .avd-h1, .avd-fieldrow .avd-desc { flex: 1; }
+.avd-metrics-wrap { width: 100%; position: relative; }
+.avd-sectaghide { text-align: center; margin-top: 2px; }
+.avd-hidden-bar {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 8px 18px; border-top: 1px solid var(--avd-border); background: rgba(255, 255, 255, .015);
+}
+.avd-hidden-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--avd-muted); }
+.avd-restore {
+    font-size: 11px; padding: 2px 8px; cursor: pointer; color: var(--avd-primary);
+    background: rgba(81, 212, 255, .08); border: 1px dashed rgba(81, 212, 255, .3); border-radius: 6px; text-transform: lowercase;
+}
+.avd-restore:hover { background: rgba(81, 212, 255, .16); }
+
+@keyframes avd-spin { to { transform: rotate(360deg); } }
+
+/* Looping neural video — badge in the top-right corner of the dossier. */
+.avd-corner-video {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    width: 112px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(81, 212, 255, .42);
+    box-shadow: 0 0 18px rgba(81, 212, 255, .28);
+    background: #04080f;
+    z-index: 6;
+    pointer-events: none;
+}
+/* Keep the header content clear of the corner video. */
+.avd-topbar { padding-right: 138px; }
+
+/* Uploaded image fills the center circle. */
+.avd-media--circle { border-radius: 50%; aspect-ratio: 1 / 1; width: 58%; }
+
+.avd-tool-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--avd-muted); align-self: center; }
+
+@media (max-width: 1040px) {
+    .avd-grid { grid-template-columns: 1fr; }
+    .avd-panel { border-right: none; border-bottom: 1px solid var(--avd-border); }
+    .avd-panel:last-child { border-bottom: none; }
+}
+@media (max-width: 640px) {
+    .avd-corner-video { width: 84px; }
+    .avd-topbar { padding-right: 104px; }
+}

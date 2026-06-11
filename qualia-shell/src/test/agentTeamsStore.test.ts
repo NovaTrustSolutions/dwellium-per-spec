@@ -13,7 +13,7 @@ import {
     newPersonaId,
     newTeamId,
 } from '../lib/agents/agentTeamsStore';
-import { DEFAULT_PERSONAS, DEFAULT_TEAMS, type Persona, type AgentTeam } from '../lib/agents/personas';
+import { DEFAULT_PERSONAS, DEFAULT_TEAMS, defaultDossier, type Persona, type AgentTeam } from '../lib/agents/personas';
 
 beforeEach(() => {
     agentLabUserIdHolder.current = 'test-user';
@@ -67,5 +67,29 @@ describe('agentTeamsStore', () => {
         upsertPersona(p);
         (agentTeamsStore as unknown as { reset?: () => void }).reset?.();
         expect(agentTeamsStore.getSnapshot().personas.find(x => x.id === p.id)?.name).toBe('Persistent');
+    });
+
+    it('defaultDossier seeds every editable section', () => {
+        const d = defaultDossier(DEFAULT_PERSONAS[1]);
+        expect(d.identity.length).toBeGreaterThanOrEqual(5);
+        expect(d.traits.length).toBeGreaterThan(0);
+        expect(d.tags.length).toBe(4);
+        expect(d.metrics.length).toBe(3);
+        expect(d.channels.length).toBe(3);
+        expect(d.notes.length).toBe(2);
+    });
+
+    it('persists an edited persona dossier across a cache reset (built-in override)', () => {
+        const base = DEFAULT_PERSONAS.find(p => p.id === 'researcher')!;
+        const dossier = defaultDossier(base);
+        dossier.identity[0].value = 'Edited Alias';
+        dossier.channels[0].pct = 42;
+        dossier.notes[0].body = 'Custom operator note';
+        upsertPersona({ ...base, dossier });
+        (agentTeamsStore as unknown as { reset?: () => void }).reset?.();
+        const stored = agentTeamsStore.getSnapshot().personas.find(p => p.id === 'researcher');
+        expect(stored?.dossier?.identity[0].value).toBe('Edited Alias');
+        expect(stored?.dossier?.channels[0].pct).toBe(42);
+        expect(stored?.dossier?.notes[0].body).toBe('Custom operator note');
     });
 });

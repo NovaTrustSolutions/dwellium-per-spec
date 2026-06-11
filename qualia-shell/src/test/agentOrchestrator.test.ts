@@ -83,6 +83,25 @@ describe('runTeam', () => {
         expect(recall).toHaveBeenCalledTimes(2);
     });
 
+    it('fires onMemberTask (assigned → start → done) per member for the task lists', async () => {
+        const invoke = mockInvoke();
+        const member: Array<{ phase: string; personaId: string; title: string; durationMs?: number; ok?: boolean }> = [];
+        await runTeam({
+            goal: 'Assess the market',
+            sources: 'SOURCE: the market grew 12% in 2025.',
+            team: TEAM,
+            personas: DEFAULT_PERSONAS,
+            deps: { invoke },
+            onMemberTask: e => member.push(e),
+        });
+        expect(member.filter(m => m.personaId === 'researcher').map(m => m.phase)).toEqual(['assigned', 'start', 'done']);
+        expect(member.filter(m => m.personaId === 'data-analyst').map(m => m.phase)).toEqual(['assigned', 'start', 'done']);
+        const done = member.find(m => m.personaId === 'researcher' && m.phase === 'done')!;
+        expect(done.title).toContain('find facts');
+        expect(typeof done.durationMs).toBe('number');
+        expect(done.ok).toBe(true);
+    });
+
     it('skips verification when no sources are provided', async () => {
         const invoke = mockInvoke();
         const result = await runTeam({ goal: 'Plan a launch', team: TEAM, personas: DEFAULT_PERSONAS, deps: { invoke } });

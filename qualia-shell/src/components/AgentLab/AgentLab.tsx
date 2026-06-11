@@ -16,7 +16,10 @@ import {
     formatFewShot,
 } from '../HonchoHermesPanel/hermesLearningStore';
 import { useAgentLab, newPersonaId, newTeamId } from '../../lib/agents/agentTeamsStore';
-import { type Persona, type AgentTeam, type Discipline, ORCHESTRATOR_ID, findPersona } from '../../lib/agents/personas';
+import { type Persona, type AgentTeam, type Discipline, ORCHESTRATOR_ID, findPersona, defaultDossier, resolveAvatar, resolveNeuralVideo } from '../../lib/agents/personas';
+import AvatarDossier from './AvatarDossier';
+import PersonaWorkspace, { type WorkspaceView } from './PersonaWorkspace';
+import { recordRun as recordPersonaRun, addTask, startTask, completeTask, logAudit, formatMemory } from '../../lib/agents/personaWorkStore';
 import { runTeam, runPersona, type OrchestratorDeps, type RunEvent, type TeamRunResult, type PersonaOutput } from '../../lib/agents/orchestrator';
 import { getIcon } from '../Sidebar/iconMap';
 import './AgentLab.css';
@@ -54,6 +57,8 @@ export default function AgentLab() {
     const [rating, setRating] = useState<number | null>(null);
     const [editing, setEditing] = useState<Persona | null>(null);
     const [teamEditing, setTeamEditing] = useState<AgentTeam | null>(null);
+    const [personaTab, setPersonaTab] = useState<'dossier' | WorkspaceView>('dossier');
+    const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
 
     const deps: OrchestratorDeps = useMemo(() => ({
         invoke: async (req) => {
@@ -74,7 +79,25 @@ export default function AgentLab() {
             if (sel.kind === 'team') {
                 const team = teams.find(t => t.id === sel.id);
                 if (!team) return;
-                const result = await runTeam({ goal, sources, team, personas, deps, onEvent: e => setEvents(prev => [...prev, e]) });
+                // Drop each member's subtask into that persona's task list (orchestrator-assigned),
+                // start it, then complete it with its duration as the run proceeds.
+                const memberTaskIds = new Map<string, string>();
+                const result = await runTeam({
+                    goal, sources, team, personas, deps,
+                    onEvent: e => setEvents(prev => [...prev, e]),
+                    onMemberTask: m => {
+                        if (m.phase === 'assigned') {
+                            memberTaskIds.set(m.personaId, addTask(m.personaId, m.title, 'orchestrator'));
+                        } else if (m.phase === 'start') {
+                            const id = memberTaskIds.get(m.personaId);
+                            if (id) startTask(m.personaId, id);
+                        } else {
+                            const id = memberTaskIds.get(m.personaId);
+                            if (id) completeTask(m.personaId, id, m.result);
+                            recordPersonaRun(m.personaId, `Team task: ${m.title} → ${(m.result ?? '').slice(0, 140)}`, m.durationMs ?? 0, m.ok ? 'success' : 'fail');
+                        }
+                    },
+                });
                 setTeamResult(result);
                 if (!result.error) {
                     const rec = recordRun({ prompt: goal, taskType: 'planning', outcome: 'success', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
@@ -84,10 +107,15 @@ export default function AgentLab() {
                 const persona = findPersona(personas, sel.id);
                 if (!persona) return;
                 setEvents([{ phase: 'execute', personaId: persona.id, message: `${persona.name} is working…` }]);
-                const out = await runPersona({ goal, sources, persona, deps });
+                const t0 = performance.now();
+                // Inject this persona's working memory so it gets better with use.
+                const augmented = { ...persona, systemPrompt: persona.systemPrompt + formatMemory(persona.id) };
+                const out = await runPersona({ goal, sources, persona: augmented, deps });
+                const durationMs = performance.now() - t0;
                 setSoloResult(out);
                 const rec = recordRun({ prompt: goal, taskType: 'general', outcome: out.output ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
                 setLastRunId(rec.id);
+                recordPersonaRun(persona.id, `Goal: ${goal} → ${out.verified.slice(0, 160)}`, durationMs, out.output ? 'success' : 'fail');
             }
         } finally {
             setRunning(false);
@@ -102,6 +130,25 @@ export default function AgentLab() {
 
     const selectedTeam = sel?.kind === 'team' ? teams.find(t => t.id === sel.id) : undefined;
     const selectedPersona = sel?.kind === 'persona' ? findPersona(personas, sel.id) : undefined;
+
+    // Run a single task the persona was given (timed → completed with duration).
+    const runTask = useCallback(async (taskId: string, taskTitle: string) => {
+        if (!selectedPersona || running || runningTaskId) return;
+        setRunningTaskId(taskId);
+        startTask(selectedPersona.id, taskId);
+        logAudit(selectedPersona.id, 'Task started', taskTitle);
+        const t0 = performance.now();
+        try {
+            const augmented = { ...selectedPersona, systemPrompt: selectedPersona.systemPrompt + formatMemory(selectedPersona.id) };
+            const out = await runPersona({ goal: taskTitle, sources, persona: augmented, deps });
+            const durationMs = performance.now() - t0;
+            completeTask(selectedPersona.id, taskId, out.verified.slice(0, 400));
+            recordPersonaRun(selectedPersona.id, `Task: ${taskTitle} → ${out.verified.slice(0, 140)}`, durationMs, out.output ? 'success' : 'fail');
+            setSoloResult(out);
+        } finally {
+            setRunningTaskId(null);
+        }
+    }, [selectedPersona, running, runningTaskId, sources, deps]);
 
     // ── persona / team editors ──
     const startNewPersona = () => {
@@ -130,7 +177,7 @@ export default function AgentLab() {
                 <div className="alab-rail-sec">
                     <div className="alab-rail-head"><span>Personas</span><button className="alab-add" onClick={startNewPersona} title="New persona">+</button></div>
                     {personas.filter(p => p.id !== ORCHESTRATOR_ID).map(p => (
-                        <button key={p.id} className={`alab-item ${sel?.kind === 'persona' && sel.id === p.id ? 'alab-item--active' : ''}`} onClick={() => { setSel({ kind: 'persona', id: p.id }); setEditing(null); setTeamEditing(null); resetRun(); }}>
+                        <button key={p.id} className={`alab-item ${sel?.kind === 'persona' && sel.id === p.id ? 'alab-item--active' : ''}`} onClick={() => { setSel({ kind: 'persona', id: p.id }); setEditing(null); setTeamEditing(null); setPersonaTab('dossier'); resetRun(); }}>
                             <span className="alab-dot" style={{ background: p.color }} /><Icon k={p.icon} /><span className="alab-item-name">{p.name}</span>
                         </button>
                     ))}
@@ -177,6 +224,25 @@ export default function AgentLab() {
                             <div><span className="alab-dot" style={{ background: selectedPersona.color }} /> <strong>{selectedPersona.name}</strong> <span className="alab-tagline">{selectedPersona.tagline}</span></div>
                             {!selectedPersona.builtin && <button className="alab-edit-link" onClick={() => setEditing(selectedPersona)}>Edit</button>}
                         </div>
+                        <div className="alab-ptabs">
+                            {(['dossier', 'tools', 'tasks', 'memory', 'audit'] as const).map(tk => (
+                                <button key={tk} type="button" className={`alab-ptab ${personaTab === tk ? 'alab-ptab--active' : ''}`} onClick={() => setPersonaTab(tk)}>
+                                    {({ dossier: 'Dossier', tools: 'Tools', tasks: 'Tasks', memory: 'Memory', audit: 'Audit' } as const)[tk]}
+                                </button>
+                            ))}
+                        </div>
+                        {personaTab === 'dossier' ? (
+                            <AvatarDossier
+                                dossier={selectedPersona.dossier ?? defaultDossier(selectedPersona)}
+                                onChange={d => upsertPersona({ ...selectedPersona, dossier: d })}
+                                avatar={resolveAvatar(selectedPersona)}
+                                onAvatarChange={a => upsertPersona({ ...selectedPersona, avatar: a })}
+                                neuralVideo={resolveNeuralVideo(selectedPersona)}
+                                onNeuralVideoChange={v => upsertPersona({ ...selectedPersona, neuralVideo: v })}
+                            />
+                        ) : (
+                            <PersonaWorkspace persona={selectedPersona} view={personaTab} onPersonaChange={upsertPersona} onRunTask={runTask} runningTaskId={runningTaskId} />
+                        )}
                         <RunPanel goal={goal} setGoal={setGoal} sources={sources} setSources={setSources} run={run} running={running} runLabel={`Run ${selectedPersona.name}`} disabled={!llmReady} />
                         <RunOutput events={events} teamResult={null} soloResult={soloResult} running={running} lastRunId={lastRunId} rating={rating} onRate={rate} />
                     </>

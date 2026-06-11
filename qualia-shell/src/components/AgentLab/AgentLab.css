@@ -75,8 +75,8 @@
     color: var(--text-primary, #eee); font-size: 13px; font-family: inherit;
     padding: 9px 11px; resize: vertical;
 }
-.alab-goal { min-height: 56px; }
-.alab-sources { min-height: 70px; }
+.alab-goal { min-height: 128px; }
+.alab-sources { min-height: 128px; }
 .alab-goal:focus, .alab-sources:focus, .alab-input:focus { outline: none; border-color: var(--accent, #6366f1); }
 .alab-run {
     align-self: flex-start; margin-top: 4px;
@@ -122,3 +122,12 @@
 .alab-member--on { border-color: var(--accent, #6366f1); background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent); }
 
 .alab-empty { color: var(--text-tertiary); font-size: 13px; padding: 24px 0; }
+
+/* Persona sub-tabs (Dossier / Tools / Tasks / Memory / Audit) */
+.alab-ptabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 10px 0 12px; border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1)); padding-bottom: 8px; }
+.alab-ptab {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 14px; cursor: pointer;
+    color: var(--text-secondary, #aaa); background: transparent; border: 1px solid transparent; border-radius: 8px;
+}
+.alab-ptab:hover { color: var(--text-primary, #fff); background: rgba(255, 255, 255, 0.05); }
+.alab-ptab--active { color: #0a0a0a; background: var(--accent, #6366f1); }

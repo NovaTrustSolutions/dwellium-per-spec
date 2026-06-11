@@ -38,6 +38,91 @@ export interface Persona {
     /** the persona's system prompt — defines its lens, rigor, and output style. */
     systemPrompt: string;
     builtin?: boolean;
+    /** Editable avatar-dossier card shown in the Agent Lab persona view. */
+    dossier?: PersonaDossier;
+    /** Center-circle avatar — an uploaded image (else the wireframe). */
+    avatar?: PersonaAvatar;
+    /** The looping neural video shown top-right (defaults to a distinct per-persona loop). */
+    neuralVideo?: string;
+    /** Tool ids (from the Stella tool catalog) this persona is equipped with. */
+    tools?: string[];
+}
+
+export interface PersonaAvatar {
+    kind: 'image' | 'wireframe';
+    /** image data URL when kind === 'image'. */
+    src?: string;
+}
+
+/** A label/value pair — every dossier field is editable (label AND value). */
+export interface DossierKV { label: string; value: string; }
+export interface DossierChannel { label: string; pct: number; }
+export interface DossierNote { title: string; body: string; }
+
+/** The editable "neural identity dossier" (wireframe avatar card) for a persona. */
+export interface PersonaDossier {
+    subjectId: string;
+    scanMode: string;
+    clearance: string;
+    title: string;
+    description: string;
+    identity: DossierKV[];
+    traits: DossierKV[];
+    tags: DossierKV[];
+    metrics: DossierKV[];
+    readout: DossierKV[];
+    channels: DossierChannel[];
+    notes: DossierNote[];
+    /** Keys of dossier fields/sections the user has hidden (restorable). */
+    hidden?: string[];
+}
+
+/** Build a default dossier for a persona (seeded from the wireframe template). */
+export function defaultDossier(p: Persona): PersonaDossier {
+    return {
+        subjectId: (p.name || 'Subject').slice(0, 14).toUpperCase().replace(/\s+/g, '-'),
+        scanMode: 'Wireframe',
+        clearance: 'Visual',
+        title: p.name || 'Avatar Wireframe',
+        description: p.tagline || 'Discipline specialist persona dossier.',
+        identity: [
+            { label: 'Alias', value: p.name || 'Persona-01' },
+            { label: 'Type', value: '3D Persona' },
+            { label: 'Status', value: 'Active Mesh' },
+            { label: 'Rig', value: 'Humanoid v4' },
+            { label: 'Source', value: 'Parametric' },
+        ],
+        traits: [
+            { label: 'Topology Integrity', value: '94%' },
+            { label: 'Facial Symmetry', value: '89%' },
+            { label: 'Animation Ready', value: 'Yes' },
+        ],
+        tags: [
+            { label: 'Cranial Mesh', value: '27 Nodes' },
+            { label: 'Optic Band', value: 'Stabilized' },
+            { label: 'Jaw Arc', value: '2.4 Rad' },
+            { label: 'Rig Port', value: 'Enabled' },
+        ],
+        metrics: [
+            { label: 'Vertex density', value: '12.8K' },
+            { label: 'Tracking fidelity', value: '98.3%' },
+            { label: 'Latency', value: '06 ms' },
+        ],
+        readout: [
+            { label: 'Wireframe shell', value: 'Nominal' },
+            { label: 'Pose profile', value: 'Neutral A' },
+            { label: 'Viewport lock', value: 'Centerline' },
+        ],
+        channels: [
+            { label: 'Biometric contour match', pct: 91 },
+            { label: 'Expression calibration', pct: 76 },
+            { label: 'Gesture mapping', pct: 84 },
+        ],
+        notes: [
+            { title: 'Operator note', body: 'Use this layout as a landing view for an avatar generator, ID card, or sci-fi profile system.' },
+            { title: 'Visual cues', body: 'Built in pure HTML/CSS — swap the center wireframe for a real WebGL avatar later.' },
+        ],
+    };
 }
 
 export interface AgentTeam {
@@ -174,4 +259,32 @@ export const DEFAULT_TEAMS: AgentTeam[] = [
 
 export function findPersona(personas: Persona[], id: string): Persona | undefined {
     return personas.find(p => p.id === id);
+}
+
+/* ─── Neural avatar loops ─── */
+
+/** The 10 looping "neural network" animations (one distinct loop per persona). */
+export const NEURAL_VIDEOS: string[] = Array.from({ length: 10 }, (_, i) => `/assets/neural/neural-${i + 1}.mp4`);
+
+// Built-ins get a stable, DISTINCT loop by their position in the default list.
+const BUILTIN_VIDEO: Record<string, string> = {};
+DEFAULT_PERSONAS.forEach((p, i) => { BUILTIN_VIDEO[p.id] = NEURAL_VIDEOS[i % NEURAL_VIDEOS.length]; });
+
+/** A deterministic neural loop for any persona (custom personas hash to one). */
+export function neuralVideoFor(id: string): string {
+    if (BUILTIN_VIDEO[id]) return BUILTIN_VIDEO[id];
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return NEURAL_VIDEOS[h % NEURAL_VIDEOS.length];
+}
+
+/** Center circle: an uploaded image, else the wireframe. */
+export function resolveAvatar(p: Persona): PersonaAvatar {
+    if (p.avatar?.kind === 'image' && p.avatar.src) return p.avatar;
+    return { kind: 'wireframe' };
+}
+
+/** The looping neural video shown in the dossier's top-right corner. */
+export function resolveNeuralVideo(p: Persona): string {
+    return p.neuralVideo || neuralVideoFor(p.id);
 }

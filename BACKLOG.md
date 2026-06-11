@@ -40,6 +40,14 @@ Unfinished items surfaced across the Fey-UI, ARA/skills, Hermes, and Terminal·B
 ### Cross-session carry-forwards (pre-existing, still open)
 - ARA per-user-key passthrough to backend route; Hydra-as-llmClient-head; ThoughtWeaver persistent + user-only-delete half; backend `/api/integrations/test-postgres`; Gmail/Calendar OAuth backend session; Phase-9 A2/A3 hydration-flash polish (cosmetic, Ilya-gated).
 
+### Consolidation-plan reconciliation — *verified 2026-06-11 against the 06-09 Plan Status*
+- ✅ **One Save backend P0**: committed + mounted (`app.ts` `/api/objects`); client spine + 30 wrapped stores committed (`b8c1893`).
+- 🔴 **One Save is INERT — `VITE_ONE_SAVE` is not set in any .env.** The entire "stays forever" spine (30 stores, hydrate-on-login, browser-wipe survival) is built but OFF. **Decision needed (Ilya):** flip it on (`VITE_ONE_SAVE=true` in `qualia-shell/.env`) + run `Scripts/smoke_one_save.sh` + the `Docs/OneSave_SmokeTest.md` browser-wipe checklist.
+- ✅ **Backend ARA personality (humanize, backend half)**: was sitting uncommitted in `ai-dashboard369-file-manager` since the 06-09 arc — committed 2026-06-11 (`ab2095f`, backend `tsc --noEmit` clean). Backend repo not pushed (needs your go / remote policy).
+- **Way 2 — Spaces**: SHIPPED 06-09 (spacesStore + SpacesSwitcher + apply-space bus).
+- **Way 1 — One Front Door**: ⌘K command+memory results shipped; **remaining: shrink sidebar primary nav to ~5 pinned** (decision: which 5).
+- **One Conductor + One Memory**: heuristic conductor + unifiedMemory shipped 06-09; the 06-10 skills layer extends it. **Remaining (deep, needs kickoff):** fold ~10 agents into ARA as spawnable sub-agents; LLM-routed (not heuristic) command routing; true window tab-grouping (vs. tiling); decisions: which agents collapse vs. stay.
+
 ---
 
 ## ☐ ThoughtWeaver phone sync via Supabase  — *added 2026-05-30, deferred by Ilya*

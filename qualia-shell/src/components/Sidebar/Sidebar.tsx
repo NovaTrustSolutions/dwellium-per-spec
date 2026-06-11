@@ -882,8 +882,39 @@ export default function Sidebar() {
                                     );
                                 }
 
+                                // ── One Front Door (Way 1, decided 2026-06-11): 5 pinned
+                                // primary-nav widgets above the groups. Daily-driver set per
+                                // Ilya; everything else stays reachable via ⌘K + groups below.
+                                const PINNED: Array<{ component: string; label: string; icon: string }> = [
+                                    { component: 'ara-console', label: 'ARA', icon: 'brain-circuit' },
+                                    { component: 'strata-dashboard', label: 'Strata', icon: 'building-2' },
+                                    { component: 'scribe', label: 'Scribe', icon: 'pen-tool' },
+                                    { component: 'inbox', label: 'Inbox Zero', icon: 'mail-open' },
+                                    { component: 'task-board', label: 'Task Board', icon: 'layout-grid' },
+                                ];
+                                const pinnedItems = PINNED.filter(p => can(`widget:${p.component}`));
+
                                 return (
                                     <>
+                                        <div className="sidebar__widget-group sidebar__pinned">
+                                            {!collapsed && <div className="sidebar__widget-group-label sidebar__pinned-label">Pinned</div>}
+                                            {pinnedItems.map(p => {
+                                                const isOpen = windows.some(w => w.component === p.component);
+                                                const isMinimized = windows.some(w => w.component === p.component && w.minimized);
+                                                return (
+                                                    <button
+                                                        key={`pin-${p.component}`}
+                                                        className={`sidebar-widget sidebar-widget--pinned ${isOpen ? 'sidebar-widget--open' : ''} ${isMinimized ? 'sidebar-widget--minimized' : ''}`}
+                                                        onClick={() => handleWidgetClick(p.component, p.label, p.icon)}
+                                                        title={p.label}
+                                                    >
+                                                        <span className="sidebar-widget__icon"><SidebarIcon iconKey={p.icon} size={18} /></span>
+                                                        {!collapsed && <span className="sidebar-widget__label">{p.label}</span>}
+                                                        {isOpen && <span className="sidebar-widget__dot" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                         {WIDGET_GROUPS.map(group => {
                                             const items = groupedMap.get(group.name) || [];
                                             const isExpanded = expandedGroups.has(group.name);

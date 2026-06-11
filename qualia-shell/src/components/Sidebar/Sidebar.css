@@ -286,6 +286,27 @@
     padding: 0 var(--sp-1);
 }
 
+/* --- One Front Door: pinned primary nav (Way 1, 2026-06-11) --- */
+.sidebar__pinned {
+    padding: 4px 0 6px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar__pinned-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-tertiary);
+    padding: 4px 12px 6px;
+    user-select: none;
+}
+
+.sidebar-widget--pinned {
+    font-weight: var(--fw-medium);
+}
+
 /* --- Widget Items (9-16) --- */
 .sidebar-widget {
     display: flex;

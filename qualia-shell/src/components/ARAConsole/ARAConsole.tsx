@@ -7,6 +7,7 @@ import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './ara
 import { parseCommand, stripPoliteness } from '../../lib/dwelliumCommands';
 import { matchSkill } from '../../lib/agents/skills';
 import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } from '../../lib/agents/spawn';
+import { parseChain, executeChain } from '../../lib/conductorChain';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
@@ -1246,6 +1247,31 @@ export default function ARAConsole() {
             void runSpawn(spawnReq, false);
             return;
         }
+        // Phase-10 A3: multi-step command+skill chains ("open notepad and
+        // calculate 15% of 2400") execute sequentially with per-step results
+        // streamed into one progressive message. parseChain only claims the
+        // input when EVERY clause resolves and ≥1 is a skill — command-only
+        // chains keep the parseCommand ack path; any chat-shaped clause sends
+        // the whole input to the LLM untouched.
+        const chain = text ? parseChain(text) : null;
+        if (chain) {
+            const progress = createChatMessage({ role: 'assistant', content: `Running ${chain.steps.length} steps…` });
+            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text }), progress]);
+            setInput('');
+            setIsLoading(true);
+            try {
+                const outcomes = await executeChain(chain, { llm: integrations.llm }, (i, o) => {
+                    const icon = o.ok ? '✓' : '⚠';
+                    updateMessageContent(progress.id, c => `${c}\n\n${icon} **Step ${i + 1}** — ${o.text}`);
+                });
+                const allOk = outcomes.every(o => o.ok);
+                updateMessageContent(progress.id, c => `${c}\n\n${allOk ? 'All done. What would you like me to do next?' : 'Finished with hiccups — see the flagged step above.'}`);
+                if (ttsEnabled && allOk) void speakText('All done.');
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
         // One Conductor: a direct command ("switch to research", "make accent teal",
         // "open strata", "save space Morning") runs immediately and skips the LLM.
         const cmd = text ? parseCommand(text) : null;
@@ -1287,7 +1313,7 @@ export default function ARAConsole() {
             return;
         }
         await sendPrompt(input);
-    }, [input, sendPrompt, runSpawn, ttsEnabled, speakText, integrations.llm]);
+    }, [input, sendPrompt, runSpawn, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
 
     const retryLastRequest = useCallback(async () => {
         if (!lastRequest || isLoading) return;

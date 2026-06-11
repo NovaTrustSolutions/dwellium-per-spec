@@ -67,6 +67,7 @@ const CALC_FNS: Record<string, (...a: number[]) => number> = {
 export function evaluateMath(expr: string): number | null {
     let e = expr.toLowerCase()
         .replace(/\bx\b/g, '*').replace(/×/g, '*').replace(/÷/g, '/') // "3 x 4" (word-bounded so max/min survive)
+        .replace(/\bof\b/g, '*')             // "15% of 2400" → "(15/100)*2400" (Phase-10 10.4)
         .replace(/\s+/g, '')
         .replace(/(\d),(?=\d{3}\b)/g, '$1')  // thousands separators only — fn args keep commas
         .replace(/\^/g, '**')

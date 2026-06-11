@@ -760,3 +760,107 @@ html.aos-ready [data-aos="zoom-in"]{transform:scale(0.6)}
 html.aos-ready [data-aos].aos-animate{opacity:1;transform:none!important}
 [data-anim="none"] [data-aos]{opacity:1!important;transform:none!important;transition:none!important}
 .no-hover .bento:hover{transform:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 4px 28px rgba(0,0,0,.45)!important}
+
+/* ============================================================
+   TERMINAL · BL4 — the cohesion theme (2026-06-10)
+   fey.com-inspired single-voice redesign: pure-black monolith,
+   one accent (acid lime), phosphor-tinted neutrals, hairline
+   borders, mono chrome labels, unified radius + motion. The
+   palette bridge re-skins every widget; the cohesion layer
+   below it unifies the CHROME so the app reads as ONE product
+   instead of patchwork.
+   ============================================================ */
+.theme-terminal-bl4{
+  --bg:#000000;--surface:#0a0a0a;--surface2:#101010;--border:rgba(255,255,255,.06);
+  --text:#f2f4f1;--muted:#82908a;--cyan:#43dcb2;--blue:#D6FE51;
+  --gs:#D6FE51;--ge:#43dcb2;--ip:#9be15d;--il:#d6fe51;--ig:#43dcb2;
+  --mx:50%;--my:50%;
+  --panel-bg:rgba(4,4,4,.97);--panel-border:rgba(255,255,255,.07);
+  --panel-text:#f2f4f1;--panel-hover:rgba(214,254,81,.05);
+  --dock-bg:rgba(6,6,6,.94);--dock-border:rgba(255,255,255,.07);
+  --dock-icon:rgba(242,244,241,.45);--dock-icon-hover:#f2f4f1;--dock-active:rgba(214,254,81,.10);
+  --callout-info:rgba(67,220,178,.10);--callout-info-b:rgba(67,220,178,.4);
+  --callout-ok:rgba(214,254,81,.10);--callout-ok-b:rgba(214,254,81,.4);
+  --callout-warn:rgba(255,200,0,.10);--callout-warn-b:rgba(255,200,0,.4);
+  --callout-danger:rgba(255,161,108,.12);--callout-danger-b:rgba(255,161,108,.45);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:#141414;--bg-surface-active:#191919;
+  --bg-glass:var(--panel-bg);--bg-glass-hover:rgba(10,10,10,.97);
+  --border-subtle:rgba(255,255,255,.05);--border-default:var(--border);--border-strong:rgba(255,255,255,.14);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:#6d7a74;--text-inverse:#000;
+  --accent:#D6FE51;--accent-hover:#E8FF7A;--accent-subtle:rgba(214,254,81,.09);--accent-text:#D6FE51;
+  --success:#43dcb2;--danger:#ffa16c;--warning:#f5c842;
+  --sidebar-bg:rgba(2,2,2,.96);--window-bg:#070707;--window-titlebar:rgba(255,255,255,.025);--window-border:rgba(255,255,255,.08);
+  --scrollbar-track:transparent;--scrollbar-thumb:rgba(242,244,241,.08);--scrollbar-thumb-hover:rgba(214,254,81,.25);
+  --sidebar-accent:rgba(214,254,81,.06);--sidebar-accent-hover:rgba(214,254,81,.10);--sidebar-accent-border:rgba(214,254,81,.3);--sidebar-accent-glow:rgba(214,254,81,.35);
+  /* — BL4 voice: gradients + motion become the theme's signature — */
+  --gradient-accent:linear-gradient(135deg,#D6FE51 0%,#9be15d 55%,#43dcb2 100%);
+  --gradient-accent-soft:linear-gradient(135deg,rgba(214,254,81,.12) 0%,rgba(67,220,178,.05) 100%);
+  --gradient-hero-text:linear-gradient(180deg,#ffffff 0%,#c7d2cb 55%,#82908a 100%);
+  --gradient-edge-line:linear-gradient(90deg,transparent,rgba(214,254,81,.5) 35%,rgba(67,220,178,.45) 65%,transparent);
+  --gradient-surface-sheen:linear-gradient(180deg,rgba(214,254,81,.025) 0%,transparent 60%);
+  --shadow-glow-accent:0 0 24px rgba(214,254,81,.14);
+  --transition-fast:140ms cubic-bezier(.16,1,.3,1);
+  --transition-base:240ms cubic-bezier(.16,1,.3,1);
+  --radius-md:8px;--radius-lg:12px;
+}
+
+/* ── BL4 cohesion layer — one chrome voice across every surface ── */
+
+/* Terminal identity: chrome labels go mono, spaced, quiet. */
+.theme-terminal-bl4 .window__title,
+.theme-terminal-bl4 .sidebar__widget-group-label,
+.theme-terminal-bl4 .dock__label,
+.theme-terminal-bl4 .desktop__region-label,
+.theme-terminal-bl4 .hhp__section-title{
+  font-family:var(--font-mono);
+  font-size:10px;font-weight:500;
+  text-transform:uppercase;letter-spacing:.14em;
+}
+
+/* Windows: flatter, hairline, a single lime focus signal. */
+.theme-terminal-bl4 .window{
+  border-radius:10px;
+  background:linear-gradient(180deg,#0a0a0a 0%,#060606 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 16px 48px rgba(0,0,0,.6);
+}
+.theme-terminal-bl4 .window:hover{border-color:rgba(255,255,255,.12);}
+.theme-terminal-bl4 .window:focus-within{
+  border-color:rgba(214,254,81,.35);
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 20px 56px rgba(0,0,0,.65),0 0 28px rgba(214,254,81,.10);
+}
+.theme-terminal-bl4 .window__titlebar{
+  height:32px;
+  background:transparent;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+
+/* Sidebar + dock share the same hairline monolith surface. */
+.theme-terminal-bl4 .sidebar{border-right:1px solid rgba(255,255,255,.06);}
+.theme-terminal-bl4 .dock{
+  background:linear-gradient(180deg,rgba(12,12,12,.96),rgba(4,4,4,.96));
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:14px;
+}
+.theme-terminal-bl4 .dock__item{border-radius:10px;}
+
+/* Buttons: one voice — quiet until hovered, lime when meant. */
+.theme-terminal-bl4 button,
+.theme-terminal-bl4 .btn{border-radius:8px;}
+.theme-terminal-bl4 button:hover,
+.theme-terminal-bl4 .btn:hover{border-color:rgba(214,254,81,.3);}
+
+/* Terminal texture: faint phosphor scanlines + lime vignette on the desktop. */
+.theme-terminal-bl4 .desktop__bg{
+  background-image:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 3px),
+    radial-gradient(ellipse at top left,rgba(214,254,81,.07) 0%,transparent 55%),
+    radial-gradient(ellipse at bottom right,rgba(67,220,178,.05) 0%,transparent 50%);
+  background-size:100% 100%,100% 100%,100% 100%;
+  opacity:1;
+}
+
+/* Hero + wordmark pick up the BL4 gradient automatically via tokens.
+   Selection + focus follow the accent (inherited from global.css). */
+.theme-terminal-bl4 ::selection{background:#D6FE51;color:#000;}

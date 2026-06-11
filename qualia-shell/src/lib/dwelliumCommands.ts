@@ -14,7 +14,7 @@ import { spacesStore, saveCurrentAsSpace, type DwelliumSpace } from './spacesSto
 import { recall, remember, type MemoryHit } from './unifiedMemory';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
 
-const VALID_THEMES: Theme[] = ['dark', 'light', 'trust', 'vibrant', 'luxury', 'healthcare', 'creative', 'dark-excellence', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
+const VALID_THEMES: Theme[] = ['dark', 'light', 'trust', 'vibrant', 'luxury', 'healthcare', 'creative', 'dark-excellence', 'terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
 
 const COLOR_NAMES: Record<string, string> = {
     teal: '#14b8a6', blue: '#3b82f6', sky: '#0ea5e9', green: '#22c55e', lime: '#D6FE51',

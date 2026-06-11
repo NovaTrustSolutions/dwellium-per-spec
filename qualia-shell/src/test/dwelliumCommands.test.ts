@@ -13,6 +13,7 @@ describe('parseCommand (talk-to-customize)', () => {
         expect(parseCommand('theme tokyo night')?.label).toMatch(/Theme/);
         expect(parseCommand('dark mode')?.label).toMatch(/dark/i);
         expect(parseCommand('switch theme to nord')?.label).toMatch(/nord/);
+        expect(parseCommand('theme terminal bl4')?.label).toMatch(/terminal bl4/i);
     });
     it('parses accent commands', () => {
         expect(parseCommand('make accent teal')?.label).toMatch(/Accent/);

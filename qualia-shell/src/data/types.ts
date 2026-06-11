@@ -89,7 +89,7 @@ export interface SnapGuide {
     type: 'edge' | 'grid' | 'window' | 'margin';
 }
 
-export type Theme = 'dark' | 'light' | 'trust' | 'vibrant' | 'luxury' | 'healthcare' | 'creative' | 'dark-excellence' | 'cosmos' | 'deep-dark' | 'simple-black' | 'cyberpunk' | 'synthwave' | 'solarized' | 'rose-pine' | 'mocha' | 'dracula' | 'obsidian' | 'tokyo-night' | 'gruvbox' | 'apple-dark' | 'nord' | 'latte' | 'corporate';
+export type Theme = 'dark' | 'light' | 'trust' | 'vibrant' | 'luxury' | 'healthcare' | 'creative' | 'dark-excellence' | 'terminal-bl4' | 'cosmos' | 'deep-dark' | 'simple-black' | 'cyberpunk' | 'synthwave' | 'solarized' | 'rose-pine' | 'mocha' | 'dracula' | 'obsidian' | 'tokyo-night' | 'gruvbox' | 'apple-dark' | 'nord' | 'latte' | 'corporate';
 
 export type FontPairing = 'default' | 'modern' | 'elegant' | 'friendly' | 'brutalist' | 'editorial';
 

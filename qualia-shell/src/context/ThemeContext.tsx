@@ -197,7 +197,7 @@ export function applyAnimationsValue(on: boolean): void {
 export interface ThemeDef { id: Theme; label: string; group: 'Dwellium' | 'Master Pack'; bg: string; accent: string; }
 
 /** Master-pack ids (theme-{id} classes); used to toggle the ambient cursor-glow. */
-export const MASTER_THEME_IDS: Theme[] = ['cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
+export const MASTER_THEME_IDS: Theme[] = ['terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
 
 export const THEMES: ThemeDef[] = [
     { id: 'dark', label: 'Dwellium Dark', group: 'Dwellium', bg: '#000000', accent: '#D6FE51' },
@@ -208,6 +208,7 @@ export const THEMES: ThemeDef[] = [
     { id: 'healthcare', label: 'Healthcare', group: 'Dwellium', bg: '#f0f7f5', accent: '#0ea5a4' },
     { id: 'creative', label: 'Creative', group: 'Dwellium', bg: '#150f1f', accent: '#a855f7' },
     { id: 'dark-excellence', label: 'Dark Excellence', group: 'Dwellium', bg: '#08080c', accent: '#D6FE51' },
+    { id: 'terminal-bl4', label: 'Terminal · BL4', group: 'Dwellium', bg: '#000000', accent: '#D6FE51' },
     { id: 'cosmos', label: 'Cosmos', group: 'Master Pack', bg: '#08081a', accent: '#4d8aff' },
     { id: 'deep-dark', label: 'Deep Dark', group: 'Master Pack', bg: '#030305', accent: '#4d82ff' },
     { id: 'simple-black', label: 'Simple Black', group: 'Master Pack', bg: '#000000', accent: '#3b82f6' },

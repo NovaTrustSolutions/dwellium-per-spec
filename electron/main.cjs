@@ -88,7 +88,11 @@ function startBackend() {
         env: {
             ...process.env,
             ELECTRON_RUN_AS_NODE: '1',
-            NODE_ENV: 'production',
+            // P13-2: NOT 'production' — the backend's production env-gate
+            // demands AUTH_ENABLED=true, but the app ships in the same
+            // auth-disabled local mode the dev machine runs (Ilya: "exactly
+            // as it's working right now"). Sidecar binds 127.0.0.1 only.
+            NODE_ENV: 'sidecar',
             PORT: String(BACKEND_PORT),
             DWELLIUM_DATA_ROOT: DATA_ROOT,
         },

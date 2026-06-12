@@ -113,10 +113,21 @@ else
 fi
 
 # ── 4. Package the .dmg (electron deps via strict ci) ────────────────────────
-echo "==> [4/5] Packaging universal .dmg …"
+# P13-2 (2026-06-12): arm64 by default — the backend bundles arch-specific
+# natives (sharp arm64), which @electron/universal rejects in a universal
+# merge (and an Intel slice carrying arm64 natives would be broken anyway).
+# Set DWELLIUM_MAC_ARCH=x64 on an Intel staging machine for an Intel build.
+MAC_ARCH="${DWELLIUM_MAC_ARCH:-arm64}"
+echo "==> [4/5] Packaging $MAC_ARCH .dmg …"
 cd "$ELEC"
 npm ci
-npm run dist
+# ABI fix (empirical, P13-2): better-sqlite3 + node-pty are NODE_MODULE_VERSION-
+# bound; staged copies were compiled for plain Node and crash the sidecar under
+# Electron's own ABI (e.g. 133 for Electron 35). Rebuild them against the
+# pinned Electron. NAPI natives (sharp/lancedb/napi-rs/fsevents) are ABI-stable.
+ELECTRON_V="$(node -e "process.stdout.write(require('$ELEC/package.json').devDependencies.electron)")"
+npx electron-rebuild -v "$ELECTRON_V" --module-dir staging/backend -f -w better-sqlite3,node-pty
+npx electron-builder --mac dmg --"$MAC_ARCH"
 
 # ── 5. Reproducibility manifest ──────────────────────────────────────────────
 echo "==> [5/5] Writing build manifest …"

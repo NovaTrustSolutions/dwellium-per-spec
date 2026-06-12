@@ -9,4 +9,4 @@
 # Re-pin: set SHA to a new full commit hash and commit this file.
 # Override (NOT for release builds): DWELLIUM_ALLOW_BACKEND_DRIFT=1 bypasses the check.
 REPO=NovaTrustSolutions/ai-dashboard369-file-manager
-SHA=
+SHA=d7951764f301ae142f653d69df5f0b839065b1ea

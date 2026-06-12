@@ -14,23 +14,43 @@
     "npm": ">=10.0.0"
   },
   "devDependencies": {
-    "electron": "31.7.0",
+    "@electron/rebuild": "^4.0.4",
+    "electron": "35.2.0",
     "electron-builder": "24.13.3"
   },
   "build": {
     "appId": "com.dwellium.desktop",
     "productName": "Dwellium",
-    "electronVersion": "31.7.0",
+    "electronVersion": "35.2.0",
     "npmRebuild": false,
     "buildVersion": "1.0.0",
-    "directories": { "output": "dist-installer" },
-    "files": ["main.cjs", "preload.cjs", "package.json"],
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json"
+    ],
     "extraResources": [
-      { "from": "staging/client", "to": "client" },
-      { "from": "staging/backend", "to": "backend" }
+      {
+        "from": "staging/client",
+        "to": "client"
+      },
+      {
+        "from": "staging/backend",
+        "to": "backend"
+      }
     ],
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
       "category": "public.app-category.productivity",
       "identity": null,
       "hardenedRuntime": false,

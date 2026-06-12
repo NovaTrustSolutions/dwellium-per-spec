@@ -4,6 +4,7 @@ import { useHierarchy } from '../../context/HierarchyContext';
 import { TagInput } from '../Tags/TagInput';
 import './Notepad.css';
 import { API_BASE } from '../../config';
+import { WIDGET_ACTION_EVENT, consumePendingWidgetAction, type WidgetActionRequest } from '../../lib/widgetActions';
 
 // ============================================
 // TYPES
@@ -257,6 +258,37 @@ export default function Notepad() {
         window.addEventListener('qualia-notepad-open-note', onOpenNote);
         return () => window.removeEventListener('qualia-notepad-open-note', onOpenNote);
     }, [openNoteFromPalette]);
+
+    // P11-7: widget-action bus — 'insert-text' creates a note from the
+    // payload ("open notepad and draft a letter in it" lands here). Pending
+    // slot covers actions fired while the Notepad chunk was still loading.
+    useEffect(() => {
+        const apply = (req: WidgetActionRequest) => {
+            if (req.verb !== 'insert-text' || !req.payload?.text) return;
+            const text = String(req.payload.text);
+            const title = String(req.payload.title || text.split('\n')[0].replace(/^#+\s*/, '').slice(0, 60) || 'From ARA');
+            const note: Note = {
+                id: `note-${Date.now()}`,
+                title,
+                content: text,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            setNotes(prev => [note, ...prev]);
+            selectNote(note);
+        };
+        const handler = (ev: Event) => {
+            consumePendingWidgetAction('notepad'); // live event supersedes slot
+            const req = (ev as CustomEvent<WidgetActionRequest>).detail;
+            if (req?.widget === 'notepad') apply(req);
+        };
+        window.addEventListener(WIDGET_ACTION_EVENT, handler);
+        const pendingReq = consumePendingWidgetAction('notepad');
+        if (pendingReq) apply(pendingReq);
+        return () => window.removeEventListener(WIDGET_ACTION_EVENT, handler);
+        // selectNote is stable-enough (plain fn) — mount-only listener wiring.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // ---- TOOLBAR ACTIONS ----
     const insertMarkdown = (prefix: string, suffix: string = '') => {

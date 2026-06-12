@@ -114,6 +114,15 @@ export const STELLA_TOOL_CATALOG: ReadonlyArray<StellaTool> = [
         action: { kind: 'chat-command', command: 'run js: ' },
     },
     {
+        id: 'skill-compose-widget',
+        name: 'Compose into Widget',
+        category: 'AI Skills',
+        description: 'Draft text with the LLM and place it inside a widget ("draft a letter in notepad").',
+        icon: '📝',
+        keywords: ['draft', 'write', 'compose', 'notepad', 'letter', 'widget-action', 'p11-7'],
+        action: { kind: 'chat-command', command: 'draft a letter in notepad' },
+    },
+    {
         id: 'skill-memory-recall',
         name: 'Memory Recall',
         category: 'AI Skills',

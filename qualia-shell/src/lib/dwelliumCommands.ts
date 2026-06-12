@@ -14,6 +14,7 @@ import { spacesStore, saveCurrentAsSpace, type DwelliumSpace } from './spacesSto
 import { recall, remember, type MemoryHit } from './unifiedMemory';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
 import { parseSpawn, requestSpawn } from './agents/spawn';
+import { lastOpenedWidgetHolder } from './widgetActions';
 
 const VALID_THEMES: Theme[] = ['dark', 'light', 'trust', 'vibrant', 'luxury', 'healthcare', 'creative', 'dark-excellence', 'terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
 
@@ -129,7 +130,10 @@ export function stripPoliteness(input: string): string {
 }
 
 // ── tool primitives ──
-export function openWidget(componentId: string): void { dispatch('dwellium:open-widget', { widgetId: componentId }); }
+export function openWidget(componentId: string): void {
+    lastOpenedWidgetHolder.current = componentId; // P11-7: "…in IT" resolution
+    dispatch('dwellium:open-widget', { widgetId: componentId });
+}
 export function spawnAgent(name: string): void { openWidget(WIDGET_ALIASES[name.trim().toLowerCase()] || 'ara-console'); }
 export function tileWindows(components?: string[]): void { dispatch('dwellium:tile', { components: components ?? null }); toast('Arranged windows'); }
 

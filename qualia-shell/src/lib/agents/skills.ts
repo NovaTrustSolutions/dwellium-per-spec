@@ -22,6 +22,7 @@ import type { IntegrationsBundle } from '../../types/integrations';
 import { callLlm } from '../llmClient';
 import { DEFAULT_MODELS } from '../../types/integrations';
 import { recall, remember } from '../unifiedMemory';
+import { performWidgetAction, resolveComposeTarget, lastOpenedWidgetHolder } from '../widgetActions';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -298,12 +299,49 @@ const memoryRememberSkill: AgentSkill = {
 
 // ── Catalog + helpers ─────────────────────────────────────────────────
 
+// ── Compose into widget (P11-7 widget-action bus) ─────────────────────
+// "draft a letter in it" / "write a thank-you note in notepad" — the LLM
+// drafts, the widget-action bus places the text INSIDE the target widget.
+// Trigger REQUIRES the "in it/in notepad" suffix so plain drafting requests
+// ("draft a friendly late-rent reminder") still go to chat.
+const composeIntoWidgetSkill: AgentSkill = {
+    id: 'skill-compose-widget',
+    name: 'Compose into Widget',
+    icon: '📝',
+    description: 'Draft text with the LLM and place it inside a widget ("draft a letter in notepad", "…in it" after opening one).',
+    derivedFrom: 'Dwellium P11-7 widget-action bus',
+    requires: 'llm',
+    triggers: [
+        /^(?:draft|write|compose)\s+(.+\s+in(?:to)?\s+(?:the\s+)?(?:it|notepad))\.?$/i,
+    ],
+    run: async (input, ctx) => {
+        const m = input.match(/^(.*?)\s+in(?:to)?\s+(?:the\s+)?(it|notepad)\.?$/i);
+        const what = (m?.[1] ?? input).trim();
+        const explicit = m?.[2]?.toLowerCase() ?? null;
+        const target = resolveComposeTarget(explicit, lastOpenedWidgetHolder.current);
+        const res = await callLlm({
+            systemPrompt: 'You draft clean, ready-to-use documents. Output ONLY the document text (Markdown allowed) — no preamble, no commentary.',
+            prompt: `Draft ${what}.`,
+            maxTokens: 1200,
+            temperature: 0.5,
+        }, ctx.llm).catch(() => null);
+        if (!res?.text) {
+            return { ok: false, text: 'Drafting needs an LLM key — add one in Control Panel → API Keys.', via: 'compose-widget' };
+        }
+        const delivered = performWidgetAction(target, 'insert-text', { text: res.text });
+        return delivered
+            ? { ok: true, text: `Drafted into ${target}:\n\n${res.text.slice(0, 400)}${res.text.length > 400 ? '…' : ''}`, via: 'compose-widget' }
+            : { ok: false, text: `"${target}" doesn't accept inserted text yet.`, via: 'compose-widget' };
+    },
+};
+
 export const AGENT_SKILLS: ReadonlyArray<AgentSkill> = [
     calculatorSkill,
     webSearchSkill,
     imageGenSkill,
     weatherSkill,
     codeRunnerSkill,
+    composeIntoWidgetSkill,
     memoryRecallSkill,
     memoryRememberSkill,
 ];
@@ -348,7 +386,7 @@ export function skillIdsForDiscipline(discipline: string): string[] {
         case 'research': return ['skill-web-search', 'skill-weather', ...base];
         case 'data': return ['skill-calculator', 'skill-code-runner', ...base];
         case 'engineering': return ['skill-code-runner', 'skill-calculator', ...base];
-        case 'creative': case 'comms': return ['skill-image-gen', 'skill-web-search', ...base];
+        case 'creative': case 'comms': return ['skill-image-gen', 'skill-web-search', 'skill-compose-widget', ...base];
         case 'legal': case 'strategy': case 'operations': return ['skill-web-search', ...base];
         case 'orchestrator': return AGENT_SKILLS.map(s => s.id);
         default: return ['skill-calculator', 'skill-web-search', ...base];

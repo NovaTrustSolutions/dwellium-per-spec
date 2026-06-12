@@ -7,6 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { API_BASE } from '../../config';
 import { reportError } from '../../services/errorReporter';
 import { getIcon } from '../Sidebar/iconMap';
+import { detectNewWindows, chooseStackTarget, activateInGroup, removeFromGroup, reorderGroup, newGroupId, frameFromDonor, GROUP_TAB_BAR_H } from '../../lib/windowStacks';
 import React, { useState, useRef, useEffect, Suspense, useCallback, useMemo } from 'react';
 import Window from '../Window/Window';
 
@@ -556,7 +557,7 @@ export const WINDOW_COMPONENTS: Record<string, React.FC> = {
 } as Record<string, React.FC>;
 
 export default function Desktop() {
-    const { windows, closeWindow, openWindow, updateWindowPosition, focusWindow, restoreWindow, minimizeWindow, maximizeWindow } = useWindows();
+    const { windows, closeWindow, openWindow, updateWindowPosition, focusWindow, restoreWindow, minimizeWindow, maximizeWindow, setWindowGroup, setWindowFrame } = useWindows();
     const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab, assignWindowToRegion, clearWindowRegion, moveTabToRegion, isInteracting } = useLayout();
     // Windows the user explicitly tore off (drag a tab to empty desktop) — exempt
     // from the auto-snap effect below so they stay free-floating instead of being
@@ -679,6 +680,126 @@ export default function Desktop() {
             assignedIds.add(win.id); // prevent double-assign in same pass
         }
     }, [windows, settings.regionsEnabled, settings.regionLayout, regionAssignments, assignWindowToRegion, gridLocked]);
+
+    // ── P13-1 browser-tab navigation (Ilya 2026-06-12) ────────────────────
+    // "Open over the active widget → it takes the spot, the old one moves
+    // down one tab" — no matter the container. Region stacks reuse the
+    // existing tab machinery; FREE windows form groupId stacks (Option β
+    // beachhead activated): index 0 of groupOrders is visible, the rest stay
+    // mounted but hidden (browser-tab state preservation).
+    const [groupOrders, setGroupOrders] = useState<Record<string, string[]>>({});
+    const prevWinIdsRef = useRef<string[]>([]);
+    const lastGroupFrameRef = useRef<Record<string, { x: number; y: number; width: number; height: number }>>({});
+
+    // Track the visible member's frame per group (donor for switches/promotes).
+    useEffect(() => {
+        for (const [grp, order] of Object.entries(groupOrders)) {
+            const active = windows.find(w => w.id === order[0]);
+            if (active && !active.minimized) {
+                lastGroupFrameRef.current[grp] = { x: active.x, y: active.y, width: active.width, height: active.height };
+            }
+        }
+    }, [windows, groupOrders]);
+
+    const activateGroupTab = useCallback((grp: string, id: string) => {
+        setGroupOrders(prev => (prev[grp]?.[0] === id ? prev : { ...prev, [grp]: activateInGroup(prev[grp] ?? [], id) }));
+    }, []);
+
+    // CENTRAL activation: whenever a group's index-0 (the visible tab)
+    // changes — click, drag-to-front, or close-promotes-next — the newcomer
+    // inherits the group frame and takes focus. One path for every cause.
+    const prevGroupActiveRef = useRef<Record<string, string>>({});
+    useEffect(() => {
+        for (const [grp, order] of Object.entries(groupOrders)) {
+            const head = order[0];
+            if (!head || prevGroupActiveRef.current[grp] === head) continue;
+            prevGroupActiveRef.current[grp] = head;
+            const donor = lastGroupFrameRef.current[grp];
+            if (donor) setWindowFrame(head, donor);
+            focusWindow(head);
+        }
+        for (const grp of Object.keys(prevGroupActiveRef.current)) {
+            if (!groupOrders[grp]) delete prevGroupActiveRef.current[grp];
+        }
+    }, [groupOrders, setWindowFrame, focusWindow]);
+
+    // Open-follows-focus: a SINGLE newly-opened window joins the focused
+    // window's container. Batch opens (Spaces, default stack) keep their own
+    // handlers; windows those handlers already region-assigned are skipped.
+    useEffect(() => {
+        const prevIds = prevWinIdsRef.current;
+        prevWinIdsRef.current = windows.map(w => w.id);
+        const fresh = detectNewWindows(prevIds, windows);
+        if (fresh.length !== 1 || prevIds.length === 0) return;
+        const newId = fresh[0];
+        if (Object.values(regionAssignments).some(ids => ids.includes(newId))) return;
+        const target = chooseStackTarget(windows, regionAssignments, newId);
+        if (target.kind === 'none') return;
+        if (target.kind === 'region') {
+            manuallyFreedRef.current.delete(newId);
+            assignWindowToRegion(newId, target.regionId, windows);
+            setActiveRegionTab(target.regionId, newId);
+            return;
+        }
+        const focused = windows.find(w => w.id === target.focusedId);
+        const opened = windows.find(w => w.id === newId);
+        if (!focused || !opened) return;
+        const grp = focused.groupId || newGroupId();
+        if (!focused.groupId) setWindowGroup(focused.id, grp);
+        setWindowGroup(newId, grp);
+        const frame = frameFromDonor(focused, { w: desktopSize.w || 1200, h: desktopSize.h || 800 });
+        lastGroupFrameRef.current[grp] = frame;
+        setWindowFrame(newId, frame);
+        if (focused.maximized) maximizeWindow(focused.id); // toggle OFF — hidden members must not stay maximized
+        manuallyFreedRef.current.add(newId);
+        manuallyFreedRef.current.add(focused.id);
+        prevGroupActiveRef.current[grp] = newId; // frame already applied above
+        setGroupOrders(prev => ({ ...prev, [grp]: activateInGroup(prev[grp] ?? [focused.id], newId) }));
+        focusWindow(newId);
+    }, [windows, regionAssignments, assignWindowToRegion, setActiveRegionTab, setWindowGroup, setWindowFrame, maximizeWindow, focusWindow, desktopSize]);
+
+    // Group lifecycle: prune closed members; closing the VISIBLE tab promotes
+    // the one behind it (browser behavior); groups of one dissolve.
+    useEffect(() => {
+        const live = new Set(windows.map(w => w.id));
+        let any = false;
+        const next: Record<string, string[]> = {};
+        const toUngroup: string[] = [];
+        const toPromote: Array<{ id: string; grp: string }> = [];
+        for (const [grp, order] of Object.entries(groupOrders)) {
+            const pruned = order.filter(id => live.has(id));
+            if (pruned.length === order.length) { next[grp] = order; continue; }
+            any = true;
+            if (pruned.length === 0) continue;
+            if (!live.has(order[0])) toPromote.push({ id: pruned[0], grp });
+            if (pruned.length === 1) toUngroup.push(pruned[0]);
+            else next[grp] = pruned;
+        }
+        if (!any) return;
+        setGroupOrders(next);
+        toUngroup.forEach(id => setWindowGroup(id, null));
+        // Promotion (frame + focus) happens in the central activation effect
+        // when the pruned order's new head differs — except for dissolved
+        // groups, whose surviving window just keeps its frame and gets focus.
+        toPromote.forEach(({ id, grp }) => { if (!next[grp]) focusWindow(id); });
+    }, [windows, groupOrders, setWindowGroup, focusWindow]);
+
+    // Tear a tab out of its group: free window at the drop point.
+    const tearOffGroupTab = useCallback((grp: string, wid: string, x: number, y: number) => {
+        // Pure computation from current state — NO side effects inside the
+        // setState updater (StrictMode double-invokes updaters).
+        const pruned = removeFromGroup(groupOrders[grp] ?? [], wid);
+        setWindowGroup(wid, null);
+        if (pruned.length <= 1) {
+            if (pruned[0]) setWindowGroup(pruned[0], null);
+            setGroupOrders(prev => { const next = { ...prev }; delete next[grp]; return next; });
+        } else {
+            setGroupOrders(prev => ({ ...prev, [grp]: pruned }));
+        }
+        updateWindowPosition(wid, Math.max(0, x - 90), Math.max(40, y - 14));
+        focusWindow(wid);
+    }, [groupOrders, setWindowGroup, updateWindowPosition, focusWindow]);
+
 
     // Custom Tooltip System
     useEffect(() => {
@@ -1279,9 +1400,12 @@ export default function Desktop() {
                     ...regionRect, y: regionRect.y + tabBarHeight, h: regionRect.h - tabBarHeight,
                 } : regionRect;
 
+                // P13-1: non-visible free-group members stay mounted but hidden.
+                const grpOrder = win.groupId ? groupOrders[win.groupId] : undefined;
+                const groupHidden = !!grpOrder && grpOrder.length > 1 && grpOrder[0] !== win.id;
                 return (
                     <Window key={win.id} state={win} regionRect={adjustedRect || undefined}
-                        containerStyle={regionId && !isActiveTab ? { display: 'none' } : undefined}>
+                        containerStyle={(regionId && !isActiveTab) || groupHidden ? { display: 'none' } : undefined}>
                         {Component ? (
                             <WidgetErrorBoundary widgetName={win.title}>
                                 <Suspense fallback={<WidgetLoader />}>
@@ -1290,6 +1414,92 @@ export default function Desktop() {
                             </WidgetErrorBoundary>
                         ) : <div className="window-app__empty">Unknown component: {win.component}</div>}
                     </Window>
+                );
+            })}
+
+            {/* P13-1: free-group tab strips — browser tabs riding the visible member */}
+            {Object.entries(groupOrders).filter(([, order]) => order.length > 1).map(([grp, order]) => {
+                const active = windows.find(w => w.id === order[0]);
+                if (!active || active.minimized) return null;
+                const top = Math.max(0, active.y - GROUP_TAB_BAR_H);
+                return (
+                    <div
+                        key={grp}
+                        style={{
+                            position: 'absolute', left: active.x, top, width: active.width, height: GROUP_TAB_BAR_H,
+                            display: 'flex', alignItems: 'stretch', gap: 2, padding: '0 6px',
+                            zIndex: active.zIndex + 1,
+                            background: 'var(--window-titlebar, #15151a)',
+                            border: '1px solid var(--border-color, #2a2a30)', borderBottom: 'none',
+                            borderRadius: '8px 8px 0 0', overflow: 'hidden', boxSizing: 'border-box',
+                        }}
+                        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                    >
+                        {order.map(wid => {
+                            const win = windows.find(w => w.id === wid);
+                            if (!win) return null;
+                            const isActive = wid === order[0];
+                            return (
+                                <button
+                                    key={wid}
+                                    draggable
+                                    onDragStart={e => {
+                                        e.dataTransfer.setData('text/group-tab-id', wid);
+                                        e.dataTransfer.setData('text/group-id', grp);
+                                        e.dataTransfer.effectAllowed = 'move';
+                                    }}
+                                    onDrag={e => { if (e.clientX || e.clientY) lastDragPointRef.current = { x: e.clientX, y: e.clientY }; }}
+                                    onDragEnd={e => {
+                                        let vx = e.clientX, vy = e.clientY;
+                                        if (vx === 0 && vy === 0) { vx = lastDragPointRef.current.x; vy = lastDragPointRef.current.y; }
+                                        const deskEl = desktopRef.current;
+                                        if (!deskEl) return;
+                                        const rect = deskEl.getBoundingClientRect();
+                                        const stripTop = rect.top + top;
+                                        const onStrip = vx >= rect.left + active.x && vx <= rect.left + active.x + active.width
+                                            && vy >= stripTop && vy <= stripTop + GROUP_TAB_BAR_H;
+                                        if (onStrip) return; // reorder handled by tab onDrop
+                                        tearOffGroupTab(grp, wid, vx - rect.left, vy - rect.top);
+                                    }}
+                                    onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                                    onDrop={e => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const dragged = e.dataTransfer.getData('text/group-tab-id');
+                                        const fromGrp = e.dataTransfer.getData('text/group-id');
+                                        if (!dragged || fromGrp !== grp || dragged === wid) return;
+                                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                        const after = e.clientX > r.left + r.width / 2;
+                                        // Region semantics: index 0 = visible tab, so dragging a
+                                        // tab into slot 0 activates it (central effect handles it).
+                                        setGroupOrders(prev => ({ ...prev, [grp]: reorderGroup(prev[grp] ?? order, dragged, wid, after) }));
+                                    }}
+                                    onClick={() => activateGroupTab(grp, wid)}
+                                    title={win.title}
+                                    aria-label={`${isActive ? 'Active tab' : 'Switch to'} ${win.title}`}
+                                    style={{
+                                        flex: '0 1 auto', maxWidth: 160, padding: '4px 10px', fontSize: 11,
+                                        fontWeight: isActive ? 600 : 400, cursor: 'grab',
+                                        background: isActive ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
+                                        border: 'none', borderBottom: isActive ? '2px solid var(--accent, #818cf8)' : '2px solid transparent',
+                                        color: isActive ? 'var(--text-primary, #e2e8f0)' : 'var(--text-tertiary, #64748b)',
+                                        display: 'flex', alignItems: 'center', gap: 5,
+                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                        fontFamily: 'inherit',
+                                    }}
+                                >
+                                    <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>{(() => { const Icon = getIcon(win.icon); return Icon ? <Icon size={13} strokeWidth={1.75} /> : win.icon; })()}</span>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{win.title}</span>
+                                    <span
+                                        role="button"
+                                        aria-label={`Close ${win.title}`}
+                                        onClick={e => { e.stopPropagation(); closeWindow(wid); }}
+                                        style={{ flexShrink: 0, marginLeft: 2, width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: 10, lineHeight: 1, cursor: 'pointer' }}
+                                    >×</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 );
             })}
 

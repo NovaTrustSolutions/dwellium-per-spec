@@ -144,6 +144,10 @@ interface WindowContextValue {
     restoreWindow: (id: string) => void;
     updateWindowPosition: (id: string, x: number, y: number) => void;
     updateWindowSize: (id: string, w: number, h: number) => void;
+    /** P13-1 browser-tab stacks: set/clear a window's free-group membership. */
+    setWindowGroup: (id: string, groupId: string | null) => void;
+    /** P13-1: set an exact frame in one commit (group tab activation). */
+    setWindowFrame: (id: string, frame: { x: number; y: number; width: number; height: number }) => void;
     reorderDock: (fromIndex: number, toIndex: number) => void;
     moveDockItem: (id: string, toGroup: string | undefined, toIndex: number) => void;
     saveLayout: () => void;
@@ -363,6 +367,19 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         ));
     }, []);
 
+    // P13-1 browser-tab stacks (Option β beachhead ACTIVATED): group
+    // membership lives on WindowState.groupId; Desktop renders index-0 of
+    // each group order, hides the rest (mounted — state preserved).
+    const setWindowGroup = useCallback((id: string, groupId: string | null) => {
+        setWindows(prev => prev.map(w => (w.id === id ? { ...w, groupId } : w)));
+    }, []);
+
+    const setWindowFrame = useCallback((id: string, frame: { x: number; y: number; width: number; height: number }) => {
+        setWindows(prev => prev.map(w => (w.id === id
+            ? { ...w, x: frame.x, y: Math.max(0, frame.y), width: Math.max(frame.width, MIN_WIDTH), height: Math.max(frame.height, MIN_HEIGHT), maximized: false }
+            : w)));
+    }, []);
+
     const reorderDock = useCallback((fromIndex: number, toIndex: number) => {
         setDockItems(prev => {
             if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.length || toIndex >= prev.length) {
@@ -553,6 +570,7 @@ export function WindowProvider({ children }: { children: ReactNode }) {
             openWindow, closeWindow, focusWindow,
             minimizeWindow, maximizeWindow, restoreWindow,
             updateWindowPosition, updateWindowSize,
+            setWindowGroup, setWindowFrame,
             reorderDock, moveDockItem, saveLayout, resetLayout,
             savedLayouts, saveNamedLayout, loadNamedLayout, deleteNamedLayout,
             popOutWindow,

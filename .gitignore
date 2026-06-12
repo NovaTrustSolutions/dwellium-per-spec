@@ -41,3 +41,11 @@ Docs/preview-screenshots-backend/
 .create-pr.sh
 .pr-body.md
 .fuse_hidden*
+
+# CodeGraph index (local code-intelligence DB; never committed)
+.codegraph/
+
+# Electron packaging artifacts (session-local; DMG outputs + staging + vendored deps)
+electron/node_modules/
+electron/dist-installer/
+electron/staging/

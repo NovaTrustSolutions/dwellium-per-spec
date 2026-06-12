@@ -119,6 +119,18 @@ export function recordRoutingDecision(text: string, decision: RouteDecision, cor
     });
 }
 
+/**
+ * Collected mis-routes (10.7 B3): router decisions recorded `correct=false`
+ * or 👎-rated by the user. These are the re-training inputs — excluded from
+ * few-shot by construction, surfaced here for review/weight adjustment.
+ */
+export function collectMisRoutes(): HermesRunRecord[] {
+    return hermesLearningStore
+        .getSnapshot()
+        .filter(r => (r.toolsUsed || []).includes(ROUTER_TOOL))
+        .filter(r => r.outcome === 'fail' || (typeof r.rating === 'number' && r.rating < 0));
+}
+
 /* ─── LLM leg ─── */
 
 const SYSTEM_PROMPT =

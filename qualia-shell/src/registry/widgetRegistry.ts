@@ -395,6 +395,17 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         component: lazyWithReload(() => import('../components/Notepad/Notepad')),
         category: 'filing',
     },
+    // P12-1 (2026-06-12): AI usage + estimated cost dashboard over the
+    // callLlm chokepoint ledger.
+    'ai-spend': {
+        id: 'ai-spend',
+        label: 'AI Spend',
+        icon: 'coins',
+        component: lazyWithReload(() => import('../components/AiSpend/AiSpend')),
+        minWidth: 420,
+        minHeight: 380,
+        category: 'tools',
+    },
     // Natural-language UI editor (2026-06-12 Ilya): "change the header color
     // to yellow" — Edit-mode panel + click-to-pick; edits persist per-user.
     'ui-editor': {

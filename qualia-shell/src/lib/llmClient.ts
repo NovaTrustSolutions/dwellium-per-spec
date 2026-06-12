@@ -18,6 +18,7 @@
  */
 
 import type { IntegrationsBundle, LlmProvider } from '../types/integrations';
+import { recordLlmUsage } from './llmUsageStore';
 import { DEFAULT_MODELS } from '../types/integrations';
 
 // ── Request / response types ─────────────────────────────────────────
@@ -50,6 +51,24 @@ export class LlmError extends Error {
  * Returns null if no provider is configured + enabled.
  */
 export async function callLlm(
+    req: LlmRequest,
+    llm: IntegrationsBundle['llm'],
+): Promise<LlmResponse | null> {
+    const res = await dispatchLlm(req, llm);
+    // P12-1 AI-spend ledger: one chokepoint records ESTIMATED usage for every
+    // completion (recordLlmUsage never throws — the ledger can't break calls).
+    if (res) {
+        recordLlmUsage({
+            provider: res.provider,
+            model: res.model,
+            promptChars: (req.prompt?.length ?? 0) + (req.systemPrompt?.length ?? 0),
+            responseChars: res.text?.length ?? 0,
+        });
+    }
+    return res;
+}
+
+async function dispatchLlm(
     req: LlmRequest,
     llm: IntegrationsBundle['llm'],
 ): Promise<LlmResponse | null> {

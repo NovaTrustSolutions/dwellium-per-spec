@@ -1,0 +1,56 @@
+/* AiSpend — P12-1 AI usage + estimated cost dashboard */
+
+.spend {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    height: 100%;
+    overflow-y: auto;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.spend__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.spend__title { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text-primary); }
+.spend__title svg { color: var(--accent); }
+.spend__est { font-size: 10px; font-weight: 400; color: var(--text-tertiary, #808080); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.spend__clear {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border-radius: 7px;
+    border: 1px solid var(--border-color, #333); background: transparent;
+    color: var(--text-tertiary, #808080); cursor: pointer; font: inherit; font-size: 11px;
+}
+.spend__clear:hover { border-color: #ef4444; color: #ef4444; }
+
+.spend__cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+
+.spend__card {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 12px; border-radius: 10px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    background: var(--surface-2, rgba(255, 255, 255, 0.03));
+}
+.spend__card strong { font-size: 20px; color: var(--text-primary); }
+.spend__card small { color: var(--text-tertiary, #808080); line-height: 1.4; }
+.spend__card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary, #808080); }
+.spend__card--advice small { color: var(--text-secondary); }
+
+.spend__chart {
+    display: flex; align-items: flex-end; gap: 4px;
+    height: 110px; padding: 8px 4px 0;
+    border-bottom: 1px solid var(--border-color, #222);
+}
+.spend__bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.spend__bar { width: 100%; max-width: 26px; border-radius: 3px 3px 0 0; background: color-mix(in srgb, var(--accent, #D6FE51) 70%, transparent); min-height: 2px; }
+.spend__bar-label { font-size: 9px; color: var(--text-tertiary, #808080); }
+
+.spend__providers h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-tertiary, #808080); }
+.spend__prov-row { display: flex; gap: 10px; padding: 6px 2px; border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.05)); }
+.spend__prov-name { flex: 1; color: var(--text-primary); text-transform: capitalize; }
+.spend__prov-calls { color: var(--text-tertiary, #808080); }
+.spend__prov-cost { min-width: 70px; text-align: right; color: var(--text-primary); }
+.spend__empty { color: var(--text-tertiary, #808080); }
+
+.spend__foot { font-size: 10px; color: var(--text-tertiary, #808080); line-height: 1.5; border-top: 1px solid var(--border-color, #1c1c1c); padding-top: 8px; }

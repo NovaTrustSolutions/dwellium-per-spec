@@ -4,7 +4,7 @@
  * event dispatch, result piping, and the evaluateMath "of" fix backing the
  * BACKLOG headline example.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { parseChain, executeChain, cleanResultForPiping } from '../lib/conductorChain';
 import { evaluateMath } from '../lib/agents/skills';
 import { agentTeamsStore, agentLabUserIdHolder } from '../lib/agents/agentTeamsStore';
@@ -104,6 +104,36 @@ describe('executeChain', () => {
         expect(chain).not.toBeNull();
         const outcomes = await executeChain(chain!, { llm: noLlm });
         expect(outcomes[0].ok).toBe(false);
+        expect(outcomes[1].ok).toBe(true);
+    });
+});
+
+describe('P11-3: spawn-in-chain', () => {
+    it('"then"-split chains a spawn with a skill, preserving and-in-goal', () => {
+        const chain = parseChain('spawn build team on caching and bundle size then calculate 2+2');
+        expect(chain).not.toBeNull();
+        expect(chain!.steps.map(s => s.kind)).toEqual(['spawn', 'skill']);
+        expect(chain!.steps[0].spawn).toMatchObject({ kind: 'team', id: 'build-team', goal: 'caching and bundle size' });
+    });
+
+    it('whole-input spawns (no "then") still belong to the spawn path', () => {
+        expect(parseChain('spawn research squad on comps and trends')).toBeNull();
+    });
+
+    it('executes the spawn via the host runner and pipes its result', async () => {
+        const chain = parseChain('spawn research squad on comps then calculate the result + 10')!;
+        const runner = vi.fn(async () => ({ ok: true, text: '12' }));
+        const outcomes = await executeChain(chain, { llm: noLlm }, undefined, runner);
+        expect(runner).toHaveBeenCalledWith(expect.objectContaining({ id: 'research-squad', goal: 'comps' }));
+        expect(outcomes[0].ok).toBe(true);
+        expect(outcomes[1].text).toContain('22');
+    });
+
+    it('spawn steps without a runner fail honestly and do not halt the chain', async () => {
+        const chain = parseChain('spawn research squad on comps then calculate 2+2')!;
+        const outcomes = await executeChain(chain, { llm: noLlm });
+        expect(outcomes[0].ok).toBe(false);
+        expect(outcomes[0].text).toMatch(/runner/i);
         expect(outcomes[1].ok).toBe(true);
     });
 });

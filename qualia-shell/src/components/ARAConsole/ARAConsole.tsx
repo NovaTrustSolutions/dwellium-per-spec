@@ -1248,6 +1248,36 @@ export default function ARAConsole() {
         rateRun(runId, value);
     }, [user]);
 
+    // ── P11-3: spawn-in-chain runner — orchestrator run as a chain step,
+    // returning the final deliverable for result piping (no chat-hosting;
+    // the chain renders its own step lines).
+    const runSpawnForChain = useCallback(async (req: SpawnRequest): Promise<{ ok: boolean; text: string }> => {
+        hermesLearningUserIdHolder.current = user?.id ?? null;
+        if (!hasActiveLlm(integrations.llm)) {
+            return { ok: false, text: 'No LLM configured — add a key in Control Panel → API Keys.' };
+        }
+        const deps: OrchestratorDeps = {
+            invoke: async (r) => (await callLlm(r, integrations.llm))?.text ?? null,
+            recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
+            record: (rec) => { recordRun(rec); },
+        };
+        const { teams, personas } = agentTeamsStore.getSnapshot();
+        if (req.kind === 'team') {
+            const team = teams.find(t => t.id === req.id);
+            if (!team) return { ok: false, text: `Team "${req.name}" not found in the Agent Lab catalog.` };
+            const result = await runTeam({ goal: req.goal, sources: '', team, personas, deps });
+            if (result.error) return { ok: false, text: result.error };
+            recordRun({ prompt: req.goal, taskType: 'planning', outcome: 'success', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
+            return { ok: true, text: result.final };
+        }
+        const persona = findPersona(personas, req.id);
+        if (!persona) return { ok: false, text: `"${req.name}" not found in the Agent Lab catalog.` };
+        const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
+        const text = out.verified || out.output;
+        recordRun({ prompt: req.goal, taskType: 'general', outcome: out.output ? 'success' : 'fail', summary: (out.verified || '').slice(0, 200), toolsUsed: [persona.id] });
+        return { ok: !!text, text: text || 'No output — the model returned nothing.' };
+    }, [user, integrations.llm]);
+
     // ── Conductor tier dispatch (Phase-10 B2 refactor) ─────────────────────
     // The four exact-parser tiers (spawn → chain → command → skill), extracted
     // so they can run twice: once on the raw utterance, and once on the
@@ -1277,7 +1307,7 @@ export default function ARAConsole() {
                 const outcomes = await executeChain(chain, { llm: integrations.llm }, (i, o) => {
                     const icon = o.ok ? '✓' : '⚠';
                     updateMessageContent(progress.id, c => `${c}\n\n${icon} **Step ${i + 1}** — ${o.text}`);
-                });
+                }, runSpawnForChain); // P11-3: spawn steps run the orchestrator
                 const allOk = outcomes.every(o => o.ok);
                 updateMessageContent(progress.id, c => `${c}\n\n${allOk ? 'All done. What would you like me to do next?' : 'Finished with hiccups — see the flagged step above.'}`);
                 if (ttsEnabled && allOk) void speakText('All done.');
@@ -1325,7 +1355,7 @@ export default function ARAConsole() {
             return true;
         }
         return false;
-    }, [runSpawn, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
+    }, [runSpawn, runSpawnForChain, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
 
     // ── The ONE routing pipeline (B2): exact tiers → LLM-on-miss normalized
     // re-dispatch → chat. Shared by the composer AND the ⌘K ara-prompt bus

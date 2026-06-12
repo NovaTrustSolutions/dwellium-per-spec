@@ -21,16 +21,25 @@
  */
 import { parseCommand, stripPoliteness, type ParsedCommand } from './dwelliumCommands';
 import { matchSkill, type AgentSkill, type SkillContext } from './agents/skills';
-import { parseSpawn } from './agents/spawn';
+import { parseSpawn, type SpawnRequest } from './agents/spawn';
 
 export interface ChainStep {
-    kind: 'command' | 'skill';
+    kind: 'command' | 'skill' | 'spawn';
     /** The original clause text. */
     clause: string;
     label: string;
     command?: ParsedCommand;
     skill?: { skill: AgentSkill; arg: string };
+    /** P11-3: orchestrator run as a chain step ("spawn team on X then …"). */
+    spawn?: SpawnRequest;
 }
+
+/**
+ * P11-3: host-provided runner for spawn steps (the orchestrator needs the
+ * Agent Lab catalog + per-user LLM + Hermes wiring — ARA owns those).
+ * Returns the run's final deliverable text for result piping.
+ */
+export type SpawnStepRunner = (req: SpawnRequest) => Promise<{ ok: boolean; text: string }>;
 
 export interface CommandChain {
     label: string;
@@ -73,9 +82,17 @@ export function extractPipeValue(text: string): string {
     return m ? m[1] : cleaned;
 }
 
+/** "then"-class connectors ONLY — never bare "and" (so spawn goals and skill
+ *  args containing "and" survive when the user chains with "then"). */
+const THEN_SPLIT = /\s*(?:,\s*then\s+|;\s*|\s+then\s+)\s*/i;
+
 function resolveClause(clause: string): ChainStep | null {
     const c = clause.trim();
     if (!c) return null;
+    // P11-3: spawn FIRST — parseCommand's own spawn rule would otherwise turn
+    // the clause into a command step that fires the spawn EVENT (double-run).
+    const spawn = parseSpawn(c);
+    if (spawn) return { kind: 'spawn', clause: c, label: `Spawn ${spawn.name} → ${spawn.goal.slice(0, 32)}`, spawn };
     const cmd = parseCommand(c); // command verbs win, matching ARA's send order
     if (cmd) return { kind: 'command', clause: c, label: cmd.label, command: cmd };
     const hit = matchSkill(c);
@@ -83,29 +100,38 @@ function resolveClause(clause: string): ChainStep | null {
     return null;
 }
 
-/**
- * Parse a multi-clause utterance into a command+skill chain, or null when the
- * input is single-intent / command-only / spawn-claimed / partially chat.
- */
-export function parseChain(input: string): CommandChain | null {
-    const s = input.trim();
-    if (!s) return null;
-    const l = stripPoliteness(s);
-    if (!l || NO_SPLIT.test(l)) return null;
-    if (parseSpawn(l)) return null; // spawn path owns it (goal may contain "and")
-
-    const parts = l.split(CONNECTOR_SPLIT).map(p => p.trim()).filter(Boolean);
+function buildChain(parts: string[]): CommandChain | null {
     if (parts.length < 2) return null;
-
     const steps: ChainStep[] = [];
     for (const part of parts) {
         const step = resolveClause(part);
         if (!step) return null; // unresolved clause → whole input goes to chat
         steps.push(step);
     }
-    if (!steps.some(st => st.kind === 'skill')) return null; // command-only → parseCommand
-
+    // command-only chains stay with parseCommand's compound path.
+    if (!steps.some(st => st.kind === 'skill' || st.kind === 'spawn')) return null;
     return { label: steps.map(st => st.label).join(' · '), steps };
+}
+
+/**
+ * Parse a multi-clause utterance into a command+skill+spawn chain, or null
+ * when the input is single-intent / command-only / spawn-claimed / partially
+ * chat. "then"-split is tried FIRST so chained spawn goals keep their "and"s
+ * ("spawn build team on caching and bundles THEN remember the result").
+ */
+export function parseChain(input: string): CommandChain | null {
+    const s = input.trim();
+    if (!s) return null;
+    const l = stripPoliteness(s);
+    if (!l || NO_SPLIT.test(l)) return null;
+
+    // P11-3 pass 0 — "then"-only split (and-preserving; allows spawn steps).
+    const thenChain = buildChain(l.split(THEN_SPLIT).map(p => p.trim()).filter(Boolean));
+    if (thenChain) return thenChain;
+
+    if (parseSpawn(l)) return null; // whole-input spawn owns and-in-goal
+
+    return buildChain(l.split(CONNECTOR_SPLIT).map(p => p.trim()).filter(Boolean));
 }
 
 /**
@@ -117,13 +143,28 @@ export async function executeChain(
     chain: CommandChain,
     ctx: SkillContext,
     onStep?: (index: number, outcome: ChainStepOutcome) => void,
+    runSpawnStep?: SpawnStepRunner,
 ): Promise<ChainStepOutcome[]> {
     const outcomes: ChainStepOutcome[] = [];
     let lastResult = '';
     for (let i = 0; i < chain.steps.length; i++) {
         const step = chain.steps[i];
         let outcome: ChainStepOutcome;
-        if (step.kind === 'command' && step.command) {
+        if (step.kind === 'spawn' && step.spawn) {
+            // P11-3: long-running orchestrator step — the chain WAITS for the
+            // run (sequential semantics), then pipes its final deliverable.
+            if (!runSpawnStep) {
+                outcome = { step, ok: false, text: 'Spawn steps need the ARA host (no runner supplied).' };
+            } else {
+                try {
+                    const r = await runSpawnStep(step.spawn);
+                    outcome = { step, ok: r.ok, text: r.text };
+                    if (r.ok) lastResult = extractPipeValue(r.text);
+                } catch (err) {
+                    outcome = { step, ok: false, text: err instanceof Error ? err.message : String(err) };
+                }
+            }
+        } else if (step.kind === 'command' && step.command) {
             try {
                 step.command.run();
                 outcome = { step, ok: true, text: step.command.label };

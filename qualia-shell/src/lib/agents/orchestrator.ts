@@ -40,6 +40,13 @@ export interface OrchestratorDeps {
     recall?: (prompt: string, taskType: TaskType) => string;
     /** Record a run into Hermes so the agent improves over time. */
     record?: (input: RecordInput) => void;
+    /**
+     * P11-5: execute one of the persona's EQUIPPED skills against a task
+     * ("a Researcher actually web-searches"). Returns null when no equipped
+     * skill claims the task. Tool output feeds the member's prompt as
+     * evidence — it doesn't replace the member's own contribution.
+     */
+    runSkill?: (input: string, skillIds: string[]) => Promise<{ name: string; text: string } | null>;
 }
 
 export type RunPhase = 'decompose' | 'execute' | 'verify' | 'merge' | 'done' | 'error';
@@ -138,6 +145,17 @@ async function execute(
 ): Promise<{ output: string; ok: boolean }> {
     const taskType = disciplineToTaskType[persona.discipline];
     const fewShot = deps.recall?.(goal, taskType) ?? '';
+    // P11-5: run equipped skills against the member's tasks first; outputs
+    // become evidence in the prompt (capped to keep token use sane).
+    let toolResults = '';
+    if (deps.runSkill && persona.tools?.length) {
+        for (const t of tasks.slice(0, 4)) {
+            try {
+                const r = await deps.runSkill(t, persona.tools);
+                if (r) toolResults += `\n[${r.name}] for "${t.slice(0, 60)}":\n${r.text.slice(0, 800)}\n`;
+            } catch { /* tools are best-effort — the member still writes */ }
+        }
+    }
     const out = await deps.invoke({
         systemPrompt: persona.systemPrompt,
         temperature: 0.4,
@@ -145,6 +163,7 @@ async function execute(
             (fewShot ? `What worked on similar past tasks:\n${fewShot}\n\n` : '') +
             `OVERALL GOAL:\n${goal}\n\n` +
             (sources ? `SOURCES (rely only on these for facts):\n${sources}\n\n` : '') +
+            (toolResults ? `TOOL RESULTS (live output from your equipped skills — use as evidence):\n${toolResults}\n` : '') +
             `YOUR TASKS:\n${tasks.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n\n` +
             `Complete your tasks and produce your contribution.`,
     });

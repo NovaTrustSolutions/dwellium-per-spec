@@ -136,3 +136,28 @@ describe('runPersona', () => {
         expect(out.verified).toBe('verified: ok');
     });
 });
+
+describe('P11-5: equipped skills execute during member tasks', () => {
+    it('runSkill output is injected into the member prompt as TOOL RESULTS', async () => {
+        const invoke = mockInvoke();
+        const runSkill = vi.fn(async (input: string, skillIds: string[]) =>
+            skillIds.includes('skill-web-search')
+                ? { name: 'Web Search', text: `results for ${input.slice(0, 20)}` }
+                : null);
+        const persona = DEFAULT_PERSONAS.find(p => p.id === 'researcher')!;
+        await runPersona({ goal: 'comps', sources: '', persona, deps: { invoke, runSkill } });
+        expect(runSkill).toHaveBeenCalledWith(expect.any(String), persona.tools);
+        const memberCall = (invoke as ReturnType<typeof vi.fn>).mock.calls
+            .map(c => c[0]).find((r: { prompt: string }) => r.prompt.includes('YOUR TASKS'));
+        expect(memberCall.prompt).toContain('TOOL RESULTS');
+        expect(memberCall.prompt).toContain('[Web Search]');
+    });
+
+    it('a throwing skill never sinks the member (best-effort)', async () => {
+        const invoke = mockInvoke();
+        const runSkill = vi.fn(async () => { throw new Error('tool down'); });
+        const persona = DEFAULT_PERSONAS.find(p => p.id === 'researcher')!;
+        const out = await runPersona({ goal: 'comps', sources: '', persona, deps: { invoke, runSkill } });
+        expect(out.output).toBeTruthy();
+    });
+});

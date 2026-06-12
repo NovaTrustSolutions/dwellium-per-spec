@@ -5,7 +5,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
 import { parseCommand, stripPoliteness } from '../../lib/dwelliumCommands';
-import { matchSkill } from '../../lib/agents/skills';
+import { matchSkill, AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
 import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } from '../../lib/agents/spawn';
 import { parseChain, executeChain } from '../../lib/conductorChain';
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
@@ -1181,6 +1181,12 @@ export default function ARAConsole() {
             invoke: async (r) => (await callLlm(r, integrations.llm))?.text ?? null,
             recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
             record: (rec) => { recordRun(rec); },
+            // P11-5: equipped skills execute during member tasks.
+            runSkill: async (skillInput, skillIds) => {
+                const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
+                const r = await runSkillForInput(skillInput, { llm: integrations.llm }, catalog);
+                return r && r.ok ? { name: r.skill.name, text: r.text } : null;
+            },
         };
         try {
             const { teams, personas } = agentTeamsStore.getSnapshot();
@@ -1260,6 +1266,12 @@ export default function ARAConsole() {
             invoke: async (r) => (await callLlm(r, integrations.llm))?.text ?? null,
             recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
             record: (rec) => { recordRun(rec); },
+            // P11-5: equipped skills execute during member tasks.
+            runSkill: async (skillInput, skillIds) => {
+                const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
+                const r = await runSkillForInput(skillInput, { llm: integrations.llm }, catalog);
+                return r && r.ok ? { name: r.skill.name, text: r.text } : null;
+            },
         };
         const { teams, personas } = agentTeamsStore.getSnapshot();
         if (req.kind === 'team') {

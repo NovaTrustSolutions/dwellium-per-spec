@@ -21,6 +21,7 @@ import AvatarDossier from './AvatarDossier';
 import PersonaWorkspace, { type WorkspaceView } from './PersonaWorkspace';
 import { recordRun as recordPersonaRun, addTask, startTask, completeTask, logAudit, formatMemory } from '../../lib/agents/personaWorkStore';
 import { runTeam, runPersona, type OrchestratorDeps, type RunEvent, type TeamRunResult, type PersonaOutput } from '../../lib/agents/orchestrator';
+import { AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
 import { getIcon } from '../Sidebar/iconMap';
 import './AgentLab.css';
 
@@ -67,6 +68,13 @@ export default function AgentLab() {
         },
         recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
         record: (input) => { recordRun(input); },
+        // P11-5: members EXECUTE their equipped skills (Researcher actually
+        // web-searches) — output feeds the member prompt as evidence.
+        runSkill: async (input, skillIds) => {
+            const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
+            const r = await runSkillForInput(input, { llm: integrations.llm }, catalog);
+            return r && r.ok ? { name: r.skill.name, text: r.text } : null;
+        },
     }), [integrations.llm]);
 
     const resetRun = () => { setEvents([]); setTeamResult(null); setSoloResult(null); setLastRunId(null); setRating(null); };

@@ -23,6 +23,7 @@ import type { DreamEntry } from './honchoDreamStore';
 import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
 import { hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
 import { parseHermesCommand, spawnHermesFromStella } from './stellaHermesSpawn';
+import { matchSkill } from '../../lib/agents/skills';
 import {
     filterTools,
     groupByCategory,
@@ -600,6 +601,35 @@ export default function StellaAgent() {
         // of the Stella backend + personal LLM, so it runs even when both are down.
         const hermesCmd = parseHermesCommand(text);
         if (hermesCmd.isHermes) { await runStellaHermes(hermesCmd.task, text); return; }
+
+        // P11-5: mirror ARA's AGENT_SKILLS hook — browser-side skills
+        // (calculator / web search / weather / code / memory) run before any
+        // LLM round-trip. Stella's Skills tab showed them; now her chat path
+        // actually executes them.
+        const skillHit = matchSkill(text);
+        if (skillHit) {
+            setMessages(prev => [...prev, {
+                id: `user-${Date.now()}`, role: 'user', content: text, timestamp: Date.now(),
+            }]);
+            setInput('');
+            setIsTyping(true);
+            try {
+                const result = await skillHit.skill.run(skillHit.arg, { llm: integrations.llm });
+                setMessages(prev => [...prev, {
+                    id: `assistant-${Date.now()}`, role: 'assistant',
+                    content: result.text, timestamp: Date.now(),
+                }]);
+            } catch (err) {
+                setMessages(prev => [...prev, {
+                    id: `error-${Date.now()}`, role: 'system',
+                    content: `⚠️ ${skillHit.skill.name} failed: ${err instanceof Error ? err.message : 'error'}`,
+                    timestamp: Date.now(),
+                }]);
+            } finally {
+                setIsTyping(false);
+            }
+            return;
+        }
 
         // 2026-05-26: relax `status !== 'online'` gate when user has LLM configured.
         // Stella backend can be offline AND the chat still works via the user's

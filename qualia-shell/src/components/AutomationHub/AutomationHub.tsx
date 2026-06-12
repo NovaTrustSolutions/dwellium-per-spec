@@ -592,9 +592,42 @@ export default function AutomationHub() {
 
     // ──── SCHEDULE UPDATE ────
     const updateSchedule = useCallback((id: string, partial: Partial<AutomationSchedule>) => {
-        setAutomations(prev => prev.map(a =>
-            a.id === id ? { ...a, schedule: { ...a.schedule, ...partial } } : a
-        ));
+        setAutomations(prev => {
+            const next = prev.map(a =>
+                a.id === id ? { ...a, schedule: { ...a.schedule, ...partial } } : a
+            );
+            // P12-8 (gap item 12): schedules used to live ONLY in this React
+            // state — nothing persisted, nothing ever fired. Now every edit
+            // write-throughs to the backend, whose 60s scheduler loop fires
+            // due schedules unattended through the same /run path as Launch.
+            const updated = next.find(a => a.id === id);
+            if (updated) {
+                void fetch(`${API_AUTOMATIONS}/${id}/schedule`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ schedule: updated.schedule }),
+                }).catch(() => { /* backend offline — local state keeps the edit */ });
+            }
+            return next;
+        });
+    }, []);
+
+    // P12-8: hydrate persisted schedules on mount (backend is the truth for
+    // anything the scheduler will fire).
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch(`${API_AUTOMATIONS}/schedules`);
+                const json = await res.json();
+                if (cancelled || !json?.success || !Array.isArray(json.data)) return;
+                const byId = new Map<string, AutomationSchedule>(
+                    json.data.map((s: { automationId: string; schedule: AutomationSchedule }) => [s.automationId, s.schedule]),
+                );
+                setAutomations(prev => prev.map(a => (byId.has(a.id) ? { ...a, schedule: byId.get(a.id)! } : a)));
+            } catch { /* backend offline */ }
+        })();
+        return () => { cancelled = true; };
     }, []);
 
     // ──── NOTIFICATIONS UPDATE ────

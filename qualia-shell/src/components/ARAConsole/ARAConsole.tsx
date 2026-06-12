@@ -1315,6 +1315,30 @@ export default function ARAConsole() {
         return false;
     }, [runSpawn, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
 
+    // ── The ONE routing pipeline (B2): exact tiers → LLM-on-miss normalized
+    // re-dispatch → chat. Shared by the composer AND the ⌘K ara-prompt bus
+    // so both doors behave identically.
+    const routeUtterance = useCallback(async (text: string) => {
+        // Pass 1 — exact parsers on the raw utterance (zero latency).
+        if (await dispatchTiers(text, text)) return;
+        // Pass 2 — Phase-10 B2 (heuristic-first, LLM-on-miss per Ilya's 10.6
+        // call): classify fuzzy-but-actionable inputs with llmRouter and
+        // re-dispatch the normalized form through the same tiers. Questions /
+        // long texts skip this (looksActionable) so chat latency is unchanged.
+        if (hasActiveLlm(integrations.llm) && looksActionable(text)) {
+            try {
+                hermesLearningUserIdHolder.current = user?.id ?? null;
+                const decision = await classifyIntent(text, { llm: integrations.llm });
+                recordRoutingDecision(text, decision);
+                if (decision.via === 'llm' && decision.intent !== 'chat' && decision.normalized
+                    && decision.normalized.trim().toLowerCase() !== text.toLowerCase()) {
+                    if (await dispatchTiers(decision.normalized, text)) return;
+                }
+            } catch { /* classification is best-effort — fall through to chat */ }
+        }
+        await sendPrompt(text);
+    }, [dispatchTiers, sendPrompt, integrations.llm, user]);
+
     const sendMessage = useCallback(async () => {
         const text = input.trim();
         if (!text) return;
@@ -1343,43 +1367,26 @@ export default function ARAConsole() {
             })]);
             return;
         }
-        // Pass 1 — exact parsers on the raw utterance (zero latency).
-        if (await dispatchTiers(text, text)) return;
-        // Pass 2 — Phase-10 B2 (heuristic-first, LLM-on-miss per Ilya's 10.6
-        // call): classify fuzzy-but-actionable inputs with llmRouter and
-        // re-dispatch the normalized form through the same tiers. Questions /
-        // long texts skip this (looksActionable) so chat latency is unchanged.
-        if (hasActiveLlm(integrations.llm) && looksActionable(text)) {
-            try {
-                hermesLearningUserIdHolder.current = user?.id ?? null;
-                const decision = await classifyIntent(text, { llm: integrations.llm });
-                recordRoutingDecision(text, decision);
-                if (decision.via === 'llm' && decision.intent !== 'chat' && decision.normalized
-                    && decision.normalized.trim().toLowerCase() !== text.toLowerCase()) {
-                    if (await dispatchTiers(decision.normalized, text)) return;
-                }
-            } catch { /* classification is best-effort — fall through to chat */ }
-        }
-        await sendPrompt(input);
-    }, [input, isLoading, dispatchTiers, sendPrompt, integrations.llm, user, ttsEnabled, speakText]);
+        await routeUtterance(text);
+    }, [input, isLoading, routeUtterance, ttsEnabled, speakText]);
 
     // ⌘K hand-off: the palette routes unparseable queries here ("Ask ARA").
     // Pending-slot covers the palette→ARA-mount race (lazy chunk loading).
+    // Uses the SAME full pipeline as the composer — live-pass 2026-06-11
+    // found the original handler skipped the LLM-on-miss leg, so fuzzy ⌘K
+    // queries fell to backend chat, which CLAIMED to open widgets without
+    // actually doing anything.
     useEffect(() => {
-        const route = (text: string) => void (async () => {
-            if (await dispatchTiers(text, text)) return;
-            await sendPrompt(text);
-        })();
         const handler = (ev: Event) => {
             consumePendingAraPrompt(); // live event supersedes the slot
             const text = String((ev as CustomEvent).detail?.text ?? '').trim();
-            if (text) route(text);
+            if (text) void routeUtterance(text);
         };
         window.addEventListener(ARA_PROMPT_EVENT, handler);
         const pending = consumePendingAraPrompt(); // fired before ARA mounted
-        if (pending) route(pending);
+        if (pending) void routeUtterance(pending);
         return () => window.removeEventListener(ARA_PROMPT_EVENT, handler);
-    }, [dispatchTiers, sendPrompt]);
+    }, [routeUtterance]);
 
     const retryLastRequest = useCallback(async () => {
         if (!lastRequest || isLoading) return;

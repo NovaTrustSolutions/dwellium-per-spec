@@ -12,6 +12,8 @@ import { getSpeechRecognitionCtor, startDictation, type DictationSession } from 
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
+import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
+import { createGoal, updateGoalPlan, findGoalByTitle } from '../../lib/goalsStore';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
@@ -1428,6 +1430,38 @@ export default function ARAConsole() {
             }
             return;
         }
+        // Pass 1.6 — P12-5 Mission Control: "new goal …" creates a goal with
+        // an agent-drafted plan (brief + agent-vs-you actions + clarifying
+        // questions); "refine goal <title>: <answers>" regenerates the plan.
+        const newGoalMatch = text.match(NEW_GOAL_PATTERN);
+        const refineGoalMatch = text.match(REFINE_GOAL_PATTERN);
+        if (newGoalMatch || refineGoalMatch) {
+            setMessages(prev => [...prev, createChatMessage({ role: 'user', content: text })]);
+            setIsLoading(true);
+            try {
+                if (newGoalMatch) {
+                    const title = newGoalMatch[1].trim();
+                    const plan = await generateGoalPlan(title, integrations.llm);
+                    const goal = createGoal(title, plan);
+                    const reply = formatPlanForChat(goal.title, plan);
+                    recordArtifact({ content: reply, source: 'ara', title: `Goal plan: ${title.slice(0, 40)}`, type: 'markdown' });
+                    setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: reply })]);
+                } else if (refineGoalMatch) {
+                    const goal = findGoalByTitle(refineGoalMatch[1]);
+                    if (!goal) {
+                        setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: `I couldn't find a goal matching "${refineGoalMatch[1]}" — check Mission Control for the exact title.` })]);
+                    } else {
+                        const plan = await generateGoalPlan(goal.title, integrations.llm, refineGoalMatch[2]);
+                        updateGoalPlan(goal.id, plan);
+                        setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatPlanForChat(goal.title, plan) })]);
+                    }
+                }
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
+
         // Pass 2 — Phase-10 B2 (heuristic-first, LLM-on-miss per Ilya's 10.6
         // call): classify fuzzy-but-actionable inputs with llmRouter and
         // re-dispatch the normalized form through the same tiers. Questions /

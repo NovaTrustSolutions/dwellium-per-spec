@@ -395,6 +395,17 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         component: lazyWithReload(() => import('../components/Notepad/Notepad')),
         category: 'filing',
     },
+    // P12-5 (2026-06-12): Mission Control — goals with agent-drafted plans
+    // (brief + agent-vs-you actions + clarifying questions).
+    'mission-control': {
+        id: 'mission-control',
+        label: 'Mission Control',
+        icon: 'target',
+        component: lazyWithReload(() => import('../components/MissionControl/MissionControl')),
+        minWidth: 520,
+        minHeight: 420,
+        category: 'ai',
+    },
     // P12-3 (2026-06-12): everything your agents produce, browsable —
     // auto-captured ARA replies, team-run deliverables, images, drafts.
     'artifact-gallery': {

@@ -1,5 +1,5 @@
 import { API_BASE } from '../../config';
-import { ReactNode, useState, useEffect, useCallback } from 'react';
+import { ReactNode, useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import {
     Building2,
     DollarSign,
@@ -44,33 +44,33 @@ import {
     ResponsiveContainer,
     Cell,
 } from 'recharts';
-import PropertiesModule from './modules/PropertiesModule';
-import WorkOrdersModule from './modules/WorkOrdersModule';
-import LeasingModule from './modules/LeasingModule';
-import ResidentsModule from './modules/ResidentsModule';
-import VendorsModule from './modules/VendorsModule';
-import OwnersModule from './modules/OwnersModule';
-import AccountingModule from './modules/AccountingModule';
-import ManagerHome from './modules/ManagerHome';
-import ProfilesModule from './modules/ProfilesModule';
-import CorporateReview from './modules/CorporateReview';
-import CalendarModule from './modules/CalendarModule';
-import MaintenanceModule from './modules/MaintenanceModule';
-import ReportingModule from './modules/ReportingModule';
-import CommunicationModule from './modules/CommunicationModule';
-import TenantPortalModule from './modules/TenantPortalModule';
-import ForecastModule from './modules/ForecastModule';
-import SentimentModule from './modules/SentimentModule';
-import LegalModule from './modules/LegalModule';
-import AuditModule from './modules/AuditModule';
-import StatusCheckModule from './modules/StatusCheckModule';
-import ProjectsModule from './modules/ProjectsModule';
-import VisualizationModule from './modules/VisualizationModule';
-import IncidentModule from './modules/IncidentModule';
-import ComplianceEngine from './modules/ComplianceEngine';
-import DesignStudio from './modules/DesignStudio';
-import CivilEngineeringStudio from './modules/CivilEngineeringStudio';
-import StrataAdminSettings from './StrataAdminSettings';
+const PropertiesModule = lazy(() => import('./modules/PropertiesModule'));
+const WorkOrdersModule = lazy(() => import('./modules/WorkOrdersModule'));
+const LeasingModule = lazy(() => import('./modules/LeasingModule'));
+const ResidentsModule = lazy(() => import('./modules/ResidentsModule'));
+const VendorsModule = lazy(() => import('./modules/VendorsModule'));
+const OwnersModule = lazy(() => import('./modules/OwnersModule'));
+const AccountingModule = lazy(() => import('./modules/AccountingModule'));
+const ManagerHome = lazy(() => import('./modules/ManagerHome'));
+const ProfilesModule = lazy(() => import('./modules/ProfilesModule'));
+const CorporateReview = lazy(() => import('./modules/CorporateReview'));
+const CalendarModule = lazy(() => import('./modules/CalendarModule'));
+const MaintenanceModule = lazy(() => import('./modules/MaintenanceModule'));
+const ReportingModule = lazy(() => import('./modules/ReportingModule'));
+const CommunicationModule = lazy(() => import('./modules/CommunicationModule'));
+const TenantPortalModule = lazy(() => import('./modules/TenantPortalModule'));
+const ForecastModule = lazy(() => import('./modules/ForecastModule'));
+const SentimentModule = lazy(() => import('./modules/SentimentModule'));
+const LegalModule = lazy(() => import('./modules/LegalModule'));
+const AuditModule = lazy(() => import('./modules/AuditModule'));
+const StatusCheckModule = lazy(() => import('./modules/StatusCheckModule'));
+const ProjectsModule = lazy(() => import('./modules/ProjectsModule'));
+const VisualizationModule = lazy(() => import('./modules/VisualizationModule'));
+const IncidentModule = lazy(() => import('./modules/IncidentModule'));
+const ComplianceEngine = lazy(() => import('./modules/ComplianceEngine'));
+const DesignStudio = lazy(() => import('./modules/DesignStudio'));
+const CivilEngineeringStudio = lazy(() => import('./modules/CivilEngineeringStudio'));
+const StrataAdminSettings = lazy(() => import('./StrataAdminSettings'));
 import GlobalSearch from '../GlobalSearch/GlobalSearch';
 import type { StrataModule } from './strataTypes';
 import { consumePendingStrataModule, STRATA_DEEPLINK_EVENT } from './strataDeepLink';
@@ -1788,9 +1788,13 @@ export default function StrataDashboard() {
                     </div>
                 </nav>
 
-                {/* Module Content */}
+                {/* Module Content — P11-12: modules are bare React.lazy
+                    (sub-component altitude per the 2-layer lazyWithReload
+                    rule) so the 1.05 MB Strata chunk splits per module. */}
                 <main className="s-main-content">
-                    {renderModule()}
+                    <Suspense fallback={<div style={{ padding: 24, color: 'var(--text-tertiary)' }}>Loading module…</div>}>
+                        {renderModule()}
+                    </Suspense>
                 </main>
             </div>
         </StrataNavProvider>

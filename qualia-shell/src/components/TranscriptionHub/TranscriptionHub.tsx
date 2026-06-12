@@ -49,6 +49,7 @@ interface SpeechRecognitionInstance extends EventTarget {
     onresult: ((ev: SpeechRecognitionEvent) => void) | null;
     onerror: ((ev: Event & { error: string }) => void) | null;
     onend: (() => void) | null;
+    onstart: (() => void) | null;
 }
 declare global {
     interface Window {
@@ -505,8 +506,17 @@ export default function TranscriptionHub() {
 
     // --- Refs ---
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const webmInitSegmentRef = useRef<Blob | null>(null);
-    const chunkIndexRef = useRef(0);
+    // FIX 2026-06-12 (Ilya: "keeps repeating the same thing"): the old WebM
+    // init-segment hack prepended chunk 0 — which contains HEADERS **AND the
+    // first ~3s of AUDIO** — to every later chunk, so Whisper re-transcribed
+    // the opening words with every 3s chunk → identical segments forever.
+    // Chunks are now SELF-CONTAINED via a rotating recorder (below); the
+    // init-segment refs are gone.
+    const chunkLoopActiveRef = useRef(false);
+    const chunkRotateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const chunkStarterRef = useRef<(() => void) | null>(null);
+    /** Claims already queued for fact-check/legal scan (dedupe). */
+    const seenClaimsRef = useRef<Set<string>>(new Set());
     const streamRef = useRef<MediaStream | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
@@ -896,20 +906,10 @@ export default function TranscriptionHub() {
         setSendingChunk(true);
         setError(null);
 
-        // WebM fix: The first chunk from MediaRecorder contains the EBML/Segment
-        // initialization headers. Subsequent chunks are headerless Cluster elements.
-        let audioBlob = blob;
-        const currentMimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-        const isWebm = currentMimeType.includes('webm');
-
-        if (isWebm) {
-            if (chunkIndexRef.current === 0) {
-                webmInitSegmentRef.current = blob;
-            } else if (webmInitSegmentRef.current) {
-                audioBlob = new Blob([webmInitSegmentRef.current, blob], { type: currentMimeType });
-            }
-        }
-        chunkIndexRef.current++;
+        // 2026-06-12: every blob is a SELF-CONTAINED recording (rotating
+        // recorder) — no init-segment concatenation, no re-transcription.
+        const audioBlob = blob;
+        const currentMimeType = blob.type || mediaRecorderRef.current?.mimeType || 'audio/webm';
 
         const fileExt = currentMimeType.includes('mp4') ? 'mp4' : (currentMimeType.includes('aac') ? 'aac' : 'webm');
 
@@ -943,18 +943,24 @@ export default function TranscriptionHub() {
                 // Previously this wiped liveFinalParts which erased all live Web Speech words.
                 setLiveTranscript('');
 
-                // Queue claims for live fact-checking
+                // Queue claims for live fact-checking (2026-06-12: deduped —
+                // an identical claim is checked once per session, not once
+                // per chunk it appears in)
                 if (factCheckEnabled) {
-                    const claimsText = newSegs.map(s => s.text).filter(t => t.length > 20);
+                    const claimsText = newSegs.map(s => s.text)
+                        .filter(t => t.length > 20 && !seenClaimsRef.current.has(t));
                     if (claimsText.length > 0) {
+                        claimsText.forEach(t => seenClaimsRef.current.add(t));
                         setFactCheckQueue(prev => [...prev, ...claimsText]);
                     }
                 }
 
-                // Queue segments for legal shield scanning
+                // Queue segments for legal shield scanning (same dedupe)
                 if (legalShieldEnabled) {
-                    const legalTexts = newSegs.map(s => s.text).filter(t => t.length > 15);
+                    const legalTexts = newSegs.map(s => s.text)
+                        .filter(t => t.length > 15 && !seenClaimsRef.current.has(`legal:${t}`));
                     if (legalTexts.length > 0) {
+                        legalTexts.forEach(t => seenClaimsRef.current.add(`legal:${t}`));
                         setLegalScanQueue(prev => [...prev, ...legalTexts]);
                     }
                 }
@@ -994,6 +1000,14 @@ export default function TranscriptionHub() {
             recognition.lang = 'en-US';
             recognition.maxAlternatives = 1;
 
+            // 2026-06-12 duplicate-finals fix: `i >= event.resultIndex` could
+            // re-append a final that fires in more than one event (Chrome
+            // re-reports finals on some flushes). Track the highest final
+            // index SEEN this recognition session instead — each final is
+            // appended exactly once; the counter resets on (re)start because
+            // the results list resets.
+            let lastFinalIndex = -1;
+            recognition.onstart = () => { lastFinalIndex = -1; };
             recognition.onresult = (event: SpeechRecognitionEvent) => {
                 // Rebuild the full interim from ALL results in this recognition session.
                 // Using only event.resultIndex causes earlier in-progress words to be
@@ -1003,8 +1017,8 @@ export default function TranscriptionHub() {
                     const result = event.results[i];
                     const transcript = result[0].transcript;
                     if (result.isFinal) {
-                        // Only append finals we haven't seen yet (from resultIndex onward)
-                        if (i >= event.resultIndex) {
+                        if (i > lastFinalIndex) {
+                            lastFinalIndex = i;
                             setLiveFinalParts(prev => [...prev, transcript.trim()]);
                             liveRestartDelayRef.current = 0;
                         }
@@ -1269,8 +1283,7 @@ export default function TranscriptionHub() {
             setLiveTranscript('');
             setLiveFinalParts([]);
             audioChunksRef.current = [];
-            webmInitSegmentRef.current = null;
-            chunkIndexRef.current = 0;
+            seenClaimsRef.current.clear(); // per-session fact-check dedupe
             setCoachingStatus(null); // Reset coaching state
             setCoachingFeedback('Meeting manager standing by. Start recording.');
             setCoachingFlags([]);
@@ -1304,17 +1317,33 @@ export default function TranscriptionHub() {
             }
 
             const options = mimeType ? { mimeType } : undefined;
-            const mediaRecorder = new MediaRecorder(stream, options);
-            mediaRecorderRef.current = mediaRecorder;
 
-            mediaRecorder.ondataavailable = async (e) => {
-                if (e.data.size > 0) {
-                    audioChunksRef.current.push(e.data);
-                    await sendAudioChunk(e.data);
-                }
+            // 2026-06-12 rotating recorder: record ~6s, stop (yields ONE
+            // self-contained file with its own headers), send it, start the
+            // next. Replaces start(3000) timeslice + init-segment concat —
+            // the mechanism behind the repeated-segments bug.
+            const startChunkRecorder = () => {
+                const rec = new MediaRecorder(stream, options);
+                mediaRecorderRef.current = rec;
+                const parts: Blob[] = [];
+                rec.ondataavailable = (e) => { if (e.data.size > 0) parts.push(e.data); };
+                rec.onstop = () => {
+                    if (chunkRotateTimerRef.current) { clearTimeout(chunkRotateTimerRef.current); chunkRotateTimerRef.current = null; }
+                    if (parts.length > 0) {
+                        const blob = new Blob(parts, { type: rec.mimeType || mimeType || 'audio/webm' });
+                        audioChunksRef.current.push(blob);
+                        void sendAudioChunk(blob);
+                    }
+                    if (chunkLoopActiveRef.current) startChunkRecorder();
+                };
+                rec.start();
+                chunkRotateTimerRef.current = setTimeout(() => {
+                    if (rec.state === 'recording') rec.stop();
+                }, 6000);
             };
-
-            mediaRecorder.start(3000); // 3s timeslice for low latency transcription
+            chunkStarterRef.current = startChunkRecorder;
+            chunkLoopActiveRef.current = true;
+            startChunkRecorder();
             setState('recording');
             setActiveTab('recorder');
 
@@ -1331,29 +1360,34 @@ export default function TranscriptionHub() {
     };
 
     const pauseRecording = () => {
-        if (mediaRecorderRef.current?.state === 'recording') {
-            mediaRecorderRef.current.pause();
-            setState('paused');
-            // Pause live transcription
-            stopLiveRecognition();
-            stopMoonshine();
+        if (state !== 'recording') return;
+        // Rotating recorder: pause = stop the loop (current chunk flushes +
+        // transcribes) without releasing the mic stream.
+        chunkLoopActiveRef.current = false;
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
         }
+        setState('paused');
+        // Pause live transcription
+        stopLiveRecognition();
+        stopMoonshine();
     };
 
     const resumeRecording = () => {
-        if (mediaRecorderRef.current?.state === 'paused') {
-            mediaRecorderRef.current.resume();
-            setState('recording');
-            // Resume live transcription
-            if (moonshineEnabled) {
-                void startMoonshine();
-            } else {
-                startLiveRecognition();
-            }
+        if (state !== 'paused') return;
+        chunkLoopActiveRef.current = true;
+        chunkStarterRef.current?.();
+        setState('recording');
+        // Resume live transcription
+        if (moonshineEnabled) {
+            void startMoonshine();
+        } else {
+            startLiveRecognition();
         }
     };
 
     const stopRecording = () => {
+        chunkLoopActiveRef.current = false; // rotating loop ends; final chunk flushes
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
         }

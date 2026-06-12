@@ -11,6 +11,7 @@ import { parseChain, executeChain } from '../../lib/conductorChain';
 import { getSpeechRecognitionCtor, startDictation, type DictationSession } from './araDictation';
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
+import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
@@ -1059,6 +1060,8 @@ export default function ARAConsole() {
             // (ara-chat tag) so future similar questions get it as few-shot;
             // the run id rides on the message to power 👍/👎.
             const hermesRec = recordAraChat(text, data.data.content);
+            // P12-3: substantial replies auto-land in the Artifact Gallery.
+            if (isSubstantialOutput(data.data.content)) recordArtifact({ content: data.data.content, source: 'ara' });
             const araMsg = createChatMessage({
                 role: 'assistant',
                 content: data.data.content,
@@ -1118,6 +1121,7 @@ export default function ARAConsole() {
                             message: `Backend offline — answered via your ${integrations.llm.active} key.`,
                         });
                         const hermesRec = recordAraChat(text, llmRes.text);
+                        if (isSubstantialOutput(llmRes.text)) recordArtifact({ content: llmRes.text, source: 'ara' }); // P12-3
                         setMessages(prev => [...prev, createChatMessage({
                             role: 'assistant',
                             content: llmRes.text,
@@ -1213,6 +1217,7 @@ export default function ARAConsole() {
                     line(`⚠ ${result.error}`);
                 } else {
                     recordRun({ prompt: req.goal, taskType: 'planning', outcome: 'success', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
+                    recordArtifact({ content: result.final, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                     line(`---\n\n${result.final}`);
                     if (ttsEnabled) void speakText(`${req.name} has finished.`);
                 }
@@ -1223,6 +1228,7 @@ export default function ARAConsole() {
                 const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
                 recordRun({ prompt: req.goal, taskType: 'general', outcome: out.output ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
                 const text = out.verified || out.output;
+                if (text) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
                 line(text ? `---\n\n${text}` : '⚠ No output — the model returned nothing.');
                 if (text && ttsEnabled) void speakText(`${persona.name} has finished.`);
             }

@@ -25,6 +25,7 @@ import { recall, remember } from '../unifiedMemory';
 import { performWidgetAction, resolveComposeTarget, lastOpenedWidgetHolder } from '../widgetActions';
 import { API_BASE } from '../../config';
 import { getAuthHeaders } from '../../context/UserContext';
+import { recordArtifact } from '../artifactStore';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -260,6 +261,8 @@ const imageGenSkill: AgentSkill = {
                 if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
                 const b64 = data?.data?.[0]?.b64_json;
                 if (!b64) throw new Error('no image in response');
+                // P12-3: generated images land in the Artifact Gallery.
+                recordArtifact({ content: `data:image/png;base64,${b64}`, source: 'skill', title: prompt.slice(0, 60), type: 'image' });
                 return { ok: true, text: `![${prompt.slice(0, 60)}](data:image/png;base64,${b64})`, via: 'dall-e-3' };
             } catch (err: any) {
                 openaiError = err?.message || String(err);
@@ -395,6 +398,7 @@ const composeIntoWidgetSkill: AgentSkill = {
         if (!res?.text) {
             return { ok: false, text: 'Drafting needs an LLM key — add one in Control Panel → API Keys.', via: 'compose-widget' };
         }
+        recordArtifact({ content: res.text, source: 'skill', title: what.slice(0, 60) }); // P12-3
         const delivered = performWidgetAction(target, 'insert-text', { text: res.text });
         return delivered
             ? { ok: true, text: `Drafted into ${target}:\n\n${res.text.slice(0, 400)}${res.text.length > 400 ? '…' : ''}`, via: 'compose-widget' }

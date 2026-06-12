@@ -428,6 +428,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 380,
         category: 'tools',
     },
+    // P12-7 (gap items 8+9): connections + memory stack + agent context.
+    'connections': {
+        id: 'connections',
+        label: 'Connections & Memory',
+        icon: 'cable',
+        component: lazyWithReload(() => import('../components/Connections/ConnectionsPanel')),
+        minWidth: 460,
+        minHeight: 420,
+        category: 'tools',
+    },
     // Natural-language UI editor (2026-06-12 Ilya): "change the header color
     // to yellow" — Edit-mode panel + click-to-pick; edits persist per-user.
     'ui-editor': {

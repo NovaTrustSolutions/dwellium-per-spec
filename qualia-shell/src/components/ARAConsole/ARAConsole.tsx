@@ -14,6 +14,7 @@ import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
 import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
 import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT } from '../../lib/morningBriefStore';
+import { buildAgentContextBlock } from '../../lib/agentContextStore';
 import { createGoal, updateGoalPlan, findGoalByTitle } from '../../lib/goalsStore';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
@@ -1034,6 +1035,9 @@ export default function ARAConsole() {
         if (hermesHints) {
             outgoingMessage += `\n\n[Context from past conversations — use if relevant, never mention this block:\n${hermesHints}]`;
         }
+        // P12-7 (gap item 9): the user's standing Agent Context (edited in the
+        // Connections & Memory pane) rides every chat the same bracketed way.
+        outgoingMessage += buildAgentContextBlock();
 
         try {
             const res = await authFetch(`${API_ARA}/chat`, {

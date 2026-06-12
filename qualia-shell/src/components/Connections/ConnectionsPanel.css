@@ -1,0 +1,83 @@
+/* ConnectionsPanel — P12-7 connections + memory stack + agent context */
+
+.connpane {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 16px;
+    height: 100%;
+    overflow-y: auto;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.connpane__h {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary, #808080);
+}
+
+.connpane__h svg { color: var(--accent); }
+
+.connpane__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.connpane__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.07));
+    background: var(--surface-2, rgba(255, 255, 255, 0.02));
+}
+
+.connpane__chip { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.connpane__chip--on { background: #22c55e; }
+.connpane__chip--partial { background: #f59e0b; }
+.connpane__chip--off { background: #4b5563; }
+
+.connpane__name { flex: 1; color: var(--text-primary); }
+.connpane__detail { color: var(--text-tertiary, #808080); font-size: 11px; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.connpane__count {
+    min-width: 38px;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.connpane__open {
+    border: 1px solid var(--border-color, #333);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 3px 9px;
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+.connpane__open:hover { border-color: var(--accent); color: var(--text-primary); }
+
+.connpane__hint { margin: 0 0 8px; color: var(--text-tertiary, #808080); font-size: 12px; line-height: 1.5; }
+
+.connpane__context {
+    width: 100%;
+    resize: vertical;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    background: var(--surface-2, rgba(255, 255, 255, 0.04));
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.connpane__stamp { color: var(--text-tertiary, #808080); font-size: 10.5px; }

@@ -2,6 +2,7 @@ import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncE
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { twSyncConfig, pushCapture, pullCaptures } from './thoughtWeaverSync';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import {
     thoughtWeaverStore,
@@ -316,14 +317,19 @@ export default function ThoughtWeaver() {
         // Common: persist locally FIRST (always-persistent ask). Whatever
         // happens with the LLM / backend, the user keeps their thought.
         const persistLocally = (filed_to: string, confidence: number, destination_name: string | null) => {
-            appendLocalCapture({
+            const entry = {
                 id: `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
                 text: thoughtText,
                 filed_to,
                 confidence,
                 destination_name,
                 createdAt: new Date().toISOString(),
-            });
+            };
+            appendLocalCapture(entry);
+            // P11-13: write-through to the user's Supabase (best-effort,
+            // fire-and-forget — local is already the source of truth).
+            const cfg = twSyncConfig(integrations);
+            if (cfg && userId) void pushCapture(cfg, userId, { ...entry, source: 'local' });
         };
 
         // ── 1) Try user-configured LLM first ──
@@ -438,6 +444,29 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
     // Merge backend captures with local ones (local-first, dedupe by id).
     // Local entries always carry source: 'local' so the delete button can
     // be gated on user-owned records.
+    // P11-13: rows pulled from the user's Supabase (phone captures). Merged
+    // as NON-local records (no local delete handle — user-only-delete holds).
+    const [syncedCaptures, setSyncedCaptures] = useState<CaptureEntry[]>([]);
+    useEffect(() => {
+        const cfg = twSyncConfig(integrations);
+        if (!cfg || !userId) return;
+        let alive = true;
+        void pullCaptures(cfg, userId).then(rows => {
+            if (!alive) return;
+            setSyncedCaptures(rows.map(r => ({
+                id: r.id,
+                original_text: r.text,
+                filed_to: r.filed_to,
+                confidence: r.confidence,
+                destination_name: r.destination_name,
+                status: r.filed_to === 'needs_review' ? 'needs_review' : 'filed',
+                createdAt: r.createdAt,
+                source: 'backend' as const,
+            })));
+        });
+        return () => { alive = false; };
+    }, [integrations, userId]);
+
     const mergedCaptures = useMemo<CaptureEntry[]>(() => {
         const local: CaptureEntry[] = localCaptures.map(c => ({
             id: c.id,
@@ -452,14 +481,15 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
         const backend: CaptureEntry[] = captures.map(c => ({ ...c, source: 'backend' as const }));
         const seen = new Set<string>();
         const out: CaptureEntry[] = [];
-        for (const c of [...local, ...backend]) {
+        // local first → a row that exists locally wins (keeps its delete handle)
+        for (const c of [...local, ...backend, ...syncedCaptures]) {
             if (seen.has(c.id)) continue;
             seen.add(c.id);
             out.push(c);
         }
         // Most recent first
         return out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [localCaptures, captures]);
+    }, [localCaptures, captures, syncedCaptures]);
 
     // Local delete handler — backend records can't be removed from here.
     const handleLocalDelete = useCallback((id: string) => {

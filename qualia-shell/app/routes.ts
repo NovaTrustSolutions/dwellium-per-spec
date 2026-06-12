@@ -55,6 +55,10 @@ export default [
     // More specific than the '*' splat below, so /api/* matches here (not the SPA shell),
     // which is what was returning 405 for relative fetch('/api/...') calls in this deployment.
     route('/api/*', 'routes/apiProxy.tsx'),
+    // P11-13: phone-friendly ThoughtWeaver capture page (Supabase-backed;
+    // standalone — no auth shell; config arrives via query once and persists
+    // in the phone's localStorage).
+    route('/capture', 'routes/capture.tsx'),
     index('routes/default.tsx'),
     route('*', 'routes/default.tsx', { id: 'splat' }),
 ] satisfies RouteConfig;

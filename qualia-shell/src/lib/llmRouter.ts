@@ -131,6 +131,37 @@ export function collectMisRoutes(): HermesRunRecord[] {
         .filter(r => r.outcome === 'fail' || (typeof r.rating === 'number' && r.rating < 0));
 }
 
+/* ─── P11-4: auto-re-weighting from mis-routes ─── */
+
+/** Similarity above which a recorded mis-route demotes a matching verdict. */
+export const MISROUTE_SIMILARITY = 0.5;
+
+/**
+ * Negative few-shot: similar past MIS-classifications, rendered as explicit
+ * "NOT <intent>" guidance for the classifier prompt. '' when none apply.
+ */
+export function misRouteWarnings(text: string, k: number = FEWSHOT_K): string {
+    const similar = collectMisRoutes()
+        .map(r => ({ r, sim: similarity(text, r.prompt) }))
+        .filter(x => x.sim > 0)
+        .sort((a, b) => b.sim - a.sim)
+        .slice(0, k);
+    if (!similar.length) return '';
+    const lines = ['Past MIS-routed inputs (these classifications were WRONG — avoid repeating them):'];
+    for (const { r } of similar) lines.push(`- "${r.prompt}" → NOT ${r.summary ?? 'chat'}`);
+    return lines.join('\n');
+}
+
+/**
+ * True when `intent` repeats a recorded mis-classification of a very similar
+ * input — the strongest deterministic demotion available without training:
+ * classifyIntent treats such verdicts as below-threshold (falls through).
+ */
+export function isKnownMisRoute(text: string, intent: RouteIntent): boolean {
+    return collectMisRoutes().some(r =>
+        (r.summary as RouteIntent) === intent && similarity(text, r.prompt) >= MISROUTE_SIMILARITY);
+}
+
 /* ─── LLM leg ─── */
 
 const SYSTEM_PROMPT =
@@ -215,15 +246,21 @@ export async function classifyIntent(text: string, deps: LlmRouterDeps): Promise
     if (invoke) {
         try {
             const fewShot = routerFewShot(t);
+            const warnings = misRouteWarnings(t); // P11-4: negative few-shot
             const raw = await invoke({
-                systemPrompt: SYSTEM_PROMPT + (fewShot ? `\n\n${fewShot}` : ''),
+                systemPrompt: SYSTEM_PROMPT
+                    + (fewShot ? `\n\n${fewShot}` : '')
+                    + (warnings ? `\n\n${warnings}` : ''),
                 prompt: t,
                 maxTokens: 200,
                 temperature: 0,
                 responseFormat: 'json',
             });
             const decision = validateVerdict(extractJson<LlmVerdict>(raw), 'llm');
-            if (decision && decision.confidence >= ROUTER_CONFIDENCE_THRESHOLD) return decision;
+            // P11-4: a verdict repeating a recorded mis-classification of a
+            // very similar input is demoted (treated as below-threshold).
+            if (decision && decision.confidence >= ROUTER_CONFIDENCE_THRESHOLD
+                && !isKnownMisRoute(t, decision.intent)) return decision;
         } catch { /* fall through to next leg */ }
     }
 

@@ -147,3 +147,35 @@ describe('mis-route collection (re-training surface)', () => {
         expect(ROUTER_CONFIDENCE_THRESHOLD).toBe(0.7);
     });
 });
+
+describe('P11-4: auto-re-weighting from mis-routes', () => {
+    it('misRouteWarnings renders similar mis-routes as NOT-guidance', async () => {
+        const { misRouteWarnings } = await import('../lib/llmRouter');
+        recordRoutingDecision('archive the smith lease', { intent: 'skill', confidence: 0.9, via: 'llm' }, false);
+        const block = misRouteWarnings('archive the smith lease file');
+        expect(block).toContain('NOT skill');
+        expect(misRouteWarnings('zz unrelated qq')).toBe('');
+    });
+
+    it('a confident LLM verdict repeating a known mis-route is demoted to the next leg', async () => {
+        const { isKnownMisRoute } = await import('../lib/llmRouter');
+        recordRoutingDecision('archive the smith lease', { intent: 'skill', confidence: 0.9, via: 'llm' }, false);
+        expect(isKnownMisRoute('archive the smith lease', 'skill')).toBe(true);
+        expect(isKnownMisRoute('archive the smith lease', 'command')).toBe(false);
+        const invoke = vi.fn(async () => '{"intent": "skill", "confidence": 0.95}');
+        const d = await classifyIntent('archive the smith lease', { llm: noLlm, invoke });
+        expect(d.via).toBe('heuristic'); // demoted despite 0.95 confidence
+    });
+
+    it('warnings are injected into the classifier prompt', async () => {
+        recordRoutingDecision('archive the smith lease', { intent: 'skill', confidence: 0.9, via: 'llm' }, false);
+        let seenSystem = '';
+        const invoke = vi.fn(async (req: { systemPrompt?: string }) => {
+            seenSystem = req.systemPrompt ?? '';
+            return '{"intent": "command", "confidence": 0.9, "normalized": "open strata"}';
+        });
+        await classifyIntent('archive the smith lease now', { llm: noLlm, invoke });
+        expect(seenSystem).toContain('MIS-routed');
+        expect(seenSystem).toContain('NOT skill');
+    });
+});

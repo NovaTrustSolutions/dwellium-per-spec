@@ -8,6 +8,7 @@ import { parseCommand, stripPoliteness } from '../../lib/dwelliumCommands';
 import { matchSkill, AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
 import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } from '../../lib/agents/spawn';
 import { parseChain, executeChain } from '../../lib/conductorChain';
+import { getSpeechRecognitionCtor, startDictation, type DictationSession } from './araDictation';
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
@@ -359,6 +360,7 @@ export default function ARAConsole() {
     const [micActive, setMicActive] = useState(false);
     const [micTranscribing, setMicTranscribing] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const dictationRef = useRef<DictationSession | null>(null); // P11-8
     const micStreamRef = useRef<MediaStream | null>(null);
 
     // Voice Settings state
@@ -1596,6 +1598,10 @@ export default function ARAConsole() {
     // ── Microphone Voice Input ──────────────────────
     const toggleMic = useCallback(async () => {
         if (micActive) {
+            if (dictationRef.current) { // P11-8: live dictation session
+                dictationRef.current.stop();
+                dictationRef.current = null;
+            }
             if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
                 mediaRecorderRef.current.stop();
             }
@@ -1605,6 +1611,23 @@ export default function ARAConsole() {
             }
             setMicActive(false);
             return;
+        }
+
+        // P11-8: browser-native LIVE dictation first (Web Speech API, same
+        // engine as TranscriptionHub) — keyless, backend-independent, streams
+        // interim text straight into the composer. MediaRecorder→backend
+        // transcription remains the fallback for browsers without it.
+        const SRCtor = getSpeechRecognitionCtor();
+        if (SRCtor) {
+            const session = startDictation(SRCtor, inputRef.current?.value ?? '', {
+                onText: (text) => setInput(text),
+                onEnd: () => { dictationRef.current = null; setMicActive(false); inputRef.current?.focus(); },
+            });
+            if (session) {
+                dictationRef.current = session;
+                setMicActive(true);
+                return;
+            }
         }
 
         try {

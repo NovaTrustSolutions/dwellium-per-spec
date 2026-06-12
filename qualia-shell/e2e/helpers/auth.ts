@@ -49,6 +49,12 @@ export async function loginAs(
         '["Property Management","AI Tools","Filing Cabinet"]',
       );
       localStorage.setItem('qualia_sidebar_icon_only', 'false');
+      // Default-startup-stack (2026-06-11) auto-opens the pinned five on a
+      // fresh EMPTY canvas — exactly what every e2e context is. Seed the
+      // one-shot flag so specs keep their clean-desktop baseline (sister to
+      // the sidebar-groups seed above; its absence broke the axe-baseline
+      // Overview spec on push run 27390457673).
+      localStorage.setItem('dwellium:default-stack:v1', 'done');
     } catch { /* private-mode storage denial */ }
   });
 

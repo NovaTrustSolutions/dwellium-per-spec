@@ -19,7 +19,7 @@
  * 2026-05-26 created.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { testProvider } from '../../lib/llmClient';
@@ -107,6 +107,12 @@ export default function LlmIntegrationsSection() {
             </h4>
             <SearchProvidersCard bundle={integrations} update={update} />
 
+            {/* P11-14: Google (Gmail + Calendar) web OAuth connect */}
+            <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 20, marginBottom: 8 }}>
+                Google (Gmail + Calendar)
+            </h4>
+            <GoogleConnectCard />
+
             {/* Database */}
             <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 20, marginBottom: 8 }}>
                 Databases
@@ -114,6 +120,43 @@ export default function LlmIntegrationsSection() {
             <SupabaseCard bundle={integrations} update={update} />
             <PostgresCard bundle={integrations} update={update} />
         </section>
+    );
+}
+
+// P11-14: Google OAuth connect — backend routes exist (/api/google/oauth/*);
+// the CREDENTIAL BLOCKER (by design): Ilya drops the OAuth client JSON at
+// backend credentials/oauth2-credentials.json, then Connect just works.
+function GoogleConnectCard() {
+    const [status, setStatus] = useState<{ configured: boolean; connected: boolean; blocker?: string } | null>(null);
+    useEffect(() => {
+        let alive = true;
+        fetch(`${API_BASE}/api/google/oauth/status`)
+            .then(r => r.json())
+            .then(j => { if (alive && j?.success) setStatus(j.data); })
+            .catch(() => { if (alive) setStatus(null); });
+        return () => { alive = false; };
+    }, []);
+    return (
+        <div className="cp-integration-card" style={{ marginBottom: 12 }}>
+            <div className="cp-integration-card__header">
+                <span className="cp-integration-card__title">Google Account</span>
+                <span style={{ fontSize: 11, color: status?.connected ? 'var(--accent)' : 'var(--text-tertiary)' }}>
+                    {status === null ? 'backend offline' : status.connected ? 'Connected ✓' : status.configured ? 'Ready to connect' : 'Awaiting credentials'}
+                </span>
+            </div>
+            {status?.configured && !status.connected && (
+                <button
+                    className="cp-btn"
+                    style={{ marginTop: 4 }}
+                    onClick={() => window.open(`${API_BASE}/api/google/oauth/start`, '_blank', 'noopener')}
+                >Connect Google…</button>
+            )}
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
+                {status?.blocker
+                    ? `Setup: ${status.blocker}`
+                    : 'Grants Dwellium Gmail compose/read + Calendar + Drive/Sheets read (the scopes the automation engine already uses).'}
+            </div>
+        </div>
     );
 }
 

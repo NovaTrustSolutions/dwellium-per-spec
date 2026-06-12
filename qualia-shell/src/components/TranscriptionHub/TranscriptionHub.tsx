@@ -517,6 +517,8 @@ export default function TranscriptionHub() {
     const chunkStarterRef = useRef<(() => void) | null>(null);
     /** Claims already queued for fact-check/legal scan (dedupe). */
     const seenClaimsRef = useRef<Set<string>>(new Set());
+    /** Peak RMS within the current chunk window (silence gate). */
+    const chunkPeakRmsRef = useRef(0);
     const streamRef = useRef<MediaStream | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
@@ -866,6 +868,11 @@ export default function TranscriptionHub() {
             }
             const rms = Math.sqrt(sumSquares / bufferLength);
             setAudioLevel(Math.min(1, rms * 4));
+            // 2026-06-12 silence gate: track the LOUDEST moment of the
+            // current chunk window so near-silent chunks are never sent to
+            // Whisper (which hallucinates "Thank you for watching" on
+            // silence — YouTube training-data artifact).
+            if (rms > chunkPeakRmsRef.current) chunkPeakRmsRef.current = rms;
 
             ctx.fillStyle = 'rgba(10, 10, 20, 0.2)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -936,8 +943,14 @@ export default function TranscriptionHub() {
             const [json, cloudJson] = await Promise.all([whisperPromise, cloudPromise]);
 
             if (json.success && json.data.segments) {
-                const newSegs: TranscriptionSegment[] = json.data.segments;
-                setSegments(prev => [...prev, ...newSegs]);
+                // 2026-06-12 defense-in-depth: drop Whisper's well-known
+                // silence hallucinations when they are the ENTIRE segment
+                // (YouTube-outro artifacts; the silence gate upstream should
+                // prevent most, but breath/noise chunks can still slip by).
+                const HALLUCINATIONS = /^(?:\s*(?:thank(?:s| you)(?: for watching)?|please (?:like and )?subscribe|see you (?:next time|in the next video)|bye(?:-bye)?|you|\.)[.!,\s]*)+$/i;
+                const newSegs: TranscriptionSegment[] = (json.data.segments as TranscriptionSegment[])
+                    .filter(s => !HALLUCINATIONS.test(s.text.trim()));
+                if (newSegs.length > 0) setSegments(prev => [...prev, ...newSegs]);
 
                 // Only clear the *interim* live transcript — NOT the final accumulated parts.
                 // Previously this wiped liveFinalParts which erased all live Web Speech words.
@@ -1329,7 +1342,12 @@ export default function TranscriptionHub() {
                 rec.ondataavailable = (e) => { if (e.data.size > 0) parts.push(e.data); };
                 rec.onstop = () => {
                     if (chunkRotateTimerRef.current) { clearTimeout(chunkRotateTimerRef.current); chunkRotateTimerRef.current = null; }
-                    if (parts.length > 0) {
+                    // Silence gate (2026-06-12): a chunk whose loudest moment
+                    // never rose above the floor is silence — Whisper
+                    // hallucinates on it ("Thank you for watching"). Skip it.
+                    const hadSpeech = chunkPeakRmsRef.current >= 0.015;
+                    chunkPeakRmsRef.current = 0; // reset for the next window
+                    if (parts.length > 0 && hadSpeech) {
                         const blob = new Blob(parts, { type: rec.mimeType || mimeType || 'audio/webm' });
                         audioChunksRef.current.push(blob);
                         void sendAudioChunk(blob);

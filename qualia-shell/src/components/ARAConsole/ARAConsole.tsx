@@ -1038,7 +1038,12 @@ export default function ARAConsole() {
                     mode: modeToUse,
                     message: outgoingMessage,
                     sessionId: sessionId.current,
-                    humanize: humanizeEnabled,  // backend hint for future use
+                    humanize: humanizeEnabled,  // P11-10: now HONORED server-side
+                    // P11-10: per-user OpenAI key passthrough — backend uses
+                    // it instead of its env key when present.
+                    ...(integrations.llm.openai?.apiKey && integrations.llm.openai.enabled !== false
+                        ? { userLlmKey: { provider: 'openai', apiKey: integrations.llm.openai.apiKey, model: integrations.llm.openai.model } }
+                        : {}),
                     ...(jurisdictionToUse ? { jurisdiction: jurisdictionToUse } : {}),
                     ...(workspaceContextToUse ? { workspaceContext: workspaceContextToUse } : {}),
                 })
@@ -1384,7 +1389,24 @@ export default function ARAConsole() {
         if (hasActiveLlm(integrations.llm) && looksActionable(text)) {
             try {
                 hermesLearningUserIdHolder.current = user?.id ?? null;
-                const decision = await classifyIntent(text, { llm: integrations.llm });
+                const decision = await classifyIntent(text, {
+                    llm: integrations.llm,
+                    // P11-10: the backend leg exists now (/api/llm/route).
+                    backendClassify: async (t) => {
+                        try {
+                            const res = await authFetch(`${API_BASE}/api/llm/route`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ text: t }),
+                            });
+                            const json = await res.json();
+                            if (json?.success && json.data?.intent) {
+                                return { intent: json.data.intent, confidence: json.data.confidence ?? 0, normalized: json.data.normalized, via: 'backend' as const };
+                            }
+                        } catch { /* leg unavailable */ }
+                        return null;
+                    },
+                });
                 recordRoutingDecision(text, decision);
                 if (decision.via === 'llm' && decision.intent !== 'chat' && decision.normalized
                     && decision.normalized.trim().toLowerCase() !== text.toLowerCase()) {
@@ -1393,7 +1415,7 @@ export default function ARAConsole() {
             } catch { /* classification is best-effort — fall through to chat */ }
         }
         await sendPrompt(text);
-    }, [dispatchTiers, sendPrompt, integrations.llm, user]);
+    }, [dispatchTiers, sendPrompt, integrations.llm, user, authFetch]);
 
     const sendMessage = useCallback(async () => {
         const text = input.trim();

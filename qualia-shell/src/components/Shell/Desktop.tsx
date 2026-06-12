@@ -13,6 +13,7 @@ import Window from '../Window/Window';
 // Widget Registry — single source of truth for all widget components
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAutoOpenHoncho } from './honchoAutoOpen';
+import { DEFAULT_STACK_KEY, DEFAULT_STACK_DONE, DEFAULT_STARTUP_STACK, shouldOpenDefaultStack } from './defaultStack';
 
 import QuickLook from '../QuickLook/QuickLook';
 import ThreadSwitcher from '../Workspace/ThreadSwitcher';
@@ -617,6 +618,32 @@ export default function Desktop() {
             }
         } catch { /* sandboxed / disabled storage — skip auto-open */ }
     }, [openWindow]);
+
+    // ── Default startup stack (Ilya 2026-06-11) ──
+    // First launch with an empty canvas → open the pinned One-Front-Door set
+    // tiled as the default workspace (apply-space handler does the tiling).
+    // One-time flag + empty-canvas guard: returning users' layouts untouched.
+    useEffect(() => {
+        // Two live-found traps (2026-06-11):
+        //  1. The apply-space listener registers in a LATER effect — a
+        //     synchronous dispatch fires before it attaches → defer a tick.
+        //  2. StrictMode double-mount: consuming the flag in the effect body
+        //     + clearing the timer in cleanup meant run 1 burned the flag and
+        //     run 2 no-op'd → decide AND consume INSIDE the timer (no cleanup
+        //     cancel; the duplicate timer no-ops on the consumed flag).
+        try {
+            if (!shouldOpenDefaultStack(localStorage.getItem(DEFAULT_STACK_KEY), windowsRef.current.filter(w => !w.minimized).length)) return;
+        } catch { return; }
+        window.setTimeout(() => {
+            try {
+                if (localStorage.getItem(DEFAULT_STACK_KEY) === DEFAULT_STACK_DONE) return; // another mount won
+                localStorage.setItem(DEFAULT_STACK_KEY, DEFAULT_STACK_DONE);
+                window.dispatchEvent(new CustomEvent('dwellium:apply-space', { detail: { widgets: [...DEFAULT_STARTUP_STACK] } }));
+            } catch { /* sandboxed / disabled storage — skip */ }
+        }, 50);
+        // mount-only by design; windowsRef avoids a stale-closure dep
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // ── Auto-assign new windows to the correct layout region ──
     // Whenever a new window appears and regions are enabled, assign it to the

@@ -1317,7 +1317,32 @@ export default function ARAConsole() {
 
     const sendMessage = useCallback(async () => {
         const text = input.trim();
-        if (!text || isLoading) return;
+        if (!text) return;
+        // Busy guard (2026-06-11 Ilya live-pass finding): while a spawn/chain/
+        // skill run holds isLoading, input used to be SILENTLY swallowed —
+        // "open strata" mid-team-run did nothing with zero feedback. Direct
+        // commands don't touch the LLM, so run them immediately even while
+        // busy; everything else gets an honest "still working" note.
+        if (isLoading) {
+            const busyCmd = parseCommand(text);
+            if (busyCmd) {
+                busyCmd.run();
+                const ack = humanizeCommandAck(busyCmd.label);
+                setMessages(prev => [
+                    ...prev,
+                    createChatMessage({ role: 'user', content: text }),
+                    createChatMessage({ role: 'assistant', content: ack }),
+                ]);
+                setInput('');
+                if (ttsEnabled) void speakText(ack);
+                return;
+            }
+            setMessages(prev => [...prev, createChatMessage({
+                role: 'assistant',
+                content: "One sec — I'm still finishing the last task. I'll take that as soon as it's done (direct commands like \"open strata\" work anytime).",
+            })]);
+            return;
+        }
         // Pass 1 — exact parsers on the raw utterance (zero latency).
         if (await dispatchTiers(text, text)) return;
         // Pass 2 — Phase-10 B2 (heuristic-first, LLM-on-miss per Ilya's 10.6
@@ -1336,7 +1361,7 @@ export default function ARAConsole() {
             } catch { /* classification is best-effort — fall through to chat */ }
         }
         await sendPrompt(input);
-    }, [input, isLoading, dispatchTiers, sendPrompt, integrations.llm, user]);
+    }, [input, isLoading, dispatchTiers, sendPrompt, integrations.llm, user, ttsEnabled, speakText]);
 
     // ⌘K hand-off: the palette routes unparseable queries here ("Ask ARA").
     // Pending-slot covers the palette→ARA-mount race (lazy chunk loading).

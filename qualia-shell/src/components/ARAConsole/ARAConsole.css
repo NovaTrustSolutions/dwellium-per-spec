@@ -880,7 +880,7 @@
     border-radius: 8px;
     padding: 11px 16px;
     color: var(--text-primary);
-    font-size: 13px;
+    font-size: 14px;
     font-family: inherit;
     resize: vertical;
     outline: none;
@@ -2827,9 +2827,12 @@
 }
 .ara-switch--on .ara-switch__knob { transform: translateX(20px); }
 
-/* Resizable chat input (grab-to-grow) */
+/* Resizable chat input (grab-to-grow).
+   2026-06-11 (Ilya): this late rule was shrinking the composer to a 44px
+   sliver — it overrode the base rule's 128px via cascade order. Keep the
+   grab-to-grow affordance but at a comfortable writing height. */
 .ara-input {
     resize: vertical;
-    min-height: 44px;
-    max-height: 260px;
+    min-height: 110px;
+    max-height: 400px;
 }

@@ -631,7 +631,7 @@
 /* --- Draggable Split Divider (6) --- */
 .sidebar__split-divider {
     flex-shrink: 0;
-    height: 12px;
+    height: 14px;
     /* [6] bigger hover area */
     cursor: row-resize;
     position: relative;
@@ -640,17 +640,22 @@
     justify-content: center;
     transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 2;
+    /* 2026-06-11 (Ilya): always-visible separator line so the drag affordance
+       below DOMAINS is discoverable — the 3px floating handle alone was
+       effectively invisible. */
+    border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.10));
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .sidebar__split-divider:hover {
-    background: rgba(var(--accent-rgb, 0, 136, 204), 0.08);
+    background: rgba(var(--accent-rgb, 0, 136, 204), 0.10);
 }
 
 .sidebar__split-divider-handle {
-    width: 32px;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--border-subtle, rgba(255, 255, 255, 0.08));
+    width: 44px;
+    height: 4px;
+    border-radius: 3px;
+    background: var(--text-tertiary, rgba(255, 255, 255, 0.28));
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

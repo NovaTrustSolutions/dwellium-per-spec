@@ -79,7 +79,10 @@ export const sidebarGroupsStore = createLocalStorageStore<Set<string>>(
             const saved = localStorage.getItem(SIDEBAR_GROUPS_KEY);
             if (saved) return new Set(JSON.parse(saved));
         } catch { /* ignore */ }
-        return new Set<string>(); // all collapsed by default
+        // Default arrangement (Ilya 2026-06-11): the daily-driver groups open
+        // out of the box — matches the canonical e2e seed set, so fresh
+        // browsers see the same sidebar the tests (and Ilya) see.
+        return new Set<string>(['Property Management', 'AI Tools', 'Filing Cabinet']);
     },
     new Set<string>(),
 );

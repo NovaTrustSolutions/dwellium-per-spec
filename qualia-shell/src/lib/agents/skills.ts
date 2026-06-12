@@ -23,6 +23,8 @@ import { callLlm } from '../llmClient';
 import { DEFAULT_MODELS } from '../../types/integrations';
 import { recall, remember } from '../unifiedMemory';
 import { performWidgetAction, resolveComposeTarget, lastOpenedWidgetHolder } from '../widgetActions';
+import { API_BASE } from '../../config';
+import { getAuthHeaders } from '../../context/UserContext';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -400,6 +402,46 @@ const composeIntoWidgetSkill: AgentSkill = {
     },
 };
 
+// ── Knowledge Graph (KG arc 2026-06-12: graphify over One Save knowledge) ──
+// Connected per Ilya's spec: ARA skill tier + orchestrator team runs +
+// Stella mirror + Hermes ReAct all consume AGENT_SKILLS, so ONE skill wires
+// the graph into every agent. Honcho/ThoughtWeaver/Hermes/CoPaw feed the
+// corpus on the backend (knowledgeGraphService KG_TYPES).
+const knowledgeGraphSkill: AgentSkill = {
+    id: 'skill-knowledge-graph',
+    name: 'Knowledge Graph',
+    icon: '🕸️',
+    description: 'Query the knowledge graph built from your memories, captures, notes, and tasks ("ask the graph about X").',
+    derivedFrom: 'graphify (github.com/safishamsi/graphify)',
+    requires: 'none',
+    triggers: [
+        /^(?:ask|query|search)\s+(?:the\s+)?(?:knowledge\s+)?graph\s+(?:about\s+|for\s+)?(.+)$/i,
+        /^(?:knowledge\s+)?graph\s*[:,]\s*(.+)$/i,
+        /^what\s+connects\s+(.+)$/i,
+    ],
+    run: async (q, ctx) => {
+        try {
+            const res = await fetchOf(ctx)(`${API_BASE}/api/knowledge-graph/query`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ mode: 'query', q }),
+            });
+            const json = await res.json();
+            if (!json?.success) {
+                return { ok: false, text: json?.error ?? 'Knowledge graph unavailable — try a rebuild in the Knowledge Graph widget.', via: 'knowledge-graph' };
+            }
+            const answer = String(json.data?.answer ?? '').trim();
+            return {
+                ok: true,
+                text: answer || `The graph has nothing connected to "${q}" yet.`,
+                via: 'knowledge-graph',
+            };
+        } catch {
+            return { ok: false, text: 'Knowledge graph backend unreachable — is the backend running?', via: 'knowledge-graph' };
+        }
+    },
+};
+
 export const AGENT_SKILLS: ReadonlyArray<AgentSkill> = [
     calculatorSkill,
     webSearchSkill,
@@ -409,6 +451,7 @@ export const AGENT_SKILLS: ReadonlyArray<AgentSkill> = [
     composeIntoWidgetSkill,
     memoryRecallSkill,
     memoryRememberSkill,
+    knowledgeGraphSkill,
 ];
 
 /** First skill whose trigger matches, with the extracted argument. */

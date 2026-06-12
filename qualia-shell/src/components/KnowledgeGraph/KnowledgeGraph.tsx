@@ -7,12 +7,13 @@
  * double-click to open a document in Scribe. Uses a self-contained force layout
  * (no d3 dependency).
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type CSSProperties } from 'react';
 import { Share2, AlertTriangle } from 'lucide-react';
 import { fetchTree } from '../FileExplorer/fileExplorerApi';
 import type { FileEntry } from '../FileExplorer/FileExplorerCell';
 import { useScribeStore } from '../Scribe/scribeStore';
 import { buildGraph, communities, isolatedNodes, simulate, type GraphNode } from './forceLayout';
+import GraphifyView from './GraphifyView';
 
 const W = 760, H = 470;
 const PALETTE = ['#D6FE51', '#74c4ff', '#ff7a93', '#ffce3a', '#a78bfa', '#22c55e', '#f59e0b', '#22d3ee'];
@@ -24,7 +25,7 @@ function allFiles(tree: FileEntry[]): string[] {
     return out;
 }
 
-export default function KnowledgeGraph() {
+function FilesGraphView() {
     const [tree, setTree] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [offline, setOffline] = useState(false);
@@ -119,4 +120,30 @@ export default function KnowledgeGraph() {
 
 function Center({ text }: { text: string }) {
     return <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: 24, textAlign: 'center' }}>{text}</div>;
+}
+
+/**
+ * KG arc 2026-06-12 (Ilya): the widget now hosts TWO graphs behind tabs —
+ * "Memories & Knowledge" (graphify over One Save knowledge: Honcho,
+ * ThoughtWeaver, Hermes, CoPaw, wiki, tasks…; DEFAULT) and the original
+ * spec-§7.5 "Workspace Files" tag-overlap graph.
+ */
+export default function KnowledgeGraph() {
+    const [tab, setTab] = useState<'knowledge' | 'files'>('knowledge');
+    const tabBtn = (active: boolean): CSSProperties => ({
+        background: 'transparent', border: 'none', cursor: 'pointer', font: 'inherit',
+        fontSize: 12, padding: '8px 12px', color: active ? 'var(--accent)' : 'var(--text-tertiary)',
+        borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+    });
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--bg-desktop)' }}>
+            <div role="tablist" aria-label="Knowledge graph views" style={{ display: 'flex', gap: 4, padding: '0 10px', borderBottom: '1px solid var(--border-color, #222)', flexShrink: 0 }}>
+                <button role="tab" aria-selected={tab === 'knowledge'} style={tabBtn(tab === 'knowledge')} onClick={() => setTab('knowledge')}>Memories &amp; Knowledge</button>
+                <button role="tab" aria-selected={tab === 'files'} style={tabBtn(tab === 'files')} onClick={() => setTab('files')}>Workspace Files</button>
+            </div>
+            <div style={{ flex: 1, minHeight: 0 }}>
+                {tab === 'knowledge' ? <GraphifyView /> : <FilesGraphView />}
+            </div>
+        </div>
+    );
 }

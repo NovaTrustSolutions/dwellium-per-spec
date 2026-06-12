@@ -123,6 +123,15 @@ export const STELLA_TOOL_CATALOG: ReadonlyArray<StellaTool> = [
         action: { kind: 'chat-command', command: 'draft a letter in notepad' },
     },
     {
+        id: 'skill-knowledge-graph',
+        name: 'Knowledge Graph',
+        category: 'AI Skills',
+        description: 'Query the graphify knowledge graph built from your memories, captures, notes, and tasks.',
+        icon: '🕸️',
+        keywords: ['knowledge', 'graph', 'graphify', 'connections', 'memory', 'kg'],
+        action: { kind: 'chat-command', command: 'ask the graph about ' },
+    },
+    {
         id: 'skill-memory-recall',
         name: 'Memory Recall',
         category: 'AI Skills',

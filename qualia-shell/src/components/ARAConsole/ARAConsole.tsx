@@ -1377,6 +1377,18 @@ export default function ARAConsole() {
         return false;
     }, [runSpawn, runSpawnForChain, updateMessageContent, ttsEnabled, speakText, integrations.llm]);
 
+    // KG arc 2026-06-12 (Ilya): the Graph tab opens the Knowledge Graph in a
+    // SPLIT-SCREEN view next to ARA — apply-space restores exactly these two
+    // windows (others minimize), then the tile bus grids them side by side.
+    const openKnowledgeGraphSplit = useCallback(() => {
+        try {
+            window.dispatchEvent(new CustomEvent('dwellium:apply-space', { detail: { widgets: ['ara-console', 'knowledge-graph'] } }));
+            window.setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('dwellium:tile', { detail: { components: ['ara-console', 'knowledge-graph'] } }));
+            }, 350);
+        } catch { /* SSR / sandbox */ }
+    }, []);
+
     // ── The ONE routing pipeline (B2): exact tiers → LLM-on-miss normalized
     // re-dispatch → chat. Shared by the composer AND the ⌘K ara-prompt bus
     // so both doors behave identically.
@@ -1899,6 +1911,16 @@ export default function ARAConsole() {
                             <span className="ara-view-btn__label">{v.label}</span>
                         </button>
                     ))}
+                    <button
+                        type="button"
+                        className="ara-view-btn"
+                        onClick={openKnowledgeGraphSplit}
+                        title="Knowledge Graph — open split-screen with ARA"
+                        aria-label="Knowledge Graph (split screen)"
+                    >
+                        <span aria-hidden>🕸️</span>
+                        <span className="ara-view-btn__label">Graph</span>
+                    </button>
                 </div>
 
                 <div className="ara-mode-status">

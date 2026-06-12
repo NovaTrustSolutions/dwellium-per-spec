@@ -186,6 +186,17 @@ export function applyThemeValue(theme: Theme): void {
 export function applyAccentValue(color: string): void {
     accentColorStore.set(color, () => { try { localStorage.setItem(ACCENT_STORAGE_KEY, color); } catch { /* ignore */ } });
 }
+/** P11-11: '' = "theme default" — clears the custom accent override so the
+ *  active theme's own --accent wins (custom accents silently fought themed
+ *  looks like Terminal·BL4). */
+export function applyAccentReset(): void {
+    accentColorStore.set('', () => {
+        try {
+            localStorage.removeItem(ACCENT_STORAGE_KEY);
+            localStorage.removeItem(LEGACY_ACCENT_STORAGE_KEY);
+        } catch { /* ignore */ }
+    });
+}
 export function applyAnimationsValue(on: boolean): void {
     animationsEnabledStore.set(on, () => { try { localStorage.setItem(ANIMATIONS_STORAGE_KEY, String(on)); } catch { /* ignore */ } });
 }
@@ -267,7 +278,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         // Mirror onto data-theme so the v3 master-pack border/animation selectors
         // ([data-theme="X"] .bento / .bv-* / body.master-glow::after) resolve.
         root.setAttribute('data-theme', theme);
-        root.style.setProperty('--accent', accentColor);
+        // P11-11: '' = theme default — remove the inline override so the
+        // theme's CSS --accent applies; any value = explicit user accent.
+        if (accentColor) root.style.setProperty('--accent', accentColor);
+        else root.style.removeProperty('--accent');
     }, [theme, accentColor]);
 
     // Apply font pairing CSS variables

@@ -69,6 +69,8 @@ export interface DesktopMargins {
 
 export interface LayoutSettings {
     fontFamily: string;
+    /** P11-11: when true the theme's typography wins (fontFamily ignored). */
+    fontFollowsTheme?: boolean;
     fontScale: number;       // 0.8 – 1.4
     uiScale: number;         // 0.75 – 1.5
     gridSize: number;        // 16 – 64 px

@@ -9,7 +9,7 @@
  * "save space Morning", "open strata") to a runnable command.
  */
 import type { Theme } from '../data/types';
-import { applyThemeValue, applyAccentValue, applyAnimationsValue } from '../context/ThemeContext';
+import { applyThemeValue, applyAccentValue, applyAccentReset, applyAnimationsValue } from '../context/ThemeContext';
 import { spacesStore, saveCurrentAsSpace, type DwelliumSpace } from './spacesStore';
 import { recall, remember, type MemoryHit } from './unifiedMemory';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
@@ -176,6 +176,12 @@ export function setTheme(name: string): boolean {
 }
 export function setAccent(color: string): boolean {
     const c = color.trim().toLowerCase();
+    // P11-11: "accent theme default" / "accent default" → clear the override.
+    if (c === 'default' || c === 'theme' || c === 'theme default') {
+        applyAccentReset();
+        toast('Accent → theme default');
+        return true;
+    }
     const hex = /^#?[0-9a-f]{6}$/.test(c) ? (c.startsWith('#') ? c : `#${c}`) : COLOR_NAMES[c];
     if (!hex) { toast(`Unknown color "${color}"`); return false; }
     applyAccentValue(hex);

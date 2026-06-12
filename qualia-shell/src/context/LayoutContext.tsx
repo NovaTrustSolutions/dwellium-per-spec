@@ -158,11 +158,18 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
     // Apply CSS custom properties
     useEffect(() => {
         const root = document.documentElement;
-        const fontStack = FONT_PRESETS[settings.fontFamily] || FONT_PRESETS['Inter'];
-        root.style.setProperty('--font-primary', fontStack);
+        // P11-11: fontFollowsTheme — drop the inline --font-primary override
+        // so the active theme's typography wins (layout fontFamily silently
+        // broke themed looks like Terminal·BL4 before this).
+        if (settings.fontFollowsTheme) {
+            root.style.removeProperty('--font-primary');
+        } else {
+            const fontStack = FONT_PRESETS[settings.fontFamily] || FONT_PRESETS['Inter'];
+            root.style.setProperty('--font-primary', fontStack);
+        }
         root.style.setProperty('--fs-scale', String(settings.fontScale));
         root.style.setProperty('--ui-scale', String(settings.uiScale));
-    }, [settings.fontFamily, settings.fontScale, settings.uiScale]);
+    }, [settings.fontFamily, settings.fontFollowsTheme, settings.fontScale, settings.uiScale]);
 
     const updateSettings = useCallback((partial: Partial<LayoutSettings>) => {
         setSettings(prev => ({ ...prev, ...partial }));

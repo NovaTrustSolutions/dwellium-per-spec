@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { useTheme, THEMES, CUSTOM_TOKENS_KEY } from '../../context/ThemeContext';
+import { useTheme, THEMES, CUSTOM_TOKENS_KEY, applyAccentReset } from '../../context/ThemeContext';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
@@ -264,6 +264,14 @@ export default function ControlPanel() {
                 <div className="cp-field">
                     <label className="cp-label">Accent Color</label>
                     <div className="cp-colors">
+                        {/* P11-11: theme-default reset — custom accents silently
+                            fought themed looks (e.g. Terminal·BL4). */}
+                        <button
+                            className={`cp-color-swatch ${!accentColor ? 'cp-color-swatch--active' : ''}`}
+                            style={{ background: 'transparent', border: '1px dashed var(--text-tertiary)', fontSize: 10, color: 'var(--text-secondary)', width: 'auto', padding: '0 8px' }}
+                            onClick={() => applyAccentReset()}
+                            title="Use the active theme's own accent"
+                        >Theme</button>
                         {ACCENT_PRESETS.map(preset => (
                             <button
                                 key={preset.color}
@@ -313,11 +321,22 @@ export default function ControlPanel() {
                         className="cp-select"
                         value={layoutSettings.fontFamily}
                         onChange={e => updateSettings({ fontFamily: e.target.value })}
+                        disabled={layoutSettings.fontFollowsTheme === true}
                     >
                         {Object.keys(fontPresets).map(name => (
                             <option key={name} value={name}>{name}</option>
                         ))}
                     </select>
+                    {/* P11-11: layout fontFamily silently overrode theme
+                        typography (BL4's voice broke under Roboto). */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 6, cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                        <input
+                            type="checkbox"
+                            checked={layoutSettings.fontFollowsTheme === true}
+                            onChange={e => updateSettings({ fontFollowsTheme: e.target.checked })}
+                        />
+                        Use the theme's font (recommended for themed looks like Terminal·BL4)
+                    </label>
                 </div>
 
                 {/* Font Scale */}

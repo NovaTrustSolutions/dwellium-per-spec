@@ -25,6 +25,14 @@ export interface WindowState {
     maximized: boolean;
     component: string; // key to lookup which component to render
     regionId?: string | null; // which region this window is snapped to
+    /**
+     * P11-15 (Option β beachhead): persistent tab-group membership in the
+     * WINDOW model itself — the structural key the group-based desktop
+     * migrates onto. Carried through saved-layout serialization for free.
+     * The full Desktop cutover is staged (see
+     * Docs/P11_OptionBeta_Findings.md); regions remain the renderer today.
+     */
+    groupId?: string | null;
     isLoading?: boolean;      // shows shimmer bar in titlebar when true
 }
 

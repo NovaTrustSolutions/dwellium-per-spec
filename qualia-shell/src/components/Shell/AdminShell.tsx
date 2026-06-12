@@ -21,6 +21,7 @@
 
 import { useEffect } from 'react';
 import { useHonchoBackgroundRunner } from '../../services/honchoBackgroundRunner';
+import { useApplyUiEdits } from '../../lib/uiEditStore';
 import { LayoutProvider } from '../../context/LayoutContext';
 import { HierarchyProvider } from '../../context/HierarchyContext';
 import { WindowProvider, useWindows } from '../../context/WindowContext';
@@ -37,6 +38,10 @@ function ShellLayout() {
     // Honcho runs in the background while signed in: an autonomous reflection loop
     // that keeps synthesizing over your memories even when the Honcho widget is closed.
     useHonchoBackgroundRunner();
+
+    // Natural-language UI edits (2026-06-12 Ilya): persisted per-user CSS
+    // overrides apply on boot + react to changes — without the panel open.
+    useApplyUiEdits();
 
     // ── Prevent browser back button from crashing the SPA ──
     // The app uses React state for navigation, not URL routing.

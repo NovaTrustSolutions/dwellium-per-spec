@@ -395,6 +395,17 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         component: lazyWithReload(() => import('../components/Notepad/Notepad')),
         category: 'filing',
     },
+    // Natural-language UI editor (2026-06-12 Ilya): "change the header color
+    // to yellow" — Edit-mode panel + click-to-pick; edits persist per-user.
+    'ui-editor': {
+        id: 'ui-editor',
+        label: 'UI Editor',
+        icon: 'paintbrush',
+        component: lazyWithReload(() => import('../components/UiEditor/UiEditorPanel')),
+        minWidth: 420,
+        minHeight: 380,
+        category: 'tools',
+    },
     'template-generator': {
         id: 'template-generator',
         label: 'Template Generator',

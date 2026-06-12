@@ -3,7 +3,7 @@ import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
 import { UserContext } from '../../context/UserContext';
 import { embedAudio, audioBufferToMono16k, trimSilence, shouldEmbed } from './speakerEmbedder';
 import { identifyWithConfidence, type EnrolledSpeaker } from './speakerLibrary';
-import { speakerLibraryStore, speakerLibraryUserIdHolder, addSpeakerSample, autoEnrollUnknown, SPEAKER_RENAMED_EVENT } from './speakerLibraryStore';
+import { speakerLibraryStore, speakerLibraryUserIdHolder, addSpeakerSample, autoEnrollUnknown, renameSpeaker, SPEAKER_RENAMED_EVENT } from './speakerLibraryStore';
 import { createSpeakerSmoother } from './speakerDiarization';
 import { getSpeakerSettings } from './speakerSettings';
 import { LocalVoiceLibrary } from './LocalVoiceLibrary';
@@ -1831,7 +1831,28 @@ export default function TranscriptionHub() {
 
     const saveSpeakerName = () => {
         if (editingSpeaker && editSpeakerValue.trim()) {
-            setSpeakerNames(prev => ({ ...prev, [editingSpeaker]: editSpeakerValue.trim() }));
+            const newName = editSpeakerValue.trim();
+            setSpeakerNames(prev => ({ ...prev, [editingSpeaker]: newName }));
+            // Speaker-Library fix 2026-06-12 (Ilya: "typed my name … couldn't
+            // pull it up"): this editor used to update ONLY a session display
+            // map — the library voiceprint and the SAVED log kept the old
+            // label, so ⌘K name-search found nothing. Renaming here now
+            // propagates everywhere:
+            //  1. the library profile (future sessions auto-label correctly),
+            //     via renameSpeaker → which fires SPEAKER_RENAMED_EVENT →
+            //     remaps live segments + every saved transcription;
+            //  2. when no profile carries this label (e.g. legacy 'User'
+            //     heuristic tags), remap the segments + saved logs directly.
+            const profile = speakerLibraryStore.getSnapshot().find(s => s.label === editingSpeaker);
+            if (profile) {
+                renameSpeaker(profile.id, newName);
+            } else if (editingSpeaker !== newName) {
+                setSegments(prev => prev.map(s => (s.speaker === editingSpeaker ? { ...s, speaker: newName } : s)));
+                setSavedTranscriptions(prev => prev.map(log => ({
+                    ...log,
+                    segments: log.segments.map(s => (s.speaker === editingSpeaker ? { ...s, speaker: newName } : s)),
+                })));
+            }
         }
         setEditingSpeaker(null);
     };

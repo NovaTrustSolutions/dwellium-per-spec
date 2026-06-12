@@ -2836,3 +2836,31 @@
     min-height: 110px;
     max-height: 400px;
 }
+
+/* Full-width composer (Ilya 2026-06-11): standard chat-composer layout —
+   the textarea + send take the FULL first row (input now reaches the
+   panel's left edge), and the 8 icon controls (mic/TTS/humanize/avatar/
+   voice/gender/upload) drop to a slim left-aligned toolbar row beneath.
+   Pure CSS (flex-wrap + order): no JSX reshuffle, all handlers untouched. */
+.ara-input-bar {
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+
+.ara-input-bar > .ara-input {
+    order: 1;
+    flex: 1 1 calc(100% - 64px);
+    min-width: 0;
+}
+
+.ara-input-bar > .ara-send-btn {
+    order: 2;
+    flex: 0 0 auto;
+}
+
+/* Everything that isn't the textarea or send = the controls row. */
+.ara-input-bar > :not(.ara-input):not(.ara-send-btn) {
+    order: 3;
+    flex: 0 0 auto;
+    align-self: center;
+}

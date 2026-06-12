@@ -55,10 +55,13 @@ body {
     background: var(--scrollbar-thumb-hover);
 }
 
-/* [3] Selection — UIX-3: accent bg + black text (fey pattern; white-on-lime was unreadable) */
+/* [3] Selection — 2026-06-12 (Ilya: highlighted text invisible in Scribe on
+   dark themes). The old rule painted SOLID accent + forced #000 text, which
+   went black-on-black whenever the accent (or theme) was dark. Translucent
+   accent + NO color override keeps each theme's own text color visible
+   through the highlight — readable in every theme by construction. */
 ::selection {
-    background: var(--accent);
-    color: var(--text-inverse, #000);
+    background: color-mix(in srgb, var(--accent, #3b82f6) 38%, transparent);
     text-shadow: none;
 }
 

@@ -47,8 +47,14 @@ export const scribeTheme = EditorView.theme(
         '.cm-focused': { outline: 'none' },
         '&.cm-focused': { outline: 'none' },
         '.cm-cursor': { borderLeftColor: '#D6FE51', borderLeftWidth: '2px' },
+        // 2026-06-12 (Ilya): selected text was INVISIBLE — the old global
+        // ::selection forced #000 text while this rule only changed the
+        // background (15% lime over a black editor ⇒ black-on-black). The
+        // global rule no longer touches text color; keep selection text
+        // explicitly white here and raise alpha so the highlight is obvious.
         '.cm-selectionBackground, ::selection': {
-            backgroundColor: 'rgba(214,254,81,0.15) !important',
+            backgroundColor: 'rgba(214,254,81,0.30) !important',
+            color: '#ffffff !important',
         },
         '.cm-gutters': {
             backgroundColor: '#000000',

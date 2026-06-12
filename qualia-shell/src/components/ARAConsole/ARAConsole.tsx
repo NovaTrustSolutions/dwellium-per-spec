@@ -10,6 +10,7 @@ import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } f
 import { parseChain, executeChain } from '../../lib/conductorChain';
 import { getSpeechRecognitionCtor, startDictation, type DictationSession } from './araDictation';
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
+import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
@@ -1382,6 +1383,25 @@ export default function ARAConsole() {
     const routeUtterance = useCallback(async (text: string) => {
         // Pass 1 — exact parsers on the raw utterance (zero latency).
         if (await dispatchTiers(text, text)) return;
+        // Pass 1.5 — 2026-06-12 (Ilya): "Ara, review the Markdown file open"
+        // reads the doc focused in Scribe directly — no copy-paste. Sits
+        // BEFORE the intent classifier so "review the open file" can't be
+        // misrouted to a widget command, and degrades honestly when Scribe
+        // has nothing open.
+        if (detectsOpenDocRequest(text)) {
+            const doc = getActiveScribeDoc();
+            if (doc) {
+                await sendPrompt(buildOpenDocPrompt(text, doc));
+            } else {
+                setMessages(prev => [
+                    ...prev,
+                    createChatMessage({ role: 'user', content: text }),
+                    createChatMessage({ role: 'assistant', content: NO_OPEN_DOC_MESSAGE }),
+                ]);
+                if (ttsEnabled) void speakText(NO_OPEN_DOC_MESSAGE);
+            }
+            return;
+        }
         // Pass 2 — Phase-10 B2 (heuristic-first, LLM-on-miss per Ilya's 10.6
         // call): classify fuzzy-but-actionable inputs with llmRouter and
         // re-dispatch the normalized form through the same tiers. Questions /
@@ -1415,7 +1435,7 @@ export default function ARAConsole() {
             } catch { /* classification is best-effort — fall through to chat */ }
         }
         await sendPrompt(text);
-    }, [dispatchTiers, sendPrompt, integrations.llm, user, authFetch]);
+    }, [dispatchTiers, sendPrompt, integrations.llm, user, authFetch, ttsEnabled, speakText]);
 
     const sendMessage = useCallback(async () => {
         const text = input.trim();

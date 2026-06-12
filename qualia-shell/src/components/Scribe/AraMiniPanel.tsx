@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { buildContextWarning, sumTokens } from '../../lib/contextWindow';
+import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 
 interface Msg {
     id: string;
@@ -61,11 +62,23 @@ export function AraMiniPanel() {
             }]);
             return;
         }
+        // 2026-06-12 (Ilya): "review the markdown file open" reads the active
+        // Scribe doc directly — no copy-paste. Honest reply when nothing's open.
+        let prompt = text.trim();
+        if (detectsOpenDocRequest(prompt)) {
+            const doc = getActiveScribeDoc();
+            if (doc) {
+                prompt = buildOpenDocPrompt(prompt, doc);
+            } else {
+                setMessages(prev => [...prev, { id: `s-${Date.now()}`, role: 'assistant', content: NO_OPEN_DOC_MESSAGE }]);
+                return;
+            }
+        }
         setBusy(true);
         try {
             const res = await callLlm({
                 systemPrompt: SYSTEM_PROMPT,
-                prompt: text.trim(),
+                prompt,
                 maxTokens: 800,
                 temperature: 0.4,
             }, integrations.llm);

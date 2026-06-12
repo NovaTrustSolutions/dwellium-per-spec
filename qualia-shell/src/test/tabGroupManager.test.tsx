@@ -71,6 +71,35 @@ describe('TabGroupManager', () => {
         expect(tabGroupStore.getSnapshot()).toHaveLength(0);
     });
 
+    it('P11-2: dropping a window-grip drag onto a group adds the tab', () => {
+        createGroup('Drop Target', ['scribe']);
+        render(<TabGroupManager openWindows={[]} onClose={() => { }} />);
+        const row = screen.getByText('Drop Target').closest('li')!;
+        const dataTransfer = {
+            types: ['application/x-dwellium-widget'],
+            getData: (t: string) => (t === 'application/x-dwellium-widget'
+                ? JSON.stringify({ widgetType: 'notepad', title: 'Notepad' }) : ''),
+            dropEffect: '',
+        };
+        fireEvent.dragOver(row, { dataTransfer });
+        fireEvent.drop(row, { dataTransfer });
+        expect(tabGroupStore.getSnapshot()[0].componentIds).toEqual(['scribe', 'notepad']);
+    });
+
+    it('P11-2: dropping a region-tab drag resolves the window id via openWindows', () => {
+        createGroup('Drop Target', ['scribe']);
+        render(<TabGroupManager openWindows={[{ id: 'win-7', component: 'inbox', title: 'Inbox Zero' }]} onClose={() => { }} />);
+        const row = screen.getByText('Drop Target').closest('li')!;
+        const dataTransfer = {
+            types: ['text/tab-window-id'],
+            getData: (t: string) => (t === 'text/tab-window-id' ? 'win-7' : ''),
+            dropEffect: '',
+        };
+        fireEvent.dragOver(row, { dataTransfer });
+        fireEvent.drop(row, { dataTransfer });
+        expect(tabGroupStore.getSnapshot()[0].componentIds).toEqual(['scribe', 'inbox']);
+    });
+
     it('dedupes open windows by component in the candidate list', () => {
         render(<TabGroupManager openWindows={[...OPEN_WINDOWS, { component: 'scribe', title: 'Scribe' }]} onClose={() => { }} />);
         expect(screen.getAllByLabelText(/Include Scribe/)).toHaveLength(1);

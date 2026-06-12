@@ -109,6 +109,21 @@
 
 .tgm__btn--danger:hover { background: rgba(239, 68, 68, 0.25); }
 
+/* P11-2: drag-a-tab-onto-a-group hover affordance */
+.tgm__drop-hover {
+    outline: 2px dashed var(--accent, #3b82f6);
+    outline-offset: 2px;
+    border-radius: 8px;
+    background: rgba(var(--accent-rgb, 59, 130, 246), 0.06);
+}
+
+.tgm__hint {
+    font-size: 9px;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-tertiary, #808080);
+}
+
 .tgm__region-select {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);

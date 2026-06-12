@@ -15,6 +15,33 @@ import './TabGroupManager.css';
 export interface OpenWindowInfo {
     component: string;
     title: string;
+    /** Window id — lets region-tab drags (text/tab-window-id) resolve to a component. */
+    id?: string;
+}
+
+const WIDGET_MIME = 'application/x-dwellium-widget';
+const TAB_WID_MIME = 'text/tab-window-id';
+
+/** Resolve a drag payload (window ⤴ grip OR region tab) to a component id. */
+function componentFromDrag(dt: DataTransfer, openWindows: OpenWindowInfo[]): string | null {
+    try {
+        const widget = dt.getData(WIDGET_MIME);
+        if (widget) {
+            const parsed = JSON.parse(widget);
+            if (typeof parsed?.widgetType === 'string') return parsed.widgetType;
+        }
+        const wid = dt.getData(TAB_WID_MIME);
+        if (wid) {
+            const win = openWindows.find(w => w.id === wid);
+            if (win) return win.component;
+        }
+    } catch { /* malformed payload */ }
+    return null;
+}
+
+function isGroupDrag(dt: DataTransfer): boolean {
+    const types = [...(dt.types || [])];
+    return types.includes(WIDGET_MIME) || types.includes(TAB_WID_MIME);
 }
 
 interface Props {
@@ -23,7 +50,8 @@ interface Props {
 }
 
 export default function TabGroupManager({ openWindows, onClose }: Props) {
-    const { groups, createGroup, renameGroup, deleteGroup, applyGroup, removeTabFromGroup } = useTabGroups();
+    const { groups, createGroup, renameGroup, deleteGroup, applyGroup, addTabToGroup, removeTabFromGroup } = useTabGroups();
+    const [dropHover, setDropHover] = useState<string | null>(null); // group id or 'new'
     const [title, setTitle] = useState('');
     const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
     const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -62,8 +90,26 @@ export default function TabGroupManager({ openWindows, onClose }: Props) {
                 <button className="tgm__close" onClick={onClose} aria-label="Close tab groups panel">✕</button>
             </div>
 
-            <div className="tgm__section">
-                <div className="tgm__section-label">New group from open windows</div>
+            <div
+                className={`tgm__section ${dropHover === 'new' ? 'tgm__drop-hover' : ''}`}
+                onDragOver={e => {
+                    if (!isGroupDrag(e.dataTransfer)) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                    setDropHover('new');
+                }}
+                onDragLeave={() => setDropHover(h => (h === 'new' ? null : h))}
+                onDrop={e => {
+                    setDropHover(null);
+                    const component = componentFromDrag(e.dataTransfer, openWindows);
+                    if (!component) return;
+                    e.preventDefault();
+                    // P11-2: dropping a tab/window here pre-selects it for the
+                    // new group (name it, hit Group).
+                    setSelected(prev => new Set(prev).add(component));
+                }}
+            >
+                <div className="tgm__section-label">New group from open windows <span className="tgm__hint">(or drag a tab here)</span></div>
                 {candidates.length === 0 ? (
                     <div className="tgm__empty">No open windows to group.</div>
                 ) : (
@@ -105,7 +151,24 @@ export default function TabGroupManager({ openWindows, onClose }: Props) {
                 ) : (
                     <ul className="tgm__groups">
                         {groups.map(g => (
-                            <li key={g.id} className="tgm__group">
+                            <li
+                                key={g.id}
+                                className={`tgm__group ${dropHover === g.id ? 'tgm__drop-hover' : ''}`}
+                                onDragOver={e => {
+                                    if (!isGroupDrag(e.dataTransfer)) return;
+                                    e.preventDefault();
+                                    e.dataTransfer.dropEffect = 'copy';
+                                    setDropHover(g.id);
+                                }}
+                                onDragLeave={() => setDropHover(h => (h === g.id ? null : h))}
+                                onDrop={e => {
+                                    setDropHover(null);
+                                    const component = componentFromDrag(e.dataTransfer, openWindows);
+                                    if (!component) return;
+                                    e.preventDefault();
+                                    addTabToGroup(g.id, component); // P11-2: drag-a-tab-onto-a-group
+                                }}
+                            >
                                 <div className="tgm__group-row">
                                     {renamingId === g.id ? (
                                         <input

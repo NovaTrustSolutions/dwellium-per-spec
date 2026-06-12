@@ -1048,7 +1048,7 @@ export default function Desktop() {
             {/* Phase-10 C2: tab-group CRUD panel (Option α — rides existing region tabs) */}
             {isGroupPanelOpen && (
                 <TabGroupManager
-                    openWindows={windows.filter(w => !w.minimized).map(w => ({ component: w.component, title: w.title }))}
+                    openWindows={windows.filter(w => !w.minimized).map(w => ({ id: w.id, component: w.component, title: w.title }))}
                     onClose={() => setIsGroupPanelOpen(false)}
                 />
             )}

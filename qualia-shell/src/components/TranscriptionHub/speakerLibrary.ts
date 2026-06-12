@@ -18,6 +18,9 @@ export interface EnrolledSpeaker {
     centroid: number[];
     /** How many samples have been folded into the centroid. */
     sampleCount: number;
+    /** Speaker-Library 2026-06-12: auto-captured from an unrecognized voice
+     *  (provisional "Unknown Speaker N" label awaiting a user-assigned name). */
+    auto?: boolean;
     createdAt: string;
     updatedAt: string;
 }

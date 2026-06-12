@@ -3,7 +3,7 @@ import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
 import { UserContext } from '../../context/UserContext';
 import { embedAudio, audioBufferToMono16k, trimSilence, shouldEmbed } from './speakerEmbedder';
 import { identifyWithConfidence, type EnrolledSpeaker } from './speakerLibrary';
-import { speakerLibraryStore, speakerLibraryUserIdHolder } from './speakerLibraryStore';
+import { speakerLibraryStore, speakerLibraryUserIdHolder, addSpeakerSample, autoEnrollUnknown, SPEAKER_RENAMED_EVENT } from './speakerLibraryStore';
 import { createSpeakerSmoother } from './speakerDiarization';
 import { getSpeakerSettings } from './speakerSettings';
 import { LocalVoiceLibrary } from './LocalVoiceLibrary';
@@ -1170,9 +1170,57 @@ export default function TranscriptionHub() {
         const detail = embedding
             ? identifyWithConfidence(embedding, enrolledRef.current, { threshold: settings.threshold, margin: settings.margin })
             : null;
-        const smoothed = smootherRef.current.push(detail?.match?.label ?? 'Unknown');
+        // Speaker-Library 2026-06-12 (Ilya): cross-session matching without
+        // manual enrollment —
+        //  (a) CONFIDENT MATCH → fold this sample into the voiceprint (the
+        //      profile keeps improving with every conversation);
+        //  (b) CLEAR MISS (no profile is even close) → auto-capture a
+        //      provisional "Unknown Speaker N" profile, so the same person
+        //      auto-matches next week; assign their real name in the library.
+        //      Borderline scores enroll nothing (no library pollution).
+        let label = detail?.match?.label ?? 'Unknown';
+        if (embedding && detail) {
+            if (detail.match && detail.best && detail.best.score >= settings.threshold + 0.05) {
+                addSpeakerSample(detail.match.id, embedding);
+            } else if (!detail.match && (!detail.best || detail.best.score < settings.threshold - 0.1)) {
+                label = autoEnrollUnknown(embedding).label;
+            }
+        }
+        const smoothed = smootherRef.current.push(label);
         tag(smoothed, embedding ?? undefined);
     }, []);
+
+    // Speaker-Library 2026-06-12: renaming a speaker in the library remaps
+    // the label across the LIVE session AND all SAVED transcriptions — so
+    // searching the new name finds the old conversations.
+    useEffect(() => {
+        const handler = (ev: Event) => {
+            const { oldLabel, newLabel } = (ev as CustomEvent<{ oldLabel: string; newLabel: string }>).detail || {};
+            if (!oldLabel || !newLabel) return;
+            setSegments(prev => prev.map(s => (s.speaker === oldLabel ? { ...s, speaker: newLabel } : s)));
+            setSavedTranscriptions(prev => prev.map(log => ({
+                ...log,
+                segments: log.segments.map(s => (s.speaker === oldLabel ? { ...s, speaker: newLabel } : s)),
+            })));
+        };
+        window.addEventListener(SPEAKER_RENAMED_EVENT, handler);
+        return () => window.removeEventListener(SPEAKER_RENAMED_EVENT, handler);
+    }, []);
+
+    // Speaker-Library 2026-06-12: ⌘K deep-link — open a saved transcription
+    // by id (the palette's transcript search results land here).
+    useEffect(() => {
+        const handler = (ev: Event) => {
+            const id = (ev as CustomEvent<{ logId?: string }>).detail?.logId;
+            if (!id) return;
+            const entry = savedTranscriptions.find(log => log.id === id);
+            if (entry) loadTranscription(entry);
+        };
+        window.addEventListener('dwellium:open-transcription-log', handler);
+        return () => window.removeEventListener('dwellium:open-transcription-log', handler);
+        // loadTranscription is a stable in-component fn; resubscribe on log changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [savedTranscriptions]);
 
     // ---- MOONSHINE AI TRANSCRIPTION ----
     const startMoonshine = useCallback(async () => {

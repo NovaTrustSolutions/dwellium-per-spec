@@ -6,6 +6,7 @@ import { API_BASE } from '../../config';
 import { getIcon } from '../Sidebar/iconMap';
 import { parseCommand, recallMemory, type ParsedCommand } from '../../lib/dwelliumCommands';
 import { requestAraPrompt } from '../../lib/llmRouter';
+import { searchTranscriptions, type TranscriptHit } from '../../lib/transcriptSearch';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -57,7 +58,7 @@ interface InboxMessageItem {
     updatedAt?: string;
 }
 
-type CommandResultKind = 'command' | 'memory' | 'widget' | 'window' | 'task' | 'inbox' | 'file' | 'note';
+type CommandResultKind = 'command' | 'memory' | 'widget' | 'window' | 'task' | 'inbox' | 'file' | 'note' | 'transcript';
 
 interface CommandResult {
     id: string;
@@ -95,9 +96,10 @@ const KIND_LABELS: Record<CommandResultKind, string> = {
     inbox: 'Inbox',
     file: 'Document',
     note: 'Note',
+    transcript: 'Transcript',
 };
 
-const SECTION_ORDER: CommandResultKind[] = ['command', 'window', 'widget', 'memory', 'task', 'inbox', 'file', 'note'];
+const SECTION_ORDER: CommandResultKind[] = ['command', 'window', 'widget', 'memory', 'task', 'inbox', 'file', 'note', 'transcript'];
 const SECTION_TITLES: Record<CommandResultKind, string> = {
     command: 'Command',
     memory: 'Memory',
@@ -107,6 +109,7 @@ const SECTION_TITLES: Record<CommandResultKind, string> = {
     inbox: 'Inbox Messages',
     file: 'Documents',
     note: 'Notes',
+    transcript: 'Audio Transcripts',
 };
 const SECTION_LIMITS: Record<CommandResultKind, number> = {
     command: 3,
@@ -117,6 +120,7 @@ const SECTION_LIMITS: Record<CommandResultKind, number> = {
     inbox: 6,
     file: 6,
     note: 5,
+    transcript: 5,
 };
 
 interface ResultSection {
@@ -796,8 +800,19 @@ export default function CommandPalette() {
         const memoryResults: CommandResult[] = (queryValue.length >= 3 ? recallMemory(queryValue) : [])
             .slice(0, 6)
             .map(h => ({ id: `memory:${h.id}`, kind: 'memory', score: 28 + h.score, icon: 'brain', title: h.text.slice(0, 90), subtitle: `Memory · ${h.source}`, meta: h.source, reason: 'recall', actionLabel: 'Open Honcho', payload: h }));
+        // Speaker-Library 2026-06-12: saved audio transcriptions, searchable
+        // by SPEAKER NAME (rank boost), title, or spoken text.
+        const transcriptResults: CommandResult[] = (queryValue.length >= 2 ? searchTranscriptions(queryValue) : [])
+            .map(h => ({
+                id: `transcript:${h.id}`, kind: 'transcript' as const,
+                score: h.speakerMatch ? 34 : 24,
+                icon: 'mic', title: h.title,
+                subtitle: h.speakerMatch ? `Spoken by ${h.speakerMatch}` : (h.snippet || 'Audio transcript'),
+                meta: 'transcription', reason: h.speakerMatch ? 'speaker match' : 'text match',
+                actionLabel: 'Open Transcript', payload: h,
+            }));
 
-        const merged = [...commandResults, ...askAraResults, ...windowResults, ...widgetResults, ...memoryResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
+        const merged = [...commandResults, ...askAraResults, ...windowResults, ...widgetResults, ...memoryResults, ...transcriptResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
             .sort((a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
@@ -894,6 +909,15 @@ export default function CommandPalette() {
             const task = result.payload as TaskItem;
             openWindow('tasks', 'Tasks', 'check-square');
             dispatchDeferred('qualia-taskmenu-focus-task', { taskId: task.id, title: task.title });
+            closePalette();
+            return;
+        }
+
+        if (result.kind === 'transcript') {
+            // Speaker-Library 2026-06-12: open the saved transcription.
+            const hit = result.payload as TranscriptHit;
+            openWindow('transcription', 'Transcription Hub', 'mic');
+            dispatchDeferred('dwellium:open-transcription-log', { logId: hit.id }, 400);
             closePalette();
             return;
         }

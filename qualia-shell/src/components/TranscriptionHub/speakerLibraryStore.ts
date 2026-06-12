@@ -80,13 +80,48 @@ export function addSpeakerSample(id: string, embedding: number[]): void {
     ));
 }
 
+/** Window event fired on rename so transcripts can retro-relabel segments. */
+export const SPEAKER_RENAMED_EVENT = 'dwellium:speaker-renamed';
+
 /** User correction: rename a speaker (the label the conversation links to). */
 export function renameSpeaker(id: string, label: string): void {
     const trimmed = label.trim();
     if (!trimmed) return;
+    const oldLabel = speakerLibraryStore.getSnapshot().find(s => s.id === id)?.label;
     persist(speakerLibraryStore.getSnapshot().map(s =>
-        s.id === id ? { ...s, label: trimmed, updatedAt: new Date().toISOString() } : s,
+        s.id === id ? { ...s, label: trimmed, auto: false, updatedAt: new Date().toISOString() } : s,
     ));
+    // Speaker-Library 2026-06-12: renames flow into PAST transcripts too —
+    // "search a person's name, get their conversations" requires old logs to
+    // carry the new name. TranscriptionHub listens and remaps live + saved.
+    if (oldLabel && oldLabel !== trimmed) {
+        try {
+            window.dispatchEvent(new CustomEvent(SPEAKER_RENAMED_EVENT, { detail: { oldLabel, newLabel: trimmed } }));
+        } catch { /* SSR / sandbox */ }
+    }
+}
+
+/**
+ * Speaker-Library 2026-06-12: auto-capture an UNRECOGNIZED voice as a
+ * provisional profile ("Unknown Speaker N") so the same person auto-matches
+ * in a future session even without manual enrollment — rename it in the
+ * library whenever you learn who it is.
+ */
+export function autoEnrollUnknown(embedding: number[]): EnrolledSpeaker {
+    const existing = speakerLibraryStore.getSnapshot();
+    const autoCount = existing.filter(s => s.auto || /^Unknown Speaker \d+$/.test(s.label)).length;
+    const now = new Date().toISOString();
+    const speaker: EnrolledSpeaker = {
+        id: newId(),
+        label: `Unknown Speaker ${autoCount + 1}`,
+        centroid: l2normalize(embedding),
+        sampleCount: 1,
+        auto: true,
+        createdAt: now,
+        updatedAt: now,
+    };
+    persist([...existing, speaker]);
+    return speaker;
 }
 
 /** Remove an enrolled speaker (user-owned; only the user deletes their voiceprints). */

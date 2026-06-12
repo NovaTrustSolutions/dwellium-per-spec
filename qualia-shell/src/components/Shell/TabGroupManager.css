@@ -1,0 +1,177 @@
+/* TabGroupManager — Phase-10 C2 (Option α). Glass-panel styling consistent
+   with the desktop layout toolbar; theme-variable driven for BL4 cohesion. */
+
+.tgm {
+    position: absolute;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 9991;
+    width: 300px;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: rgba(15, 15, 25, 0.85);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px;
+    color: var(--text-primary, #e8e8e8);
+    font-size: 12px;
+    box-shadow: -4px 0 18px rgba(0, 0, 0, 0.35);
+}
+
+.tgm__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.tgm__title {
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--text-secondary, #b9b9c0);
+}
+
+.tgm__close {
+    background: none;
+    border: none;
+    color: var(--text-secondary, #b9b9c0);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.tgm__close:hover { background: rgba(255, 255, 255, 0.08); }
+
+.tgm__section { margin-bottom: 12px; }
+
+.tgm__section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary, #808080);
+    margin-bottom: 6px;
+}
+
+.tgm__empty { color: var(--text-tertiary, #808080); padding: 4px 0; }
+
+.tgm__candidates {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.tgm__candidate {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 2px;
+    cursor: pointer;
+}
+
+.tgm__create-row { display: flex; gap: 6px; }
+
+.tgm__input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: inherit;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+
+.tgm__input--rename { flex: 1; }
+
+.tgm__btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: inherit;
+    padding: 5px 9px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.tgm__btn:hover { background: rgba(255, 255, 255, 0.12); }
+
+.tgm__btn--primary {
+    background: rgba(var(--accent-rgb, 59, 130, 246), 0.35);
+    border-color: rgba(var(--accent-rgb, 59, 130, 246), 0.5);
+}
+
+.tgm__btn--primary:disabled { opacity: 0.45; cursor: default; }
+
+.tgm__btn--danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+.tgm__groups { list-style: none; margin: 0; padding: 0; }
+
+.tgm__group { padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+
+.tgm__group-row { display: flex; align-items: center; gap: 6px; }
+
+.tgm__group-name {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: inherit;
+    text-align: left;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.tgm__group-name:hover { background: rgba(255, 255, 255, 0.08); }
+
+.tgm__count {
+    font-size: 10px;
+    color: var(--text-tertiary, #808080);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 0 6px;
+}
+
+.tgm__tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+
+.tgm__tab-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-secondary, #b9b9c0);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 1px 6px;
+}
+
+.tgm__chip-x {
+    background: none;
+    border: none;
+    color: var(--text-tertiary, #808080);
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 11px;
+}
+
+.tgm__chip-x:hover { color: #ef4444; }
+
+.tgm__close:focus-visible,
+.tgm__btn:focus-visible,
+.tgm__group-name:focus-visible,
+.tgm__chip-x:focus-visible,
+.tgm__input:focus-visible,
+.tgm__candidate input:focus-visible {
+    outline: 2px solid var(--accent, #3b82f6);
+    outline-offset: 2px;
+}

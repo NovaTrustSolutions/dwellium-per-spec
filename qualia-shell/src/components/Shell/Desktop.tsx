@@ -16,6 +16,7 @@ import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAu
 
 import QuickLook from '../QuickLook/QuickLook';
 import ThreadSwitcher from '../Workspace/ThreadSwitcher';
+import TabGroupManager from './TabGroupManager';
 import './Desktop.css';
 
 /** Suspense fallback for lazy-loaded widgets */
@@ -931,6 +932,8 @@ export default function Desktop() {
     };
 
     const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
+    // Phase-10 C2 (Option α): named tab-group CRUD panel.
+    const [isGroupPanelOpen, setIsGroupPanelOpen] = useState(false);
 
     return (
         <div
@@ -998,8 +1001,28 @@ export default function Desktop() {
                             transition: 'all 0.15s',
                         }}>{p.label}</button>
                     ))}
+                    {/* Phase-10 C2: named tab groups (Option α) */}
+                    <button
+                        title="Tab Groups"
+                        aria-label="Toggle tab groups panel"
+                        onClick={() => setIsGroupPanelOpen(o => !o)}
+                        style={{
+                            padding: '6px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer',
+                            fontSize: '11px', fontWeight: 500, letterSpacing: '0.5px', whiteSpace: 'nowrap',
+                            color: isGroupPanelOpen ? '#fff' : 'rgba(255,255,255,0.5)',
+                            background: isGroupPanelOpen ? 'rgba(59,130,246,0.4)' : 'transparent',
+                            transition: 'all 0.15s', borderTop: '1px solid rgba(255,255,255,0.08)',
+                        }}>⊟ Groups</button>
                 </div>
             </div>
+
+            {/* Phase-10 C2: tab-group CRUD panel (Option α — rides existing region tabs) */}
+            {isGroupPanelOpen && (
+                <TabGroupManager
+                    openWindows={windows.filter(w => !w.minimized).map(w => ({ component: w.component, title: w.title }))}
+                    onClose={() => setIsGroupPanelOpen(false)}
+                />
+            )}
 
             {/* Region overlays — dashed cell borders only show while actively
                 editing layout (dragging/resizing), invisible in normal use

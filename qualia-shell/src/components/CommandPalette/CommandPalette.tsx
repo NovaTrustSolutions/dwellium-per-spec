@@ -7,6 +7,7 @@ import { getIcon } from '../Sidebar/iconMap';
 import { parseCommand, recallMemory, type ParsedCommand } from '../../lib/dwelliumCommands';
 import { requestAraPrompt } from '../../lib/llmRouter';
 import { searchTranscriptions, type TranscriptHit } from '../../lib/transcriptSearch';
+import { hiddenWidgetsStore } from '../../lib/hiddenWidgetsStore';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -762,7 +763,13 @@ export default function CommandPalette() {
         const queryValue = query.trim();
         const openComponents = new Set(windows.map(w => w.component));
 
-        const widgetResults: CommandResult[] = rankWidgetSearchResults(dockItems, queryValue || 'open tools', openComponents)
+        // 2026-06-12 (Ilya): hidden widgets (e.g. retired Terminal) don't
+        // surface in ⌘K rows either — the deliberate door is the COMMAND
+        // tier ("open terminal" still parses via dwelliumCommands).
+        const hiddenSet = new Set(hiddenWidgetsStore.getSnapshot());
+        const visibleDockItems = dockItems.filter(item => !hiddenSet.has(item.component));
+
+        const widgetResults: CommandResult[] = rankWidgetSearchResults(visibleDockItems, queryValue || 'open tools', openComponents)
             .slice(0, queryValue ? 10 : 6)
             .map(match => ({
                 id: `widget:${match.item.id}`,

@@ -8,7 +8,7 @@ import { rankWidgetSearchResults, WidgetSearchMatch } from './widgetSearch';
 import { getIcon, isLucideKey } from './iconMap';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import SpacesSwitcher from './SpacesSwitcher';
-import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce } from '../../lib/hiddenWidgetsStore';
+import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce, hideTerminalOnce } from '../../lib/hiddenWidgetsStore';
 import { useGridLock } from '../../hooks/useGridLock';
 import { Lock, Unlock } from 'lucide-react';
 import './Sidebar.css';
@@ -273,7 +273,8 @@ export default function Sidebar() {
     }, [windows, closeWindow]);
 
     // Heavy fold: retire the standalone agent widgets into the Agent Lab once.
-    useEffect(() => { foldStandaloneAgentsOnce(); }, []);
+    // 2026-06-12 (Ilya): Terminal retired to hidden-feature status the same way.
+    useEffect(() => { foldStandaloneAgentsOnce(); hideTerminalOnce(); }, []);
 
     // Layout UI State
     const [saveFlash, setSaveFlash] = useState(false);

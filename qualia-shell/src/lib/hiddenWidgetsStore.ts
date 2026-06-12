@@ -68,6 +68,25 @@ export function foldStandaloneAgentsOnce(): void {
     } catch { /* */ }
 }
 
+/**
+ * Terminal retirement — 2026-06-12 (Ilya): "disable the Terminal and all its
+ * tabs for now... make terminal a hidden feature." One-shot hide mirroring
+ * foldStandaloneAgentsOnce; the HIDDEN DOORS that remain are deliberate:
+ * ARA/⌘K "open terminal" (dwelliumCommands alias) and re-adding from the
+ * sidebar's "+ Add widget" gallery.
+ */
+const TERMINAL_HIDE_FLAG = 'dwellium-terminal-hidden-v1';
+
+export function hideTerminalOnce(): void {
+    if (typeof window === 'undefined') return;
+    try { if (localStorage.getItem(TERMINAL_HIDE_FLAG)) return; } catch { return; }
+    hideWidget('terminal');
+    try {
+        localStorage.setItem(TERMINAL_HIDE_FLAG, '1');
+        window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Terminal tucked away — tell ARA “open terminal” when you need it.' }));
+    } catch { /* */ }
+}
+
 /** Subscribe to the hidden-widgets list (re-renders the sidebar on change). */
 export function useHiddenWidgets(): string[] {
     return useSyncExternalStore(

@@ -29,7 +29,9 @@ export const DEFAULT_SPACES: DwelliumSpace[] = [
     { id: 'manage', name: 'Manage', icon: 'layout', widgets: ['strata-dashboard', 'astra-dashboard', 'tenant-portal-mgmt', 'task-board'], builtin: true },
     { id: 'research', name: 'Research', icon: 'search', widgets: ['notebooklm-context', 'fact-check-log', 'transcription', 'content-search'], builtin: true },
     { id: 'comms', name: 'Comms', icon: 'mail', widgets: ['inbox', 'honcho', 'ara-console'], builtin: true },
-    { id: 'build', name: 'Build', icon: 'wrench', widgets: ['terminal', 'automation-hub', 'universal-shell'], builtin: true },
+    // 2026-06-12 (Ilya): Terminal retired to hidden-feature status — out of
+    // the Build space (re-add deliberately via "open terminal" if needed).
+    { id: 'build', name: 'Build', icon: 'wrench', widgets: ['automation-hub', 'universal-shell'], builtin: true },
 ];
 
 const KEY = 'dwellium-spaces';
@@ -45,11 +47,22 @@ function deserialize(raw: string | null): DwelliumSpace[] {
     try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-            const valid = parsed.filter(isSpace);
+            const valid = parsed.filter(isSpace).map(stripRetiredFromBuiltin);
             if (valid.length > 0) return valid;
         }
     } catch { /* ignore */ }
     return DEFAULT_SPACES;
+}
+
+/**
+ * Terminal retirement migration (2026-06-12 Ilya): saved BUILTIN spaces from
+ * before the retirement still carry 'terminal' — strip it so applying Build
+ * doesn't resurrect the hidden widget. User-CREATED spaces are untouched
+ * (adding terminal to your own space is a deliberate act).
+ */
+function stripRetiredFromBuiltin(space: DwelliumSpace): DwelliumSpace {
+    if (!space.builtin || !space.widgets.includes('terminal')) return space;
+    return { ...space, widgets: space.widgets.filter(w => w !== 'terminal') };
 }
 
 export const spacesStore = withSyncStatic(

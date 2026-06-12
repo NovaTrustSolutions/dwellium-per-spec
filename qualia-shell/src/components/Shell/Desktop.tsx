@@ -844,7 +844,9 @@ export default function Desktop() {
                     updateSettings({ regionLayout: 'halves-h', regionsEnabled: true });
                     rects = getRegionRects('halves-h', desktopSize.w, desktopSize.h);
                 }
-                const region = rects[0];
+                // P11-1: optional regionId targets a region in the CURRENT
+                // layout; unknown/absent → first region (previous behavior).
+                const region = (detail.regionId && rects.find(r => r.id === detail.regionId)) || rects[0];
                 if (region) {
                     openedIds.forEach(id => assignWindowToRegion(id, region.id, windows));
                     setActiveRegionTab(region.id, openedIds[0]);

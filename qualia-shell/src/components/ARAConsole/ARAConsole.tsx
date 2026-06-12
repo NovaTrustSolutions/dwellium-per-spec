@@ -12,7 +12,8 @@ import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingA
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { findPersona } from '../../lib/agents/personas';
-import { hermesLearningUserIdHolder, recordRun, relevantPastRuns, formatFewShot, rateRun } from '../HonchoHermesPanel/hermesLearningStore';
+import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun } from '../HonchoHermesPanel/hermesLearningStore';
+import { useSyncExternalStore } from 'react';
 import { araFewShot, recordAraChat } from './araHermes';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
@@ -1229,11 +1230,22 @@ export default function ARAConsole() {
     // ── Phase-10 A2: 👍/👎 on ARA answers trains Hermes ───────────────────
     // 👍 (+1) boosts the run in future few-shot ranking; 👎 (−1) excludes it
     // from ARA hints entirely (filtered at the araHermes layer).
-    const [hermesVotes, setHermesVotes] = useState<Record<string, 1 | -1>>({});
+    // P11-1 (2026-06-12): voted-state derives from the Hermes STORE rating
+    // instead of session-local useState — chips no longer reset visually
+    // between sessions while the rating persists underneath.
+    const hermesRuns = useSyncExternalStore(
+        hermesLearningStore.subscribe,
+        hermesLearningStore.getSnapshot,
+        hermesLearningStore.getServerSnapshot,
+    );
+    const hermesVotes = useMemo(() => {
+        const map: Record<string, number> = {};
+        for (const r of hermesRuns) if (typeof r.rating === 'number') map[r.id] = r.rating;
+        return map;
+    }, [hermesRuns]);
     const voteOnMessage = useCallback((runId: string, value: 1 | -1) => {
         hermesLearningUserIdHolder.current = user?.id ?? null;
         rateRun(runId, value);
-        setHermesVotes(prev => ({ ...prev, [runId]: value }));
     }, [user]);
 
     // ── Conductor tier dispatch (Phase-10 B2 refactor) ─────────────────────

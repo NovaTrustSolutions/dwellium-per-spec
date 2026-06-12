@@ -142,16 +142,30 @@ export function reorderTab(id: string, from: number, to: number): void {
 
 /* ─── Materialization (Option α: ride the existing region/tab machinery) ─── */
 
+/** Region choices the picker offers (resolved against the CURRENT layout by
+ *  Desktop's handler; ids not present in the active layout fall back to the
+ *  first region). */
+export const GROUP_REGION_CHOICES: ReadonlyArray<{ id: string; label: string }> = [
+    { id: '', label: 'Auto' },
+    { id: 'left', label: 'Left' },
+    { id: 'right', label: 'Right' },
+    { id: 'tl', label: 'Top-left' },
+    { id: 'tr', label: 'Top-right' },
+    { id: 'bl', label: 'Bottom-left' },
+    { id: 'br', label: 'Bottom-right' },
+];
+
 /**
  * Open a group on the canvas: its widgets stack as browser-style tabs in one
  * region via the existing apply-space tabbed bus (additive — does not
- * minimize other windows; Desktop.tsx owns placement).
+ * minimize other windows; Desktop.tsx owns placement). P11-1: optional
+ * regionId targets a specific region ('' / unknown id → handler's default).
  */
-export function applyGroup(group: TabGroup): void {
+export function applyGroup(group: TabGroup, regionId?: string): void {
     if (group.componentIds.length === 0) return;
     try {
         window.dispatchEvent(new CustomEvent('dwellium:apply-space', {
-            detail: { widgets: group.componentIds, mode: 'tabbed' },
+            detail: { widgets: group.componentIds, mode: 'tabbed', ...(regionId ? { regionId } : {}) },
         }));
         window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Opened group "${group.title}"` }));
     } catch { /* SSR / sandbox */ }

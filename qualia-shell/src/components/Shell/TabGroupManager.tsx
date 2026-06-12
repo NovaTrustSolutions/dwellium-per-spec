@@ -8,7 +8,7 @@
  * this is the plan's MVP CRUD surface.
  */
 import { useState } from 'react';
-import { useTabGroups } from '../../lib/tabGroupStore';
+import { useTabGroups, GROUP_REGION_CHOICES } from '../../lib/tabGroupStore';
 import { widgetLabel } from '../../lib/dwelliumCommands';
 import './TabGroupManager.css';
 
@@ -28,6 +28,8 @@ export default function TabGroupManager({ openWindows, onClose }: Props) {
     const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
+    // P11-1: per-group region target ('' = Auto/first region).
+    const [regionTargets, setRegionTargets] = useState<Record<string, string>>({});
 
     const toggle = (component: string) => {
         setSelected(prev => {
@@ -121,7 +123,7 @@ export default function TabGroupManager({ openWindows, onClose }: Props) {
                                     ) : (
                                         <button
                                             className="tgm__group-name"
-                                            onClick={() => applyGroup(g)}
+                                            onClick={() => applyGroup(g, regionTargets[g.id] || undefined)}
                                             title={`Open "${g.title}" as tabs`}
                                             aria-label={`Open group ${g.title} (${g.componentIds.length} tabs)`}
                                         >
@@ -129,6 +131,17 @@ export default function TabGroupManager({ openWindows, onClose }: Props) {
                                             <span className="tgm__count">{g.componentIds.length}</span>
                                         </button>
                                     )}
+                                    <select
+                                        className="tgm__region-select"
+                                        value={regionTargets[g.id] ?? ''}
+                                        onChange={e => setRegionTargets(prev => ({ ...prev, [g.id]: e.target.value }))}
+                                        aria-label={`Target region for group ${g.title}`}
+                                        title="Region to open this group in (Auto = first region of the current layout)"
+                                    >
+                                        {GROUP_REGION_CHOICES.map(c => (
+                                            <option key={c.id || 'auto'} value={c.id}>{c.label}</option>
+                                        ))}
+                                    </select>
                                     <button
                                         className="tgm__btn"
                                         onClick={() => { setRenamingId(g.id); setRenameValue(g.title); }}

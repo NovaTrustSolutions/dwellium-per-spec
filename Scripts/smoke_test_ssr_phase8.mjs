@@ -66,7 +66,10 @@ const QUALIA_SHELL_DIR = pathResolve(__dirname, '..', 'qualia-shell');
 // anchors the lookup at qualia-shell/node_modules/.
 const qualiaShellRequire = createRequire(join(QUALIA_SHELL_DIR, 'package.json'));
 const { chromium } = qualiaShellRequire('playwright');
-const PORT = parseInt(process.env.SMOKE_TEST_PORT ?? '3000', 10);
+// P11-1 (2026-06-12): default 3000 → 3210 — the live Dwellium backend holds
+// :3000 in local dev, so the old default false-FAILed (probe hit the backend,
+// 404/139 B; Phase-10 closure finding #1). CI has nothing on :3210 either.
+const PORT = parseInt(process.env.SMOKE_TEST_PORT ?? '3210', 10);
 const TIMEOUT_MS = parseInt(process.env.SMOKE_TEST_TIMEOUT_MS ?? '30000', 10);
 const SKIP_BUILD = process.env.SMOKE_TEST_SKIP_BUILD === 'true';
 const SERVER_URL = `http://localhost:${PORT}/`;

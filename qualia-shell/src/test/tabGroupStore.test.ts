@@ -102,6 +102,18 @@ describe('applyGroup materialization (Option α bus)', () => {
         });
     });
 
+    it('P11-1: optional regionId rides the event for per-region targeting', () => {
+        const handler = vi.fn();
+        window.addEventListener('dwellium:apply-space', handler);
+        try {
+            const g = createGroup('Targeted', ['scribe']);
+            applyGroup(g, 'tr');
+        } finally {
+            window.removeEventListener('dwellium:apply-space', handler);
+        }
+        expect((handler.mock.calls[0][0] as CustomEvent).detail).toMatchObject({ mode: 'tabbed', regionId: 'tr' });
+    });
+
     it('empty groups are a no-op', () => {
         const handler = vi.fn();
         window.addEventListener('dwellium:apply-space', handler);

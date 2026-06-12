@@ -8,6 +8,12 @@
 import { useState } from 'react';
 import { useSystemHealth } from '../../hooks/useSystemHealth';
 import { useWindows } from '../../context/WindowContext';
+// 2026-06-12 (Ilya: "AI services split screen"): the banner rendered UNSTYLED
+// as a full-height flex column because this stylesheet was only imported by
+// the SystemHealth WIDGET (lazy chunk) — never loaded until the widget was
+// opened. Importing here keeps the banner the compact fixed toast it was
+// designed to be: message + "Open System Health", nothing more.
+import './SystemHealth.css';
 
 export default function SystemHealthBanner() {
     const { summary, checking } = useSystemHealth();

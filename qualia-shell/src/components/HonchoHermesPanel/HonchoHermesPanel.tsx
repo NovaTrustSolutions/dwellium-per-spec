@@ -12,6 +12,7 @@ import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
 import { hermesLearningUserIdHolder, rateRun } from './hermesLearningStore';
 import { memoryStore, memoryUserIdHolder, addLocalMemory, deleteLocalMemory } from './honchoMemoryStore';
 import { runHermes } from './hermesRunner';
+import { buildReactLoopFn, mergedToolNames } from './hermesReact';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { runSkillForInput, describeSkillsForPrompt, AGENT_SKILLS } from '../../lib/agents/skills';
@@ -287,13 +288,17 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
         // + record-back into the LOCAL learning store all live there.
         const run = await runHermes(task, {
             authFetch,
-            toolNames: hermesTools.map(t => t.name),
-            // LibreChat skills arc: when the backend can't serve the run,
-            // try a browser-side skill, then the user's own LLM key.
+            // P11-6: ONE registry — backend tools + browser skills rank and
+            // weight together.
+            toolNames: mergedToolNames(hermesTools.map(t => t.name)),
+            // Offline chain (P11-6 order): direct skill match (instant) →
+            // multi-step ReAct loop (reason→act→observe on the user's key) →
+            // single-shot LLM.
             skillFallbackFn: async (t) => {
                 const hit = await runSkillForInput(t, { llm: integrations.llm });
                 return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
             },
+            reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,
             llmFallbackFn: async (t, fewShot) => {
                 if (!hasActiveLlm(integrations.llm)) return null;
                 const res = await callLlm({

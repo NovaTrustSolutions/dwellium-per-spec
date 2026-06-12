@@ -23,7 +23,8 @@ import type { DreamEntry } from './honchoDreamStore';
 import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
 import { hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
 import { parseHermesCommand, spawnHermesFromStella } from './stellaHermesSpawn';
-import { matchSkill } from '../../lib/agents/skills';
+import { matchSkill, runSkillForInput } from '../../lib/agents/skills';
+import { buildReactLoopFn, mergedToolNames } from '../HonchoHermesPanel/hermesReact';
 import {
     filterTools,
     groupByCategory,
@@ -583,7 +584,13 @@ export default function StellaAgent() {
         try {
             const { reply } = await spawnHermesFromStella(task, {
                 authFetch,
-                toolNames: hermesTools.map((t: any) => t.name),
+                // P11-6: merged registry + offline chain (skill → ReAct → LLM)
+                toolNames: mergedToolNames(hermesTools.map((t: any) => t.name)),
+                skillFallbackFn: async (t) => {
+                    const hit = await runSkillForInput(t, { llm: integrations.llm });
+                    return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
+                },
+                reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,
             });
             setMessages(prev => [...prev, {
                 id: `assistant-${Date.now()}`, role: 'assistant', content: reply, timestamp: Date.now(),

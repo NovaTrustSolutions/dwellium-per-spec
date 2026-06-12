@@ -76,7 +76,7 @@ function truncate(s: string, n: number): string {
     return t.length > n ? `${t.slice(0, n - 1)}…` : t;
 }
 
-export interface SpawnHermesDeps extends Pick<RunHermesDeps, 'authFetch' | 'toolNames' | 'now' | 'record' | 'endpoint'> {
+export interface SpawnHermesDeps extends Pick<RunHermesDeps, 'authFetch' | 'toolNames' | 'now' | 'record' | 'endpoint' | 'skillFallbackFn' | 'reactLoopFn' | 'llmFallbackFn'> {
     /** Injectable runner (defaults to the shared `runHermes`). */
     run?: (task: string, deps: RunHermesDeps) => Promise<HermesRunResult>;
 }
@@ -101,6 +101,10 @@ export async function spawnHermesFromStella(task: string, deps: SpawnHermesDeps)
         now: deps.now,
         record: deps.record,
         endpoint: deps.endpoint,
+        // P11-6: offline chain passthrough (skill → ReAct loop → LLM).
+        skillFallbackFn: deps.skillFallbackFn,
+        reactLoopFn: deps.reactLoopFn,
+        llmFallbackFn: deps.llmFallbackFn,
     });
     return { result, reply: formatHermesReply(result) };
 }

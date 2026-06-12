@@ -52,8 +52,9 @@ export interface HermesRunResult {
     recordId?: string;
     /** Error message when the network/parse failed. */
     error?: string;
-    /** Which path produced the result (LibreChat skills arc 2026-06-10). */
-    via?: 'backend' | 'skill' | 'llm' | 'none';
+    /** Which path produced the result (LibreChat skills arc 2026-06-10;
+     *  'react' = P11-6 multi-step browser loop). */
+    via?: 'backend' | 'skill' | 'react' | 'llm' | 'none';
 }
 
 /** Minimal `fetch`-shaped function (UserContext.authFetch satisfies this). */
@@ -86,6 +87,12 @@ export interface RunHermesDeps {
      */
     skillFallbackFn?: (task: string) => Promise<{ ok: boolean; text: string; skillName: string } | null>;
     llmFallbackFn?: (task: string, fewShot: string) => Promise<string | null>;
+    /**
+     * P11-6: multi-step ReAct loop (reason → act via browser skills →
+     * observe → repeat) on the user's LLM key. Tried AFTER the direct skill
+     * match (free + instant) and BEFORE the single-shot LLM fallback.
+     */
+    reactLoopFn?: (task: string, fewShot: string) => Promise<{ steps: HermesRunStep[]; result: string; ok: boolean; toolsUsed: string[] } | null>;
 }
 
 /**
@@ -131,7 +138,7 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
     let outcome: 'success' | 'fail' = 'fail';
     let usedTools: string[] = [];
     let error: string | undefined;
-    let via: 'backend' | 'skill' | 'llm' | 'none' = 'none';
+    let via: 'backend' | 'skill' | 'react' | 'llm' | 'none' = 'none';
 
     /** Offline chain: browser-side skill → user's own LLM key. */
     const tryFallbacks = async (reason: string): Promise<void> => {
@@ -146,6 +153,18 @@ export async function runHermes(task: string, deps: RunHermesDeps): Promise<Herm
                     return;
                 }
             } catch { /* fall through to LLM */ }
+        }
+        if (deps.reactLoopFn) {
+            try {
+                const loop = await deps.reactLoopFn(task, fewShot);
+                if (loop && loop.ok) {
+                    steps.push({ type: 'thought', content: `Backend unavailable (${reason}) — running the multi-step browser loop.`, timestamp: now() });
+                    steps.push(...loop.steps);
+                    result = loop.result; outcome = 'success'; via = 'react';
+                    usedTools = loop.toolsUsed; error = undefined;
+                    return;
+                }
+            } catch { /* fall through to single-shot LLM */ }
         }
         if (deps.llmFallbackFn) {
             try {

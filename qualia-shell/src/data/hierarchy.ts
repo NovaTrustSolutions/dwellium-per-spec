@@ -39,6 +39,16 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-honcho', label: 'Honcho', icon: 'brain-circuit', component: 'honcho', pinned: true, group: 'AI Tools' },
    { id: 'dock-memory-graph-rag', label: 'Cognitive M Network', icon: 'earth', component: 'memory-graph-rag', pinned: true, group: 'AI Tools' },
    { id: 'dock-system-health', label: 'System Health', icon: 'layout-grid', component: 'system-health', pinned: true, group: 'AI Tools' },
+   // P12 findability fix (2026-06-12): the gap-arc widgets were registered but
+   // absent here — and BOTH the sidebar gallery AND ⌘K widget rows read dock
+   // items, so they were reachable only by spoken command. The dock store
+   // merges new defaults into saved layouts, so these appear for existing users.
+   { id: 'dock-mission-control', label: 'Mission Control', icon: 'target', component: 'mission-control', pinned: true, group: 'AI Tools' },
+   { id: 'dock-ai-spend', label: 'AI Spend', icon: 'coins', component: 'ai-spend', pinned: true, group: 'AI Tools' },
+   { id: 'dock-artifact-gallery', label: 'Artifacts', icon: 'layers', component: 'artifact-gallery', pinned: true, group: 'AI Tools' },
+   { id: 'dock-connections', label: 'Connections & Memory', icon: 'cable', component: 'connections', pinned: true, group: 'AI Tools' },
+   { id: 'dock-knowledge-graph', label: 'Knowledge Graph', icon: 'network', component: 'knowledge-graph', pinned: true, group: 'AI Tools' },
+   { id: 'dock-ui-editor', label: 'UI Editor', icon: 'paintbrush', component: 'ui-editor', pinned: true, group: 'AI Tools' },
    // ── Filing Cabinet ──
    { id: 'dock-hierarchy', label: 'Explorer', icon: 'folder-tree', component: 'hierarchy-browser', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-tasks', label: 'Tasks', icon: 'check-square', component: 'tasks', pinned: true, group: 'Filing Cabinet' },

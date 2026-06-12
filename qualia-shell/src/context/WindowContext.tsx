@@ -190,6 +190,26 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     const dockItemsRef = useRef(dockItems);
     dockItemsRef.current = dockItems;
 
+    // P12 findability fix (2026-06-12): NEW default dock items must reach
+    // EXISTING users no matter which path hydrated the list. The read-time
+    // merge above only covers the localStorage leg — One Save hydration
+    // replaces the snapshot with the backend copy (which predates new
+    // widgets), silently dropping them (empirically observed: gap-arc
+    // widgets invisible in sidebar + ⌘K). This effect reconciles on every
+    // dockItems change: any default id absent from the live list is
+    // appended (user order/pins untouched), then persisted via the normal
+    // composite path so One Save re-syncs the fixed list.
+    useEffect(() => {
+        const have = new Set(dockItems.map(i => i.id));
+        const missing = defaultDockItems.filter(d => !have.has(d.id));
+        if (missing.length === 0) return;
+        setDockItems(prev => {
+            const ids = new Set(prev.map(i => i.id));
+            const add = defaultDockItems.filter(d => !ids.has(d.id));
+            return add.length > 0 ? [...prev, ...add] : prev;
+        });
+    }, [dockItems, setDockItems]);
+
     // Named Layouts State — dynamic per-user.id key via factory Option β
     const savedLayoutsKey = user ? `qualia_saved_layouts_${user.id}` : 'qualia_saved_layouts_guest';
     const savedLayouts = useSyncExternalStore(

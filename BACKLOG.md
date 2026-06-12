@@ -4,6 +4,12 @@ Things we've explicitly decided to do *later*. Newest first.
 
 ---
 
+## ✅ P11 "everything" arc — CLOSED 2026-06-12 (15 clusters, single overnight run, per Ilya "do not stop until all items fixed")
+
+All Phase-10 carry-forwards + 🟠 capability gaps + 🟡/🟢 housekeeping resolved (media weight SKIPPED per Ilya gate; BL4 default stays opt-in per gate). Frontend `641ce3e`→`04566cc` (14 commits, vitest 1198→1238); backend `8527b59`+`ce0cc90` (committed, NOT pushed). Highlights: drag-to-group + per-region targeting; spawn-in-chain ("then"-split preserves and-in-goal); mis-route auto-re-weighting (negative few-shot + similarity demotion); skills EXECUTE in team runs + Stella; Hermes multi-step ReAct loop + merged tool registry; **widget-action bus** ("open notepad and draft a letter in it" works end-to-end); ARA live dictation (Web Speech); Gemini image fallback + Tavily/Brave search providers; backend humanize/no-UI-powers-guard/user-key-passthrough//api/llm/route//test-postgres; BL4 font-follows-theme + accent theme-default (live token audit: ALL ≥ WCAG AA); **Strata chunk 1,047→414 KB (−60%)**; ThoughtWeaver phone sync (Supabase `thought_weaver_captures` on Mind Engine + `/capture` route); Google web-OAuth flow scaffolded to the credential blocker. **Option β: beachhead (WindowState.groupId) + 5-stage cutover plan at `Docs/P11_OptionBeta_Findings.md` — bail invoked per attempt-with-bail gate.** THREE stale ledger items caught (.gitignore, TW persistent-half, Google auth layer — all already shipped). **Remaining blockers for Ilya:** Google OAuth client JSON (instructions in card/503); Supabase config in Control Panel for TW sync to activate; TranscriptionHub 2.36 MB chunk (new largest — follow-up); backend push decision.
+
+---
+
 ## ☐ Optimization & ease-of-use sweep — *added 2026-06-10 (UI/skills/theme session)*
 
 Unfinished items surfaced across the Fey-UI, ARA/skills, Hermes, and Terminal·BL4 arcs. Grouped by urgency.

@@ -1186,7 +1186,7 @@ export default function ARAConsole() {
             // P11-5: equipped skills execute during member tasks.
             runSkill: async (skillInput, skillIds) => {
                 const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
-                const r = await runSkillForInput(skillInput, { llm: integrations.llm, search: integrations.search }, catalog);
+                const r = await runSkillForInput(skillInput, { llm: integrations.llm }, catalog);
                 return r && r.ok ? { name: r.skill.name, text: r.text } : null;
             },
         };
@@ -1271,7 +1271,7 @@ export default function ARAConsole() {
             // P11-5: equipped skills execute during member tasks.
             runSkill: async (skillInput, skillIds) => {
                 const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
-                const r = await runSkillForInput(skillInput, { llm: integrations.llm, search: integrations.search }, catalog);
+                const r = await runSkillForInput(skillInput, { llm: integrations.llm }, catalog);
                 return r && r.ok ? { name: r.skill.name, text: r.text } : null;
             },
         };
@@ -1318,7 +1318,7 @@ export default function ARAConsole() {
             setInput('');
             setIsLoading(true);
             try {
-                const outcomes = await executeChain(chain, { llm: integrations.llm, search: integrations.search }, (i, o) => {
+                const outcomes = await executeChain(chain, { llm: integrations.llm }, (i, o) => {
                     const icon = o.ok ? '✓' : '⚠';
                     updateMessageContent(progress.id, c => `${c}\n\n${icon} **Step ${i + 1}** — ${o.text}`);
                 }, runSpawnForChain); // P11-3: spawn steps run the orchestrator
@@ -1351,7 +1351,7 @@ export default function ARAConsole() {
             setInput('');
             setIsLoading(true);
             try {
-                const result = await skillHit.skill.run(skillHit.arg, { llm: integrations.llm, search: integrations.search });
+                const result = await skillHit.skill.run(skillHit.arg, { llm: integrations.llm });
                 setMessages(prev => [...prev, createChatMessage({
                     role: 'assistant',
                     content: `${result.text}\n\nWhat would you like me to do next?`,

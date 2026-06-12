@@ -88,10 +88,10 @@ describe('skill execution', () => {
         expect(r?.ok).toBe(true);
         expect(r?.text).toContain('4821');
     });
-    it('image gen explains what is missing without an OpenAI key', async () => {
+    it('image gen explains what is missing without an image key (P11-9: OpenAI or Gemini)', async () => {
         const r = await runSkillForInput('generate an image of a cat', { llm: NO_LLM });
         expect(r?.ok).toBe(false);
-        expect(r?.text).toMatch(/OpenAI key/i);
+        expect(r?.text).toMatch(/OpenAI or Gemini key/i);
     });
 });
 

@@ -587,7 +587,7 @@ export default function StellaAgent() {
                 // P11-6: merged registry + offline chain (skill → ReAct → LLM)
                 toolNames: mergedToolNames(hermesTools.map((t: any) => t.name)),
                 skillFallbackFn: async (t) => {
-                    const hit = await runSkillForInput(t, { llm: integrations.llm, search: integrations.search });
+                    const hit = await runSkillForInput(t, { llm: integrations.llm });
                     return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
                 },
                 reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,
@@ -621,7 +621,7 @@ export default function StellaAgent() {
             setInput('');
             setIsTyping(true);
             try {
-                const result = await skillHit.skill.run(skillHit.arg, { llm: integrations.llm, search: integrations.search });
+                const result = await skillHit.skill.run(skillHit.arg, { llm: integrations.llm });
                 setMessages(prev => [...prev, {
                     id: `assistant-${Date.now()}`, role: 'assistant',
                     content: result.text, timestamp: Date.now(),

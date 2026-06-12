@@ -101,6 +101,12 @@ export default function LlmIntegrationsSection() {
             <LocalCard bundle={integrations} update={update} />
             <CustomCard bundle={integrations} update={update} />
 
+            {/* P11-9: live web search (the non-Anthropic path) */}
+            <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 20, marginBottom: 8 }}>
+                Web Search
+            </h4>
+            <SearchProvidersCard bundle={integrations} update={update} />
+
             {/* Database */}
             <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 20, marginBottom: 8 }}>
                 Databases
@@ -108,6 +114,36 @@ export default function LlmIntegrationsSection() {
             <SupabaseCard bundle={integrations} update={update} />
             <PostgresCard bundle={integrations} update={update} />
         </section>
+    );
+}
+
+// P11-9: Tavily / Brave keys give Web Search a live path that doesn't need
+// an Anthropic key (skills.ts cascade: Anthropic → Tavily → Brave → LLM).
+function SearchProvidersCard({ bundle, update }: CardProps) {
+    const cfg = bundle.search || { active: null as 'tavily' | 'brave' | null };
+    const tavily = cfg.tavily || { apiKey: '', enabled: true };
+    const brave = cfg.brave || { apiKey: '', enabled: true };
+    const set = (patch: Partial<NonNullable<typeof bundle.search>>) => update(b => ({
+        ...b,
+        search: { active: cfg.active ?? null, tavily, brave, ...patch },
+    }));
+    return (
+        <div className="cp-integration-card" style={{ marginBottom: 12 }}>
+            <div className="cp-integration-card__header">
+                <span className="cp-integration-card__title">Search Providers (Tavily / Brave)</span>
+            </div>
+            <div className="cp-field" style={{ marginBottom: 8 }}>
+                <label className="cp-label">Tavily API Key</label>
+                <ApiKeyInput value={tavily.apiKey} onChange={v => set({ tavily: { ...tavily, apiKey: v } })} placeholder="tvly-…" />
+            </div>
+            <div className="cp-field">
+                <label className="cp-label">Brave Search API Key</label>
+                <ApiKeyInput value={brave.apiKey} onChange={v => set({ brave: { ...brave, apiKey: v } })} placeholder="BSA…" />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
+                Used by the Web Search skill when no Anthropic key is configured (or its live search fails). Tavily is tried first.
+            </div>
+        </div>
     );
 }
 

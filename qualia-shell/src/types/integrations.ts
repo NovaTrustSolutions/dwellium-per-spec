@@ -165,6 +165,12 @@ export interface IntegrationsBundle {
     };
     supabase?: SupabaseConfig;
     postgres?: PostgresConfig;
+    /** P11-9: live web-search providers — the non-Anthropic search path. */
+    search?: {
+        active: 'tavily' | 'brave' | null;
+        tavily?: { apiKey: string; enabled: boolean };
+        brave?: { apiKey: string; enabled: boolean };
+    };
     /** Storage backends — where the user's local data can be backed up. */
     storage?: {
         googleDrive?: GoogleDriveConfig;
@@ -186,6 +192,7 @@ export function emptyIntegrations(): IntegrationsBundle {
     return {
         llm: { active: null },
         google: {},
+        search: { active: null },
         tests: {},
     };
 }

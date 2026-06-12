@@ -72,7 +72,7 @@ export default function AgentLab() {
         // web-searches) — output feeds the member prompt as evidence.
         runSkill: async (input, skillIds) => {
             const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
-            const r = await runSkillForInput(input, { llm: integrations.llm, search: integrations.search }, catalog);
+            const r = await runSkillForInput(input, { llm: integrations.llm }, catalog);
             return r && r.ok ? { name: r.skill.name, text: r.text } : null;
         },
     }), [integrations.llm]);

@@ -28,6 +28,8 @@ import { performWidgetAction, resolveComposeTarget, lastOpenedWidgetHolder } fro
 
 export interface SkillContext {
     llm: IntegrationsBundle['llm'];
+    /** P11-9: live-search provider keys (Tavily/Brave) — the non-Anthropic path. */
+    search?: IntegrationsBundle['search'];
     /** Injectable fetch (tests); defaults to global fetch. */
     fetchFn?: typeof fetch;
 }
@@ -143,9 +145,9 @@ const webSearchSkill: AgentSkill = {
     id: 'skill-web-search',
     name: 'Web Search',
     icon: '🔎',
-    description: 'Search the live web (via your Anthropic key\'s web-search tool) and summarize what it finds.',
+    description: 'Search the live web — Anthropic web-search tool, or your Tavily/Brave key (P11-9).',
     derivedFrom: 'LibreChat: Google / Tavily Search',
-    requires: 'anthropic-key',
+    requires: 'llm',
     triggers: [
         /^(?:search(?:\s+the)?\s+web(?:\s+for)?|web\s+search(?:\s+for)?|google|search\s+online(?:\s+for)?|look\s+up\s+online)\s+(.+)$/i,
     ],
@@ -177,12 +179,47 @@ const webSearchSkill: AgentSkill = {
                 }
             } catch { /* fall through to plain LLM */ }
         }
+        // P11-9: Tavily — the dedicated non-Anthropic live-search path.
+        const tavilyKey = ctx.search?.tavily?.enabled !== false ? ctx.search?.tavily?.apiKey : undefined;
+        if (tavilyKey) {
+            try {
+                const res = await fetchOf(ctx)('https://api.tavily.com/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ api_key: tavilyKey, query, max_results: 5, include_answer: true }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const sources = (data.results || []).slice(0, 5)
+                        .map((r: any) => `- [${r.title}](${r.url})`).join('\n');
+                    const text = `${data.answer ? `${data.answer}\n\n` : ''}${sources ? `Sources:\n${sources}` : ''}`.trim();
+                    if (text) return { ok: true, text, via: 'tavily' };
+                }
+            } catch { /* fall through */ }
+        }
+        // P11-9: Brave Search.
+        const braveKey = ctx.search?.brave?.enabled !== false ? ctx.search?.brave?.apiKey : undefined;
+        if (braveKey) {
+            try {
+                const res = await fetchOf(ctx)(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`, {
+                    headers: { Accept: 'application/json', 'X-Subscription-Token': braveKey },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const rows = (data.web?.results || []).slice(0, 5);
+                    if (rows.length) {
+                        const text = rows.map((r: any) => `- [${r.title}](${r.url})\n  ${r.description ?? ''}`).join('\n');
+                        return { ok: true, text: `Top results:\n${text}`, via: 'brave' };
+                    }
+                }
+            } catch { /* fall through */ }
+        }
         const llmRes = await callLlm({
             prompt: `(No live web access right now.) From your knowledge, answer as best you can and SAY what may be outdated: ${query}`,
             maxTokens: 700, temperature: 0.3,
         }, ctx.llm).catch(() => null);
         if (llmRes) return { ok: true, text: llmRes.text, via: `${llmRes.provider} (no live web)` };
-        return { ok: false, text: 'I need an Anthropic key (for live search) or any active LLM key to answer that. Add one in Control Panel → API Keys.', via: 'web-search' };
+        return { ok: false, text: 'I need an Anthropic key (live search), a Tavily/Brave key, or any active LLM key to answer that. Add one in Control Panel → API Keys.', via: 'web-search' };
     },
 };
 
@@ -192,9 +229,9 @@ const imageGenSkill: AgentSkill = {
     id: 'skill-image-gen',
     name: 'Image Generation',
     icon: '🎨',
-    description: 'Generate an image from a description using your OpenAI key (DALL-E 3).',
+    description: 'Generate an image — OpenAI DALL-E 3, or your Gemini key as the fallback (P11-9).',
     derivedFrom: 'LibreChat: DALL-E-3 / Flux / Gemini Image Tools',
-    requires: 'openai-key',
+    requires: 'llm',
     triggers: [
         // "create an image of a lighthouse"
         /^(?:generate|create|make|draw|render|paint)\s+(?:me\s+)?(?:an?\s+)?(?:image|picture|photo|illustration|logo|drawing)\s*(?:of|for|showing|with|:)?\s*(.+)$/i,
@@ -202,24 +239,52 @@ const imageGenSkill: AgentSkill = {
         /^(?:generate|create|make|draw|render|paint)\s+(?:me\s+)?(?:an?\s+)?(.+?)\s+(?:image|picture|photo|illustration|logo|drawing)$/i,
     ],
     run: async (prompt, ctx) => {
-        const key = ctx.llm.openai?.apiKey;
-        if (!key) {
-            return { ok: false, text: 'Image generation needs an OpenAI key — add one in Control Panel → API Keys and I\'ll paint away.', via: 'image-gen' };
+        const openaiKey = ctx.llm.openai?.apiKey;
+        const geminiKey = ctx.llm.gemini?.apiKey;
+        if (!openaiKey && !geminiKey) {
+            // The "Control Panel" mention renders an open-widget handoff chip
+            // in ARA (araLinkage) — the deep-link the BACKLOG asked for.
+            return { ok: false, text: 'Image generation needs an OpenAI or Gemini key — open the Control Panel → API Keys and add one, and I\'ll paint away.', via: 'image-gen' };
         }
-        try {
-            const res = await fetchOf(ctx)('https://api.openai.com/v1/images/generations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-                body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: '1024x1024', response_format: 'b64_json' }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
-            const b64 = data?.data?.[0]?.b64_json;
-            if (!b64) throw new Error('no image in response');
-            return { ok: true, text: `![${prompt.slice(0, 60)}](data:image/png;base64,${b64})`, via: 'dall-e-3' };
-        } catch (err: any) {
-            return { ok: false, text: `Image generation failed: ${err?.message || err}`, via: 'image-gen' };
+        let openaiError = '';
+        if (openaiKey) {
+            try {
+                const res = await fetchOf(ctx)('https://api.openai.com/v1/images/generations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+                    body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: '1024x1024', response_format: 'b64_json' }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+                const b64 = data?.data?.[0]?.b64_json;
+                if (!b64) throw new Error('no image in response');
+                return { ok: true, text: `![${prompt.slice(0, 60)}](data:image/png;base64,${b64})`, via: 'dall-e-3' };
+            } catch (err: any) {
+                openaiError = err?.message || String(err);
+            }
         }
+        // P11-9: Gemini image fallback (no OpenAI key, or DALL-E errored).
+        if (geminiKey) {
+            try {
+                const res = await fetchOf(ctx)(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${geminiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Generate an image: ${prompt}` }] }],
+                        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+                const part = (data?.candidates?.[0]?.content?.parts || []).find((p: any) => p.inlineData?.data);
+                if (!part) throw new Error('no image in response');
+                const mime = part.inlineData.mimeType || 'image/png';
+                return { ok: true, text: `![${prompt.slice(0, 60)}](data:${mime};base64,${part.inlineData.data})`, via: 'gemini-image' };
+            } catch (err: any) {
+                return { ok: false, text: `Image generation failed (${openaiError ? `DALL-E: ${openaiError}; ` : ''}Gemini: ${err?.message || err}).`, via: 'image-gen' };
+            }
+        }
+        return { ok: false, text: `Image generation failed: ${openaiError}`, via: 'image-gen' };
     },
 };
 

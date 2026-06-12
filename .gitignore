@@ -40,3 +40,4 @@ Docs/preview-screenshots-backend/
 # Transient PR creation scratch (session-local)
 .create-pr.sh
 .pr-body.md
+.fuse_hidden*

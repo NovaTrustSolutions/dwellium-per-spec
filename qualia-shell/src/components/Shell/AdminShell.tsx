@@ -30,6 +30,7 @@ import Desktop from './Desktop';
 import CommandPalette from '../CommandPalette/CommandPalette';
 import AssistantLauncher from '../AssistantLauncher/AssistantLauncher';
 import SystemHealthBanner from '../SystemHealth/SystemHealthBanner';
+import MorningBriefBanner from './MorningBriefBanner';
 import type { DockBackMessage } from '../PopupShell/PopupShell';
 
 function ShellLayout() {
@@ -155,6 +156,7 @@ function ShellLayout() {
             <CommandPalette />
             <AssistantLauncher />
             <SystemHealthBanner />
+            <MorningBriefBanner />
         </div>
     );
 }

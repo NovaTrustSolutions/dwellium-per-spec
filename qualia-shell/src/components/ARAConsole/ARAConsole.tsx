@@ -13,6 +13,7 @@ import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingA
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
 import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
+import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT } from '../../lib/morningBriefStore';
 import { createGoal, updateGoalPlan, findGoalByTitle } from '../../lib/goalsStore';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
 import { agentTeamsStore } from '../../lib/agents/agentTeamsStore';
@@ -1572,6 +1573,22 @@ export default function ARAConsole() {
         window.addEventListener('scribe:send-to-ara', handler);
         return () => window.removeEventListener('scribe:send-to-ara', handler);
     }, [sendPrompt]);
+
+    // ── P12-6: morning-brief delivery (banner → ARA hand-off) ─────────────
+    // The MorningBriefBanner stashes the brief date in the pending slot and
+    // fires the event; ARA posts the formatted brief as an assistant message.
+    // consumePendingBrief() ALSO runs on mount (spawn.ts sister shape) so the
+    // hand-off survives ARA being opened BY the banner click itself.
+    useEffect(() => {
+        const deliver = () => {
+            const brief = consumePendingBrief();
+            if (!brief) return;
+            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatBrief(brief) })]);
+        };
+        deliver(); // mount-race leg
+        window.addEventListener(MORNING_BRIEF_EVENT, deliver);
+        return () => window.removeEventListener(MORNING_BRIEF_EVENT, deliver);
+    }, []);
 
     // ── A2: suggest "open in <widget>" handoffs from ARA's latest reply ───
     // ARA can answer about the inbox / files / docs; these chips let the user

@@ -1,0 +1,44 @@
+/* MorningBriefBanner — P12-6 morning brief (SystemHealth banner sister) */
+
+.mbrief-banner {
+    position: fixed;
+    top: 56px; /* below the readiness banner when both show */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 98000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #0d1a14;
+    border: 1px solid color-mix(in srgb, var(--accent, #D6FE51) 50%, transparent);
+    color: var(--text-primary, #e8f5e9);
+    font-size: 12.5px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    max-width: 92vw;
+}
+
+.mbrief-banner-sun { flex-shrink: 0; }
+.mbrief-banner-text { flex: 1; }
+
+.mbrief-banner-open {
+    padding: 5px 12px;
+    border-radius: 7px;
+    border: none;
+    background: var(--accent, #D6FE51);
+    color: var(--text-inverse, #000);
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.mbrief-banner-x {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #bbb);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 4px;
+}

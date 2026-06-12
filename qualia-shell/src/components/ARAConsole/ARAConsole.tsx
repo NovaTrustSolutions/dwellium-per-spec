@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
-import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { callLlm, hasActiveLlm, applyModelPreference } from '../../lib/llmClient';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
 import { parseCommand, stripPoliteness } from '../../lib/dwelliumCommands';
 import { matchSkill, AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
@@ -1186,7 +1186,11 @@ export default function ARAConsole() {
         }
         setIsLoading(true);
         const deps: OrchestratorDeps = {
-            invoke: async (r) => (await callLlm(r, integrations.llm))?.text ?? null,
+            // P12-2: route to the persona's preferred model when set + configured.
+            invoke: async (r) => {
+                const pref = r.personaId ? agentTeamsStore.getSnapshot().personas.find(p => p.id === r.personaId)?.preferredModel : undefined;
+                return (await callLlm(r, applyModelPreference(integrations.llm, pref)))?.text ?? null;
+            },
             recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
             record: (rec) => { recordRun(rec); },
             // P11-5: equipped skills execute during member tasks.
@@ -1271,7 +1275,11 @@ export default function ARAConsole() {
             return { ok: false, text: 'No LLM configured — add a key in Control Panel → API Keys.' };
         }
         const deps: OrchestratorDeps = {
-            invoke: async (r) => (await callLlm(r, integrations.llm))?.text ?? null,
+            // P12-2: route to the persona's preferred model when set + configured.
+            invoke: async (r) => {
+                const pref = r.personaId ? agentTeamsStore.getSnapshot().personas.find(p => p.id === r.personaId)?.preferredModel : undefined;
+                return (await callLlm(r, applyModelPreference(integrations.llm, pref)))?.text ?? null;
+            },
             recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
             record: (rec) => { recordRun(rec); },
             // P11-5: equipped skills execute during member tasks.

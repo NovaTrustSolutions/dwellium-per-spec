@@ -47,6 +47,18 @@ export interface Persona {
     neuralVideo?: string;
     /** Tool ids (from the Stella tool catalog) this persona is equipped with. */
     tools?: string[];
+    /**
+     * P12-2 (2026-06-12): per-persona model routing — cheap models take
+     * routine personas, big models take the deep thinkers. Falls back to the
+     * user's active provider when the preferred one isn't configured.
+     */
+    preferredModel?: PersonaModelPreference;
+}
+
+export interface PersonaModelPreference {
+    provider: 'anthropic' | 'openai' | 'gemini' | 'local' | 'custom';
+    /** Optional explicit model id; defaults to the provider's configured model. */
+    model?: string;
 }
 
 export interface PersonaAvatar {

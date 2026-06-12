@@ -131,3 +131,7 @@
 }
 .alab-ptab:hover { color: var(--text-primary, #fff); background: rgba(255, 255, 255, 0.05); }
 .alab-ptab--active { color: #0a0a0a; background: var(--accent, #6366f1); }
+
+/* P12-2: per-persona preferred model row */
+.alab-pref-model { display: flex; gap: 8px; }
+.alab-pref-model .alab-input { flex: 1; }

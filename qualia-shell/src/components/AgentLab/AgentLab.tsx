@@ -7,7 +7,7 @@
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
-import { callLlm } from '../../lib/llmClient';
+import { callLlm, applyModelPreference } from '../../lib/llmClient';
 import {
     hermesLearningUserIdHolder,
     recordRun,
@@ -15,7 +15,7 @@ import {
     relevantPastRuns,
     formatFewShot,
 } from '../HonchoHermesPanel/hermesLearningStore';
-import { useAgentLab, newPersonaId, newTeamId } from '../../lib/agents/agentTeamsStore';
+import { useAgentLab, newPersonaId, newTeamId, agentTeamsStore } from '../../lib/agents/agentTeamsStore';
 import { type Persona, type AgentTeam, type Discipline, ORCHESTRATOR_ID, findPersona, defaultDossier, resolveAvatar, resolveNeuralVideo } from '../../lib/agents/personas';
 import AvatarDossier from './AvatarDossier';
 import PersonaWorkspace, { type WorkspaceView } from './PersonaWorkspace';
@@ -63,7 +63,9 @@ export default function AgentLab() {
 
     const deps: OrchestratorDeps = useMemo(() => ({
         invoke: async (req) => {
-            const r = await callLlm(req, integrations.llm);
+            // P12-2: persona's preferred model wins when set + configured.
+            const pref = req.personaId ? agentTeamsStore.getSnapshot().personas.find(p => p.id === req.personaId)?.preferredModel : undefined;
+            const r = await callLlm(req, applyModelPreference(integrations.llm, pref));
             return r?.text ?? null;
         },
         recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
@@ -330,8 +332,38 @@ function PersonaEditor(props: { persona: Persona; onChange: (p: Persona) => void
             <input className="alab-input" value={persona.tagline} disabled={persona.builtin} onChange={e => onChange({ ...persona, tagline: e.target.value })} />
             <label className="alab-label">System prompt</label>
             <textarea className="alab-input alab-input--tall" value={persona.systemPrompt} disabled={persona.builtin} onChange={e => onChange({ ...persona, systemPrompt: e.target.value })} />
+            {/* P12-2: per-persona model routing — editable even on built-ins
+                (it's a routing preference, not identity). Empty = inherit the
+                user's active provider. */}
+            <label className="alab-label">Preferred model (optional)</label>
+            <div className="alab-pref-model">
+                <select
+                    className="alab-input"
+                    value={persona.preferredModel?.provider ?? ''}
+                    aria-label="Preferred provider"
+                    onChange={e => {
+                        const provider = e.target.value as '' | 'anthropic' | 'openai' | 'gemini' | 'local' | 'custom';
+                        onChange({ ...persona, preferredModel: provider ? { provider, model: persona.preferredModel?.model } : undefined });
+                    }}
+                >
+                    <option value="">Inherit active provider</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="gemini">Gemini</option>
+                    <option value="local">Local</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <input
+                    className="alab-input"
+                    placeholder="model id (optional, e.g. claude-haiku-4-5)"
+                    aria-label="Preferred model id"
+                    value={persona.preferredModel?.model ?? ''}
+                    disabled={!persona.preferredModel}
+                    onChange={e => persona.preferredModel && onChange({ ...persona, preferredModel: { ...persona.preferredModel, model: e.target.value || undefined } })}
+                />
+            </div>
             <div className="alab-editor-actions">
-                {!persona.builtin && <button className="alab-run" onClick={props.onSave}>Save</button>}
+                <button className="alab-run" onClick={props.onSave}>Save</button>
                 <button className="alab-btn" onClick={props.onCancel}>{persona.builtin ? 'Close' : 'Cancel'}</button>
                 {props.onDelete && <button className="alab-btn alab-btn--danger" onClick={props.onDelete}>Delete</button>}
             </div>

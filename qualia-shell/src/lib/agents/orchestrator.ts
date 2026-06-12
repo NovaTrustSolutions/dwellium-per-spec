@@ -18,6 +18,8 @@ import type { TaskType } from '../../components/HonchoHermesPanel/hermesLearning
 import { AgentTeam, Persona, findPersona, disciplineToTaskType, ORCHESTRATOR_ID } from './personas';
 
 export interface LlmReq {
+    /** P12-2: the persona this call speaks AS — call sites may route it to the persona's preferred model. */
+    personaId?: string;
     prompt: string;
     systemPrompt?: string;
     maxTokens?: number;
@@ -118,6 +120,7 @@ async function decompose(
 ): Promise<Array<{ personaId: string; tasks: string[] }>> {
     const orchestrator = findPersona(personas, team.orchestratorId) ?? findPersona(personas, ORCHESTRATOR_ID);
     const res = await deps.invoke({
+        personaId: orchestrator?.id,
         systemPrompt: orchestrator?.systemPrompt,
         responseFormat: 'json',
         temperature: 0.2,
@@ -157,6 +160,7 @@ async function execute(
         }
     }
     const out = await deps.invoke({
+        personaId: persona.id,
         systemPrompt: persona.systemPrompt,
         temperature: 0.4,
         prompt:
@@ -207,6 +211,7 @@ async function merge(
     const orchestrator = findPersona(personas, team.orchestratorId) ?? findPersona(personas, ORCHESTRATOR_ID);
     const body = outputs.map(o => `### ${o.personaName}${o.supported ? '' : ' (contains UNVERIFIED claims)'}\n${o.verified}`).join('\n\n');
     const res = await deps.invoke({
+        personaId: orchestrator?.id,
         systemPrompt: orchestrator?.systemPrompt,
         temperature: 0.3,
         prompt:

@@ -111,6 +111,28 @@ export function hasActiveLlm(llm: IntegrationsBundle['llm']): boolean {
 }
 
 /**
+ * P12-2: route a call to a persona's preferred provider/model. Returns the
+ * bundle unchanged when the preferred provider isn't configured+enabled —
+ * honest fallback to the user's active provider, never a dead call.
+ */
+export function applyModelPreference(
+    llm: IntegrationsBundle['llm'],
+    pref?: { provider: LlmProvider; model?: string } | null,
+): IntegrationsBundle['llm'] {
+    if (!pref) return llm;
+    const switched: IntegrationsBundle['llm'] = { ...llm, active: pref.provider };
+    if (!hasActiveLlm(switched)) return llm;
+    if (!pref.model) return switched;
+    switch (pref.provider) {
+        case 'anthropic': return { ...switched, anthropic: { ...switched.anthropic!, model: pref.model } };
+        case 'openai': return { ...switched, openai: { ...switched.openai!, model: pref.model } };
+        case 'gemini': return { ...switched, gemini: { ...switched.gemini!, model: pref.model } };
+        case 'local': return { ...switched, local: { ...switched.local!, model: pref.model } };
+        case 'custom': return { ...switched, custom: { ...switched.custom!, model: pref.model } };
+    }
+}
+
+/**
  * Smoke-test a provider with a minimal "ping" prompt. Used by the
  * Integrations UI Test button. Returns true on 2xx + non-empty content.
  */

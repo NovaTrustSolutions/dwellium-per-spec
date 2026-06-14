@@ -44,8 +44,15 @@
 
     /* -- Text (fey.com: pure white primary, muted slate secondary) -- */
     --s-text-primary: var(--text-primary, #ffffff);
-    --s-text-secondary: var(--text-secondary, var(--text-secondary));
-    --s-text-tertiary: var(--text-tertiary, var(--text-tertiary));
+    /* 2026-06-14 legibility fix: derive secondary/tertiary from the PRIMARY
+       text color (which every theme guarantees contrasts with its surfaces),
+       so card labels/subtitles stay readable on the card surface in ALL themes
+       — the theme's own --text-secondary/tertiary can fall too faint on the
+       glass cards. Falls back to the theme tokens if color-mix is unsupported. */
+    --s-text-secondary: var(--text-secondary, #868f97);
+    --s-text-secondary: color-mix(in srgb, var(--text-primary) 80%, transparent);
+    --s-text-tertiary: var(--text-tertiary, #868f97);
+    --s-text-tertiary: color-mix(in srgb, var(--text-primary) 62%, transparent);
     --s-text-accent: var(--accent-text, var(--accent));
 
     /* -- Typography (fey.com: Hanken Grotesk + JetBrains Mono) -- */
@@ -585,8 +592,16 @@
 }
 
 .strata-dashboard .s-animate-fade-in {
-    animation: s-fadeIn 0.5s ease-out forwards;
+    animation: s-fadeIn 0.25s ease-out forwards;
 }
+
+/* 2026-06-14: never leave content faint. Honor reduced-motion and the app's
+   animations-off toggle — render cards solid immediately (no fade), so text is
+   never washed-out during load or sub-tab navigation. */
+@media (prefers-reduced-motion: reduce) {
+    .strata-dashboard .s-animate-fade-in { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !important; opacity: 1 !important; transform: none !important; }
 
 .strata-dashboard .s-delay-1 {
     animation-delay: 0.05s;
@@ -605,11 +620,11 @@
 }
 
 .strata-dashboard .s-delay-5 {
-    animation-delay: 0.25s;
+    animation-delay: 0.16s;
 }
 
 .strata-dashboard .s-delay-6 {
-    animation-delay: 0.3s;
+    animation-delay: 0.2s;
 }
 
 /* ---------- Responsive ---------- */

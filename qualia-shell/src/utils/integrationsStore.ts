@@ -59,9 +59,30 @@ export const integrationsStore = createLocalStorageStore<IntegrationsBundle>({
     defaultValue: emptyIntegrations(),
 });
 
+/**
+ * Anti-clobber guard (2026-06-14): NEVER let an all-empty bundle overwrite an
+ * at-rest bundle that still holds a secret. A failed decrypt (crypto hiccup /
+ * userId mismatch / WebCrypto unavailable) leaves the in-memory bundle empty;
+ * without this guard a later save persists empty OVER the real key → silent,
+ * permanent key loss. If the incoming bundle has no secret but storage does,
+ * we refuse the write (keeping the saved key safe).
+ */
+function wouldClobberStoredSecret(incoming: IntegrationsBundle): boolean {
+    try {
+        if (bundleHasPlaintextSecret(incoming)) return false; // incoming has a real secret — fine to write
+        const raw = localStorage.getItem(resolveKey());
+        if (!raw) return false;
+        // Ciphertext (enc:v1:) or a plaintext secret at rest → don't clobber.
+        return raw.includes('enc:v1:') || bundleHasPlaintextSecret(deserialize(raw));
+    } catch {
+        return false;
+    }
+}
+
 /** Persist an updated bundle to the active user's localStorage namespace. */
 export function saveIntegrations(bundle: IntegrationsBundle): void {
     if (typeof window === 'undefined') return;
+    if (wouldClobberStoredSecret(bundle)) { setMemoryOnly(bundle); return; }
     integrationsStore.set(bundle, () => {
         try {
             localStorage.setItem(resolveKey(), JSON.stringify(bundle));
@@ -95,6 +116,10 @@ export async function saveIntegrationsSecure(bundle: IntegrationsBundle, userId:
     if (typeof window === 'undefined') return;
     // Make the new plaintext visible to consumers immediately (synchronous).
     setMemoryOnly(bundle);
+    // Anti-clobber: refuse to PERSIST an all-empty bundle over a stored key
+    // (the decrypt-failed → auto-save-empty data-loss path). Intentional full
+    // clears go through clearIntegrations() / the Reset button instead.
+    if (wouldClobberStoredSecret(bundle)) return;
     const seq = ++persistSeq;
     const key = resolveKey();
     try {

@@ -19,6 +19,7 @@
  * collection).
  */
 import { callLlm, hasActiveLlm, type LlmRequest } from './llmClient';
+import { araPromptBus } from './busChannels';
 import type { IntegrationsBundle } from '../types/integrations';
 import { parseCommand, stripPoliteness } from './dwelliumCommands';
 import { parseChain } from './conductorChain';
@@ -208,23 +209,19 @@ export function looksActionable(text: string): boolean {
 
 export const ARA_PROMPT_EVENT = 'dwellium:ara-prompt';
 
-let pendingPrompt: string | null = null;
-
 /**
- * Hand an unparseable palette query to ARA: pending-slot + live event,
- * sister-shape to spawn.ts's requestSpawn (covers the ARA-mount race when
- * the widget's lazy chunk is still loading).
+ * Hand an unparseable palette query to ARA: typed-bus emit with last-value
+ * replay (assessment sweep: replaces the hand-rolled pending-slot module
+ * variable; same mount-race coverage, one shared mechanism — typedBus.ts).
+ * Signature unchanged — call sites untouched.
  */
 export function requestAraPrompt(text: string): void {
-    pendingPrompt = text;
-    try { window.dispatchEvent(new CustomEvent(ARA_PROMPT_EVENT, { detail: { text } })); } catch { /* SSR / sandbox */ }
+    araPromptBus.emit({ text });
 }
 
 /** One-shot read of the pending prompt (ARA mount-time pickup). */
 export function consumePendingAraPrompt(): string | null {
-    const p = pendingPrompt;
-    pendingPrompt = null;
-    return p;
+    return araPromptBus.consume()?.text ?? null;
 }
 
 /* ─── Cascade ─── */

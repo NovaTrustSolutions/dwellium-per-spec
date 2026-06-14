@@ -1,0 +1,14 @@
+.tagdlg__scrim { position: fixed; inset: 0; z-index: 200000; background: rgba(0,0,0,.5); display: grid; place-items: center; backdrop-filter: blur(2px); }
+.tagdlg { width: min(440px, 92vw); background: var(--bg-surface, #14110b); border: 1px solid var(--border-default, rgba(255,255,255,.15)); border-radius: 14px; padding: 18px 20px; box-shadow: 0 30px 80px -30px #000; color: var(--text-primary, #fff); font-family: var(--font-primary, system-ui, sans-serif); }
+.tagdlg__h { font-family: 'Georgia', serif; font-size: 17px; color: var(--accent-text, var(--accent)); margin-bottom: 12px; }
+.tagdlg__sel { font-size: 12.5px; line-height: 1.5; color: var(--text-secondary, #9a8757); background: var(--bg-desktop, rgba(0,0,0,.3)); border-radius: 8px; padding: 8px 10px; margin-bottom: 14px; max-height: 90px; overflow: auto; }
+.tagdlg__lbl { display: block; font-size: 11px; letter-spacing: .08em; color: var(--text-tertiary, #6f6244); text-transform: uppercase; margin: 10px 0 6px; }
+.tagdlg__input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; font-family: inherit; font-size: 14px; background: var(--bg-desktop, #0a0a0a); border: 1px solid var(--border-default, rgba(255,255,255,.15)); color: var(--text-primary, #fff); }
+.tagdlg__input:focus { outline: none; border-color: var(--accent); }
+.tagdlg__projects { display: flex; flex-wrap: wrap; gap: 7px; }
+.tagdlg__proj { padding: 6px 11px; border-radius: 16px; cursor: pointer; font-size: 12px; font-family: inherit; background: var(--bg-desktop, rgba(255,255,255,.04)); border: 1px solid var(--border-default, rgba(255,255,255,.15)); color: var(--text-secondary, #9a8757); }
+.tagdlg__proj.on { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); color: var(--accent); }
+.tagdlg__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.tagdlg__cancel { padding: 9px 14px; border-radius: 8px; cursor: pointer; background: none; border: 1px solid var(--border-default, rgba(255,255,255,.15)); color: var(--text-secondary, #9a8757); font-family: inherit; }
+.tagdlg__save { padding: 9px 16px; border-radius: 8px; cursor: pointer; background: var(--accent); color: var(--accent-text, #000); border: none; font-family: inherit; font-size: 13px; }
+.tagdlg__save:disabled { opacity: .45; cursor: default; }

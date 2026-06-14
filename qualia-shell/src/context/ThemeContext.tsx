@@ -134,15 +134,24 @@ const LEGACY_THEME_STORAGE_KEY = 'qualia-theme';
 // HTML matches IIFE-set className by construction (no hydration mismatch).
 // Exported for unit test access at src/test/appfolioParity/.
 
+// Default = 'cosmos' — the master-design (HTML v3) default. The legacy
+// Dwellium acid-lime themes were removed from the picker (2026-06-14), so any
+// stored value pointing at one falls back to cosmos via DEFAULT_THEME below.
+export const DEFAULT_THEME: Theme = 'cosmos';
+const VALID_PICKER_THEMES = new Set<Theme>([
+    'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized',
+    'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox',
+    'apple-dark', 'nord', 'latte', 'corporate',
+]);
+function readInitialTheme(): Theme {
+    try {
+        const stored = (localStorage.getItem(THEME_STORAGE_KEY) || localStorage.getItem(LEGACY_THEME_STORAGE_KEY)) as Theme | null;
+        if (stored && VALID_PICKER_THEMES.has(stored)) return stored;
+    } catch { /* sandboxed */ }
+    return DEFAULT_THEME;
+}
 export const themeStore = withSyncStatic(
-    createLocalStorageStore<Theme>(
-        () => (
-            (localStorage.getItem(THEME_STORAGE_KEY) as Theme) ||
-            (localStorage.getItem(LEGACY_THEME_STORAGE_KEY) as Theme) ||
-            'dark'
-        ),
-        'dark',
-    ),
+    createLocalStorageStore<Theme>(readInitialTheme, DEFAULT_THEME),
     { objectType: 'theme', storageKey: THEME_STORAGE_KEY, serialize: (v) => v },
 );
 
@@ -208,20 +217,16 @@ export function applyAnimationsValue(on: boolean): void {
 export interface ThemeDef { id: Theme; label: string; group: 'Dwellium' | 'Master Pack'; bg: string; accent: string; }
 
 /** Master-pack ids (theme-{id} classes); used to toggle the ambient cursor-glow. */
-export const MASTER_THEME_IDS: Theme[] = ['terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate'];
+export const MASTER_THEME_IDS: Theme[] = ['terminal-bl4', 'cosmos', 'deep-dark', 'simple-black', 'cyberpunk', 'synthwave', 'solarized', 'rose-pine', 'mocha', 'dracula', 'obsidian', 'tokyo-night', 'gruvbox', 'apple-dark', 'nord', 'latte', 'corporate', 'halocron'];
 
+// 🔴 2026-06-14: the picker now offers EXACTLY the master-design (HTML v3)
+// themes — the legacy Dwellium acid-lime group + terminal-bl4 + halocron were
+// removed per Ilya so widgets can never render in the old green/teal skin.
+// (Their CSS blocks remain in the stylesheets but are no longer selectable.)
+// 'deep-dark' is the master-design "Dark" theme (HTML data-theme="dark").
 export const THEMES: ThemeDef[] = [
-    { id: 'dark', label: 'Dwellium Dark', group: 'Dwellium', bg: '#000000', accent: '#D6FE51' },
-    { id: 'light', label: 'Dwellium Light', group: 'Dwellium', bg: '#e8ecf1', accent: '#0369a1' },
-    { id: 'trust', label: 'Trust', group: 'Dwellium', bg: '#f4f6fb', accent: '#0369a1' },
-    { id: 'vibrant', label: 'Vibrant', group: 'Dwellium', bg: '#0f1020', accent: '#6366f1' },
-    { id: 'luxury', label: 'Luxury', group: 'Dwellium', bg: '#1a1714', accent: '#ca8a04' },
-    { id: 'healthcare', label: 'Healthcare', group: 'Dwellium', bg: '#f0f7f5', accent: '#0ea5a4' },
-    { id: 'creative', label: 'Creative', group: 'Dwellium', bg: '#150f1f', accent: '#a855f7' },
-    { id: 'dark-excellence', label: 'Dark Excellence', group: 'Dwellium', bg: '#08080c', accent: '#D6FE51' },
-    { id: 'terminal-bl4', label: 'Terminal · BL4', group: 'Dwellium', bg: '#000000', accent: '#D6FE51' },
     { id: 'cosmos', label: 'Cosmos', group: 'Master Pack', bg: '#08081a', accent: '#4d8aff' },
-    { id: 'deep-dark', label: 'Deep Dark', group: 'Master Pack', bg: '#030305', accent: '#4d82ff' },
+    { id: 'deep-dark', label: 'Dark', group: 'Master Pack', bg: '#030305', accent: '#4d82ff' },
     { id: 'simple-black', label: 'Simple Black', group: 'Master Pack', bg: '#000000', accent: '#3b82f6' },
     { id: 'cyberpunk', label: 'Cyberpunk', group: 'Master Pack', bg: '#060606', accent: '#f5e642' },
     { id: 'synthwave', label: 'Synthwave', group: 'Master Pack', bg: '#040d1a', accent: '#ff00aa' },
@@ -248,7 +253,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const toggleTheme = useCallback(() => {
         document.body.classList.add('transitioning');
-        const next: Theme = themeStore.getSnapshot() === 'dark' ? 'light' : 'dark';
+        // Light/dark quick-toggle now flips between two master-design themes
+        // (the legacy 'dark'/'light' were removed from the picker).
+        const next: Theme = themeStore.getSnapshot() === 'latte' ? 'cosmos' : 'latte';
         themeStore.set(next, () => localStorage.setItem(THEME_STORAGE_KEY, next));
         setTimeout(() => document.body.classList.remove('transitioning'), 500);
     }, []);
@@ -274,10 +281,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Apply theme class + accent color
     useEffect(() => {
         const root = document.documentElement;
-        root.className = `theme-${theme}`;
+        // 🔴 Coerce any legacy/stored theme that is no longer in the picker
+        // (e.g. a per-user-synced 'dark'/'dark-excellence') to the master-design
+        // default, so widgets can never paint in the old green/teal skin.
+        const safeTheme: Theme = VALID_PICKER_THEMES.has(theme) ? theme : DEFAULT_THEME;
+        if (safeTheme !== theme) { try { themeStore.set(safeTheme, () => localStorage.setItem(THEME_STORAGE_KEY, safeTheme)); } catch { /* sandboxed */ } }
+        root.className = `theme-${safeTheme}`;
         // Mirror onto data-theme so the v3 master-pack border/animation selectors
         // ([data-theme="X"] .bento / .bv-* / body.master-glow::after) resolve.
-        root.setAttribute('data-theme', theme);
+        root.setAttribute('data-theme', safeTheme);
         // P11-11: '' = theme default — remove the inline override so the
         // theme's CSS --accent applies; any value = explicit user accent.
         if (accentColor) root.style.setProperty('--accent', accentColor);

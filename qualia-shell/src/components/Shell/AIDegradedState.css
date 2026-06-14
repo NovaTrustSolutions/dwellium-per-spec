@@ -1,0 +1,53 @@
+/* AIDegradedState — standard degraded-AI banner (assessment sweep, weakness #8).
+   Theme-token driven; no hardcoded palette colors. */
+
+.ai-degraded {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    margin: 4px 0;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-secondary, #b9c0c8);
+    background: var(--surface-2, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.ai-degraded--unavailable,
+.ai-degraded--erroring {
+    border-color: var(--danger-border, rgba(244, 113, 116, 0.4));
+}
+
+.ai-degraded--rate-limited {
+    border-color: var(--warning-border, rgba(251, 191, 36, 0.4));
+}
+
+.ai-degraded__icon {
+    flex: none;
+}
+
+.ai-degraded__text {
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-degraded__cached {
+    opacity: 0.75;
+}
+
+.ai-degraded__cta {
+    flex: none;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text-primary, #e8ecef);
+    background: var(--surface-3, rgba(255, 255, 255, 0.08));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+}
+
+.ai-degraded__cta:hover {
+    background: var(--surface-4, rgba(255, 255, 255, 0.14));
+}

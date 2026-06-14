@@ -13,13 +13,6 @@ import './LoginScreen.css';
 const QUICK_USERS = [
     { email: 'andy@dwellium.com', name: 'Andy', role: 'god', color: 'var(--accent)', initials: 'A', pw: 'admin123' },
     { email: 'lisa@zpgroup.io', name: 'Lisa', role: 'corporate', color: '#3b82f6', initials: 'L', pw: 'corp123' },
-    { email: 'wendy@dwellium.com', name: 'Wendy', role: 'management', color: '#22c55e', initials: 'W', pw: 'mgmt123' },
-    { email: 'candace@dwellium.com', name: 'Candace', role: 'management', color: '#f59e0b', initials: 'C', pw: 'mgmt123' },
-    { email: 'grieve@dwellium.com', name: 'Grieve', role: 'advisor', color: 'var(--accent)', initials: 'G', pw: 'adv123' },
-    { email: 'baldwin@dwellium.com', name: 'Baldwin', role: 'advisor', color: '#a855f7', initials: 'B', pw: 'adv123' },
-    { email: 'leo@dwellium.com', name: 'Leo', role: 'advisor', color: 'var(--accent)', initials: 'Lo', pw: 'adv123' },
-    { email: 'lee@dwellium.com', name: 'Lee', role: 'maintenance', color: '#ef4444', initials: 'Le', pw: 'maint123' },
-    { email: 'jose@dwellium.com', name: 'Jose', role: 'maintenance', color: '#f97316', initials: 'J', pw: 'maint123' },
 ];
 
 const ROLE_LABELS: Record<string, string> = {

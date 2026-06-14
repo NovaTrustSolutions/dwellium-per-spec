@@ -864,3 +864,87 @@ html.aos-ready [data-aos].aos-animate{opacity:1;transform:none!important}
 /* Hero + wordmark pick up the BL4 gradient automatically via tokens.
    Selection + focus follow the accent (inherited from global.css). */
 .theme-terminal-bl4 ::selection{background:#D6FE51;color:#000;}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HALOCRON · Old Republic (2026-06-12)
+   A Sith-archive theme: near-black warm void, bronze/gold archival linework
+   (per the holocron reference plate), crimson holocron-glow accents. All
+   colors are tokens so the whole app re-skins; animations are gated by
+   .animations-off (honors the global reduced-motion toggle).
+   ══════════════════════════════════════════════════════════════════════════ */
+.theme-halocron{
+  --bg:#0a0706;--surface:#14100b;--surface2:#1d160e;--border:rgba(201,164,76,.18);
+  --text:#ece0c4;--muted:#9a8757;
+  --bronze:#c9a44c;--bronze-bright:#e7c879;--crimson:#e01e2b;--crimson-deep:#7d0f16;--ember:#ff5a3c;
+  --gs:#e7c879;--ge:#c9a44c;--ip:#e01e2b;--il:#7d0f16;--ig:#e7c879;
+  --panel-bg:rgba(10,7,6,.985);--panel-border:rgba(201,164,76,.24);
+  --panel-text:#ece0c4;--panel-hover:rgba(224,30,43,.06);
+  --dock-bg:rgba(15,11,8,.95);--dock-border:rgba(201,164,76,.26);
+  --dock-icon:rgba(201,164,76,.5);--dock-icon-hover:#e7c879;--dock-active:rgba(224,30,43,.12);
+  --callout-info:rgba(201,164,76,.1);--callout-info-b:rgba(201,164,76,.45);
+  --callout-ok:rgba(231,200,121,.08);--callout-ok-b:rgba(231,200,121,.35);
+  --callout-warn:rgba(255,90,60,.1);--callout-warn-b:rgba(255,90,60,.5);
+  --callout-danger:rgba(224,30,43,.14);--callout-danger-b:rgba(224,30,43,.55);
+  /* — Dwellium token bridge: re-skins the whole app from this palette — */
+  --bg-desktop:var(--bg);--bg-surface:var(--surface);--bg-surface-elevated:var(--surface2);
+  --bg-surface-hover:var(--surface2);--bg-surface-active:var(--border);
+  --bg-glass:var(--panel-bg);--bg-glass-hover:var(--panel-bg);
+  --border-subtle:var(--border);--border-default:var(--border);--border-strong:var(--muted);
+  --text-primary:var(--text);--text-secondary:var(--muted);--text-tertiary:var(--muted);--text-inverse:var(--bg);
+  --accent:var(--crimson);--accent-hover:var(--ember);--accent-subtle:color-mix(in srgb,var(--crimson) 14%,transparent);--accent-text:var(--bronze-bright);
+  --success:var(--bronze-bright);--danger:var(--crimson);--warning:var(--ember);
+  --sidebar-bg:var(--panel-bg);--window-bg:var(--surface);--window-titlebar:var(--surface2);--window-border:var(--border);
+  --scrollbar-track:transparent;--scrollbar-thumb:color-mix(in srgb,var(--bronze) 22%,transparent);--scrollbar-thumb-hover:color-mix(in srgb,var(--bronze) 40%,transparent);
+  --sidebar-accent:color-mix(in srgb,var(--crimson) 9%,transparent);--sidebar-accent-hover:color-mix(in srgb,var(--crimson) 15%,transparent);--sidebar-accent-border:color-mix(in srgb,var(--bronze) 32%,transparent);--sidebar-accent-glow:color-mix(in srgb,var(--crimson) 42%,transparent);
+}
+
+/* Desktop void: warm vignette + faint bronze archival grid + crimson ember pools */
+.theme-halocron .desktop__bg{
+  background-image:
+    repeating-linear-gradient(0deg,rgba(201,164,76,.014) 0 1px,transparent 1px 4px),
+    repeating-linear-gradient(90deg,rgba(201,164,76,.014) 0 1px,transparent 1px 4px),
+    radial-gradient(ellipse at 20% 12%,rgba(224,30,43,.10) 0%,transparent 52%),
+    radial-gradient(ellipse at 82% 88%,rgba(201,164,76,.07) 0%,transparent 55%),
+    radial-gradient(ellipse at center,rgba(0,0,0,.55) 0%,rgba(0,0,0,.85) 100%);
+  background-size:100% 100%;
+  opacity:1;
+}
+
+/* Crimson cursor-spotlight (scoped to body.master-glow) */
+[data-theme="halocron"] body.master-glow::after{
+  background:radial-gradient(740px circle at var(--mx) var(--my),rgba(224,30,43,.10) 0%,rgba(201,164,76,.05) 42%,transparent 66%);
+}
+
+/* Holocron-glow window edge: bronze lattice line + breathing crimson aura.
+   Overrides the default white .window::before lit edge for this theme. */
+[data-theme="halocron"] .window::before{
+  background:linear-gradient(150deg,
+    rgba(231,200,121,.85) 0%,
+    rgba(201,164,76,.42) 16%,
+    rgba(224,30,43,.30) 42%,
+    rgba(201,164,76,.10) 70%,
+    transparent 88%);
+}
+[data-theme="halocron"] .window{
+  box-shadow:0 0 0 1px rgba(201,164,76,.10),0 22px 60px -22px rgba(224,30,43,.45),0 8px 24px -12px rgba(0,0,0,.8);
+  animation:halocron-window-breathe 6.5s ease-in-out infinite;
+}
+@keyframes halocron-window-breathe{
+  0%,100%{box-shadow:0 0 0 1px rgba(201,164,76,.10),0 22px 60px -22px rgba(224,30,43,.40),0 8px 24px -12px rgba(0,0,0,.8);}
+  50%{box-shadow:0 0 0 1px rgba(201,164,76,.18),0 26px 72px -22px rgba(224,30,43,.62),0 8px 24px -12px rgba(0,0,0,.8);}
+}
+body.animations-off [data-theme="halocron"] .window,
+.theme-halocron.animations-off .window{animation:none;}
+
+/* Focused/active window gets a stronger crimson ignition ring */
+[data-theme="halocron"] .window.is-focused::before,
+[data-theme="halocron"] .window:focus-within::before{
+  background:linear-gradient(150deg,
+    rgba(255,90,60,.95) 0%,
+    rgba(231,200,121,.55) 18%,
+    rgba(224,30,43,.45) 46%,
+    rgba(201,164,76,.12) 74%,
+    transparent 90%);
+}
+
+.theme-halocron ::selection{background:var(--crimson);color:#fff;}

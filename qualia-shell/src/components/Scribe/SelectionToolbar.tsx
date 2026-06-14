@@ -13,6 +13,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { REDLINE_SYSTEM_PROMPT, parseRedlineResponse } from './redlinePrompt';
 import { AI_ACTIONS, buildActionSystemPrompt, buildSummarizePreface, type AiAction } from './aiActions';
+import { getActiveEditorView } from './markdownConfig';
 
 const TOOLBAR_HEIGHT = 36;
 const GAP_ABOVE_SELECTION = 8;
@@ -44,6 +45,22 @@ export function SelectionToolbar() {
     const handleAddComment = () => {
         useScribeStore.getState().addComment(filepath, from, to);
         useScribeStore.getState().setSelectionToolbar(null);
+    };
+
+    // Source link: wrap the selection in a markdown link to a cited source.
+    // Lives in the doc text, so it persists + renders as a clickable source in
+    // the preview. (Empty selection → inserts an inline source link.)
+    const handleAddSource = () => {
+        const view = getActiveEditorView();
+        const url = (typeof window !== 'undefined'
+            ? window.prompt('Source URL or citation for this selection:', 'https://')
+            : null);
+        useScribeStore.getState().setSelectionToolbar(null);
+        if (!view || !url) return;
+        const label = text.trim() || 'source';
+        const insert = `[${label}](${url})`;
+        view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
+        view.focus();
     };
 
     const handleSendToAra = () => {
@@ -168,6 +185,26 @@ export function SelectionToolbar() {
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ccc'; }}
             >
                 💬 Comment
+            </button>
+            <button
+                title="Link this selection to a source / citation"
+                onClick={handleAddSource}
+                style={{
+                    background: 'transparent',
+                    border: '1px solid #444',
+                    color: '#c9a44c',
+                    cursor: 'pointer',
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    transition: 'background 100ms, color 100ms',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#2a2410'; e.currentTarget.style.color = '#e7c879'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#c9a44c'; }}
+            >
+                🔗 Source
             </button>
             <button
                 title="Send this selection to ARA in the floating panel"

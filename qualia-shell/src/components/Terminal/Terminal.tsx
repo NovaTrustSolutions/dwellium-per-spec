@@ -77,7 +77,20 @@ export default function Terminal() {
     // True when the backend PTY routes are unreachable — the widget falls back
     // to a clearly-labeled local offline shell instead of looking dead.
     const [offline, setOffline] = useState(false);
-    const [tab, setTab] = useState<'terminal' | 'paperclip' | 'langflow' | 'crewai'>('terminal');
+    const [tab, setTab] = useState<'terminal' | 'paperclip' | 'langflow' | 'crewai'>(() => {
+        // One-shot: System Initialization can request Terminal open on a specific
+        // tab (e.g. Paperclip) via this session signal. Consume it once.
+        try {
+            const want = sessionStorage.getItem('dwellium-terminal-initial-tab');
+            if (want) {
+                sessionStorage.removeItem('dwellium-terminal-initial-tab');
+                if (['terminal', 'paperclip', 'langflow', 'crewai'].includes(want)) {
+                    return want as 'terminal' | 'paperclip' | 'langflow' | 'crewai';
+                }
+            }
+        } catch { /* sandboxed / SSR */ }
+        return 'terminal';
+    });
     const surfaceRef = useRef<HTMLDivElement | null>(null);
     const inputCaptureRef = useRef<HTMLTextAreaElement | null>(null);
     const scrollRef = useRef<HTMLPreElement | null>(null);

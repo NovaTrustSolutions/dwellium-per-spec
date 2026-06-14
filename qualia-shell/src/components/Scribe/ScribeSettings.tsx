@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { useScribeTheme } from './useScribeTheme';
 import { PRESET_KEYS, PRESETS, TOKEN_ORDER, TOKEN_LABELS } from './scribeThemes';
+import KnowledgeBasePanel from './KnowledgeBasePanel';
 
 export default function ScribeSettings() {
     const { themeName, theme, customs, setTheme, setToken, saveCustomAs } = useScribeTheme();
@@ -19,6 +20,7 @@ export default function ScribeSettings() {
     const customKeys = Object.keys(customs);
 
     return (
+        <>
         <section className="cp-section">
             <h3 className="cp-section__title">Scribe — Editor Theme</h3>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary, #808080)', lineHeight: 1.5, margin: '0 0 14px' }}>
@@ -87,5 +89,7 @@ export default function ScribeSettings() {
                 follow the app theme — color customization for those is planned for v1.5.
             </p>
         </section>
+        <KnowledgeBasePanel />
+        </>
     );
 }

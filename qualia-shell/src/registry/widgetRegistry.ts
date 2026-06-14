@@ -99,7 +99,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         id: 'knowledge-graph',
         label: 'Knowledge Graph',
         icon: 'network',
-        component: lazyWithReload(() => import('../components/KnowledgeGraph/KnowledgeGraph')),
+        component: lazyWithReload(() => import('../components/Shell/HalocronKnowledgeGraph')),
         minWidth: 760,
         minHeight: 540,
         category: 'ai',
@@ -320,7 +320,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         id: 'hydra-ai',
         label: 'Hydra AI',
         icon: 'network',
-        component: lazyWithReload(() => import('../components/HydraAI/HydraAI')),
+        component: lazyWithReload(() => import('../components/HydraAI/HydraSplit')),
         category: 'ai',
     },
     'thought-weaver': {
@@ -497,6 +497,26 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         label: 'Control Panel',
         icon: 'settings',
         component: lazyWithReload(() => import('../components/ControlPanel/ControlPanel')),
+        category: 'tools',
+    },
+    // Assessment sweep 2026-06-12 (upgrade #7): time-travel over One Save logs.
+    'time-travel': {
+        id: 'time-travel',
+        label: 'Time Travel',
+        icon: 'history',
+        component: lazyWithReload(() => import('../components/TimeTravel/TimeTravel')),
+        minWidth: 480,
+        minHeight: 400,
+        category: 'tools',
+    },
+    // Halocron theme (2026-06-12): animated Old Republic holocron archive.
+    'holocron-library': {
+        id: 'holocron-library',
+        label: 'Holocron Library',
+        icon: 'diamond',
+        component: lazyWithReload(() => import('../components/HolocronLibrary/HolocronLibrary')),
+        minWidth: 520,
+        minHeight: 440,
         category: 'tools',
     },
 };

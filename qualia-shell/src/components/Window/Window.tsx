@@ -5,6 +5,7 @@ import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import { WindowState, RegionRect } from '../../data/types';
 import { getIcon } from '../Sidebar/iconMap';
 import WindowTagButton from './WindowTagButton';
+import WidgetShell, { useWidgetEnhancementFlags, enhancementClasses } from './WidgetShell';
 import { useGridLock } from '../../hooks/useGridLock';
 import './Window.css';
 
@@ -20,6 +21,10 @@ export default function Window({ state, children, regionRect, containerStyle }: 
     const { computeSnap, setActiveGuides, setInteracting, settings, assignWindowToRegion, clearWindowRegion, setHoveredRegionId, regionAssignments } = useLayout();
     const { locked } = useGridLock();
     const windowRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    // Widget Enhancement Layer flags — classes land on `.window__content`
+    // itself (ZERO-DOM contract; see WidgetShell.tsx).
+    const weFlags = useWidgetEnhancementFlags();
     const dragRef = useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
     const resizeRef = useRef({ resizing: false, edge: '', startX: 0, startY: 0, origW: 0, origH: 0, origX: 0, origY: 0 });
     const [tearoffActive, setTearoffActive] = useState(false);
@@ -235,6 +240,12 @@ export default function Window({ state, children, regionRect, containerStyle }: 
 
     if (state.minimized) return null;
 
+    // Focused = highest zIndex among visible windows (the shell's opt-in
+    // escape-to-close only fires for the focused window).
+    const isTopWindow = !windows.some(
+        (w) => !w.minimized && w.id !== state.id && w.zIndex > state.zIndex,
+    );
+
     // If region-snapped, override position/size from region rect
     const isRegionSnapped = !!regionRect;
     const baseZ = state.zIndex * 10;
@@ -322,9 +333,30 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                 {state.isLoading && <div className="window__loading-bar" />}
             </div>
 
-            {/* Content */}
-            <div className="window__content">
-                {children}
+            {/* Content — hosted by WidgetShell so all 48 widgets inherit the
+                Widget Enhancement Layer (error boundary, escape-to-close,
+                themed scrollbars, focus rings, …). Each improvement is
+                flag-gated by widgetEnhancementsStore → reversible at runtime.
+                🔴 ZERO-DOM CONTRACT: enhancement classes go on
+                `.window__content` ITSELF and WidgetShell renders no element —
+                the widget root must remain the direct DOM child of
+                `.window__content` (23 direct-child selectors in global.css +
+                the `:has(>)` flex contracts in Window.css depend on it). */}
+            <div
+                ref={contentRef}
+                className={`window__content ${enhancementClasses(weFlags)}`}
+                data-widget-id={String(state.component)}
+                data-reduced-motion={weFlags.reducedMotion ? 'true' : 'false'}
+            >
+                <WidgetShell
+                    widgetId={String(state.component)}
+                    widgetLabel={state.title}
+                    isFocused={isTopWindow}
+                    contentRef={contentRef}
+                    onRequestClose={() => closeWindow(state.id)}
+                >
+                    {children}
+                </WidgetShell>
             </div>
 
             {/* Tear-off grip — compact, pinned handle (NOT a persistent chrome

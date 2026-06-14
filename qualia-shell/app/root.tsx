@@ -78,12 +78,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     dangerouslySetInnerHTML={{
                         __html: `(function () {
   try {
+    var LEGACY = { dark:1, light:1, trust:1, vibrant:1, luxury:1, healthcare:1, creative:1, 'dark-excellence':1, 'terminal-bl4':1, halocron:1 };
     var theme = localStorage.getItem('dwellium-theme')
       || localStorage.getItem('qualia-theme')
-      || 'dark';
+      || 'cosmos';
+    if (LEGACY[theme]) theme = 'cosmos';
     document.documentElement.className = 'theme-' + theme;
+    document.documentElement.setAttribute('data-theme', theme);
   } catch (e) {
-    document.documentElement.className = 'theme-dark';
+    document.documentElement.className = 'theme-cosmos';
+    document.documentElement.setAttribute('data-theme', 'cosmos');
   }
 })();`,
                     }}

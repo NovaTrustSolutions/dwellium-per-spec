@@ -1,5 +1,38 @@
 import { defineConfig } from 'vite';
 import { reactRouter } from '@react-router/dev/vite';
+import { cloneAndAnalyze } from './scripts/kgAnalyze.mjs';
+import { scanFolder } from './scripts/kbScan.mjs';
+
+/**
+ * kgGraphRepoPlugin — dev-server route that REALLY clones + graphs a repo for
+ * the Halocron Knowledge Graph "Add a project" flow. Runs on the dev machine
+ * (which has git + node), so it genuinely clones the URL, builds the static
+ * import graph, writes public/data/kg/<id>.json, and returns the project card.
+ * Path is OUTSIDE /api so it isn't swallowed by the backend proxy below.
+ */
+function kgGraphRepoPlugin() {
+    return {
+        name: 'kg-graph-repo',
+        configureServer(server: import('vite').ViteDevServer) {
+            server.middlewares.use('/__kg/graph-repo', (req, res) => {
+                if (req.method !== 'POST') { res.statusCode = 405; res.end('POST only'); return; }
+                let body = '';
+                req.on('data', (c) => { body += c; });
+                req.on('end', async () => {
+                    res.setHeader('Content-Type', 'application/json');
+                    try {
+                        const { url } = JSON.parse(body || '{}');
+                        const card = await cloneAndAnalyze(String(url || ''));
+                        res.end(JSON.stringify({ success: true, project: card }));
+                    } catch (e) {
+                        res.statusCode = 400;
+                        res.end(JSON.stringify({ success: false, error: (e as Error).message }));
+                    }
+                });
+            });
+        },
+    };
+}
 
 /**
  * Phase-8+ Task 8.6 — Vite config (SPLIT from prior dual-purpose config per Cowork Verdict 3 LOCK)
@@ -27,8 +60,92 @@ import { reactRouter } from '@react-router/dev/vite';
  * (`npm run dev` → `react-router dev` → internally consumes this config's
  * server block for /api + /health proxying to backend at localhost:3000).
  */
+/**
+ * kbScanPlugin — dev-server route for Scribe's knowledge-base folder. Walks a
+ * local folder on the dev machine and returns its text files so the client can
+ * AI-summarize each into a short wiki. Path is outside /api (not proxied).
+ */
+function kbScanPlugin() {
+    return {
+        name: 'kb-scan',
+        configureServer(server: import('vite').ViteDevServer) {
+            server.middlewares.use('/__kb/scan', (req, res) => {
+                if (req.method !== 'POST') { res.statusCode = 405; res.end('POST only'); return; }
+                let body = '';
+                req.on('data', (c) => { body += c; });
+                req.on('end', () => {
+                    res.setHeader('Content-Type', 'application/json');
+                    try {
+                        const { folder } = JSON.parse(body || '{}');
+                        if (!folder || typeof folder !== 'string') throw new Error('Provide a folder path');
+                        res.end(JSON.stringify({ success: true, ...scanFolder(folder) }));
+                    } catch (e) {
+                        res.statusCode = 400;
+                        res.end(JSON.stringify({ success: false, error: (e as Error).message }));
+                    }
+                });
+            });
+        },
+    };
+}
+
 export default defineConfig({
-    plugins: [reactRouter()],
+    plugins: [reactRouter(), kgGraphRepoPlugin(), kbScanPlugin()],
+    // 2026-06-12 live-sweep fix: pre-bundle the heavy deps that widgets pull
+    // in via dynamic import (terminal → @xterm, doc-viewer/pdf-gear →
+    // pdf-lib/pdfjs/tesseract/mammoth/docx, scribe → codemirror family).
+    // Without this, the FIRST open of each widget triggered a mid-flight Vite
+    // dep re-optimization → the dynamic import failed → lazyWithReload
+    // force-reloaded the page (felt like being logged out). Pre-bundling
+    // removes the failure at the source; lazyWithReload's in-place retry
+    // covers anything else.
+    optimizeDeps: {
+        // Scan ALL widget source at server start so esbuild discovers every
+        // dependency (including ones behind dynamic import()) up front —
+        // a dep discovered MID-SESSION forces a re-optimization that 504s
+        // in-flight imports and ends in a forced page reload (the
+        // "clicking a widget / Space logs you out" bug, F-013).
+        entries: [
+            './index.html',
+            './src/registry/widgetRegistry.ts',
+            './src/components/**/*.tsx',
+        ],
+        // Explicit union of heavy/dynamic-imported deps (belt and braces).
+        include: [
+            '@xterm/xterm',
+            '@xterm/addon-fit',
+            'pdf-lib',
+            'pdfjs-dist',
+            'tesseract.js',
+            'mammoth',
+            'docx',
+            'codemirror',
+            '@codemirror/state',
+            '@codemirror/view',
+            '@codemirror/language',
+            '@codemirror/search',
+            '@codemirror/autocomplete',
+            '@codemirror/lang-markdown',
+            '@lezer/highlight',
+            '@lezer/markdown',
+            'recharts',
+            'react-markdown',
+            'remark-gfm',
+            'dompurify',
+            'zustand',
+            '@tanstack/react-query',
+            '@sentry/react',
+            '@anam-ai/js-sdk',
+            'lucide-react',
+        ],
+        // wasm/worker-based AI packages must be served natively (pre-bundling
+        // breaks their worker/wasm resolution); excluded deps never trigger
+        // a mid-session re-optimization either.
+        exclude: [
+            '@huggingface/transformers',
+            '@moonshine-ai/moonshine-js',
+        ],
+    },
     server: {
         port: 5173,
         proxy: {

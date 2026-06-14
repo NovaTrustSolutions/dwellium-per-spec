@@ -4,7 +4,7 @@ import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm, applyModelPreference } from '../../lib/llmClient';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
-import { parseCommand, stripPoliteness } from '../../lib/dwelliumCommands';
+import { parseCommand, stripPoliteness, resolveWidget, openWidget as openWidgetCmd, widgetLabel } from '../../lib/dwelliumCommands';
 import { matchSkill, AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
 import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } from '../../lib/agents/spawn';
 import { parseChain, executeChain } from '../../lib/conductorChain';
@@ -13,7 +13,7 @@ import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingA
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
 import { generateGoalPlan, formatPlanForChat, NEW_GOAL_PATTERN, REFINE_GOAL_PATTERN } from '../../lib/goalPlanner';
-import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT } from '../../lib/morningBriefStore';
+import { consumePendingBrief, formatBrief, MORNING_BRIEF_EVENT, type MorningBrief } from '../../lib/morningBriefStore';
 import { buildAgentContextBlock } from '../../lib/agentContextStore';
 import { createGoal, updateGoalPlan, findGoalByTitle } from '../../lib/goalsStore';
 import { runTeam, runPersona, type OrchestratorDeps } from '../../lib/agents/orchestrator';
@@ -326,6 +326,12 @@ export default function ARAConsole() {
     // Executive Assistant is ARA's default lens (the general-purpose persona).
     const [activeMode, setActiveMode] = useState<string>('executive-assistant');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    // Morning-brief hand-off (banner → ARA). Captured ONCE into a ref so the
+    // session-restore effect (which re-runs and would otherwise wipe a posted
+    // brief under StrictMode) can re-include it. briefTick re-fires restore when
+    // the brief arrives after ARA is already open.
+    const pendingBriefRef = useRef<MorningBrief | null>(null);
+    const [briefTick, setBriefTick] = useState(0);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [modePickerOpen, setModePickerOpen] = useState(false);
@@ -966,13 +972,17 @@ export default function ARAConsole() {
             restored = null;
         }
 
-        setMessages(restored?.messages || []);
+        const base = restored?.messages || [];
+        // Re-include the morning brief if one is pending, so this restore can't
+        // wipe it (the "Read brief opens ARA but nothing loads" bug).
+        const brief = pendingBriefRef.current;
+        setMessages(brief ? [...base, createChatMessage({ role: 'assistant', content: formatBrief(brief) })] : base);
         setLastRequest(restored?.lastRequest || null);
         sessionId.current = restored?.sessionId || `session-${Date.now()}`;
         setRequestError(null);
         setActionStatus(null);
         setActionMode('none');
-    }, [activeMode]);
+    }, [activeMode, briefTick]);
 
     useEffect(() => {
         if (skipSessionPersistRef.current) {
@@ -1435,6 +1445,30 @@ export default function ARAConsole() {
             }
             return;
         }
+        // Pass 1.55 — App access (2026-06-14 Ilya): when the user asks ARA to
+        // open/use/see/access an app (even phrased as a question like "can you
+        // access Strata?"), actually OPEN that widget instead of chatting that
+        // it can't. Every widget is reachable via resolveWidget's alias map.
+        // Sits after the open-doc pass so "review the open file" still wins.
+        {
+            const APP_ACTION = /\b(open|launch|start|show|pull up|bring up|go to|take me to|access|use|check|see|view|navigate to|jump to)\b/i;
+            if (APP_ACTION.test(text)) {
+                const wid = resolveWidget(text, true);
+                if (wid) {
+                    openWidgetCmd(wid);
+                    const label = widgetLabel(wid);
+                    const ack = `Opening ${label} — it's on your screen now. Tell me what you'd like to do in it and I'll help.`;
+                    setMessages(prev => [
+                        ...prev,
+                        createChatMessage({ role: 'user', content: text }),
+                        createChatMessage({ role: 'assistant', content: ack }),
+                    ]);
+                    if (ttsEnabled) void speakText(ack);
+                    return;
+                }
+            }
+        }
+
         // Pass 1.6 — P12-5 Mission Control: "new goal …" creates a goal with
         // an agent-drafted plan (brief + agent-vs-you actions + clarifying
         // questions); "refine goal <title>: <answers>" regenerates the plan.
@@ -1584,14 +1618,16 @@ export default function ARAConsole() {
     // consumePendingBrief() ALSO runs on mount (spawn.ts sister shape) so the
     // hand-off survives ARA being opened BY the banner click itself.
     useEffect(() => {
-        const deliver = () => {
+        const grab = () => {
+            if (pendingBriefRef.current) return;            // already captured this session
             const brief = consumePendingBrief();
             if (!brief) return;
-            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content: formatBrief(brief) })]);
+            pendingBriefRef.current = brief;                // survives session-restore re-runs
+            setBriefTick(t => t + 1);                       // re-fire restore to append it
         };
-        deliver(); // mount-race leg
-        window.addEventListener(MORNING_BRIEF_EVENT, deliver);
-        return () => window.removeEventListener(MORNING_BRIEF_EVENT, deliver);
+        grab(); // mount-race leg
+        window.addEventListener(MORNING_BRIEF_EVENT, grab);
+        return () => window.removeEventListener(MORNING_BRIEF_EVENT, grab);
     }, []);
 
     // ── A2: suggest "open in <widget>" handoffs from ARA's latest reply ───

@@ -40,6 +40,67 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-013 — First open of heavy widgets (terminal/doc-viewer/pdf-gear/scribe) force-reloaded the page; user experienced it as "clicking widgets logs you out"
+- **Problem:** Opening any of 4 heavy widgets for the FIRST time in a dev
+  session nuked the whole page with `window.location.reload()` — desktop
+  reset, felt like a logout. Found by a full 48-widget live sweep (Chrome
+  probe opening every registered widget and watching for reloads).
+- **Root cause:** Their dynamic imports pull big deps (@xterm, pdf-lib,
+  pdfjs-dist, tesseract.js, codemirror family) that Vite hadn't pre-bundled →
+  mid-flight dep re-optimization → import rejects with "Failed to fetch
+  dynamically imported module" → `lazyWithReload` went STRAIGHT to its
+  sessionStorage-gated reload. The gate flag clears on next success, so the
+  cycle repeats every fresh dev session — "the things we fixed break again".
+- **Fix:** (1) `lazyWithReload` now retries the import IN PLACE (2 retries,
+  300/600ms backoff) and only reloads as a last resort for genuinely stale
+  chunks. (2) `vite.config.ts optimizeDeps.include` pre-bundles all the heavy
+  deps so the dev-mode failure never happens. Verified live: all 4 widgets
+  opened fresh, zero reloads, marker global survived, session intact;
+  terminal renders a live zsh.
+- **Worse vector (caught after claiming "all widgets work"): SPACES.** A Space
+  opens 3-4 widgets simultaneously → first un-bundled dep among them →
+  re-optimization → reload that wipes the whole desktop. The per-widget sweep
+  missed it because Ilya's actual workflow is Space clicks, not single widget
+  opens — and an explicit include-list can never cover deps nobody listed.
+- **Final fix:** `optimizeDeps.entries` scans `index.html` + widgetRegistry +
+  `src/components/**/*.tsx` at server start so esbuild discovers EVERY dep up
+  front (include-list kept as belt-and-braces; wasm packages
+  @huggingface/transformers + @moonshine-ai/moonshine-js in `exclude` — they
+  must load natively and excluded deps never re-optimize). In-place-retry in
+  lazyWithReload stays for prod stale chunks. Verified: all 5 Spaces clicked
+  back-to-back, marker global survived (zero reloads), session intact,
+  screenshots of each.
+- **Prevention:** When a widget adds a heavy npm dep behind a dynamic import,
+  add it to `optimizeDeps.include`. Any "random page reload / logout" report
+  → first suspect chunk-load reload paths (grep `location.reload`), and test
+  with a marker global on `window` to detect silent reloads. Verification
+  must exercise the user's REAL entry points (Spaces, default stack), not
+  just per-widget opens.
+
+### F-012 — Assessment-sweep WidgetShell wrapper divs collapsed EVERY widget to 0 height (blank ARA video, "everything broken")
+- **Problem:** The 2026-06-12 honest-assessment sweep shipped a Widget
+  Enhancement Layer that wrapped all widget content in `<div.widget-shell>` +
+  `<div.widget-error__ok>` inside `.window__content`. The whole gate was green
+  (tsc + 1413 vitest + build + SSR smoke) but at runtime ARA rendered a blank
+  window and widgets app-wide were broken — shipped with NO live-browser pass.
+- **Root cause:** 23 direct-child selectors in `global.css`
+  (`.window__content > .ara-console` etc.) + the
+  `.window__content:has(> .ara-console)` flex rules in `Window.css` stopped
+  matching — widget roots styled `flex: 1; height: 0` were no longer flex
+  items, so they computed to literal 0px height. NOTE: `display: contents` on
+  the wrapper does NOT save you — child combinators match the DOM tree, not
+  the box tree.
+- **Fix (same day):** ZERO-DOM contract. WidgetShell renders no element
+  (boundary-only; healthy path = keyed `<Fragment>`); enhancement classes are
+  applied by Window.tsx to `.window__content` ITSELF. Verified: tsc ✓,
+  1413/1413 vitest ✓, builds ✓, PII ✓, SSR smoke ✓, AND live-browser: ARA
+  intro video plays, 4 widgets opened with 0 console errors, session survived.
+- **Prevention:** (1) Never insert a DOM element between `.window__content`
+  and the widget root — grep `window__content >` and `:has(>` before touching
+  Window.tsx's content slot. (2) "Green gate ≠ working" (memory + F-009): any
+  change to the universal widget host REQUIRES a live-browser pass before
+  claiming done.
+
 ### F-011 — "My session work disappeared": :5173 was a stale launchd-served COPY, not the repo
 - **Problem:** Ilya kept opening localhost:5173 and seeing none of the session's
   work — looked like sessions were being lost. They never were; the work was

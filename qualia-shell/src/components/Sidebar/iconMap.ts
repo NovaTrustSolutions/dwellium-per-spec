@@ -46,6 +46,7 @@ import {
     LayoutGrid,
     Layers,
     Tag,
+    History,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -92,6 +93,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'file-stack':     FileStack,
     'terminal':       Terminal,
     'tag':            Tag,
+    'history':        History,
 
     // ── Group Headers ──
     'building':       Building,

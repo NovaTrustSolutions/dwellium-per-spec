@@ -115,4 +115,28 @@ export const oneSaveClient = {
         const r = await call<unknown>('DELETE', `/${encodeURIComponent(id)}`);
         return r !== null;
     },
+
+    /**
+     * Time-travel (assessment sweep upgrade #7): read an object's append-only
+     * event history (`events/*.ndjson` server-side). Returns [] when the
+     * backend `/api/objects/:id/history` route isn't present yet — honest
+     * no-op, sister to the test-postgres pattern. The TimeTravel widget shows
+     * a "history route not available" banner in that case.
+     */
+    async history<T = unknown>(id: string): Promise<ObjectVersion<T>[]> {
+        const r = await call<ObjectVersion<T>[]>('GET', `/${encodeURIComponent(id)}/history`);
+        return r ?? [];
+    },
 };
+
+/** One append-only event for an object (a version snapshot). */
+export interface ObjectVersion<T = unknown> {
+    /** Monotonic version index (0 = first write). */
+    version: number;
+    /** ISO timestamp the version was written. */
+    at: string;
+    /** 'put' | 'delete' — the op that produced this version. */
+    op: string;
+    /** Full payload at this version (for restore + diff). */
+    payload: T;
+}

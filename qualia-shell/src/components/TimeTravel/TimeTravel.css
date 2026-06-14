@@ -1,0 +1,100 @@
+/* TimeTravel — theme-token driven. */
+
+.time-travel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    height: 100%;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+.time-travel__bar {
+    display: flex;
+    gap: 8px;
+}
+
+.time-travel__bar input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 6px;
+    color: var(--text-primary, #e8ecef);
+    background: var(--surface-1, rgba(0, 0, 0, 0.25));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+}
+
+.time-travel__bar button,
+.tt-restore {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-primary, #e8ecef);
+    background: var(--surface-3, rgba(255, 255, 255, 0.08));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+}
+
+.time-travel__note,
+.time-travel__empty {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-secondary, #b9c0c8);
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--surface-2, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.time-travel__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.time-travel__list li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.time-travel__list li.is-selected {
+    border-color: var(--accent, #6ea8fe);
+}
+
+.tt-row {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    text-align: left;
+    font-size: 12px;
+}
+
+.tt-version { font-weight: 600; color: var(--text-primary, #e8ecef); }
+.tt-op { color: var(--accent, #6ea8fe); }
+.tt-at { color: var(--text-secondary, #b9c0c8); }
+
+.tt-payload {
+    grid-column: 1 / -1;
+    margin: 6px 0 0;
+    max-height: 200px;
+    overflow: auto;
+    font-size: 11px;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    color: var(--text-secondary, #b9c0c8);
+    background: var(--surface-1, rgba(0, 0, 0, 0.3));
+    padding: 8px;
+    border-radius: 6px;
+}

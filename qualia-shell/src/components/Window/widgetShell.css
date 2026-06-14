@@ -1,0 +1,102 @@
+/* widgetShell.css — the UI layer (C4) for the Widget Enhancement Layer
+   (assessment sweep 2026-06-12; STRUCTURAL FIX same day). Every class is
+   flag-gated, so any single improvement can be turned off at runtime. All
+   colors come from theme tokens (no hardcoded palette) so BL4 + every theme
+   inherit correctly.
+
+   🔴 ZERO-DOM CONTRACT: these classes are applied by Window.tsx to
+   `.window__content` ITSELF — there is no `.widget-shell` wrapper element.
+   The original wrapper div broke every `.window__content > X` direct-child
+   selector (widget roots collapsed to 0 height). Do NOT reintroduce a box
+   between `.window__content` and the widget root. */
+
+/* #9 mount fade-in (functional/UI additive) */
+@keyframes we-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.widget-shell--fade {
+    animation: we-fade-in 160ms ease-out;
+}
+
+/* UI #1 density — consistent inner gutter without overriding widgets that
+   already manage their own padding (only applies a CSS var widgets MAY use). */
+.we-density {
+    --widget-content-pad: 12px;
+}
+
+/* UI #2 themed scrollbars inside widget content */
+.we-scrollbars,
+.we-scrollbars * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb, rgba(255, 255, 255, 0.18)) transparent;
+}
+.we-scrollbars ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+.we-scrollbars ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb, rgba(255, 255, 255, 0.18));
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+.we-scrollbars ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover, rgba(255, 255, 255, 0.30));
+    background-clip: content-box;
+}
+.we-scrollbars ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* UI #3 visible focus rings for keyboard users (a11y). :focus-visible only —
+   mouse clicks don't get the ring. */
+.we-focus-rings :focus-visible {
+    outline: 2px solid var(--accent, #6ea8fe);
+    outline-offset: 1px;
+    border-radius: 3px;
+}
+
+/* UI #5 font-scale safety clamp — prevents a layout-setting fontScale from
+   blowing out widget chrome (the BL4 font-collision item in BACKLOG). Widgets
+   opting into this var stay within a readable band. */
+.we-font-clamp {
+    --widget-font-scale: clamp(0.85, 1em, 1.25em);
+}
+
+/* UI #6 min-size guard — content never collapses to zero in a tiny region. */
+.we-min-guard {
+    min-width: 0;
+}
+.we-min-guard > * {
+    min-width: 0;
+}
+
+/* UI #7 themed text selection */
+.we-selection ::selection {
+    background: var(--accent-soft, rgba(110, 168, 254, 0.35));
+    color: var(--text-primary, #e8ecef);
+}
+
+/* UI #9 stable scroll gutter — no horizontal jump when a vertical scrollbar
+   appears (only where the widget itself scrolls). */
+.we-gutter {
+    scrollbar-gutter: stable;
+}
+
+/* UI #10 + functional #8 motion-safe — honor the OS reduced-motion setting
+   for shell-owned animation regardless of the in-app flag. */
+@media (prefers-reduced-motion: reduce) {
+    .we-motion-safe.widget-shell--fade {
+        animation: none;
+    }
+    .we-motion-safe * {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+/* In-app reduced-motion flag (data-attr) — same effect without the OS pref.
+   (data-attr now lives on .window__content per the zero-DOM contract.) */
+[data-reduced-motion='true'].widget-shell--fade {
+    animation: none;
+}

@@ -1,0 +1,46 @@
+/* WidgetErrorBoundary — inline recover card (assessment sweep, weakness #2).
+   Theme-token driven. 🔴 The healthy path renders a keyed Fragment — NO
+   wrapper element (zero-DOM contract; even display:contents breaks
+   `.window__content > X` child selectors because they match the DOM tree,
+   not the box tree). Only the error card below adds DOM. */
+
+.widget-error {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 16px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    color: var(--text-secondary, #b9c0c8);
+    background: var(--surface-2, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--danger-border, rgba(244, 113, 116, 0.4));
+}
+
+.widget-error__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #e8ecef);
+}
+
+.widget-error__detail {
+    font-size: 12px;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    opacity: 0.8;
+    max-width: 60ch;
+    word-break: break-word;
+}
+
+.widget-error__retry {
+    padding: 4px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text-primary, #e8ecef);
+    background: var(--surface-3, rgba(255, 255, 255, 0.08));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+}
+
+.widget-error__retry:hover {
+    background: var(--surface-4, rgba(255, 255, 255, 0.14));
+}

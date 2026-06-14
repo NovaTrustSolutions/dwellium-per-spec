@@ -15,6 +15,9 @@ export interface ScribeLayout {
     tocWidth: number;
     minimapWidth: number;
     tabBarHeight: number;
+    treeWidth: number;
+    araWidth: number;
+    previewWidth: number;
 }
 
 export const TOC_MIN = 160;
@@ -29,10 +32,25 @@ export const TABBAR_MIN = 28;
 export const TABBAR_MAX = 80;
 export const TABBAR_DEFAULT = 38;
 
+export const TREE_MIN = 160;
+export const TREE_MAX = 480;
+export const TREE_DEFAULT = 248;
+
+export const ARA_MIN = 240;
+export const ARA_MAX = 640;
+export const ARA_DEFAULT = 320;
+
+export const PREVIEW_MIN = 280;
+export const PREVIEW_MAX = 1000;
+export const PREVIEW_DEFAULT = 420;
+
 export const DEFAULT_LAYOUT: ScribeLayout = {
     tocWidth: TOC_DEFAULT,
     minimapWidth: MINIMAP_DEFAULT,
     tabBarHeight: TABBAR_DEFAULT,
+    treeWidth: TREE_DEFAULT,
+    araWidth: ARA_DEFAULT,
+    previewWidth: PREVIEW_DEFAULT,
 };
 
 export const scribeLayoutUserIdHolder: { current: string | null } = { current: null };
@@ -54,6 +72,9 @@ function normalize(raw: unknown): ScribeLayout {
         tocWidth: clamp(obj.tocWidth as number ?? TOC_DEFAULT, TOC_MIN, TOC_MAX),
         minimapWidth: clamp(obj.minimapWidth as number ?? MINIMAP_DEFAULT, MINIMAP_MIN, MINIMAP_MAX),
         tabBarHeight: clamp(obj.tabBarHeight as number ?? TABBAR_DEFAULT, TABBAR_MIN, TABBAR_MAX),
+        treeWidth: clamp(obj.treeWidth as number ?? TREE_DEFAULT, TREE_MIN, TREE_MAX),
+        araWidth: clamp(obj.araWidth as number ?? ARA_DEFAULT, ARA_MIN, ARA_MAX),
+        previewWidth: clamp(obj.previewWidth as number ?? PREVIEW_DEFAULT, PREVIEW_MIN, PREVIEW_MAX),
     };
 }
 

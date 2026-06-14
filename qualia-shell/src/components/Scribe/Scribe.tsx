@@ -24,7 +24,8 @@ import { ContextMenu } from './ContextMenu';
 import { useScribeTheme } from './useScribeTheme';
 import { useScribeLayout } from './useScribeLayout';
 import { Splitter } from './Splitter';
-import { TOC_MIN, TOC_MAX, MINIMAP_MIN, MINIMAP_MAX } from './scribeLayoutStore';
+import MarkdownPreview from './MarkdownPreview';
+import { TOC_MIN, TOC_MAX, MINIMAP_MIN, MINIMAP_MAX, TREE_MIN, TREE_MAX, TREE_DEFAULT, ARA_MIN, ARA_MAX, ARA_DEFAULT, PREVIEW_MIN, PREVIEW_MAX, PREVIEW_DEFAULT } from './scribeLayoutStore';
 import IngestionPanel from './ingestion/IngestionPanel';
 import { useIngestion } from './ingestion/useIngestion';
 import { FileTree } from './FileTree';
@@ -51,6 +52,40 @@ export default function Scribe() {
     const tocVisible = tocVisibleRaw && !focusMode;
     const minimapVisible = minimapVisibleRaw && !focusMode;
     const activeFile = openFiles.find((f) => f.filepath === activeFilepath);
+
+    // ── Live preview (MacDown parity) ──
+    const [previewVisible, setPreviewVisible] = useState(false);
+    const previewRef = useRef<HTMLDivElement>(null);
+
+    // Scroll-sync: editor scroll position drives the preview proportionally.
+    useEffect(() => {
+        if (!previewVisible) return;
+        const sd = viewRef.current?.scrollDOM;
+        const pv = previewRef.current;
+        if (!sd || !pv) return;
+        const onScroll = () => {
+            const denom = Math.max(1, sd.scrollHeight - sd.clientHeight);
+            const ratio = sd.scrollTop / denom;
+            pv.scrollTop = ratio * (pv.scrollHeight - pv.clientHeight);
+        };
+        sd.addEventListener('scroll', onScroll, { passive: true });
+        return () => sd.removeEventListener('scroll', onScroll);
+    }, [previewVisible, activeFilepath]);
+
+    const exportHtml = useCallback(() => {
+        const inner = previewRef.current?.querySelector('.scribe-preview__md')?.innerHTML ?? '';
+        const name = (activeFilepath?.split('/').pop() || 'document').replace(/\.md$/, '');
+        const html = `<!doctype html><html><head><meta charset="utf-8"><title>${name}</title>`
+            + `<style>body{font-family:-apple-system,system-ui,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;line-height:1.65;color:#1a1a1a}`
+            + `pre{background:#f5f5f5;padding:12px;border-radius:8px;overflow:auto}code{font-family:ui-monospace,monospace}`
+            + `table{border-collapse:collapse}th,td{border:1px solid #ccc;padding:7px 10px}blockquote{border-left:3px solid #4d8aff;margin:0;padding-left:14px;color:#555}</style>`
+            + `</head><body>${inner}</body></html>`;
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `${name}.html`; a.click();
+        URL.revokeObjectURL(url);
+    }, [activeFilepath]);
 
     useAutoSave(activeFilepath);
 
@@ -171,14 +206,43 @@ export default function Scribe() {
             {redlineLoading && <div className="scribe__status">AI is thinking...</div>}
             <div className="scribe__cols">
                 {!focusMode && (
-                    <aside className="scribe__tree-col">
-                        <ScribeTreeColumn />
-                    </aside>
+                    <>
+                        <aside className="scribe__tree-col" style={{ width: layout.treeWidth ?? TREE_DEFAULT, flexShrink: 0 }}>
+                            <ScribeTreeColumn />
+                        </aside>
+                        <Splitter
+                            orientation="vertical"
+                            direction="positive"
+                            onResize={(delta) => layout.setTreeWidth(Math.max(TREE_MIN, Math.min(TREE_MAX, (layout.treeWidth ?? TREE_DEFAULT) + delta)))}
+                        />
+                    </>
                 )}
                 <div className="scribe__editor-area" style={{ position: 'relative' }}>
                 <FindReplace getView={() => viewRef.current} />
                 {focusMode && <FocusExitChip />}
                 <div className="scribe__editor" ref={containerRef} />
+                <button
+                    type="button"
+                    className={`scribe__preview-toggle ${previewVisible ? 'on' : ''}`}
+                    onClick={() => setPreviewVisible((v) => !v)}
+                    title="Toggle live preview"
+                >{previewVisible ? '✓ Preview' : 'Preview'}</button>
+                {previewVisible && (
+                    <>
+                        <Splitter
+                            orientation="vertical"
+                            direction="negative"
+                            onResize={(delta) => layout.setPreviewWidth(Math.max(PREVIEW_MIN, Math.min(PREVIEW_MAX, (layout.previewWidth ?? PREVIEW_DEFAULT) + delta)))}
+                        />
+                        <div className="scribe__preview-wrap" style={{ width: layout.previewWidth ?? PREVIEW_DEFAULT, flexShrink: 0 }}>
+                            <div className="scribe-preview__bar">
+                                <span>PREVIEW</span>
+                                <button onClick={exportHtml} title="Export rendered HTML">Export HTML</button>
+                            </div>
+                            <MarkdownPreview ref={previewRef} text={activeFile?.content ?? ''} />
+                        </div>
+                    </>
+                )}
                 <RedlineNavigator getView={() => viewRef.current} />
                 {minimapVisible && (
                     <>
@@ -211,7 +275,18 @@ export default function Scribe() {
                     </>
                 )}
                 </div>
-                {!focusMode && <AraMiniPanel />}
+                {!focusMode && (
+                    <>
+                        <Splitter
+                            orientation="vertical"
+                            direction="negative"
+                            onResize={(delta) => layout.setAraWidth(Math.max(ARA_MIN, Math.min(ARA_MAX, (layout.araWidth ?? ARA_DEFAULT) + delta)))}
+                        />
+                        <div className="scribe__ara-col" style={{ width: layout.araWidth ?? ARA_DEFAULT, flexShrink: 0, display: 'flex', minHeight: 0 }}>
+                            <AraMiniPanel />
+                        </div>
+                    </>
+                )}
             </div>
             <SelectionToolbar />
             <CommentEditor getView={() => viewRef.current} />

@@ -312,6 +312,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     /* ── Login ────────────────────────────────────────── */
 
     const login = useCallback(async (email: string, password: string) => {
+        // Fresh logon: allow the ARA intro video to play once this session.
+        try { sessionStorage.removeItem('dwellium-ara-intro-played'); } catch { /* sandboxed */ }
         try {
             const res = await fetch(`${API_BASE}/api/auth/login`, {
                 method: 'POST',

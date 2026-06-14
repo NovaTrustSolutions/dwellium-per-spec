@@ -1,9 +1,11 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { useTheme, THEMES, CUSTOM_TOKENS_KEY, applyAccentReset } from '../../context/ThemeContext';
+import { halocronOsStore } from '../../lib/halocronOsStore';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
+import ActivationCenter from './ActivationCenter';
 import DataFolderSection from './DataFolderSection';
 import GoogleDriveSection from './GoogleDriveSection';
 import GoogleAccountsSection from './GoogleAccountsSection';
@@ -58,6 +60,7 @@ interface CalendarEvent {
 
 export default function ControlPanel() {
     const { theme, accentColor, setTheme, setAccentColor } = useTheme();
+    const hosState = useSyncExternalStore(halocronOsStore.subscribe, halocronOsStore.getSnapshot, halocronOsStore.getServerSnapshot);
     const [showImport, setShowImport] = useState(false);
     const [importText, setImportText] = useState('');
     const [editMsg, setEditMsg] = useState('');
@@ -231,6 +234,23 @@ export default function ControlPanel() {
         <div className="control-panel">
             <section className="cp-section">
                 <h3 className="cp-section__title">Appearance</h3>
+
+                <div className="cp-field">
+                    <label className="cp-label">Interface Layout — {hosState.enabled ? 'Halocron OS' : 'Classic desktop'}</label>
+                    <div style={{ display: 'inline-flex', border: '1px solid var(--border-default, rgba(255,255,255,0.12))', borderRadius: 9, overflow: 'hidden' }}>
+                        <button
+                            type="button"
+                            onClick={() => halocronOsStore.setEnabled(false)}
+                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, background: !hosState.enabled ? 'var(--accent)' : 'transparent', color: !hosState.enabled ? 'var(--accent-text, #000)' : 'var(--text-secondary)', border: 'none' }}
+                        >Classic desktop</button>
+                        <button
+                            type="button"
+                            onClick={() => halocronOsStore.setEnabled(true)}
+                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, background: hosState.enabled ? 'var(--accent)' : 'transparent', color: hosState.enabled ? 'var(--accent-text, #000)' : 'var(--text-secondary)', border: 'none' }}
+                        >Halocron OS</button>
+                    </div>
+                    <div style={{ fontSize: 11, opacity: 0.6, marginTop: 6 }}>Same widgets, spaces and memory — two layouts. The OS shell launches every widget from one archive.</div>
+                </div>
 
                 <div className="cp-field">
                     <label className="cp-label">Theme — {THEMES.find(t => t.id === theme)?.label || theme}</label>
@@ -557,6 +577,14 @@ export default function ControlPanel() {
 
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />
+
+            {/* Activation Center — activate-any-time capabilities (assessment
+                sweep 2026-06-12): live AppFolio sync, security mode, cloud
+                replication, auto-updater, notifications, PWA. Built + ready;
+                each flips on when its key/URL is set and backend half exists. */}
+            <section className="cp-section">
+                <ActivationCenter />
+            </section>
 
             {/* Multi-account Gmail + Calendar (OAuth via backend) — 2026-06-10 */}
             <GoogleAccountsSection />

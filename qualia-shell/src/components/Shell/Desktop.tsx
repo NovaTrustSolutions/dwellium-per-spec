@@ -15,6 +15,11 @@ import Window from '../Window/Window';
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAutoOpenHoncho } from './honchoAutoOpen';
 import { DEFAULT_STACK_KEY, DEFAULT_STACK_DONE, DEFAULT_STARTUP_STACK, shouldOpenDefaultStack } from './defaultStack';
+import { applySpaceBus, type ApplySpacePayload } from '../../lib/busChannels';
+import HalocronBoot from './HalocronBoot';
+import HalocronOS from './HalocronOS';
+import HalocronLauncher from './HalocronLauncher';
+import HalocronOsIntro from './HalocronOsIntro';
 
 import QuickLook from '../QuickLook/QuickLook';
 import ThreadSwitcher from '../Workspace/ThreadSwitcher';
@@ -556,6 +561,11 @@ export const WINDOW_COMPONENTS: Record<string, React.FC> = {
     ...REGISTRY_COMPONENTS,
 } as Record<string, React.FC>;
 
+// Module-scoped so it fires exactly once per app load (page load), surviving
+// React StrictMode's double-invoke and Desktop re-mounts. Reset on full reload
+// because the module re-executes — which is exactly "upon start of the app".
+let sysInitFired = false;
+
 export default function Desktop() {
     const { windows, closeWindow, openWindow, updateWindowPosition, focusWindow, restoreWindow, minimizeWindow, maximizeWindow, setWindowGroup, setWindowFrame } = useWindows();
     const { settings, updateSettings, regionAssignments, hoveredRegionId, setActiveRegionTab, assignWindowToRegion, clearWindowRegion, moveTabToRegion, isInteracting } = useLayout();
@@ -586,6 +596,23 @@ export default function Desktop() {
         window.addEventListener('qualia-toast', handleToast);
         return () => window.removeEventListener('qualia-toast', handleToast);
     }, []);
+
+    // ── System Initialization ──────────────────────────────────────────
+    // Auto-open Notebook (NotebookLM) and Paperclip (Terminal → Paperclip tab)
+    // once per app start. Slight delay lets the window manager settle so both
+    // windows place cleanly.
+    useEffect(() => {
+        if (sysInitFired) return;
+        sysInitFired = true;
+        const t = setTimeout(() => {
+            try { openWindow('notebooklm-context', 'NotebookLM', ''); } catch { /* ignore */ }
+            try {
+                sessionStorage.setItem('dwellium-terminal-initial-tab', 'paperclip');
+            } catch { /* sandboxed */ }
+            try { openWindow('terminal', 'Paperclip', ''); } catch { /* ignore */ }
+        }, 600);
+        return () => clearTimeout(t);
+    }, [openWindow]);
 
     // Open-widget event (e.g. Cmd+Shift+2 for Two Brains)
     useEffect(() => {
@@ -639,7 +666,10 @@ export default function Desktop() {
             try {
                 if (localStorage.getItem(DEFAULT_STACK_KEY) === DEFAULT_STACK_DONE) return; // another mount won
                 localStorage.setItem(DEFAULT_STACK_KEY, DEFAULT_STACK_DONE);
-                window.dispatchEvent(new CustomEvent('dwellium:apply-space', { detail: { widgets: [...DEFAULT_STARTUP_STACK] } }));
+                // Assessment sweep: typed-bus emit — if the apply-space listener
+                // hasn't attached yet, its replayWithinMs subscription picks this
+                // up on attach (the 50ms defer above remains as belt-and-braces).
+                applySpaceBus.emit({ widgets: [...DEFAULT_STARTUP_STACK] });
             } catch { /* sandboxed / disabled storage — skip */ }
         }, 50);
         // mount-only by design; windowsRef avoids a stale-closure dep
@@ -930,9 +960,8 @@ export default function Desktop() {
     // WindowContext) because openWindow returns ids synchronously, so we can
     // place them in the same tick with no race.
     useEffect(() => {
-        const handler = (ev: Event) => {
-            const detail = (ev as CustomEvent).detail || {};
-            const wids: string[] = Array.isArray(detail.widgets) ? detail.widgets : [];
+        const handler = (detail: ApplySpacePayload) => {
+            const wids: string[] = Array.isArray(detail?.widgets) ? detail.widgets : [];
             if (wids.length === 0) return;
 
             // pre-handler maximize state (newly-opened windows aren't in `windows`
@@ -1008,8 +1037,13 @@ export default function Desktop() {
             Object.entries(firstPerRegion).forEach(([rid, id]) => setActiveRegionTab(rid, id));
             focusWindow(openedIds[0]);
         };
-        window.addEventListener('dwellium:apply-space', handler);
-        return () => window.removeEventListener('dwellium:apply-space', handler);
+        // Assessment sweep: typed-bus subscription with a short replay window —
+        // an apply-space emitted before this listener attaches (default-stack
+        // startup race, 2026-06-11) is replayed on subscribe instead of lost.
+        // 5s window: covers mount races without re-applying a stale Space on
+        // exotic late remounts. Legacy CustomEvent dispatchers still land here
+        // live (typedBus interop) but only channel emits populate replay.
+        return applySpaceBus.on(handler, { replayWithinMs: 5000 });
     }, [windows, regionRects, openWindow, restoreWindow, focusWindow, minimizeWindow, maximizeWindow,
         clearWindowRegion, assignWindowToRegion, setActiveRegionTab, updateSettings, desktopSize]);
 
@@ -1108,6 +1142,18 @@ export default function Desktop() {
             {/* Hidden live region for screen reader announcements */}
             <div id="a11y-live-region" className="sr-only" aria-live="polite" aria-atomic="true" />
             <div id="desktop-content">
+            {/* Halocron theme: one-shot ignite overlay (no-op for other themes
+                + already-played sessions). Mounted here, clear of the auth flow. */}
+            <HalocronBoot />
+            {/* Halocron OS — alternate interface layout (overlay + launcher rune).
+                Both render null unless the OS layout is enabled, so Classic is
+                untouched. Opening a widget collapses the shell to reveal the
+                real window beneath; the launcher reopens it. */}
+            <HalocronOS />
+            <HalocronLauncher />
+            {/* Cinematic entry: cube video → fly into center → OS emerges.
+                Plays once per session when entering the OS layout. */}
+            <HalocronOsIntro />
             {/* Background grid pattern */}
             <div className="desktop__bg" />
 
@@ -1530,20 +1576,6 @@ export default function Desktop() {
                     <button onClick={() => windowsRef.current.forEach(w => closeWindow(w.id))}>Close All Windows</button>
                     <button onClick={toggleTheme}>Toggle Theme</button>
                     <button onClick={() => window.location.reload()}>Reload System</button>
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 0' }} />
-                    <div style={{ padding: '4px 12px 2px', fontSize: 10, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Skin</div>
-                    <div style={{ display: 'flex', gap: 8, padding: '4px 12px 8px' }}>
-                        {(['default', 'minimal', 'aurora', 'warm', 'neon'] as const).map(skin => (
-                            <button
-                                key={skin}
-                                className={`skin-swatch${document.documentElement.getAttribute('data-skin') === skin ? ' active' : ''}`}
-                                data-skin={skin}
-                                onClick={() => window.dispatchEvent(new CustomEvent('qualia-skin-change', { detail: skin }))}
-                                title={skin.charAt(0).toUpperCase() + skin.slice(1)}
-                                style={{ border: 'none', padding: 0 }}
-                            />
-                        ))}
-                    </div>
                 </div>
             )}
 

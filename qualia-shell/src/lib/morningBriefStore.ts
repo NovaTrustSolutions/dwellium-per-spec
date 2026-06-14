@@ -12,6 +12,7 @@
  * (spawn.ts sister shape — survives the open-ARA mount race).
  */
 import { useContext, useSyncExternalStore } from 'react';
+import { morningBriefBus } from './busChannels';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
 import { UserContext } from '../context/UserContext';
@@ -103,23 +104,21 @@ export function formatBrief(b: MorningBrief): string {
     return lines.join('\n');
 }
 
-/* ─── Delivery bus (spawn.ts pending-slot sister shape) ─── */
+/* ─── Delivery bus (assessment sweep: typed-bus emit + one-shot consume
+   replaces the hand-rolled pending-slot — same mount-race coverage via
+   typedBus replay state. Signatures unchanged — call sites untouched.) ─── */
 
 export const MORNING_BRIEF_EVENT = 'dwellium:morning-brief';
 
-let pendingBriefDate: string | null = null;
-
-/** Banner → ARA hand-off: stash the date, fire the event; ARA consumes. */
+/** Banner → ARA hand-off: typed-bus emit (last-value kept for mount pickup). */
 export function requestBriefInAra(date: string): void {
-    pendingBriefDate = date;
-    try { window.dispatchEvent(new CustomEvent(MORNING_BRIEF_EVENT)); } catch { /* SSR */ }
+    morningBriefBus.emit({ date });
 }
 
 /** ARA-side consumption (mount-race safe: also called on mount). */
 export function consumePendingBrief(): MorningBrief | null {
-    if (!pendingBriefDate) return null;
-    const date = pendingBriefDate;
-    pendingBriefDate = null;
+    const date = morningBriefBus.consume()?.date;
+    if (!date) return null;
     return morningBriefStore.getSnapshot().find(b => b.date === date) ?? null;
 }
 

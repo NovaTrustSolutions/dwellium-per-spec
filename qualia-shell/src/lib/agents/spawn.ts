@@ -10,6 +10,7 @@
  * slot on mount AND clears it when the live event arrives.
  */
 import { agentTeamsStore } from './agentTeamsStore';
+import { busChannel } from '../typedBus';
 
 export const ARA_SPAWN_EVENT = 'dwellium:ara-spawn';
 
@@ -98,18 +99,17 @@ export function parseSpawn(input: string): SpawnRequest | null {
     return null;
 }
 
-// ── pending-slot + event dispatch ──
-let pendingSpawn: SpawnRequest | null = null;
+// ── typed-bus emit + one-shot consume (assessment sweep: replaces the
+// hand-rolled pending-slot; same mount-race coverage via typedBus replay
+// state, one shared mechanism. Signatures unchanged — call sites untouched.) ──
+const spawnBus = busChannel<SpawnRequest>(ARA_SPAWN_EVENT);
 
-/** Fire a spawn at ARA: stash in the pending slot, then dispatch the event. */
+/** Fire a spawn at ARA: typed-bus emit (last-value kept for mount pickup). */
 export function requestSpawn(req: SpawnRequest): void {
-    pendingSpawn = req;
-    try { window.dispatchEvent(new CustomEvent(ARA_SPAWN_EVENT, { detail: req })); } catch { /* SSR / sandbox */ }
+    spawnBus.emit(req);
 }
 
 /** One-shot read of the pending spawn (ARA mount-time pickup). */
 export function consumePendingSpawn(): SpawnRequest | null {
-    const p = pendingSpawn;
-    pendingSpawn = null;
-    return p;
+    return spawnBus.consume();
 }

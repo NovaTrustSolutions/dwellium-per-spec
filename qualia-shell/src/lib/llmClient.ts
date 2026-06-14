@@ -18,6 +18,7 @@
  */
 
 import type { IntegrationsBundle, LlmProvider } from '../types/integrations';
+import { recordAiFailure, recordAiSuccess } from './aiHealthStore';
 import { recordLlmUsage } from './llmUsageStore';
 import { DEFAULT_MODELS } from '../types/integrations';
 
@@ -54,10 +55,22 @@ export async function callLlm(
     req: LlmRequest,
     llm: IntegrationsBundle['llm'],
 ): Promise<LlmResponse | null> {
-    const res = await dispatchLlm(req, llm);
+    let res: LlmResponse | null;
+    try {
+        res = await dispatchLlm(req, llm);
+    } catch (err) {
+        // Assessment sweep (weakness #8): the SAME chokepoint that meters
+        // spend also feeds the AI-health signal — every widget's
+        // useAIAvailability() sees provider failures without tracking them
+        // itself. Recording never swallows the error.
+        if (err instanceof LlmError) recordAiFailure(err.provider, err.status);
+        else recordAiFailure(llm.active ?? 'unknown', 0);
+        throw err;
+    }
     // P12-1 AI-spend ledger: one chokepoint records ESTIMATED usage for every
     // completion (recordLlmUsage never throws — the ledger can't break calls).
     if (res) {
+        recordAiSuccess();
         recordLlmUsage({
             provider: res.provider,
             model: res.model,

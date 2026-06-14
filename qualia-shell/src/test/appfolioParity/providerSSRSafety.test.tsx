@@ -71,8 +71,8 @@ import { hierarchyStore } from '../../context/HierarchyContext';
 import { dockItemsStore, savedLayoutsStore } from '../../context/WindowContext';
 
 describe('Phase-8+ Task 8.9 — Provider SSR-safety: getServerSnapshot contract (baseline)', () => {
-    it("themeStore.getServerSnapshot() returns 'dark' (matches app/root.tsx FOUC IIFE default)", () => {
-        expect(themeStore.getServerSnapshot()).toBe('dark');
+    it("themeStore.getServerSnapshot() returns 'cosmos' (matches app/root.tsx FOUC IIFE default)", () => {
+        expect(themeStore.getServerSnapshot()).toBe('cosmos');
     });
 
     it("fontPairingStore.getServerSnapshot() returns 'default' (FONT_PAIRINGS[0].id)", () => {

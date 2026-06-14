@@ -21,11 +21,15 @@ export function PopupShell({ component }: { component: string }) {
 
     // Restore theme + skin + load metadata
     useEffect(() => {
-        const savedTheme = localStorage.getItem('dwellium-theme') || localStorage.getItem('qualia-theme') || 'dark';
+        // HTML master themes only (cosmos default). Legacy ids → cosmos.
+        const VALID = new Set(['cosmos','deep-dark','simple-black','cyberpunk','synthwave','solarized','rose-pine','mocha','dracula','obsidian','tokyo-night','gruvbox','apple-dark','nord','latte','corporate']);
+        const stored = localStorage.getItem('dwellium-theme') || localStorage.getItem('qualia-theme') || 'cosmos';
+        const savedTheme = VALID.has(stored) ? stored : 'cosmos';
         document.documentElement.className = `theme-${savedTheme}`;
+        document.documentElement.setAttribute('data-theme', savedTheme);
 
-        const savedSkin = localStorage.getItem('dwellium-skin') || 'default';
-        document.documentElement.setAttribute('data-skin', savedSkin);
+        // Skin system retired — force no-override default so themes own the palette.
+        document.documentElement.setAttribute('data-skin', 'default');
 
         const popupKey = `dwellium-popup-${component}`;
         try {

@@ -31,6 +31,7 @@ import CommandPalette from '../CommandPalette/CommandPalette';
 import AssistantLauncher from '../AssistantLauncher/AssistantLauncher';
 import SystemHealthBanner from '../SystemHealth/SystemHealthBanner';
 import MorningBriefBanner from './MorningBriefBanner';
+import TagHotkey from './TagHotkey';
 import type { DockBackMessage } from '../PopupShell/PopupShell';
 
 function ShellLayout() {
@@ -60,19 +61,16 @@ function ShellLayout() {
         return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
-    // ── Restore saved skin on mount ──
+    // ── Skin system retired (2026-06-14) ──
+    // The legacy `data-skin` system (minimal/aurora/warm/neon) hardcoded color
+    // tokens (--accent, --bg-*, --text-*) at higher CSS specificity than the
+    // theme selectors, so a stored skin (e.g. "minimal") silently overrode every
+    // theme — the "switching themes does nothing" bug. The HTML master themes are
+    // now the single source of palette, so we force the no-override `default`
+    // skin and purge any stored skin so themes always win.
     useEffect(() => {
-        const savedSkin = localStorage.getItem('dwellium-skin') || 'default';
-        document.documentElement.setAttribute('data-skin', savedSkin);
-
-        // Listen for skin changes dispatched from ControlPanel
-        const onSkinChange = (e: CustomEvent) => {
-            const skin = e.detail as string;
-            document.documentElement.setAttribute('data-skin', skin);
-            localStorage.setItem('dwellium-skin', skin);
-        };
-        window.addEventListener('qualia-skin-change', onSkinChange as EventListener);
-        return () => window.removeEventListener('qualia-skin-change', onSkinChange as EventListener);
+        document.documentElement.setAttribute('data-skin', 'default');
+        try { localStorage.removeItem('dwellium-skin'); } catch { /* sandboxed */ }
     }, []);
 
     // ── Block all file drag-and-drop outside designated drop zones ──
@@ -157,6 +155,7 @@ function ShellLayout() {
             <AssistantLauncher />
             <SystemHealthBanner />
             <MorningBriefBanner />
+            <TagHotkey />
         </div>
     );
 }

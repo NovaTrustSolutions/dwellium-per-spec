@@ -27,6 +27,41 @@
 .mgr__llm.is-on { color: var(--text-inverse); background: var(--accent); border-color: var(--accent); }
 .mgr__counts { font-size: 11px; color: var(--text-tertiary); font-family: monospace; }
 
+/* ── Files-indexed header band (image-1 spec) ── */
+.mgr__indexed {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 18px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-default);
+    background: color-mix(in srgb, var(--accent) 5%, var(--bg-surface, transparent));
+    flex-shrink: 0;
+}
+.mgr__indexed-hero { display: flex; align-items: center; gap: 12px; }
+.mgr__indexed-num {
+    font-size: 38px; font-weight: 800; line-height: 1;
+    color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.mgr__indexed-meta { display: flex; flex-direction: column; gap: 2px; }
+.mgr__indexed-label { font-size: 13px; font-weight: 700; color: var(--text-primary); text-transform: lowercase; letter-spacing: 0.02em; }
+.mgr__indexed-sub { font-size: 11px; color: var(--text-tertiary); max-width: 360px; }
+.mgr__indexed-stats { display: flex; gap: 10px; margin-left: auto; }
+.mgr__stat {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    min-width: 64px; padding: 8px 10px;
+    border: 1px solid var(--border-strong); border-radius: 10px;
+    background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+.mgr__stat-n { font-size: 18px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.mgr__stat-l { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); }
+.mgr__chips { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; }
+.mgr__sourcechip {
+    font-size: 11px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: transparent; color: var(--text-secondary);
+    transition: all 0.15s;
+}
+.mgr__sourcechip:hover { border-color: var(--accent); color: var(--text-primary); }
+.mgr__sourcechip.is-active { background: var(--accent); border-color: var(--accent); color: var(--text-inverse); font-weight: 600; }
+
 .mgr__btn {
     border: 1px solid var(--border-strong); background: var(--border-subtle); color: #ddd;
     border-radius: 7px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;

@@ -1,27 +1,47 @@
 /**
- * kbStore — Scribe knowledge-base index (2026-06-14). Holds the chosen local
- * folder, an AI-generated short wiki per file, and concept links between
- * similar entries (feature E). Per-user + persisted.
+ * kbStore — Scribe/Dwellium knowledge-base "data folders" (2026-06-14).
+ *
+ * Three categorized local folders the user can point at:
+ *   • knowledge — general KB; AI-summarized into a short wiki + concept links.
+ *   • personal  — Hobbies / Personal; AI-summarized like knowledge.
+ *   • private   — LOCAL ONLY. Never summarized by an LLM, never exposed to any
+ *                 agent (Honcho / Hermes / Stella / ARA). Listed locally so YOU
+ *                 can browse it, but no model ever sees its contents.
+ *
+ * getAgentVisibleKb() is the single accessor agents use — it EXCLUDES private
+ * folders by construction, so the private repo can never be tracked.
  */
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { integrationsUserIdHolder } from '../../utils/integrationsStore';
 
-export interface KbEntry {
-    rel: string;        // path relative to the folder
-    title: string;      // file name
-    summary: string;    // AI short wiki blurb
-    concepts: string[]; // AI-extracted key concepts
-}
+export interface KbEntry { rel: string; title: string; summary: string; concepts: string[]; }
+export type KbCategory = 'knowledge' | 'personal' | 'private';
 
-export interface KbState {
+export interface KbFolder {
+    category: KbCategory;
+    name: string;
     folder: string;
+    isPrivate: boolean;
     entries: KbEntry[];
-    links: [number, number][]; // index pairs sharing concepts (feature E)
+    links: [number, number][];
     indexedAt: number | null;
 }
 
-const EMPTY: KbState = { folder: '', entries: [], links: [], indexedAt: null };
+export interface KbState { folders: Record<KbCategory, KbFolder> }
+
+const FOLDER_DEFS: { category: KbCategory; name: string; isPrivate: boolean }[] = [
+    { category: 'knowledge', name: 'Knowledge Base', isPrivate: false },
+    { category: 'personal', name: 'Hobbies / Personal', isPrivate: false },
+    { category: 'private', name: 'Private', isPrivate: true },
+];
+
+function emptyFolder(d: { category: KbCategory; name: string; isPrivate: boolean }): KbFolder {
+    return { category: d.category, name: d.name, folder: '', isPrivate: d.isPrivate, entries: [], links: [], indexedAt: null };
+}
+function emptyState(): KbState {
+    return { folders: { knowledge: emptyFolder(FOLDER_DEFS[0]), personal: emptyFolder(FOLDER_DEFS[1]), private: emptyFolder(FOLDER_DEFS[2]) } };
+}
 
 function resolveKey(): string {
     const uid = integrationsUserIdHolder.current;
@@ -29,18 +49,36 @@ function resolveKey(): string {
 }
 
 function deserialize(raw: string | null): KbState {
-    if (!raw) return EMPTY;
-    try { const p = JSON.parse(raw); return { ...EMPTY, ...p }; } catch { return EMPTY; }
+    const base = emptyState();
+    if (!raw) return base;
+    try {
+        const p = JSON.parse(raw);
+        // Migrate the legacy single-folder shape ({folder,entries,links,indexedAt}).
+        if (p && !p.folders && (typeof p.folder === 'string' || Array.isArray(p.entries))) {
+            base.folders.knowledge = { ...base.folders.knowledge, folder: String(p.folder || ''), entries: Array.isArray(p.entries) ? p.entries : [], links: Array.isArray(p.links) ? p.links : [], indexedAt: p.indexedAt ?? null };
+            return base;
+        }
+        if (p?.folders) {
+            for (const d of FOLDER_DEFS) {
+                const f = p.folders[d.category];
+                if (f) base.folders[d.category] = { ...emptyFolder(d), folder: String(f.folder || ''), entries: Array.isArray(f.entries) ? f.entries : [], links: Array.isArray(f.links) ? f.links : [], indexedAt: f.indexedAt ?? null };
+            }
+        }
+        return base;
+    } catch { return base; }
 }
 
 export const kbStore = createLocalStorageStore<KbState>({
     key: resolveKey,
     deserializer: deserialize,
-    defaultValue: EMPTY,
+    defaultValue: emptyState(),
 });
 
-export function saveKb(state: KbState): void {
-    kbStore.set(state, () => { try { localStorage.setItem(resolveKey(), JSON.stringify(state)); } catch { /* sandboxed */ } });
+/** Persist one folder (by category), leaving the others untouched. */
+export function saveKbFolder(category: KbCategory, patch: Partial<KbFolder>): void {
+    const cur = kbStore.getSnapshot();
+    const next: KbState = { folders: { ...cur.folders, [category]: { ...cur.folders[category], ...patch } } };
+    kbStore.set(next, () => { try { localStorage.setItem(resolveKey(), JSON.stringify(next)); } catch { /* sandboxed */ } });
 }
 
 export function useKb(): KbState {
@@ -59,4 +97,14 @@ export function linkByConcepts(entries: KbEntry[]): [number, number][] {
         }
     }
     return links;
+}
+
+/**
+ * The ONLY accessor agents (Honcho/Hermes/Stella/ARA) should use to read KB
+ * context. Excludes every private folder by construction — the Private repo is
+ * never tracked by any model.
+ */
+export function getAgentVisibleKb(): KbEntry[] {
+    const s = kbStore.getSnapshot();
+    return Object.values(s.folders).filter((f) => !f.isPrivate).flatMap((f) => f.entries);
 }

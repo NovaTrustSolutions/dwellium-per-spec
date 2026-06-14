@@ -64,6 +64,9 @@
 
 /* ── main ── */
 .hos-main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+/* Stage holds the hosted panels + nav content; it's the positioning context for
+   the absolute hosted layer, so hosted views never overlap the tab strip. */
+.hos-stage-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 /* ── in-OS hosted widget (full panel inside the shell) ── */
 .hos-hosted {
@@ -115,6 +118,16 @@
 .hos-web { padding: 0; position: relative; }
 .hos-web__frame { width: 100%; height: 100%; border: none; background: #fff; }
 .hos-web__note { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 11px; padding: 4px; color: var(--text-tertiary, #6f6244); background: color-mix(in srgb, var(--bg-desktop) 80%, transparent); pointer-events: none; }
+
+/* web launch card (shown on web where the site blocks iframe embedding) */
+.hos-weblaunch { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; max-width: 420px; padding: 40px; }
+.hos-weblaunch__glyph { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 16px; border: 2px solid; font-size: 28px; }
+.hos-weblaunch__title { font-family: 'Georgia', serif; font-size: 22px; color: var(--text-primary, #fff); }
+.hos-weblaunch__host { font-size: 12px; color: var(--text-tertiary, #6f6244); font-family: var(--font-mono, monospace); }
+.hos-weblaunch__btn { margin-top: 6px; padding: 11px 22px; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700;
+    background: color-mix(in srgb, var(--accent) 24%, transparent); color: var(--text-primary, #fff); border: 1px solid var(--accent); transition: transform .12s, background .15s; }
+.hos-weblaunch__btn:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--accent) 38%, transparent); }
+.hos-weblaunch__note { font-size: 12px; line-height: 1.5; color: var(--text-secondary, #9a8757); margin-top: 6px; }
 .hos-head {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 24px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,.06)); flex: none;
@@ -241,7 +254,7 @@ button.hos-glance__card:hover { border-color: color-mix(in srgb, var(--accent) 5
     padding: 9px 18px; cursor: pointer; font-size: 13px; color: var(--text-secondary, #9a8757);
     background: none; border: none; font-family: inherit; transition: all .2s;
 }
-.hos-seg button.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+.hos-seg button.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text-primary, #fff); font-weight: 600; }
 .hos-note { font-size: 12px; color: var(--text-secondary, #9a8757); margin: 10px 0 0; font-style: italic; }
 
 /* ── launcher rune ── */

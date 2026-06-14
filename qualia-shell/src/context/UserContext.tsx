@@ -70,6 +70,10 @@ interface UserContextValue {
     sessionExpired: boolean;
     isLoading: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    /** Hidden god account — exact replica of Andy's permissions, reached behind
+     *  Lisa's login (shift-click her tile). Client-side session so it works
+     *  whether or not the backend knows it. */
+    loginAsArchitect: () => void;
     logout: () => void;
     authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
     hasMinRole: (minRole: string) => boolean;
@@ -373,6 +377,30 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
     }, [saveTokens, scheduleRefresh]);
 
+    /* ── Architect: hidden god account (exact replica of Andy's permissions) ──
+     * Reached behind Lisa's login (shift-click her quick-access tile). Builds a
+     * god-role session entirely client-side so it works regardless of whether
+     * the backend knows the account — same effect as the static-login path. */
+    const loginAsArchitect = useCallback(() => {
+        try { sessionStorage.removeItem('dwellium-ara-intro-played'); } catch { /* ignore */ }
+        const userData = {
+            id: 'architect-9a921527',
+            name: 'Architect',
+            email: 'architect@dwellium.com',
+            role: 'god',                 // top of ROLE_HIERARCHY → all of Andy's permissions
+            assignedProperties: [],
+            active: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        } as DwelliumUser;
+        const staticToken = `static-${Date.now()}-${userData.id}`;
+        tokenStore.set(staticToken, () => localStorage.setItem(TOKEN_KEY, staticToken));
+        setUser(userData);
+        setPermissions({});             // god short-circuits permission checks
+        setSessionExpired(false);
+        try { localStorage.setItem('dwellium-user', JSON.stringify(userData)); } catch { /* ignore */ }
+    }, []);
+
     /* ── Logout ───────────────────────────────────────── */
 
     const logout = useCallback(() => {
@@ -485,6 +513,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             sessionExpired,
             isLoading,
             login,
+            loginAsArchitect,
             logout,
             authFetch,
             hasMinRole,

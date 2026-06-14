@@ -29,6 +29,7 @@ import '../shared/FileUploadButton.css';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
 import VoiceVisualizer from './VoiceVisualizer';
 import AraIntroVideo from './AraIntroVideo';
+import AgentEta from '../common/AgentEta';
 import AraSidePanel, { type AraSidePanelView } from './AraSidePanel';
 
 // ── TTS voice catalog (Cycle 1 of ARA voice arc — 2026-05-28) ────────────
@@ -2214,6 +2215,9 @@ export default function ARAConsole() {
                         </div>
                         <div className="ara-typing">
                             <span></span><span></span><span></span>
+                        </div>
+                        <div className="ara-eta" style={{ marginTop: 4, fontSize: 12 }}>
+                            <AgentEta label="ARA is working" estimateSec={20} />
                         </div>
                     </div>
                 )}

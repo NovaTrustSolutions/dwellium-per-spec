@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
+import AgentEta from '../common/AgentEta';
 import './HalocronKnowledgeGraph.css';
 
 export interface KgProject {
@@ -500,7 +501,7 @@ export default function HalocronKnowledgeGraph() {
                                 : m.text}
                         </div>
                     ))}
-                    {chatBusy && <div className="kg-chat__msg kg-chat__msg--assistant">…</div>}
+                    {chatBusy && <div className="kg-chat__msg kg-chat__msg--assistant"><AgentEta label={`${agent.name} is working`} estimateSec={14} /></div>}
                 </div>
                 <div className="kg-chat__inputrow">
                     <input className="kg-chat__input" value={chatInput} onChange={(e) => setChatInput(e.target.value)}

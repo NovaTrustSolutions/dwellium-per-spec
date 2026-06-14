@@ -41,6 +41,7 @@ export default function MemoryGraphRAG() {
     const [query, setQuery] = useState('');
     const [answer, setAnswer] = useState<QueryAnswer | null>(null);
     const [view, setView] = useState<'graph' | 'panels'>('graph');
+    const [sourceFilter, setSourceFilter] = useState<string>('all');
     const [busy, setBusy] = useState('');
     const [toast, setToast] = useState('');
     const fileRef = useRef<HTMLInputElement>(null);
@@ -207,6 +208,23 @@ export default function MemoryGraphRAG() {
         rankedPassageIds: answer?.rankedPassages.map((rp) => rp.passage.id) ?? [],
     };
 
+    // ── "Files indexed" header stats (image-1 spec) ──
+    // Distinct source documents across all ingested passages = files indexed.
+    const sourceIds = new Set<string>();
+    for (const p of scene.passages as Array<{ sourceId?: string; source?: string; docId?: string }>) {
+        const s = p.sourceId ?? p.source ?? p.docId;
+        if (s) sourceIds.add(String(s));
+    }
+    const filesIndexed = sourceIds.size || scene.passages.length;
+    // Source "kinds" (prefix before ':' in sourceId) → filter chips (All + each kind).
+    const kinds = [...new Set([...sourceIds].map((s) => (s.includes(':') ? s.split(':')[0] : 'local')))];
+    const KIND_LABEL: Record<string, string> = { file: 'Files', upload: 'Uploads', tag: 'Tag File', scribe: 'Scribe', capture: 'Captures', foundry: 'Captures', synthesis: 'Synthesis', transcript: 'Transcripts', workspace: 'Workspace', local: 'Local', demo: 'Demo' };
+    const passageKind = (p: { sourceId?: string; source?: string; docId?: string }) => {
+        const s = p.sourceId ?? p.source ?? p.docId ?? '';
+        return s.includes(':') ? s.split(':')[0] : 'local';
+    };
+    const visiblePassages = sourceFilter === 'all' ? scene.passages : scene.passages.filter((p) => passageKind(p) === sourceFilter);
+
     return (
         <div className="mgr">
             <input ref={fileRef} type="file" accept=".txt,.md,.json,.csv" multiple hidden onChange={onFile} />
@@ -221,6 +239,31 @@ export default function MemoryGraphRAG() {
                 </div>
                 <span className="mgr__counts">{counts.entities} ent · {counts.facts} facts · {counts.passages} psg · {counts.types} types</span>
                 <button className="mgr__btn" onClick={reset}>Reset</button>
+            </div>
+
+            {/* ── Files-indexed header band (image-1 spec) ── */}
+            <div className="mgr__indexed">
+                <div className="mgr__indexed-hero">
+                    <span className="mgr__indexed-num">{filesIndexed}</span>
+                    <div className="mgr__indexed-meta">
+                        <span className="mgr__indexed-label">files indexed</span>
+                        <span className="mgr__indexed-sub">One shared brain · {counts.entities} entities · {counts.facts} facts mapped across your corpus</span>
+                    </div>
+                </div>
+                <div className="mgr__indexed-stats">
+                    <div className="mgr__stat"><span className="mgr__stat-n">{counts.entities}</span><span className="mgr__stat-l">Active</span></div>
+                    <div className="mgr__stat"><span className="mgr__stat-n">{counts.facts}</span><span className="mgr__stat-l">Activated</span></div>
+                    <div className="mgr__stat"><span className="mgr__stat-n">{kinds.length}</span><span className="mgr__stat-l">Memory sources</span></div>
+                    <div className="mgr__stat"><span className="mgr__stat-n">{counts.passages}</span><span className="mgr__stat-l">Passages</span></div>
+                </div>
+                {kinds.length > 0 && (
+                    <div className="mgr__chips" role="group" aria-label="Memory sources">
+                        <button className={`mgr__sourcechip ${sourceFilter === 'all' ? 'is-active' : ''}`} onClick={() => setSourceFilter('all')}>All</button>
+                        {kinds.map((k) => (
+                            <button key={k} className={`mgr__sourcechip ${sourceFilter === k ? 'is-active' : ''}`} onClick={() => setSourceFilter(k)}>{KIND_LABEL[k] ?? k}</button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Ingest */}
@@ -247,7 +290,7 @@ export default function MemoryGraphRAG() {
                     schemaRelations={scene.schemaRelations}
                     entities={scene.entities}
                     facts={scene.facts}
-                    passages={scene.passages}
+                    passages={visiblePassages}
                     bridges={scene.bridges}
                     resolutions={scene.resolutions}
                     nodeScores={scene.nodeScores}

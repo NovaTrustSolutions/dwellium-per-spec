@@ -20,6 +20,33 @@ import type { GoogleAccount } from '../../types/integrations';
 
 const fmtDate = (ms?: number) => (ms ? new Date(ms).toLocaleDateString() : '');
 
+// Shown in the connect window while we ask the backend for a Google auth URL.
+const CONNECT_LOADING_HTML = `<!doctype html><meta charset="utf-8"><title>Connect Google</title>
+<style>body{margin:0;font-family:-apple-system,system-ui,sans-serif;background:#0c0c0c;color:#eee;display:grid;place-items:center;height:100vh}
+.c{text-align:center}.s{width:34px;height:34px;border:3px solid #333;border-top-color:#4d8aff;border-radius:50%;margin:0 auto 16px;animation:s .8s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}h1{font-size:18px;font-weight:600}p{color:#999;font-size:13px}</style>
+<div class="c"><div class="s"></div><h1>Connecting to Google…</h1><p>Preparing the sign-in screen.</p></div>`;
+
+// Shown if the backend OAuth route isn't configured yet — the shortest path to
+// finishing the one-time setup.
+function connectSetupHtml(err?: string): string {
+    return `<!doctype html><meta charset="utf-8"><title>Connect Google — Setup</title>
+<style>body{margin:0;font-family:-apple-system,system-ui,sans-serif;background:#0c0c0c;color:#eee;padding:28px 32px;line-height:1.55}
+h1{font-size:20px;margin:0 0 6px}.sub{color:#9a9a9a;font-size:13px;margin:0 0 18px}
+ol{padding-left:20px}li{margin:10px 0;font-size:14px}a{color:#4d8aff}code{background:#1a1a1a;padding:1px 6px;border-radius:5px;font-size:12px}
+.note{margin-top:18px;font-size:12px;color:#e7c879;background:rgba(231,200,121,.08);border:1px solid rgba(231,200,121,.3);padding:10px 12px;border-radius:8px}
+.btn{display:inline-block;margin-top:18px;background:#4d8aff;color:#fff;text-decoration:none;padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px}</style>
+<h1>🔗 Connect Google — one-time setup</h1>
+<p class="sub">Dwellium needs a Google OAuth client before it can sign you in. Three quick steps:</p>
+<ol>
+<li>Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud → Credentials</a> and create an <b>OAuth client ID</b> (type: Web application).</li>
+<li>Add the redirect URI your backend expects (e.g. <code>http://localhost:3000/api/auth/google/callback</code>) and enable the <b>Gmail</b> + <b>Calendar</b> APIs.</li>
+<li>Drop the client JSON into the backend (per <code>Docs/Google_MultiAccount_Backend.md</code>) and reopen this — sign-in becomes a single click.</li>
+</ol>
+<div class="note">After setup, "Connect a Google account" takes you straight to Google's consent screen — no extra steps.${err ? `<br><br>Backend said: ${String(err).replace(/[<>]/g, '')}` : ''}</div>
+<a class="btn" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Open Google Cloud Console →</a>`;
+}
+
 export default function GoogleAccountsSection() {
     const { integrations, update } = useIntegrations();
     const cached = integrations.google.accounts ?? [];
@@ -49,11 +76,19 @@ export default function GoogleAccountsSection() {
     const connect = async (scopes: Array<'gmail' | 'calendar'>) => {
         setBusy(true);
         setError(null);
+        // Open the window IMMEDIATELY on the click (user gesture) so it isn't
+        // popup-blocked, then route it: straight to Google consent if the
+        // backend is ready (1 step), or a short setup guide if it isn't.
+        const win = window.open('', 'dwellium-google-connect', 'width=520,height=660,menubar=no,toolbar=no');
+        if (win) { win.document.write(CONNECT_LOADING_HTML); win.document.close(); }
         const r = await startGoogleAuth(scopes);
         if (r.url) {
-            await openAuthPopup(r.url);
+            if (win) win.location.href = r.url;       // → Google's consent screen (the only step)
+            else await openAuthPopup(r.url);          // popup blocked → fall back to helper
             await refresh();
+            setBusy(false);
         } else {
+            if (win) { win.document.open(); win.document.write(connectSetupHtml(r.error)); win.document.close(); }
             setAvailable(false);
             setError(r.error ?? 'Could not start Google sign-in.');
             setBusy(false);

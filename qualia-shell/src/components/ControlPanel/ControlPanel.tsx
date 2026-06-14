@@ -241,12 +241,12 @@ export default function ControlPanel() {
                         <button
                             type="button"
                             onClick={() => halocronOsStore.setEnabled(false)}
-                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, background: !hosState.enabled ? 'var(--accent)' : 'transparent', color: !hosState.enabled ? 'var(--accent-text, #000)' : 'var(--text-secondary)', border: 'none' }}
+                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: !hosState.enabled ? 600 : 400, background: !hosState.enabled ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent', color: !hosState.enabled ? 'var(--text-primary, #fff)' : 'var(--text-secondary)', border: 'none' }}
                         >Classic desktop</button>
                         <button
                             type="button"
                             onClick={() => halocronOsStore.setEnabled(true)}
-                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, background: hosState.enabled ? 'var(--accent)' : 'transparent', color: hosState.enabled ? 'var(--accent-text, #000)' : 'var(--text-secondary)', border: 'none' }}
+                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: hosState.enabled ? 600 : 400, background: hosState.enabled ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent', color: hosState.enabled ? 'var(--text-primary, #fff)' : 'var(--text-secondary)', border: 'none' }}
                         >Halocron OS</button>
                     </div>
                     <div style={{ fontSize: 11, opacity: 0.6, marginTop: 6 }}>Same widgets, spaces and memory — two layouts. The OS shell launches every widget from one archive.</div>

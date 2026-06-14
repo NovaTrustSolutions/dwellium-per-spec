@@ -16,7 +16,7 @@ import { halocronOsStore } from '../../lib/halocronOsStore';
 import './HalocronOsIntro.css';
 
 const PLAYED_KEY = 'halocron-os-intro-played';
-const VIDEO_SRC = '/assets/halocron-intro.mp4';
+const VIDEO_SRC = '/assets/halocron-intro-v2.mp4';
 const ZOOM_MS = 1500;
 
 function reducedMotion(): boolean {

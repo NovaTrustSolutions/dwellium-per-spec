@@ -11,6 +11,8 @@ import {
 import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
 import { hermesLearningUserIdHolder, rateRun } from './hermesLearningStore';
 import { memoryStore, memoryUserIdHolder, addLocalMemory, deleteLocalMemory } from './honchoMemoryStore';
+import { AgentWiki } from './AgentWiki';
+import { agentWikiUserIdHolder, buildWikiContext } from './agentWikiStore';
 import { runHermes } from './hermesRunner';
 import { buildReactLoopFn, mergedToolNames } from './hermesReact';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -76,7 +78,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 const IMPORTANCE_LABELS = ['Low', 'Medium', 'High', 'Critical'];
 
-export type TabId = 'memory' | 'dreams' | 'hermes' | 'agents' | 'graph' | 'files';
+export type TabId = 'memory' | 'dreams' | 'hermes' | 'wiki' | 'agents' | 'graph' | 'files';
 
 export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTab?: TabId } = {}) {
     const { user, authFetch } = useUser();
@@ -96,6 +98,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
     // This is what makes "+ Add Memory" actually persist + show when the backend
     // memory route is offline/404 (which it is in the current Express backend).
     memoryUserIdHolder.current = user?.id ?? null;
+    agentWikiUserIdHolder.current = user?.id ?? null;
     const dreams = useSyncExternalStore(
         dreamStore.subscribe,
         dreamStore.getSnapshot,
@@ -301,11 +304,15 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
             reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,
             llmFallbackFn: async (t, fewShot) => {
                 if (!hasActiveLlm(integrations.llm)) return null;
+                const wikiCtx = buildWikiContext();
                 const res = await callLlm({
                     systemPrompt:
                         'You are Hermes, a pragmatic autonomous task agent inside the Dwellium app. ' +
                         'The Hermes backend is offline, so answer the task directly from reasoning and general knowledge. ' +
                         'Be concrete and actionable; say plainly when a step would need live tools or property data.\n' +
+                        // Bidirectional memory OUT-path: the LLM Wiki (identity + distilled facts)
+                        // flows into every run so the agent knows the operator and their world.
+                        `\n# Your memory (LLM Wiki)\n${wikiCtx}\n` +
                         `Skills available browser-side for follow-ups:\n${describeSkillsForPrompt()}`,
                     prompt: fewShot ? `${fewShot}\n\nTask: ${t}` : `Task: ${t}`,
                     maxTokens: 1024,
@@ -414,6 +421,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     ['memory', '🧠 Memory'],
                     ['dreams', '🌙 Dreams'],
                     ['hermes', '⚡ Hermes'],
+                    ['wiki', '📖 LLM Wiki'],
                     ['agents', '🤖 Agents'],
                     ['graph', '🕸️ Graph'],
                     ['files', '📄 Files'],
@@ -735,6 +743,13 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                             </div>
                         )}
                     </div>
+                </div>
+            )}
+
+            {/* ═══ LLM WIKI TAB (bidirectional memory) ═══ */}
+            {!loading && activeTab === 'wiki' && (
+                <div className="hhp__panel">
+                    <AgentWiki />
                 </div>
             )}
 

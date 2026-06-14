@@ -25,6 +25,9 @@ import HalocronKnowledgeGraph, { KG_AGENTS } from './HalocronKnowledgeGraph';
 import HalocronWorkspaces from './HalocronWorkspaces';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
 import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore } from '../../lib/subscriptionsStore';
+import { useContext } from 'react';
+import { UserContext } from '../../context/UserContext';
+import { integrationsUserIdHolder } from '../../utils/integrationsStore';
 import './HalocronOS.css';
 
 type NavId = 'home' | 'memory' | 'kg' | 'workspace' | 'apps' | 'skills' | 'dream' | 'insights' | 'settings';
@@ -67,16 +70,37 @@ const LAUNCH_TOOLS: { id: string; name: string; sub: string; url: string; color:
 
 interface HosTab { key: string; kind: 'widget' | 'web'; id?: string; label: string; url?: string; color?: string; }
 
+// AI tools that are CLI agents → run them in the in-OS Terminal instead of an
+// (un-embeddable) web tab. Maps launchpad id → terminal command + tab label.
+const CLI_TOOLS: Record<string, { cmd: string; label: string }> = {
+    codex: { cmd: 'codex', label: 'Codex CLI' },
+    claude: { cmd: 'claude', label: 'Claude Code' },
+};
+
 // In the Electron desktop build a <webview> fully embeds external sites
 // (bypasses X-Frame-Options); the web build falls back to an <iframe>, which
 // providers like Claude/ChatGPT block — hence the "Open in browser" affordance.
 // NOTE: the Electron main process must set webPreferences.webviewTag = true.
 const IS_ELECTRON = typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent || '');
-function WebFrame({ url, title }: { url: string; title: string }) {
+function WebFrame({ url, title, color }: { url: string; title: string; color?: string }) {
+    // Electron embeds the real site (bypasses X-Frame-Options); web cannot —
+    // claude.ai/chatgpt.com/etc send X-Frame-Options: DENY, so an iframe just
+    // shows "refused to connect". On web we show a clean launch card instead.
     if (IS_ELECTRON) {
         return createElement('webview', { src: url, class: 'hos-web__frame', style: 'width:100%;height:100%;border:none;', allowpopups: 'true' });
     }
-    return <iframe className="hos-web__frame" src={url} title={title} sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />;
+    const host = (() => { try { return new URL(url).host; } catch { return url; } })();
+    return (
+        <div className="hos-weblaunch">
+            <div className="hos-weblaunch__glyph" style={{ color: color || 'var(--accent)', borderColor: color || 'var(--accent)' }}>↗</div>
+            <div className="hos-weblaunch__title">{title}</div>
+            <div className="hos-weblaunch__host">{host}</div>
+            <button className="hos-weblaunch__btn" onClick={() => { try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { /* blocked */ } }}>
+                Open {title} ↗
+            </button>
+            <div className="hos-weblaunch__note">{title} blocks in-browser embedding for security, so it opens in a new tab. (The Dwellium desktop app embeds it inline.)</div>
+        </div>
+    );
 }
 
 // Clicking an agent in the rail opens that agent's actual widget.
@@ -115,7 +139,12 @@ export default function HalocronOS() {
         return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     })();
 
-    // ── Real Home figures ──────────────────────────────────────────────
+    // ── Real Home figures, scoped to the LOGGED-IN account ──────────────
+    // Set the per-user id holder BEFORE reading the usage/subscription stores
+    // (same pattern as useIntegrations) so Tokens/Activity/Spend always
+    // reference THIS account's data — never a stale or anonymous namespace.
+    const userCtx = useContext(UserContext);
+    integrationsUserIdHolder.current = userCtx?.user?.id ?? null;
     const usage = useLlmUsage();
     const subs = useSubscriptions();
     const days = lastNDays(RANGE_DAYS[range], usage);
@@ -135,33 +164,10 @@ export default function HalocronOS() {
         subscriptionsStore.set(next, () => {}); // ensure snapshot update for SSR-store consumers
     };
 
-    if (!state.enabled || !state.open) return null;
-
-    // Open a widget as a tab inside the OS (classic-OS tab logic): focus it if
-    // already open, otherwise add a new tab. All tabs stay mounted.
-    const openWidget = (id: string, label: string) => {
-        if (!WINDOW_COMPONENTS[id]) return;
-        const key = `w:${id}`;
-        setTabs((t) => (t.some((x) => x.key === key) ? t : [...t, { key, kind: 'widget', id, label }]));
-        setActiveKey(key);
-    };
-    // Open an external AI tool (Claude/AntiGravity/Codex/ChatGPT) as a web tab
-    // inside the OS instead of a separate browser tab.
-    const openWeb = (tool: { id: string; name: string; url: string; color: string }) => {
-        const key = `web:${tool.id}`;
-        setTabs((t) => (t.some((x) => x.key === key) ? t : [...t, { key, kind: 'web', label: tool.name, url: tool.url, color: tool.color }]));
-        setActiveKey(key);
-    };
-    const closeTab = (key: string) => {
-        setTabs((t) => {
-            const next = t.filter((x) => x.key !== key);
-            setActiveKey((cur) => (cur === key ? (next.length ? next[next.length - 1].key : null) : cur));
-            return next;
-        });
-    };
-
-    // When ANY widget is opened via the bus (e.g. ARA "open Strata") while the
-    // OS layout is active, open it as a tab INSIDE the OS.
+    // Bus listener MUST be declared before the early return below so the hook
+    // count is identical whether the OS is enabled or not — otherwise toggling
+    // the layout throws "Rendered fewer hooks than expected" and blanks the app
+    // until reload. (setTabs/setActiveKey are stable; safe to register always.)
     useEffect(() => {
         const onOpen = (e: Event) => {
             const id = (e as CustomEvent).detail?.widgetId;
@@ -175,6 +181,45 @@ export default function HalocronOS() {
         window.addEventListener('dwellium:open-widget', onOpen);
         return () => window.removeEventListener('dwellium:open-widget', onOpen);
     }, []);
+
+    if (!state.enabled || !state.open) return null;
+
+    // Open a widget as a tab inside the OS (classic-OS tab logic): focus it if
+    // already open, otherwise add a new tab. All tabs stay mounted.
+    const openWidget = (id: string, label: string) => {
+        if (!WINDOW_COMPONENTS[id]) return;
+        const key = `w:${id}`;
+        // Relabel on reopen (e.g. the shared Terminal tab → "Codex CLI"/"Claude Code").
+        setTabs((t) => (t.some((x) => x.key === key) ? t.map((x) => (x.key === key ? { ...x, label } : x)) : [...t, { key, kind: 'widget', id, label }]));
+        setActiveKey(key);
+    };
+    // Open an external AI tool (Claude/AntiGravity/Codex/ChatGPT) as a web tab
+    // inside the OS instead of a separate browser tab.
+    const openWeb = (tool: { id: string; name: string; url: string; color: string }) => {
+        const key = `web:${tool.id}`;
+        setTabs((t) => (t.some((x) => x.key === key) ? t : [...t, { key, kind: 'web', label: tool.name, url: tool.url, color: tool.color }]));
+        setActiveKey(key);
+    };
+    // Codex and Claude are CLI agents — run them inside the OS via the Terminal
+    // widget's real backend shell (their web pages can't be embedded). Queues
+    // the CLI command to run as soon as the live session connects.
+    const openCliTool = (label: string, cmd: string) => {
+        // Queue for a FRESH session (createSession runs it on connect)…
+        try {
+            sessionStorage.setItem('dwellium-terminal-initial-tab', 'terminal');
+            sessionStorage.setItem('dwellium-terminal-initial-cmd', cmd);
+        } catch { /* sandboxed */ }
+        openWidget('terminal', label);
+        // …and if a live session is ALREADY open, run it there now.
+        setTimeout(() => window.dispatchEvent(new CustomEvent('dwellium:terminal-run', { detail: { cmd } })), 450);
+    };
+    const closeTab = (key: string) => {
+        setTabs((t) => {
+            const next = t.filter((x) => x.key !== key);
+            setActiveKey((cur) => (cur === key ? (next.length ? next[next.length - 1].key : null) : cur));
+            return next;
+        });
+    };
 
     const q = query.trim().toLowerCase();
     const filterCard = (label: string) => !q || label.toLowerCase().includes(q);
@@ -223,6 +268,9 @@ export default function HalocronOS() {
                         <button className="hos-tab__home" onClick={() => setActiveKey(null)} title="Show Halocron home">＋</button>
                     </div>
                 )}
+                {/* Stage sits BELOW the tab strip; hosted panels (absolute) cover
+                    only this region so they never overlap the tabs. */}
+                <div className="hos-stage-wrap">
                 {/* All tabs stay mounted; only the active one is visible (keeps state). */}
                 {activeKey && tabs.map((t) => (
                     <div key={t.key} className="hos-hosted" style={{ display: activeKey === t.key ? 'flex' : 'none' }}>
@@ -234,8 +282,7 @@ export default function HalocronOS() {
                         </div>
                         {t.kind === 'web' ? (
                             <div className="hos-hosted__body hos-web">
-                                <WebFrame url={t.url!} title={t.label} />
-                                {!IS_ELECTRON && <div className="hos-web__note">If {t.label} stays blank, it blocks browser embedding — use “Open in browser ↗” (the desktop app embeds it fully).</div>}
+                                <WebFrame url={t.url!} title={t.label} color={t.color} />
                             </div>
                         ) : (
                             <div className="hos-hosted__body window__content" data-widget-id={t.id}>
@@ -295,7 +342,7 @@ export default function HalocronOS() {
                             <div className="hos-launch">
                                 {LAUNCH_TOOLS.map((t) => (
                                     <button key={t.id} type="button" className="hos-launch__card"
-                                        onClick={() => openWeb(t)} title={`Open ${t.name} in Halocron`}>
+                                        onClick={() => { const cli = CLI_TOOLS[t.id]; cli ? openCliTool(cli.label, cli.cmd) : openWeb(t); }} title={CLI_TOOLS[t.id] ? `Run ${CLI_TOOLS[t.id].label} in a terminal` : `Open ${t.name} in Halocron`}>
                                         <span className="hos-launch__glyph" style={{ color: t.color, borderColor: t.color }}>{t.glyph}</span>
                                         <span className="hos-launch__body">
                                             <span className="hos-launch__name">{t.name}</span>
@@ -406,6 +453,7 @@ export default function HalocronOS() {
                     )}
                 </div>
                 )}
+                </div>{/* /hos-stage-wrap */}
             </main>
         </div>
     );

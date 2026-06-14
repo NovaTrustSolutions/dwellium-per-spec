@@ -13,6 +13,7 @@ import { callLlm } from '../../lib/llmClient';
 import { PROVIDER_LABELS, type LlmProvider, type IntegrationsBundle } from '../../types/integrations';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import HydraIntro from './HydraIntro';
+import AgentEta from '../common/AgentEta';
 import './HydraSplit.css';
 
 const PROVIDER_COLOR: Record<string, string> = {
@@ -99,7 +100,7 @@ export default function HydraSplit() {
                                 </div>
                                 <div className="hyd__pane-body">
                                     {st.status === 'idle' && <div className="hyd__idle">Ready.</div>}
-                                    {st.status === 'loading' && <div className="hyd__loading">Thinking…</div>}
+                                    {st.status === 'loading' && <div className="hyd__loading"><AgentEta label={`${h.label} is working`} estimateSec={12} /></div>}
                                     {st.status === 'error' && <div className="hyd__err">{st.content}</div>}
                                     {st.status === 'done' && <div className="hyd__md" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(st.content) }} />}
                                 </div>

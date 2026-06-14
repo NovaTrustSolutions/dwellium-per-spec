@@ -141,6 +141,23 @@ export default function Terminal() {
     // Keep the live keystroke handler current without recreating the xterm instance.
     onDataRef.current = (d: string) => { void sendRawInput(d); };
 
+    // Run a CLI command on demand (e.g. Halocron OS "Codex"/"Claude" tiles). If a
+    // live session is already up, send it now; otherwise createSession will run
+    // the queued `dwellium-terminal-initial-cmd` when it connects.
+    useEffect(() => {
+        const onRun = (e: Event) => {
+            const cmd = (e as CustomEvent).detail?.cmd;
+            if (!cmd) return;
+            if (sessionIdRef.current && !offline) {
+                try { sessionStorage.removeItem('dwellium-terminal-initial-cmd'); } catch { /* ignore */ }
+                void sendRawInput(`${cmd}\n`);
+                setTab('terminal');
+            }
+        };
+        window.addEventListener('dwellium:terminal-run', onRun);
+        return () => window.removeEventListener('dwellium:terminal-run', onRun);
+    }, [sendRawInput, offline]);
+
     const pollOutput = useCallback(async () => {
         if (!sessionIdRef.current || closedRef.current) return;
         try {
@@ -268,6 +285,16 @@ export default function Terminal() {
             writeToTerm(initialOutput);
             setSaveMsg('Live session connected');
             setTimeout(() => setSaveMsg(null), 2500);
+            // One-shot: a caller (e.g. "Run Codex" in Halocron OS) can queue a
+            // command to run as soon as the live shell is ready.
+            try {
+                const initialCmd = sessionStorage.getItem('dwellium-terminal-initial-cmd');
+                if (initialCmd) {
+                    sessionStorage.removeItem('dwellium-terminal-initial-cmd');
+                    const sid = sdata.session.id;
+                    setTimeout(() => { void authFetch(`${API_TERMINAL}/sessions/${sid}/input`, { method: 'POST', body: JSON.stringify({ input: initialCmd + '\n' }) }); }, 700);
+                }
+            } catch { /* sandboxed */ }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to start terminal session');
             // No backend session → switch to the local offline shell.

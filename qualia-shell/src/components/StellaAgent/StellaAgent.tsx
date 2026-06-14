@@ -23,6 +23,7 @@ import type { DreamEntry } from './honchoDreamStore';
 import { detectWidgetHandoffs, openWidgetHandoff, type WidgetHandoff } from './stellaLinkage';
 import { hermesLearningUserIdHolder } from '../HonchoHermesPanel/hermesLearningStore';
 import { parseHermesCommand, spawnHermesFromStella } from './stellaHermesSpawn';
+import AgentEta from '../common/AgentEta';
 import { matchSkill, runSkillForInput } from '../../lib/agents/skills';
 import { buildReactLoopFn, mergedToolNames } from '../HonchoHermesPanel/hermesReact';
 import {
@@ -1560,6 +1561,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 <div className="stella__typing-dot" />
                                 <div className="stella__typing-dot" />
                                 <div className="stella__typing-dot" />
+                                <span style={{ marginLeft: 8, fontSize: 12 }}><AgentEta label="Stella is working" estimateSec={16} /></span>
                             </div>
                         )}
                         <div ref={messagesEndRef} />

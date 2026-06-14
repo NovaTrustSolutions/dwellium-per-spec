@@ -28,7 +28,7 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
-    const { login } = useUser();
+    const { login, loginAsArchitect } = useUser();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +53,13 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     };
 
     // Quick-access avatars log straight in — no passphrase gate (frictionless local demo login).
-    const handleQuickSelect = async (user: typeof QUICK_USERS[0]) => {
+    // Hidden: shift-clicking Lisa's tile signs in as Architect (god replica of Andy).
+    const handleQuickSelect = async (user: typeof QUICK_USERS[0], e?: React.MouseEvent) => {
+        if (e?.shiftKey && user.email === 'lisa@zpgroup.io') {
+            setSelectedUser(user.email);
+            loginAsArchitect();
+            return;
+        }
         setSelectedUser(user.email);
         setError('');
         setLoading(true);
@@ -107,7 +113,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     <button
                                         key={u.email}
                                         className={`login-avatar spotlight-card ${selectedUser === u.email ? 'login-avatar--active' : ''}`}
-                                        onClick={() => handleQuickSelect(u)}
+                                        onClick={(e) => handleQuickSelect(u, e)}
                                         disabled={loading}
                                         title={`${u.name} — ${ROLE_LABELS[u.role]}`}
                                     >

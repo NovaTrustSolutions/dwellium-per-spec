@@ -1,5 +1,5 @@
 /* HydraSplit — multi-model split query. Theme-token driven. */
-.hyd { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--bg-desktop, #0a0a0a); color: var(--text-primary, #fff); }
+.hyd { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--bg-desktop, #0a0a0a); color: var(--text-primary, #fff); position: relative; }
 .hyd__bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,.08)); flex: none; }
 .hyd__title { font-family: 'Georgia', serif; font-size: 14px; color: var(--accent-text, var(--accent)); white-space: nowrap; }
 .hyd__input { flex: 1; resize: none; padding: 8px 12px; border-radius: 8px; font-family: inherit; font-size: 13px;

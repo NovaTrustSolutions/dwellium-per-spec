@@ -12,6 +12,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
 import { PROVIDER_LABELS, type LlmProvider, type IntegrationsBundle } from '../../types/integrations';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
+import HydraIntro from './HydraIntro';
 import './HydraSplit.css';
 
 const PROVIDER_COLOR: Record<string, string> = {
@@ -62,6 +63,7 @@ export default function HydraSplit() {
 
     return (
         <div className="hyd">
+            <HydraIntro />
             <div className="hyd__bar">
                 <div className="hyd__title">🐉 Hydra · {heads.length} {heads.length === 1 ? 'head' : 'heads'}</div>
                 <textarea

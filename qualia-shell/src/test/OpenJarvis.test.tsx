@@ -9,9 +9,30 @@ vi.mock('react-markdown', () => ({
 vi.mock('remark-gfm', () => ({ default: {} }));
 
 import OpenJarvisWidget from '../components/OpenJarvis/OpenJarvis';
+import { UserContext } from '../context/UserContext';
 
 const mockFetch = vi.fn();
 const origFetch = globalThis.fetch;
+const GOOGLE_USER_CONTEXT = {
+    user: {
+        id: 'google-user-1',
+        email: 'ilya@gmail.com',
+        name: 'Ilya',
+        role: 'god',
+        assignedProperties: [],
+        active: true,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+    },
+} as any;
+
+function renderWidget() {
+    return render(
+        <UserContext.Provider value={GOOGLE_USER_CONTEXT}>
+            <OpenJarvisWidget />
+        </UserContext.Provider>,
+    );
+}
 
 describe('OpenJarvisWidget', () => {
     beforeEach(() => {
@@ -32,13 +53,13 @@ describe('OpenJarvisWidget', () => {
     });
 
     it('renders the floating pill button when closed', () => {
-        render(<OpenJarvisWidget />);
+        renderWidget();
         expect(screen.getByTitle('Open Antigravity (⌘J)')).toBeInTheDocument();
     });
 
     it('opens panel when pill is clicked', async () => {
         const user = userEvent.setup();
-        render(<OpenJarvisWidget />);
+        renderWidget();
 
         await user.click(screen.getByTitle('Open Antigravity (⌘J)'));
 
@@ -47,12 +68,11 @@ describe('OpenJarvisWidget', () => {
 
     it('shows greeting when panel is open with no messages', async () => {
         const user = userEvent.setup();
-        render(<OpenJarvisWidget />);
+        renderWidget();
 
         await user.click(screen.getByTitle('Open Antigravity (⌘J)'));
 
-        // The greeting says "Good morning/afternoon/evening, Andy"
-        const greetingPattern = /Good (morning|afternoon|evening), Andy/;
+        const greetingPattern = /Good (morning|afternoon|evening), Ilya/;
         await waitFor(() => {
             expect(screen.getByText(greetingPattern)).toBeInTheDocument();
         });
@@ -60,7 +80,7 @@ describe('OpenJarvisWidget', () => {
 
     it('has a textarea for input when panel is open', async () => {
         const user = userEvent.setup();
-        render(<OpenJarvisWidget />);
+        renderWidget();
 
         await user.click(screen.getByTitle('Open Antigravity (⌘J)'));
 
@@ -69,7 +89,7 @@ describe('OpenJarvisWidget', () => {
 
     it('persists panel state to localStorage', async () => {
         const user = userEvent.setup();
-        render(<OpenJarvisWidget />);
+        renderWidget();
 
         await user.click(screen.getByTitle('Open Antigravity (⌘J)'));
 
@@ -78,14 +98,14 @@ describe('OpenJarvisWidget', () => {
 
     it('restores open state from localStorage', async () => {
         localStorage.setItem('dwellium-jarvis-panel', 'open');
-        render(<OpenJarvisWidget />);
+        renderWidget();
 
         // Should show the panel header (Antigravity title) rather than the pill
         expect(screen.getByText('Antigravity')).toBeInTheDocument();
     });
 
     it('shows connection status dot', async () => {
-        render(<OpenJarvisWidget />);
+        renderWidget();
         // Pill button contains status dot
         const pill = screen.getByTitle('Open Antigravity (⌘J)');
         expect(pill.querySelector('.oj-status-dot')).toBeInTheDocument();

@@ -13,6 +13,7 @@
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { withSync } from './oneSaveStore';
 
 export interface Frame { x: number; y: number; w: number; h: number; }
 
@@ -52,11 +53,14 @@ function deserialize(raw: string | null): Workspace[] {
     } catch { return []; }
 }
 
-export const workspacesStore = createLocalStorageStore<Workspace[]>({
-    key: resolveKey,
-    deserializer: deserialize,
-    defaultValue: [],
-});
+export const workspacesStore = withSync(
+    createLocalStorageStore<Workspace[]>({
+        key: resolveKey,
+        deserializer: deserialize,
+        defaultValue: [],
+    }),
+    { objectType: 'workspaces', holder: integrationsUserIdHolder, resolveKey },
+);
 
 export function saveWorkspaces(list: Workspace[]): void {
     workspacesStore.set(list, () => {

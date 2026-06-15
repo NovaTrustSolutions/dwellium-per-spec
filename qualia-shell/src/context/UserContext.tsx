@@ -70,10 +70,14 @@ interface UserContextValue {
     sessionExpired: boolean;
     isLoading: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    /** Hidden god account — exact replica of Andy's permissions, reached behind
-     *  Lisa's login (shift-click her tile). Client-side session so it works
-     *  whether or not the backend knows it. */
+    /** Exchange a Google Identity Services ID token for a backend Dwellium session. */
+    loginWithGoogle: (credential: string) => Promise<{ success: boolean; error?: string }>;
+    /** Architect quick-access account — exact replica of Andy's god permissions.
+     *  Client-side session so it works whether or not the backend knows it. */
     loginAsArchitect: () => void;
+    /** Local email+password account (validated client-side in LoginScreen).
+     *  Builds a stable-id session so each user's stores persist + isolate. */
+    loginLocal: (profile: { id: string; name: string; email: string; role: string }) => void;
     logout: () => void;
     authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
     hasMinRole: (minRole: string) => boolean;
@@ -377,10 +381,43 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
     }, [saveTokens, scheduleRefresh]);
 
-    /* ── Architect: hidden god account (exact replica of Andy's permissions) ──
-     * Reached behind Lisa's login (shift-click her quick-access tile). Builds a
-     * god-role session entirely client-side so it works regardless of whether
-     * the backend knows the account — same effect as the static-login path. */
+    const loginWithGoogle = useCallback(async (credential: string) => {
+        try { sessionStorage.removeItem('dwellium-ara-intro-played'); } catch { /* sandboxed */ }
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential }),
+            });
+            const data = await res.json().catch(() => ({ error: 'Google sign-in failed' }));
+            if (!res.ok) return { success: false, error: data.error || 'Google sign-in failed' };
+
+            // Recovering an expired shell must use the same account; switching
+            // accounts in-place could expose still-mounted workspace state.
+            if (sessionExpired && user && data.user?.id !== user.id) {
+                return { success: false, error: `Sign in with ${user.email} to resume this workspace, or log out first.` };
+            }
+
+            saveTokens({
+                token: data.token,
+                expiresAt: data.expiresAt,
+                refreshToken: data.refreshToken,
+            });
+            setUser(data.user);
+            setPermissions(data.permissions || {});
+            setSessionExpired(false);
+            try { localStorage.setItem('dwellium-user', JSON.stringify(data.user)); } catch { /* ignore */ }
+            if (data.expiresAt) scheduleRefresh(data.expiresAt);
+            return { success: true };
+        } catch {
+            return { success: false, error: 'Cannot reach the Dwellium login service' };
+        }
+    }, [saveTokens, scheduleRefresh, sessionExpired, user]);
+
+    /* ── Architect: visible god account (exact replica of Andy's permissions) ──
+     * Selected from the quick-access roster. Builds a god-role session entirely
+     * client-side so it works regardless of whether the backend knows the
+     * account — same effect as the static-login path. */
     const loginAsArchitect = useCallback(() => {
         try { sessionStorage.removeItem('dwellium-ara-intro-played'); } catch { /* ignore */ }
         const userData = {
@@ -397,6 +434,31 @@ export function UserProvider({ children }: { children: ReactNode }) {
         tokenStore.set(staticToken, () => localStorage.setItem(TOKEN_KEY, staticToken));
         setUser(userData);
         setPermissions({});             // god short-circuits permission checks
+        setSessionExpired(false);
+        try { localStorage.setItem('dwellium-user', JSON.stringify(userData)); } catch { /* ignore */ }
+    }, []);
+
+    /* ── Local account: client-side email+password session with a stable id ──
+     * Validated in LoginScreen against the local account config. Builds the
+     * session entirely client-side (like Architect) so per-user stores — LLM
+     * keys, workspaces, OpenJarvis history — persist + isolate by the stable id,
+     * independent of whether the backend knows the account. */
+    const loginLocal = useCallback((profile: { id: string; name: string; email: string; role: string }) => {
+        try { sessionStorage.removeItem('dwellium-ara-intro-played'); } catch { /* ignore */ }
+        const userData = {
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            role: profile.role,
+            assignedProperties: [],
+            active: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        } as DwelliumUser;
+        const staticToken = `static-${Date.now()}-${userData.id}`;
+        tokenStore.set(staticToken, () => localStorage.setItem(TOKEN_KEY, staticToken));
+        setUser(userData);
+        setPermissions({});
         setSessionExpired(false);
         try { localStorage.setItem('dwellium-user', JSON.stringify(userData)); } catch { /* ignore */ }
     }, []);
@@ -513,7 +575,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
             sessionExpired,
             isLoading,
             login,
+            loginWithGoogle,
             loginAsArchitect,
+            loginLocal,
             logout,
             authFetch,
             hasMinRole,

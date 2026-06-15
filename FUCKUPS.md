@@ -40,6 +40,25 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-014 — Backend launch agent stayed "running" while port 3000 was dead after native-module ABI drift
+- **Problem:** The UI showed "Backend connection failed"; launchd reported
+  `com.dwellium.backend` as running, but nothing listened on port 3000.
+- **Root cause:** The retained `start-backend.sh` sourced nvm's Node 20
+  (`NODE_MODULE_VERSION 115`) while `better-sqlite3` had been compiled for
+  Node 22 (`NODE_MODULE_VERSION 127`). `ts-node-dev` remained alive after its
+  child crashed, so launchd did not restart the service.
+- **Fix:** `~/Library/Application Support/Dwellium/start-backend.sh` now probes
+  installed Node runtimes and selects the first one that can load
+  `better-sqlite3` before starting npm. The launch agent currently selects
+  Node `v22.22.3` / ABI `127`.
+- **Verification:** Restarted `com.dwellium.backend`; direct `/health`, the
+  frontend `/health` proxy, and frontend `/api/auth/me` returned HTTP 200.
+  Forced a `ts-node-dev` hot reload: child PID changed and `/health` remained
+  HTTP 200.
+- **Prevention:** A launchd job being "running" is not proof its child server
+  is listening. Verify port 3000 and `/health`, and select Node by loading the
+  project's native dependency rather than sourcing an arbitrary nvm default.
+
 ### F-013 — First open of heavy widgets (terminal/doc-viewer/pdf-gear/scribe) force-reloaded the page; user experienced it as "clicking widgets logs you out"
 - **Problem:** Opening any of 4 heavy widgets for the FIRST time in a dev
   session nuked the whole page with `window.location.reload()` — desktop

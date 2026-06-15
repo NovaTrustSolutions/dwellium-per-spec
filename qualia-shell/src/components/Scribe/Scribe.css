@@ -602,6 +602,29 @@
     cursor: not-allowed;
 }
 
+.scribe-ingest__reconnect {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 120ms;
+}
+
+.scribe-ingest__reconnect:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.scribe-ingest__reconnect:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .scribe-ingest__path {
     font-size: 12px;
     color: var(--text-secondary);

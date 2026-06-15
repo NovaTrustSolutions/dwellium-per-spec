@@ -1,230 +1,235 @@
 /**
- * LoginScreen — Full-screen auth gate for Dwellium
+ * LoginScreen — local account authority for Dwellium.
  *
- * Shows quick-select avatars for seeded users + manual email/password form.
- * Styled to match the Dwellium dark theme with glassmorphism.
+ * Flow: splash "Click to login" → shared access password → user selection
+ * (Andy / Lisa / Archi) → that user's own email + password. Validated
+ * client-side against LOCAL_ACCOUNTS, then handed to `loginLocal`, which builds
+ * a stable-id session so each user's LLM keys + saved workflows persist and stay
+ * isolated. Local-first: these credentials are a gate, not hardened security.
+ *
+ * Google login is retained behind VITE_GOOGLE_LOGIN=true (off by default).
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useUser } from '../../context/UserContext';
-import { LogIn, AlertCircle, Shield, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Shield } from 'lucide-react';
+import GoogleSignInButton from './GoogleSignInButton';
 import './LoginScreen.css';
 
-const QUICK_USERS = [
-    { email: 'andy@dwellium.com', name: 'Andy', role: 'god', color: 'var(--accent)', initials: 'A', pw: 'admin123' },
-    { email: 'lisa@zpgroup.io', name: 'Lisa', role: 'corporate', color: '#3b82f6', initials: 'L', pw: 'corp123' },
+interface LocalAccount {
+    /** Stable id — scopes this user's per-account stores. */
+    id: string;
+    name: string;
+    email: string;
+    /** Client-side gate password (local-first; not hardened security). */
+    password: string;
+    role: string;
+    color: string;
+    initials: string;
+    /** Disabled accounts render in the roster but can't sign in yet. */
+    enabled: boolean;
+}
+
+/** Shared access password (stage 1 gate). */
+const GATE_PASSWORD = 'Comet2878!';
+
+/** Google login is kept in the code but hidden unless explicitly enabled. */
+const GOOGLE_LOGIN_ENABLED = (import.meta.env.VITE_GOOGLE_LOGIN as string | undefined) === 'true';
+
+/** Local accounts. Ids match data/users.json (Andy/Lisa) + the Architect id so
+ *  existing per-user data carries over. Lisa is a placeholder until her login is set. */
+export const LOCAL_ACCOUNTS: LocalAccount[] = [
+    { id: '9a921527-84b0-497f-b682-45df315c13d1', name: 'Andy', email: 'andy@dwellium.com', password: 'Fm8#vP2!kR9$wL3q', role: 'god', color: 'var(--accent)', initials: 'A', enabled: true },
+    { id: 'b5d3ac0c-f276-402d-b8ef-9a96fe42b570', name: 'Lisa', email: 'lisa@zpgroup.io', password: '', role: 'corporate', color: '#3b82f6', initials: 'L', enabled: false },
+    { id: 'architect-9a921527', name: 'Archi', email: 'iklipinitser@gmail.com', password: 'Jester2878!', role: 'god', color: 'var(--accent)', initials: 'AR', enabled: true },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
     god: 'God Mode',
     corporate: 'Corporate',
-    management: 'Management',
-    maintenance: 'Maintenance',
-    advisor: 'Advisor',
 };
+
+type Stage = 'gate' | 'select' | 'credential';
 
 interface LoginScreenProps {
     onTenantMode?: () => void;
 }
 
 export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
-    const { login, loginAsArchitect } = useUser();
+    const { loginLocal, loginWithGoogle } = useUser();
+    const [hasClicked, setHasClicked] = useState(false);
+    const [stage, setStage] = useState<Stage>('gate');
+    const [gateInput, setGateInput] = useState('');
+    const [selected, setSelected] = useState<LocalAccount | null>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<string | null>(null);
-    const [hasClicked, setHasClicked] = useState(false);
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        if (!email || !password) {
-            setError('Email and password are required');
-            return;
-        }
-        setLoading(true);
+    const submitGate = (event?: FormEvent) => {
+        event?.preventDefault();
         setError('');
-        const result = await login(email, password);
-        if (!result.success) {
-            setError(result.error || 'Login failed');
+        if (gateInput === GATE_PASSWORD) {
+            setGateInput('');
+            setStage('select');
+        } else {
+            setError('Incorrect access password.');
         }
-        setLoading(false);
     };
 
-    // Quick-access avatars log straight in — no passphrase gate (frictionless local demo login).
-    // Hidden: shift-clicking Lisa's tile signs in as Architect (god replica of Andy).
-    const handleQuickSelect = async (user: typeof QUICK_USERS[0], e?: React.MouseEvent) => {
-        if (e?.shiftKey && user.email === 'lisa@zpgroup.io') {
-            setSelectedUser(user.email);
-            loginAsArchitect();
-            return;
-        }
-        setSelectedUser(user.email);
+    const pickAccount = (account: LocalAccount) => {
+        if (!account.enabled) return;
+        setSelected(account);
+        setEmail('');
+        setPassword('');
         setError('');
-        setLoading(true);
-        const result = await login(user.email, user.pw);
-        if (!result.success) {
-            setError(result.error || 'Login failed');
-            setSelectedUser(null);
+        setStage('credential');
+    };
+
+    const submitCredential = (event?: FormEvent) => {
+        event?.preventDefault();
+        setError('');
+        if (!selected) return;
+        const emailOk = email.trim().toLowerCase() === selected.email.toLowerCase();
+        const passwordOk = password === selected.password;
+        if (emailOk && passwordOk) {
+            loginLocal({ id: selected.id, name: selected.name, email: selected.email, role: selected.role });
+        } else {
+            setError('Incorrect email or password.');
         }
-        setLoading(false);
+    };
+
+    const backToSelect = () => {
+        setSelected(null);
+        setEmail('');
+        setPassword('');
+        setError('');
+        setStage('select');
     };
 
     return (
         <>
-            {/* Nebula video background */}
-            <video
-                className="login-video-bg"
-                autoPlay
-                muted
-                loop
-                playsInline
-            >
+            <video className="login-video-bg" autoPlay muted loop playsInline>
                 <source src="/assets/nebula-bg.mp4" type="video/mp4" />
             </video>
 
-            {/* Initial click overlay */}
             <div
                 className={`login-start-overlay ${hasClicked ? 'is-hidden' : ''}`}
                 onClick={() => setHasClicked(true)}
             >
-                <div className="login-start-text">Click to Access Terminal</div>
+                <div className="login-start-text">Click to Login</div>
             </div>
 
             <div className={`login-backdrop ${hasClicked ? 'is-active' : ''}`}>
-                {/* Decorative background elements */}
                 <div className="login-bg-orb login-bg-orb--1" />
                 <div className="login-bg-orb login-bg-orb--2" />
                 <div className="login-bg-orb login-bg-orb--3" />
 
                 <div className="login-container">
-                    {/* Header outside of card for separate animation */}
                     <div className="login-header">
                         <img src="/assets/astra-strata-logo.png" alt="AstraStrata Property Management" className="login-logo-img" />
                     </div>
 
                     <div className="login-card">
-                        {/* Quick Select */}
-                        <div className="login-quick">
-                            <span className="login-quick__label">Quick Access</span>
-                            <div className="login-quick__grid">
-                                {QUICK_USERS.map(u => (
-                                    <button
-                                        key={u.email}
-                                        className={`login-avatar spotlight-card ${selectedUser === u.email ? 'login-avatar--active' : ''}`}
-                                        onClick={(e) => handleQuickSelect(u, e)}
-                                        disabled={loading}
-                                        title={`${u.name} — ${ROLE_LABELS[u.role]}`}
-                                    >
-                                        <div className="login-avatar__circle" style={{ background: u.color }}>
-                                            {u.initials}
-                                        </div>
-                                        <span className="login-avatar__name">{u.name}</span>
-                                        <span className="login-avatar__role" style={{ color: u.color }}>
-                                            {ROLE_LABELS[u.role]}
-                                        </span>
-                                    </button>
-                                ))}
+                        {error && (
+                            <div className="login-error">
+                                <AlertCircle size={14} />
+                                {error}
                             </div>
-                        </div>
+                        )}
 
-                        <div className="login-divider">
-                            <span>or sign in manually</span>
-                        </div>
-
-                        {/* Form */}
-                        <form className="login-form" onSubmit={handleSubmit}>
-                            {error && (
-                                <div className="login-error">
-                                    <AlertCircle size={14} />
-                                    {error}
-                                </div>
-                            )}
-
-                            <div className="login-field">
-                                <label htmlFor="login-email">Email</label>
+                        {stage === 'gate' && (
+                            <form className="login-step" onSubmit={submitGate}>
+                                <span className="login-quick__label">Account Login</span>
+                                <h2>Enter access password</h2>
+                                <p>Enter the AstraStrata access password to continue.</p>
                                 <input
-                                    id="login-email"
-                                    type="email"
-                                    placeholder="user@dwellium.com"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    autoComplete="email"
+                                    type="password"
+                                    className="login-input"
+                                    aria-label="Access password"
+                                    placeholder="Access password"
+                                    value={gateInput}
+                                    onChange={(event) => setGateInput(event.target.value)}
+                                    autoFocus
                                 />
-                            </div>
+                                <button type="submit" className="login-primary-btn" disabled={!gateInput}>Continue</button>
+                            </form>
+                        )}
 
-                            <div className="login-field">
-                                <label htmlFor="login-password">Password</label>
-                                <div className="login-field__password">
-                                    <input
-                                        id="login-password"
-                                        type={showPassword ? 'text' : 'password'}
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={e => setPassword(e.target.value)}
-                                        autoComplete="current-password"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="login-field__eye"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        tabIndex={-1}
-                                    >
-                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
+                        {stage === 'select' && (
+                            <div className="login-step">
+                                <span className="login-quick__label">Select Account</span>
+                                <h2>Who's signing in?</h2>
+                                <div className="login-quick__grid">
+                                    {LOCAL_ACCOUNTS.map((account) => (
+                                        <button
+                                            key={account.id}
+                                            type="button"
+                                            className={`login-avatar spotlight-card ${account.enabled ? '' : 'is-disabled'}`}
+                                            onClick={() => pickAccount(account)}
+                                            disabled={!account.enabled}
+                                            title={account.enabled ? `${account.name} — ${ROLE_LABELS[account.role] ?? account.role}` : `${account.name} — coming soon`}
+                                        >
+                                            <div className="login-avatar__circle" style={{ background: account.color }}>{account.initials}</div>
+                                            <span className="login-avatar__name">{account.name}</span>
+                                            <span className="login-avatar__role" style={{ color: account.enabled ? account.color : 'var(--text-tertiary)' }}>
+                                                {account.enabled ? (ROLE_LABELS[account.role] ?? account.role) : 'Coming soon'}
+                                            </span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
+                        )}
 
-                            <button type="submit" className="login-submit" disabled={loading}>
-                                {loading ? (
-                                    <span className="login-spinner" />
-                                ) : (
-                                    <>
-                                        <LogIn size={16} />
-                                        Sign In
-                                    </>
-                                )}
-                            </button>
-                        </form>
+                        {stage === 'credential' && selected && (
+                            <form className="login-step" onSubmit={submitCredential}>
+                                <button type="button" className="login-back" onClick={backToSelect}>
+                                    <ArrowLeft size={14} /> Back
+                                </button>
+                                <div className="login-credential__who">
+                                    <div className="login-avatar__circle" style={{ background: selected.color }}>{selected.initials}</div>
+                                    <div className="login-credential__who-text">
+                                        <strong>{selected.name}</strong>
+                                        <span>{ROLE_LABELS[selected.role] ?? selected.role}</span>
+                                    </div>
+                                </div>
+                                <input
+                                    type="email"
+                                    className="login-input"
+                                    aria-label="Email"
+                                    placeholder="Email"
+                                    autoComplete="username"
+                                    value={email}
+                                    onChange={(event) => setEmail(event.target.value)}
+                                    autoFocus
+                                />
+                                <input
+                                    type="password"
+                                    className="login-input"
+                                    aria-label="Password"
+                                    placeholder="Password"
+                                    autoComplete="current-password"
+                                    value={password}
+                                    onChange={(event) => setPassword(event.target.value)}
+                                />
+                                <button type="submit" className="login-primary-btn" disabled={!email || !password}>Sign in</button>
+                            </form>
+                        )}
+
+                        {GOOGLE_LOGIN_ENABLED && stage === 'gate' && (
+                            <div className="login-google-alt">
+                                <div className="login-divider"><span>or</span></div>
+                                <GoogleSignInButton onCredential={loginWithGoogle} />
+                            </div>
+                        )}
 
                         <div className="login-footer">
                             <Shield size={12} />
-                            <span>Local-first · Data stays on your machine</span>
+                            <span>Account-scoped · Secrets encrypted</span>
                         </div>
 
                         {onTenantMode && (
-                            <button
-                                className="login-tenant-link"
-                                onClick={onTenantMode}
-                                type="button"
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 6,
-                                    width: '100%',
-                                    marginTop: 16,
-                                    padding: '10px 0',
-                                    background: 'none',
-                                    border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)',
-                                    borderRadius: 12,
-                                    color: 'var(--text-secondary)',
-                                    fontSize: 13,
-                                    cursor: 'pointer',
-                                    fontFamily: 'Inter, -apple-system, sans-serif',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={e => {
-                                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(93,173,226,0.4)';
-                                    (e.currentTarget as HTMLElement).style.color = '#5dade2';
-                                }}
-                                onMouseLeave={e => {
-                                    (e.currentTarget as HTMLElement).style.borderColor = 'color-mix(in srgb, var(--accent) 15%, transparent)';
-                                    (e.currentTarget as HTMLElement).style.color = '#94a3b8';
-                                }}
-                            >
-                                🏠 Resident? Sign in here →
+                            <button className="login-tenant-link" onClick={onTenantMode} type="button">
+                                Resident? Sign in here
                             </button>
                         )}
                     </div>

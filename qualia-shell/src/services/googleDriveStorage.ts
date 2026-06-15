@@ -14,7 +14,8 @@
  * 2026-06-07 — the "Google Drive storage box" ask.
  */
 
-const GIS_SRC = 'https://accounts.google.com/gsi/client';
+import { loadGoogleIdentityServices } from './googleIdentity';
+
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const BACKUP_FILENAME = 'dwellium-backup.json';
 export const DEFAULT_FOLDER = 'Dwellium';
@@ -63,25 +64,10 @@ export function applySnapshot(store: Pick<Storage, 'setItem'>, snap: DwelliumSna
 
 // ── Google Identity Services + Drive REST (browser, user-credentialed) ─
 
-let gisPromise: Promise<void> | null = null;
-function loadGis(): Promise<void> {
-    if (typeof document === 'undefined') return Promise.reject(new Error('No DOM'));
-    if ((window as any).google?.accounts?.oauth2) return Promise.resolve();
-    if (gisPromise) return gisPromise;
-    gisPromise = new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = GIS_SRC; s.async = true; s.defer = true;
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error('Failed to load Google Identity Services'));
-        document.head.appendChild(s);
-    });
-    return gisPromise;
-}
-
 /** Pop the Google consent screen; resolves an access token (kept in memory only). */
 export async function connectDrive(clientId: string): Promise<string> {
     if (!clientId) throw new Error('Add your Google OAuth Client ID first');
-    await loadGis();
+    await loadGoogleIdentityServices();
     const google = (window as any).google;
     return new Promise<string>((resolve, reject) => {
         try {

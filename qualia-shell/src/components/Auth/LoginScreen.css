@@ -488,3 +488,174 @@
     color: var(--text-tertiary);
     letter-spacing: 0.5px;
 }
+
+.login-google-copy {
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.login-google-copy h2 {
+    margin: 0 0 8px;
+    color: var(--text-primary);
+    font-size: 20px;
+}
+
+.login-google-copy p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.login-dev-access {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.login-dev-access summary {
+    margin-bottom: 14px;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.login-tenant-link {
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px 0;
+    border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
+    border-radius: 12px;
+    background: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* ── Multi-step local login (gate → select → credential) ── */
+.login-step {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: center;
+}
+
+.login-step h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 20px;
+}
+
+.login-step p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.login-step .login-quick__label {
+    margin-bottom: 0;
+}
+
+.login-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.login-input:focus {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.login-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.login-primary-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #b8d946);
+    color: var(--text-inverse);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.login-primary-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 35%, transparent);
+    transform: translateY(-1px);
+}
+
+.login-primary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.login-back {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    margin-bottom: 2px;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.login-back:hover {
+    color: var(--text-secondary);
+}
+
+.login-credential__who {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.login-credential__who-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.2;
+}
+
+.login-credential__who-text strong {
+    color: var(--text-primary);
+    font-size: 15px;
+}
+
+.login-credential__who-text span {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.login-google-alt {
+    margin-top: 4px;
+}

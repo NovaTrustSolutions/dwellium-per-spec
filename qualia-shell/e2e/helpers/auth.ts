@@ -22,6 +22,7 @@ interface QuickUser {
 export const USERS: Record<string, QuickUser> = {
   andy: { name: 'Andy', email: 'andy@dwellium.com', role: 'god' },
   lisa: { name: 'Lisa', email: 'lisa@zpgroup.io', role: 'corporate' },
+  architect: { name: 'Architect', email: 'architect@dwellium.com', role: 'god' },
   wendy: { name: 'Wendy', email: 'wendy@dwellium.com', role: 'management' },
   lee: { name: 'Lee', email: 'lee@dwellium.com', role: 'maintenance' },
 };

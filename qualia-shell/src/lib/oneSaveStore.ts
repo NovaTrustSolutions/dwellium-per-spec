@@ -89,9 +89,19 @@ function makeSynced<T>(
     function scheduleWriteThrough(value: T): void {
         if (!ONE_SAVE_ENABLED) return;
         if (timer) clearTimeout(timer);
+        const scheduledOwnerId = ownerId();
+        const scheduledObjectId = objectId();
         timer = setTimeout(() => {
             timer = null;
-            void oneSaveClient.put({ id: objectId(), type: objectType, ownerId: ownerId(), payload: value });
+            // Never let an account switch redirect a pending private write into
+            // the next user's namespace.
+            if (ownerId() !== scheduledOwnerId) return;
+            void oneSaveClient.put({
+                id: scheduledObjectId,
+                type: objectType,
+                ownerId: scheduledOwnerId,
+                payload: value,
+            });
         }, debounceMs);
     }
 

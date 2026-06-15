@@ -1,0 +1,45 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Labyrinth portrait">
+  <defs>
+    <radialGradient id="lb-bg" cx="50%" cy="36%" r="80%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.55"/>
+      <stop offset="52%" stop-color="#160f2e" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#070512"/>
+    </radialGradient>
+    <linearGradient id="lb-face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c4b5fd" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.35"/>
+    </linearGradient>
+    <filter id="lb-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="240" height="240" rx="28" fill="url(#lb-bg)"/>
+  <rect x="6" y="6" width="228" height="228" rx="24" fill="none" stroke="#8b5cf6" stroke-opacity="0.55" stroke-width="1.5"/>
+  <g filter="url(#lb-glow)">
+    <path d="M58 214 Q58 156 120 156 Q182 156 182 214 Z" fill="url(#lb-face)" opacity="0.5"/>
+    <circle cx="120" cy="108" r="42" fill="url(#lb-face)"/>
+  </g>
+  <!-- maze / systems motif inside the mind -->
+  <g fill="none" stroke="#ede9fe" stroke-opacity="0.85" stroke-width="2.4" stroke-linecap="round">
+    <path d="M120 108 h16 v-16 h-32 v32 h48 v-48"/>
+    <path d="M120 108 h-16 v16 h32 v-32 h-48 v48"/>
+  </g>
+  <circle cx="120" cy="108" r="3.4" fill="#fff"/>
+  <!-- neural nodes -->
+  <g fill="#c4b5fd">
+    <circle cx="86" cy="74" r="3"/><circle cx="156" cy="78" r="3"/>
+    <circle cx="150" cy="132" r="2.6"/><circle cx="92" cy="128" r="2.6"/>
+  </g>
+  <g stroke="#8b5cf6" stroke-opacity="0.6" stroke-width="1.2">
+    <line x1="86" y1="74" x2="120" y2="108"/><line x1="156" y1="78" x2="120" y2="108"/>
+    <line x1="150" y1="132" x2="120" y2="108"/><line x1="92" y1="128" x2="120" y2="108"/>
+  </g>
+  <!-- discipline badge: brain-circuit -->
+  <circle cx="196" cy="196" r="23" fill="#070512" stroke="#8b5cf6" stroke-width="1.6"/>
+  <g fill="none" stroke="#c4b5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M196 184 a8 8 0 0 0 -8 8 a7 7 0 0 0 0 9 a8 8 0 0 0 8 4"/>
+    <path d="M196 184 a8 8 0 0 1 8 8 a7 7 0 0 1 0 9 a8 8 0 0 1 -8 4"/>
+    <line x1="196" y1="184" x2="196" y2="205"/>
+  </g>
+</svg>

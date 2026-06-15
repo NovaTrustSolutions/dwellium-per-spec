@@ -18,13 +18,15 @@ export interface PersonaMemoryEntry {
 export interface PersonaTask {
     id: string;
     title: string;
-    status: 'todo' | 'running' | 'done';
+    status: 'todo' | 'running' | 'done' | 'failed';
     assignedBy: 'user' | 'orchestrator';
     createdAt: number;
     startedAt?: number;
     completedAt?: number;
     durationMs?: number;
     result?: string;
+    attempts?: number;
+    lastError?: string;
 }
 export interface PersonaAuditEntry {
     id: string;
@@ -62,12 +64,16 @@ export const personaWorkStore = createLocalStorageStore<PersonaWorkState>({
 function emptyWork(): PersonaWork { return { memory: [], tasks: [], audit: [], usageCount: 0 }; }
 function rid(prefix: string): string { return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; }
 
-function update(personaId: string, fn: (w: PersonaWork) => PersonaWork): void {
-    const cur = personaWorkStore.getSnapshot();
-    const next = { ...cur, [personaId]: fn(cur[personaId] ?? emptyWork()) };
+function persist(next: PersonaWorkState): void {
     personaWorkStore.set(next, () => {
         try { localStorage.setItem(resolveKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
     });
+}
+
+function update(personaId: string, fn: (w: PersonaWork) => PersonaWork): void {
+    const cur = personaWorkStore.getSnapshot();
+    const next = { ...cur, [personaId]: fn(cur[personaId] ?? emptyWork()) };
+    persist(next);
 }
 
 export function getWork(personaId: string): PersonaWork {
@@ -95,7 +101,7 @@ export function addTask(personaId: string, title: string, assignedBy: 'user' | '
     return id;
 }
 export function startTask(personaId: string, id: string): void {
-    update(personaId, w => ({ ...w, tasks: w.tasks.map(t => (t.id === id ? { ...t, status: 'running', startedAt: Date.now() } : t)) }));
+    update(personaId, w => ({ ...w, tasks: w.tasks.map(t => (t.id === id ? { ...t, status: 'running', startedAt: Date.now(), attempts: (t.attempts ?? 0) + 1, lastError: undefined } : t)) }));
 }
 export function completeTask(personaId: string, id: string, result?: string): void {
     update(personaId, w => ({
@@ -109,8 +115,104 @@ export function completeTask(personaId: string, id: string, result?: string): vo
     }));
     logAudit(personaId, 'Task completed', id);
 }
+export function failTask(personaId: string, id: string, error: string): void {
+    update(personaId, w => ({
+        ...w,
+        tasks: w.tasks.map(t => {
+            if (t.id !== id) return t;
+            const completedAt = Date.now();
+            return {
+                ...t,
+                status: 'failed',
+                completedAt,
+                durationMs: t.startedAt ? completedAt - t.startedAt : t.durationMs,
+                lastError: error.slice(0, 400),
+            };
+        }),
+    }));
+    logAudit(personaId, 'Task failed', error.slice(0, 200));
+}
+export function retryTask(personaId: string, id: string): void {
+    update(personaId, w => ({
+        ...w,
+        tasks: w.tasks.map(t => (t.id === id ? {
+            ...t,
+            status: 'todo',
+            startedAt: undefined,
+            completedAt: undefined,
+            durationMs: undefined,
+            lastError: undefined,
+        } : t)),
+    }));
+    logAudit(personaId, 'Task re-queued', id);
+}
 export function deleteTask(personaId: string, id: string): void {
     update(personaId, w => ({ ...w, tasks: w.tasks.filter(t => t.id !== id) }));
+}
+
+export interface ClaimedPersonaTask {
+    personaId: string;
+    task: PersonaTask;
+}
+
+/**
+ * Atomically claim the oldest queued task across a persona roster. This is the
+ * durable hand-off used by the shell-level autonomous runner.
+ */
+export function claimNextTask(personaIds: readonly string[], now: number = Date.now()): ClaimedPersonaTask | null {
+    const cur = personaWorkStore.getSnapshot();
+    const allowed = new Set(personaIds);
+    let claim: ClaimedPersonaTask | null = null;
+    for (const [personaId, work] of Object.entries(cur)) {
+        if (!allowed.has(personaId)) continue;
+        for (const task of work.tasks) {
+            if (task.status !== 'todo') continue;
+            if (!claim || task.createdAt < claim.task.createdAt) claim = { personaId, task };
+        }
+    }
+    if (!claim) return null;
+
+    const work = cur[claim.personaId] ?? emptyWork();
+    const claimedTask: PersonaTask = {
+        ...claim.task,
+        status: 'running',
+        startedAt: now,
+        attempts: (claim.task.attempts ?? 0) + 1,
+        lastError: undefined,
+    };
+    persist({
+        ...cur,
+        [claim.personaId]: {
+            ...work,
+            tasks: work.tasks.map(t => (t.id === claimedTask.id ? claimedTask : t)),
+        },
+    });
+    logAudit(claim.personaId, 'Autonomous task claimed', claimedTask.title);
+    return { personaId: claim.personaId, task: claimedTask };
+}
+
+/** Re-queue tasks left running by a closed/reloaded browser session. */
+export function recoverStaleTasks(personaIds: readonly string[], staleBefore: number): number {
+    const cur = personaWorkStore.getSnapshot();
+    const allowed = new Set(personaIds);
+    let recovered = 0;
+    const next: PersonaWorkState = {};
+    for (const [personaId, work] of Object.entries(cur)) {
+        if (!allowed.has(personaId)) {
+            next[personaId] = work;
+            continue;
+        }
+        next[personaId] = {
+            ...work,
+            tasks: work.tasks.map(task => {
+                if (task.status !== 'running' || (task.startedAt ?? 0) >= staleBefore) return task;
+                recovered += 1;
+                return { ...task, status: 'todo', startedAt: undefined, lastError: 'Recovered after Dwellium restarted before the run completed.' };
+            }),
+        };
+    }
+    if (recovered > 0) persist(next);
+    return recovered;
 }
 
 /* ── audit ── */

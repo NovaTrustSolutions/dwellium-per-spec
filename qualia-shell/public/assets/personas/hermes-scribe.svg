@@ -1,0 +1,42 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scribe portrait">
+  <defs>
+    <radialGradient id="sc-bg" cx="50%" cy="36%" r="80%">
+      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.55"/>
+      <stop offset="52%" stop-color="#082716" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#04140b"/>
+    </radialGradient>
+    <linearGradient id="sc-face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#bbf7d0" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#16a34a" stop-opacity="0.35"/>
+    </linearGradient>
+    <filter id="sc-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="240" height="240" rx="28" fill="url(#sc-bg)"/>
+  <rect x="6" y="6" width="228" height="228" rx="24" fill="none" stroke="#22c55e" stroke-opacity="0.55" stroke-width="1.5"/>
+  <g filter="url(#sc-glow)">
+    <path d="M58 214 Q58 156 120 156 Q182 156 182 214 Z" fill="url(#sc-face)" opacity="0.5"/>
+    <circle cx="120" cy="108" r="42" fill="url(#sc-face)"/>
+  </g>
+  <!-- ruled document lines within the mind -->
+  <g stroke="#dcfce7" stroke-opacity="0.85" stroke-width="2" stroke-linecap="round">
+    <line x1="100" y1="98" x2="140" y2="98"/>
+    <line x1="100" y1="108" x2="138" y2="108"/>
+    <line x1="100" y1="118" x2="132" y2="118"/>
+  </g>
+  <!-- quill -->
+  <path d="M150 80 q-26 18 -40 44 l8 2 q14 -28 36 -42 z" fill="#86efac" opacity="0.92"/>
+  <line x1="118" y1="126" x2="112" y2="134" stroke="#dcfce7" stroke-width="2" stroke-linecap="round"/>
+  <!-- nodes -->
+  <g fill="#bbf7d0">
+    <circle cx="86" cy="80" r="2.8"/><circle cx="152" cy="128" r="2.4"/>
+  </g>
+  <!-- discipline badge: pen -->
+  <circle cx="196" cy="196" r="23" fill="#04140b" stroke="#22c55e" stroke-width="1.6"/>
+  <g fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M203 187 l6 6 l-16 16 l-6 0 l0 -6 z"/>
+    <line x1="200" y1="190" x2="206" y2="196"/>
+  </g>
+</svg>

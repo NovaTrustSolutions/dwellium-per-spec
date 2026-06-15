@@ -30,6 +30,22 @@ function resolveKey(): string {
     return uid ? `integrations:${uid}` : 'integrations:_anonymous';
 }
 
+function remoteObjectId(userId: string): string {
+    return `integrations_${userId}`;
+}
+
+/** Persist only the encrypted bundle through One Save. */
+async function syncEncryptedBundle(bundle: IntegrationsBundle, userId: string | null): Promise<void> {
+    if (!userId || bundleHasPlaintextSecret(bundle)) return;
+    const { oneSaveClient } = await import('../lib/oneSaveClient');
+    await oneSaveClient.put({
+        id: remoteObjectId(userId),
+        type: 'integrations',
+        ownerId: userId,
+        payload: bundle,
+    });
+}
+
 function deserialize(raw: string | null): IntegrationsBundle {
     if (!raw) return emptyIntegrations();
     try {
@@ -122,13 +138,16 @@ export async function saveIntegrationsSecure(bundle: IntegrationsBundle, userId:
     if (wouldClobberStoredSecret(bundle)) return;
     const seq = ++persistSeq;
     const key = resolveKey();
+    let encrypted: IntegrationsBundle;
     try {
-        const encrypted = await encryptBundle(bundle, userId);
+        encrypted = await encryptBundle(bundle, userId);
         if (seq !== persistSeq) return; // a newer save superseded this one
         localStorage.setItem(key, JSON.stringify(encrypted));
     } catch {
         try { localStorage.setItem(key, JSON.stringify(bundle)); } catch { /* storage full / sandboxed */ }
+        return;
     }
+    try { await syncEncryptedBundle(encrypted, userId); } catch { /* local encrypted copy remains authoritative offline */ }
 }
 
 /**
@@ -142,6 +161,18 @@ export async function unlockIntegrations(userId: string | null): Promise<void> {
     integrationsUserIdHolder.current = userId; // ensure resolveKey() targets this user
     let raw: string | null = null;
     try { raw = localStorage.getItem(resolveKey()); } catch { return; }
+    let hydratedFromRemote = false;
+    if (userId) {
+        try {
+            const { oneSaveClient } = await import('../lib/oneSaveClient');
+            const remote = await oneSaveClient.get<IntegrationsBundle>(remoteObjectId(userId));
+            if (remote?.payload) {
+                raw = JSON.stringify(remote.payload);
+                localStorage.setItem(resolveKey(), raw);
+                hydratedFromRemote = true;
+            }
+        } catch { /* One Save disabled/offline — keep local encrypted copy */ }
+    }
     if (!raw) return;
     const parsed = deserialize(raw);
     try {
@@ -152,6 +183,10 @@ export async function unlockIntegrations(userId: string | null): Promise<void> {
         if (bundleHasPlaintextSecret(parsed)) {
             const encrypted = await encryptBundle(decrypted, userId);
             try { localStorage.setItem(resolveKey(), JSON.stringify(encrypted)); } catch { /* sandboxed */ }
+            await syncEncryptedBundle(encrypted, userId);
+        } else if (!hydratedFromRemote) {
+            // First One Save migration: backfill the already-encrypted local copy.
+            await syncEncryptedBundle(parsed, userId);
         }
     } catch {
         /* leave snapshot as-is */
@@ -161,6 +196,7 @@ export async function unlockIntegrations(userId: string | null): Promise<void> {
 /** Clear active user's integrations (e.g., manual reset from UI). */
 export function clearIntegrations(): void {
     if (typeof window === 'undefined') return;
+    const userId = integrationsUserIdHolder.current;
     integrationsStore.set(emptyIntegrations(), () => {
         try {
             localStorage.removeItem(resolveKey());
@@ -168,4 +204,7 @@ export function clearIntegrations(): void {
             /* sandboxed */
         }
     });
+    if (userId) {
+        void import('../lib/oneSaveClient').then(({ oneSaveClient }) => oneSaveClient.remove(remoteObjectId(userId)));
+    }
 }

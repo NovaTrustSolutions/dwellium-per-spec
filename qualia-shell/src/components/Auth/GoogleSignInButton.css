@@ -1,0 +1,32 @@
+.google-signin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.google-signin--busy .google-signin__button {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.google-signin__button {
+    min-height: 44px;
+}
+
+.google-signin__status {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.google-signin__error {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 9px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    font-size: 12px;
+    line-height: 1.45;
+}

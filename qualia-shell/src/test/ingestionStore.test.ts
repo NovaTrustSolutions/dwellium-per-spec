@@ -18,6 +18,7 @@ import {
     ingestionStore,
     ingestionUserIdHolder,
     ingestionHandles,
+    pendingHandles,
     saveIngestion,
     setConvertedIndex,
     recordConverted,
@@ -33,6 +34,8 @@ beforeEach(() => {
     ingestionUserIdHolder.current = null;
     ingestionHandles.source = null;
     ingestionHandles.backup = null;
+    pendingHandles.source = null;
+    pendingHandles.backup = null;
 });
 
 const entry = (over: Partial<ConvertedFileEntry> = {}): ConvertedFileEntry => ({

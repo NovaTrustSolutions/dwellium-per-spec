@@ -653,6 +653,538 @@
     color: var(--accent);
 }
 
+/* ── Hermes autonomous persona workspace ── */
+.haw {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.haw__hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 16px;
+    border: 1px solid var(--border-default);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 42%),
+        color-mix(in srgb, var(--bg-surface) 88%, transparent);
+}
+
+.haw__eyebrow {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.haw__hero h3 {
+    margin: 0 0 5px;
+    color: var(--text-primary);
+    font-size: 18px;
+}
+
+.haw__hero p {
+    max-width: 680px;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+.haw__runner {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    padding: 7px 10px;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    color: var(--text-tertiary);
+    font-size: 10px;
+}
+
+.haw__runner.is-ready {
+    border-color: color-mix(in srgb, var(--success) 44%, transparent);
+    color: var(--success);
+}
+
+.haw__pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.haw__runner.is-ready .haw__pulse {
+    animation: haw-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes haw-pulse {
+    50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--success) 16%, transparent); }
+}
+
+.haw__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(244px, 1fr));
+    gap: 12px;
+}
+
+.haw__card {
+    position: relative;
+    display: grid;
+    grid-template-columns: 66px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: left;
+    overflow: hidden;
+    --glow: var(--persona-color);
+    transition: transform 0.15s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.haw__card:hover { transform: translateY(-1px); }
+.haw__card.is-selected { border-color: var(--persona-color); }
+
+.haw__card.is-green  { --glow: var(--success); }
+.haw__card.is-yellow { --glow: #f5c518; }
+.haw__card.is-red    { --glow: var(--danger); }
+
+.haw__card.is-green,
+.haw__card.is-yellow,
+.haw__card.is-red {
+    border-color: color-mix(in srgb, var(--glow) 55%, var(--border-default));
+    box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--glow) 30%, transparent),
+        0 6px 22px -10px color-mix(in srgb, var(--glow) 70%, transparent);
+}
+
+.haw__card.is-yellow { animation: haw-card-pulse 2s ease-in-out infinite; }
+
+@keyframes haw-card-pulse {
+    0%, 100% {
+        box-shadow:
+            0 0 0 1px color-mix(in srgb, var(--glow) 30%, transparent),
+            0 6px 22px -10px color-mix(in srgb, var(--glow) 60%, transparent);
+    }
+    50% {
+        box-shadow:
+            0 0 0 1px color-mix(in srgb, var(--glow) 55%, transparent),
+            0 8px 30px -6px color-mix(in srgb, var(--glow) 95%, transparent);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .haw__card.is-yellow { animation: none; }
+}
+
+.haw__card-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(130px 90px at 16% -10%, color-mix(in srgb, var(--glow) 22%, transparent), transparent 70%);
+}
+
+.haw__portrait {
+    position: relative;
+    width: 66px;
+    height: 66px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--persona-color) 45%, transparent);
+    background: color-mix(in srgb, var(--persona-color) 14%, #0b0f1a);
+}
+
+.haw__portrait img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.haw__portrait-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--persona-color);
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.haw__dot {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-surface);
+    background: var(--glow);
+    box-shadow: 0 0 8px var(--glow);
+}
+
+.haw__card-body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.haw__card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.haw__card-top strong {
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.haw__status-pill {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border: 1px solid color-mix(in srgb, var(--glow) 50%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--glow) 14%, transparent);
+    color: var(--glow);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.haw__card-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--text-tertiary);
+    font-size: 10px;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.haw__card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.haw__chip {
+    padding: 2px 6px;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.haw__chip--muted { color: var(--text-tertiary); }
+
+.haw__card-live {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 2px;
+    padding: 6px 8px;
+    border: 1px solid color-mix(in srgb, var(--glow) 28%, transparent);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--glow) 10%, transparent);
+}
+
+.haw__live-title {
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 10px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.haw__live-eta {
+    color: var(--glow);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.haw__card-live--warn {
+    color: color-mix(in srgb, var(--danger) 80%, #fff);
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.haw__card-live--idle {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 9px;
+}
+
+.haw__detail,
+.haw__tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.haw__memory-grid,
+.haw__backup-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.haw__memory-card,
+.haw__prompt-card,
+.haw__task-composer {
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+}
+
+.haw__memory-card {
+    padding: 10px;
+}
+
+.haw__card-head,
+.haw__section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.haw__card-head strong {
+    color: var(--accent);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+}
+
+.haw__card-head span,
+.haw__section-head span {
+    color: var(--text-tertiary);
+    font-size: 9px;
+}
+
+.haw__memory-card pre,
+.haw__completed pre {
+    max-height: 120px;
+    margin: 8px 0 0;
+    overflow: auto;
+    color: var(--text-secondary);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 9px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.haw__task-composer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px;
+}
+
+.haw__task-composer > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.haw__task-composer strong,
+.haw__section-head strong {
+    color: var(--text-primary);
+    font-size: 11px;
+}
+
+.haw__task-composer span {
+    color: var(--text-tertiary);
+    font-size: 9px;
+}
+
+.haw__task-row {
+    display: flex;
+    min-width: min(100%, 380px);
+    gap: 6px;
+}
+
+.haw__task-row input {
+    min-width: 0;
+    flex: 1;
+    padding: 7px 9px;
+    border: 1px solid var(--border-default);
+    border-radius: 7px;
+    outline: none;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-size: 10px;
+}
+
+.haw__task-row input:focus {
+    border-color: var(--accent);
+}
+
+.haw button:not(.haw__persona):not(.haw__card) {
+    padding: 5px 9px;
+    border: 1px solid var(--border-default);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.haw button:not(.haw__persona):not(.haw__card):hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.haw button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.haw__task {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 9px;
+    border: 1px solid var(--border-default);
+    border-radius: 9px;
+}
+
+.haw__task--running { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.haw__task--failed { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+
+.haw__task-state {
+    width: 58px;
+    color: var(--accent);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.haw__task--failed .haw__task-state {
+    color: var(--danger);
+}
+
+.haw__task-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.haw__task-copy strong {
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.haw__task-copy small,
+.haw__empty {
+    color: var(--text-tertiary);
+    font-size: 9px;
+}
+
+.haw__empty {
+    margin: 0;
+    padding: 8px;
+    text-align: center;
+}
+
+.haw__completed {
+    padding: 7px 9px;
+    border: 1px solid var(--border-default);
+    border-radius: 9px;
+    color: var(--text-secondary);
+}
+
+.haw__completed summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.haw__completed summary span {
+    color: var(--text-tertiary);
+    font-size: 9px;
+}
+
+.haw__prompt-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 11px;
+}
+
+.haw__prompt-card > span {
+    color: var(--accent);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.haw__prompt-card strong {
+    color: var(--text-primary);
+    font-size: 11px;
+}
+
+.haw__prompt-card p {
+    margin: 0 0 4px;
+    color: var(--text-tertiary);
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+@media (max-width: 780px) {
+    .haw__hero,
+    .haw__task-composer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .haw__runner {
+        align-self: flex-start;
+    }
+
+    .haw__memory-grid,
+    .haw__backup-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .haw__task-row {
+        min-width: 0;
+    }
+}
+
 /* ── Agents Grid ── */
 .hhp__agents-header {
     display: flex;

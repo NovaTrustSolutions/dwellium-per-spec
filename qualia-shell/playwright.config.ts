@@ -32,8 +32,8 @@ const E2E_TARGET = process.env.E2E_TARGET || 'static';
 const IS_REAL_BACKEND = E2E_TARGET === 'real-backend';
 
 const viteEnv: Record<string, string> = IS_REAL_BACKEND
-  ? { VITE_USE_STATIC_API: 'false', VITE_PARITY_LIVE_BACKEND: 'true' }
-  : { VITE_USE_STATIC_API: 'true' };
+  ? { VITE_USE_STATIC_API: 'false', VITE_PARITY_LIVE_BACKEND: 'true', VITE_DEV_LOGIN: 'true' }
+  : { VITE_USE_STATIC_API: 'true', VITE_DEV_LOGIN: 'true' };
 
 const viteWebServer = {
   command: 'npm run dev',

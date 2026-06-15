@@ -131,6 +131,9 @@ export const COMPONENT_DEFAULT_SIZES: Record<string, { w: number; h: number }> =
     'strata-dashboard': { w: 1100, h: 800 },
     // ARA opens roomy enough for the chat + the docked Honcho/Hermes/Tools drawer.
     'ara-console': { w: 1080, h: 760 },
+    // Honcho's memory/wiki/persona dashboard needs room for its card grids and
+    // durable task queue instead of opening as a narrow quadrant.
+    'honcho': { w: 960, h: 720 },
 };
 
 interface WindowContextValue {

@@ -110,20 +110,51 @@ describe('UserContext', () => {
         expect(loginResult.error).toBe('Cannot reach server');
     });
 
+    it('loginWithGoogle() exchanges the credential and uses the Google-derived user', async () => {
+        const GOOGLE_USER = { ...MOCK_USER, id: 'google-user-1', email: 'ilya@gmail.com', name: 'Ilya' };
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                token: 'google-session-token',
+                user: GOOGLE_USER,
+                permissions: { dashboard: true },
+            }),
+        });
+
+        const { result } = renderHook(() => useUser(), { wrapper });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        let loginResult: any;
+        await act(async () => {
+            loginResult = await result.current.loginWithGoogle('google-id-token');
+        });
+
+        expect(loginResult.success).toBe(true);
+        expect(globalThis.fetch).toHaveBeenCalledWith('/api/auth/google', expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({ credential: 'google-id-token' }),
+        }));
+        expect(result.current.user).toMatchObject({ id: 'google-user-1', name: 'Ilya', email: 'ilya@gmail.com' });
+        expect(localStorage.getItem('dwellium-auth-token')).toBe('google-session-token');
+    });
+
     // ── Logout ──────────────────────────────────────────────────────────────
 
     it('logout() clears user state and token', async () => {
         // Setup: login first
-        (globalThis.fetch as ReturnType<typeof vi.fn>)
-            .mockResolvedValueOnce({
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(async (url: string) => {
+            if (url === '/api/auth/login') return {
                 ok: true,
                 json: async () => ({
                     token: 'jwt-123',
                     user: MOCK_USER,
                     permissions: {},
                 }),
-            })
-            .mockResolvedValueOnce({ ok: true }); // logout POST
+            };
+            if (url === '/api/auth/logout') return { ok: true };
+            if (url.includes('/api/objects/')) return { ok: false, status: 404 };
+            throw new Error(`Unmocked: ${url}`);
+        });
 
         const { result } = renderHook(() => useUser(), { wrapper });
         await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -191,6 +222,24 @@ describe('UserContext', () => {
 
         expect(result.current.hasPermission('anything')).toBe(true);
         expect(result.current.hasPermission('delete_property')).toBe(true);
+    });
+
+    it('loginAsArchitect creates a god session with Andy-level permission bypass', async () => {
+        const { result } = renderHook(() => useUser(), { wrapper });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        act(() => {
+            result.current.loginAsArchitect();
+        });
+
+        expect(result.current.user).toMatchObject({
+            name: 'Architect',
+            email: 'architect@dwellium.com',
+            role: 'god',
+        });
+        expect(result.current.hasMinRole('god')).toBe(true);
+        expect(result.current.hasPermission('anything')).toBe(true);
+        expect(localStorage.getItem('dwellium-auth-token')).toContain('architect-9a921527');
     });
 
     it('hasPermission() checks permissions map for non-god roles', async () => {

@@ -5,7 +5,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     personaWorkStore, personaWorkUserIdHolder,
-    addTask, startTask, completeTask, addMemory, logAudit, recordRun, getWork, formatMemory, formatDuration,
+    addTask, startTask, completeTask, failTask, retryTask, claimNextTask, recoverStaleTasks,
+    addMemory, logAudit, recordRun, getWork, formatMemory, formatDuration,
 } from '../lib/agents/personaWorkStore';
 
 beforeEach(() => {
@@ -57,5 +58,36 @@ describe('personaWorkStore', () => {
         expect(formatDuration(500)).toMatch(/ms/);
         expect(formatDuration(2500)).toMatch(/s/);
         expect(formatDuration(65000)).toMatch(/1m/);
+    });
+
+    it('atomically claims the oldest queued task and tracks attempts', () => {
+        addTask('hermes-mercury', 'Second task');
+        addTask('hermes-labyrinth', 'First task');
+        const mercury = getWork('hermes-mercury').tasks[0];
+        const labyrinth = getWork('hermes-labyrinth').tasks[0];
+        // Make ordering deterministic without fake timers.
+        mercury.createdAt = 20;
+        labyrinth.createdAt = 10;
+
+        const claim = claimNextTask(['hermes-mercury', 'hermes-labyrinth'], 100);
+        expect(claim?.personaId).toBe('hermes-labyrinth');
+        expect(claim?.task.status).toBe('running');
+        expect(claim?.task.attempts).toBe(1);
+        expect(getWork('hermes-labyrinth').tasks[0].startedAt).toBe(100);
+    });
+
+    it('surfaces failed tasks, allows retry, and recovers stale running tasks', () => {
+        const id = addTask('hermes-scribe', 'Write the report');
+        startTask('hermes-scribe', id);
+        failTask('hermes-scribe', id, 'provider unavailable');
+        expect(getWork('hermes-scribe').tasks[0]).toMatchObject({ status: 'failed', lastError: 'provider unavailable' });
+
+        retryTask('hermes-scribe', id);
+        expect(getWork('hermes-scribe').tasks[0].status).toBe('todo');
+
+        startTask('hermes-scribe', id);
+        const recovered = recoverStaleTasks(['hermes-scribe'], Date.now() + 1);
+        expect(recovered).toBe(1);
+        expect(getWork('hermes-scribe').tasks[0].status).toBe('todo');
     });
 });

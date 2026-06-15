@@ -13,7 +13,7 @@ import {
     newPersonaId,
     newTeamId,
 } from '../lib/agents/agentTeamsStore';
-import { DEFAULT_PERSONAS, DEFAULT_TEAMS, defaultDossier, type Persona, type AgentTeam } from '../lib/agents/personas';
+import { DEFAULT_PERSONAS, DEFAULT_TEAMS, HERMES_PERSONA_IDS, defaultDossier, type Persona, type AgentTeam } from '../lib/agents/personas';
 
 beforeEach(() => {
     agentLabUserIdHolder.current = 'test-user';
@@ -28,6 +28,8 @@ describe('agentTeamsStore', () => {
         expect(s.teams.length).toBeGreaterThanOrEqual(DEFAULT_TEAMS.length);
         expect(s.personas.find(p => p.id === 'researcher')).toBeTruthy();
         expect(s.teams.find(t => t.id === 'research-squad')).toBeTruthy();
+        expect(HERMES_PERSONA_IDS.every(id => s.personas.some(p => p.id === id))).toBe(true);
+        expect(new Set(HERMES_PERSONA_IDS.map(id => s.personas.find(p => p.id === id)?.preferredModel?.provider)).size).toBe(5);
     });
 
     it('adds a custom persona and keeps built-ins', () => {
@@ -67,6 +69,13 @@ describe('agentTeamsStore', () => {
         upsertPersona(p);
         (agentTeamsStore as unknown as { reset?: () => void }).reset?.();
         expect(agentTeamsStore.getSnapshot().personas.find(x => x.id === p.id)?.name).toBe('Persistent');
+    });
+
+    it('merges new built-ins even when One Save hydrates an older payload directly', () => {
+        agentTeamsStore.set({ personas: [], teams: [] }, () => {});
+        const snapshot = agentTeamsStore.getSnapshot();
+        expect(HERMES_PERSONA_IDS.every(id => snapshot.personas.some(p => p.id === id))).toBe(true);
+        expect(snapshot.teams.some(t => t.id === 'research-squad')).toBe(true);
     });
 
     it('defaultDossier seeds every editable section', () => {

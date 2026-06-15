@@ -22,6 +22,7 @@
  * Storage key:  scribe-ingestion:<userId>
  */
 import { createLocalStorageStore } from '../../../utils/createLocalStorageStore';
+import { deleteIngestionHandles } from './ingestionHandleStore';
 
 /**
  * Per-file conversion outcome recorded in the index after a "Convert now" run.
@@ -72,6 +73,18 @@ export const DEFAULT_STATE: IngestionState = {
  * to FileSystemDirectoryHandle at the call site (event-handler-gated, SSR-safe).
  */
 export const ingestionHandles: { source: unknown | null; backup: unknown | null } = {
+    source: null,
+    backup: null,
+};
+
+/**
+ * Handles restored from IndexedDB but awaiting a permission re-grant (a user
+ * gesture). The "Reconnect" button promotes a pending handle into
+ * `ingestionHandles` once requestPermission() resolves 'granted'. Module-memory
+ * only — successor to D-2 (the durable copy lives in IndexedDB via
+ * ingestionHandleStore).
+ */
+export const pendingHandles: { source: unknown | null; backup: unknown | null } = {
     source: null,
     backup: null,
 };
@@ -158,10 +171,14 @@ export function clearConvertedIndex(): void {
     persist({ ...prev, converted: [], lastSyncAt: null });
 }
 
-/** Full reset — wipe persisted state AND the in-memory handles (e.g. on logout). */
+/** Full reset — wipe persisted state, the in-memory handles, AND the durable
+ *  IndexedDB handles for the current user (e.g. an explicit "forget folders"). */
 export function clearIngestion(): void {
     ingestionHandles.source = null;
     ingestionHandles.backup = null;
+    pendingHandles.source = null;
+    pendingHandles.backup = null;
+    void deleteIngestionHandles(ingestionUserIdHolder.current);
     ingestionStore.set(DEFAULT_STATE, () => {
         try { localStorage.removeItem(resolveKey()); } catch { /* sandboxed */ }
     });

@@ -12,6 +12,7 @@ import { dispatchOpenWidget } from '../Workspace/workspaceScribe';
 import { hermesLearningUserIdHolder, rateRun } from './hermesLearningStore';
 import { memoryStore, memoryUserIdHolder, addLocalMemory, deleteLocalMemory } from './honchoMemoryStore';
 import { AgentWiki } from './AgentWiki';
+import { HermesAgentWorkspace } from './HermesAgentWorkspace';
 import { agentWikiUserIdHolder, buildWikiContext } from './agentWikiStore';
 import { runHermes } from './hermesRunner';
 import { buildReactLoopFn, mergedToolNames } from './hermesReact';
@@ -756,8 +757,10 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
             {/* ═══ AGENTS TAB ═══ */}
             {!loading && activeTab === 'agents' && (
                 <div className="hhp__panel">
+                    <HermesAgentWorkspace />
+
                     <div className="hhp__agents-header">
-                        <h3 className="hhp__section-title">🤖 Agent Heartbeat Monitor</h3>
+                        <h3 className="hhp__section-title">Runtime Heartbeat Monitor</h3>
                         <button className="hhp__heartbeat-btn" onClick={fetchAgentHeartbeats} disabled={heartbeatRunning}>
                             {heartbeatRunning ? '⏳ Pinging...' : '💓 Check All'}
                         </button>

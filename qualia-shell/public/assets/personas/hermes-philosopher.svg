@@ -1,0 +1,41 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Philosopher portrait">
+  <defs>
+    <radialGradient id="ph-bg" cx="50%" cy="36%" r="80%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.55"/>
+      <stop offset="52%" stop-color="#2c1c05" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#160d02"/>
+    </radialGradient>
+    <linearGradient id="ph-face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fde68a" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.35"/>
+    </linearGradient>
+    <filter id="ph-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="240" height="240" rx="28" fill="url(#ph-bg)"/>
+  <rect x="6" y="6" width="228" height="228" rx="24" fill="none" stroke="#f59e0b" stroke-opacity="0.55" stroke-width="1.5"/>
+  <g filter="url(#ph-glow)">
+    <path d="M58 214 Q58 156 120 156 Q182 156 182 214 Z" fill="url(#ph-face)" opacity="0.5"/>
+    <circle cx="120" cy="108" r="42" fill="url(#ph-face)"/>
+  </g>
+  <!-- laurel around the mind -->
+  <g fill="none" stroke="#fcd34d" stroke-opacity="0.85" stroke-width="2.2" stroke-linecap="round">
+    <path d="M86 130 q-10 -22 4 -44"/>
+    <path d="M154 130 q10 -22 -4 -44"/>
+    <path d="M88 122 l-7 -3 M86 112 l-7 -2 M88 100 l-7 -1 M93 90 l-6 0"/>
+    <path d="M152 122 l7 -3 M154 112 l7 -2 M152 100 l7 -1 M147 90 l6 0"/>
+  </g>
+  <!-- open book / third eye -->
+  <path d="M104 112 q16 -8 32 0 v6 q-16 -7 -32 0 z" fill="#fef3c7" opacity="0.92"/>
+  <line x1="120" y1="108" x2="120" y2="118" stroke="#d97706" stroke-width="1.4"/>
+  <circle cx="120" cy="96" r="4.2" fill="#fff"/>
+  <circle cx="120" cy="96" r="1.8" fill="#d97706"/>
+  <!-- discipline badge: book -->
+  <circle cx="196" cy="196" r="23" fill="#160d02" stroke="#f59e0b" stroke-width="1.6"/>
+  <g fill="none" stroke="#fcd34d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M184 188 q8 -4 12 0 q4 -4 12 0 v15 q-8 -4 -12 0 q-4 -4 -12 0 z"/>
+    <line x1="196" y1="188" x2="196" y2="203"/>
+  </g>
+</svg>

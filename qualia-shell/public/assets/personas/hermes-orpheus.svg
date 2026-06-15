@@ -1,0 +1,44 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Orpheus portrait">
+  <defs>
+    <radialGradient id="or-bg" cx="50%" cy="36%" r="80%">
+      <stop offset="0%" stop-color="#ec4899" stop-opacity="0.55"/>
+      <stop offset="52%" stop-color="#2a0c1d" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#15040c"/>
+    </radialGradient>
+    <linearGradient id="or-face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fbcfe8" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#db2777" stop-opacity="0.35"/>
+    </linearGradient>
+    <filter id="or-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="240" height="240" rx="28" fill="url(#or-bg)"/>
+  <rect x="6" y="6" width="228" height="228" rx="24" fill="none" stroke="#ec4899" stroke-opacity="0.55" stroke-width="1.5"/>
+  <g filter="url(#or-glow)">
+    <path d="M58 214 Q58 156 120 156 Q182 156 182 214 Z" fill="url(#or-face)" opacity="0.5"/>
+    <circle cx="120" cy="108" r="42" fill="url(#or-face)"/>
+  </g>
+  <!-- lyre strings within the mind -->
+  <g stroke="#fce7f3" stroke-opacity="0.9" stroke-width="2" stroke-linecap="round">
+    <line x1="108" y1="86" x2="104" y2="130"/>
+    <line x1="116" y1="84" x2="114" y2="132"/>
+    <line x1="124" y1="84" x2="126" y2="132"/>
+    <line x1="132" y1="86" x2="136" y2="130"/>
+  </g>
+  <path d="M100 86 q20 -10 40 0" fill="none" stroke="#f9a8d4" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- sound waves -->
+  <g fill="none" stroke="#f9a8d4" stroke-opacity="0.7" stroke-width="2" stroke-linecap="round">
+    <path d="M158 100 q8 8 0 16"/>
+    <path d="M166 94 q14 14 0 28"/>
+  </g>
+  <!-- sparkle nodes -->
+  <g fill="#fbcfe8">
+    <circle cx="84" cy="80" r="2.8"/><circle cx="92" cy="132" r="2.4"/>
+  </g>
+  <!-- discipline badge: sparkles -->
+  <circle cx="196" cy="196" r="23" fill="#15040c" stroke="#ec4899" stroke-width="1.6"/>
+  <path d="M196 184 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3 l9 -3 z" fill="#f9a8d4"/>
+  <circle cx="205" cy="187" r="1.8" fill="#fbcfe8"/>
+</svg>

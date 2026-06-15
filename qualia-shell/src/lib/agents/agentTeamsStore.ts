@@ -43,16 +43,20 @@ function emptyState(): AgentLabState {
     return { personas: DEFAULT_PERSONAS, teams: DEFAULT_TEAMS };
 }
 
+function normalizeState(state: AgentLabState): AgentLabState {
+    return {
+        personas: mergeById(DEFAULT_PERSONAS, state.personas ?? []),
+        teams: mergeById(DEFAULT_TEAMS, state.teams ?? []),
+    };
+}
+
 function deserialize(raw: string | null): AgentLabState {
     if (!raw) return emptyState();
     try {
         const parsed = JSON.parse(raw);
         const personas: Persona[] = Array.isArray(parsed?.personas) ? parsed.personas.filter(isPersona) : [];
         const teams: AgentTeam[] = Array.isArray(parsed?.teams) ? parsed.teams.filter(isTeam) : [];
-        return {
-            personas: mergeById(DEFAULT_PERSONAS, personas),
-            teams: mergeById(DEFAULT_TEAMS, teams),
-        };
+        return normalizeState({ personas, teams });
     } catch {
         return emptyState();
     }
@@ -65,7 +69,7 @@ function isTeam(t: unknown): t is AgentTeam {
     return !!t && typeof (t as AgentTeam).id === 'string' && Array.isArray((t as AgentTeam).memberIds);
 }
 
-export const agentTeamsStore = withSync(
+const rawAgentTeamsStore = withSync(
     createLocalStorageStore<AgentLabState>({
         key: resolveKey,
         deserializer: deserialize,
@@ -74,9 +78,35 @@ export const agentTeamsStore = withSync(
     { objectType: 'agent-lab', holder: agentLabUserIdHolder, resolveKey },
 );
 
+// One Save hydration writes a remote payload straight into the base store, so
+// it can bypass `deserialize()`. Normalize every new raw snapshot as well, with
+// a referentially-stable cache for useSyncExternalStore.
+let normalizedRaw: AgentLabState | null = null;
+let normalizedCache: AgentLabState = emptyState();
+function normalizedSnapshot(): AgentLabState {
+    const raw = rawAgentTeamsStore.getSnapshot();
+    if (raw !== normalizedRaw) {
+        normalizedRaw = raw;
+        normalizedCache = normalizeState(raw);
+    }
+    return normalizedCache;
+}
+
+export const agentTeamsStore = {
+    ...rawAgentTeamsStore,
+    getSnapshot: normalizedSnapshot,
+    getServerSnapshot: rawAgentTeamsStore.getServerSnapshot,
+    reset() {
+        normalizedRaw = null;
+        normalizedCache = emptyState();
+        rawAgentTeamsStore.reset();
+    },
+};
+
 function persist(next: AgentLabState): void {
-    agentTeamsStore.set(next, () => {
-        try { localStorage.setItem(resolveKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+    const normalized = normalizeState(next);
+    agentTeamsStore.set(normalized, () => {
+        try { localStorage.setItem(resolveKey(), JSON.stringify(normalized)); } catch { /* sandboxed */ }
     });
 }
 

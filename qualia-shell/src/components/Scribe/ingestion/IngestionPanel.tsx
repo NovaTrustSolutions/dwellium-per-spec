@@ -42,6 +42,15 @@ export default function IngestionPanel({ onConvert, converting = false, convertE
         }
     };
 
+    const doReconnect = async (which: 'source' | 'backup') => {
+        setPickError(null);
+        try {
+            await ingestion.reconnect(which);
+        } catch (err) {
+            setPickError(err instanceof Error ? err.message : 'Could not reconnect the folder.');
+        }
+    };
+
     const ready = ingestion.hasSource && ingestion.hasBackup;
     const convertDisabled = converting || !ready || !onConvert;
 
@@ -77,9 +86,23 @@ export default function IngestionPanel({ onConvert, converting = false, convertE
                 </button>
                 <span className="scribe-ingest__path" data-testid="ingest-source-name">
                     {ingestion.sourceFolderName
-                        ? (ingestion.hasSource ? ingestion.sourceFolderName : `${ingestion.sourceFolderName} (re-pick after reload)`)
+                        ? (ingestion.hasSource
+                            ? ingestion.sourceFolderName
+                            : ingestion.needsReconnectSource
+                                ? `${ingestion.sourceFolderName} (reconnect to restore access)`
+                                : `${ingestion.sourceFolderName} (re-pick after reload)`)
                         : 'No source folder chosen'}
                 </span>
+                {ingestion.needsReconnectSource && !ingestion.hasSource && (
+                    <button
+                        type="button"
+                        className="scribe-ingest__reconnect"
+                        onClick={() => void doReconnect('source')}
+                        disabled={converting}
+                    >
+                        Reconnect
+                    </button>
+                )}
             </div>
 
             <div className="scribe-ingest__row">
@@ -93,9 +116,23 @@ export default function IngestionPanel({ onConvert, converting = false, convertE
                 </button>
                 <span className="scribe-ingest__path" data-testid="ingest-backup-name">
                     {ingestion.backupFolderName
-                        ? (ingestion.hasBackup ? ingestion.backupFolderName : `${ingestion.backupFolderName} (re-pick after reload)`)
+                        ? (ingestion.hasBackup
+                            ? ingestion.backupFolderName
+                            : ingestion.needsReconnectBackup
+                                ? `${ingestion.backupFolderName} (reconnect to restore access)`
+                                : `${ingestion.backupFolderName} (re-pick after reload)`)
                         : 'No backup folder chosen'}
                 </span>
+                {ingestion.needsReconnectBackup && !ingestion.hasBackup && (
+                    <button
+                        type="button"
+                        className="scribe-ingest__reconnect"
+                        onClick={() => void doReconnect('backup')}
+                        disabled={converting}
+                    >
+                        Reconnect
+                    </button>
+                )}
             </div>
 
             {pickError && (

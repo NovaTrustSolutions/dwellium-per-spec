@@ -22,10 +22,10 @@
  * - Keyboard shortcuts: ⌘J (primary) + ⌘G (alias)
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getAuthToken } from '../../context/UserContext';
+import { getAuthToken, UserContext } from '../../context/UserContext';
 import './OpenJarvis.css';
 import { FileUploadButton, UploadResult } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
@@ -99,6 +99,7 @@ const JARVIS_API_BASE_KEY = 'dwellium-jarvis-api-base';
 const JARVIS_MODEL_KEY = 'dwellium-jarvis-model';
 const AG_ENGINE_KEY = 'dwellium-ag-engine';
 const AG_GEMINI_MODEL_KEY = 'dwellium-ag-gemini-model';
+const openJarvisUserIdHolder: { current: string | null } = { current: null };
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'checking';
 const HEALTH_CHECK_INTERVAL = 30_000; // 30s
@@ -137,7 +138,17 @@ function generateId(): string {
 
 function loadConversations(): { conversations: Record<string, Conversation>; activeId: string | null } {
   try {
-    const raw = localStorage.getItem(JARVIS_STORAGE_KEY);
+    const uid = openJarvisUserIdHolder.current ?? '_anonymous';
+    const key = `${JARVIS_STORAGE_KEY}:${uid}`;
+    let raw = localStorage.getItem(key);
+    // One-time migration: the account active during upgrade owns the legacy chat history.
+    if (!raw && uid !== '_anonymous') {
+      raw = localStorage.getItem(JARVIS_STORAGE_KEY);
+      if (raw) {
+        localStorage.setItem(key, raw);
+        localStorage.removeItem(JARVIS_STORAGE_KEY);
+      }
+    }
     if (!raw) return { conversations: {}, activeId: null };
     return JSON.parse(raw);
   } catch {
@@ -146,7 +157,8 @@ function loadConversations(): { conversations: Record<string, Conversation>; act
 }
 
 function saveConversations(data: { conversations: Record<string, Conversation>; activeId: string | null }): void {
-  localStorage.setItem(JARVIS_STORAGE_KEY, JSON.stringify(data));
+  const uid = openJarvisUserIdHolder.current ?? '_anonymous';
+  localStorage.setItem(`${JARVIS_STORAGE_KEY}:${uid}`, JSON.stringify(data));
 }
 
 // getAuthToken imported from UserContext (line 28)
@@ -531,6 +543,10 @@ function SettingsPanel({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function OpenJarvisWidget() {
+  const userCtx = useContext(UserContext);
+  const accountId = userCtx?.user?.id ?? null;
+  openJarvisUserIdHolder.current = accountId;
+
   // Panel state
   const [isOpen, setIsOpen] = useState(() => {
     try { return localStorage.getItem(JARVIS_PANEL_STATE_KEY) === 'open'; } catch { return false; }
@@ -590,7 +606,7 @@ export default function OpenJarvisWidget() {
     if (data.activeId && data.conversations[data.activeId]) {
       setMessages(data.conversations[data.activeId].messages);
     }
-  }, []);
+  }, [accountId]);
 
   // Health check — ping backend every 30s to track connection status
   useEffect(() => {
@@ -895,9 +911,10 @@ export default function OpenJarvisWidget() {
 
   function getGreeting(): string {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning, Andy';
-    if (hour < 18) return 'Good afternoon, Andy';
-    return 'Good evening, Andy';
+    const name = userCtx?.user?.name || 'there';
+    if (hour < 12) return `Good morning, ${name}`;
+    if (hour < 18) return `Good afternoon, ${name}`;
+    return `Good evening, ${name}`;
   }
 
   // ═══════════════════════════════════════════════════════════════════════

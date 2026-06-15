@@ -10,8 +10,8 @@
  * On a successful login(), UserContext flips `sessionExpired` back to false and
  * this modal unmounts automatically. "Log out instead" performs a full logout.
  */
-import { useState, type FormEvent } from 'react';
 import { useUser } from '../../context/UserContext';
+import GoogleSignInButton from './GoogleSignInButton';
 
 const overlay: React.CSSProperties = {
     position: 'fixed',
@@ -41,19 +41,6 @@ const card: React.CSSProperties = {
 
 const title: React.CSSProperties = { margin: 0, fontSize: 18, fontWeight: 650 };
 const sub: React.CSSProperties = { margin: 0, fontSize: 13, lineHeight: 1.5, color: '#9aa4b8' };
-const label: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: '#9aa4b8' };
-const input: React.CSSProperties = {
-    padding: '10px 12px', borderRadius: 9, border: '1px solid rgba(148,163,184,0.28)',
-    background: '#0a0e1a', color: '#e5e9f0', fontSize: 14, outline: 'none',
-};
-const errBox: React.CSSProperties = {
-    fontSize: 12.5, color: '#ef4444', background: 'rgba(239,68,68,0.12)',
-    border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 10px',
-};
-const primaryBtn: React.CSSProperties = {
-    padding: '10px 14px', borderRadius: 9, border: 'none', cursor: 'pointer',
-    background: '#6366f1', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600,
-};
 const secondaryBtn: React.CSSProperties = {
     padding: '8px 14px', borderRadius: 9, cursor: 'pointer',
     background: 'transparent', color: '#9aa4b8', fontSize: 13,
@@ -61,65 +48,21 @@ const secondaryBtn: React.CSSProperties = {
 };
 
 export default function SessionExpiredModal() {
-    const { user, login, logout } = useUser();
-    const [email, setEmail] = useState(user?.email ?? '');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [busy, setBusy] = useState(false);
-
-    const onSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        if (busy) return;
-        setBusy(true);
-        setError(null);
-        const res = await login(email, password);
-        setBusy(false);
-        if (!res.success) {
-            setError(res.error || 'Sign in failed. Please try again.');
-            return;
-        }
-        // Success → UserContext clears `sessionExpired`; this modal unmounts.
-    };
+    const { user, loginWithGoogle, logout } = useUser();
 
     return (
         <div role="dialog" aria-modal="true" aria-label="Session expired" style={overlay}>
-            <form onSubmit={onSubmit} style={card}>
+            <div style={card}>
                 <h2 style={title}>Session expired</h2>
                 <p style={sub}>
-                    Your session timed out. Sign in to pick up right where you left off —
-                    your workspace is still open behind this.
+                    Sign in with {user?.email || 'the same Google account'} to pick up right where you left off.
+                    Your workspace is still open behind this.
                 </p>
-                <label style={label}>
-                    Email
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        autoComplete="username"
-                        style={input}
-                        required
-                    />
-                </label>
-                <label style={label}>
-                    Password
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        autoComplete="current-password"
-                        autoFocus
-                        style={input}
-                        required
-                    />
-                </label>
-                {error && <div role="alert" style={errBox}>{error}</div>}
-                <button type="submit" disabled={busy} style={primaryBtn}>
-                    {busy ? 'Signing in…' : 'Sign in'}
-                </button>
+                <GoogleSignInButton onCredential={loginWithGoogle} />
                 <button type="button" onClick={logout} style={secondaryBtn}>
                     Log out instead
                 </button>
-            </form>
+            </div>
         </div>
     );
 }

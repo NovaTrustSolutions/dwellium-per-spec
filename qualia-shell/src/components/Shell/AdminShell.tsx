@@ -21,6 +21,7 @@
 
 import { useEffect } from 'react';
 import { useHonchoBackgroundRunner } from '../../services/honchoBackgroundRunner';
+import { useHermesAutonomousRunner } from '../../services/hermesAutonomousRunner';
 import { useApplyUiEdits } from '../../lib/uiEditStore';
 import { LayoutProvider } from '../../context/LayoutContext';
 import { HierarchyProvider } from '../../context/HierarchyContext';
@@ -40,6 +41,10 @@ function ShellLayout() {
     // Honcho runs in the background while signed in: an autonomous reflection loop
     // that keeps synthesizing over your memories even when the Honcho widget is closed.
     useHonchoBackgroundRunner();
+
+    // Hermes personas claim durable queued tasks while the signed-in shell is
+    // open, even when the Honcho/Hermes window itself is closed.
+    useHermesAutonomousRunner();
 
     // Natural-language UI edits (2026-06-12 Ilya): persisted per-user CSS
     // overrides apply on boot + react to changes — without the panel open.

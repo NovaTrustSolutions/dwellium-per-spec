@@ -5,8 +5,10 @@
  * This prevents the 4-different-API_BASE problem in InboxZero.
  */
 
-/** Root backend URL (e.g. http://localhost:3000) */
-export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_BASE as ROOT_API_BASE } from '../config';
+
+/** Root backend URL (same-origin on deployed hosts unless VITE_API_URL overrides it). */
+export const API_BASE = ROOT_API_BASE;
 
 /** Inbox endpoints */
 export const INBOX_API = `${API_BASE}/api/inbox`;

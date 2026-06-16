@@ -1,14 +1,16 @@
 # Netlify deploy config — Dwellium (the app lives in the qualia-shell/ subdirectory).
-# React Router v7 framework-mode SSR via @netlify/vite-plugin-react-router
-# (wired in qualia-shell/vite.config.ts). Netlify runs the app on Netlify Functions.
 #
-# `base` points Netlify at the app subdir; per Netlify's monorepo docs every path
-# below is relative to it. No extra base/package-directory setting is needed in the
-# UI — but if the import wizard asks for one, enter: qualia-shell
+# Netlify builds a STATIC SPA: react-router.config.ts sets ssr:false when the
+# NETLIFY env var is present, so `react-router build` emits a client-only bundle
+# in build/client with NO server function. (The full SSR server bundle exceeds
+# Netlify's Function upload limit, and this login-gated shell gains nothing from
+# SSR.) Locally + in CI, SSR stays on.
+#
+# `base` points Netlify at the app subdir; all paths below are relative to it.
 
 [build]
   base = "qualia-shell"
-  command = "react-router build"
+  command = "react-router build && node scripts/write-netlify-redirects.mjs"
   publish = "build/client"
 
 [build.environment]
@@ -20,14 +22,13 @@
 [dev]
   command = "react-router dev"
 
-# --- Optional: full functionality — proxy /api/* to your backend --------------
-# Frontend-only by default, so backend features (One Save, ARA backend chat,
-# transcription, Honcho, Stella) show honest-offline banners. When your Express
-# backend (../ai-dashboard369-file-manager) is hosted somewhere, put its URL here
-# and uncomment. force=true makes this win over the SSR catch-all handler.
+# scripts/write-netlify-redirects.mjs emits:
+# - /api/* -> $NETLIFY_API_PROXY_TARGET/api/:splat when that env var is set.
+# - /* -> /index.html for SPA deep-link refreshes.
 #
-# [[redirects]]
-#   from = "/api/*"
-#   to = "https://YOUR-BACKEND-HOST/api/:splat"
-#   status = 200
-#   force = true
+# Keep this fallback here too so a manual deploy that skips the postbuild script
+# still serves the client shell for deep links.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

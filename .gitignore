@@ -49,3 +49,6 @@ Docs/preview-screenshots-backend/
 electron/node_modules/
 electron/dist-installer/
 electron/staging/
+
+# Local Netlify folder
+.netlify

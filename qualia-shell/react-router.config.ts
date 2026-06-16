@@ -63,5 +63,10 @@ import type { Config } from '@react-router/dev/config';
  *   narrative.
  */
 export default {
-    ssr: true,
+    // SSR locally + in CI (the strict-gate smoke test serves build/server/index.js).
+    // On Netlify we build a STATIC SPA instead (ssr:false) — the full SSR server
+    // bundle exceeds Netlify's Function upload limit ("request body too large"),
+    // and this login-gated shell gains nothing from SSR. NETLIFY is set during
+    // Netlify's own builds.
+    ssr: !process.env.NETLIFY,
 } satisfies Config;

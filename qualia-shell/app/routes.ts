@@ -49,12 +49,14 @@ import { type RouteConfig, index, route } from '@react-router/dev/routes';
  * entirely + remove src/App.tsx default export + cut over from src/main.tsx
  * + index.html SPA entry points to RR v7 framework-mode entry points.
  */
+const isNetlifyStaticBuild = Boolean(process.env.NETLIFY);
+
 export default [
     route('/security', 'routes/security.tsx'),
     // Server-side reverse proxy for same-origin /api/* → backend (:3000).
-    // More specific than the '*' splat below, so /api/* matches here (not the SPA shell),
-    // which is what was returning 405 for relative fetch('/api/...') calls in this deployment.
-    route('/api/*', 'routes/apiProxy.tsx'),
+    // Netlify builds a static SPA, so its /api/* proxy is emitted as _redirects
+    // by scripts/write-netlify-redirects.mjs instead of this loader/action route.
+    ...(!isNetlifyStaticBuild ? [route('/api/*', 'routes/apiProxy.tsx')] : []),
     // P11-13: phone-friendly ThoughtWeaver capture page (Supabase-backed;
     // standalone — no auth shell; config arrives via query once and persists
     // in the phone's localStorage).

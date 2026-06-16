@@ -11,8 +11,9 @@ const lines = [];
 
 if (rawTarget) {
     const target = rawTarget.replace(/\/+$/, '');
+    lines.push(`/health ${target}/health 200!`);
     lines.push(`/api/* ${target}/api/:splat 200!`);
-    console.log(`[netlify] Emitting /api/* proxy redirect to ${target}`);
+    console.log(`[netlify] Emitting /health and /api/* proxy redirects to ${target}`);
 } else {
     console.warn('[netlify] NETLIFY_API_PROXY_TARGET is not set; backend-backed features will use offline/reconnect handling until an API target is configured.');
 }

@@ -15,6 +15,7 @@ import {
     buildSnapshot, applySnapshot, DEFAULT_FOLDER,
 } from '../../services/googleDriveStorage';
 import type { GoogleDriveConfig } from '../../types/integrations';
+import { FolderSync } from 'lucide-react';
 
 const inputStyle: React.CSSProperties = {
     width: '100%', padding: '6px 8px', borderRadius: 4, fontSize: 12, marginBottom: 8,
@@ -81,7 +82,7 @@ export default function GoogleDriveSection() {
 
     return (
         <section className="cp-section">
-            <h3 className="cp-section__title">Storage — Google Drive</h3>
+            <h3 className="cp-section__title"><FolderSync size={15} aria-hidden /> Storage — Google Drive</h3>
             <div className="cp-integration-card">
                 <p style={{ color: 'var(--text-tertiary)', fontSize: 12, marginTop: 0 }}>
                     Back up your Wiki, Thought Weaver, File Explorer, and Honcho data to your own Google Drive

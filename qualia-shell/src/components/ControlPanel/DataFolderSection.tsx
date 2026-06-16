@@ -7,6 +7,7 @@
  * between Macs. In the web build it shows the current root read-only with a note.
  */
 import { useState, useEffect } from 'react';
+import { FolderOpen } from 'lucide-react';
 
 interface ElectronAPI {
     isElectron?: boolean;
@@ -44,7 +45,7 @@ export default function DataFolderSection() {
 
     return (
         <section className="cp-section">
-            <h3 className="cp-section__title">Data Folder</h3>
+            <h3 className="cp-section__title"><FolderOpen size={15} aria-hidden /> Data Folder</h3>
             <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 0, lineHeight: 1.6 }}>
                 Where your files, notes, and knowledge are stored. Point this at a folder on a passport
                 drive or in iCloud Drive to make your data travel with you between Macs.

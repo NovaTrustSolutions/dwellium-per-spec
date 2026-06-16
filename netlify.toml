@@ -1,0 +1,33 @@
+# Netlify deploy config — Dwellium (the app lives in the qualia-shell/ subdirectory).
+# React Router v7 framework-mode SSR via @netlify/vite-plugin-react-router
+# (wired in qualia-shell/vite.config.ts). Netlify runs the app on Netlify Functions.
+#
+# `base` points Netlify at the app subdir; per Netlify's monorepo docs every path
+# below is relative to it. No extra base/package-directory setting is needed in the
+# UI — but if the import wizard asks for one, enter: qualia-shell
+
+[build]
+  base = "qualia-shell"
+  command = "react-router build"
+  publish = "build/client"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Seed/demo data ON for a frontend-only deploy. Flip to "false" once /api points
+  # at the real backend.
+  VITE_APPFOLIO_SEEDS = "true"
+
+[dev]
+  command = "react-router dev"
+
+# --- Optional: full functionality — proxy /api/* to your backend --------------
+# Frontend-only by default, so backend features (One Save, ARA backend chat,
+# transcription, Honcho, Stella) show honest-offline banners. When your Express
+# backend (../ai-dashboard369-file-manager) is hosted somewhere, put its URL here
+# and uncomment. force=true makes this win over the SSR catch-all handler.
+#
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://YOUR-BACKEND-HOST/api/:splat"
+#   status = 200
+#   force = true

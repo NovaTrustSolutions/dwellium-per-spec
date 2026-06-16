@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { reactRouter } from '@react-router/dev/vite';
+import netlifyPlugin from '@netlify/vite-plugin-react-router';
 import { cloneAndAnalyze } from './scripts/kgAnalyze.mjs';
 import { scanFolder } from './scripts/kbScan.mjs';
 import fs from 'node:fs';
@@ -159,7 +160,19 @@ function eyeContactPlugin() {
 }
 
 export default defineConfig({
-    plugins: [reactRouter(), kgGraphRepoPlugin(), kbScanPlugin(), eyeContactPlugin()],
+    // netlifyPlugin() adapts the RR v7 framework-mode SSR build for Netlify
+    // Functions. Gated on the NETLIFY env var (Netlify sets it during its own
+    // builds) so LOCAL builds + the strict-gate SSR smoke test keep emitting the
+    // standard build/server/index.js, while Netlify's build reshapes the server
+    // output into a deployable function. Without this gate the smoke test fails
+    // (the plugin renames the server entry to server.js / server-build.js).
+    plugins: [
+        reactRouter(),
+        ...(process.env.NETLIFY ? [netlifyPlugin()] : []),
+        kgGraphRepoPlugin(),
+        kbScanPlugin(),
+        eyeContactPlugin(),
+    ],
     // 2026-06-12 live-sweep fix: pre-bundle the heavy deps that widgets pull
     // in via dynamic import (terminal → @xterm, doc-viewer/pdf-gear →
     // pdf-lib/pdfjs/tesseract/mammoth/docx, scribe → codemirror family).

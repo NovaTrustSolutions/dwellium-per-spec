@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Check, Moon, X } from 'lucide-react';
 
 interface TrackedReply {
     id: string;
@@ -216,11 +217,11 @@ export default function ReplyTracker() {
     return (
         <div style={s.container}>
             <div style={s.header}>
-                <div style={s.title}>📩 Reply Tracker</div>
+                <div style={s.title}>Reply Tracker</div>
                 <div style={s.tabs}>
                     <button style={s.tab(view === 'overview')} onClick={() => setView('overview')}>Overview</button>
                     <button style={s.tab(view === 'awaiting')} onClick={() => { setView('awaiting'); fetchAwaiting(); }}>
-                        Awaiting {stats && stats.overdue > 0 && <span style={{ color: '#ef4444', marginLeft: '4px' }}>({stats.overdue}⚠️)</span>}
+                        Awaiting {stats && stats.overdue > 0 && <span style={{ color: '#ef4444', marginLeft: '4px' }}>({stats.overdue})</span>}
                     </button>
                     <button style={s.tab(view === 'track')} onClick={() => setView('track')}>+ Track</button>
                     <button style={s.tab(view === 'config')} onClick={() => setView('config')}>Config</button>
@@ -266,7 +267,7 @@ export default function ReplyTracker() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                        <button style={s.btn('primary')} onClick={runDetection}>🔍 Scan for Replies</button>
+                        <button style={s.btn('primary')} onClick={runDetection}>Scan for Replies</button>
                     </div>
 
                     {stats.totalTracked === 0 && (
@@ -281,7 +282,7 @@ export default function ReplyTracker() {
                     {/* Overdue section */}
                     {overdueItems.length > 0 && (
                         <div style={s.section}>
-                            <div style={{ ...s.sectionTitle, color: '#ef4444' }}>⚠️ OVERDUE ({overdueItems.length})</div>
+                            <div style={{ ...s.sectionTitle, color: '#ef4444' }}>OVERDUE ({overdueItems.length})</div>
                             <table style={s.table}>
                                 <thead>
                                     <tr>
@@ -303,9 +304,9 @@ export default function ReplyTracker() {
                                             <td style={{ ...s.td, opacity: 0.5, whiteSpace: 'nowrap' }}>{item.expected_reply_by ? new Date(item.expected_reply_by).toLocaleDateString() : '—'}</td>
                                             <td style={s.td}>
                                                 <div style={{ display: 'flex', gap: '4px' }}>
-                                                    <button style={s.btn('primary')} onClick={() => markReceived(item.id)} title="Mark as replied" aria-label="Mark as replied">✓</button>
-                                                    <button style={s.btn('ghost')} onClick={() => snoozeItem(item.id, 3)} title="Snooze 3 days" aria-label="Snooze 3 days">💤</button>
-                                                    <button style={s.btn('ghost')} onClick={() => closeItem(item.id)} title="Stop tracking" aria-label="Stop tracking">✕</button>
+                                                    <button style={s.btn('primary')} onClick={() => markReceived(item.id)} title="Mark as replied" aria-label="Mark as replied"><Check size={16} /></button>
+                                                    <button style={s.btn('ghost')} onClick={() => snoozeItem(item.id, 3)} title="Snooze 3 days" aria-label="Snooze 3 days"><Moon size={16} /></button>
+                                                    <button style={s.btn('ghost')} onClick={() => closeItem(item.id)} title="Stop tracking" aria-label="Stop tracking"><X size={16} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -317,7 +318,7 @@ export default function ReplyTracker() {
 
                     {/* On-track section */}
                     <div style={s.section}>
-                        <div style={s.sectionTitle}>⏳ ON TRACK ({onTrackItems.length})</div>
+                        <div style={s.sectionTitle}>ON TRACK ({onTrackItems.length})</div>
                         {onTrackItems.length === 0 && overdueItems.length === 0 ? (
                             <div style={s.empty}>No emails being tracked. Use "+ Track" to start.</div>
                         ) : onTrackItems.length === 0 ? (
@@ -344,9 +345,9 @@ export default function ReplyTracker() {
                                             <td style={{ ...s.td, opacity: 0.5, whiteSpace: 'nowrap' }}>{item.expected_reply_by ? new Date(item.expected_reply_by).toLocaleDateString() : '—'}</td>
                                             <td style={s.td}>
                                                 <div style={{ display: 'flex', gap: '4px' }}>
-                                                    <button style={s.btn('primary')} onClick={() => markReceived(item.id)} title="Mark as replied" aria-label="Mark as replied">✓</button>
-                                                    <button style={s.btn('ghost')} onClick={() => snoozeItem(item.id, 3)} title="Snooze 3 days" aria-label="Snooze 3 days">💤</button>
-                                                    <button style={s.btn('ghost')} onClick={() => closeItem(item.id)} title="Stop tracking" aria-label="Stop tracking">✕</button>
+                                                    <button style={s.btn('primary')} onClick={() => markReceived(item.id)} title="Mark as replied" aria-label="Mark as replied"><Check size={16} /></button>
+                                                    <button style={s.btn('ghost')} onClick={() => snoozeItem(item.id, 3)} title="Snooze 3 days" aria-label="Snooze 3 days"><Moon size={16} /></button>
+                                                    <button style={s.btn('ghost')} onClick={() => closeItem(item.id)} title="Stop tracking" aria-label="Stop tracking"><X size={16} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -361,7 +362,7 @@ export default function ReplyTracker() {
             {/* ====== TRACK FORM ====== */}
             {view === 'track' && (
                 <div style={{ maxWidth: '500px' }}>
-                    <div style={s.sectionTitle}>📧 TRACK NEW OUTBOUND EMAIL</div>
+                    <div style={s.sectionTitle}>TRACK NEW OUTBOUND EMAIL</div>
 
                     <div style={s.formGroup}>
                         <label style={s.label}>FROM (your email)</label>
@@ -382,9 +383,9 @@ export default function ReplyTracker() {
                         <div style={{ flex: 1 }}>
                             <label style={s.label}>PRIORITY</label>
                             <select style={s.select} value={trackForm.priority} onChange={e => setTrackForm({ ...trackForm, priority: e.target.value as any })}>
-                                <option value="high">🔴 High</option>
-                                <option value="medium">🟡 Medium</option>
-                                <option value="low">🟢 Low</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
                             </select>
                         </div>
                     </div>
@@ -395,7 +396,7 @@ export default function ReplyTracker() {
                     </div>
 
                     <button style={{ ...s.btn('primary'), padding: '10px 24px', fontSize: '13px' }} onClick={submitTrack} disabled={saving || !trackForm.sender || !trackForm.recipient}>
-                        📩 Start Tracking
+                        Start Tracking
                     </button>
                 </div>
             )}
@@ -405,7 +406,7 @@ export default function ReplyTracker() {
                 <div>
                     <div style={s.toggle}>
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: '13px' }}>📩 Reply Tracking</div>
+                            <div style={{ fontWeight: 700, fontSize: '13px' }}>Reply Tracking</div>
                             <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>Track outbound emails and remind you when no reply is received</div>
                         </div>
                         <button
@@ -413,13 +414,13 @@ export default function ReplyTracker() {
                             onClick={() => updateConfig({ enabled: !config.enabled })}
                             disabled={saving}
                         >
-                            {config.enabled ? '🟢 ON' : '⚪ OFF'}
+                            {config.enabled ? 'ON' : 'OFF'}
                         </button>
                     </div>
 
                     <div style={s.toggle}>
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: '13px' }}>🔔 Overdue Notifications</div>
+                            <div style={{ fontWeight: 700, fontSize: '13px' }}>Overdue Notifications</div>
                             <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>Show overdue badge in the Replies tab header</div>
                         </div>
                         <button
@@ -427,12 +428,12 @@ export default function ReplyTracker() {
                             onClick={() => updateConfig({ notifyOnOverdue: !config.notifyOnOverdue })}
                             disabled={saving}
                         >
-                            {config.notifyOnOverdue ? '🟢 ON' : '⚪ OFF'}
+                            {config.notifyOnOverdue ? 'ON' : 'OFF'}
                         </button>
                     </div>
 
                     <div style={{ ...s.toggle, flexDirection: 'column', alignItems: 'stretch' }}>
-                        <div style={s.sectionTitle}>⏱️ DEADLINE SETTINGS</div>
+                        <div style={s.sectionTitle}>DEADLINE SETTINGS</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                             <div>
                                 <label style={s.label}>DEFAULT DEADLINE</label>

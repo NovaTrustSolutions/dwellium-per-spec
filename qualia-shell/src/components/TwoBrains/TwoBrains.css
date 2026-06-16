@@ -237,7 +237,7 @@
 }
 .shared-card:hover::before { opacity: 1; }
 .shared-card.pinned { border-left-color: var(--warning); background: rgba(251, 191, 36, 0.03); }
-.shared-card.pinned::after { content: '📌'; position: absolute; top: 4px; right: 8px; font-size: 10px; }
+.shared-card.pinned::after { content: ''; position: absolute; top: 4px; right: 8px; font-size: 10px; }
 .shared-card.card-done { opacity: 0.6; }
 .shared-card.card-done .card-title { text-decoration: line-through; }
 

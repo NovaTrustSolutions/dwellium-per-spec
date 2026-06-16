@@ -771,7 +771,7 @@ export default function ComplianceEngine() {
                                                         marginTop: 4, color: 'var(--accent)', fontSize: 10, fontWeight: 600,
                                                         textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
                                                     }}>
-                                                        📄 View Source Document →
+                                                        View Source Document →
                                                     </a>
                                                 )}
                                                 {/* ── Navigate to entity profile ── */}
@@ -843,7 +843,7 @@ export default function ComplianceEngine() {
                                             </span>
                                             {monthItems.length >= 3 && (
                                                 <span style={{ fontSize: 9, color: '#f59e0b', fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.1)' }}>
-                                                    ⚠ Cluster — consider staggering
+                                                    Cluster — consider staggering
                                                 </span>
                                             )}
                                         </div>
@@ -924,9 +924,9 @@ export default function ComplianceEngine() {
                                                 {miss > 0 && <div style={{ width: `${(miss / typeItems.length) * 100}%`, background: '#94a3b8' }} />}
                                             </div>
                                             <div style={{ display: 'flex', gap: 4, fontSize: 9 }}>
-                                                <span style={{ color: '#22c55e' }}>{valid}✓</span>
-                                                <span style={{ color: '#f59e0b' }}>{warn}⚠</span>
-                                                <span style={{ color: '#ef4444' }}>{exp}✗</span>
+                                                <span style={{ color: '#22c55e' }}>{valid}</span>
+                                                <span style={{ color: '#f59e0b' }}>{warn}</span>
+                                                <span style={{ color: '#ef4444' }}>{exp}</span>
                                             </div>
                                         </div>
                                     );
@@ -1063,7 +1063,7 @@ export default function ComplianceEngine() {
                                                             color: STATUS_COLORS[status], fontSize: 10, fontWeight: 700,
                                                         }}>
                                                             {getStatusDot(status)}
-                                                            {status === 'valid' ? '✓' : status === 'warning' ? '⚠' : status === 'expired' ? '✗' : '—'}
+                                                            {status === 'valid' ? '' : status === 'warning' ? '' : status === 'expired' ? '' : '—'}
                                                         </div>
                                                     </td>
                                                 );

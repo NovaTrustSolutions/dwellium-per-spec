@@ -98,6 +98,15 @@
    and the `.window__content > X` / `:has(>)` per-widget rules. Without this,
    widgets like Control Panel clip/overlap their sections. */
 .hos-hosted__body { flex: 1; min-height: 0; position: relative; }
+/* Widget-hosting body must be a COLUMN flex container so flex-sized widget
+   roots resolve to full height. ARA's root (.ara-console) is `flex:1 1 0;
+   height:0` — it has zero intrinsic height and depends entirely on a flex
+   parent (the classic desktop gives it `.window__content:has(> .ara-console)
+   { display:flex; flex-direction:column }`). Without this it collapsed to 0px
+   → blank ARA window. Widgets using height:100% (Stella/Hydra/Honcho) are
+   unaffected. Children fill the column. */
+.hos-hosted__body--widget { display: flex; flex-direction: column; overflow: auto; }
+.hos-hosted__body--widget > * { flex: 1; min-height: 0; }
 .hos-hosted__loading { margin: auto; color: var(--text-secondary, #9a8757); font-style: italic; font-family: 'Georgia', serif; }
 .hos-hosted__ext { font-size: 12px; color: var(--accent-text, var(--accent)); text-decoration: none; margin-left: 4px; }
 .hos-hosted__ext:hover { text-decoration: underline; }
@@ -202,7 +211,12 @@ button.hos-glance__card:hover { border-color: color-mix(in srgb, var(--accent) 5
 .hos-launch__body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .hos-launch__name { font-size: 14px; color: var(--text-primary, #ece0c4); }
 .hos-launch__sub { font-size: 11px; color: var(--text-tertiary, #6f6244); }
-.hos-launch__open { font-size: 11px; color: var(--accent-text, var(--accent)); flex: none; }
+.hos-launch__actions { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.hos-launch__open-btn, .hos-launch__popout-btn { background: transparent; border: none; padding: 2px 6px; font-size: 11px; font-family: inherit; cursor: pointer; border-radius: 4px; transition: all 0.2s; line-height: 1.2; }
+.hos-launch__open-btn { color: var(--accent-text, var(--accent)); }
+.hos-launch__open-btn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--text-primary, #fff); }
+.hos-launch__popout-btn { color: var(--text-secondary, #ece0c4); opacity: 0.8; }
+.hos-launch__popout-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary, #fff); opacity: 1; }
 
 .hos-quick { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .hos-step {
@@ -304,3 +318,103 @@ button.hos-glance__card:hover { border-color: color-mix(in srgb, var(--accent) 5
     background: linear-gradient(135deg, transparent 50%, color-mix(in srgb, var(--accent) 60%, transparent) 50%); border-bottom-right-radius: 10px; }
 
 @media (prefers-reduced-motion: reduce) { .hos { animation: none; } }
+
+/* ── Memory Tab split view with Sidebar ── */
+.hos-panel--memory {
+    padding: 16px 18px;
+    overflow: hidden;
+    display: flex;
+    min-height: 0;
+}
+.hos-panel--memory > * {
+    flex: 1;
+    min-height: 0;
+}
+
+.hos-memory-layout {
+    display: flex;
+    gap: 24px;
+    height: 100%;
+    min-height: 0;
+}
+
+.hos-memory-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-y: auto;
+    padding-right: 12px;
+}
+
+.hos-memory-sidebar {
+    width: 440px;
+    border-left: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+    padding-left: 24px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.hos-memory-sidebar-h {
+    font-family: 'Georgia', serif;
+    font-size: 13px;
+    letter-spacing: .06em;
+    color: var(--text-secondary, #c9a44c);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    padding-bottom: 6px;
+    flex-shrink: 0;
+}
+
+/* Override Cognitive Harness styles when placed inside the Memory sidebar */
+.hos-memory-sidebar .cognitive-harness {
+    background: transparent;
+    padding: 0;
+    height: auto;
+    overflow: visible;
+}
+
+.hos-memory-sidebar .ch-top-controls {
+    margin-bottom: 10px;
+}
+
+.hos-memory-sidebar .ch-bar-wrapper {
+    margin-bottom: 12px;
+    padding: 4px;
+}
+
+.hos-memory-sidebar .ch-bar-item {
+    min-width: 140px;
+    padding: 6px 10px;
+    gap: 6px;
+}
+
+.hos-memory-sidebar .ch-item-name {
+    font-size: 10px;
+}
+
+.hos-memory-sidebar .ch-item-sub {
+    font-size: 7px;
+}
+
+.hos-memory-sidebar .ch-visual-space {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+    flex: none;
+}
+
+.hos-memory-sidebar .ch-canvas-container {
+    height: 220px;
+}
+
+.hos-memory-sidebar .ch-details-panel {
+    background: rgba(15, 11, 8, 0.45);
+    border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+    max-height: 420px;
+}
+

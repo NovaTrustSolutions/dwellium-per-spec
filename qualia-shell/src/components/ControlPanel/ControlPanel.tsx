@@ -5,6 +5,7 @@ import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
+import AccountsSection from './AccountsSection';
 import ActivationCenter from './ActivationCenter';
 import DataFolderSection from './DataFolderSection';
 import GoogleDriveSection from './GoogleDriveSection';
@@ -225,7 +226,7 @@ export default function ControlPanel() {
             const obj = JSON.parse(importText) as Record<string, string>;
             const r = document.documentElement;
             persistTokens(cur => Object.entries(obj).forEach(([k, v]) => { if (k.startsWith('--') && typeof v === 'string') { r.style.setProperty(k, v); cur[k] = v; } }));
-            setEditMsg('Applied ✓'); setShowImport(false);
+            setEditMsg('Applied'); setShowImport(false);
         } catch { setEditMsg('Invalid JSON'); }
         setTimeout(() => setEditMsg(''), 2500);
     };
@@ -378,7 +379,7 @@ export default function ControlPanel() {
                         className={`cp-toggle cp-toggle--snap ${layoutSettings.snapEnabled ? '' : 'cp-toggle--off'}`}
                         onClick={() => updateSettings({ snapEnabled: !layoutSettings.snapEnabled })}
                     >
-                        <span className={`cp-toggle__option ${layoutSettings.snapEnabled ? 'cp-toggle__option--active' : ''}`}>✨ On</span>
+                        <span className={`cp-toggle__option ${layoutSettings.snapEnabled ? 'cp-toggle__option--active' : ''}`}>On</span>
                         <span className={`cp-toggle__option ${!layoutSettings.snapEnabled ? 'cp-toggle__option--active' : ''}`}>Off</span>
                     </button>
                 </div>
@@ -534,22 +535,22 @@ export default function ControlPanel() {
                 <div className="cp-field">
                     <label className="cp-label">Window Actions</label>
                     <div className="cp-actions">
-                        <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === false && minimizeWindow(w.id))}>✨ Desktop</button>
+                        <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === false && minimizeWindow(w.id))}>Desktop</button>
                         <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === true && restoreWindow(w.id))}>↩️ Restore</button>
-                        <button className="cp-btn cp-btn--danger" onClick={() => windows.forEach(w => closeWindow(w.id))}>✕ Close All</button>
+                        <button className="cp-btn cp-btn--danger" onClick={() => windows.forEach(w => closeWindow(w.id))}>Close All</button>
                     </div>
                 </div>
 
                 <div className="cp-actions" style={{ marginTop: 8 }}>
                     <button className="cp-btn" onClick={saveLayout}>
-                        💾 Save Layout
+                        Save Layout
                     </button>
                     <button className="cp-btn cp-btn--danger" onClick={() => {
                         if (window.confirm('Are you sure you want to reset the layout to default?')) {
                             resetLayout();
                         }
                     }}>
-                        🔄 Reset Layout
+                        Reset Layout
                     </button>
                 </div>
                 <button className="cp-btn cp-btn--subtle" onClick={resetSettings} style={{ marginTop: 4 }}>
@@ -574,6 +575,9 @@ export default function ControlPanel() {
                     </div>
                 </div>
             </section>
+
+            {/* God-only local account admin (change passwords, enable/disable) */}
+            <AccountsSection />
 
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />

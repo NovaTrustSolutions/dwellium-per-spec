@@ -13,6 +13,7 @@
  * - cloneRow() → Table row duplication
  */
 import { useState, useRef, useCallback } from 'react';
+import { BarChart3, ClipboardList, FileText, Files, Globe, Pencil, Settings, Trash2 } from 'lucide-react';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import './TemplateGenerator.css';
 
@@ -270,7 +271,7 @@ export default function TemplateGenerator() {
             {/* Sidebar Tabs */}
             <div className="tg-sidebar">
                 <div className="tg-sidebar__header">
-                    <span className="tg-sidebar__icon">⚙️</span>
+                    <span className="tg-sidebar__icon"><Settings size={14} /></span>
                     <span className="tg-sidebar__title">PDF Gear</span>
                 </div>
                 <nav className="tg-sidebar__nav">
@@ -278,39 +279,39 @@ export default function TemplateGenerator() {
                         className={`tg-sidebar__tab ${activeTab === 'html' ? 'tg-sidebar__tab--active' : ''}`}
                         onClick={() => setActiveTab('html')}
                     >
-                        <span className="tg-sidebar__tab-icon">🌐</span>
+                        <span className="tg-sidebar__tab-icon"><Globe size={14} /></span>
                         <span>HTML Template</span>
                     </button>
                     <button
                         className={`tg-sidebar__tab ${activeTab === 'variables' ? 'tg-sidebar__tab--active' : ''}`}
                         onClick={() => setActiveTab('variables')}
                     >
-                        <span className="tg-sidebar__tab-icon">📝</span>
+                        <span className="tg-sidebar__tab-icon"><Pencil size={14} /></span>
                         <span>Variables</span>
                     </button>
                     <button
                         className={`tg-sidebar__tab ${activeTab === 'docx' ? 'tg-sidebar__tab--active' : ''}`}
                         onClick={() => setActiveTab('docx')}
                     >
-                        <span className="tg-sidebar__tab-icon">📄</span>
+                        <span className="tg-sidebar__tab-icon"><FileText size={14} /></span>
                         <span>DOCX Template</span>
                     </button>
                 </nav>
 
                 <div className="tg-sidebar__actions">
                     <button className="tg-action-btn tg-action-btn--primary" onClick={() => void generatePdf()} disabled={isGenerating}>
-                        {isGenerating ? '⏳ Generating…' : '🔨 Generate PDF'}
+                        {isGenerating ? 'Generating…' : 'Generate PDF'}
                     </button>
                     {generatedUrl && (
                         <button className="tg-action-btn tg-action-btn--download" onClick={downloadPdf}>
-                            ⬇ Download PDF
+                            Download PDF
                         </button>
                     )}
                     <button className="tg-action-btn" onClick={updatePreview}>
-                        👁 Preview HTML
+                        Preview HTML
                     </button>
                     <button className="tg-action-btn" onClick={extractVariables}>
-                        🔍 Extract Variables
+                        Extract Variables
                     </button>
                 </div>
             </div>
@@ -362,7 +363,7 @@ export default function TemplateGenerator() {
                                         onClick={() => removeVariable(v.key)}
                                         title="Remove variable"
                                     >
-                                        ✕
+                                       
                                     </button>
                                 </div>
                             ))}
@@ -399,7 +400,7 @@ export default function TemplateGenerator() {
                             </span>
                         </div>
                         <div className="tg-docx__upload-zone">
-                            <span className="tg-docx__upload-icon">📑</span>
+                            <span className="tg-docx__upload-icon"><Files size={14} /></span>
                             <p className="tg-docx__upload-text">Drag & drop a .docx template here</p>
                             <p className="tg-docx__upload-hint">
                                 Supports setValue, cloneBlock, deleteBlock, and cloneRow operations
@@ -411,28 +412,28 @@ export default function TemplateGenerator() {
                         </div>
                         <div className="tg-docx__features">
                             <div className="tg-docx__feature">
-                                <span className="tg-docx__feature-icon">📝</span>
+                                <span className="tg-docx__feature-icon"><Pencil size={14} /></span>
                                 <div>
                                     <strong>setValue()</strong>
                                     <p>Replace placeholder text with dynamic values</p>
                                 </div>
                             </div>
                             <div className="tg-docx__feature">
-                                <span className="tg-docx__feature-icon">📋</span>
+                                <span className="tg-docx__feature-icon"><ClipboardList size={14} /></span>
                                 <div>
                                     <strong>cloneBlock()</strong>
                                     <p>Duplicate template blocks for repeating sections</p>
                                 </div>
                             </div>
                             <div className="tg-docx__feature">
-                                <span className="tg-docx__feature-icon">🗑️</span>
+                                <span className="tg-docx__feature-icon"><Trash2 size={14} /></span>
                                 <div>
                                     <strong>deleteBlock()</strong>
                                     <p>Remove conditional sections from the template</p>
                                 </div>
                             </div>
                             <div className="tg-docx__feature">
-                                <span className="tg-docx__feature-icon">📊</span>
+                                <span className="tg-docx__feature-icon"><BarChart3 size={14} /></span>
                                 <div>
                                     <strong>cloneRow()</strong>
                                     <p>Duplicate table rows for dynamic data tables</p>
@@ -468,7 +469,7 @@ export default function TemplateGenerator() {
                         />
                     ) : (
                         <div className="tg-preview__empty">
-                            <span className="tg-preview__empty-icon">📄</span>
+                            <span className="tg-preview__empty-icon"><FileText size={14} /></span>
                             <p>Click "Preview HTML" or "Generate PDF" to see output</p>
                         </div>
                     )}

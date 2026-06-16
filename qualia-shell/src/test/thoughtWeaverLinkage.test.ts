@@ -92,7 +92,7 @@ describe('thoughtWeaverLinkage — saveToHonchoMemory', () => {
         const out = saveToHonchoMemory({ title: ' Note ', text: ' body ', sources: ['c1'] }, deps);
         expect(out).toBe(fakeEntry);
         expect(append).toHaveBeenCalledWith({ title: 'Note', text: 'body', sources: ['c1'] });
-        expect(openWidget).toHaveBeenCalledWith('honcho', 'Honcho', '🧠');
+        expect(openWidget).toHaveBeenCalledWith('honcho', 'Honcho', 'brain-circuit');
     });
 
     it('falls back to a title when the seed title is blank', () => {

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { Code, Sparkles, X } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import './HydraAI.css';
 import { API_BASE } from '../../config';
@@ -57,7 +58,7 @@ const BLANK_HEAD: Omit<HydraHead, 'id'> = {
     name: '',
     provider: 'openai',
     model: '',
-    icon: '🤖',
+    icon: '',
     color: 'var(--accent)',
     colorRgb: '99, 102, 241',
     enabled: true,
@@ -116,7 +117,7 @@ function renderMarkdown(text: string, panelColor: string) {
 }
 
 /* ── Emoji palette for quick picking ── */
-const EMOJI_PALETTE = ['🟢', '⚡', '🧠', '💻', '🔧', '🤖', '🐍', '🔮', '🚀', '💎', '🌊', '🔥', '🎯', '🌟', '⚙️', '🦾'];
+const EMOJI_PALETTE = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
 
 /* ── Component ── */
 
@@ -418,12 +419,12 @@ export default function HydraAI() {
                 } as React.CSSProperties}
             >
                 <div className="hydra-panel-header">
-                    <span className="hydra-panel-icon">{head?.icon || '🤖'}</span>
+                    <span className="hydra-panel-icon">{head?.icon || ''}</span>
                     <span className="hydra-panel-name" style={{ color }}>{head?.name || headId}</span>
                     {resp && resp !== 'loading' && (
                         <div className="hydra-panel-badges">
                             <span className={`hydra-badge ${resp.status}`}>
-                                {resp.status === 'success' ? '✅' : resp.status === 'error' ? '⚠️' : '⏱'}
+                                {resp.status === 'success' ? '' : resp.status === 'error' ? '' : ''}
                             </span>
                             <span className="hydra-badge">
                                 {(resp.latencyMs / 1000).toFixed(1)}s
@@ -450,7 +451,7 @@ export default function HydraAI() {
                 ) : resp ? (
                     <div className="hydra-panel-error">
                         <div className="hydra-panel-error-icon">
-                            {resp.status === 'timeout' ? '⏱' : '⚠️'}
+                            {resp.status === 'timeout' ? '' : ''}
                         </div>
                         <div>{resp.status === 'timeout' ? 'Request timed out' : 'Error'}</div>
                         {resp.error && (
@@ -473,7 +474,7 @@ export default function HydraAI() {
             {/* Header */}
             <div className="hydra-header">
                 <div className="hydra-logo">
-                    <span className="hydra-logo-icon">🐍</span>
+                    <span className="hydra-logo-icon"><Code size={14} /></span>
                     HYDRA-AI
                 </div>
 
@@ -499,7 +500,7 @@ export default function HydraAI() {
                                 title={`Regrow ${head.name} — change LLM, provider, or endpoint`}
                                 style={{ '--head-color': head.color } as React.CSSProperties}
                             >
-                                ⚙
+                               
                             </button>
                         </div>
                     ))}
@@ -547,7 +548,7 @@ export default function HydraAI() {
                         onClick={() => setSynthesize(!synthesize)}
                         title="Compare and synthesize responses"
                     >
-                        ✨ Synth {synthesize ? 'ON' : 'OFF'}
+                        Synth {synthesize ? 'ON' : 'OFF'}
                     </button>
 
                     <button
@@ -585,7 +586,7 @@ export default function HydraAI() {
                     onClick={sendQuery}
                     disabled={!input.trim() || isLoading || selectedHeads.length < 2}
                 >
-                    {isLoading ? '⏳ Querying…' : `🐍 Ask ${selectedHeads.length} Heads`}
+                    {isLoading ? 'Querying…' : `Ask ${selectedHeads.length} Heads`}
                 </button>
             </div>
 
@@ -593,7 +594,7 @@ export default function HydraAI() {
             <div className="hydra-content" ref={contentRef}>
                 {backendUnavailable ? (
                     <div className="hydra-empty-state">
-                        <div className="hydra-empty-icon">⚠️</div>
+                        <div className="hydra-empty-icon"></div>
                         <div className="hydra-empty-title">Hydra multi-model is not configured</div>
                         <div className="hydra-empty-desc">
                             Requires a Hydra service mounted at <code>/api/hydra</code>
@@ -603,7 +604,7 @@ export default function HydraAI() {
                     </div>
                 ) : queries.length === 0 && !isLoading ? (
                     <div className="hydra-empty-state">
-                        <div className="hydra-empty-icon">🐍</div>
+                        <div className="hydra-empty-icon"></div>
                         <div className="hydra-empty-title">Hydra-AI Reasoning</div>
                         <div className="hydra-empty-desc">
                             Select 2–5 AI model heads above, then ask a question.
@@ -634,7 +635,7 @@ export default function HydraAI() {
                                                 [q.id]: !prev[q.id],
                                             }))}
                                         >
-                                            <span>✨</span>
+                                            <span><Sparkles size={14} /></span>
                                             <span className="hydra-synthesis-title">
                                                 Hydra Synthesis
                                             </span>
@@ -647,7 +648,7 @@ export default function HydraAI() {
                                                 {q.synthesis.agreements.length > 0 && (
                                                     <div className="hydra-synth-section">
                                                         <div className="hydra-synth-section-title agree">
-                                                            ✅ All Models Agree
+                                                            All Models Agree
                                                         </div>
                                                         <ul className="hydra-synth-list">
                                                             {q.synthesis.agreements.map((a, i) => (
@@ -660,7 +661,7 @@ export default function HydraAI() {
                                                 {q.synthesis.disagreements.length > 0 && (
                                                     <div className="hydra-synth-section">
                                                         <div className="hydra-synth-section-title disagree">
-                                                            ⚠️ Points of Disagreement
+                                                            Points of Disagreement
                                                         </div>
                                                         <ul className="hydra-synth-list">
                                                             {q.synthesis.disagreements.map((d, i) => (
@@ -672,7 +673,7 @@ export default function HydraAI() {
 
                                                 <div className="hydra-synth-section">
                                                     <div className="hydra-synth-section-title best">
-                                                        ✨ Best Combined Answer
+                                                        Best Combined Answer
                                                     </div>
                                                     <div className="hydra-synth-best">
                                                         {q.synthesis.bestAnswer}
@@ -711,11 +712,11 @@ export default function HydraAI() {
                         <div className="hydra-modal-header">
                             <div className="hydra-modal-title-row">
                                 <span className="hydra-modal-icon">
-                                    {modalMode === 'edit' ? '🔄' : '➕'}
+                                    {modalMode === 'edit' ? '' : ''}
                                 </span>
                                 <h3>{modalMode === 'edit' ? 'Regrow Head' : 'Add New Head'}</h3>
                             </div>
-                            <button className="hydra-modal-close" onClick={closeModal}>✕</button>
+                            <button className="hydra-modal-close" onClick={closeModal}><X size={16} /></button>
                         </div>
 
                         <div className="hydra-modal-body">
@@ -866,7 +867,7 @@ export default function HydraAI() {
 
                             {/* Error */}
                             {modalError && (
-                                <div className="hydra-modal-error">⚠️ {modalError}</div>
+                                <div className="hydra-modal-error">{modalError}</div>
                             )}
                         </div>
 
@@ -877,7 +878,7 @@ export default function HydraAI() {
                                     onClick={deleteHead}
                                     disabled={modalSaving}
                                 >
-                                    🗑 Remove Head
+                                    Remove Head
                                 </button>
                             )}
                             <div style={{ flex: 1 }} />
@@ -890,10 +891,10 @@ export default function HydraAI() {
                                 disabled={modalSaving}
                             >
                                 {modalSaving
-                                    ? '⏳ Saving…'
+                                    ? 'Saving…'
                                     : modalMode === 'edit'
-                                        ? '🔄 Regrow'
-                                        : '➕ Add Head'}
+                                        ? 'Regrow'
+                                        : 'Add Head'}
                             </button>
                         </div>
                     </div>

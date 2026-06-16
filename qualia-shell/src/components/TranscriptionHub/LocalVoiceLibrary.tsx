@@ -6,6 +6,7 @@
  *   #5 "Group unknown voices" → clusters Unknown segments so you can bulk-label
  */
 import { useState, useSyncExternalStore } from 'react';
+import { Mic } from 'lucide-react';
 import {
     speakerLibraryStore, enrollSpeaker, removeSpeaker, renameSpeaker, addSpeakerSample,
 } from './speakerLibraryStore';
@@ -32,14 +33,14 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
         const name = typeof window !== 'undefined' ? window.prompt('Label this voice (e.g. "Andy"):', '') : null;
         if (!name || !name.trim()) return;
         enrollSpeaker(name.trim(), emb);
-        flash(`✓ Enrolled "${name.trim()}".`);
+        flash(`Enrolled "${name.trim()}".`);
     };
 
     const addSample = (id: string, label: string) => {
         const emb = getLatestEmbedding();
         if (!emb || emb.length === 0) { flash('No recent voice sample to add.'); return; }
         addSpeakerSample(id, emb);
-        flash(`✓ Added a sample to "${label}" (improves accuracy).`);
+        flash(`Added a sample to "${label}" (improves accuracy).`);
     };
 
     const groupUnknowns = () => {
@@ -53,7 +54,7 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
                 : null;
             if (name && name.trim()) { enrollSpeaker(name.trim(), c.centroid); enrolled++; }
         });
-        flash(enrolled ? `✓ Labeled ${enrolled} voice group(s).` : 'No groups labeled.');
+        flash(enrolled ? `Labeled ${enrolled} voice group(s).` : 'No groups labeled.');
     };
 
     const mode = getEmbedderMode();
@@ -71,7 +72,7 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
     return (
         <div className="th-voice-library" style={{ border: '1px solid #2a2a2a', borderRadius: 10, padding: 12, marginTop: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>🧬 Voice Library</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>Voice Library</span>
                 <span style={{ fontSize: 11, color: '#808080' }}>{speakers.length} enrolled · {modeLabel}</span>
                 <span style={{ flex: 1 }} />
                 <button onClick={enroll} title="Take the most recent voice sample and label it"
@@ -90,7 +91,7 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {speakers.map(s => (
                         <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                            <span style={{ color: 'var(--accent)' }}>🎙️</span>
+                            <span style={{ color: 'var(--accent)' }}><Mic size={14} /></span>
                             <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{s.label}</span>
                             <span style={{ fontSize: 10.5, color: '#808080' }}>{s.sampleCount} sample{s.sampleCount === 1 ? '' : 's'}</span>
                             <span style={{ flex: 1 }} />
@@ -116,7 +117,7 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
                 <button onClick={groupUnknowns} disabled={unknownCount < 2}
                     title="Cluster the unidentified segments by voice so you can label each group at once"
                     style={{ fontSize: 11.5, color: unknownCount < 2 ? '#666' : '#fff', background: 'transparent', border: '1px solid #333', borderRadius: 8, padding: '4px 10px', cursor: unknownCount < 2 ? 'not-allowed' : 'pointer' }}>
-                    🧩 Group &amp; label unknown voices ({unknownCount})
+                    Group &amp; label unknown voices ({unknownCount})
                 </button>
             </div>
 

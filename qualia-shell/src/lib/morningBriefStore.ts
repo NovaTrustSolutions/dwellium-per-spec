@@ -91,7 +91,7 @@ export function resetMorningBriefs(): void {
 
 /** Render the brief as the markdown ARA posts. */
 export function formatBrief(b: MorningBrief): string {
-    const lines: string[] = [`**🌅 Morning brief — ${b.date}**`];
+    const lines: string[] = [`**Morning brief — ${b.date}**`];
     if (b.insights.length > 0) {
         lines.push('', ...b.insights.map(i => `**${i.title}** — ${i.text}`));
     }

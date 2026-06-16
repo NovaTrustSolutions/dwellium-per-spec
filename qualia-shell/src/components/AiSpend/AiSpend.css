@@ -53,4 +53,6 @@
 .spend__prov-cost { min-width: 70px; text-align: right; color: var(--text-primary); }
 .spend__empty { color: var(--text-tertiary, #808080); }
 
+.spend__advisor { border-top: 1px solid var(--border-color, #1c1c1c); padding-top: 12px; }
+
 .spend__foot { font-size: 10px; color: var(--text-tertiary, #808080); line-height: 1.5; border-top: 1px solid var(--border-color, #1c1c1c); padding-top: 8px; }

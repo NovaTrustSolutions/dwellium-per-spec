@@ -158,7 +158,7 @@ export default function ThreadChannels() {
                             <div className="tc-detail-header">
                                 <h3 className="tc-detail-subject">{selectedComm.subject}</h3>
                                 <div className="tc-detail-meta">
-                                    <span className="tc-detail-dir">{selectedComm.direction === 'inbound' ? '📥 Inbound' : '📤 Outbound'}</span>
+                                    <span className="tc-detail-dir">{selectedComm.direction === 'inbound' ? 'Inbound' : 'Outbound'}</span>
                                     <span className="tc-detail-channel">{selectedComm.channel}</span>
                                     <span className="tc-detail-time"><Clock size={12} /> {new Date(selectedComm.createdAt).toLocaleString()}</span>
                                 </div>

@@ -27,10 +27,10 @@ export interface AiAction {
 }
 
 export const AI_ACTIONS: AiAction[] = [
-    { id: 'rewrite', label: 'Rewrite', icon: '✍️', mode: 'redline', title: 'Rewrite the selection for clarity (proposed as redlines you accept/reject)' },
-    { id: 'fix', label: 'Fix', icon: '🩹', mode: 'redline', title: 'Fix spelling, grammar & punctuation (proposed as redlines)' },
-    { id: 'translate', label: 'Translate', icon: '🌐', mode: 'redline', title: 'Translate the selection (proposed as a redline)' },
-    { id: 'summarize', label: 'Summarize', icon: '📝', mode: 'ara', title: 'Summarize the selection in the ARA panel' },
+    { id: 'rewrite', label: 'Rewrite', icon: '', mode: 'redline', title: 'Rewrite the selection for clarity (proposed as redlines you accept/reject)' },
+    { id: 'fix', label: 'Fix', icon: '', mode: 'redline', title: 'Fix spelling, grammar & punctuation (proposed as redlines)' },
+    { id: 'translate', label: 'Translate', icon: '', mode: 'redline', title: 'Translate the selection (proposed as a redline)' },
+    { id: 'summarize', label: 'Summarize', icon: '', mode: 'ara', title: 'Summarize the selection in the ARA panel' },
 ];
 
 const TASK_INSTRUCTIONS: Record<Exclude<AiActionId, 'translate' | 'summarize'>, string> = {

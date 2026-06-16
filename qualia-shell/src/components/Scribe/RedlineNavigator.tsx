@@ -106,8 +106,8 @@ export function RedlineNavigator({ getView }: { getView: () => EditorView | null
             </div>
             <span style={{ color: 'rgba(0,0,0,0.2)', fontSize: 14 }}>│</span>
             <div style={{ display: 'flex', gap: 6 }}>
-                <NavBtn label="✓ Accept All" title="Accept all" onClick={acceptAll} accept />
-                <NavBtn label="✗ Reject All" title="Reject all" onClick={rejectAll} reject />
+                <NavBtn label="Accept All" title="Accept all" onClick={acceptAll} accept />
+                <NavBtn label="Reject All" title="Reject all" onClick={rejectAll} reject />
             </div>
         </div>
     );

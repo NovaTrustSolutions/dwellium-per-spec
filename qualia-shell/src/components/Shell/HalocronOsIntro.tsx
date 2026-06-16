@@ -104,7 +104,7 @@ export default function HalocronOsIntro() {
                 onError={() => setPhase('done')}
             />
             <div className="hos-intro__flash" aria-hidden="true" />
-            {phase === 'playing' && <button type="button" className="hos-intro__skip" onClick={beginZoom}>Skip ⏵</button>}
+            {phase === 'playing' && <button type="button" className="hos-intro__skip" onClick={beginZoom}>Skip</button>}
         </div>
     );
 }

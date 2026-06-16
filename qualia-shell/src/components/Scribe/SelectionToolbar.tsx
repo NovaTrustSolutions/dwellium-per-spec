@@ -184,7 +184,7 @@ export function SelectionToolbar() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#222'; e.currentTarget.style.color = '#fff'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ccc'; }}
             >
-                💬 Comment
+                Comment
             </button>
             <button
                 title="Link this selection to a source / citation"
@@ -204,7 +204,7 @@ export function SelectionToolbar() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#2a2410'; e.currentTarget.style.color = '#e7c879'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#c9a44c'; }}
             >
-                🔗 Source
+                Source
             </button>
             <button
                 title="Send this selection to ARA in the floating panel"
@@ -224,7 +224,7 @@ export function SelectionToolbar() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#1a2530'; e.currentTarget.style.color = '#cfe9ff'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ad7ff'; }}
             >
-                🤖 Send to ARA
+                Send to ARA
             </button>
             <button
                 title={llmReady ? 'Send selection to AI for editing suggestions' : 'Configure an LLM in Settings → API Keys'}
@@ -246,7 +246,7 @@ export function SelectionToolbar() {
                 onMouseEnter={(e) => { if (llmReady && !redlineLoading) e.currentTarget.style.background = '#e0ff6e'; }}
                 onMouseLeave={(e) => { if (llmReady) e.currentTarget.style.background = '#D6FE51'; }}
             >
-                {redlineLoading ? '⏳ Thinking...' : '✦ Redline'}
+                {redlineLoading ? 'Thinking...' : 'Redline'}
             </button>
 
             {/* Docs-parity AI writing helpers — one tap each. Icon-only to stay

@@ -1,6 +1,6 @@
 /**
  * araHermes — Phase-10 Task 10.3 (A2): ARA quick-chat Hermes hints. Verifies
- * tag separation from Agent Lab runs, 👎 exclusion / 👍 boost semantics, the
+ * tag separation from Agent Lab runs, thumbs-down exclusion / thumbs-up boost semantics, the
  * few-shot formatter, and the record-then-vote flow against the real store.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -45,7 +45,7 @@ describe('recordAraChat + tag separation', () => {
 });
 
 describe('voting semantics', () => {
-    it('👎 (−1) excludes a run from ARA hints entirely', () => {
+    it('thumbs-down (−1) excludes a run from ARA hints entirely', () => {
         const rec = recordAraChat('lease renewal rules in georgia', 'Here are the rules…');
         expect(relevantAraRuns('georgia lease renewal').map(r => r.id)).toContain(rec.id);
         rateRun(rec.id, -1);
@@ -53,10 +53,10 @@ describe('voting semantics', () => {
         expect(araChatRuns().map(r => r.id)).not.toContain(rec.id);
     });
 
-    it('👍 (+1) boosts an OLDER run above an unrated newer equal-similarity sibling', () => {
+    it('thumbs-up (+1) boosts an OLDER run above an unrated newer equal-similarity sibling', () => {
         const older = recordAraChat('rent comps midtown atlanta', 'Comps set A');
         const newer = recordAraChat('rent comps midtown atlanta', 'Comps set B');
-        // Unrated: recency tiebreak would put `newer` first. The 👍 boost on
+        // Unrated: recency tiebreak would put `newer` first. The thumbs-up boost on
         // `older` must overcome that (score beats tiebreak).
         rateRun(older.id, 1);
         const ranked = relevantAraRuns('rent comps midtown atlanta', 2);

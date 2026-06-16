@@ -106,7 +106,7 @@ export default function GoogleDriveSection() {
                     </button>
                     <button style={btn} onClick={backup} disabled={!token || !!busy}>Back up now</button>
                     <button style={btn} onClick={restore} disabled={!token || !!busy}>Restore</button>
-                    {busy && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>⏳ {busy}</span>}
+                    {busy && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{busy}</span>}
                 </div>
                 {cfg.lastSyncAt ? (
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>

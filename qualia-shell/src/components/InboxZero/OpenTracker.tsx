@@ -3,6 +3,7 @@
  * Create tracking pixels, embed in outbound emails, see who opened.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { Eye, Loader2 } from 'lucide-react';
 
 interface Tracker {
     id: string;
@@ -108,7 +109,7 @@ export default function OpenTracker() {
     return (
         <div style={s.wrap}>
             <div style={s.title}>
-                👁️ Email Open Tracker
+                Email Open Tracker
                 <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
                     Track if recipients opened your emails
                 </span>
@@ -133,7 +134,7 @@ export default function OpenTracker() {
                     disabled={creating || !subject.trim() || !recipient.trim()}
                     onClick={createTracker}
                 >
-                    {creating ? '⏳ Creating…' : '➕ Create Tracker'}
+                    {creating ? 'Creating…' : 'Create Tracker'}
                 </button>
             </div>
 
@@ -142,7 +143,7 @@ export default function OpenTracker() {
 
             {!loading && trackers.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-tertiary)' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>📧</div>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}></div>
                     <div style={{ fontSize: 13 }}>No trackers yet. Create one above to start tracking email opens.</div>
                 </div>
             )}
@@ -156,7 +157,7 @@ export default function OpenTracker() {
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                             <span style={s.badge(t.openCount)}>
-                                {t.openCount > 0 ? '👁️' : '⏳'} {t.openCount} open{t.openCount !== 1 ? 's' : ''}
+                                {t.openCount > 0 ? <Eye size={14} /> : <Loader2 size={14} />} {t.openCount} open{t.openCount !== 1 ? 's' : ''}
                             </span>
                             <button
                                 onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
@@ -169,7 +170,7 @@ export default function OpenTracker() {
                                 style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12 }}
                                 title="Delete tracker"
                             >
-                                🗑️
+                               
                             </button>
                         </div>
                     </div>
@@ -183,7 +184,7 @@ export default function OpenTracker() {
                     {expandedId === t.id && (
                         <div style={{ marginTop: 10 }}>
                             {/* Pixel HTML snippet */}
-                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>📋 Pixel HTML (paste in email body):</div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Pixel HTML (paste in email body):</div>
                             <div style={s.snippet}>
                                 <code>{`<img src="${window.location.origin}/api/inbox/tracker/${t.id}/pixel.gif" width="1" height="1" style="display:none" />`}</code>
                                 <button
@@ -193,21 +194,21 @@ export default function OpenTracker() {
                                         t.id
                                     )}
                                 >
-                                    {copiedId === t.id ? '✅ Copied!' : '📋 Copy'}
+                                    {copiedId === t.id ? 'Copied!' : 'Copy'}
                                 </button>
                             </div>
 
                             {/* Opens log */}
                             {t.opens && t.opens.length > 0 && (
                                 <div style={{ marginTop: 10 }}>
-                                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>📊 Open History:</div>
+                                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Open History:</div>
                                     <div style={{ maxHeight: 150, overflowY: 'auto' }}>
                                         {t.opens.map((open, i) => (
                                             <div key={i} style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-tertiary)', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                                <span>📅 {new Date(open.timestamp).toLocaleString()}</span>
-                                                <span>🌐 {open.ip}</span>
+                                                <span>{new Date(open.timestamp).toLocaleString()}</span>
+                                                <span>{open.ip}</span>
                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
-                                                    🖥️ {open.ua}
+                                                    {open.ua}
                                                 </span>
                                             </div>
                                         ))}

@@ -1,4 +1,5 @@
 import { getAuthToken } from '../../context/UserContext';
+import { Book, X } from 'lucide-react';
 /**
  * NotebookLMContext.tsx
  *
@@ -162,7 +163,7 @@ export default function NotebookLMContext() {
                 });
             } catch { /* local state already updated; bridge is best-effort */ }
         }
-        setSaveStatus(`✓ ${nb.title} ${!nb.enabled ? 'enabled' : 'disabled'} as ARA context`);
+        setSaveStatus(`${nb.title} ${!nb.enabled ? 'enabled' : 'disabled'} as ARA context`);
         setTimeout(() => setSaveStatus(''), 3000);
         setToggling((prev) => {
             const next = new Set(prev);
@@ -206,7 +207,7 @@ export default function NotebookLMContext() {
                 });
             } catch { /* bridge optional */ }
         }
-        setSaveStatus(`✓ "${nb.title}" added and enabled`);
+        setSaveStatus(`"${nb.title}" added and enabled`);
         setTimeout(() => setSaveStatus(''), 3000);
         setNewId('');
         setNewTitle('');
@@ -224,7 +225,7 @@ export default function NotebookLMContext() {
                 });
             } catch { /* bridge optional */ }
         }
-        setSaveStatus('✓ Notebook removed');
+        setSaveStatus('Notebook removed');
         setTimeout(() => setSaveStatus(''), 3000);
     }
 
@@ -319,7 +320,7 @@ export default function NotebookLMContext() {
             {/* Header */}
             <div className="nlm-header">
                 <div className="nlm-header-left">
-                    <span className="nlm-icon">📓</span>
+                    <span className="nlm-icon"><Book size={14} /></span>
                     <div>
                         <h2 className="nlm-title">NotebookLM</h2>
                         <p className="nlm-subtitle">Knowledge Sources for ARA &amp; Honcho</p>
@@ -347,8 +348,8 @@ export default function NotebookLMContext() {
             {saveStatus && <div className="nlm-toast nlm-toast--success">{saveStatus}</div>}
             {error && (
                 <div className="nlm-toast nlm-toast--error">
-                    ⚠️ {error}{' '}
-                    <button className="nlm-toast-close" onClick={() => setError('')}>✕</button>
+                    {error}{' '}
+                    <button className="nlm-toast-close" onClick={() => setError('')}><X size={16} /></button>
                 </div>
             )}
 
@@ -361,7 +362,7 @@ export default function NotebookLMContext() {
                     </div>
                 ) : notebooks.length === 0 ? (
                     <div className="nlm-empty">
-                        <div className="nlm-empty-icon">📚</div>
+                        <div className="nlm-empty-icon"></div>
                         <p className="nlm-empty-title">No notebooks added yet</p>
                         <p className="nlm-empty-sub">Add a notebook below to use it as an ARA knowledge source.</p>
                     </div>
@@ -369,7 +370,7 @@ export default function NotebookLMContext() {
                     notebooks.map((nb) => (
                         <div key={nb.id} className={`nlm-item ${nb.enabled ? 'nlm-item--enabled' : ''}`}>
                             <div className="nlm-item-body">
-                                <div className="nlm-item-icon">{nb.enabled ? '📗' : '📔'}</div>
+                                <div className="nlm-item-icon">{nb.enabled ? '' : ''}</div>
                                 <div className="nlm-item-info">
                                     <div className="nlm-item-title">{nb.title}</div>
                                     {nb.description && (
@@ -411,7 +412,7 @@ export default function NotebookLMContext() {
                                     onClick={() => removeNotebook(nb.id)}
                                     title="Remove from Dwellium"
                                 >
-                                    ✕
+                                   
                                 </button>
                             </div>
                         </div>
@@ -465,7 +466,7 @@ export default function NotebookLMContext() {
                         </div>
 
                         <div className="nlm-form-actions">
-                            <button type="submit" className="nlm-form-save">✓ Add &amp; Enable</button>
+                            <button type="submit" className="nlm-form-save">Add &amp; Enable</button>
                             <button type="button" className="nlm-form-cancel" onClick={() => setAdding(false)}>
                                 Cancel
                             </button>

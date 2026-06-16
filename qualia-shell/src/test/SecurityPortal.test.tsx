@@ -78,7 +78,7 @@ describe('SecurityPortal', () => {
 
         // Submit
         mockFetch.mockResolvedValueOnce(json({ success: true }));
-        await user.click(screen.getByText('🛡️ Submit Incident Report'));
+        await user.click(screen.getByText('Submit Incident Report'));
 
         expect(await screen.findByText('Incident Reported')).toBeInTheDocument();
         expect(screen.getByText('File Another Report')).toBeInTheDocument();
@@ -100,7 +100,7 @@ describe('SecurityPortal', () => {
         await user.type(screen.getByPlaceholderText('Brief description'), 'Test');
 
         mockFetch.mockResolvedValueOnce(json({ success: true }));
-        await user.click(screen.getByText('🛡️ Submit Incident Report'));
+        await user.click(screen.getByText('Submit Incident Report'));
 
         await screen.findByText('Incident Reported');
         await user.click(screen.getByText('File Another Report'));

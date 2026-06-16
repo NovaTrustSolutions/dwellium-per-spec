@@ -110,7 +110,7 @@ export function OrchestratorHome() {
         const input = (raw ?? cmd).trim();
         if (!input) return;
         const parsed = parseCommand(input);
-        if (parsed) { parsed.run(); setLast(`✓ ${parsed.label}`); setCmd(''); }
+        if (parsed) { parsed.run(); setLast(`${parsed.label}`); setCmd(''); }
         else { setLast(`Didn't understand "${input}". Try "open strata" or "switch to research".`); }
     };
     return (

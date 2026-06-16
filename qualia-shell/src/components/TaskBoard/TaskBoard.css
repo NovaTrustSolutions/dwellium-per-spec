@@ -304,3 +304,376 @@
     font-size: 12px; cursor: pointer; white-space: nowrap;
 }
 .tb-btn--ghost:hover { background: var(--surface-hover, #242424); color: var(--text, #eee); }
+
+/* Column limits warning states */
+.tb-col--wip-exceeded {
+    border-color: #ef4444 !important;
+    background: #1c0e10 !important;
+}
+.tb-col--wip-starvation {
+    border-color: #3b82f6 !important;
+    background: #0f1626 !important;
+}
+
+.tb-col__limit-badge {
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-weight: 700;
+    margin-left: auto;
+}
+.tb-col__limit-badge--normal {
+    background: #1f1f1f;
+    color: var(--text-secondary, #ccc);
+}
+.tb-col__limit-badge--exceeded {
+    background: #ef4444;
+    color: #fff;
+    animation: tb-pulse 2s infinite;
+}
+.tb-col__limit-badge--starved {
+    background: #3b82f6;
+    color: #fff;
+}
+
+@keyframes tb-pulse {
+    0% { opacity: 0.9; }
+    50% { opacity: 0.5; }
+    100% { opacity: 0.9; }
+}
+
+.tb-col__policy-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0 4px;
+    border-radius: 4px;
+    color: var(--text-tertiary, #888);
+    transition: color 0.12s;
+    display: flex;
+    align-items: center;
+}
+.tb-col__policy-btn:hover {
+    color: var(--accent);
+}
+
+/* Settings, policy list & custom popovers */
+.tb-col-settings-pop {
+    position: absolute;
+    z-index: 30;
+    top: 45px;
+    right: 12px;
+    width: 250px;
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.6);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.tb-col-settings-pop h5 {
+    margin: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #9ad7ff;
+}
+.tb-settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.tb-settings-group label {
+    font-size: 10.5px;
+    color: var(--text-tertiary, #888);
+}
+.tb-settings-row {
+    display: flex;
+    gap: 8px;
+}
+.tb-settings-row .tb-settings-group {
+    flex: 1;
+}
+.tb-col-settings-pop .tb-assign-input {
+    width: 100%;
+    min-width: 0;
+}
+
+
+.tb-policy-popover {
+    position: absolute;
+    z-index: 25;
+    top: 45px;
+    left: 12px;
+    width: 260px;
+    background: #161616;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.tb-policy-popover h5 {
+    margin: 0 0 6px 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+.tb-policy-popover ul {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 11.5px;
+    color: #e0e0e0;
+    line-height: 1.4;
+}
+
+/* Warning & Check Modals */
+.tb-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.tb-modal-card {
+    background: #141414;
+    border: 1px solid #ef4444;
+    border-radius: 12px;
+    width: 400px;
+    padding: 20px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.tb-modal-card--exit {
+    border-color: var(--accent);
+}
+.tb-modal-card h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+.tb-modal-card p {
+    margin: 0;
+    font-size: 13px;
+    color: #ccc;
+    line-height: 1.4;
+}
+.tb-policy-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #0d0d0d;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #222;
+}
+.tb-policy-check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+.tb-policy-check-item input {
+    margin-top: 2px;
+    accent-color: var(--accent);
+}
+.tb-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+/* Metrics Dashboard Drawer */
+.tb-metrics-drawer {
+    flex: 0 0 540px;
+    width: 540px;
+    border-left: 1px solid #1e1e1e;
+    background: #0d0d0d;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    z-index: 20;
+    box-shadow: -8px 0 32px rgba(0,0,0,0.5);
+}
+.tb-metrics-drawer__head {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #1e1e1e;
+}
+.tb-metrics-drawer__title {
+    flex: 1;
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--accent);
+}
+.tb-metrics-tabs {
+    display: flex;
+    background: #141414;
+    padding: 4px;
+    margin: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #222;
+}
+.tb-metrics-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #888;
+    padding: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.12s, color 0.12s;
+}
+.tb-metrics-tab-btn:hover {
+    color: #eee;
+}
+.tb-metrics-tab-btn--active {
+    background: #242424;
+    color: #fff;
+}
+.tb-metrics-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.tb-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+.tb-metrics-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.tb-metrics-card__title {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--text-tertiary, #888);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+.tb-metrics-card__value {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+}
+.tb-metrics-card__sub {
+    font-size: 10.5px;
+    color: var(--text-tertiary, #888);
+}
+.tb-metrics-section {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.tb-metrics-section h4 {
+    margin: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #9ad7ff;
+    letter-spacing: 0.4px;
+}
+.tb-chart-container {
+    height: 180px;
+    width: 100%;
+    margin-top: 6px;
+}
+
+/* Age Table */
+.tb-metrics-age-table {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.tb-metrics-age-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 90px;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #1a1a1a;
+    border-radius: 6px;
+    font-size: 11.5px;
+    align-items: center;
+}
+.tb-metrics-age-row--head {
+    background: transparent;
+    font-weight: 700;
+    color: var(--text-tertiary, #888);
+    border-bottom: 1px solid #222;
+    border-radius: 0;
+}
+.tb-metrics-age-name {
+    color: #eee;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tb-metrics-age-col {
+    color: #9ad7ff;
+}
+.tb-metrics-age-value {
+    font-weight: 700;
+    color: var(--accent);
+    text-align: right;
+}
+
+/* Disable pointer events on all other cards while dragging to ensure smooth drop targets */
+.tb-board--dragging .tb-card:not(.tb-card--dragging) {
+    pointer-events: none;
+}
+
+/* Project selector style */
+.tb-project-select {
+    background: #161616;
+    color: #e8e8e8;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 12px;
+    max-width: 200px;
+}
+.tb-project-select:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+/* Edit icon button styles */
+.tb-card__edit {
+    font-size: 13px;
+    opacity: 0.6;
+    transition: opacity 0.15s, background-color 0.15s;
+    margin-left: auto; /* Push it to the right */
+}
+.tb-card__edit:hover {
+    color: var(--accent) !important;
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+

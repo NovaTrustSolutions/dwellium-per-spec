@@ -6,14 +6,7 @@
  * Renewal search/filter, Box Score, Leasing Funnel, Agent Performance
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-    FileKey2, RefreshCw, List, Columns3, CheckSquare, Zap,
-    Droplets, Flame, Wifi, Trash2, Home, UserPlus, FileText,
-    RotateCw, BarChart3, AlertTriangle, Search, TrendingUp,
-    Clock, Building2, Globe, Tag, ArrowUpDown, Mail, MessageSquare,
-    Send, Link2, Eye, UserCheck, Filter, ChevronDown, ChevronUp,
-    PenTool, ArrowRight, Shield, Phone, Calendar, Percent, Plus, X
-} from 'lucide-react';
+import { AlertTriangle, ArrowRight, ArrowUpDown, BarChart3, Building2, Calendar, Check, CheckSquare, ChevronDown, ChevronUp, Clock, Columns3, Droplets, Eye, FileKey2, FileText, Filter, Flame, Globe, Home, Link2, List, Mail, MessageSquare, PenTool, Percent, Phone, Plus, RefreshCw, RotateCw, Search, Send, Shield, Tag, Trash2, TrendingUp, UserCheck, UserPlus, Wifi, X, Zap } from 'lucide-react';
 import { strataGet, strataPut, strataPost } from '../strataApi';
 import type { Workitem, Property, Unit } from '../strataTypes';
 import ProfileSpaces from './ProfileSpaces';
@@ -313,7 +306,7 @@ SIGNATURES: (Pending)
   Landlord: ___________________________  Date: ________
   Tenant:  ___________________________  Date: ________
 
-⚠ DRAFT — This document must be reviewed by legal counsel before execution.
+DRAFT — This document must be reviewed by legal counsel before execution.
 `;
         // Download as text file
         const blob = new Blob([doc], { type: 'text/plain' });
@@ -1138,7 +1131,7 @@ SIGNATURES: (Pending)
                                         {u.icon === 'wifi' && <Wifi size={14} style={{ color: done ? '#22c55e' : '#475569' }} />}
                                         {u.icon === 'trash' && <Trash2 size={14} style={{ color: done ? '#22c55e' : '#475569' }} />}
                                         <span style={{ color: done ? '#22c55e' : '#94a3b8', fontSize: '12px', textDecoration: done ? 'line-through' : 'none' }}>{u.label}</span>
-                                        {done && <span style={{ marginLeft: 'auto', color: '#22c55e', fontSize: '10px', fontWeight: 700 }}>✓</span>}
+                                        {done && <span style={{ marginLeft: 'auto', color: '#22c55e', fontSize: '10px', fontWeight: 700 }}><Check size={14} /></span>}
                                     </label>
                                 );
                             })}
@@ -1167,7 +1160,7 @@ SIGNATURES: (Pending)
                                                 style={{ accentColor: '#f59e0b' }}
                                             />
                                             <span style={{ color: done ? '#f59e0b' : '#94a3b8', fontSize: '12px', textDecoration: done ? 'line-through' : 'none' }}>{item.label}</span>
-                                            {done && <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}>✓</span>}
+                                            {done && <span style={{ marginLeft: 'auto', color: '#f59e0b', fontSize: '10px', fontWeight: 700 }}><Check size={14} /></span>}
                                         </label>
                                     );
                                 })}

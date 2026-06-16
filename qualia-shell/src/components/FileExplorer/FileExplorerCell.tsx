@@ -293,7 +293,7 @@ export function FileExplorerCell({ entry, depth = 0, onChange, onRequestNewEntry
 
                 // Build a ghost drag-image showing the count
                 const ghost = document.createElement('div');
-                ghost.textContent = `📎 ${dragPaths.length} items`;
+                ghost.textContent = `${dragPaths.length} items`;
                 ghost.style.cssText = 'position:absolute;top:-1000px;padding:4px 10px;background:#1a1a1a;color:#D6FE51;border:1px solid var(--accent);border-radius:4px;font:600 11px Inter,sans-serif;';
                 document.body.appendChild(ghost);
                 e.dataTransfer.setDragImage(ghost, -10, -10);

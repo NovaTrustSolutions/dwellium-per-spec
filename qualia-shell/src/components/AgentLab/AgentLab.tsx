@@ -5,6 +5,7 @@
  * merges a final product. Every run feeds Hermes so the agents improve.
  */
 import { useCallback, useContext, useMemo, useState } from 'react';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, applyModelPreference } from '../../lib/llmClient';
@@ -249,6 +250,8 @@ export default function AgentLab() {
                                 onAvatarChange={a => upsertPersona({ ...selectedPersona, avatar: a })}
                                 neuralVideo={resolveNeuralVideo(selectedPersona)}
                                 onNeuralVideoChange={v => upsertPersona({ ...selectedPersona, neuralVideo: v })}
+                                icon={selectedPersona.icon}
+                                onIconChange={k => upsertPersona({ ...selectedPersona, icon: k })}
                             />
                         ) : (
                             <PersonaWorkspace persona={selectedPersona} view={personaTab} onPersonaChange={upsertPersona} onRunTask={runTask} runningTaskId={runningTaskId} />
@@ -306,8 +309,8 @@ function RunOutput(props: { events: RunEvent[]; teamResult: TeamRunResult | null
                     <div className="alab-final-head">
                         <span>Final product</span>
                         <span className="alab-rate">
-                            <button className={`alab-rate-btn ${props.rating === 1 ? 'alab-rate-btn--on' : ''}`} onClick={() => props.onRate(1)} disabled={!props.lastRunId} title="Good — Hermes learns from this">👍</button>
-                            <button className={`alab-rate-btn ${props.rating === -1 ? 'alab-rate-btn--on' : ''}`} onClick={() => props.onRate(-1)} disabled={!props.lastRunId} title="Bad">👎</button>
+                            <button className={`alab-rate-btn ${props.rating === 1 ? 'alab-rate-btn--on' : ''}`} onClick={() => props.onRate(1)} disabled={!props.lastRunId} title="Good — Hermes learns from this"><ThumbsUp size={16} /></button>
+                            <button className={`alab-rate-btn ${props.rating === -1 ? 'alab-rate-btn--on' : ''}`} onClick={() => props.onRate(-1)} disabled={!props.lastRunId} title="Bad"><ThumbsDown size={16} /></button>
                         </span>
                     </div>
                     <pre className="alab-pre alab-pre--final">{final}</pre>

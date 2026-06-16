@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { BarChart3, Inbox, Settings, Timer, TrendingUp } from 'lucide-react';
 import './InboxWidget.css';
 
 interface InboxItem {
@@ -33,16 +34,16 @@ interface InboxMetrics {
 
 // Project ID → display name mapping
 const PROJECT_NAMES: Record<string, string> = {
-    'proj-invoicing': '💰 Invoicing',
-    'proj-msa': '📜 MSA Management',
-    'proj-onboarding': '👋 Onboarding',
-    'proj-gdpr': '🔒 GDPR / Privacy',
-    'proj-inventory': '📦 Inventory',
-    'proj-brand-guidelines': '🎨 Brand Guidelines',
-    'proj-reports': '📊 Financial Reports',
-    'proj-hive': '🐝 The Hive',
-    'proj-dashboard': '⚙️ AI-Dashboard369',
-    'unrouted': '📥 Unrouted',
+    'proj-invoicing': 'Invoicing',
+    'proj-msa': 'MSA Management',
+    'proj-onboarding': 'Onboarding',
+    'proj-gdpr': 'GDPR / Privacy',
+    'proj-inventory': 'Inventory',
+    'proj-brand-guidelines': 'Brand Guidelines',
+    'proj-reports': 'Financial Reports',
+    'proj-hive': 'The Hive',
+    'proj-dashboard': 'AI-Dashboard369',
+    'unrouted': 'Unrouted',
 };
 
 const SIGNAL_BADGES: Record<string, { label: string; color: string }> = {
@@ -52,9 +53,9 @@ const SIGNAL_BADGES: Record<string, { label: string; color: string }> = {
 };
 
 const URGENCY_ICONS: Record<string, string> = {
-    high: '🔴',
-    medium: '🟡',
-    low: '🟢',
+    high: '',
+    medium: '',
+    low: '',
 };
 
 export default function InboxWidget() {
@@ -215,9 +216,9 @@ export default function InboxWidget() {
             {/* Error/Retry Banner */}
             {error && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', marginBottom: 8, fontSize: 12 }}>
-                    <span style={{ color: '#ef4444', flex: 1 }}>⚠️ {error.message}</span>
+                    <span style={{ color: '#ef4444', flex: 1 }}>{error.message}</span>
                     {error.retryable && (
-                        <button onClick={() => handleRetry(error.itemId)} style={{ padding: '3px 10px', borderRadius: 4, border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>🔄 Retry</button>
+                        <button onClick={() => handleRetry(error.itemId)} style={{ padding: '3px 10px', borderRadius: 4, border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Retry</button>
                     )}
                     <button onClick={() => setError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 14 }}>×</button>
                 </div>
@@ -226,10 +227,10 @@ export default function InboxWidget() {
             {/* Metrics Strip */}
             {metrics && (
                 <div style={{ display: 'flex', gap: 12, padding: '6px 0', marginBottom: 6, fontSize: 10, color: 'var(--text-secondary)', overflowX: 'auto', flexWrap: 'wrap' }}>
-                    <span>📊 Today: <b style={{ color: '#22c55e' }}>{metrics.throughputToday}</b></span>
-                    <span>📈 Week: <b style={{ color: '#3b82f6' }}>{metrics.throughputWeek}</b></span>
-                    <span>⏱ Avg: <b style={{ color: '#f59e0b' }}>{metrics.avgResponseMinutes}m</b></span>
-                    <span>📥 Queue: <b style={{ color: metrics.approvalQueueDepth > 10 ? '#ef4444' : '#22c55e' }}>{metrics.approvalQueueDepth}</b></span>
+                    <span>Today: <b style={{ color: '#22c55e' }}>{metrics.throughputToday}</b><BarChart3 size={14} /></span>
+                    <span>Week: <b style={{ color: '#3b82f6' }}>{metrics.throughputWeek}</b><TrendingUp size={14} /></span>
+                    <span>Avg: <b style={{ color: '#f59e0b' }}>{metrics.avgResponseMinutes}m</b><Timer size={14} /></span>
+                    <span>Queue: <b style={{ color: metrics.approvalQueueDepth > 10 ? '#ef4444' : '#22c55e' }}>{metrics.approvalQueueDepth}</b><Inbox size={14} /></span>
                     <span style={{ color: 'var(--text-tertiary)' }}>Fresh: {metrics.backlogByAge.fresh} | Aging: {metrics.backlogByAge.aging} | Stale: <span style={{ color: metrics.backlogByAge.stale > 0 ? '#ef4444' : '#475569' }}>{metrics.backlogByAge.stale}</span></span>
                 </div>
             )}
@@ -250,14 +251,14 @@ export default function InboxWidget() {
                         <span className="stat-num">{stats.approved || 0}</span> approved
                     </span>
                     <button onClick={() => { setShowSettings(!showSettings); if (!showSettings) loadSettings(); }}
-                        style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 14 }}>⚙️</button>
+                        style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 14 }}><Settings size={16} /></button>
                 </div>
             )}
 
             {/* Settings Panel */}
             {showSettings && (
                 <div style={{ padding: 10, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 8, fontSize: 11 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>⚙️ Inbox Settings</div>
+                    <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Inbox Settings</div>
                     {Object.entries(settings).map(([key, value]) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                             <span style={{ color: 'var(--text-tertiary)', flex: 1, fontSize: 10 }}>{key}:</span>
@@ -277,7 +278,7 @@ export default function InboxWidget() {
                         className={`filter-btn ${filter === f ? 'active' : ''}`}
                         onClick={() => setFilter(f)}
                     >
-                        {f === 'all' ? '📥 All' : f === 'signal' ? '✅ Signal' : f === 'noise' ? '🗑️ Noise' : '⏸️ Low Priority'}
+                        {f === 'all' ? 'All' : f === 'signal' ? 'Signal' : f === 'noise' ? 'Noise' : 'Low Priority'}
                     </button>
                 ))}
             </div>
@@ -289,7 +290,7 @@ export default function InboxWidget() {
             {approvalDialog && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={() => setApprovalDialog(null)}>
                     <div style={{ background: '#1e1e2e', border: '1px solid #334155', borderRadius: 8, padding: 20, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
-                        <h4 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14 }}>✅ Approve & Route</h4>
+                        <h4 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14 }}>Approve & Route</h4>
                         <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>Provide a reason for this approval (required per B.L.A.S.T. Rule 1):</p>
                         <textarea
                             value={approvalReason}
@@ -337,7 +338,7 @@ export default function InboxWidget() {
 
                         {item.routedToProject && (
                             <div className="card-routing">
-                                ➜ {PROJECT_NAMES[item.routedToProject] || item.routedToProject}
+                                {PROJECT_NAMES[item.routedToProject] || item.routedToProject}
                                 {item.routingConfidence && (
                                     <span className="confidence">
                                         {Math.round(item.routingConfidence * 100)}% confident
@@ -351,7 +352,7 @@ export default function InboxWidget() {
                             <div style={{ display: 'flex', gap: 4, padding: '4px 0', flexWrap: 'wrap' }}>
                                 {item.links.map((link: any) => (
                                     <span key={link.id} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)' }}>
-                                        🔗 {link.target_type}: {link.target_name || link.target_id.slice(0, 8)}
+                                        {link.target_type}: {link.target_name || link.target_id.slice(0, 8)}
                                     </span>
                                 ))}
                             </div>
@@ -394,7 +395,7 @@ export default function InboxWidget() {
                                 )}
 
                                 {item.routingReasoning && (
-                                    <p className="routing-reason">🤖 {item.routingReasoning}</p>
+                                    <p className="routing-reason">{item.routingReasoning}</p>
                                 )}
 
                                 {/* Audit Trail (if loaded) */}
@@ -418,13 +419,13 @@ export default function InboxWidget() {
                                             }
                                         }}
                                     >
-                                        ✅ {item.routedToProject ? 'Approve & Route' : 'Approve'}
+                                        {item.routedToProject ? 'Approve & Route' : 'Approve'}
                                     </button>
                                     <button className="action-btn archive" onClick={() => handleArchive(item.id)}>
-                                        📥 Archive
+                                        Archive
                                     </button>
                                     <button className="action-btn delete" onClick={() => handleDelete(item.id)}>
-                                        🗑️ Delete
+                                        Delete
                                     </button>
                                 </div>
 
@@ -452,7 +453,7 @@ export default function InboxWidget() {
 
                 {!loading && items.filter(i => i.status === 'pending').length === 0 && (
                     <div className="inbox-empty">
-                        <span className="empty-icon">📭</span>
+                        <span className="empty-icon"><Inbox size={14} /></span>
                         <p>Inbox clear — all caught up!</p>
                     </div>
                 )}

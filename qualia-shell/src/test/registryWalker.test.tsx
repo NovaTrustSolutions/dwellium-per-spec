@@ -29,9 +29,13 @@ const ids = Object.keys(WIDGET_REGISTRY);
 
 describe('WIDGET_REGISTRY integrity (all 48 widgets)', () => {
     it('has the expected widget count (guards accidental drops)', () => {
-        // 48 baseline + 1 (time-travel, assessment sweep upgrade #7)
-        // + 1 (holocron-library, Halocron theme 2026-06-12) = 50.
-        expect(ids.length).toBe(50);
+        // Running total on feat/assessment-sweep = 54:
+        //   48 baseline + time-travel (upgrade #7) + holocron-library (2026-06-12)
+        //   + 2 feat/assessment-sweep widgets (e.g. cognitive-harness) not
+        //     previously recorded in this guard
+        //   + api-keys (per-user API-key widget below Inbox Zero, 2026-06-15)
+        //   + meeting (ARA Meeting Notetaker — visible/background note-taker, 2026-06-15).
+        expect(ids.length).toBe(54);
     });
 
     it.each(ids)('"%s" entry is well-formed', (id) => {

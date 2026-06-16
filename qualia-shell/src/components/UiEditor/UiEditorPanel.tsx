@@ -104,7 +104,7 @@ export function UiEditorPanel() {
             return;
         }
         const added = addUiEdit({ selector: op.selector, label: op.label, css: op.css, instruction: text });
-        setStatus(added ? `✓ ${op.summary}` : 'That change was blocked by the safety filter.');
+        setStatus(added ? `${op.summary}` : 'That change was blocked by the safety filter.');
         if (added) setInput('');
     }, [input, busy, integrations.llm, addUiEdit]);
 

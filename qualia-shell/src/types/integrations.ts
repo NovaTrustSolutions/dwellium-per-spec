@@ -137,6 +137,17 @@ export interface PostgresConfig {
     enabled: boolean;
 }
 
+/**
+ * Recall.ai meeting-bot config. The only secret is the API key; the bot is
+ * created server-side (the backend calls Recall with this key), so the frontend
+ * just stores + forwards it. `enabled` is informational — the meeting panel
+ * checks `apiKey` presence rather than gating on a toggle.
+ */
+export interface RecallConfig {
+    apiKey: string;
+    enabled: boolean;
+}
+
 /** Test-result metadata, attached separately so it doesn't pollute config. */
 export interface IntegrationTestResult {
     ok: boolean;
@@ -165,6 +176,13 @@ export interface IntegrationsBundle {
     };
     supabase?: SupabaseConfig;
     postgres?: PostgresConfig;
+    /**
+     * Recall.ai — meeting-bot platform. ARA's visible note-taker bot
+     * (`/api/ara/meeting/bot/start`) and the desktop background-capture path
+     * both authenticate to Recall with this key. Stored write-only like any
+     * LLM key; encrypted at rest via integrationsCrypto.
+     */
+    recall?: RecallConfig;
     /** P11-9: live web-search providers — the non-Anthropic search path. */
     search?: {
         active: 'tavily' | 'brave' | null;

@@ -8,6 +8,7 @@
  * this is the plan's MVP CRUD surface.
  */
 import { useState } from 'react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { useTabGroups, GROUP_REGION_CHOICES } from '../../lib/tabGroupStore';
 import { widgetLabel } from '../../lib/dwelliumCommands';
 import './TabGroupManager.css';
@@ -87,7 +88,7 @@ export default function TabGroupManager({ openWindows, onClose }: Props) {
         <div className="tgm" role="dialog" aria-label="Tab groups">
             <div className="tgm__head">
                 <span className="tgm__title">Tab Groups</span>
-                <button className="tgm__close" onClick={onClose} aria-label="Close tab groups panel">✕</button>
+                <button className="tgm__close" onClick={onClose} aria-label="Close tab groups panel"><X size={16} /></button>
             </div>
 
             <div
@@ -209,12 +210,12 @@ export default function TabGroupManager({ openWindows, onClose }: Props) {
                                         className="tgm__btn"
                                         onClick={() => { setRenamingId(g.id); setRenameValue(g.title); }}
                                         aria-label={`Rename group ${g.title}`}
-                                    >✎</button>
+                                    ><Pencil size={16} /></button>
                                     <button
                                         className="tgm__btn tgm__btn--danger"
                                         onClick={() => deleteGroup(g.id)}
                                         aria-label={`Delete group ${g.title}`}
-                                    >🗑</button>
+                                    ><Trash2 size={16} /></button>
                                 </div>
                                 <div className="tgm__tabs">
                                     {g.componentIds.map(c => (

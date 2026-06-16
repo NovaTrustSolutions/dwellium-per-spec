@@ -259,7 +259,7 @@ export default function ProfileSpaces({ entityType, entityId }: Props) {
                                 }}
                                 title={confirmDeleteId === s.id ? 'Click again to confirm delete' : 'Delete space'}
                             >
-                                {confirmDeleteId === s.id ? '✕ Delete?' : <X size={10} />}
+                                {confirmDeleteId === s.id ? 'Delete?' : <X size={10} />}
                             </button>
                         </div>
                     ))}

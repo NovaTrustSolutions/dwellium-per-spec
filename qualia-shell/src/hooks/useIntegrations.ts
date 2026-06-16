@@ -13,6 +13,7 @@ import {
     integrationsStore,
     integrationsUserIdHolder,
     saveIntegrationsSecure,
+    saveIntegrationsForceRemoval,
     clearIntegrations,
 } from '../utils/integrationsStore';
 import type { IntegrationsBundle } from '../types/integrations';
@@ -55,5 +56,18 @@ export function useIntegrations() {
         clearIntegrations();
     }, []);
 
-    return { integrations: bundle, update, replace, clear };
+    /**
+     * Remove a single secret by applying `updater` to clear that field, then
+     * FORCE-persisting through the anti-clobber guard. Use this (not `update`)
+     * whenever the change empties a key — `update` → `saveIntegrationsSecure`
+     * refuses to persist a now-secret-free bundle over stored ciphertext, so a
+     * naive `update(b => ...apiKey:'')` would leave the encrypted key on disk.
+     * Remaining providers' keys are re-encrypted and kept at rest.
+     */
+    const removeSecret = useCallback((updater: (current: IntegrationsBundle) => IntegrationsBundle) => {
+        const next = updater(bundle);
+        void saveIntegrationsForceRemoval(next, userId);
+    }, [bundle, userId]);
+
+    return { integrations: bundle, update, replace, clear, removeSecret };
 }

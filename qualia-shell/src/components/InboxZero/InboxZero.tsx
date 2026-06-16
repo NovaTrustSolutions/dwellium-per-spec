@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
+import { Check, ClipboardList, Download, Inbox, Mail, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme, FONT_PAIRINGS } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
@@ -36,7 +37,7 @@ import {
 /** Suspense fallback used for all lazy tabs */
 const TabLoader = () => (
     <div className="iz-loading" style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
+        <div style={{ fontSize: 24, marginBottom: 8 }}></div>
         Loading module…
     </div>
 );
@@ -452,9 +453,9 @@ export default function InboxZero() {
             } else {
                 const data = await res.json().catch(() => ({}));
                 if (res.status === 400 && data.error?.includes('reason')) {
-                    window.dispatchEvent(new CustomEvent('qualia-toast', { detail: '⚠️ Approval reason is required.' }));
+                    window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Approval reason is required.' }));
                 } else {
-                    window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `❌ Action failed: ${res.status}` }));
+                    window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Action failed: ${res.status}` }));
                 }
             }
         } catch { /* error */ }
@@ -602,7 +603,7 @@ export default function InboxZero() {
             <div className="iz-header">
                 <div className="iz-header__top">
                     <div className="iz-header__title-row" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span className="iz-header__icon">📭</span>
+                        <span className="iz-header__icon"><Inbox size={14} /></span>
                         <h2 className="iz-header__title" style={{ margin: 0 }}>Inbox Zero</h2>
                         {undoStack.length > 0 && (
                             <button
@@ -667,19 +668,19 @@ export default function InboxZero() {
                     }
                 }}>
                     {([
-                        { id: 'triage' as TabId, label: '📬 Triage', count: stats?.pending },
-                        { id: 'newsletters' as TabId, label: '📰 Newsletters', count: newsletters.length },
-                        { id: 'stats' as TabId, label: '📊 Stats' },
-                        { id: 'rules' as TabId, label: '🧬 Rules' },
-                        { id: 'nif' as TabId, label: '🧠 NIF Intel' },
-                        { id: 'actions' as TabId, label: '⚡ Actions' },
-                        { id: 'analytics' as TabId, label: '📊 Analytics' },
-                        { id: 'cold-email' as TabId, label: '🛡️ Cold Block' },
-                        { id: 'replies' as TabId, label: '📩 Replies' },
-                        { id: 'tracker' as TabId, label: '👁️ Tracker' },
-                        { id: 'audit' as TabId, label: '📋 Audit Log' }, // GAP-08
-                        { id: 'capabilities' as TabId, label: '🎯 Capabilities' },
-                        { id: 'settings' as TabId, label: '⚙️ Settings' },
+                        { id: 'triage' as TabId, label: 'Triage', count: stats?.pending },
+                        { id: 'newsletters' as TabId, label: 'Newsletters', count: newsletters.length },
+                        { id: 'stats' as TabId, label: 'Stats' },
+                        { id: 'rules' as TabId, label: 'Rules' },
+                        { id: 'nif' as TabId, label: 'NIF Intel' },
+                        { id: 'actions' as TabId, label: 'Actions' },
+                        { id: 'analytics' as TabId, label: 'Analytics' },
+                        { id: 'cold-email' as TabId, label: 'Cold Block' },
+                        { id: 'replies' as TabId, label: 'Replies' },
+                        { id: 'tracker' as TabId, label: 'Tracker' },
+                        { id: 'audit' as TabId, label: 'Audit Log' }, // GAP-08
+                        { id: 'capabilities' as TabId, label: 'Capabilities' },
+                        { id: 'settings' as TabId, label: 'Settings' },
                     ]).map(tab => (
                         <button
                             key={tab.id}
@@ -724,7 +725,7 @@ export default function InboxZero() {
                                         onClick={() => { setSearchQuery(''); setDebouncedSearch(''); }}
                                         title="Clear search"
                                         aria-label="Clear search"
-                                    >✕</button>
+                                    ><X size={16} /></button>
                                 )}
                             </div>
                             <button
@@ -740,7 +741,7 @@ export default function InboxZero() {
                         </div>
                         {debouncedSearch.trim() && !loading && (
                             <div className="iz-toolbar__result-count">
-                                🔎 <strong>{pendingItems.length}</strong> email{pendingItems.length !== 1 ? 's' : ''} found
+                                <strong>{pendingItems.length}</strong> email{pendingItems.length !== 1 ? 's' : ''} found
                                 {debouncedSearch.trim() && (
                                     <span className="iz-toolbar__result-query"> for "{debouncedSearch.trim()}"</span>
                                 )}
@@ -765,11 +766,11 @@ export default function InboxZero() {
                         }}>
                             <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginRight: 4 }}>Sort:</span>
                             {[
-                                { id: 'date' as const, label: '📅 Date' },
-                                { id: 'urgency' as const, label: '🔴 Urgency' },
-                                { id: 'signal' as const, label: '⚡ Signal' },
-                                { id: 'sender' as const, label: '👤 Sender' },
-                                { id: 'subject' as const, label: '📧 Subject' },
+                                { id: 'date' as const, label: 'Date' },
+                                { id: 'urgency' as const, label: 'Urgency' },
+                                { id: 'signal' as const, label: 'Signal' },
+                                { id: 'sender' as const, label: 'Sender' },
+                                { id: 'subject' as const, label: 'Subject' },
                             ].map(s => (
                                 <button
                                     key={s.id}
@@ -804,7 +805,7 @@ export default function InboxZero() {
                             </button>
                             <span className="iz-batch__count">{selectedIds.size} selected</span>
                             <button className="iz-batch__btn iz-batch__btn--archive" onClick={handleBulkArchive}>
-                                📥 Archive
+                                Archive
                             </button>
                             {/* Bulk AI Classify */}
                             <button
@@ -834,7 +835,7 @@ export default function InboxZero() {
                                     }
                                 }}
                             >
-                                {bulkClassifying ? '⏳ Classifying…' : '🤖 AI Classify'}
+                                {bulkClassifying ? 'Classifying…' : 'AI Classify'}
                             </button>
                             {/* Add Label */}
                             <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -843,7 +844,7 @@ export default function InboxZero() {
                                     style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
                                     onClick={() => setShowLabelPicker(!showLabelPicker)}
                                 >
-                                    🏷️ Add Label
+                                    Add Label
                                 </button>
                                 {showLabelPicker && (
                                     <div style={{
@@ -884,7 +885,7 @@ export default function InboxZero() {
                                     setActiveTab('actions');
                                 }}
                             >
-                                🔀 Batch Route →
+                                Batch Route →
                             </button>
                         </div>
                     )}
@@ -903,7 +904,7 @@ export default function InboxZero() {
                                 <span style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>
                                     {pendingItems.filter(i => i.urgency === 'high').length}
                                 </span>
-                                <span style={{ fontSize: 16, color: 'var(--text-tertiary)' }}>✉️</span>
+                                <span style={{ fontSize: 16, color: 'var(--text-tertiary)' }}><Mail size={14} /></span>
                             </div>
                         </div>
                         <div style={{
@@ -915,7 +916,7 @@ export default function InboxZero() {
                                 <span style={{ fontSize: 24, fontWeight: 700, color: '#22c55e' }}>
                                     {pendingItems.filter(i => i.signalClass === 'noise').length}
                                 </span>
-                                <span style={{ fontSize: 14, color: '#f59e0b' }}>⚠️ Today</span>
+                                <span style={{ fontSize: 14, color: '#f59e0b' }}>Today</span>
                             </div>
                         </div>
                         <div style={{
@@ -925,7 +926,7 @@ export default function InboxZero() {
                             <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>AI Triage Status</div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: 14, fontWeight: 700, color: '#22c55e' }}>⊙ Active</span>
-                                <span style={{ fontSize: 16, color: '#22c55e' }}>✓</span>
+                                <span style={{ fontSize: 16, color: '#22c55e' }}><Check size={14} /></span>
                             </div>
                         </div>
                     </div>
@@ -936,7 +937,7 @@ export default function InboxZero() {
 
                         {!loading && itemsError && (
                             <div className="iz-empty" role="alert">
-                                <div className="iz-empty__icon">⚠️</div>
+                                <div className="iz-empty__icon"></div>
                                 <div className="iz-empty__title">Couldn’t load inbox</div>
                                 <div className="iz-empty__sub">{itemsErrorMessage}</div>
                                 <button
@@ -945,14 +946,14 @@ export default function InboxZero() {
                                     style={{ marginTop: 12, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
                                     onClick={() => itemsQuery.refetch()}
                                 >
-                                    🔄 Retry
+                                    Retry
                                 </button>
                             </div>
                         )}
 
                         {!loading && !itemsError && pendingItems.length === 0 && (
                             <div className="iz-empty">
-                                <div className="iz-empty__icon">🎉</div>
+                                <div className="iz-empty__icon"></div>
                                 <div className="iz-empty__title">Inbox Zero!</div>
                                 <div className="iz-empty__sub">All caught up — nice work.</div>
                             </div>
@@ -1024,14 +1025,14 @@ export default function InboxZero() {
                                                             border: '1px solid color-mix(in srgb, var(--accent, #6366f1) 35%, transparent)',
                                                             display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200,
                                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                                        }}>✉ {item.sourceAccount}</span>
+                                                        }}>{item.sourceAccount}</span>
                                                     )}
                                                     {item.urgency === 'high' && (
                                                         <span style={{
                                                             fontSize: 10, fontWeight: 700, padding: '2px 8px',
                                                             borderRadius: 4, background: 'rgba(239,68,68,0.15)',
                                                             color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)',
-                                                        }}>⚡ High Priority</span>
+                                                        }}>High Priority</span>
                                                     )}
                                                     {item.signalClass === 'signal' && (
                                                         <span style={{
@@ -1051,7 +1052,7 @@ export default function InboxZero() {
                                                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{formatTime(item.createdAt)}</span>
                                                 {item.routedToProject && (
                                                     <div className="iz-card__route">
-                                                        ➜ {PROJECT_NAMES[item.routedToProject] || item.routedToProject}
+                                                        {PROJECT_NAMES[item.routedToProject] || item.routedToProject}
                                                         {item.routingConfidence && (
                                                             <span className="iz-card__conf">{Math.round(item.routingConfidence * 100)}%</span>
                                                         )}
@@ -1070,13 +1071,13 @@ export default function InboxZero() {
                                                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
                                                 onClick={e => { e.stopPropagation(); handleArchive(item.id); }}
                                             >
-                                                <span style={{ fontSize: 13 }}>📋</span> Archive
+                                                <span style={{ fontSize: 13 }}><ClipboardList size={14} /></span> Archive
                                             </button>
                                             <button
                                                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
                                                 onClick={e => { e.stopPropagation(); handleMarkRead(item.id); }}
                                             >
-                                                <span style={{ fontSize: 13 }}>{item.isRead ? '✉️' : '☑️'}</span> {item.isRead ? 'Mark Unread' : 'Mark Read'}
+                                                <span style={{ fontSize: 13 }}>{item.isRead ? '' : ''}</span> {item.isRead ? 'Mark Unread' : 'Mark Read'}
                                             </button>
                                             <button
                                                 style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
@@ -1106,7 +1107,7 @@ export default function InboxZero() {
                                     {isExpanded && (
                                         <div className="iz-card__actions" onClick={e => e.stopPropagation()}>
                                             {item.routingReasoning && (
-                                                <p className="iz-card__reasoning">🤖 {item.routingReasoning}</p>
+                                                <p className="iz-card__reasoning">{item.routingReasoning}</p>
                                             )}
 
                                     {/* GAP-09: Full email body expandable section */}
@@ -1154,10 +1155,10 @@ export default function InboxZero() {
                                                         }
                                                     }}
                                                 >
-                                                    ✅ {item.routedToProject ? 'Approve & Route' : 'Approve'}
+                                                    {item.routedToProject ? 'Approve & Route' : 'Approve'}
                                                 </button>
                                                 <button className="iz-action iz-action--archive" onClick={() => handleArchive(item.id)}>
-                                                    📥 Archive
+                                                    Archive
                                                 </button>
                                                 {/* View Full Email — SECURITY: fetches body on-demand */}
                                                 <button
@@ -1180,10 +1181,10 @@ export default function InboxZero() {
                                                             .finally(() => setViewerLoading(false));
                                                     }}
                                                 >
-                                                    📧 View Full Email
+                                                    View Full Email
                                                 </button>
                                                 <button className="iz-action iz-action--delete" onClick={() => handleDelete(item.id)}>
-                                                    🗑️ Delete
+                                                    Delete
                                                 </button>
 
                                                 {/* GAP-10: Snooze button */}
@@ -1202,7 +1203,7 @@ export default function InboxZero() {
                                                         } catch { /* offline */ }
                                                     }}
                                                 >
-                                                    ⏰ Snooze 2d
+                                                    Snooze 2d
                                                 </button>
 
                                                 {/* Retry button (Phase 0.1.3) — appears when Gmail archival failed */}
@@ -1222,7 +1223,7 @@ export default function InboxZero() {
                                                             }
                                                         }}
                                                     >
-                                                        🔁 Retry Gmail
+                                                        Retry Gmail
                                                     </button>
                                                 )}
 
@@ -1235,7 +1236,7 @@ export default function InboxZero() {
                                                         setLinkForm({ linkType: 'workitem', targetId: '', targetName: '' });
                                                     }}
                                                 >
-                                                    🔗 Link to Strata
+                                                    Link to Strata
                                                 </button>
                                             </div>
 
@@ -1245,20 +1246,20 @@ export default function InboxZero() {
                                                     marginTop: 10, padding: 16, borderRadius: 10,
                                                     background: 'color-mix(in srgb, var(--accent) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                                                 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', marginBottom: 10 }}>🔗 Link to Strata</div>
+                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', marginBottom: 10 }}>Link to Strata</div>
 
                                                     {/* Row 1: Category selector */}
                                                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                                                         {[
-                                                            { value: 'workitem', label: '📋 Work Item' },
-                                                            { value: 'property', label: '🏠 Property' },
-                                                            { value: 'entity', label: '👤 Person' },
-                                                            { value: 'unit', label: '🏢 Unit' },
-                                                            { value: 'section', label: '📂 Section' },
-                                                            { value: 'subsection', label: '📁 Subsection' },
-                                                            { value: 'lease', label: '📄 Lease' },
-                                                            { value: 'incident', label: '⚠️ Incident' },
-                                                            { value: 'custom-tag', label: '🏷️ Custom Tag' },
+                                                            { value: 'workitem', label: 'Work Item' },
+                                                            { value: 'property', label: 'Property' },
+                                                            { value: 'entity', label: 'Person' },
+                                                            { value: 'unit', label: 'Unit' },
+                                                            { value: 'section', label: 'Section' },
+                                                            { value: 'subsection', label: 'Subsection' },
+                                                            { value: 'lease', label: 'Lease' },
+                                                            { value: 'incident', label: 'Incident' },
+                                                            { value: 'custom-tag', label: 'Custom Tag' },
                                                         ].map(opt => (
                                                             <button
                                                                 key={opt.value}
@@ -1334,7 +1335,7 @@ export default function InboxZero() {
                                                                 }
                                                             }}
                                                         >
-                                                            🔗 Link
+                                                            Link
                                                         </button>
                                                         <button
                                                             style={{ padding: '6px 12px', borderRadius: 6, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', fontSize: '0.82rem' }}
@@ -1367,7 +1368,7 @@ export default function InboxZero() {
                                             {/* ── Audit Trail (Phase 0.1.7) ── */}
                                             {auditCache[item.id] && auditCache[item.id].length > 0 && (
                                                 <div className="iz-card__audit" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px' }}>📋 AUDIT TRAIL</p>
+                                                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px' }}>AUDIT TRAIL</p>
                                                     {auditCache[item.id].slice(0, 8).map((entry: any, idx: number) => (
                                                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '4px 0', borderBottom: idx < auditCache[item.id].length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                                                             <span style={{ fontSize: '10px', opacity: 0.4, whiteSpace: 'nowrap', minWidth: '70px' }}>
@@ -1388,7 +1389,7 @@ export default function InboxZero() {
                                             {/* ── Thread Links (Phase 0.1.7) ── */}
                                             {linksCache[item.id] && linksCache[item.id].length > 0 && (
                                                 <div className="iz-card__links" style={{ marginTop: '8px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px' }}>🔗 LINKED ITEMS</p>
+                                                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px' }}>LINKED ITEMS</p>
                                                     {linksCache[item.id].map((link: any, idx: number) => (
                                                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '3px 0' }}>
                                                             <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
@@ -1445,7 +1446,7 @@ export default function InboxZero() {
                                                 <span className="iz-viewer__date">{new Date(viewerEmail.createdAt).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                         </div>
-                                        <button className="iz-viewer__close" onClick={() => setViewerEmail(null)} title="Close (Esc)" aria-label="Close email">✕</button>
+                                        <button className="iz-viewer__close" onClick={() => setViewerEmail(null)} title="Close (Esc)" aria-label="Close email"><X size={16} /></button>
                                     </div>
 
                                     {/* Badges */}
@@ -1458,12 +1459,12 @@ export default function InboxZero() {
                                         </span>
                                         {viewerEmail.hasAttachments && (
                                             <span className="iz-viewer__badge" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
-                                                📎 {viewerEmail.attachments?.length || ''} Attachment{(viewerEmail.attachments?.length || 0) !== 1 ? 's' : ''}
+                                                {viewerEmail.attachments?.length || ''} Attachment{(viewerEmail.attachments?.length || 0) !== 1 ? 's' : ''}
                                             </span>
                                         )}
                                         {viewerEmail.routedToProject && (
                                             <span className="iz-viewer__badge" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}>
-                                                ➜ {PROJECT_NAMES[viewerEmail.routedToProject] || viewerEmail.routedToProject}
+                                                {PROJECT_NAMES[viewerEmail.routedToProject] || viewerEmail.routedToProject}
                                                 {viewerEmail.routingConfidence ? ` (${Math.round(viewerEmail.routingConfidence * 100)}%)` : ''}
                                             </span>
                                         )}
@@ -1472,7 +1473,7 @@ export default function InboxZero() {
                                     {/* AI Summary */}
                                     {viewerEmail.summary && (
                                         <div className="iz-viewer__summary">
-                                            <span className="iz-viewer__summary-label">🤖 AI Summary</span>
+                                            <span className="iz-viewer__summary-label">AI Summary</span>
                                             <p>{viewerEmail.summary}</p>
                                         </div>
                                     )}
@@ -1480,18 +1481,18 @@ export default function InboxZero() {
                                     {/* Attachments */}
                                     {viewerEmail.attachments && viewerEmail.attachments.length > 0 && (
                                         <div className="iz-viewer__attachments">
-                                            <span className="iz-viewer__attachments-label">📎 Attachments</span>
+                                            <span className="iz-viewer__attachments-label">Attachments</span>
                                             <div className="iz-viewer__attachments-grid">
                                                 {viewerEmail.attachments.map((att, i) => {
                                                     const ext = att.filename.split('.').pop()?.toLowerCase() || '';
-                                                    const icon = ['pdf'].includes(ext) ? '📄'
-                                                        : ['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext) ? '🖼️'
-                                                        : ['doc','docx'].includes(ext) ? '📝'
-                                                        : ['xls','xlsx','csv'].includes(ext) ? '📊'
-                                                        : ['zip','rar','7z','gz','tar'].includes(ext) ? '📦'
-                                                        : ['mp3','wav','m4a','ogg'].includes(ext) ? '🎵'
-                                                        : ['mp4','mov','avi','mkv','webm'].includes(ext) ? '🎬'
-                                                        : '📎';
+                                                    const icon = ['pdf'].includes(ext) ? ''
+                                                        : ['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext) ? ''
+                                                        : ['doc','docx'].includes(ext) ? ''
+                                                        : ['xls','xlsx','csv'].includes(ext) ? ''
+                                                        : ['zip','rar','7z','gz','tar'].includes(ext) ? ''
+                                                        : ['mp3','wav','m4a','ogg'].includes(ext) ? ''
+                                                        : ['mp4','mov','avi','mkv','webm'].includes(ext) ? ''
+                                                        : '';
                                                     const sizeStr = att.size < 1024 ? `${att.size} B`
                                                         : att.size < 1048576 ? `${(att.size / 1024).toFixed(1)} KB`
                                                         : `${(att.size / 1048576).toFixed(1)} MB`;
@@ -1510,7 +1511,7 @@ export default function InboxZero() {
                                                                 <span className="iz-viewer__attachment-name">{att.filename}</span>
                                                                 <span className="iz-viewer__attachment-size">{sizeStr}</span>
                                                             </div>
-                                                            <span className="iz-viewer__attachment-dl">⬇</span>
+                                                            <span className="iz-viewer__attachment-dl"><Download size={14} /></span>
                                                         </a>
                                                     );
                                                 })}
@@ -1521,7 +1522,7 @@ export default function InboxZero() {
                                     {/* Email Body — auto-resizing iframe */}
                                     <div className="iz-viewer__body" style={{ background: 'var(--bg-surface)', borderRadius: 8, overflow: 'hidden' }}>
                                         <iframe
-                                            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:28px 32px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.75;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:6px;display:block;margin:12px 0}a{color:#2563eb;text-decoration:none;font-weight:500}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px 14px;border:1px solid var(--border-default);text-align:left;font-size:14px}th{background:#f8fafc;font-weight:600;color:#334155}blockquote{margin:16px 0;padding:14px 24px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 8px 8px 0;font-style:italic}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:16px 20px;overflow-x:auto;border:1px solid var(--border-default)}hr{border:none;border-top:1px solid var(--border-default);margin:20px 0}h1{font-size:22px;color:#0f172a;margin:20px 0 10px}h2{font-size:18px;color:#0f172a;margin:18px 0 8px}h3{font-size:16px;color:#1e293b;margin:14px 0 6px}ul,ol{padding-left:28px}li{margin:6px 0}p{margin:10px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:28px;padding-top:18px;border-top:1px solid var(--border-default)}</style></head><body>${formatEmailBody(viewerEmail.body || '') || `<div style="padding:40px;text-align:center;color:var(--text-secondary);font-style:italic"><p style="font-size:16px">📧</p><p>${viewerEmail.snippet || 'No email body available.'}</p></div>`}</body></html>`}
+                                            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:28px 32px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.75;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:6px;display:block;margin:12px 0}a{color:#2563eb;text-decoration:none;font-weight:500}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px 14px;border:1px solid var(--border-default);text-align:left;font-size:14px}th{background:#f8fafc;font-weight:600;color:#334155}blockquote{margin:16px 0;padding:14px 24px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 8px 8px 0;font-style:italic}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:16px 20px;overflow-x:auto;border:1px solid var(--border-default)}hr{border:none;border-top:1px solid var(--border-default);margin:20px 0}h1{font-size:22px;color:#0f172a;margin:20px 0 10px}h2{font-size:18px;color:#0f172a;margin:18px 0 8px}h3{font-size:16px;color:#1e293b;margin:14px 0 6px}ul,ol{padding-left:28px}li{margin:6px 0}p{margin:10px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:28px;padding-top:18px;border-top:1px solid var(--border-default)}</style></head><body>${formatEmailBody(viewerEmail.body || '') || `<div style="padding:40px;text-align:center;color:var(--text-secondary);font-style:italic"><p style="font-size:16px"></p><p>${viewerEmail.snippet || 'No email body available.'}</p></div>`}</body></html>`}
                                             style={{ width: '100%', border: 'none', display: 'block', minHeight: 200 }}
                                             title="email-viewer-body"
                                             sandbox="allow-same-origin allow-popups"
@@ -1543,7 +1544,7 @@ export default function InboxZero() {
                                     {/* Routing Reasoning */}
                                     {viewerEmail.routingReasoning && (
                                         <div className="iz-viewer__reasoning">
-                                            <span className="iz-viewer__reasoning-label">🧠 Routing Reasoning</span>
+                                            <span className="iz-viewer__reasoning-label">Routing Reasoning</span>
                                             <p>{viewerEmail.routingReasoning}</p>
                                         </div>
                                     )}
@@ -1562,13 +1563,13 @@ export default function InboxZero() {
                                                 setViewerEmail(null);
                                             }}
                                         >
-                                            ✅ {viewerEmail.routedToProject ? 'Approve & Route' : 'Approve'}
+                                            {viewerEmail.routedToProject ? 'Approve & Route' : 'Approve'}
                                         </button>
                                         <button className="iz-action iz-action--archive" onClick={() => { handleArchive(viewerEmail.id); setViewerEmail(null); }}>
-                                            📥 Archive
+                                            Archive
                                         </button>
                                         <button className="iz-action iz-action--delete" onClick={() => { handleDelete(viewerEmail.id); setViewerEmail(null); }}>
-                                            🗑️ Delete
+                                            Delete
                                         </button>
                                     </div>
                                 </>
@@ -1678,19 +1679,19 @@ export default function InboxZero() {
                                     onClick={saveSettings}
                                     disabled={settingsSaving || !settingsDirty}
                                 >
-                                    {settingsSaving ? '⏳ Saving…' : '💾 Save Settings'}
+                                    {settingsSaving ? 'Saving…' : 'Save Settings'}
                                 </button>
                             </div>
 
                             {settingsMsg && (
                                 <div className={`iz-settings__msg iz-settings__msg--${settingsMsg.type}`}>
-                                    {settingsMsg.type === 'success' ? '✅' : '❌'} {settingsMsg.text}
+                                    {settingsMsg.type === 'success' ? '' : ''} {settingsMsg.text}
                                 </div>
                             )}
 
                             {/* Inbox Zero Capabilities */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">🎯 Inbox Zero Capabilities</h3>
+                                <h3 className="iz-settings__section-title">Inbox Zero Capabilities</h3>
                                 <p className="iz-settings__section-desc">Enable or disable capability modules. Disabled modules will be marked inactive in the Capabilities tab.</p>
                                 <div className="iz-cap-settings">
                                     {CAPABILITIES_DATA.map(cat => (
@@ -1716,7 +1717,7 @@ export default function InboxZero() {
 
                             {/* Legal Shield Status */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">⚖️ Legal Shield — Georgia Code</h3>
+                                <h3 className="iz-settings__section-title">Legal Shield — Georgia Code</h3>
                                 <p className="iz-settings__section-desc">
                                     Real-time compliance scanner powered by LanceDB vector search across the full Georgia Code (O.C.G.A.).
                                 </p>
@@ -1729,7 +1730,7 @@ export default function InboxZero() {
                                                 border: `1px solid ${legalShieldHealth.healthy ? 'rgba(52,211,153,0.3)' : 'rgba(239,68,68,0.3)'}`,
                                                 borderRadius: '8px',
                                             }}>
-                                                <span style={{ fontSize: '20px' }}>{legalShieldHealth.healthy ? '✅' : '⚠️'}</span>
+                                                <span style={{ fontSize: '20px' }}>{legalShieldHealth.healthy ? '' : ''}</span>
                                                 <div style={{ flex: 1 }}>
                                                     <div style={{ fontWeight: 600, color: legalShieldHealth.healthy ? '#22c55e' : '#ef4444' }}>
                                                         {legalShieldHealth.healthy ? 'HEALTHY' : 'DEGRADED'}
@@ -1744,7 +1745,7 @@ export default function InboxZero() {
                                                     onClick={() => { legalShieldLoadedRef.current = false; fetchLegalShieldHealth(); }}
                                                     disabled={legalShieldLoading}
                                                 >
-                                                    {legalShieldLoading ? '⏳ Checking…' : '🔄 Run Health Check'}
+                                                    {legalShieldLoading ? 'Checking…' : 'Run Health Check'}
                                                 </button>
                                             </div>
                                             <div style={{
@@ -1769,7 +1770,7 @@ export default function InboxZero() {
                                                         display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px',
                                                         padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px',
                                                     }}>
-                                                        <span>{c.status === 'pass' ? '✅' : c.status === 'warn' ? '⚠️' : '❌'}</span>
+                                                        <span>{c.status === 'pass' ? '' : c.status === 'warn' ? '' : ''}</span>
                                                         <span style={{ fontFamily: 'monospace', minWidth: '160px' }}>{c.name}</span>
                                                         <span style={{ opacity: 0.7 }}>{c.detail}</span>
                                                     </div>
@@ -1778,7 +1779,7 @@ export default function InboxZero() {
                                         </>
                                     ) : (
                                         <div style={{ padding: '16px', textAlign: 'center', opacity: 0.5 }}>
-                                            {legalShieldLoading ? '⏳ Loading Legal Shield status…' : 'Legal Shield status unavailable'}
+                                            {legalShieldLoading ? 'Loading Legal Shield status…' : 'Legal Shield status unavailable'}
                                         </div>
                                     )}
                                 </div>
@@ -1786,7 +1787,7 @@ export default function InboxZero() {
 
                             {/* Themes */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">🎨 Themes</h3>
+                                <h3 className="iz-settings__section-title">Themes</h3>
                                 <p className="iz-settings__section-desc">Choose a color palette — applies universally to every widget and section.</p>
                                 <div className="iz-themes">
                                     {THEME_PALETTES.map(tp => (
@@ -1804,7 +1805,7 @@ export default function InboxZero() {
                                                 <span className="iz-theme-card__name">{tp.name}</span>
                                                 <span className="iz-theme-card__mood">{tp.mood}</span>
                                             </div>
-                                            {currentTheme === tp.id && <span className="iz-theme-card__check">✓</span>}
+                                            {currentTheme === tp.id && <span className="iz-theme-card__check"><Check size={14} /></span>}
                                         </button>
                                     ))}
                                 </div>
@@ -1812,7 +1813,7 @@ export default function InboxZero() {
 
                             {/* Typography */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">🔤 Typography</h3>
+                                <h3 className="iz-settings__section-title">Typography</h3>
                                 <p className="iz-settings__section-desc">Choose a font pairing — applies to all headings, body text, and monospace across Qualia.</p>
                                 <div className="iz-fonts">
                                     {FONT_PAIRINGS.map(fp => (
@@ -1831,7 +1832,7 @@ export default function InboxZero() {
                                                 <span className="iz-font-card__personality">{fp.personality}</span>
                                             </div>
                                             <div className="iz-font-card__weights">{fp.weights}</div>
-                                            {currentFont === fp.id && <span className="iz-font-card__check">✓</span>}
+                                            {currentFont === fp.id && <span className="iz-font-card__check"><Check size={14} /></span>}
                                         </button>
                                     ))}
                                 </div>
@@ -1839,7 +1840,7 @@ export default function InboxZero() {
 
                             {/* Animations & Interactions */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">✨ Animations & Interactions</h3>
+                                <h3 className="iz-settings__section-title">Animations & Interactions</h3>
                                 <p className="iz-settings__section-desc">Pro Max micro-interactions, scroll reveals, skeleton loaders, glassmorphism, and border beams. Disable to reduce motion.</p>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
@@ -1858,10 +1859,10 @@ export default function InboxZero() {
                                 </div>
                             </div>
 
-                            {/* 🔐 Permissions (god only) */}
+                            {/* Permissions (god only) */}
                             {isGod && (
                                 <div className="iz-settings__section">
-                                    <h3 className="iz-settings__section-title">🔐 Permissions</h3>
+                                    <h3 className="iz-settings__section-title">Permissions</h3>
                                     <p className="iz-settings__section-desc">Assign widget and section visibility per user. Only you (Andy) can manage these.</p>
 
                                     {/* User Selector */}
@@ -1909,7 +1910,7 @@ export default function InboxZero() {
                                                         setPermMap(toggled);
                                                     }}
                                                 >
-                                                    {Object.values(permMap).every(v => v) ? '☐ Deselect All' : '☑ Select All'}
+                                                    {Object.values(permMap).every(v => v) ? 'Deselect All' : 'Select All'}
                                                 </button>
                                             </div>
 
@@ -1919,21 +1920,21 @@ export default function InboxZero() {
                                                 <div className="iz-perms__grid">
                                                     {[
                                                         { key: 'widget:astra-dashboard', icon: '◈', label: 'Astra' },
-                                                        { key: 'widget:strata-dashboard', icon: '🏢', label: 'Strata' },
-                                                        { key: 'widget:thought-weaver', icon: '🧶', label: 'Thought Weaver' },
-                                                        { key: 'widget:inbox-zero', icon: '📭', label: 'Inbox Zero' },
-                                                        { key: 'widget:inbox', icon: '📬', label: 'Inbox' },
-                                                        { key: 'widget:tasks', icon: '✅', label: 'Tasks' },
-                                                        { key: 'widget:ara-console', icon: '🧠', label: 'ARA' },
-                                                        { key: 'widget:transcription', icon: '🎙️', label: 'Transcribe' },
-                                                        { key: 'widget:fact-check-log', icon: '🔍', label: 'Fact Check' },
-                                                        { key: 'widget:hierarchy-browser', icon: '🗂️', label: 'Explorer' },
-                                                        { key: 'widget:file-manager', icon: '📁', label: 'Files' },
-                                                        { key: 'widget:notepad', icon: '📝', label: 'Notepad' },
-                                                        { key: 'widget:doc-viewer', icon: '📄', label: 'Docs' },
-                                                        { key: 'widget:terminal', icon: '⬛', label: 'Terminal' },
-                                                        { key: 'widget:trello-board', icon: '📋', label: 'Trello' },
-                                                        { key: 'widget:control-panel', icon: '⚙️', label: 'Settings' },
+                                                        { key: 'widget:strata-dashboard', icon: '', label: 'Strata' },
+                                                        { key: 'widget:thought-weaver', icon: '', label: 'Thought Weaver' },
+                                                        { key: 'widget:inbox-zero', icon: '', label: 'Inbox Zero' },
+                                                        { key: 'widget:inbox', icon: '', label: 'Inbox' },
+                                                        { key: 'widget:tasks', icon: '', label: 'Tasks' },
+                                                        { key: 'widget:ara-console', icon: '', label: 'ARA' },
+                                                        { key: 'widget:transcription', icon: '', label: 'Transcribe' },
+                                                        { key: 'widget:fact-check-log', icon: '', label: 'Fact Check' },
+                                                        { key: 'widget:hierarchy-browser', icon: '', label: 'Explorer' },
+                                                        { key: 'widget:file-manager', icon: '', label: 'Files' },
+                                                        { key: 'widget:notepad', icon: '', label: 'Notepad' },
+                                                        { key: 'widget:doc-viewer', icon: '', label: 'Docs' },
+                                                        { key: 'widget:terminal', icon: '', label: 'Terminal' },
+                                                        { key: 'widget:trello-board', icon: '', label: 'Trello' },
+                                                        { key: 'widget:control-panel', icon: '', label: 'Settings' },
                                                     ].map(w => (
                                                         <label key={w.key} className={`iz-perms__item ${permMap[w.key] ? 'iz-perms__item--on' : ''}`}>
                                                             <input
@@ -1950,11 +1951,11 @@ export default function InboxZero() {
 
                                             {/* Section Permissions */}
                                             <div className="iz-perms__category">
-                                                <h4 className="iz-perms__category-title">📐 Sections</h4>
+                                                <h4 className="iz-perms__category-title">Sections</h4>
                                                 <div className="iz-perms__grid iz-perms__grid--sections">
                                                     {[
-                                                        { key: 'section:domains', icon: '📂', label: 'Domain Tree' },
-                                                        { key: 'section:settings-admin', icon: '🛡️', label: 'Admin Settings' },
+                                                        { key: 'section:domains', icon: '', label: 'Domain Tree' },
+                                                        { key: 'section:settings-admin', icon: '', label: 'Admin Settings' },
                                                     ].map(s => (
                                                         <label key={s.key} className={`iz-perms__item ${permMap[s.key] ? 'iz-perms__item--on' : ''}`}>
                                                             <input
@@ -1987,19 +1988,19 @@ export default function InboxZero() {
                                                                 body: JSON.stringify({ permissions: permMap }),
                                                             });
                                                             if (res.ok) {
-                                                                setPermSaveMsg('✅ Permissions saved');
+                                                                setPermSaveMsg('Permissions saved');
                                                             } else {
                                                                 const err = await res.json().catch(() => ({ error: 'Save failed' }));
-                                                                setPermSaveMsg(`❌ ${err.error}`);
+                                                                setPermSaveMsg(`${err.error}`);
                                                             }
                                                         } catch {
-                                                            setPermSaveMsg('❌ Network error');
+                                                            setPermSaveMsg('Network error');
                                                         }
                                                         setPermSaving(false);
                                                         setTimeout(() => setPermSaveMsg(''), 4000);
                                                     }}
                                                 >
-                                                    {permSaving ? 'Saving…' : '💾 Save Permissions'}
+                                                    {permSaving ? 'Saving…' : 'Save Permissions'}
                                                 </button>
                                                 {permSaveMsg && <span className="iz-perms__save-msg">{permSaveMsg}</span>}
                                             </div>
@@ -2014,7 +2015,7 @@ export default function InboxZero() {
 
                             {/* AI & Routing */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">🤖 AI & Routing</h3>
+                                <h3 className="iz-settings__section-title">AI & Routing</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label">
                                         <span className="iz-settings__name">OpenAI API Key</span>
@@ -2078,7 +2079,7 @@ export default function InboxZero() {
 
                             {/* Gmail */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">📧 Gmail Integration</h3>
+                                <h3 className="iz-settings__section-title">Gmail Integration</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
                                         <div>
@@ -2120,7 +2121,7 @@ export default function InboxZero() {
 
                             {/* Trello */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">📋 Trello Integration</h3>
+                                <h3 className="iz-settings__section-title">Trello Integration</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
                                         <div>
@@ -2178,7 +2179,7 @@ export default function InboxZero() {
 
                             {/* Google Drive & Sharing */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">☁️ Google Drive & Sharing</h3>
+                                <h3 className="iz-settings__section-title">Google Drive & Sharing</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
                                         <div>
@@ -2208,7 +2209,7 @@ export default function InboxZero() {
 
                             {/* Security */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">🛡️ Security & Guard</h3>
+                                <h3 className="iz-settings__section-title">Security & Guard</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
                                         <div>
@@ -2282,7 +2283,7 @@ export default function InboxZero() {
                                                     onClick={fetchLlmSafetyAudit}
                                                     disabled={llmSafetyLoading}
                                                 >
-                                                    {llmSafetyLoading ? '⏳ Loading…' : '↻ Refresh'}
+                                                    {llmSafetyLoading ? 'Loading…' : '↻ Refresh'}
                                                 </button>
                                             </div>
                                         </div>
@@ -2335,7 +2336,7 @@ export default function InboxZero() {
                                         )}
 
                                         {llmSafetyError && (
-                                            <div className="iz-safety__error">❌ {llmSafetyError}</div>
+                                            <div className="iz-safety__error">{llmSafetyError}</div>
                                         )}
 
                                         <div className="iz-safety__events">
@@ -2396,7 +2397,7 @@ export default function InboxZero() {
             {/* ========== UNDO TOAST ========== */}
             {undoStack.length > 0 && (
                 <div className="iz-undo">
-                    <span>📥 {undoStack.length} item{undoStack.length > 1 ? 's' : ''} archived — </span>
+                    <span>{undoStack.length} item{undoStack.length > 1 ? 's' : ''} archived — </span>
                     <button className="iz-undo__btn" onClick={async () => {
                         try {
                             await Promise.all(undoStack.map(entry =>

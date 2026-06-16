@@ -65,8 +65,8 @@ describe('properties parity — Task 3.3 AppFolio property-detail tab parity (re
         const root = screen.getByTestId('property-tab-content-budget');
         expect(root).toBeInTheDocument();
 
-        // Title — emoji + "Budget" label
-        expect(screen.getByText('💰')).toBeInTheDocument();
+        // Title — icon + "Budget" label
+        expect(root.querySelector('svg')).toBeInTheDocument();
         expect(screen.getByText('Budget')).toBeInTheDocument();
 
         // Body text — Phase-5 wiring intent matches v1 L168 acceptance
@@ -84,7 +84,7 @@ describe('properties parity — Task 3.3 AppFolio property-detail tab parity (re
         const root = screen.getByTestId('property-tab-content-marketing');
         expect(root).toBeInTheDocument();
 
-        expect(screen.getByText('📣')).toBeInTheDocument();
+        expect(root.querySelector('svg')).toBeInTheDocument();
         expect(screen.getByText('Marketing')).toBeInTheDocument();
 
         expect(root.textContent).toMatch(/listing syndication/i);
@@ -100,7 +100,7 @@ describe('properties parity — Task 3.3 AppFolio property-detail tab parity (re
         const root = screen.getByTestId('property-tab-content-comparables');
         expect(root).toBeInTheDocument();
 
-        expect(screen.getByText('📊')).toBeInTheDocument();
+        expect(root.querySelector('svg')).toBeInTheDocument();
         expect(screen.getByText('Comparables')).toBeInTheDocument();
 
         expect(root.textContent).toMatch(/comparable property data/i);
@@ -116,7 +116,7 @@ describe('properties parity — Task 3.3 AppFolio property-detail tab parity (re
         const root = screen.getByTestId('property-tab-content-showing-settings');
         expect(root).toBeInTheDocument();
 
-        expect(screen.getByText('🗓️')).toBeInTheDocument();
+        expect(root.querySelector('svg')).toBeInTheDocument();
         expect(screen.getByText('Showing Settings')).toBeInTheDocument();
 
         expect(root.textContent).toMatch(/showing schedule/i);

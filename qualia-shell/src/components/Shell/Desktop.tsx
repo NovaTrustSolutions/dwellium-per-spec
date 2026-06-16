@@ -1,4 +1,5 @@
 import { useWindows, COMPONENT_DEFAULT_SIZES } from '../../context/WindowContext';
+import { AlertTriangle, Eye } from 'lucide-react';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import type { RegionLayout } from '../../data/types';
@@ -69,7 +70,7 @@ class WidgetErrorBoundary extends React.Component<
                     height: '100%', color: 'var(--text-secondary)', fontSize: 13, gap: 12, padding: 24, textAlign: 'center',
                     fontFamily: 'Inter, system-ui, sans-serif', background: 'rgba(15,17,23,0.6)',
                 }}>
-                    <span style={{ fontSize: 32 }}>⚠️</span>
+                    <span style={{ fontSize: 32 }}><AlertTriangle size={14} /></span>
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
                         {this.props.widgetName || 'Widget'} encountered an error
                     </div>
@@ -84,7 +85,7 @@ class WidgetErrorBoundary extends React.Component<
                             borderRadius: 6, cursor: 'pointer', transition: 'all 0.15s',
                         }}
                     >
-                        🔄 Retry
+                        Retry
                     </button>
                 </div>
             );
@@ -112,12 +113,12 @@ type InlinePreviewData =
     | { kind: 'unsupported'; message: string };
 
 const EXPLORER_FILE_ICONS: Record<string, string> = {
-    pdf: '📄', md: '📃', txt: '📃', html: '🌐', css: '🎨', js: '⚡',
-    ts: '⚡', tsx: '⚡', jsx: '⚡', json: '{ }', csv: '📊', xml: '📋',
-    doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📽️', pptx: '📽️',
-    rtf: '📝', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', webp: '🖼️',
-    svg: '🖼️', mp3: '🎵', mp4: '🎬', wav: '🎵', mov: '🎬', avi: '🎬',
-    zip: '📦', tar: '📦', gz: '📦', rar: '📦', mmd: '📎', unknown: '📎',
+    pdf: '', md: '', txt: '', html: '', css: '', js: '',
+    ts: '', tsx: '', jsx: '', json: '{ }', csv: '', xml: '',
+    doc: '', docx: '', xls: '', xlsx: '', ppt: '', pptx: '',
+    rtf: '', png: '', jpg: '', jpeg: '', gif: '', webp: '',
+    svg: '', mp3: '', mp4: '', wav: '', mov: '', avi: '',
+    zip: '', tar: '', gz: '', rar: '', mmd: '', unknown: '',
 };
 
 function getExplorerFileIcon(type: string): string {
@@ -160,7 +161,7 @@ function HierarchyBrowser() {
     const openFileInWindow = useCallback((file: ExplorerFile) => {
         const detail = { fileId: file.id, name: file.name };
         (window as any).__qualiaDocViewerPendingFile = detail;
-        openWindow('doc-viewer', file.name, '📑');
+        openWindow('doc-viewer', file.name, '');
         const dispatch = (attempt: number) => {
             if (attempt > 5) return;
             window.dispatchEvent(new CustomEvent('qualia-docviewer-open-file', { detail }));
@@ -401,7 +402,7 @@ function HierarchyBrowser() {
                                     onClick={(e) => { e.stopPropagation(); setFocusedFileIdx(idx); setQuickLookFile(file); }}
                                     title="Quick Look (Space)"
                                 >
-                                    👁
+                                   
                                 </button>
                                 <button
                                     className="detail-child-row__action detail-child-row__action--open"
@@ -415,7 +416,7 @@ function HierarchyBrowser() {
                                     onClick={(e) => { e.stopPropagation(); void materializeFile(file); }}
                                     title="Download locally"
                                 >
-                                    📥
+                                   
                                 </button>
                             </div>
                         ))}
@@ -426,7 +427,7 @@ function HierarchyBrowser() {
                         <div className="explorer-preview-pane">
                             {inlinePreview.kind === 'idle' && (
                                 <div className="explorer-preview-empty">
-                                    <span className="explorer-preview-empty__icon">👁</span>
+                                    <span className="explorer-preview-empty__icon"><Eye size={14} /></span>
                                     <p>Select a file to preview</p>
                                 </div>
                             )}
@@ -1182,9 +1183,9 @@ export default function Desktop() {
                     width: isLayoutMenuOpen ? 'auto' : '0px', overflow: 'hidden', opacity: isLayoutMenuOpen ? 1 : 0, transition: 'all 0.3s ease',
                 }}>
                     {([
-                        { layout: 'none', label: '✕', tip: 'No Regions' },
-                        { layout: 'halves-h', label: '⬜⬜', tip: 'Split (2 cols)' },
-                        { layout: 'thirds-h', label: '⬜⬜⬜', tip: 'Thirds' },
+                        { layout: 'none', label: '', tip: 'No Regions' },
+                        { layout: 'halves-h', label: '', tip: 'Split (2 cols)' },
+                        { layout: 'thirds-h', label: '', tip: 'Thirds' },
                         { layout: 'quadrants', label: '⊞', tip: 'Fourths (2×2)' },
                     ] as { layout: string; label: string; tip: string }[]).map(p => (
                         <button key={p.layout} title={p.tip} onClick={() => {

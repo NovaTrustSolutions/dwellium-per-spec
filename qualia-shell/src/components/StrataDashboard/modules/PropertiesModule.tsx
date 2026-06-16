@@ -1,13 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-    Building2, MapPin, Home, Plus, X, ChevronRight, ChevronDown,
-    RefreshCw, Wrench, LayoutGrid, List, Table2, User, Mail, Phone,
-    DollarSign, Shield, Globe, Calendar, FileText, AlertTriangle,
-    Clock, Dog, Car, ChevronUp, Landmark, CreditCard, StickyNote,
-    History, Paperclip, TrendingUp, Settings2, Megaphone, PieChart,
-    Scale, BookOpen, Camera, Upload, Image as ImageIcon, Send, Trash2, ListChecks,
-    Link2, ClipboardCheck, Search, Archive, ArchiveRestore, Power
-} from 'lucide-react';
+import { AlertTriangle, Archive, ArchiveRestore, BarChart3, BookOpen, Building2, Calendar, CalendarDays, Camera, Car, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, Clock, Coins, CreditCard, Dog, DollarSign, FileText, Globe, History, Home, Image as ImageIcon, Landmark, LayoutGrid, Link2, List, ListChecks, Mail, MapPin, Megaphone, Paperclip, Phone, PieChart, Plus, Power, RefreshCw, Scale, Search, Send, Settings2, Shield, StickyNote, Table2, Trash2, TrendingUp, Upload, User, Wrench, X } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import { useProperties, useUnits, useEntities, useLinkedData, useModuleConfig, useStrataInvalidate, strataKeys } from '../useStrataQueries';
@@ -52,21 +44,21 @@ interface ModuleRegistryEntry {
 /* Lightweight placeholder modules for optional tabs that don't have dedicated components yet */
 function ResidentsPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Residents</div>
         <div style={{ fontSize: 12 }}>View and manage residents for this property in the Residents module.</div>
     </div>;
 }
 function LegalPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>⚖️</div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Legal Issues</div>
         <div style={{ fontSize: 12 }}>Legal workitems for this property appear in the Work tab under the Legal domain filter.</div>
     </div>;
 }
 function IncidentsPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>🚨</div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Incidents</div>
         <div style={{ fontSize: 12 }}>Incident logs linked to this property.</div>
     </div>;
@@ -79,40 +71,40 @@ function IncidentsPlaceholder({ propertyId }: { propertyId: string }) {
  * carries the per-tab content anchor used by render tests + CDP probe. ── */
 export function BudgetPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" data-testid="property-tab-content-budget" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>💰</div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}><Coins size={32} /></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Budget</div>
         <div style={{ fontSize: 12 }}>Budget tab — property-level budget tracking will land in Phase 5 (P&amp;L, variance vs forecast, vendor spend rollup).</div>
     </div>;
 }
 export function MarketingPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" data-testid="property-tab-content-marketing" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>📣</div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}><Megaphone size={32} /></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Marketing</div>
         <div style={{ fontSize: 12 }}>Marketing tab — listing syndication, photo management, and campaign ROI will land in Phase 5.</div>
     </div>;
 }
 export function ComparablesPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" data-testid="property-tab-content-comparables" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>📊</div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}><BarChart3 size={32} /></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Comparables</div>
         <div style={{ fontSize: 12 }}>Comparables tab — comparable property data, sales/rent comps, and market-band positioning will land in Phase 5.</div>
     </div>;
 }
 export function ShowingSettingsPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" data-testid="property-tab-content-showing-settings" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>🗓️</div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}><CalendarDays size={32} /></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Showing Settings</div>
         <div style={{ fontSize: 12 }}>Showing Settings tab — showing schedule, agent access, and self-tour configuration will land in Phase 5.</div>
     </div>;
 }
 
 const MODULE_REGISTRY: ModuleRegistryEntry[] = [
-    { key: 'vehicles', label: 'Vehicles', icon: '🚗', defaultEnabled: false, component: VehiclesPanel as any },
-    { key: 'utilities', label: 'Utilities', icon: '⚡', defaultEnabled: false, component: UtilitiesModule },
-    { key: 'insurance', label: 'Insurance', icon: '🛡️', defaultEnabled: false, component: InsuranceModule },
-    { key: 'residents', label: 'Residents', icon: '👥', defaultEnabled: false, component: ResidentsPlaceholder },
-    { key: 'legal', label: 'Legal', icon: '⚖️', defaultEnabled: false, component: LegalPlaceholder },
-    { key: 'incidents', label: 'Incidents', icon: '🚨', defaultEnabled: false, component: IncidentsPlaceholder },
+    { key: 'vehicles', label: 'Vehicles', icon: '', defaultEnabled: false, component: VehiclesPanel as any },
+    { key: 'utilities', label: 'Utilities', icon: '', defaultEnabled: false, component: UtilitiesModule },
+    { key: 'insurance', label: 'Insurance', icon: '', defaultEnabled: false, component: InsuranceModule },
+    { key: 'residents', label: 'Residents', icon: '', defaultEnabled: false, component: ResidentsPlaceholder },
+    { key: 'legal', label: 'Legal', icon: '', defaultEnabled: false, component: LegalPlaceholder },
+    { key: 'incidents', label: 'Incidents', icon: '', defaultEnabled: false, component: IncidentsPlaceholder },
 ];
 
 const fmtType = (t: string) => t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

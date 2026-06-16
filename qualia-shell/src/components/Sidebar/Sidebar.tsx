@@ -10,7 +10,7 @@ import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import SpacesSwitcher from './SpacesSwitcher';
 import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce, hideTerminalOnce } from '../../lib/hiddenWidgetsStore';
 import { useGridLock } from '../../hooks/useGridLock';
-import { Lock, Unlock } from 'lucide-react';
+import { FolderOpen, Lock, Settings, Unlock, X } from 'lucide-react';
 import './Sidebar.css';
 import React from 'react';
 
@@ -516,14 +516,14 @@ export default function Sidebar() {
                     const temp = Math.round(data.current.temperature_2m);
                     const code = data.current.weather_code ?? 0;
                     // Weather icon from WMO code
-                    const icon = code === 0 ? '☀️'
-                        : code <= 3 ? '⛅'
-                        : code <= 48 ? '🌫️'
-                        : code <= 67 ? '🌧️'
-                        : code <= 77 ? '❄️'
-                        : code <= 82 ? '🌦️'
-                        : code <= 86 ? '🌨️'
-                        : '⛈️';
+                    const icon = code === 0 ? ''
+                        : code <= 3 ? ''
+                        : code <= 48 ? ''
+                        : code <= 67 ? ''
+                        : code <= 77 ? ''
+                        : code <= 82 ? ''
+                        : code <= 86 ? ''
+                        : '';
                     setTemperature(`${icon} ${temp}°F`);
                 }
             } catch {
@@ -685,7 +685,7 @@ export default function Sidebar() {
                                     <div className="sidebar__tree">
                                         {hierarchy.length === 0 && !isAddingDomain && (
                                             <div className="sidebar__empty">
-                                                <span className="sidebar__empty-icon">📂</span>
+                                                <span className="sidebar__empty-icon"><FolderOpen size={14} /><FolderOpen size={14} /></span>
                                                 <p>No domains yet</p>
                                                 <button
                                                     className="sidebar__add-domain-btn"
@@ -702,7 +702,7 @@ export default function Sidebar() {
 
                                         {isAddingDomain && (
                                             <div className="sidebar__add-domain-row">
-                                                <span className="sidebar__add-domain-icon">📂</span>
+                                                <span className="sidebar__add-domain-icon"><FolderOpen size={14} /><FolderOpen size={14} /></span>
                                                 <input
                                                     ref={domainInputRef}
                                                     className="tree-node__inline-input"
@@ -731,7 +731,7 @@ export default function Sidebar() {
                             </>
                         ) : (
                             <div className="sidebar__empty">
-                                <span className="sidebar__empty-icon">🔒</span>
+                                <span className="sidebar__empty-icon"><Lock size={14} /><Lock size={14} /></span>
                                 <p>Domains restricted</p>
                             </div>
                         )}
@@ -765,7 +765,7 @@ export default function Sidebar() {
                                     }}
                                 />
                                 {searchQuery && (
-                                    <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+                                    <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: '12px' }}><X size={16} /></button>
                                 )}
                             </div>
                         </div>
@@ -878,7 +878,7 @@ export default function Sidebar() {
                                             {searchMatches.map((match, index) => renderWidget(match.item, index, false, match))}
                                             {searchMatches.length === 0 && (
                                                 <div className="sidebar__empty-search">
-                                                    <div className="sidebar__empty-search-icon">🧠</div>
+                                                    <div className="sidebar__empty-search-icon"></div>
                                                     No widgets found for "{searchQuery}"
                                                 </div>
                                             )}
@@ -964,7 +964,7 @@ export default function Sidebar() {
 
                                         {availableItems.length === 0 && searchQuery && (
                                             <div className="sidebar__empty-search">
-                                                <div className="sidebar__empty-search-icon">🔍</div>
+                                                <div className="sidebar__empty-search-icon"></div>
                                                 No widgets found for "{searchQuery}"
                                             </div>
                                         )}
@@ -997,7 +997,7 @@ export default function Sidebar() {
                         onClick={() => { setShowOptions(!showOptions); setShowSavePopover(false); setShowLoadDropdown(false); }}
                         title="Options"
                     >
-                        {collapsed ? '⚙' : 'Options'}
+                        {collapsed ? <Settings size={14} /> : 'Options'}
                     </button>
                 )}
 
@@ -1008,7 +1008,7 @@ export default function Sidebar() {
                             className="sidebar__options-item sidebar__options-item--danger"
                             onClick={() => { windows.forEach(w => closeWindow(w.id)); setShowOptions(false); }}
                         >
-                            ✕ Close All
+                            Close All
                         </button>
 
                         {canSaveLayout && (
@@ -1039,7 +1039,7 @@ export default function Sidebar() {
                                         setShowSavePopover(false);
                                     }}
                                 >
-                                    📂 Load Layout
+                                    Load Layout
                                 </button>
                             </>
                         )}
@@ -1073,7 +1073,7 @@ export default function Sidebar() {
                                         }
                                     }}
                                 >
-                                    ✓
+                                   
                                 </button>
                             </div>
                         )}

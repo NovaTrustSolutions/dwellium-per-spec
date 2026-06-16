@@ -21,6 +21,8 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-trello', label: 'Trello', icon: 'layout-list', component: 'trello-board', pinned: true, group: 'Property Management' },
    { id: 'dock-task-board', label: 'Task Board', icon: 'layout-grid', component: 'task-board', pinned: true, group: 'Property Management' },
    { id: 'dock-inbox-zero', label: 'Inbox Zero', icon: 'mail-open', component: 'inbox-zero', pinned: true, group: 'Property Management' },
+   // API Keys (2026-06-15): per-user write-only LLM key panel — placed directly below Inbox Zero.
+   { id: 'dock-api-keys', label: 'API Keys', icon: 'settings', component: 'api-keys', pinned: true, group: 'Property Management' },
    // dock-settings removed 2026-05-26 — Settings is now opened from the inline gear button next to the Domains header in Sidebar.tsx. Filter at Sidebar.tsx::permittedItems (component !== 'control-panel') also drops it for existing installs that have it in their saved layout.
    { id: 'dock-tenant-portal', label: 'Tenant Portal', icon: 'home', component: 'tenant-portal-mgmt', pinned: true, group: 'Property Management' },
    // ── AI Tools ──
@@ -35,8 +37,11 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-two-brains', label: 'Two Brains', icon: 'brain', component: 'two-brains', pinned: true, group: 'AI Tools' },
    { id: 'dock-hydra-ai', label: 'Hydra AI', icon: 'network', component: 'hydra-ai', pinned: true, group: 'AI Tools' },
    { id: 'dock-ara', label: 'ARA', icon: 'cpu', component: 'ara-console', pinned: true, group: 'AI Tools' },
+   // ARA Meeting Notetaker (2026-06-15): visible/background note-taker + live transcript + coaching.
+   { id: 'dock-meeting', label: 'Meeting Notetaker', icon: 'mic', component: 'meeting', pinned: true, group: 'AI Tools' },
    { id: 'dock-stella', label: 'Stella', icon: 'sparkles', component: 'stella-agent', pinned: true, group: 'AI Tools' },
    { id: 'dock-honcho', label: 'Honcho', icon: 'brain-circuit', component: 'honcho', pinned: true, group: 'AI Tools' },
+   { id: 'dock-hermes', label: 'Hermes', icon: 'zap', component: 'hermes', pinned: true, group: 'AI Tools' },
    { id: 'dock-memory-graph-rag', label: 'Cognitive M Network', icon: 'earth', component: 'memory-graph-rag', pinned: true, group: 'AI Tools' },
    { id: 'dock-system-health', label: 'System Health', icon: 'layout-grid', component: 'system-health', pinned: true, group: 'AI Tools' },
    // P12 findability fix (2026-06-12): the gap-arc widgets were registered but
@@ -49,6 +54,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-connections', label: 'Connections & Memory', icon: 'cable', component: 'connections', pinned: true, group: 'AI Tools' },
    { id: 'dock-knowledge-graph', label: 'Knowledge Graph', icon: 'network', component: 'knowledge-graph', pinned: true, group: 'AI Tools' },
    { id: 'dock-ui-editor', label: 'UI Editor', icon: 'paintbrush', component: 'ui-editor', pinned: true, group: 'AI Tools' },
+   { id: 'dock-cognitive-harness', label: 'Harness', icon: 'brain-circuit', component: 'cognitive-harness', pinned: true, group: 'AI Tools' },
    // ── Filing Cabinet ──
    { id: 'dock-hierarchy', label: 'Explorer', icon: 'folder-tree', component: 'hierarchy-browser', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-tasks', label: 'Tasks', icon: 'check-square', component: 'tasks', pinned: true, group: 'Filing Cabinet' },

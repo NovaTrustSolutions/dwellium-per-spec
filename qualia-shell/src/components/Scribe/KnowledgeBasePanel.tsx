@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useKb, saveKbFolder, linkByConcepts, type KbEntry, type KbFolder } from './kbStore';
+import FolderPickerModal from './FolderPickerModal';
 
 const MAX_AI_FILES = 30;
 
@@ -24,6 +25,21 @@ function FolderSection({ folder }: { folder: KbFolder }) {
     const [busy, setBusy] = useState(false);
     const [progress, setProgress] = useState('');
     const [error, setError] = useState('');
+    const [pickerOpen, setPickerOpen] = useState(false);
+
+    const chooseFolder = async () => {
+        const api = (window as any).electronAPI;
+        if (api?.chooseDirectory) {
+            try {
+                const p = await api.chooseDirectory();
+                if (p) setPath(p);
+            } catch (err) {
+                console.error('Electron chooseDirectory error:', err);
+            }
+        } else {
+            setPickerOpen(true);
+        }
+    };
 
     const index = async () => {
         setError(''); setBusy(true); setProgress('Scanning folder…');
@@ -64,7 +80,7 @@ function FolderSection({ folder }: { folder: KbFolder }) {
     const accent = folder.isPrivate ? '#ef6a6a' : 'var(--accent)';
     return (
         <section className="cp-section" style={folder.isPrivate ? { borderLeft: '3px solid #ef6a6a', paddingLeft: 12 } : undefined}>
-            <h3 className="cp-section__title">{folder.isPrivate ? '🔒 ' : '📁 '}{folder.name}{folder.isPrivate && <span style={{ marginLeft: 8, fontSize: 10, color: '#ef6a6a', border: '1px solid #ef6a6a', borderRadius: 6, padding: '1px 6px' }}>PRIVATE · NO AGENT ACCESS</span>}</h3>
+            <h3 className="cp-section__title">{folder.isPrivate ? '' : ''}{folder.name}{folder.isPrivate && <span style={{ marginLeft: 8, fontSize: 10, color: '#ef6a6a', border: '1px solid #ef6a6a', borderRadius: 6, padding: '1px 6px' }}>PRIVATE · NO AGENT ACCESS</span>}</h3>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary, #808080)', lineHeight: 1.5, margin: '0 0 12px' }}>
                 {folder.isPrivate
                     ? 'A local folder kept entirely private. Files are listed for you to browse, but their contents are NEVER sent to any LLM and never exposed to Honcho, Hermes, Stella, or ARA.'
@@ -73,6 +89,28 @@ function FolderSection({ folder }: { folder: KbFolder }) {
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/Users/you/Folder  (absolute path or ~/Folder)"
                     style={{ flex: 1, fontSize: 13, padding: '8px 12px', borderRadius: 8, background: 'var(--bg-surface, #1a1a1a)', color: 'var(--text-primary, #fff)', border: '1px solid var(--border-default, #333)' }} />
+                <button
+                    type="button"
+                    onClick={() => void chooseFolder()}
+                    title="Select folder"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 14,
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        background: 'var(--bg-surface, #1a1a1a)',
+                        color: 'var(--text-secondary, #aaa)',
+                        border: '1px solid var(--border-default, #333)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default, #333)'; }}
+                >
+                   
+                </button>
                 <button onClick={() => void index()} disabled={busy || !path.trim()}
                     style={{ fontSize: 13, padding: '8px 16px', borderRadius: 8, cursor: busy || !path.trim() ? 'not-allowed' : 'pointer', background: !busy && path.trim() ? accent : '#222', color: !busy && path.trim() ? (folder.isPrivate ? '#fff' : 'var(--accent-text, #000)') : '#777', border: 'none', whiteSpace: 'nowrap' }}>
                     {busy ? 'Working…' : folder.isPrivate ? 'Index (private)' : 'Index folder'}</button>
@@ -86,13 +124,23 @@ function FolderSection({ folder }: { folder: KbFolder }) {
                         <div key={e.rel + i} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,.06))' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                                 <strong style={{ fontSize: 13, color: 'var(--text-primary, #eee)' }}>{e.title}</strong>
-                                {!folder.isPrivate && <span style={{ fontSize: 11, color: 'var(--accent-text, var(--accent))' }}>🔗 {folder.links.filter(([a, b]) => a === i || b === i).length}</span>}
+                                {!folder.isPrivate && <span style={{ fontSize: 11, color: 'var(--accent-text, var(--accent))' }}>{folder.links.filter(([a, b]) => a === i || b === i).length}</span>}
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary, #aaa)', margin: '3px 0', lineHeight: 1.4 }}>{e.summary}</div>
                             {e.concepts.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{e.concepts.map((c) => <span key={c} style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 10, background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent-text, var(--accent))' }}>{c}</span>)}</div>}
                         </div>
                     ))}
                 </div>
+            )}
+            {pickerOpen && (
+                <FolderPickerModal
+                    initialPath={path}
+                    onSelect={(selected) => {
+                        setPath(selected);
+                        setPickerOpen(false);
+                    }}
+                    onClose={() => setPickerOpen(false)}
+                />
             )}
         </section>
     );

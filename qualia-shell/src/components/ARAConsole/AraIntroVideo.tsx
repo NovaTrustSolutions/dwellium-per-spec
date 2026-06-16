@@ -101,7 +101,7 @@ export default function AraIntroVideo() {
             <div className="ara-intro__controls">
                 {needsUnmute && (
                     <button type="button" className="ara-intro__btn" onClick={unmute}>
-                        🔊 Tap for sound
+                        Tap for sound
                     </button>
                 )}
                 <button

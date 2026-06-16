@@ -4,6 +4,7 @@
  * `docTree` helpers; folders expand/collapse, files open on click.
  */
 import { useState, useMemo } from 'react';
+import { FileText, Folder, FolderOpen } from 'lucide-react';
 import { buildDocTree, flattenTree } from './docTree';
 
 export function FileTree({ files, onOpen, activePath }: {
@@ -37,7 +38,7 @@ export function FileTree({ files, onOpen, activePath }: {
                     onClick={() => (node.isFile ? onOpen(node.path) : toggle(node.path))}
                 >
                     <span className="scribe__file-name">
-                        {node.isFile ? '📄 ' : expanded.has(node.path) ? '📂 ' : '📁 '}{node.name}
+                        {node.isFile ? <FileText size={14} /> : expanded.has(node.path) ? <FolderOpen size={14} /> : <Folder size={14} />}{node.name}
                     </span>
                     {node.isFile && ext && (
                         <span className={`scribe__file-badge scribe__file-badge--${ext}`}>{ext}</span>

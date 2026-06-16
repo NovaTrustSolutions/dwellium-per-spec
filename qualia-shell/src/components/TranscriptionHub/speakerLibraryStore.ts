@@ -20,6 +20,11 @@ function resolveKey(): string {
     return uid ? `tw:speakers:${uid}` : 'tw:speakers:_anonymous';
 }
 
+/** Diagnostic: the localStorage key the library currently resolves to. */
+export function speakerLibraryResolvedKey(): string {
+    return resolveKey();
+}
+
 function deserialize(raw: string | null): EnrolledSpeaker[] {
     if (!raw) return [];
     try {
@@ -128,6 +133,51 @@ export function autoEnrollUnknown(embedding: number[]): EnrolledSpeaker {
 export function removeSpeaker(id: string): void {
     const next = speakerLibraryStore.getSnapshot().filter(s => s.id !== id);
     persist(next);
+}
+
+/**
+ * Bug-fix 2026-06-15 (Ilya — "speaker library not used / Unknown Speaker 1"):
+ * the library is keyed per logged-in user (`tw:speakers:<userId>`). Voices
+ * enrolled BEFORE local multi-user login shipped live under the pre-login key
+ * `tw:speakers:_anonymous`, so a now logged-in user's library looks empty and
+ * every voice re-auto-enrolls as "Unknown Speaker N".
+ *
+ * This one-time, NON-DESTRUCTIVE adoption copies the orphaned `_anonymous`
+ * enrollments into the user's key — but ONLY when the user has none of their
+ * own yet (so it can never overwrite real per-user voiceprints), and it only
+ * ever reads from `_anonymous` (= "no user"), never from another real user's
+ * key (account isolation preserved). `_anonymous` is left intact.
+ *
+ * Returns the number of enrollments adopted (0 if nothing to do). Idempotent:
+ * a per-user flag prevents it from running twice.
+ */
+export function migrateAnonLibraryToUser(userId: string): number {
+    if (!userId || userId === '_anonymous') return 0;
+    speakerLibraryUserIdHolder.current = userId;
+    const userKey = `tw:speakers:${userId}`;
+    const flagKey = `tw:speakers:migrated-anon:${userId}`;
+    const markDone = () => { try { localStorage.setItem(flagKey, '1'); } catch { /* sandboxed */ } };
+
+    try {
+        if (localStorage.getItem(flagKey)) return 0; // already migrated
+    } catch {
+        return 0; // private browsing / sandboxed — nothing to migrate
+    }
+
+    // Never overwrite the user's own data.
+    if (speakerLibraryStore.getSnapshot().length > 0) { markDone(); return 0; }
+
+    let anon: EnrolledSpeaker[] = [];
+    try { anon = deserialize(localStorage.getItem('tw:speakers:_anonymous')); } catch { anon = []; }
+    if (anon.length === 0) { markDone(); return 0; }
+
+    // Adopt under the user key + push into the live store so subscribers
+    // (useSyncExternalStore in TranscriptionHub) re-read immediately.
+    speakerLibraryStore.set(anon, () => {
+        try { localStorage.setItem(userKey, JSON.stringify(anon)); } catch { /* sandboxed */ }
+    });
+    markDone();
+    return anon.length;
 }
 
 /** Test/escape-hatch reset (standing convention for factory stores). */

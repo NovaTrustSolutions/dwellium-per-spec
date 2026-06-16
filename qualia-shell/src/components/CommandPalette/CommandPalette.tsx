@@ -231,7 +231,7 @@ function buildTaskResults(tasks: TaskItem[], query: string): CommandResult[] {
                 id: `task:${task.id}`,
                 kind: 'task' as const,
                 score,
-                icon: task.urgency === 'high' ? '🔴' : task.urgency === 'medium' ? '🟡' : '🟢',
+                icon: task.urgency === 'high' ? '' : task.urgency === 'medium' ? '' : '',
                 title: task.title,
                 subtitle: clamp(task.description || '', 90),
                 meta: `${projectName} · ${task.status.replace('_', ' ')} · ${task.source}`,
@@ -325,7 +325,7 @@ function buildInboxResults(items: InboxMessageItem[], query: string): CommandRes
             if (item.urgency === 'high') score += 4;
             if (score <= 0) return null;
 
-            const urgencyIcon = item.urgency === 'high' ? '🔴' : item.urgency === 'medium' ? '🟡' : '🟢';
+            const urgencyIcon = item.urgency === 'high' ? '' : item.urgency === 'medium' ? '' : '';
             const signalLabel = item.signalClass.replace('_', ' ');
 
             return {
@@ -403,7 +403,7 @@ function buildWindowResults(
                 id: `window:${win.id}`,
                 kind: 'window' as const,
                 score,
-                icon: win.icon || dock?.icon || '🪟',
+                icon: win.icon || dock?.icon || '',
                 title,
                 subtitle: dock?.group || 'Open window',
                 meta: `${win.minimized ? 'Minimized' : 'Visible'} · z${win.zIndex}`,
@@ -477,7 +477,7 @@ function buildFileResults(
                 id: `file:${file.id}`,
                 kind: 'file' as const,
                 score,
-                icon: file.type === 'pdf' ? '📕' : '📄',
+                icon: file.type === 'pdf' ? '' : '',
                 title: file.name,
                 subtitle: file.projectName || file.projectId || 'Document file',
                 meta: [typeLabel, ...(file.tags && file.tags.length ? [file.tags.slice(0, 2).join(', ')] : [])].join(' · '),
@@ -537,7 +537,7 @@ function buildNoteResults(notes: NoteItem[], query: string): CommandResult[] {
                 id: `note:${note.id}`,
                 kind: 'note' as const,
                 score,
-                icon: '📝',
+                icon: '',
                 title: note.title || 'Untitled Note',
                 subtitle: clamp(note.content || '', 90),
                 meta: 'Notepad',
@@ -1023,7 +1023,7 @@ export default function CommandPalette() {
                 <div className="command-palette__results" role="listbox" aria-label="Search results">
                     {orderedResults.length === 0 ? (
                         <div className="command-palette__empty">
-                            <div className="command-palette__empty-icon">🧠</div>
+                            <div className="command-palette__empty-icon"></div>
                             <div className="command-palette__empty-title">No matches found</div>
                             <div className="command-palette__empty-subtitle">Try broader keywords or a workflow intent phrase.</div>
                         </div>

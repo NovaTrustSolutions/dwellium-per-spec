@@ -89,7 +89,7 @@ function SentimentModuleInner() {
         // an inline import.meta.env check to avoid divergence with the
         // router's routing decision.
         if (isStaticMode) {
-            setSubmitMsg('🗒️ Survey submission requires backend mode (static deck is read-only).');
+            setSubmitMsg('Survey submission requires backend mode (static deck is read-only).');
             try {
                 Sentry.addBreadcrumb({
                     category: 'ui.submit',
@@ -105,7 +105,7 @@ function SentimentModuleInner() {
         });
         const d = await res.json();
         if (d.success) {
-            setSubmitMsg('✅ Response recorded');
+            setSubmitMsg('Response recorded');
             try {
                 Sentry.addBreadcrumb({
                     category: 'ui.submit',
@@ -120,7 +120,7 @@ function SentimentModuleInner() {
                 setTrends(view.trends);
             } catch { /* leave existing trends in place on refresh failure */ }
         } else {
-            setSubmitMsg(`❌ ${d.error}`);
+            setSubmitMsg(`${d.error}`);
         }
     };
 
@@ -132,7 +132,7 @@ function SentimentModuleInner() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary)', fontWeight: 700 }}>🗞️ Tenant Sentiment</h2>
+                    <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary)', fontWeight: 700 }}>Tenant Sentiment</h2>
                     <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>Pulse surveys &amp; satisfaction trends across the portfolio</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -215,7 +215,7 @@ function SentimentModuleInner() {
                             style={{ padding: '10px 20px', background: 'var(--accent)', border: 'none', borderRadius: 8, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                             <CheckCircle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Save Response
                         </button>
-                        {submitMsg && <span style={{ fontSize: 13, color: submitMsg.startsWith('✅') ? '#22c55e' : '#ef4444' }}>{submitMsg}</span>}
+                        {submitMsg && <span style={{ fontSize: 13, color: !/error|please|requires|fail|invalid|not /i.test(submitMsg) ? '#22c55e' : '#ef4444' }}>{submitMsg}</span>}
                     </div>
                 </div>
             )}
@@ -286,7 +286,7 @@ function SentimentModuleInner() {
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: selected.trend === 'declining' ? '#ef4444' : selected.trend === 'improving' ? '#22c55e' : '#94a3b8' }}>
                                     <TrendIcon trend={selected.trend} /> {selected.trend}
                                 </span>
-                                {selected.atRisk && <span data-testid="sentiment-detail-atrisk-badge" style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>⚠ At Risk</span>}
+                                {selected.atRisk && <span data-testid="sentiment-detail-atrisk-badge" style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>At Risk</span>}
                             </div>
 
                             {selected.responses.length > 1 && (

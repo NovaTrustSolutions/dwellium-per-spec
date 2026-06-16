@@ -94,7 +94,7 @@ describe('ARAConsole', () => {
                     data: [{
                         id: 'chief-of-staff',
                         name: 'Chief of Staff',
-                        icon: '📋',
+                        icon: 'clipboard-list',
                         shortDescription: 'Execution partner',
                         lens: 'The execution lens',
                         logic: 'Tactical',
@@ -299,7 +299,7 @@ describe('ARAConsole', () => {
         // Wait for the input bar to render (modes resolved).
         await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
 
-        // The send button previously had NO accessible name (bare ➤ glyph).
+        // The send button previously had NO accessible name (bare arrow glyph).
         expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Start voice input' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Clear conversation' })).toBeInTheDocument();

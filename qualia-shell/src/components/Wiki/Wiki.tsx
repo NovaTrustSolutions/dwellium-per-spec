@@ -171,7 +171,7 @@ export default function Wiki() {
                         </div>
 
                         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
-                            {err && <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}>⚠ {err}</div>}
+                            {err && <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}>{err}</div>}
                             {!llmReady && (
                                 <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid #222', color: 'var(--text-tertiary)', fontSize: 11 }}>
                                     No LLM configured — “Compile” builds a structure-only page (sources). Add a provider in Settings → API Keys for full synthesis (overview, concepts, open questions).

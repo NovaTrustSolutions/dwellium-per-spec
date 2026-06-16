@@ -143,7 +143,7 @@ export default function TenantPortal() {
         return (
             <div className="tp-animate">
                 <div className="tp-header">
-                    <h1>Welcome, {dashboard?.tenant?.name || user?.name || 'Tenant'} 👋</h1>
+                    <h1>Welcome, {dashboard?.tenant?.name || user?.name || 'Tenant'}</h1>
                     <p>
                         {dashboard?.property?.name
                             ? `${dashboard.property.name} — Unit ${dashboard.unit?.unitNumber || ''}`
@@ -586,7 +586,7 @@ export default function TenantPortal() {
         <div className="tenant-portal">
             <nav className="tp-sidebar">
                 <div className="tp-sidebar-brand">
-                    <div className="tp-sidebar-brand-icon">🏠</div>
+                    <div className="tp-sidebar-brand-icon"></div>
                     <div>
                         <h2>Dwellium</h2>
                         <span>Tenant Portal</span>

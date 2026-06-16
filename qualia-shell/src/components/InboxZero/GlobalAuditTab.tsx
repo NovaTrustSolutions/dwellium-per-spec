@@ -47,10 +47,10 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
             if (data.success && data.data) {
                 setViewItem(data.data);
             } else {
-                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: '⚠️ Could not load item details' }));
+                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Could not load item details' }));
             }
         } catch {
-            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: '❌ Network error loading item' }));
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Network error loading item' }));
         }
     };
 
@@ -62,14 +62,14 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                 body: JSON.stringify({ status: 'pending', reason: 'Recovered from Audit Log' }),
             });
             if (res.ok) {
-                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: '✅ Item recovered successfully' }));
+                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Item recovered successfully' }));
                 fetchAudit();
             } else {
                 const errData = await res.json().catch(() => ({}));
-                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `❌ Failed to recover item: ${errData.error || res.status}` }));
+                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Failed to recover item: ${errData.error || res.status}` }));
             }
         } catch {
-            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: '❌ Network error' }));
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Network error' }));
         }
     };
 
@@ -88,7 +88,7 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
         <div style={{ padding: '8px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, opacity: 0.9 }}>
-                    📋 Global Audit Log
+                    Global Audit Log
                 </h3>
                 <span style={{ fontSize: '11px', opacity: 0.4 }}>{entries.length} entries</span>
                 <button
@@ -156,7 +156,7 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                                         background: 'transparent', color: 'inherit', fontSize: '10px', cursor: 'pointer'
                                     }}
                                 >
-                                    👁️ View
+                                    View
                                 </button>
                                 <button
                                     onClick={() => handleRecover(entry.inbox_item_id)}
@@ -192,7 +192,7 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                         </div>
                         <div style={{ flex: 1, position: 'relative', background: 'var(--bg-surface)' }}>
                             <iframe 
-                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:28px 32px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.75;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:6px;display:block;margin:12px 0}a{color:#2563eb;text-decoration:none;font-weight:500}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px 14px;border:1px solid var(--border-default);text-align:left;font-size:14px}th{background:#f8fafc;font-weight:600;color:#334155}blockquote{margin:16px 0;padding:14px 24px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 8px 8px 0;font-style:italic}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:16px 20px;overflow-x:auto;border:1px solid var(--border-default)}hr{border:none;border-top:1px solid var(--border-default);margin:20px 0}h1{font-size:22px;color:#0f172a;margin:20px 0 10px}h2{font-size:18px;color:#0f172a}h3{font-size:16px;color:#1e293b}ul,ol{padding-left:28px}li{margin:6px 0}p{margin:10px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:28px;padding-top:18px;border-top:1px solid var(--border-default)}</style></head><body>${viewItem.body || `<div style="padding:40px;text-align:center;color:var(--text-secondary);font-style:italic"><p style="font-size:24px">📧</p><p>No rich content available.</p><div style="margin-top:16px;padding:16px;background:#f8fafc;border-radius:8px;text-align:left;color:var(--text-tertiary);font-style:normal">${viewItem.snippet || ''}</div></div>`}</body></html>`}
+                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:28px 32px;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.75;color:#1e293b;background:var(--bg-surface);word-wrap:break-word;overflow-wrap:break-word}img{max-width:100%;height:auto;border-radius:6px;display:block;margin:12px 0}a{color:#2563eb;text-decoration:none;font-weight:500}a:hover{text-decoration:underline}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px 14px;border:1px solid var(--border-default);text-align:left;font-size:14px}th{background:#f8fafc;font-weight:600;color:#334155}blockquote{margin:16px 0;padding:14px 24px;border-left:4px solid #6366f1;background:#f8fafc;color:var(--text-tertiary);border-radius:0 8px 8px 0;font-style:italic}pre,code{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:13px;background:var(--bg-surface-elevated);border-radius:4px;padding:2px 6px}pre{padding:16px 20px;overflow-x:auto;border:1px solid var(--border-default)}hr{border:none;border-top:1px solid var(--border-default);margin:20px 0}h1{font-size:22px;color:#0f172a;margin:20px 0 10px}h2{font-size:18px;color:#0f172a}h3{font-size:16px;color:#1e293b}ul,ol{padding-left:28px}li{margin:6px 0}p{margin:10px 0}.email-footer,.unsubscribe{font-size:11px;color:var(--text-secondary);margin-top:28px;padding-top:18px;border-top:1px solid var(--border-default)}</style></head><body>${viewItem.body || `<div style="padding:40px;text-align:center;color:var(--text-secondary);font-style:italic"><p style="font-size:24px"></p><p>No rich content available.</p><div style="margin-top:16px;padding:16px;background:#f8fafc;border-radius:8px;text-align:left;color:var(--text-tertiary);font-style:normal">${viewItem.snippet || ''}</div></div>`}</body></html>`}
                                 style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
                                 title="audit-email-body"
                                 sandbox="allow-same-origin"

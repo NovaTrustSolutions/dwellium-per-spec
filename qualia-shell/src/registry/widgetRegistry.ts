@@ -191,6 +191,19 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 500,
         category: 'core',
     },
+    // Per-user API keys (2026-06-15): standalone window for the write-only
+    // Active-LLM picker + 5 provider cards. Mounts the reusable ApiKeysPanel;
+    // placed directly below Inbox Zero in hierarchy.ts. Storage/keys are owned
+    // by useIntegrations() — this widget is a thin shell only.
+    'api-keys': {
+        id: 'api-keys',
+        label: 'API Keys',
+        icon: 'settings',
+        component: lazyWithReload(() => import('../components/ApiKeysWidget/ApiKeysWidget')),
+        minWidth: 480,
+        minHeight: 460,
+        category: 'tools',
+    },
     // ─────────────────────────────────────────────────────────────────
     //  DEPRECATED as of 2026-04-19 (Phase 3-H §3 Table 1 R2, C-1).
     //  The 'inbox-zero' widget is superseded by the headless routing
@@ -290,6 +303,20 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 400,
         category: 'ai',
     },
+    // ARA's meeting note-taker (2026-06-15): start a meeting-assist session with
+    // a Visible-bot vs Background(desktop) mode toggle, a recording/consent
+    // indicator, and live transcript + ARA coaching. Calls the shared
+    // /api/ara/meeting/* contracts (visible) and electronAPI.startBackgroundMeeting
+    // (background). Recall.ai key lives in the API-Keys panel.
+    'meeting': {
+        id: 'meeting',
+        label: 'Meeting Notetaker',
+        icon: 'mic',
+        component: lazyWithReload(() => import('../components/AraMeeting/AraMeetingPanel')),
+        minWidth: 460,
+        minHeight: 480,
+        category: 'ai',
+    },
     'stella-agent': {
         id: 'stella-agent',
         label: 'Stella Agent',
@@ -312,6 +339,21 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         label: 'Honcho',
         icon: 'brain-circuit',
         component: lazyWithReload(() => import('../components/HonchoHermesPanel/HonchoHermesPanel')),
+        minWidth: 600,
+        minHeight: 400,
+        category: 'ai',
+    },
+    // ─────────────────────────────────────────────────────────────────
+    //  Hermes — dedicated launcher that opens the Honcho+Hermes panel
+    //  straight to the Agents persona-card view (initialTab='agents').
+    //  Distinct widget so a "Hermes" entry shows in BOTH the sidebar and
+    //  the Halocron OS launcher (which auto-lists the registry).
+    // ─────────────────────────────────────────────────────────────────
+    'hermes': {
+        id: 'hermes',
+        label: 'Hermes',
+        icon: 'zap',
+        component: lazyWithReload(() => import('../components/HonchoHermesPanel/HermesAgentsWidget')),
         minWidth: 600,
         minHeight: 400,
         category: 'ai',
@@ -356,6 +398,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         label: 'Fact Check Log',
         icon: 'search-check',
         component: lazyWithReload(() => import('../components/FactCheckLog/FactCheckLog')),
+        category: 'ai',
+    },
+    'cognitive-harness': {
+        id: 'cognitive-harness',
+        label: 'Cognitive Harness',
+        icon: 'brain-circuit',
+        component: lazyWithReload(() => import('../components/CognitiveHarness/CognitiveHarness')),
+        minWidth: 800,
+        minHeight: 500,
         category: 'ai',
     },
 

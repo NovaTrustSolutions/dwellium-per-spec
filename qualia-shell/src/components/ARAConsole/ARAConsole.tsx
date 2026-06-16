@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Mic, Square, Volume2, VolumeX, Sparkles, UserRound, SlidersHorizontal, X, ChevronUp, ChevronDown, Shield, Loader2, ThumbsUp, ThumbsDown, Send, Trash2, Paperclip, Globe, Laptop, AlertTriangle, Lock, Mars, Venus, Network } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -207,7 +208,7 @@ const DEFAULT_THEME = {
 const EXECUTIVE_ASSISTANT_MODE: ARAMode = {
     id: 'executive-assistant',
     name: 'Executive Assistant',
-    icon: '🗂️',
+    icon: '',
     shortDescription: 'Your default right hand — coordinates everything and routes to the right tool or specialist lens.',
     lens: 'General-purpose executive support: triage, summarize, schedule, draft, navigate, and delegate.',
     logic: 'Clarify intent, take the most direct useful action, and hand off to a specialist lens when depth is needed.',
@@ -730,7 +731,7 @@ export default function ARAConsole() {
                     currentAudioRef.current = audio;
                     audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null; };
                     audio.onerror = (e) => {
-                        console.error('[ARA TTS] ❌ OpenAI audio playback error:', e);
+                        console.error('[ARA TTS] OpenAI audio playback error:', e);
                         setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null;
                     };
                     await audio.play();
@@ -740,7 +741,7 @@ export default function ARAConsole() {
                 const errText = await res.text().catch(() => '');
                 console.warn(`[ARA TTS] OpenAI returned HTTP ${res.status}: ${errText.slice(0, 200)} — falling back to browser TTS`);
             } catch (err) {
-                console.error('[ARA TTS] ❌ OpenAI TTS fetch failed — falling back:', err);
+                console.error('[ARA TTS] OpenAI TTS fetch failed — falling back:', err);
             }
         } else if (option.provider === 'openai' && !openaiApiKey) {
             console.warn('[ARA TTS] No OpenAI API key configured — falling back to browser SpeechSynthesis. Open Settings → API Keys to add one.');
@@ -776,7 +777,7 @@ export default function ARAConsole() {
         utterance.onend = () => setIsSpeaking(false);
         utterance.onerror = () => setIsSpeaking(false);
         window.speechSynthesis.speak(utterance);
-        console.log(`[ARA TTS] 🔊 Browser SpeechSynthesis — voice=${preferred?.name ?? 'default'}`);
+        console.log(`[ARA TTS] Browser SpeechSynthesis — voice=${preferred?.name ?? 'default'}`);
     }, [stripMarkdown, activeVoice, openaiApiKey]);
 
     const stopSpeaking = useCallback(() => {
@@ -1203,7 +1204,7 @@ export default function ARAConsole() {
             : [...prev, progress]));
         const line = (s: string) => updateMessageContent(progress.id, c => `${c}\n\n${s}`);
         if (!hasActiveLlm(integrations.llm)) {
-            line('⚠ No LLM configured — add a key in Control Panel → API Keys, then try again.');
+            line('No LLM configured — add a key in Control Panel → API Keys, then try again.');
             return;
         }
         setIsLoading(true);
@@ -1226,13 +1227,13 @@ export default function ARAConsole() {
             const { teams, personas } = agentTeamsStore.getSnapshot();
             if (req.kind === 'team') {
                 const team = teams.find(t => t.id === req.id);
-                if (!team) { line(`⚠ Team "${req.name}" not found in the Agent Lab catalog.`); return; }
+                if (!team) { line(`Team "${req.name}" not found in the Agent Lab catalog.`); return; }
                 const result = await runTeam({
                     goal: req.goal, sources: '', team, personas, deps,
                     onEvent: e => line(`\`${e.phase}\` ${e.message}`),
                 });
                 if (result.error) {
-                    line(`⚠ ${result.error}`);
+                    line(`${result.error}`);
                 } else {
                     recordRun({ prompt: req.goal, taskType: 'planning', outcome: 'success', summary: result.final.slice(0, 200), toolsUsed: [team.id] });
                     recordArtifact({ content: result.final, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
@@ -1241,17 +1242,17 @@ export default function ARAConsole() {
                 }
             } else {
                 const persona = findPersona(personas, req.id);
-                if (!persona) { line(`⚠ "${req.name}" not found in the Agent Lab catalog.`); return; }
+                if (!persona) { line(`"${req.name}" not found in the Agent Lab catalog.`); return; }
                 line(`\`execute\` ${persona.name} is working…`);
                 const out = await runPersona({ goal: req.goal, sources: '', persona, deps });
                 recordRun({ prompt: req.goal, taskType: 'general', outcome: out.output ? 'success' : 'fail', summary: out.verified.slice(0, 200), toolsUsed: [persona.id] });
                 const text = out.verified || out.output;
                 if (text) recordArtifact({ content: text, source: 'team-run', title: req.goal.slice(0, 60) }); // P12-3
-                line(text ? `---\n\n${text}` : '⚠ No output — the model returned nothing.');
+                line(text ? `---\n\n${text}` : 'No output — the model returned nothing.');
                 if (text && ttsEnabled) void speakText(`${persona.name} has finished.`);
             }
         } catch (err) {
-            line(`⚠ Run failed — ${err instanceof Error ? err.message : String(err)}.`);
+            line(`Run failed — ${err instanceof Error ? err.message : String(err)}.`);
         } finally {
             setIsLoading(false);
         }
@@ -1357,7 +1358,7 @@ export default function ARAConsole() {
             setIsLoading(true);
             try {
                 const outcomes = await executeChain(chain, { llm: integrations.llm, search: integrations.search }, (i, o) => {
-                    const icon = o.ok ? '✓' : '⚠';
+                    const icon = o.ok ? '' : '';
                     updateMessageContent(progress.id, c => `${c}\n\n${icon} **Step ${i + 1}** — ${o.text}`);
                 }, runSpawnForChain); // P11-3: spawn steps run the orchestrator
                 const allOk = outcomes.every(o => o.ok);
@@ -1916,9 +1917,9 @@ export default function ARAConsole() {
                         aria-label="Personas"
                     >
                         <span className="ara-mode-eyebrow">Personas</span>
-                        <span className="ara-mode-icon">{currentMode?.icon || '🧠'}</span>
+                        <span className="ara-mode-icon">{currentMode?.icon || <Sparkles size={14} />}</span>
                         <span className="ara-mode-name">{currentMode?.name || 'Loading...'}</span>
-                        <span className="ara-mode-chevron">{modePickerOpen ? '▲' : '▼'}</span>
+                        <span className="ara-mode-chevron">{modePickerOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
                     </button>
 
                     {modePickerOpen && (
@@ -1944,13 +1945,13 @@ export default function ARAConsole() {
                                                     onClick={(e) => { e.stopPropagation(); switchMode(mode.id); }}
                                                     style={{ '--opt-accent': mTheme.accent, '--opt-accent-rgb': mTheme.accentRgb } as React.CSSProperties}
                                                 >
-                                                    <span className="ara-mode-option-icon">{mode.icon}</span>
+                                                    <span className="ara-mode-option-icon">{mode.icon || <Sparkles size={16} />}</span>
                                                     <div className="ara-mode-option-info">
                                                         <span className="ara-mode-option-name">{mode.name}</span>
                                                         <span className="ara-mode-option-desc">{mode.shortDescription}</span>
                                                     </div>
                                                     {mode.entityGuardianRequired && (
-                                                        <span className="ara-entity-badge" title="Entity Guardian active">🛡️</span>
+                                                        <span className="ara-entity-badge" title="Entity Guardian active"><Shield size={12} /></span>
                                                     )}
                                                     <button
                                                         className="ara-mode-option-expand"
@@ -1970,19 +1971,19 @@ export default function ARAConsole() {
                                                         <p className="ara-detail-lens">{mode.lens}</p>
                                                         <div className="ara-detail-grid">
                                                             <div className="ara-detail-item">
-                                                                <span className="ara-detail-label">🎭 Voice</span>
+                                                                <span className="ara-detail-label">Voice</span>
                                                                 <span className="ara-detail-value">{mode.voice}</span>
                                                             </div>
                                                             <div className="ara-detail-item">
-                                                                <span className="ara-detail-label">🎯 Best For</span>
+                                                                <span className="ara-detail-label">Best For</span>
                                                                 <span className="ara-detail-value">{mode.bestFor}</span>
                                                             </div>
                                                             <div className="ara-detail-item">
-                                                                <span className="ara-detail-label">🧠 Logic</span>
+                                                                <span className="ara-detail-label">Logic</span>
                                                                 <span className="ara-detail-value">{mode.logic}</span>
                                                             </div>
                                                             <div className="ara-detail-item ara-detail-item--forbidden">
-                                                                <span className="ara-detail-label">⛔ Forbidden</span>
+                                                                <span className="ara-detail-label">Forbidden</span>
                                                                 <span className="ara-detail-value">{mode.forbiddenBehavior}</span>
                                                             </div>
                                                         </div>
@@ -1999,10 +2000,10 @@ export default function ARAConsole() {
 
                 <div className="ara-mode-views">
                     {([
-                        { id: 'honcho', icon: '🧠', label: 'Honcho' },
-                        { id: 'hermes', icon: '⚡', label: 'Hermes' },
-                        { id: 'tools', icon: '🧰', label: 'Tools' },
-                        { id: 'settings', icon: '⚙️', label: 'Settings' },
+                        { id: 'honcho', icon: '', label: 'Honcho' },
+                        { id: 'hermes', icon: '', label: 'Hermes' },
+                        { id: 'tools', icon: '', label: 'Tools' },
+                        { id: 'settings', icon: '', label: 'Settings' },
                     ] as { id: AraSidePanelView; icon: string; label: string }[]).map(v => (
                         <button
                             key={v.id}
@@ -2024,7 +2025,7 @@ export default function ARAConsole() {
                         title="Knowledge Graph — open split-screen with ARA"
                         aria-label="Knowledge Graph (split screen)"
                     >
-                        <span aria-hidden>🕸️</span>
+                        <span aria-hidden><Network size={14} /></span>
                         <span className="ara-view-btn__label">Graph</span>
                     </button>
                 </div>
@@ -2039,14 +2040,14 @@ export default function ARAConsole() {
                                         setJurisdiction('georgia');
                                         setMessages(prev => [...prev, createChatMessage({
                                             role: 'assistant',
-                                            content: '**Jurisdiction switched: 🍑 Georgia**\n\n_Georgia legal framework now auto-applied. All analysis will reference O.C.G.A. and Georgia case law._',
+                                            content: '**Jurisdiction switched: Georgia**\n\n_Georgia legal framework now auto-applied. All analysis will reference O.C.G.A. and Georgia case law._',
                                             mode: 'lead-counsel',
                                             entityGuardianActive: true,
                                         })]);
                                     }
                                 }}
                             >
-                                🍑 Georgia
+                                Georgia
                             </button>
                             <button
                                 className={`ara-jurisdiction-btn ${jurisdiction === 'florida' ? 'active' : ''}`}
@@ -2055,20 +2056,20 @@ export default function ARAConsole() {
                                         setJurisdiction('florida');
                                         setMessages(prev => [...prev, createChatMessage({
                                             role: 'assistant',
-                                            content: '**Jurisdiction switched: 🌴 Florida**\n\n_Florida legal framework now auto-applied. All analysis will reference Fla. Stat. and Florida case law._',
+                                            content: '**Jurisdiction switched: Florida**\n\n_Florida legal framework now auto-applied. All analysis will reference Fla. Stat. and Florida case law._',
                                             mode: 'lead-counsel',
                                             entityGuardianActive: true,
                                         })]);
                                     }
                                 }}
                             >
-                                🌴 Florida
+                                Florida
                             </button>
                         </div>
                     )}
                     {currentMode?.entityGuardianRequired && (
                         <span className="ara-guardian-indicator" title="Entity Guardian is active for this mode">
-                            🛡️ Entity Guardian
+                            Entity Guardian
                         </span>
                     )}
                     <button className="ara-clear-btn" onClick={clearChat} title="Clear conversation" aria-label="Clear conversation">
@@ -2085,8 +2086,8 @@ export default function ARAConsole() {
                     <p className="ara-hint-lens">{currentMode.lens}</p>
                     <p className="ara-hint-best">Best for: {currentMode.bestFor}</p>
                     <div className="ara-hint-tags">
-                        <span className="ara-hint-tag">🎭 {currentMode.voice.split('—')[0]?.trim()}</span>
-                        <span className="ara-hint-tag">🧠 {currentMode.logic.split('—')[0]?.trim()}</span>
+                        <span className="ara-hint-tag">{currentMode.voice.split('—')[0]?.trim()}</span>
+                        <span className="ara-hint-tag">{currentMode.logic.split('—')[0]?.trim()}</span>
                     </div>
                 </div>
             )}
@@ -2105,7 +2106,7 @@ export default function ARAConsole() {
                                     </span>
                                 )}
                                 {msg.entityGuardianActive && (
-                                    <span className="ara-msg-guardian">🛡️</span>
+                                    <span className="ara-msg-guardian" title="Entity Guardian active"><Shield size={12} /></span>
                                 )}
                                 <span className="ara-msg-time">
                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -2116,7 +2117,7 @@ export default function ARAConsole() {
                                     title={isSpeaking ? 'Stop speaking' : 'Read aloud'}
                                     aria-label={isSpeaking ? 'Stop speaking' : 'Read message aloud'}
                                 >
-                                    {isSpeaking ? '⏹' : '🔊'}
+                                    {isSpeaking ? <Square size={14} /> : <Volume2 size={14} />}
                                 </button>
                                 {msg.hermesRunId && (
                                     <span className="ara-vote-group">
@@ -2124,14 +2125,12 @@ export default function ARAConsole() {
                                             className={`ara-vote-btn ${hermesVotes[msg.hermesRunId] === 1 ? 'ara-vote-btn--active' : ''}`}
                                             onClick={() => voteOnMessage(msg.hermesRunId!, 1)}
                                             title="Good answer — use it as a reference for similar questions"
-                                            aria-label="Rate this answer up"
-                                        >👍</button>
+                                            aria-label="Rate this answer up"><ThumbsUp size={13} /></button>
                                         <button
                                             className={`ara-vote-btn ${hermesVotes[msg.hermesRunId] === -1 ? 'ara-vote-btn--down' : ''}`}
                                             onClick={() => voteOnMessage(msg.hermesRunId!, -1)}
                                             title="Bad answer — never use it as a reference"
-                                            aria-label="Rate this answer down"
-                                        >👎</button>
+                                            aria-label="Rate this answer down"><ThumbsDown size={13} /></button>
                                     </span>
                                 )}
                             </div>
@@ -2452,7 +2451,7 @@ export default function ARAConsole() {
                     aria-label={micActive ? 'Stop recording' : micTranscribing ? 'Transcribing voice input' : 'Start voice input'}
                     aria-pressed={micActive}
                 >
-                    {micTranscribing ? '⏳' : micActive ? '⏹' : '🎙️'}
+                    {micTranscribing ? <Loader2 size={16} className="ara-spin" /> : micActive ? <Square size={16} /> : <Mic size={16} />}
                 </button>
                 <button
                     className={`ara-tts-btn ${ttsEnabled ? 'ara-tts-btn--on' : ''}`}
@@ -2461,7 +2460,7 @@ export default function ARAConsole() {
                     aria-label={ttsEnabled ? 'Disable auto-read replies' : 'Enable auto-read replies'}
                     aria-pressed={ttsEnabled}
                 >
-                    {ttsEnabled ? '🔊' : '🔇'}
+                    {ttsEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
                 </button>
                 {/* Humanize toggle — when ON, prepends a warm-conversational style
                     directive to outgoing messages so ARA's replies sound human, not corporate. */}
@@ -2475,7 +2474,7 @@ export default function ARAConsole() {
                     aria-pressed={humanizeEnabled}
                     style={{ fontSize: 14 }}
                 >
-                    {humanizeEnabled ? '💬' : '🤖'}
+                    {humanizeEnabled ? <Sparkles size={16} /> : <Sparkles size={16} style={{ opacity: 0.5 }} />}
                 </button>
                 {isSpeaking && (
                     <button
@@ -2484,7 +2483,7 @@ export default function ARAConsole() {
                         title="Mute — stop ARA speaking"
                         aria-label="Mute — stop ARA speaking"
                     >
-                        ⏹
+                        <VolumeX size={16} />
                     </button>
                 )}
                 <button
@@ -2494,7 +2493,7 @@ export default function ARAConsole() {
                     aria-label={avatarEnabled ? 'Disable AI Avatar' : 'Enable AI Avatar'}
                     aria-pressed={avatarEnabled}
                 >
-                    {avatarEnabled ? '🧑‍💻' : '👤'}
+                    {avatarEnabled ? <UserRound size={16} /> : <UserRound size={16} style={{ opacity: 0.5 }} />}
                 </button>
                 <button
                     className={`ara-voice-settings-btn ${voiceSettingsOpen ? 'ara-voice-settings-btn--active' : ''}`}
@@ -2503,7 +2502,7 @@ export default function ARAConsole() {
                     aria-label="Voice settings"
                     aria-expanded={voiceSettingsOpen}
                 >
-                    ⚙️
+                    <SlidersHorizontal size={16} />
                 </button>
                 <button
                     className="ara-gender-toggle"
@@ -2517,8 +2516,12 @@ export default function ARAConsole() {
                     title={`Voice: ${voiceGender === 'female' ? 'Female' : 'Male'} — click to switch`}
                     aria-label={`Voice gender: ${voiceGender === 'female' ? 'female' : 'male'}. Click to switch.`}
                 >
-                    <span className={`ara-gender-option ${voiceGender === 'female' ? 'ara-gender-option--active' : ''}`}>♀</span>
-                    <span className={`ara-gender-option ${voiceGender === 'male' ? 'ara-gender-option--active' : ''}`}>♂</span>
+                    <span className={`ara-gender-option ${voiceGender === 'female' ? 'ara-gender-option--active' : ''}`}>
+                        <Venus size={13} aria-hidden="true" /> Female
+                    </span>
+                    <span className={`ara-gender-option ${voiceGender === 'male' ? 'ara-gender-option--active' : ''}`}>
+                        <Mars size={13} aria-hidden="true" /> Male
+                    </span>
                 </button>
                 <FileUploadButton
                     size="sm"
@@ -2527,7 +2530,7 @@ export default function ARAConsole() {
                     onResult={(result) => {
                         const analysisMsg = createChatMessage({
                             role: 'assistant',
-                            content: `📎 **${result.originalName}** — AI Analysis\n\n${result.analysis}${result.savedDocumentId ? `\n\n✅ *Saved as document*` : ''}`,
+                            content: `**${result.originalName}** — AI Analysis\n\n${result.analysis}${result.savedDocumentId ? `\n\n*Saved as document*` : ''}`,
                             mode: activeMode,
                         });
                         setMessages(prev => [...prev, analysisMsg]);
@@ -2550,7 +2553,7 @@ export default function ARAConsole() {
                     title="Send message"
                     aria-label="Send message"
                 >
-                    ➤
+                    <Send size={16} />
                 </button>
             </div>
 
@@ -2558,8 +2561,8 @@ export default function ARAConsole() {
             {voiceSettingsOpen && (
                 <div className="ara-voice-panel">
                     <div className="ara-voice-panel-header">
-                        <h4>🎙️ Voice Settings</h4>
-                        <button className="ara-voice-panel-close" onClick={() => setVoiceSettingsOpen(false)} title="Close voice settings" aria-label="Close voice settings">✕</button>
+                        <h4>Voice Settings</h4>
+                        <button className="ara-voice-panel-close" onClick={() => setVoiceSettingsOpen(false)} title="Close voice settings" aria-label="Close voice settings"><X size={16} /></button>
                     </div>
 
                     {/* Provider Status */}
@@ -2596,7 +2599,7 @@ export default function ARAConsole() {
                                 fontSize: 11,
                                 marginBottom: 8,
                             }}>
-                                ⚠ OpenAI voices need a key. Open Settings → API Keys to add one. Browser voices below work without a key.
+                                OpenAI voices need a key. Open Settings → API Keys to add one. Browser voices below work without a key.
                             </div>
                         )}
                         <div className="ara-voice-list">
@@ -2616,8 +2619,8 @@ export default function ARAConsole() {
                                         >
                                             <span className="ara-voice-item-radio">{isActive ? '◉' : '○'}</span>
                                             <span style={{ flex: 1, display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
-                                                <span className="ara-voice-item-name">
-                                                    {v.provider === 'openai' ? '🌐' : '💻'} {v.label}
+                                                <span className="ara-voice-item-name" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                                    {v.provider === 'openai' ? <Globe size={12} aria-hidden="true" /> : <Laptop size={12} aria-hidden="true" />} {v.label}
                                                 </span>
                                                 <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{v.description}</span>
                                             </span>
@@ -2640,7 +2643,7 @@ export default function ARAConsole() {
                                             onClick={() => selectVoice(v.id)}
                                         >
                                             <span className="ara-voice-item-radio">{v.id === activeVoice ? '◉' : '○'}</span>
-                                            <span className="ara-voice-item-name">{v.id === 'default' ? '🎭 Default (Chatterbox)' : `🎤 ${v.id}`}</span>
+                                            <span className="ara-voice-item-name">{v.id === 'default' ? 'Default (Chatterbox)' : `${v.id}`}</span>
                                         </button>
                                         {v.id !== 'default' && (
                                             <button
@@ -2649,7 +2652,7 @@ export default function ARAConsole() {
                                                 title={`Delete ${v.id}`}
                                                 aria-label={`Delete cloned voice ${v.id}`}
                                             >
-                                                🗑️
+                                                <Trash2 size={14} />
                                             </button>
                                         )}
                                     </div>
@@ -2699,7 +2702,7 @@ export default function ARAConsole() {
                                     </div>
                                 ) : (
                                     <>
-                                        <span className="ara-voice-drop-icon">📎</span>
+                                        <span className="ara-voice-drop-icon"><Paperclip size={18} aria-hidden="true" /></span>
                                         <span className="ara-voice-drop-text">Drop WAV file or click to browse</span>
                                         <span className="ara-voice-drop-sub">10 seconds recommended</span>
                                     </>
@@ -2714,22 +2717,22 @@ export default function ARAConsole() {
             {avatarEnabled && (
                 <div className="ara-avatar-panel">
                     <div className="ara-avatar-panel-header">
-                        <h4>🧑‍💻 AI Avatar</h4>
+                        <h4>AI Avatar</h4>
                         <span className="ara-avatar-badge">CARA II</span>
                         <span className={`ara-avatar-status ara-avatar-status--${avatarStatus}`}>
                             {avatarStatus === 'connecting' && '⟳ Connecting…'}
                             {avatarStatus === 'reconnecting' && `⟳ Reconnecting (${avatarRetryCount}/3)…`}
                             {avatarStatus === 'connected' && '● Live'}
                             {avatarStatus === 'disconnected' && '○ Disconnected'}
-                            {avatarStatus === 'error' && '⚠ Error'}
+                            {avatarStatus === 'error' && 'Error'}
                             {avatarStatus === 'idle' && '○ Idle'}
                         </span>
-                        <button className="ara-avatar-panel-close" onClick={handleAvatarToggle} title="Close avatar panel" aria-label="Close avatar panel">✕</button>
+                        <button className="ara-avatar-panel-close" onClick={handleAvatarToggle} title="Close avatar panel" aria-label="Close avatar panel"><X size={16} /></button>
                     </div>
                     <div className="ara-avatar-video-wrap">
                         {(avatarStatus === 'error' || avatarStatus === 'disconnected') && avatarError ? (
                             <div className="ara-avatar-error">
-                                <span className="ara-avatar-error-icon">⚠️</span>
+                                <span className="ara-avatar-error-icon"><AlertTriangle size={18} aria-hidden="true" /></span>
                                 <p>{avatarError}</p>
                                 {(avatarError.includes('ANAM_API_KEY') || avatarError.includes('not installed') || avatarError.includes('session token')) && (
                                     <p className="ara-avatar-error-hint">
@@ -2765,7 +2768,7 @@ export default function ARAConsole() {
                 <div className="ara-avatar-modal-overlay" onClick={() => setAvatarPasswordModal(false)}>
                     <div className="ara-avatar-modal" onClick={e => e.stopPropagation()}>
                         <div className="ara-avatar-modal-header">
-                            <span className="ara-avatar-modal-icon">🔐</span>
+                            <span className="ara-avatar-modal-icon"><Lock size={18} aria-hidden="true" /></span>
                             <h4>Enable AI Avatar</h4>
                         </div>
                         <p className="ara-avatar-modal-desc">

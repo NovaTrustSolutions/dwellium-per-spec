@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useContext, useSyncExternalStore, ChangeEvent } from 'react';
+import { Check, X } from 'lucide-react';
 import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
 import { UserContext } from '../../context/UserContext';
 import { embedAudio, audioBufferToMono16k, trimSilence, shouldEmbed } from './speakerEmbedder';
 import { identifyWithConfidence, type EnrolledSpeaker } from './speakerLibrary';
-import { speakerLibraryStore, speakerLibraryUserIdHolder, addSpeakerSample, autoEnrollUnknown, renameSpeaker, SPEAKER_RENAMED_EVENT } from './speakerLibraryStore';
+import { speakerLibraryStore, speakerLibraryUserIdHolder, addSpeakerSample, autoEnrollUnknown, renameSpeaker, migrateAnonLibraryToUser, speakerLibraryResolvedKey, SPEAKER_RENAMED_EVENT } from './speakerLibraryStore';
 import { createSpeakerSmoother } from './speakerDiarization';
 import { getSpeakerSettings } from './speakerSettings';
 import { LocalVoiceLibrary } from './LocalVoiceLibrary';
@@ -105,9 +106,9 @@ interface ContradictionSegmentAlert {
 }
 
 const LEGAL_ALERT_CONFIG: Record<string, { icon: string; label: string; color: string; bg: string; border: string }> = {
-    violation: { icon: '⚖️', label: 'VIOLATION', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.5)' },
-    legal_risk: { icon: '🛑', label: 'DO NOT ANSWER', color: '#f97316', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.5)' },
-    caution: { icon: '⚠️', label: 'Caution', color: '#eab308', bg: 'rgba(234, 179, 8, 0.10)', border: 'rgba(234, 179, 8, 0.35)' },
+    violation: { icon: '', label: 'VIOLATION', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.5)' },
+    legal_risk: { icon: '', label: 'DO NOT ANSWER', color: '#f97316', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.5)' },
+    caution: { icon: '', label: 'Caution', color: '#eab308', bg: 'rgba(234, 179, 8, 0.10)', border: 'rgba(234, 179, 8, 0.35)' },
 };
 
 interface SavedTranscription {
@@ -144,10 +145,10 @@ function getSpeakerColor(speaker: string) {
 }
 
 const VERDICT_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
-    verified: { icon: '✅', label: 'Verified', color: '#34d399' },
-    disputed: { icon: '❌', label: 'Disputed', color: '#ef4444' },
-    unverifiable: { icon: '⚠️', label: 'Unverifiable', color: '#fbbf24' },
-    partially_true: { icon: '🔶', label: 'Partially True', color: '#fb923c' },
+    verified: { icon: '', label: 'Verified', color: '#34d399' },
+    disputed: { icon: '', label: 'Disputed', color: '#ef4444' },
+    unverifiable: { icon: '', label: 'Unverifiable', color: '#fbbf24' },
+    partially_true: { icon: '', label: 'Partially True', color: '#fb923c' },
 };
 
 const SUMMARY_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -254,7 +255,7 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
     return (
         <div className="th-speaker-library">
             <button className="th-speaker-library__header" onClick={() => setExpanded(p => !p)}>
-                <span className="th-speaker-library__icon">🎙️</span>
+                <span className="th-speaker-library__icon"></span>
                 <span className="th-speaker-library__title">Speaker Library</span>
                 <span className="th-speaker-library__count">{speakers.length}</span>
                 <span className="th-speaker-library__chevron">{expanded ? '▾' : '▸'}</span>
@@ -271,7 +272,7 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
                             {speakers.map(sp => (
                                 <div key={sp.id} className={`th-speaker-card ${sp.metadata?.role === 'primary_user' ? 'th-speaker-card--primary' : ''}`}>
                                     <div className="th-speaker-card__avatar">
-                                        {sp.metadata?.role === 'primary_user' ? '👤' : '🎤'}
+                                        {sp.metadata?.role === 'primary_user' ? '' : ''}
                                     </div>
                                     <div className="th-speaker-card__info">
                                         {editingId === sp.id ? (
@@ -283,8 +284,8 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
                                                     onKeyDown={e => { if (e.key === 'Enter') renameSpeaker(sp.id); if (e.key === 'Escape') setEditingId(null); }}
                                                     autoFocus
                                                 />
-                                                <button className="th-speaker-card__save-name" onClick={() => renameSpeaker(sp.id)}>✓</button>
-                                                <button className="th-speaker-card__cancel-name" onClick={() => setEditingId(null)}>✕</button>
+                                                <button className="th-speaker-card__save-name" onClick={() => renameSpeaker(sp.id)}><Check size={14} /></button>
+                                                <button className="th-speaker-card__cancel-name" onClick={() => setEditingId(null)}><X size={14} /></button>
                                             </div>
                                         ) : (
                                             <span
@@ -304,7 +305,7 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
                                         className="th-speaker-card__delete"
                                         onClick={() => removeSpeaker(sp.id)}
                                         title="Remove speaker"
-                                    >🗑️</button>
+                                    ></button>
                                 </div>
                             ))}
                         </div>
@@ -519,6 +520,18 @@ export default function TranscriptionHub() {
     const seenClaimsRef = useRef<Set<string>>(new Set());
     /** Peak RMS within the current chunk window (silence gate). */
     const chunkPeakRmsRef = useRef(0);
+    /**
+     * Bug-fix 2026-06-15: the silence gate's peak (chunkPeakRmsRef) used to be
+     * updated ONLY inside drawWaveform's requestAnimationFrame loop. Browsers
+     * THROTTLE/PAUSE rAF when the tab is unfocused or the canvas isn't visible,
+     * so after the first ~6s chunk the peak stopped rising → every later chunk
+     * read as silence → got dropped (symptom: "only the first sentence is
+     * picked up"). This setInterval sampler measures level INDEPENDENTLY of the
+     * canvas/visibility (setInterval keeps firing in background tabs, unlike
+     * rAF), so the gate stays accurate regardless of focus.
+     */
+    const chunkLevelSamplerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const chunkLevelBufRef = useRef<Uint8Array | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
@@ -722,7 +735,7 @@ export default function TranscriptionHub() {
                     if (res.ok) {
                         const json = await res.json() as any;
                         if (json.data?.hasContradictions && json.data.alerts?.length > 0) {
-                            console.log(`[SpeakerLib] ⚠️ ${json.data.alerts.length} contradiction(s) for "${item.text.slice(0, 40)}..."`);
+                            console.log(`[SpeakerLib] ${json.data.alerts.length} contradiction(s) for "${item.text.slice(0, 40)}..."`);
                             setContradictionAlerts(prev => {
                                 const next = new Map(prev);
                                 next.set(item.text, json.data.alerts as DiscrepancyAlert[]);
@@ -905,6 +918,42 @@ export default function TranscriptionHub() {
         };
 
         draw();
+    }, []);
+
+    // ---- SILENCE-GATE LEVEL SAMPLER (visibility-independent) ----
+    // Bug-fix 2026-06-15: drive chunkPeakRmsRef from a setInterval timer instead
+    // of relying on the rAF draw loop, which browsers pause when the tab is
+    // backgrounded or the canvas is offscreen. setInterval continues to fire in
+    // background tabs (throttled to >=1s, but our 100ms request still lands
+    // often enough to capture the chunk's loudest moment within each 6s
+    // window), so chunks recorded while the user is on another tab no longer
+    // read as false-silence and get dropped.
+    const startLevelSampler = useCallback(() => {
+        if (chunkLevelSamplerRef.current) return; // already running
+        chunkLevelSamplerRef.current = setInterval(() => {
+            const analyser = analyserRef.current;
+            if (!analyser) return;
+            const bufferLength = analyser.frequencyBinCount;
+            if (!chunkLevelBufRef.current || chunkLevelBufRef.current.length !== bufferLength) {
+                chunkLevelBufRef.current = new Uint8Array(bufferLength);
+            }
+            const data = chunkLevelBufRef.current;
+            analyser.getByteTimeDomainData(data);
+            let sumSquares = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                const v = (data[i] - 128) / 128;
+                sumSquares += v * v;
+            }
+            const rms = Math.sqrt(sumSquares / bufferLength);
+            if (rms > chunkPeakRmsRef.current) chunkPeakRmsRef.current = rms;
+        }, 100);
+    }, []);
+
+    const stopLevelSampler = useCallback(() => {
+        if (chunkLevelSamplerRef.current) {
+            clearInterval(chunkLevelSamplerRef.current);
+            chunkLevelSamplerRef.current = null;
+        }
     }, []);
 
     // ---- API CALLS ----
@@ -1170,6 +1219,19 @@ export default function TranscriptionHub() {
         const detail = embedding
             ? identifyWithConfidence(embedding, enrolledRef.current, { threshold: settings.threshold, margin: settings.margin })
             : null;
+        // Bug-fix 2026-06-15 diagnostic: make speaker matching observable so a
+        // single Mac run distinguishes "library empty (per-user key mismatch)"
+        // from "voice present but scored below threshold". Remove once tuned.
+        if (embedding) {
+            console.info('[SpeakerID]', {
+                key: speakerLibraryResolvedKey(),
+                enrolled: enrolledRef.current.length,
+                best: detail?.best ? { label: detail.best.label, score: Number(detail.best.score.toFixed(3)) } : null,
+                threshold: settings.threshold,
+                margin: settings.margin,
+                decision: detail?.match ? `match:${detail.match.label}` : 'no-match',
+            });
+        }
         // Speaker-Library 2026-06-12 (Ilya): cross-session matching without
         // manual enrollment —
         //  (a) CONFIDENT MATCH → fold this sample into the voiceprint (the
@@ -1206,6 +1268,19 @@ export default function TranscriptionHub() {
         window.addEventListener(SPEAKER_RENAMED_EVENT, handler);
         return () => window.removeEventListener(SPEAKER_RENAMED_EVENT, handler);
     }, []);
+
+    // Bug-fix 2026-06-15 (Ilya): once a user is logged in, adopt any voice
+    // enrollments made BEFORE local multi-user login existed (orphaned under
+    // the pre-login `_anonymous` key) into this user's library — otherwise a
+    // previously-labeled voice is re-detected as "Unknown Speaker N".
+    useEffect(() => {
+        const uid = userCtx?.user?.id;
+        if (!uid) return;
+        const adopted = migrateAnonLibraryToUser(uid);
+        if (adopted > 0) {
+            console.info(`[SpeakerID] adopted ${adopted} pre-login enrollment(s) into ${speakerLibraryResolvedKey()}`);
+        }
+    }, [userCtx?.user?.id]);
 
     // Speaker-Library 2026-06-12: ⌘K deep-link — open a saved transcription
     // by id (the palette's transcript search results land here).
@@ -1365,6 +1440,11 @@ export default function TranscriptionHub() {
                 canvasRef.current.height = canvasRef.current.offsetHeight * 2;
             }
             drawWaveform();
+            // Bug-fix 2026-06-15: start the visibility-independent level sampler
+            // so the silence gate keeps working when the tab is backgrounded
+            // (rAF — and thus the old peak source — pauses; setInterval does
+            // not). Without this, only the first chunk passed the gate.
+            startLevelSampler();
 
             let mimeType = '';
             if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -1437,12 +1517,14 @@ export default function TranscriptionHub() {
         // Pause live transcription
         stopLiveRecognition();
         stopMoonshine();
+        stopLevelSampler(); // pause the silence-gate sampler too
     };
 
     const resumeRecording = () => {
         if (state !== 'paused') return;
         chunkLoopActiveRef.current = true;
         chunkStarterRef.current?.();
+        startLevelSampler(); // resume the silence-gate sampler
         setState('recording');
         // Resume live transcription
         if (moonshineEnabled) {
@@ -1466,6 +1548,7 @@ export default function TranscriptionHub() {
             audioCtxRef.current = null;
         }
         cancelAnimationFrame(animFrameRef.current);
+        stopLevelSampler(); // tear down the silence-gate sampler
         analyserRef.current = null;
         setAudioLevel(0);
         setState('idle');
@@ -1574,9 +1657,9 @@ export default function TranscriptionHub() {
             if (!res.ok || !json?.success) {
                 throw new Error(json?.error || `Note export failed (${res.status})`);
             }
-            showToastMessage('📝 Transcript saved as note');
+            showToastMessage('Transcript saved as note');
         } catch (err) {
-            showToastMessage(`❌ ${err instanceof Error ? err.message : 'Failed to save transcript as note'}`);
+            showToastMessage(`${err instanceof Error ? err.message : 'Failed to save transcript as note'}`);
         }
     }, [savedTranscriptions, showToastMessage]);
 
@@ -1598,9 +1681,9 @@ export default function TranscriptionHub() {
             if (!res.ok || !json?.success) {
                 throw new Error(json?.error || `Workitem export failed (${res.status})`);
             }
-            showToastMessage('✅ Transcript exported to workitem');
+            showToastMessage('Transcript exported to workitem');
         } catch (err) {
-            showToastMessage(`❌ ${err instanceof Error ? err.message : 'Failed to export transcript to workitem'}`);
+            showToastMessage(`${err instanceof Error ? err.message : 'Failed to export transcript to workitem'}`);
         }
     }, [savedTranscriptions, showToastMessage]);
 
@@ -1623,9 +1706,9 @@ export default function TranscriptionHub() {
                 approvedBy: json.data?.approvedBy,
             });
             const label = status === 'pending_review' ? 'marked pending review' : `marked ${status}`;
-            showToastMessage(`📋 Transcript ${label}`);
+            showToastMessage(`Transcript ${label}`);
         } catch (err) {
-            showToastMessage(`❌ ${err instanceof Error ? err.message : 'Failed to update transcript review state'}`);
+            showToastMessage(`${err instanceof Error ? err.message : 'Failed to update transcript review state'}`);
         }
     }, [showToastMessage, updateSavedLog]);
 
@@ -1801,10 +1884,10 @@ export default function TranscriptionHub() {
                     });
                 } else {
                     const parts = [
-                        verdicts.verified && `✅ ${verdicts.verified} verified`,
-                        verdicts.disputed && `❌ ${verdicts.disputed} disputed`,
-                        verdicts.partially_true && `⚠️ ${verdicts.partially_true} partial`,
-                        verdicts.unverifiable && `❓ ${verdicts.unverifiable} unverifiable`,
+                        verdicts.verified && `${verdicts.verified} verified`,
+                        verdicts.disputed && `${verdicts.disputed} disputed`,
+                        verdicts.partially_true && `${verdicts.partially_true} partial`,
+                        verdicts.unverifiable && `${verdicts.unverifiable} unverifiable`,
                     ].filter(Boolean);
                     setActionStatus({ type: 'success', message: `Fact check complete — ${parts.join(', ')}` });
                 }
@@ -1939,12 +2022,12 @@ export default function TranscriptionHub() {
             const resp = await fetch(`${API_BASE}/api/files/upload`, { method: 'POST', body: formData });
             const data = await resp.json();
             if (data.success) {
-                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `📁 Transcript saved to File Manager` }));
+                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Transcript saved to File Manager` }));
             } else {
-                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `❌ Save failed: ${data.error}` }));
+                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Save failed: ${data.error}` }));
             }
         } catch (err) {
-            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `❌ Upload error` }));
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Upload error` }));
         }
     };
 
@@ -1968,7 +2051,7 @@ export default function TranscriptionHub() {
                 throw new Error(data?.error || `Upload failed (${resp.status})`);
             }
             setActionStatus({ type: 'success', message: 'Transcript saved into Files' });
-            showToastMessage('📁 Upload transcript saved to Files');
+            showToastMessage('Upload transcript saved to Files');
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to save upload document';
             setActionStatus({ type: 'error', message: 'Save failed', detail: message });
@@ -2173,7 +2256,7 @@ export default function TranscriptionHub() {
         <div className="transcription-hub">
             {backendOffline && (
                 <div role="status" style={{ padding: '8px 14px', background: 'rgba(251,191,36,0.12)', borderBottom: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24', fontSize: 12.5 }}>
-                    ⚠ Backend transcription is offline — live/local capture still works, but upload &amp; saved logs need the backend running. Check <strong>System Health</strong> to reconnect.
+                    Backend transcription is offline — live/local capture still works, but upload &amp; saved logs need the backend running. Check <strong>System Health</strong> to reconnect.
                 </div>
             )}
             {/* ========== TAB BAR ========== */}
@@ -2182,25 +2265,25 @@ export default function TranscriptionHub() {
                     className={`th-tabs__btn ${activeTab === 'recorder' ? 'th-tabs__btn--active' : ''}`}
                     onClick={() => setActiveTab('recorder')}
                 >
-                    🎙️ Recorder
+                    Recorder
                 </button>
                 <button
                     className={`th-tabs__btn ${activeTab === 'log' ? 'th-tabs__btn--active' : ''}`}
                     onClick={() => setActiveTab('log')}
                 >
-                    📋 Log {savedTranscriptions.length > 0 && <span className="th-tabs__badge">{savedTranscriptions.length}</span>}
+                    Log {savedTranscriptions.length > 0 && <span className="th-tabs__badge">{savedTranscriptions.length}</span>}
                 </button>
                 <button
                     className={`th-tabs__btn ${activeTab === 'upload' ? 'th-tabs__btn--active' : ''}`}
                     onClick={() => setActiveTab('upload')}
                 >
-                    📤 Upload
+                    Upload
                 </button>
                 <button
                     className={`th-tabs__btn ${activeTab === 'meeting_manager' ? 'th-tabs__btn--active' : ''}`}
                     onClick={() => setActiveTab('meeting_manager')}
                 >
-                    🎯 Live Coaching
+                    Live Coaching
                     {coachingStatus === 'danger' && <span className="th-tabs__badge th-tabs__badge--danger">!</span>}
                     {coachingStatus === 'needs_pivot' && <span className="th-tabs__badge th-tabs__badge--warning">!</span>}
                 </button>
@@ -2221,7 +2304,7 @@ export default function TranscriptionHub() {
                                     <button className={`th-controls__btn th-controls__btn--record ${state === 'recording' ? 'active' : ''}`}
                                         onClick={state === 'recording' ? pauseRecording : resumeRecording}
                                         title={state === 'recording' ? 'Pause' : 'Resume'}>
-                                        <span className="th-controls__btn-icon">{state === 'recording' ? '⏸' : '▶'}</span>
+                                        <span className="th-controls__btn-icon">{state === 'recording' ? '' : '▶'}</span>
                                     </button>
                                     <button className="th-controls__btn th-controls__btn--stop" onClick={stopRecording} title="Stop">
                                         <span className="th-controls__btn-icon">■</span>
@@ -2255,7 +2338,7 @@ export default function TranscriptionHub() {
                                     }}
                                     title={isLiveEnabled ? 'Disable live captions' : 'Enable live captions'}
                                 >
-                                    💬 {isLiveEnabled ? 'Live ON' : 'Live OFF'}
+                                    {isLiveEnabled ? 'Live ON' : 'Live OFF'}
                                 </button>
                             )}
                             <button
@@ -2263,19 +2346,19 @@ export default function TranscriptionHub() {
                                 onClick={() => setFactCheckEnabled(prev => !prev)}
                                 title={factCheckEnabled ? 'Disable live fact-check' : 'Enable live fact-check'}
                             >
-                                🔍 {factCheckEnabled ? 'Fact Check ON' : 'Fact Check OFF'}
+                                {factCheckEnabled ? 'Fact Check ON' : 'Fact Check OFF'}
                             </button>
                             <button
                                 className={`th-legal-toggle ${legalShieldEnabled ? 'th-legal-toggle--on' : ''}`}
                                 onClick={() => setLegalShieldEnabled(prev => !prev)}
                                 title={legalShieldEnabled ? 'Disable Legal Shield (Georgia Law)' : 'Enable Legal Shield (Georgia Law)'}
                             >
-                                ⚖️ {legalShieldEnabled ? 'Legal Shield ON' : 'Legal Shield OFF'}
+                                {legalShieldEnabled ? 'Legal Shield ON' : 'Legal Shield OFF'}
                                 {legalScanRunning && <span className="th-legal-spinner">⟳</span>}
                             </button>
                             {legalShieldEnabled && !hasActiveLlm(integrations.llm) && (
                                 <span className="th-legal-hint" role="status">
-                                    ⚖️ Add an LLM key in Settings → API Keys to enable statute matching.
+                                    Add an LLM key in Settings → API Keys to enable statute matching.
                                 </span>
                             )}
                             <button
@@ -2290,14 +2373,14 @@ export default function TranscriptionHub() {
                                     ? `Open ${googleEmail}'s NotebookLM with this transcript queued (copied to clipboard)`
                                     : 'Open NotebookLM (configure Google Calendar email in Settings to auto-route to your account)'}
                             >
-                                📚 Consult NotebookLM
+                                Consult NotebookLM
                             </button>
                             <button
                                 className={`th-live-toggle ${cloudSTTEnabled ? 'th-live-toggle--on' : ''}`}
                                 onClick={() => setCloudSTTEnabled(prev => !prev)}
                                 title={cloudSTTEnabled ? 'Using Cloud STT (Leon)' : 'Using Browser STT'}
                             >
-                                ☁️ {cloudSTTEnabled ? 'Cloud STT' : 'Browser STT'}
+                                {cloudSTTEnabled ? 'Cloud STT' : 'Browser STT'}
                             </button>
                             <button
                                 className={`th-live-toggle th-moonshine-toggle ${moonshineEnabled ? 'th-live-toggle--on' : ''}`}
@@ -2311,7 +2394,7 @@ export default function TranscriptionHub() {
                                 }}
                                 title={moonshineEnabled ? 'Moonshine AI active (local STT + speaker ID)' : 'Enable Moonshine AI'}
                             >
-                                {moonshineLoading ? '⏳' : '🌙'} {moonshineEnabled ? (moonshineLoading ? 'Loading…' : 'Moonshine') : 'Moonshine'}
+                                {moonshineLoading ? '' : ''} {moonshineEnabled ? (moonshineLoading ? 'Loading…' : 'Moonshine') : 'Moonshine'}
                             </button>
                         </div>
 
@@ -2336,9 +2419,9 @@ export default function TranscriptionHub() {
                     {/* Error Banner */}
                     {error && (
                         <div className="th-error-banner">
-                            <span className="th-error-banner__icon">⚠️</span>
+                            <span className="th-error-banner__icon"></span>
                             <span>{error}</span>
-                            <button className="th-error-banner__dismiss" onClick={() => setError(null)}>✕</button>
+                            <button className="th-error-banner__dismiss" onClick={() => setError(null)}><X size={14} /></button>
                         </div>
                     )}
 
@@ -2348,7 +2431,7 @@ export default function TranscriptionHub() {
                             <canvas ref={canvasRef} />
                         ) : (
                             <div className="th-waveform__idle">
-                                <span className="th-waveform__idle-icon">🎙️</span>
+                                <span className="th-waveform__idle-icon"></span>
                                 <span>Click record to start capturing audio</span>
                             </div>
                         )}
@@ -2409,7 +2492,7 @@ export default function TranscriptionHub() {
                         <div className="th-transcript">
                             {segments.length === 0 ? (
                                 <div className="th-transcript__empty">
-                                    <div className="th-transcript__empty-icon">📝</div>
+                                    <div className="th-transcript__empty-icon"></div>
                                     <div className="th-transcript__empty-title">Transcript</div>
                                     <div className="th-transcript__empty-sub">
                                         Segments will appear here as you speak…
@@ -2464,7 +2547,7 @@ export default function TranscriptionHub() {
                                                 {fc && (
                                                     <span className={`th-segment__fact-badge th-segment__fact-badge--${fc.verdict}`}
                                                         title={fc.explanation || `Confidence: ${(fc.confidence * 100).toFixed(0)}%`}>
-                                                        {VERDICT_CONFIG[fc.verdict]?.icon || '⚠️'}
+                                                        {VERDICT_CONFIG[fc.verdict]?.icon || ''}
                                                         {fc.verdict}
                                                     </span>
                                                 )}
@@ -2504,7 +2587,7 @@ export default function TranscriptionHub() {
                                                         className={`th-segment__contradiction-badge th-segment__contradiction-badge--${ca.severity}`}
                                                         title={`${ca.discrepancy}\n\nOriginal: "${ca.originalStatement}" (${new Date(ca.originalTimestamp).toLocaleDateString()})`}
                                                     >
-                                                        ⚠️ CONTRADICTION: {ca.discrepancy}
+                                                        CONTRADICTION: {ca.discrepancy}
                                                     </span>
                                                 ))}
 
@@ -2532,7 +2615,7 @@ export default function TranscriptionHub() {
                                     <button className="th-factpanel__toggle" onClick={() => setFactCheckPanelOpen(prev => !prev)}>
                                         {factCheckPanelOpen ? '▶' : '◀'}
                                     </button>
-                                    <span className="th-factpanel__title">🔍 Fact Check Agent</span>
+                                    <span className="th-factpanel__title">Fact Check Agent</span>
                                     {factCheckRunning && <span className="th-factpanel__spinner">⟳</span>}
                                 </div>
 
@@ -2592,25 +2675,25 @@ export default function TranscriptionHub() {
                         <div className="th-export">
                             <div className="th-export__group">
                                 <button className="th-export__btn" onClick={() => exportTranscript('text')}>
-                                    📋 Copy
+                                    Copy
                                 </button>
                                 <button className="th-export__btn" onClick={saveAsNote}>
-                                    📝 Save Note
+                                    Save Note
                                 </button>
                                 <button className="th-export__btn" onClick={() => saveTranscription()}>
-                                    💾 Save to Log
+                                    Save to Log
                                 </button>
                                 {audioChunksRef.current.length > 0 && (
                                     <button className="th-export__btn" onClick={downloadRecording}>
-                                        💾 Save Audio
+                                        Save Audio
                                     </button>
                                 )}
                                 <button className="th-export__btn" onClick={saveToFileManager}>
-                                    📁 Save to Files
+                                    Save to Files
                                 </button>
                                 <div className="th-export__dropdown-wrap">
                                     <button className="th-export__btn th-export__btn--dropdown" onClick={() => setExportMenuOpen(!exportMenuOpen)}>
-                                        📤 Export ▾
+                                        Export ▾
                                     </button>
                                     {exportMenuOpen && (
                                         <div className="th-export__dropdown">
@@ -2635,13 +2718,13 @@ export default function TranscriptionHub() {
             {activeTab === 'log' && (
                 <div className="th-log-tab">
                     <div className="th-log__header">
-                        <h3 className="th-log__title">📋 Transcription History</h3>
+                        <h3 className="th-log__title">Transcription History</h3>
                         <span className="th-log__count">{savedTranscriptions.length} saved</span>
                     </div>
 
                     {savedTranscriptions.length === 0 ? (
                         <div className="th-log__empty">
-                            <div className="th-log__empty-icon">📂</div>
+                            <div className="th-log__empty-icon"></div>
                             <p>No saved transcriptions yet</p>
                             <p className="th-log__empty-sub">Recordings are auto-saved when you stop them</p>
                         </div>
@@ -2663,7 +2746,7 @@ export default function TranscriptionHub() {
                                             </span>
                                         </div>
                                         <div className="th-log__entry-meta">
-                                            <span>⏱ {formatTime(entry.duration)}</span>
+                                            <span>{formatTime(entry.duration)}</span>
                                             <span>•</span>
                                             <span>{entry.wordCount} words</span>
                                             <span>•</span>
@@ -2671,7 +2754,7 @@ export default function TranscriptionHub() {
                                             {entry.factChecks.length > 0 && (
                                                 <>
                                                     <span>•</span>
-                                                    <span>🔍 {entry.factChecks.length} checks</span>
+                                                    <span>{entry.factChecks.length} checks</span>
                                                 </>
                                             )}
                                         </div>
@@ -2698,35 +2781,35 @@ export default function TranscriptionHub() {
                                             onClick={() => void exportLogToNote(entry.id)}
                                             title="Save transcript as a note"
                                         >
-                                            📝 Note
+                                            Note
                                         </button>
                                         <button
                                             className="th-log__action-btn"
                                             onClick={() => void exportLogToWorkitem(entry.id)}
                                             title="Create a workitem from this transcript"
                                         >
-                                            ✅ Workitem
+                                            Workitem
                                         </button>
                                         <button
                                             className="th-log__action-btn"
                                             onClick={() => void setTranscriptReviewStatus(entry.id, 'approved')}
                                             title="Approve transcript summary"
                                         >
-                                            ✔ Approve
+                                            Approve
                                         </button>
                                         <button
                                             className="th-log__action-btn th-log__action-btn--ai"
                                             onClick={() => openPostMeetingPanel(entry.id)}
                                             title="AI Post-Meeting Actions"
                                         >
-                                            🧠 AI Actions
+                                            AI Actions
                                         </button>
                                         <button
                                             className="th-log__action-btn th-log__action-btn--delete"
                                             onClick={() => deleteTranscription(entry.id)}
                                             title="Delete"
                                         >
-                                            🗑️
+                                           
                                         </button>
                                     </div>
                                 </div>
@@ -2738,43 +2821,43 @@ export default function TranscriptionHub() {
                     {postMeetingLogId && (
                         <div className="th-post-meeting">
                             <div className="th-post-meeting__header">
-                                <h3>🧠 AI Post-Meeting Actions</h3>
+                                <h3>AI Post-Meeting Actions</h3>
                                 <span className="th-post-meeting__subtitle">
                                     {savedTranscriptions.find(t => t.id === postMeetingLogId)?.title || 'Selected Log'}
                                 </span>
-                                <button className="th-post-meeting__close" onClick={() => setPostMeetingLogId(null)}>✕</button>
+                                <button className="th-post-meeting__close" onClick={() => setPostMeetingLogId(null)}><X size={16} /></button>
                             </div>
 
                             <div className="th-post-meeting__actions">
                                 <button className="th-pm-btn" onClick={() => fetchAiSummary(postMeetingLogId)} disabled={aiSummaryLoading}>
-                                    {aiSummaryLoading ? '⏳' : '📝'} Summary
+                                    {aiSummaryLoading ? '' : ''} Summary
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiActionItems(postMeetingLogId)} disabled={aiActionItemsLoading}>
-                                    {aiActionItemsLoading ? '⏳' : '✅'} Action Items
+                                    {aiActionItemsLoading ? '' : ''} Action Items
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiDecisions(postMeetingLogId)} disabled={aiDecisionsLoading}>
-                                    {aiDecisionsLoading ? '⏳' : '⚖️'} Decisions
+                                    {aiDecisionsLoading ? '' : ''} Decisions
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiRecapEmail(postMeetingLogId)} disabled={aiRecapEmailLoading}>
-                                    {aiRecapEmailLoading ? '⏳' : '📧'} Recap Email
+                                    {aiRecapEmailLoading ? '' : ''} Recap Email
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiRewrite(postMeetingLogId, 'executive')} disabled={aiRewriteLoading}>
-                                    {aiRewriteLoading ? '⏳' : '✏️'} Executive Rewrite
+                                    {aiRewriteLoading ? '' : ''} Executive Rewrite
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiDraft(postMeetingLogId, 'memo')} disabled={aiDraftLoading}>
-                                    {aiDraftLoading ? '⏳' : '📄'} Draft Memo
+                                    {aiDraftLoading ? '' : ''} Draft Memo
                                 </button>
                                 <button className="th-pm-btn" onClick={() => void exportLogToNote(postMeetingLogId)}>
-                                    📝 Save Note
+                                    Save Note
                                 </button>
                                 <button className="th-pm-btn" onClick={() => void exportLogToWorkitem(postMeetingLogId)}>
-                                    ✅ Workitem
+                                    Workitem
                                 </button>
                                 <button className="th-pm-btn" onClick={() => void setTranscriptReviewStatus(postMeetingLogId, 'pending_review')}>
-                                    👀 Pending Review
+                                    Pending Review
                                 </button>
                                 <button className="th-pm-btn" onClick={() => void setTranscriptReviewStatus(postMeetingLogId, 'approved')}>
-                                    ✔ Approve
+                                    Approve
                                 </button>
                             </div>
 
@@ -2782,15 +2865,15 @@ export default function TranscriptionHub() {
                             <div className="th-post-meeting__results">
                                 {aiSummary && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">📝 AI Summary</div>
+                                        <div className="th-pm-result__header">AI Summary</div>
                                         <div className="th-pm-result__body th-pm-result__body--pre">{aiSummary}</div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiSummary); }}>📋 Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiSummary); }}>Copy</button>
                                     </div>
                                 )}
 
                                 {aiActionItems.length > 0 && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">✅ Action Items ({aiActionItems.length})</div>
+                                        <div className="th-pm-result__header">Action Items ({aiActionItems.length})</div>
                                         <div className="th-pm-result__body">
                                             {aiActionItems.map((item, i) => (
                                                 <div key={i} className="th-pm-action-item">
@@ -2800,13 +2883,13 @@ export default function TranscriptionHub() {
                                                 </div>
                                             ))}
                                         </div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiActionItems.map(i => `[${i.priority}] ${i.description}${i.assignee ? ` → ${i.assignee}` : ''}`).join('\n')); }}>📋 Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiActionItems.map(i => `[${i.priority}] ${i.description}${i.assignee ? ` → ${i.assignee}` : ''}`).join('\n')); }}>Copy</button>
                                     </div>
                                 )}
 
                                 {aiDecisions.length > 0 && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">⚖️ Decisions ({aiDecisions.length})</div>
+                                        <div className="th-pm-result__header">Decisions ({aiDecisions.length})</div>
                                         <div className="th-pm-result__body">
                                             {aiDecisions.map((d, i) => (
                                                 <div key={i} className="th-pm-decision">
@@ -2816,32 +2899,32 @@ export default function TranscriptionHub() {
                                                 </div>
                                             ))}
                                         </div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDecisions.map(d => `${d.decision}${d.madeBy ? ` (${d.madeBy})` : ''}: ${d.context}`).join('\n')); }}>📋 Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDecisions.map(d => `${d.decision}${d.madeBy ? ` (${d.madeBy})` : ''}: ${d.context}`).join('\n')); }}>Copy</button>
                                     </div>
                                 )}
 
                                 {aiRecapEmail && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">📧 Recap Email</div>
+                                        <div className="th-pm-result__header">Recap Email</div>
                                         <div className="th-pm-result__subheader">Subject: {aiRecapEmail.subject}</div>
                                         <div className="th-pm-result__body th-pm-result__body--pre">{aiRecapEmail.body}</div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(`Subject: ${aiRecapEmail.subject}\n\n${aiRecapEmail.body}`); }}>📋 Copy Email</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(`Subject: ${aiRecapEmail.subject}\n\n${aiRecapEmail.body}`); }}>Copy Email</button>
                                     </div>
                                 )}
 
                                 {aiRewrite && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">✏️ Executive Rewrite</div>
+                                        <div className="th-pm-result__header">Executive Rewrite</div>
                                         <div className="th-pm-result__body th-pm-result__body--pre">{aiRewrite}</div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiRewrite); }}>📋 Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiRewrite); }}>Copy</button>
                                     </div>
                                 )}
 
                                 {aiDraft && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">📄 {aiDraft.title}</div>
+                                        <div className="th-pm-result__header">{aiDraft.title}</div>
                                         <div className="th-pm-result__body th-pm-result__body--pre">{aiDraft.content}</div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDraft.content); }}>📋 Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDraft.content); }}>Copy</button>
                                     </div>
                                 )}
                             </div>
@@ -2878,7 +2961,7 @@ export default function TranscriptionHub() {
                             if (file) processUploadedFile(file);
                         }}
                     >
-                        <div className="th-upload-icon">{uploadDragOver ? '📥' : '📁'}</div>
+                        <div className="th-upload-icon">{uploadDragOver ? '' : ''}</div>
                         <h3>{uploadDragOver ? 'Drop file here' : 'Drag & drop audio file here'}</h3>
                         <p>Supports MP3, WAV, M4A, FLAC, TXT (Max 500MB)</p>
                         <button
@@ -2896,7 +2979,7 @@ export default function TranscriptionHub() {
                         <div className="th-upload-progress-card">
                             <div className="th-upload-progress-header">
                                 <span className="th-upload-progress-filename">
-                                    {uploadStatus === 'uploading' ? '⬆️' : uploadStatus === 'transcribing' ? '🧠' : uploadStatus === 'done' ? '✅' : '❌'}
+                                    {uploadStatus === 'uploading' ? '' : uploadStatus === 'transcribing' ? '' : uploadStatus === 'done' ? '' : ''}
                                     {' '}{uploadFileName}
                                 </span>
                                 <span className="th-upload-progress-size">{formatFileSize(uploadFileSize)}</span>
@@ -2911,10 +2994,10 @@ export default function TranscriptionHub() {
 
                             <div className="th-upload-progress-status">
                                 {uploadStatus === 'uploading' && `Uploading… ${uploadProgress}%`}
-                                {uploadStatus === 'transcribing' && '🧠 Processing with Whisper AI — this may take a moment…'}
-                                {uploadStatus === 'done' && `✅ Transcription complete — ${uploadTranscript.length} segments`}
+                                {uploadStatus === 'transcribing' && 'Processing with Whisper AI — this may take a moment…'}
+                                {uploadStatus === 'done' && `Transcription complete — ${uploadTranscript.length} segments`}
                                 {uploadStatus === 'error' && (
-                                    <span className="th-upload-error-text">❌ {uploadError}</span>
+                                    <span className="th-upload-error-text">{uploadError}</span>
                                 )}
                             </div>
 
@@ -2933,7 +3016,7 @@ export default function TranscriptionHub() {
                     {/* Transcription Results */}
                     {uploadTranscript.length > 0 && (
                         <div className="th-upload-transcript-results">
-                            <h3>📝 Transcription ({uploadTranscript.length} segments)</h3>
+                            <h3>Transcription ({uploadTranscript.length} segments)</h3>
                             <div className="th-upload-transcript-scroll">
                                 {uploadTranscript.map((seg) => {
                                     const sc = getSpeakerColor(seg.speaker);
@@ -2960,7 +3043,7 @@ export default function TranscriptionHub() {
                     {/* ── Paste Text Directly ── */}
                     <div className="th-paste-section">
                         <div className="th-paste-section__header">
-                            <span className="th-paste-section__icon">📋</span>
+                            <span className="th-paste-section__icon"></span>
                             <span className="th-paste-section__title">Paste text directly</span>
                             {uploadText.trim() && (
                                 <span className="th-paste-section__count">
@@ -2983,7 +3066,7 @@ export default function TranscriptionHub() {
                             onClick={runUploadFactCheck}
                             disabled={!uploadText.trim() || uploadChecking}
                         >
-                            {uploadChecking ? '⏳ Checking…' : '🔍 Run Fact Check'}
+                            {uploadChecking ? 'Checking…' : 'Run Fact Check'}
                         </button>
                     </div>
 
@@ -2994,9 +3077,9 @@ export default function TranscriptionHub() {
                                 {actionStatus.type === 'loading' && (
                                     <span className="th-action-status__spinner">⟳</span>
                                 )}
-                                {actionStatus.type === 'success' && <span>✅</span>}
-                                {actionStatus.type === 'error' && <span>❌</span>}
-                                {actionStatus.type === 'info' && <span>💡</span>}
+                                {actionStatus.type === 'success' && <span></span>}
+                                {actionStatus.type === 'error' && <span></span>}
+                                {actionStatus.type === 'info' && <span></span>}
                                 <span className="th-action-status__msg">{actionStatus.message}</span>
                                 {actionStatus.detail && (
                                     <span className="th-action-status__detail">{actionStatus.detail}</span>
@@ -3006,7 +3089,7 @@ export default function TranscriptionHub() {
                                 {actionStatus.type === 'error' && (
                                     <button className="th-action-status__retry" onClick={runUploadFactCheck}>Retry</button>
                                 )}
-                                <button className="th-action-status__dismiss" onClick={() => setActionStatus(null)}>✕</button>
+                                <button className="th-action-status__dismiss" onClick={() => setActionStatus(null)}><X size={14} /></button>
                             </div>
                             {actionStatus.type === 'loading' && (
                                 <div className="th-action-status__progress-bar" />
@@ -3041,7 +3124,7 @@ export default function TranscriptionHub() {
                                 className="th-upload__save-btn"
                                 onClick={() => void saveUploadDocumentToFiles()}
                             >
-                                📁 Save to Files
+                                Save to Files
                             </button>
                         </div>
                     )}
@@ -3061,20 +3144,20 @@ export default function TranscriptionHub() {
             {activeTab === 'meeting_manager' && (
                 <div className="th-meeting-manager">
                     <div className="mm-header">
-                        <h3>🎯 Meeting Intelligence Hub</h3>
+                        <h3>Meeting Intelligence Hub</h3>
                         <div className={`mm-status-badge ${coachingStatus || 'idle'}`}>
-                            {coachingStatus === 'on_track' && '✅ On Track'}
-                            {coachingStatus === 'needs_pivot' && '⚠️ Pivot Needed'}
-                            {coachingStatus === 'danger' && '🚨 Danger Zone'}
-                            {!coachingStatus && state === 'recording' && '⏳ Analyzing...'}
-                            {!coachingStatus && state !== 'recording' && '🎙️ Start Recording to Begin'}
+                            {coachingStatus === 'on_track' && 'On Track'}
+                            {coachingStatus === 'needs_pivot' && 'Pivot Needed'}
+                            {coachingStatus === 'danger' && 'Danger Zone'}
+                            {!coachingStatus && state === 'recording' && 'Analyzing...'}
+                            {!coachingStatus && state !== 'recording' && 'Start Recording to Begin'}
                         </div>
                     </div>
 
                     {/* Dynamic Script Editor */}
                     <div className="mm-script-editor">
                         <div className="mm-script-editor__header">
-                            <h4>📜 Meeting Script / Talking Points</h4>
+                            <h4>Meeting Script / Talking Points</h4>
                             <span className="mm-script-editor__hint">
                                 {meetingScript.trim() ? `${meetingScript.trim().split('\n').length} lines` : 'Paste your script below'}
                             </span>
@@ -3090,16 +3173,16 @@ export default function TranscriptionHub() {
 
                     {/* Live Coaching Panel */}
                     <div className={`mm-coaching-box mm-coaching-box--${coachingStatus || 'idle'}`}>
-                        <h4>🤖 ARA's Live Coaching</h4>
+                        <h4>ARA's Live Coaching</h4>
                         <p className="mm-feedback-text">{coachingFeedback}</p>
                     </div>
 
                     {coachingFlags && coachingFlags.length > 0 && (
                         <div className="mm-flags-box">
-                            <h4>🚩 Flags</h4>
+                            <h4>Flags</h4>
                             <ul>
                                 {coachingFlags.map((flag, idx) => (
-                                    <li key={`flag-${idx}`}>❌ {flag}</li>
+                                    <li key={`flag-${idx}`}>{flag}</li>
                                 ))}
                             </ul>
                         </div>
@@ -3108,20 +3191,20 @@ export default function TranscriptionHub() {
                     {/* Intelligence Action Buttons */}
                     <div className="mm-intel-actions">
                         <button className="mm-intel-btn" onClick={fetchTalkingPoints} disabled={talkingPointsLoading || !meetingScript.trim()}>
-                            {talkingPointsLoading ? '⏳' : '💡'} Suggest Talking Points
+                            {talkingPointsLoading ? '' : ''} Suggest Talking Points
                         </button>
                         <button className="mm-intel-btn" onClick={fetchRebuttals} disabled={rebuttalsLoading || !meetingScript.trim()}>
-                            {rebuttalsLoading ? '⏳' : '⚔️'} Generate Rebuttals
+                            {rebuttalsLoading ? '' : ''} Generate Rebuttals
                         </button>
                         <button className="mm-intel-btn" onClick={fetchOnDemandSummary} disabled={onDemandSummaryLoading || segments.length === 0}>
-                            {onDemandSummaryLoading ? '⏳' : '📊'} Summarize Now
+                            {onDemandSummaryLoading ? '' : ''} Summarize Now
                         </button>
                     </div>
 
                     {/* Talking Points Results */}
                     {talkingPoints.length > 0 && (
                         <div className="mm-intel-result">
-                            <h4>💡 Suggested Talking Points</h4>
+                            <h4>Suggested Talking Points</h4>
                             <div className="mm-intel-result__list">
                                 {talkingPoints.map((tp, i) => (
                                     <div key={i} className={`mm-tp-card mm-tp-card--${tp.priority}`}>
@@ -3137,7 +3220,7 @@ export default function TranscriptionHub() {
                     {/* Rebuttals Results */}
                     {rebuttals.length > 0 && (
                         <div className="mm-intel-result">
-                            <h4>⚔️ Rebuttal Suggestions</h4>
+                            <h4>Rebuttal Suggestions</h4>
                             <div className="mm-intel-result__list">
                                 {rebuttals.map((rb, i) => (
                                     <div key={i} className={`mm-rebuttal-card mm-rebuttal-card--${rb.strength}`}>
@@ -3153,7 +3236,7 @@ export default function TranscriptionHub() {
                     {/* On-Demand Summary */}
                     {onDemandSummary && (
                         <div className="mm-intel-result">
-                            <h4>📊 Live Summary</h4>
+                            <h4>Live Summary</h4>
                             <p className="mm-summary-text">{onDemandSummary.summary}</p>
                             {onDemandSummary.keyPoints.length > 0 && (
                                 <div className="mm-summary-section">
@@ -3163,13 +3246,13 @@ export default function TranscriptionHub() {
                             )}
                             {onDemandSummary.unansweredQuestions.length > 0 && (
                                 <div className="mm-summary-section">
-                                    <strong>❓ Unanswered:</strong>
+                                    <strong>Unanswered:</strong>
                                     <ul>{onDemandSummary.unansweredQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
                                 </div>
                             )}
                             {onDemandSummary.suggestedNextTopics.length > 0 && (
                                 <div className="mm-summary-section">
-                                    <strong>➡️ Discuss Next:</strong>
+                                    <strong>Discuss Next:</strong>
                                     <ul>{onDemandSummary.suggestedNextTopics.map((t, i) => <li key={i}>{t}</li>)}</ul>
                                 </div>
                             )}

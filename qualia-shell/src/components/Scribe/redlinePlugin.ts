@@ -46,13 +46,13 @@ class RedlineWidget extends WidgetType {
         const accept = document.createElement('button');
         accept.className = 'cm-redline-btn cm-redline-accept';
         accept.title = 'Accept replacement';
-        accept.innerHTML = '<span class="cm-redline-glyph">✓</span><span class="cm-redline-label">Accept</span>';
+        accept.innerHTML = '<span class="cm-redline-glyph"></span><span class="cm-redline-label">Accept</span>';
         accept.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); acceptRedline(view, this.redline); };
 
         const reject = document.createElement('button');
         reject.className = 'cm-redline-btn cm-redline-reject';
         reject.title = 'Reject replacement';
-        reject.innerHTML = '<span class="cm-redline-glyph">✗</span><span class="cm-redline-label">Reject</span>';
+        reject.innerHTML = '<span class="cm-redline-glyph"></span><span class="cm-redline-label">Reject</span>';
         reject.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); rejectRedline(this.redline); };
 
         actions.appendChild(accept);

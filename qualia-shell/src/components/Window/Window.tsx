@@ -319,7 +319,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                             };
                             try {
                                 e.dataTransfer.setData('application/x-dwellium-widget', JSON.stringify(payload));
-                                e.dataTransfer.setData('text/plain', `📎 ${state.title}`);
+                                e.dataTransfer.setData('text/plain', `${state.title}`);
                                 e.dataTransfer.effectAllowed = 'copy';
                             } catch { /* sandboxed */ }
                         }}
@@ -337,7 +337,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                 Widget Enhancement Layer (error boundary, escape-to-close,
                 themed scrollbars, focus rings, …). Each improvement is
                 flag-gated by widgetEnhancementsStore → reversible at runtime.
-                🔴 ZERO-DOM CONTRACT: enhancement classes go on
+                ZERO-DOM CONTRACT: enhancement classes go on
                 `.window__content` ITSELF and WidgetShell renders no element —
                 the widget root must remain the direct DOM child of
                 `.window__content` (23 direct-child selectors in global.css +

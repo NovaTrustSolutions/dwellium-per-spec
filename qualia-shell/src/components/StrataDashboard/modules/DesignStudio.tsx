@@ -33,10 +33,10 @@ type Property = PropertySummary;
 type DesignType = 'floor_plan' | 'site_plan' | 'elevation' | 'renovation';
 
 const DESIGN_TYPES: { id: DesignType; label: string; icon: string }[] = [
-    { id: 'floor_plan', label: 'Floor Plan', icon: '🏠' },
-    { id: 'site_plan', label: 'Site Plan', icon: '🗺️' },
-    { id: 'elevation', label: 'Elevation', icon: '🏢' },
-    { id: 'renovation', label: 'Renovation', icon: '🔨' },
+    { id: 'floor_plan', label: 'Floor Plan', icon: '' },
+    { id: 'site_plan', label: 'Site Plan', icon: '' },
+    { id: 'elevation', label: 'Elevation', icon: '' },
+    { id: 'renovation', label: 'Renovation', icon: '' },
 ];
 
 export default function DesignStudio() {

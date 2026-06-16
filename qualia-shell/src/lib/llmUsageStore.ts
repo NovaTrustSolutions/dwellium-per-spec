@@ -90,6 +90,8 @@ function persist(next: UsageLedger): void {
 /* ─── Pricing (rough $/MTok, 2026 ballpark; local/custom free) ─── */
 
 const PRICES: Array<{ match: RegExp; inPerM: number; outPerM: number }> = [
+    { match: /dall-e-3/i, inPerM: 40, outPerM: 0 },
+    { match: /image-generation/i, inPerM: 30, outPerM: 0 },
     { match: /opus/i, inPerM: 15, outPerM: 75 },
     { match: /sonnet/i, inPerM: 3, outPerM: 15 },
     { match: /haiku/i, inPerM: 0.8, outPerM: 4 },

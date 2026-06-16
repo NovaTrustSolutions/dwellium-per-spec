@@ -7,6 +7,7 @@
  * callLlm directly instead of ChatPane dispatch. Electron IPC removed.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { MessageSquare } from 'lucide-react';
 import { EditorView } from '@codemirror/view';
 import { useScribeStore, type DocComment, type Redline } from './scribeStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -183,7 +184,7 @@ export function CommentEditor({ getView }: Props) {
             onMouseDown={(e) => e.stopPropagation()}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <span>💬</span>
+                <span><MessageSquare size={14} /></span>
                 <span style={{ color: '#808080', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     {comment.status === 'resolved' ? 'Resolved' : 'Comment'}
                 </span>
@@ -233,7 +234,7 @@ export function CommentEditor({ getView }: Props) {
                         <span style={{ flex: 1 }} />
                         {comment.status === 'open' && comment.body && (
                             <Btn
-                                label={submitting ? '⏳...' : '✦ Submit'}
+                                label={submitting ? '...' : 'Submit'}
                                 primary
                                 disabled={!hasActiveLlm(integrations.llm) || submitting}
                                 onClick={() => void handleSubmitToAgent()}

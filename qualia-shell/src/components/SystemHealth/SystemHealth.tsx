@@ -20,7 +20,7 @@ const OPEN: Record<string, [string, string]> = {
     'terminal': ['Terminal', 'terminal'],
     'notebooklm-context': ['NotebookLM', 'notebook'],
 };
-const GLYPH: Record<HealthStatus, string> = { ok: '✓', degraded: '!', down: '✕', checking: '…' };
+const GLYPH: Record<HealthStatus, string> = { ok: '', degraded: '!', down: '', checking: '…' };
 
 function detailFor(status: HealthStatus, okText?: string, downText?: string): string {
     if (status === 'ok') return okText || 'Ready';

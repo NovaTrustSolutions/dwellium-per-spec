@@ -118,7 +118,7 @@ describe('Hermes routing few-shot', () => {
         expect(block).toContain('→ command');
     });
 
-    it('mis-routes (correct=false) and 👎-rated runs never surface', () => {
+    it('mis-routes (correct=false) and thumbs-down-rated runs never surface', () => {
         recordRoutingDecision('spawn cleanup', { intent: 'chat', confidence: 0.5, via: 'heuristic' }, false);
         expect(routerFewShot('spawn cleanup now')).toBe('');
         const rec = recordRoutingDecision('weird input', { intent: 'skill', confidence: 0.9, via: 'llm' });

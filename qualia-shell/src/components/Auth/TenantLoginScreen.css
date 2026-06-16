@@ -426,7 +426,7 @@
 }
 
 .tenant-login__checkbox:checked+.tenant-login__checkbox-custom::after {
-    content: '✓';
+    content: '';
     font-size: 10px;
     color: white;
 }

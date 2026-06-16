@@ -436,7 +436,7 @@ export default function HalocronKnowledgeGraph() {
                     </div>
                     <div className="kg-canvaswrap" ref={wrapRef}>
                         <canvas ref={canvasRef} className="kg-canvas" onClick={onCanvasClick} onWheel={onWheel} />
-                        <div className="kg-legend">size = importance · ★ = agent · colour = cluster</div>
+                        <div className="kg-legend">size = importance · = agent · colour = cluster</div>
                     </div>
                 </div>
 
@@ -450,7 +450,7 @@ export default function HalocronKnowledgeGraph() {
                     </section>
 
                     <section className="kg-card">
-                        <div className="kg-card__cap">✦ MOST IMPORTANT FILES</div>
+                        <div className="kg-card__cap">MOST IMPORTANT FILES</div>
                         <p className="kg-card__note">The files everything else relies on — by how many other files import them.</p>
                         {(gdata?.importantFiles ?? IMPORTANT_FILES).map((f, i) => (
                             <div key={f.name + i} className="kg-imp">
@@ -484,7 +484,7 @@ export default function HalocronKnowledgeGraph() {
             {/* ── "Ask the map" — full-width bottom dock, same width as the graph ── */}
             <section className="kg-chatdock">
                 <div className="kg-chatdock__hdr">
-                    <span className="kg-card__cap">💬 ASK THE MAP</span>
+                    <span className="kg-card__cap">ASK THE MAP</span>
                     <div className="kg-chat__agent">
                         <span>Agent</span>
                         <select value={agentId} onChange={(e) => setAgentId(e.target.value)}>

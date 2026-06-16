@@ -17,14 +17,17 @@
  * windows, widgets, spaces, memory underneath.
  */
 import { Suspense, useEffect, useMemo, useState, useSyncExternalStore, createElement } from 'react';
+import { X } from 'lucide-react';
 import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import { halocronOsStore } from '../../lib/halocronOsStore';
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
 import HalocronKnowledgeGraph, { KG_AGENTS } from './HalocronKnowledgeGraph';
 import HalocronWorkspaces from './HalocronWorkspaces';
+import CognitiveHarness from '../CognitiveHarness/CognitiveHarness';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
 import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore } from '../../lib/subscriptionsStore';
+import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
 import { UserContext } from '../../context/UserContext';
 import { integrationsUserIdHolder } from '../../utils/integrationsStore';
@@ -35,13 +38,13 @@ type NavId = 'home' | 'memory' | 'kg' | 'workspace' | 'apps' | 'skills' | 'dream
 const NAV: { id: NavId; label: string; glyph: string }[] = [
     { id: 'home', label: 'Home', glyph: '◈' },
     { id: 'kg', label: 'Knowledge Graph', glyph: '⊹' },
-    { id: 'memory', label: 'Memory', glyph: '✶' },
+    { id: 'memory', label: 'Memory', glyph: '' },
     { id: 'workspace', label: 'Workspace', glyph: '◳' },
     { id: 'apps', label: 'Apps', glyph: '▦' },
-    { id: 'skills', label: 'Skills', glyph: '✦' },
-    { id: 'dream', label: 'Dream', glyph: '☾' },
+    { id: 'skills', label: 'Skills', glyph: '' },
+    { id: 'dream', label: 'Dream', glyph: '' },
     { id: 'insights', label: 'Insights', glyph: '▤' },
-    { id: 'settings', label: 'Settings', glyph: '⚙' },
+    { id: 'settings', label: 'Settings', glyph: '' },
 ];
 
 const SPACES: { id: string; name: string; widgets: string[] }[] = [
@@ -62,7 +65,7 @@ type RangeId = 'today' | '7' | '28';
 // External AI tools launchable from the Home screen — "access them all from
 // one place." Opens the real product in a new tab.
 const LAUNCH_TOOLS: { id: string; name: string; sub: string; url: string; color: string; glyph: string }[] = [
-    { id: 'claude', name: 'Claude', sub: 'Anthropic · Max 20x', url: 'https://claude.ai', color: '#d97757', glyph: '✳' },
+    { id: 'claude', name: 'Claude', sub: 'Anthropic · Max 20x', url: 'https://claude.ai', color: '#d97757', glyph: '' },
     { id: 'antigravity', name: 'AntiGravity', sub: 'Google', url: 'https://antigravity.google', color: '#4d8aff', glyph: '◇' },
     { id: 'chatgpt', name: 'ChatGPT', sub: 'OpenAI · Plus', url: 'https://chatgpt.com', color: '#19c37d', glyph: '◉' },
     { id: 'codex', name: 'Codex', sub: 'OpenAI · CLI agent', url: 'https://chatgpt.com/codex', color: '#c9a44c', glyph: '⌘' },
@@ -75,6 +78,7 @@ interface HosTab { key: string; kind: 'widget' | 'web'; id?: string; label: stri
 const CLI_TOOLS: Record<string, { cmd: string; label: string }> = {
     codex: { cmd: 'codex', label: 'Codex CLI' },
     claude: { cmd: 'claude', label: 'Claude Code' },
+    antigravity: { cmd: 'antigravity', label: 'AntiGravity' },
 };
 
 // In the Electron desktop build a <webview> fully embeds external sites
@@ -105,7 +109,7 @@ function WebFrame({ url, title, color }: { url: string; title: string; color?: s
 
 // Clicking an agent in the rail opens that agent's actual widget.
 const AGENT_WIDGET: Record<string, string> = {
-    ara: 'ara-console', stella: 'stella-agent', hydra: 'hydra-ai', honcho: 'honcho', hermes: 'agent-lab',
+    ara: 'ara-console', stella: 'stella-agent', hydra: 'hydra-ai', honcho: 'honcho', hermes: 'hermes',
 };
 
 const RANGE_DAYS: Record<RangeId, number> = { today: 1, '7': 7, '28': 28 };
@@ -145,6 +149,7 @@ export default function HalocronOS() {
     // reference THIS account's data — never a stale or anonymous namespace.
     const userCtx = useContext(UserContext);
     integrationsUserIdHolder.current = userCtx?.user?.id ?? null;
+    const { integrations } = useIntegrations();
     const usage = useLlmUsage();
     const subs = useSubscriptions();
     const days = lastNDays(RANGE_DAYS[range], usage);
@@ -213,6 +218,26 @@ export default function HalocronOS() {
         // …and if a live session is ALREADY open, run it there now.
         setTimeout(() => window.dispatchEvent(new CustomEvent('dwellium:terminal-run', { detail: { cmd } })), 450);
     };
+    const openCliToolExternal = (label: string, cmd: string) => {
+        try {
+            const popupKey = `dwellium-popup-terminal`;
+            localStorage.setItem(popupKey, JSON.stringify({
+                title: label,
+                icon: '',
+            }));
+            sessionStorage.setItem('dwellium-terminal-initial-tab', 'terminal');
+            sessionStorage.setItem('dwellium-terminal-initial-cmd', cmd);
+        } catch (e) { /* ignore */ }
+        const popupW = Math.min(800, screen.availWidth * 0.5);
+        const popupH = Math.min(600, screen.availHeight * 0.7);
+        const left = Math.round((screen.availWidth - popupW) / 2);
+        const top = Math.round((screen.availHeight - popupH) / 4);
+        window.open(
+            `/?popup=terminal`,
+            `qualia-popup-terminal-${cmd}`,
+            `width=${popupW},height=${popupH},left=${left},top=${top},resizable=yes,scrollbars=no`
+        );
+    };
     const closeTab = (key: string) => {
         setTabs((t) => {
             const next = t.filter((x) => x.key !== key);
@@ -262,7 +287,7 @@ export default function HalocronOS() {
                             <div key={t.key} className={`hos-tab ${activeKey === t.key ? 'on' : ''}`} onClick={() => setActiveKey(t.key)}>
                                 {t.kind === 'web' && <span className="hos-tab__dot" style={{ background: t.color }} />}
                                 <span className="hos-tab__label">{t.label}</span>
-                                <button className="hos-tab__x" onClick={(e) => { e.stopPropagation(); closeTab(t.key); }} aria-label={`Close ${t.label}`}>✕</button>
+                                <button className="hos-tab__x" onClick={(e) => { e.stopPropagation(); closeTab(t.key); }} aria-label={`Close ${t.label}`}><X size={12} /></button>
                             </div>
                         ))}
                         <button className="hos-tab__home" onClick={() => setActiveKey(null)} title="Show Halocron home">＋</button>
@@ -285,7 +310,7 @@ export default function HalocronOS() {
                                 <WebFrame url={t.url!} title={t.label} color={t.color} />
                             </div>
                         ) : (
-                            <div className="hos-hosted__body window__content" data-widget-id={t.id}>
+                            <div className="hos-hosted__body hos-hosted__body--widget window__content" data-widget-id={t.id}>
                                 <WidgetErrorBoundary widgetLabel={t.label} enabled surfaceErrors>
                                     <Suspense fallback={<div className="hos-hosted__loading">Igniting {t.label}…</div>}>
                                         {(() => { const C = t.id ? WINDOW_COMPONENTS[t.id] : null; return C ? <C /> : null; })()}
@@ -303,6 +328,24 @@ export default function HalocronOS() {
                 {nav === 'kg' ? (
                     <div className="hos-panel hos-panel--kg">
                         <HalocronKnowledgeGraph />
+                    </div>
+                ) : nav === 'memory' ? (
+                    <div className="hos-panel hos-panel--memory">
+                        <div className="hos-memory-layout">
+                            <div className="hos-memory-main">
+                                <h1 className="hos-h">Memory</h1>
+                                <p className="hos-sub">Your stored knowledge and connections.</p>
+                                <div className="hos-quick">
+                                    <button type="button" className="hos-step" onClick={() => setNav('kg')}>Open the Knowledge Graph →</button>
+                                    <button type="button" className="hos-step" onClick={() => openWidget('connections', 'Connections & Memory')}>Open Connections →</button>
+                                    <button type="button" className="hos-step" onClick={() => openWidget('honcho', 'Honcho Memory')}>Open Honcho →</button>
+                                </div>
+                            </div>
+                            <div className="hos-memory-sidebar">
+                                <div className="hos-memory-sidebar-h">Cognitive Parameter Harness</div>
+                                <CognitiveHarness />
+                            </div>
+                        </div>
                     </div>
                 ) : (
                 <div className="hos-panel">
@@ -340,17 +383,39 @@ export default function HalocronOS() {
 
                             <div className="hos-launch__h">Launchpad · your AI tools in one place</div>
                             <div className="hos-launch">
-                                {LAUNCH_TOOLS.map((t) => (
-                                    <button key={t.id} type="button" className="hos-launch__card"
-                                        onClick={() => { const cli = CLI_TOOLS[t.id]; cli ? openCliTool(cli.label, cli.cmd) : openWeb(t); }} title={CLI_TOOLS[t.id] ? `Run ${CLI_TOOLS[t.id].label} in a terminal` : `Open ${t.name} in Halocron`}>
-                                        <span className="hos-launch__glyph" style={{ color: t.color, borderColor: t.color }}>{t.glyph}</span>
-                                        <span className="hos-launch__body">
-                                            <span className="hos-launch__name">{t.name}</span>
-                                            <span className="hos-launch__sub">{t.sub}</span>
-                                        </span>
-                                        <span className="hos-launch__open">Open ↗</span>
-                                    </button>
-                                ))}
+                                {LAUNCH_TOOLS.map((t) => {
+                                    const cli = CLI_TOOLS[t.id];
+                                    const hasGoogleKey = !!(integrations?.llm?.gemini?.enabled && integrations?.llm?.gemini?.apiKey);
+                                    const sub = (t.id === 'antigravity' && hasGoogleKey) ? 'Google · Max plan' : t.sub;
+                                    const handleLaunch = () => {
+                                        cli ? openCliTool(cli.label, cli.cmd) : openWeb(t);
+                                    };
+                                    const handleExternal = () => {
+                                        if (cli) {
+                                            openCliToolExternal(cli.label, cli.cmd);
+                                        } else {
+                                            window.open(t.url, '_blank', 'noopener,noreferrer');
+                                        }
+                                    };
+                                    return (
+                                        <div key={t.id} className="hos-launch__card" onClick={handleLaunch}
+                                            title={cli ? `Run ${cli.label} in a terminal` : `Open ${t.name} in Halocron`}>
+                                            <span className="hos-launch__glyph" style={{ color: t.color, borderColor: t.color }}>{t.glyph}</span>
+                                            <span className="hos-launch__body">
+                                                <span className="hos-launch__name">{t.name}</span>
+                                                <span className="hos-launch__sub">{sub}</span>
+                                            </span>
+                                            <div className="hos-launch__actions" onClick={(e) => e.stopPropagation()}>
+                                                <button type="button" className="hos-launch__open-btn" onClick={handleLaunch} title="Open inside OS">
+                                                    Open
+                                                </button>
+                                                <button type="button" className="hos-launch__popout-btn" onClick={handleExternal} title="Open in separate window">
+                                                    Popout ↗
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             <div className="hos-quick">
@@ -388,18 +453,6 @@ export default function HalocronOS() {
                     )}
 
                     {nav === 'workspace' && <HalocronWorkspaces />}
-
-                    {nav === 'memory' && (
-                        <>
-                            <h1 className="hos-h">Memory</h1>
-                            <p className="hos-sub">Your stored knowledge and connections.</p>
-                            <div className="hos-quick">
-                                <button className="hos-step" onClick={() => setNav('kg')}>Open the Knowledge Graph →</button>
-                                <button className="hos-step" onClick={() => openWidget('connections', 'Connections & Memory')}>Open Connections →</button>
-                                <button className="hos-step" onClick={() => openWidget('honcho', 'Honcho Memory')}>Open Honcho →</button>
-                            </div>
-                        </>
-                    )}
 
                     {nav === 'skills' && (
                         <>

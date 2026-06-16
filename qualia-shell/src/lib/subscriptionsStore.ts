@@ -12,7 +12,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { integrationsUserIdHolder, integrationsStore } from '../utils/integrationsStore';
 
 export interface Subscription {
     id: string;
@@ -66,5 +66,16 @@ export function monthlyTotal(list: Subscription[]): number {
 }
 
 export function useSubscriptions(): Subscription[] {
-    return useSyncExternalStore(subscriptionsStore.subscribe, subscriptionsStore.getSnapshot, subscriptionsStore.getServerSnapshot);
+    const list = useSyncExternalStore(subscriptionsStore.subscribe, subscriptionsStore.getSnapshot, subscriptionsStore.getServerSnapshot);
+    const integrations = useSyncExternalStore(integrationsStore.subscribe, integrationsStore.getSnapshot, integrationsStore.getServerSnapshot);
+    
+    const hasGoogleKey = !!(integrations?.llm?.gemini?.enabled && integrations?.llm?.gemini?.apiKey);
+    const hasGoogleSub = list.some(s => s.id === 'google-max');
+    if (hasGoogleKey && !hasGoogleSub) {
+        return [
+            ...list,
+            { id: 'google-max', name: 'Google Max plan', vendor: 'Google', monthly: 200 }
+        ];
+    }
+    return list;
 }

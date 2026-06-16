@@ -181,8 +181,8 @@
 .al-icon-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-primary, #fff); }
 
 .al-body { flex: 1; min-height: 0; display: flex; position: relative; }
-.al-host { flex: 1; min-height: 0; min-width: 0; }
-.al-host > * { width: 100%; height: 100%; }
+.al-host { flex: 1; min-height: 0; min-width: 0; flex-direction: column; }
+.al-host > * { width: 100%; flex: 1 1 auto; min-height: 0; }
 
 .al-loading, .al-error {
     flex: 1;

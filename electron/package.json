@@ -13,6 +13,10 @@
     "node": ">=22.0.0 <23",
     "npm": ">=10.0.0"
   },
+  "dependencies": {
+    "//": "Recall.ai Desktop Recording SDK — BACKGROUND (botless, private) meeting capture. NOTHING joins the call; it records the Mac locally and forwards a live transcript. Ships a native helper binary (desktop_sdk_macos_exe / agent-windows.exe) + bundled GStreamer, so `npm install` MUST run on the Mac (electron-builder packages + signs it there; the Linux build sandbox cannot install/sign native deps). Apple-Silicon Mac + Windows only — init() throws on any other platform. Code-signing: the .app MUST be signed with Recall's osx-sign fork (mic/screen/system-audio entitlements + hardened runtime) or macOS kills the recorder; see electron/README.md and the report.",
+    "@recallai/desktop-sdk": "2.0.19"
+  },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
     "electron": "35.2.0",

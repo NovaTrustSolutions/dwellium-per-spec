@@ -6,6 +6,7 @@ import {
 import {
     taskBoardStore, taskBoardUserIdHolder, resetTaskBoard,
     addCard, moveCard, aiFileBacklog, undoLastAi as storeUndoLastAi,
+    updateColumnLimits, updateColumnPolicies, undo as storeUndo,
 } from '../components/TaskBoard/taskBoardStore';
 
 // Deterministic context: monotonic clock + ids so assertions are stable.
@@ -189,5 +190,33 @@ describe('taskBoardStore — per-user persistence', () => {
         const snap = taskBoardStore.getSnapshot();
         expect(snap.cards.find(c => c.id === id)!.columnId).toBe('done');
         expect(snap.audit.length).toBe(auditBefore + 1);
+    });
+
+    it('updates column WIP limits and policies', () => {
+        taskBoardUserIdHolder.current = 'user-andy';
+        taskBoardStore.reset();
+        
+        updateColumnLimits('todo', 1, 5);
+        let snap = taskBoardStore.getSnapshot();
+        let todoCol = snap.columns.find(c => c.id === 'todo');
+        expect(todoCol?.minWip).toBe(1);
+        expect(todoCol?.maxWip).toBe(5);
+
+        const policies = ['Verify files', 'Double check output'];
+        updateColumnPolicies('todo', policies);
+        snap = taskBoardStore.getSnapshot();
+        todoCol = snap.columns.find(c => c.id === 'todo');
+        expect(todoCol?.policies).toEqual(policies);
+
+        storeUndo();
+        snap = taskBoardStore.getSnapshot();
+        todoCol = snap.columns.find(c => c.id === 'todo');
+        expect(todoCol?.policies ?? []).toEqual([]);
+
+        storeUndo();
+        snap = taskBoardStore.getSnapshot();
+        todoCol = snap.columns.find(c => c.id === 'todo');
+        expect(todoCol?.minWip).toBeUndefined();
+        expect(todoCol?.maxWip).toBeUndefined();
     });
 });

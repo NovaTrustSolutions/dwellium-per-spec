@@ -16,7 +16,7 @@ export interface DockBackMessage {
 
 export function PopupShell({ component }: { component: string }) {
     const Component = WINDOW_COMPONENTS[component] as React.FC | undefined;
-    const [meta, setMeta] = useState<{ title: string; icon: string }>({ title: component, icon: '🪟' });
+    const [meta, setMeta] = useState<{ title: string; icon: string }>({ title: component, icon: '' });
     const [docking, setDocking] = useState(false);
 
     // Restore theme + skin + load metadata
@@ -35,7 +35,7 @@ export function PopupShell({ component }: { component: string }) {
         try {
             const stored = JSON.parse(localStorage.getItem(popupKey) || '{}');
             const title = stored.title || component;
-            const icon = stored.icon || '🪟';
+            const icon = stored.icon || '';
             setMeta({ title, icon });
             document.title = `${icon} ${title} — Qualia`;
         } catch { /* ignore */ }
@@ -131,7 +131,7 @@ export function PopupShell({ component }: { component: string }) {
                         }
                     }}
                 >
-                    {docking ? '⏳ Docking…' : '⇤ Dock Back'}
+                    {docking ? 'Docking…' : '⇤ Dock Back'}
                 </button>
             </div>
 

@@ -101,11 +101,11 @@ export default function PaperclipPanel() {
                         then it appears below. Requires <strong>Node.js 20+</strong> and <strong>pnpm 9.15+</strong>.
                     </p>
                     <div className="pc-snippet-head"><span>Quickstart (recommended)</span>
-                        <button className="pc-btn pc-btn--primary" onClick={() => copy('npx paperclipai onboard --yes', 'q')}>{copied === 'q' ? 'Copied ✓' : 'Copy'}</button>
+                        <button className="pc-btn pc-btn--primary" onClick={() => copy('npx paperclipai onboard --yes', 'q')}>{copied === 'q' ? 'Copied' : 'Copy'}</button>
                     </div>
                     <pre className="pc-snippet">npx paperclipai onboard --yes</pre>
                     <div className="pc-snippet-head"><span>Or from source</span>
-                        <button className="pc-btn pc-btn--primary" onClick={() => copy('git clone https://github.com/paperclipai/paperclip.git\ncd paperclip\npnpm install\npnpm dev', 's')}>{copied === 's' ? 'Copied ✓' : 'Copy'}</button>
+                        <button className="pc-btn pc-btn--primary" onClick={() => copy('git clone https://github.com/paperclipai/paperclip.git\ncd paperclip\npnpm install\npnpm dev', 's')}>{copied === 's' ? 'Copied' : 'Copy'}</button>
                     </div>
                     <pre className="pc-snippet">{`git clone https://github.com/paperclipai/paperclip.git
 cd paperclip
@@ -122,7 +122,7 @@ pnpm dev`}</pre>
             <div className="pc-frame-wrap">
                 {reach === 'down' ? (
                     <div className="pc-empty">
-                        <div className="pc-empty-icon">📎</div>
+                        <div className="pc-empty-icon"></div>
                         <p className="pc-empty-title">Paperclip isn’t reachable at {url}</p>
                         <p className="pc-empty-sub">Start it, then Reload. Click <strong>Setup</strong> above for the exact commands.</p>
                         <div className="pc-empty-actions">

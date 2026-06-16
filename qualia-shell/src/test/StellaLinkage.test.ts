@@ -1,5 +1,5 @@
 /**
- * Cycle 5 — Stella cross-widget linkage (LINKAGE gap S2). 🔒 PROTECTED widget: additive
+ * Cycle 5 — Stella cross-widget linkage (LINKAGE gap S2). PROTECTED widget: additive
  * linkage only, no restyle.
  *
  * Unit-tests the pure helpers in `stellaLinkage.ts` with injected side effects / direct

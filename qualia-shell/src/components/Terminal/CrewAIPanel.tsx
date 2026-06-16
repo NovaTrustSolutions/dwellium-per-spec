@@ -86,7 +86,7 @@ export default function CrewAIPanel() {
                     <div key={s.tag} className="cr-step">
                         <div className="cr-step-head">
                             <span>{s.label}</span>
-                            <button className="cr-btn cr-btn--primary" onClick={() => copy(s.cmd, s.tag)}>{copied === s.tag ? 'Copied ✓' : 'Copy'}</button>
+                            <button className="cr-btn cr-btn--primary" onClick={() => copy(s.cmd, s.tag)}>{copied === s.tag ? 'Copied' : 'Copy'}</button>
                         </div>
                         <pre className="cr-snippet">{s.cmd}</pre>
                     </div>

@@ -587,7 +587,7 @@ export default function Workspace() {
                         </div>
                     ) : sortedThreads.length === 0 ? (
                         <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
-                            <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>💬</div>
+                            <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}></div>
                             <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No threads in this project</div>
                             <div style={{ fontSize: 10 }}>
                                 Threads are folders inside a project — each one a workstream of notes and reports.
@@ -632,7 +632,7 @@ export default function Workspace() {
                                                     color: isComplete ? '#8fbf9a' : '#0a0a0a',
                                                     background: isComplete ? 'rgba(58,122,74,0.18)' : ACCENT,
                                                 }}>
-                                                    {isComplete ? '✓ complete' : 'active'}
+                                                    {isComplete ? 'complete' : 'active'}
                                                 </span>
                                             )}
                                         </div>
@@ -715,7 +715,7 @@ export default function Workspace() {
                         </div>
                     ) : sortedProjects.length === 0 ? (
                         <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
-                            <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>📂</div>
+                            <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}></div>
                             <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No projects in this domaine</div>
                             <div style={{ fontSize: 10 }}>
                                 Projects are folders inside a domaine. Add one to start a thread.
@@ -815,7 +815,7 @@ export default function Workspace() {
                     </div>
                 ) : sortedDomaines.length === 0 ? (
                     <div style={{ padding: '24px 16px', textAlign: 'center', color: '#808080', fontSize: 11, lineHeight: 1.6 }}>
-                        <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}>🗂️</div>
+                        <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}></div>
                         <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No domaines yet</div>
                         <div style={{ fontSize: 10 }}>
                             Domaines are top-level folders in your workspace. Create one to get started.

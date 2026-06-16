@@ -14,6 +14,7 @@
  * via buildWikiContext() (wired by callers).
  */
 import { useState, useSyncExternalStore } from 'react';
+import { X } from 'lucide-react';
 import {
     agentWikiStore,
     setIdentityFile,
@@ -69,7 +70,7 @@ export function AgentWiki() {
     return (
         <div className="aw">
             {/* Identity files — "knows you" */}
-            <div className="aw__sectlabel">🧬 Identity · the agent knows <em>you</em></div>
+            <div className="aw__sectlabel">Identity · the agent knows <em>you</em></div>
             <div className="aw__identity">
                 {IDENTITY_FILES.map(({ kind, blurb }) => (
                     <div key={kind} className="aw__idcard">
@@ -88,7 +89,7 @@ export function AgentWiki() {
             </div>
 
             {/* Wiki folders — "knows your world" */}
-            <div className="aw__sectlabel">📚 Wiki · the agent knows your <em>world</em></div>
+            <div className="aw__sectlabel">Wiki · the agent knows your <em>world</em></div>
             <div className="aw__folders">
                 {WIKI_FOLDERS.map(f => (
                     <button key={f.id} className={`aw__folder ${openFolder === f.id ? 'on' : ''}`} onClick={() => setOpenFolder(f.id)} title={f.blurb}>
@@ -116,9 +117,9 @@ export function AgentWiki() {
                 </div>
                 {report && (
                     <div className="aw__report">
-                        ✓ Distilled <strong>{report.factsAdded}</strong> fact{report.factsAdded === 1 ? '' : 's'}.
+                        Distilled <strong>{report.factsAdded}</strong> fact{report.factsAdded === 1 ? '' : 's'}.
                         {report.contradictions.length > 0 && (
-                            <span className="aw__warn"> ⚠️ {report.contradictions.length} contradiction{report.contradictions.length === 1 ? '' : 's'} flagged.</span>
+                            <span className="aw__warn"> {report.contradictions.length} contradiction{report.contradictions.length === 1 ? '' : 's'} flagged.</span>
                         )}
                     </div>
                 )}
@@ -131,10 +132,10 @@ export function AgentWiki() {
                     <div key={p.id} className={`aw__page ${p.contradicts ? 'is-contested' : ''}`}>
                         <div className="aw__phead">
                             <span className="aw__ptitle">{p.title}</span>
-                            <button className="aw__del" onClick={() => deletePage(p.id)} aria-label="Delete page">✕</button>
+                            <button className="aw__del" onClick={() => deletePage(p.id)} aria-label="Delete page"><X size={16} /></button>
                         </div>
                         <div className="aw__pbody">{p.body}</div>
-                        {p.contradicts && <div className="aw__pwarn">⚠️ Conflicts with an existing fact — needs review</div>}
+                        {p.contradicts && <div className="aw__pwarn">Conflicts with an existing fact — needs review</div>}
                         {p.sources.length > 0 && <div className="aw__psrc">sources: {p.sources.join(' · ')}</div>}
                     </div>
                 ))}

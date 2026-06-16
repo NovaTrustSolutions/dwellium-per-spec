@@ -66,7 +66,7 @@ export default function HydraSplit() {
         <div className="hyd">
             <HydraIntro />
             <div className="hyd__bar">
-                <div className="hyd__title">🐉 Hydra · {heads.length} {heads.length === 1 ? 'head' : 'heads'}</div>
+                <div className="hyd__title">Hydra · {heads.length} {heads.length === 1 ? 'head' : 'heads'}</div>
                 <textarea
                     className="hyd__input"
                     value={prompt}

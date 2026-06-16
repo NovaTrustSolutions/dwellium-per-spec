@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search } from 'lucide-react';
 import './FactCheckLog.css';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -34,10 +35,10 @@ type VerdictFilter = 'all' | 'verified' | 'disputed' | 'unverifiable' | 'partial
 const API_FACT_CHECK = `${API_BASE}/api/transcribe/fact-check`;
 
 const VERDICT_CONFIG: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-    verified: { label: 'Verified', icon: '✅', color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
-    disputed: { label: 'Disputed', icon: '❌', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' },
-    unverifiable: { label: 'Unverifiable', icon: '❓', color: '#f59e0b', bg: 'rgba(251, 191, 36, 0.12)' },
-    partially_true: { label: 'Partial', icon: '⚠️', color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.12)' },
+    verified: { label: 'Verified', icon: '', color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
+    disputed: { label: 'Disputed', icon: '', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' },
+    unverifiable: { label: 'Unverifiable', icon: '', color: '#f59e0b', bg: 'rgba(251, 191, 36, 0.12)' },
+    partially_true: { label: 'Partial', icon: '', color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.12)' },
 };
 
 // ============================================
@@ -226,12 +227,12 @@ export default function FactCheckLog() {
             const resp = await fetch(`${API_BASE}/api/files/upload`, { method: 'POST', body: formData });
             const data = await resp.json();
             if (data.success) {
-                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: '📁 Fact-check report saved to File Manager' }));
+                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Fact-check report saved to File Manager' }));
             } else {
-                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `❌ Save failed: ${data.error}` }));
+                window.dispatchEvent(new CustomEvent('qualia-toast', { detail: `Save failed: ${data.error}` }));
             }
         } catch {
-            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: '❌ Upload error' }));
+            window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Upload error' }));
         }
     };
 
@@ -241,7 +242,7 @@ export default function FactCheckLog() {
             {/* ========== HEADER ========== */}
             <div className="fcl-header">
                 <div className="fcl-header__title-row">
-                    <span className="fcl-header__icon">🔍</span>
+                    <span className="fcl-header__icon"><Search size={14} /></span>
                     <h2 className="fcl-header__title">Fact-Check Log</h2>
                     {loading && <span className="fcl-header__loading">●</span>}
                 </div>
@@ -267,7 +268,7 @@ export default function FactCheckLog() {
                     </div>
                     {entries.length > 0 && (
                         <button className="fcl-save-btn" onClick={saveToFileManager} title="Save report to File Manager">
-                            📁 Save to Files
+                            Save to Files
                         </button>
                     )}
                 </div>
@@ -287,7 +288,7 @@ export default function FactCheckLog() {
                     onClick={submitManualCheck}
                     disabled={checking || !manualClaim.trim()}
                 >
-                    {checking ? '⏳' : '🔎'} Check
+                    {checking ? '' : ''} Check
                 </button>
             </div>
 
@@ -317,7 +318,7 @@ export default function FactCheckLog() {
             <div className="fcl-entries">
                 {filtered.length === 0 ? (
                     <div className="fcl-empty">
-                        <div className="fcl-empty__icon">🔍</div>
+                        <div className="fcl-empty__icon"></div>
                         <div className="fcl-empty__title">
                             {entries.length === 0 ? 'No claims checked yet' : 'No matching claims'}
                         </div>

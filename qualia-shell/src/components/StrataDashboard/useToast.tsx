@@ -17,8 +17,8 @@ interface Toast {
 }
 
 const TOAST_COLORS: Record<ToastType, { bg: string; border: string; text: string; icon: string }> = {
-    success: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', text: '#22c55e', icon: '✓' },
-    error:   { bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.3)',  text: '#ef4444', icon: '✗' },
+    success: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', text: '#22c55e', icon: '' },
+    error: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)', text: '#ef4444', icon: '' },
     info:    { bg: 'color-mix(in srgb, var(--accent) 12%, transparent)',  border: 'color-mix(in srgb, var(--accent) 30%, transparent)', text: '#D6FE51', icon: 'ℹ' },
 };
 

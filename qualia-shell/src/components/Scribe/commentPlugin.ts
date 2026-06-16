@@ -27,7 +27,7 @@ class CommentIndicatorWidget extends WidgetType {
             ? 'cm-comment-indicator cm-comment-resolved'
             : 'cm-comment-indicator';
         span.title = this.comment.body || 'Open comment';
-        span.textContent = '💬';
+        span.textContent = '';
         span.onmousedown = (e) => {
             e.preventDefault();
             e.stopPropagation();

@@ -1,0 +1,23 @@
+/* AraMeetingPanel — minimal co-located styles.
+ * Only the recording-dot pulse keyframe lives here (inline styles can't declare
+ * @keyframes). Everything else is inline CSS-var-driven so it tracks the active
+ * theme + fey palette. 2026-06-15. */
+
+@keyframes ara-meeting-pulse {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, #ef4444 70%, transparent);
+    }
+    70% {
+        box-shadow: 0 0 0 7px color-mix(in srgb, #ef4444 0%, transparent);
+    }
+    100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, #ef4444 0%, transparent);
+    }
+}
+
+/* Respect reduced-motion: hold the dot steady. */
+@media (prefers-reduced-motion: reduce) {
+    .ara-meeting [aria-hidden='true'] {
+        animation: none !important;
+    }
+}

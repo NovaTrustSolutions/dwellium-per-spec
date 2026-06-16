@@ -75,7 +75,7 @@ export function SearchPanel({ files }: { files: Array<{ filepath: string }> }) {
                             onMouseEnter={(e) => { e.currentTarget.style.background = '#1e1e1e'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                         >
-                            <span style={{ display: 'block', color: '#9ad7ff', fontSize: 11 }}>📄 {f.filepath}</span>
+                            <span style={{ display: 'block', color: '#9ad7ff', fontSize: 11 }}>{f.filepath}</span>
                             <span style={{ display: 'block', color: '#808080', fontSize: 11 }}>filename match — open to search inside</span>
                         </button>
                     ))}

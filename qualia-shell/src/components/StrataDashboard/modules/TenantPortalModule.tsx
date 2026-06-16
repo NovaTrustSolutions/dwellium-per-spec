@@ -68,12 +68,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-    Users, Wrench, DollarSign, MessageSquare, AlertTriangle,
-    Search, RefreshCw, Send, ChevronLeft, ChevronRight,
-    Building2, Mail, Phone, Calendar, Clock, CheckCircle,
-    Home, Shield, Hash,
-} from 'lucide-react';
+import { AlertTriangle, Building2, Calendar, CheckCircle, ChevronLeft, ChevronRight, Circle, Clock, DollarSign, Hash, Home, Mail, MessageSquare, Phone, RefreshCw, Search, Send, Shield, Users, Wrench } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import './TenantPortal.css';
 import { strataGet, strataPost, isStaticMode } from '../strataApi';
@@ -91,7 +86,7 @@ const TABS: { id: PortalTab; label: string; icon: typeof Users }[] = [
 ];
 
 function staticModeMessage(): string {
-    return '🗒️ Send message requires backend mode (static deck is read-only).';
+    return 'Send message requires backend mode (static deck is read-only).';
 }
 
 // Initials helper
@@ -751,7 +746,7 @@ function TenantPortalModuleInner() {
                                     <tr key={i}>
                                         <td>
                                             <span className={`tp-urgency tp-urgency-${a.urgency}`}>
-                                                <span style={{ fontSize: 8 }}>{a.urgency === 'high' ? '🔴' : a.urgency === 'medium' ? '🟡' : '🟢'}</span>
+                                                <span style={{ fontSize: 8 }}>{a.urgency === 'high' ? <Circle size={14} /> : a.urgency === 'medium' ? <Circle size={14} /> : <Circle size={14} />}</span>
                                                 {a.urgency}
                                             </span>
                                         </td>

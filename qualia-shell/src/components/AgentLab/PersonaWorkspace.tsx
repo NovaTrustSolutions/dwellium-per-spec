@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import { type Persona } from '../../lib/agents/personas';
 import {
     usePersonaWork, addTask, completeTask, deleteTask, addMemory, updateMemory, deleteMemory, formatDuration,
@@ -41,7 +42,7 @@ function ToolsView({ persona, onPersonaChange }: { persona: Persona; onPersonaCh
             <div className="pw-head">Equipped tools ({equipped.size})</div>
             <div className="pw-chips">
                 {STELLA_TOOL_CATALOG.filter(t => equipped.has(t.id)).map(t => (
-                    <button key={t.id} type="button" className="pw-chip pw-chip--on" onClick={() => toggle(t.id)} title="Remove from persona">{t.icon} {t.name} ✕</button>
+                    <button key={t.id} type="button" className="pw-chip pw-chip--on" onClick={() => toggle(t.id)} title="Remove from persona">{t.icon} {t.name}</button>
                 ))}
                 {equipped.size === 0 && <span className="pw-empty">No tools yet — add from the library below.</span>}
             </div>
@@ -56,7 +57,7 @@ function ToolsView({ persona, onPersonaChange }: { persona: Persona; onPersonaCh
                                 <span className="pw-tool-name">{t.name}</span>
                                 <span className="pw-tool-desc">{t.description}</span>
                             </span>
-                            <span className="pw-tool-add">{equipped.has(t.id) ? '✓' : '+'}</span>
+                            <span className="pw-tool-add">{equipped.has(t.id) ? '' : '+'}</span>
                         </button>
                     ))}
                 </div>
@@ -94,7 +95,7 @@ function TasksView({ persona, work, onRunTask, runningTaskId }: {
                             ? <span className="pw-task-running">running…</span>
                             : <button type="button" className="pw-mini" onClick={() => onRunTask(t.id, t.title)}>Run</button>}
                         <button type="button" className="pw-mini" onClick={() => completeTask(persona.id, t.id)} title="Mark done">Done</button>
-                        <button type="button" className="pw-mini pw-mini--del" onClick={() => deleteTask(persona.id, t.id)} aria-label="Delete task">✕</button>
+                        <button type="button" className="pw-mini pw-mini--del" onClick={() => deleteTask(persona.id, t.id)} aria-label="Delete task"><X size={16} /></button>
                     </div>
                 );
             })}
@@ -106,7 +107,7 @@ function TasksView({ persona, work, onRunTask, runningTaskId }: {
                     <span className="pw-task-dot pw-task-dot--done" />
                     <span className="pw-task-title">{t.title}</span>
                     <span className="pw-task-dur" title={t.completedAt ? new Date(t.completedAt).toLocaleString() : ''}>{formatDuration(t.durationMs ?? 0)}</span>
-                    <button type="button" className="pw-mini pw-mini--del" onClick={() => deleteTask(persona.id, t.id)} aria-label="Delete task">✕</button>
+                    <button type="button" className="pw-mini pw-mini--del" onClick={() => deleteTask(persona.id, t.id)} aria-label="Delete task"><X size={16} /></button>
                 </div>
             ))}
         </div>
@@ -129,7 +130,7 @@ function MemoryView({ persona, work }: { persona: Persona; work: PersonaWork }) 
                 <div key={m.id} className="pw-mem">
                     <span className={`pw-mem-kind pw-mem-kind--${m.kind}`}>{m.kind}</span>
                     <input className="pw-mem-text" value={m.text} onChange={e => updateMemory(persona.id, m.id, e.target.value)} />
-                    <button type="button" className="pw-mini pw-mini--del" onClick={() => deleteMemory(persona.id, m.id)} aria-label="Delete memory">✕</button>
+                    <button type="button" className="pw-mini pw-mini--del" onClick={() => deleteMemory(persona.id, m.id)} aria-label="Delete memory"><X size={16} /></button>
                 </div>
             ))}
         </div>

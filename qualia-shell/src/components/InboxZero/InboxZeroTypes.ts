@@ -165,7 +165,7 @@ export const CAPABILITIES_STORAGE_KEY = 'dwellium-iz-capabilities';
 export const CAPABILITIES_DATA: CapabilityCategory[] = [
     {
         id: 'email-triage',
-        icon: '📧',
+        icon: '',
         title: 'Email Triage & Processing',
         description: 'NIF classification → smart routing → approval queue with undo, labels, threads, and scheduled actions.',
         color: '#818cf8',
@@ -185,7 +185,7 @@ export const CAPABILITIES_DATA: CapabilityCategory[] = [
     },
     {
         id: 'ai-agents',
-        icon: '🤖',
+        icon: '',
         title: 'AI Intelligence',
         description: 'ARA conversational AI, NIF classification engine, and smart action generation',
         color: '#22d3ee',
@@ -201,7 +201,7 @@ export const CAPABILITIES_DATA: CapabilityCategory[] = [
     },
     {
         id: 'analytics',
-        icon: '📊',
+        icon: '',
         title: 'Analytics & Monitoring',
         description: 'Visual dashboards, sender analysis, classification metrics, and NIF intelligence stats',
         color: '#22c55e',
@@ -218,7 +218,7 @@ export const CAPABILITIES_DATA: CapabilityCategory[] = [
     },
     {
         id: 'automation',
-        icon: '⚡',
+        icon: '',
         title: 'Automation & Rules',
         description: 'Regex routing rules with priority ordering, bulk classify, and scheduled scans',
         color: '#fb923c',
@@ -231,7 +231,7 @@ export const CAPABILITIES_DATA: CapabilityCategory[] = [
     },
     {
         id: 'integrations',
-        icon: '🔗',
+        icon: '',
         title: 'Integrations',
         description: 'Gmail, Google Calendar, Drive, Trello, OpenAI, and observability integrations',
         color: '#2dd4bf',
@@ -248,7 +248,7 @@ export const CAPABILITIES_DATA: CapabilityCategory[] = [
     },
     {
         id: 'organization',
-        icon: '🏢',
+        icon: '',
         title: 'Organization / Team',
         description: 'RBAC with 7 roles, field-level permissions, and user management',
         color: '#fbbf24',
@@ -262,7 +262,7 @@ export const CAPABILITIES_DATA: CapabilityCategory[] = [
     },
     {
         id: 'platform-infra',
-        icon: '⚙️',
+        icon: '',
         title: 'Platform Infrastructure',
         description: 'Express.js, SQLite, SSE, background queues, scheduler, API versioning, HMAC signing',
         color: '#64748b',
@@ -299,21 +299,21 @@ export const URGENCY_COLORS: Record<string, string> = {
 };
 
 export const SIGNAL_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-    signal: { label: 'Signal', color: '#22c55e', icon: '⚡' },
-    noise: { label: 'Noise', color: '#6b7280', icon: '🔇' },
-    low_priority: { label: 'Low', color: '#eab308', icon: '⏸️' },
+    signal: { label: 'Signal', color: '#22c55e', icon: '' },
+    noise: { label: 'Noise', color: '#6b7280', icon: '' },
+    low_priority: { label: 'Low', color: '#eab308', icon: '' },
 };
 
 export const PROJECT_NAMES: Record<string, string> = {
-    'proj-invoicing': '💰 Invoicing',
-    'proj-msa': '📜 MSA Management',
-    'proj-onboarding': '👋 Onboarding',
-    'proj-gdpr': '🔒 GDPR / Privacy',
-    'proj-inventory': '📦 Inventory',
-    'proj-brand-guidelines': '🎨 Brand Guidelines',
-    'proj-reports': '📊 Financial Reports',
-    'proj-hive': '🐝 The Hive',
-    'proj-dashboard': '⚙️ AI-Dashboard369',
+    'proj-invoicing': 'Invoicing',
+    'proj-msa': 'MSA Management',
+    'proj-onboarding': 'Onboarding',
+    'proj-gdpr': 'GDPR / Privacy',
+    'proj-inventory': 'Inventory',
+    'proj-brand-guidelines': 'Brand Guidelines',
+    'proj-reports': 'Financial Reports',
+    'proj-hive': 'The Hive',
+    'proj-dashboard': 'AI-Dashboard369',
 };
 
 // ─── Shared Tab Props ──────────────────────────────────

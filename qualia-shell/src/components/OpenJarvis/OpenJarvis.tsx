@@ -23,6 +23,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
+import { Settings, Sparkles, Wrench } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getAuthToken, UserContext } from '../../context/UserContext';
@@ -333,7 +334,7 @@ function CodeBlockPre({ children, ...props }: any) {
       <div className="oj-code-header">
         <span className="oj-code-lang">{lang || 'code'}</span>
         <button onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="oj-code-copy-btn">
-          {copied ? '✓ Copied' : '⎘ Copy'}
+          {copied ? 'Copied' : '⎘ Copy'}
         </button>
       </div>
       <pre {...props} className="oj-code-pre">{children}</pre>
@@ -343,13 +344,13 @@ function CodeBlockPre({ children, ...props }: any) {
 
 function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
   const [expanded, setExpanded] = useState(false);
-  const emoji = toolCall.status === 'running' ? '⏳' : toolCall.status === 'success' ? '✅' : '❌';
+  const emoji = toolCall.status === 'running' ? '' : toolCall.status === 'success' ? '' : '';
 
   return (
     <div className="oj-tool-card">
       <button onClick={() => setExpanded(!expanded)} className="oj-tool-header">
         <span className="oj-tool-chevron">{expanded ? '▾' : '▸'}</span>
-        <span className="oj-tool-icon">🔧</span>
+        <span className="oj-tool-icon"><Wrench size={14} /></span>
         <span className="oj-tool-name">{toolCall.tool}</span>
         <span style={{ flex: 1 }} />
         <span>{emoji}</span>
@@ -445,7 +446,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       )}
       <div className="oj-msg-actions">
         <button onClick={() => { navigator.clipboard.writeText(cleanContent); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="oj-copy-btn" title="Copy">
-          {copied ? '✓' : '⎘'}
+          {copied ? '' : '⎘'}
         </button>
       </div>
       <XRayFooter usage={message.usage} telemetry={message.telemetry} />
@@ -529,8 +530,8 @@ function SettingsPanel({
             <input className="oj-settings-input" value={model} onChange={(e) => { setModel(e.target.value); localStorage.setItem(JARVIS_MODEL_KEY, e.target.value); }} placeholder="gpt-4o-mini" />
           </label>
           <div className="oj-settings-hint">
-            <strong>Gemini ✦</strong> uses the Dwellium Antigravity backend with full workspace context.<br/>
-            <strong>ARA 🤖</strong> connects to the Dwellium ARA agent or any OpenAI-compatible endpoint.
+            <strong>Gemini</strong> uses the Dwellium Antigravity backend with full workspace context.<br/>
+            <strong>ARA</strong> connects to the Dwellium ARA agent or any OpenAI-compatible endpoint.
           </div>
         </div>
       </div>
@@ -719,7 +720,7 @@ export default function OpenJarvisWidget() {
       const token = getAuthToken();
       const content = messages
         .filter(m => m.role !== 'system')
-        .map(m => `**${m.role === 'user' ? '👤 User' : '✦ Antigravity'}:** ${m.content}`)
+        .map(m => `**${m.role === 'user' ? 'User' : 'Antigravity'}:** ${m.content}`)
         .join('\n\n---\n\n');
 
       const title = `Antigravity Session — ${new Date().toLocaleDateString()}`;
@@ -930,7 +931,7 @@ export default function OpenJarvisWidget() {
           onClick={togglePanel}
           title="Open Antigravity (⌘J)"
         >
-          <span className="oj-fab-icon">✦</span>
+          <span className="oj-fab-icon"><Sparkles size={14} /></span>
           <span className={`oj-status-dot oj-status-dot-${connectionStatus}`} />
           {unreadCount > 0 && <span className="oj-fab-badge">{unreadCount}</span>}
         </button>
@@ -946,7 +947,7 @@ export default function OpenJarvisWidget() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="10" /></svg>
               </button>
               <div className="oj-panel-title">
-                <span className="oj-panel-logo">✦</span>
+                <span className="oj-panel-logo"><Sparkles size={14} /></span>
                 <span>Antigravity</span>
                 <span className={`oj-status-dot oj-status-dot-${connectionStatus}`} title={connectionStatus === 'connected' ? 'Connected to Dwellium' : connectionStatus === 'checking' ? 'Connecting...' : 'Disconnected'} />
               </div>
@@ -959,13 +960,13 @@ export default function OpenJarvisWidget() {
                   className={`oj-panel-btn ${engine === 'gemini' ? 'oj-engine-active' : ''}`}
                   style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: engine === 'gemini' ? 'rgba(130,100,255,0.3)' : 'transparent', color: engine === 'gemini' ? '#E8FF7A' : 'inherit' }}
                   title="Gemini (Google DeepMind)"
-                >✦ Gemini</button>
+                >Gemini</button>
                 <button
                   onClick={() => { setEngine('ara'); localStorage.setItem(AG_ENGINE_KEY, 'ara'); }}
                   className={`oj-panel-btn ${engine === 'ara' ? 'oj-engine-active' : ''}`}
                   style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: engine === 'ara' ? 'rgba(56,189,248,0.3)' : 'transparent', color: engine === 'ara' ? '#7dd3fc' : 'inherit' }}
                   title="ARA Agent (Dwellium)"
-                >🤖 ARA</button>
+                >ARA</button>
               </div>
               {/* Gemini model selector */}
               {engine === 'gemini' && (
@@ -988,8 +989,8 @@ export default function OpenJarvisWidget() {
                 className="oj-panel-btn"
                 title="Save conversation as document"
                 style={{ fontSize: 13 }}
-              >{savingDoc ? '⏳' : docSaved ? '✓' : '💾'}</button>
-              <button onClick={() => setSettingsOpen(true)} className="oj-panel-btn" title="Settings">⚙</button>
+              >{savingDoc ? '' : docSaved ? '' : ''}</button>
+              <button onClick={() => setSettingsOpen(true)} className="oj-panel-btn" title="Settings"><Settings size={16} /></button>
               <button onClick={() => setIsMinimized(!isMinimized)} className="oj-panel-btn" title="Minimize">─</button>
               <button onClick={togglePanel} className="oj-panel-btn oj-panel-close" title="Close (⌘J)">×</button>
             </div>
@@ -1012,7 +1013,7 @@ export default function OpenJarvisWidget() {
               <div ref={listRef} onScroll={handleScroll} className="oj-panel-body">
                 {isEmpty ? (
                   <div className="oj-empty">
-                    <div className="oj-empty-icon">✦</div>
+                    <div className="oj-empty-icon"></div>
                     <h2 className="oj-empty-title">{getGreeting()}</h2>
                     <p className="oj-empty-desc">
                       {engine === 'gemini'
@@ -1067,7 +1068,7 @@ export default function OpenJarvisWidget() {
                           const assistantMsg: ChatMessage = {
                             id: generateId(),
                             role: 'assistant',
-                            content: `📎 **${result.originalName}** analyzed\n\n${result.analysis}${result.savedDocumentId ? `\n\n✅ *Saved as document*` : ''}`,
+                            content: `**${result.originalName}** analyzed\n\n${result.analysis}${result.savedDocumentId ? `\n\n*Saved as document*` : ''}`,
                             timestamp: Date.now(),
                           };
                           let convId = activeId;

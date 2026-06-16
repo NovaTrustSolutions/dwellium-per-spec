@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
-import {
-    Shield, Users as UsersIcon, Save, RefreshCw, Check, AlertCircle,
-    ChevronDown, ChevronRight, Search, ToggleLeft, ToggleRight,
-} from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, ChevronRight, RefreshCw, Save, Search, Shield, Star, ToggleLeft, ToggleRight, Users as UsersIcon } from 'lucide-react';
 import './StrataDashboard.css';
 
 interface User {
@@ -41,24 +38,24 @@ function groupByModule(keys: string[]): PermGroup[] {
 
     // Top-level modules
     if (moduleKeys.length > 0) {
-        groups.push({ label: '📋 Strata Modules (Top-Level Navigation)', keys: moduleKeys });
+        groups.push({ label: 'Strata Modules (Top-Level Navigation)', keys: moduleKeys });
     }
 
     // Sub-permissions grouped by module
     const sortedModules = [...subMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
     for (const [mod, modKeys] of sortedModules) {
         const label = mod.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        groups.push({ label: `🔹 ${label}`, keys: modKeys.sort() });
+        groups.push({ label: `${label}`, keys: modKeys.sort() });
     }
 
     // Widgets
     if (widgetKeys.length > 0) {
-        groups.push({ label: '🧩 Widgets & Apps', keys: widgetKeys });
+        groups.push({ label: 'Widgets & Apps', keys: widgetKeys });
     }
 
     // Sections
     if (sectionKeys.length > 0) {
-        groups.push({ label: '⚙️ System Sections', keys: sectionKeys });
+        groups.push({ label: 'System Sections', keys: sectionKeys });
     }
 
     return groups;
@@ -276,7 +273,7 @@ export default function StrataAdminSettings() {
                                     <div style={{ fontWeight: 600, fontSize: '14px' }}>{u.name}</div>
                                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                                         {u.role}
-                                        {u.role === 'god' && <span style={{ color: '#f59e0b', marginLeft: '6px' }}>★</span>}
+                                        {u.role === 'god' && <span style={{ color: '#f59e0b', marginLeft: '6px' }}><Star size={14} /></span>}
                                     </div>
                                 </button>
                             ))}

@@ -14,40 +14,17 @@ import { useState, type FormEvent } from 'react';
 import { useUser } from '../../context/UserContext';
 import { AlertCircle, ArrowLeft, Shield } from 'lucide-react';
 import GoogleSignInButton from './GoogleSignInButton';
+import { useEffectiveAccounts, isPasswordSet, ROLE_LABELS, type LocalAccount } from './localAccounts';
 import './LoginScreen.css';
 
-interface LocalAccount {
-    /** Stable id — scopes this user's per-account stores. */
-    id: string;
-    name: string;
-    email: string;
-    /** Client-side gate password (local-first; not hardened security). */
-    password: string;
-    role: string;
-    color: string;
-    initials: string;
-    /** Disabled accounts render in the roster but can't sign in yet. */
-    enabled: boolean;
-}
+// Re-exported so tests (and any importer) can read the base roster.
+export { LOCAL_ACCOUNTS } from './localAccounts';
 
 /** Shared access password (stage 1 gate). */
 const GATE_PASSWORD = 'Comet2878!';
 
 /** Google login is kept in the code but hidden unless explicitly enabled. */
 const GOOGLE_LOGIN_ENABLED = (import.meta.env.VITE_GOOGLE_LOGIN as string | undefined) === 'true';
-
-/** Local accounts. Ids match data/users.json (Andy/Lisa) + the Architect id so
- *  existing per-user data carries over. Lisa is a placeholder until her login is set. */
-export const LOCAL_ACCOUNTS: LocalAccount[] = [
-    { id: '9a921527-84b0-497f-b682-45df315c13d1', name: 'Andy', email: 'andy@dwellium.com', password: 'Fm8#vP2!kR9$wL3q', role: 'god', color: 'var(--accent)', initials: 'A', enabled: true },
-    { id: 'b5d3ac0c-f276-402d-b8ef-9a96fe42b570', name: 'Lisa', email: 'lisa@zpgroup.io', password: '', role: 'corporate', color: '#3b82f6', initials: 'L', enabled: false },
-    { id: 'architect-9a921527', name: 'Archi', email: 'iklipinitser@gmail.com', password: 'Jester2878!', role: 'god', color: 'var(--accent)', initials: 'AR', enabled: true },
-];
-
-const ROLE_LABELS: Record<string, string> = {
-    god: 'God Mode',
-    corporate: 'Corporate',
-};
 
 type Stage = 'gate' | 'select' | 'credential';
 
@@ -57,6 +34,7 @@ interface LoginScreenProps {
 
 export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     const { loginLocal, loginWithGoogle } = useUser();
+    const effectiveAccounts = useEffectiveAccounts();
     const [hasClicked, setHasClicked] = useState(false);
     const [stage, setStage] = useState<Stage>('gate');
     const [gateInput, setGateInput] = useState('');
@@ -89,10 +67,16 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
         event?.preventDefault();
         setError('');
         if (!selected) return;
-        const emailOk = email.trim().toLowerCase() === selected.email.toLowerCase();
-        const passwordOk = password === selected.password;
+        // Re-resolve against current overrides (Archi may have just set it).
+        const acct = effectiveAccounts.find(a => a.id === selected.id) ?? selected;
+        if (!isPasswordSet(acct)) {
+            setError('Password not set yet — ask the Architect to set it in Control Panel → Accounts.');
+            return;
+        }
+        const emailOk = email.trim().toLowerCase() === acct.email.toLowerCase();
+        const passwordOk = password === acct.password;
         if (emailOk && passwordOk) {
-            loginLocal({ id: selected.id, name: selected.name, email: selected.email, role: selected.role });
+            loginLocal({ id: acct.id, name: acct.name, email: acct.email, role: acct.role });
         } else {
             setError('Incorrect email or password.');
         }
@@ -160,7 +144,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                 <span className="login-quick__label">Select Account</span>
                                 <h2>Who's signing in?</h2>
                                 <div className="login-quick__grid">
-                                    {LOCAL_ACCOUNTS.map((account) => (
+                                    {effectiveAccounts.map((account) => (
                                         <button
                                             key={account.id}
                                             type="button"

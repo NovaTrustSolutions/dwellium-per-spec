@@ -39,7 +39,7 @@ const CATEGORIES = ['Invoice', 'Lease', 'Compliance', 'Insurance', 'Legal', 'Tax
 type WriteAction = 'Upload' | 'Triage' | 'Approve' | 'Reject' | 'Create workitem';
 
 function staticModeMessage(action: WriteAction): string {
-    return `🗒️ ${action} requires backend mode (static deck is read-only).`;
+    return `${action} requires backend mode (static deck is read-only).`;
 }
 
 function CorporateReviewInner() {
@@ -126,13 +126,13 @@ function CorporateReviewInner() {
             formData.append('priority', uploadPriority);
             formData.append('notes', uploadNotes);
             await strataUpload<ReviewDocument>('/corporate-review/upload', formData);
-            showToast('📄 Document uploaded');
+            showToast('Document uploaded');
             setShowUpload(false);
             setUploadFile(null);
             setUploadNotes('');
             fetchDocs();
         } catch {
-            showToast('❌ Upload failed');
+            showToast('Upload failed');
         }
         setLoading(false);
     };
@@ -176,19 +176,19 @@ function CorporateReviewInner() {
 
     const triageDoc = (doc: ReviewDocument, priority: DocPriority) =>
         submitWrite(doc, 'Triage', `/corporate-review/${doc.id}/triage`, { priority },
-            '✅ Document triaged', '❌ Triage failed');
+            'Document triaged', 'Triage failed');
 
     const approveDoc = (doc: ReviewDocument) =>
         submitWrite(doc, 'Approve', `/corporate-review/${doc.id}/approve`, {},
-            '✅ Document approved', '❌ Approval failed');
+            'Document approved', 'Approval failed');
 
     const rejectDoc = (doc: ReviewDocument) =>
         submitWrite(doc, 'Reject', `/corporate-review/${doc.id}/reject`, {},
-            '🚫 Document rejected', '❌ Rejection failed');
+            'Document rejected', 'Rejection failed');
 
     const createWorkitem = (doc: ReviewDocument) =>
         submitWrite(doc, 'Create workitem', `/corporate-review/${doc.id}/create-workitem`, {},
-            '🔗 Workitem created from document', '❌ Failed to create workitem');
+            'Workitem created from document', 'Failed to create workitem');
 
     const filtered = docs.filter(d =>
         (filter === 'all' || d.status === filter) &&

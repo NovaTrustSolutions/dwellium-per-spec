@@ -285,7 +285,7 @@ function ComplianceCalendar({ events, loading, error }: PanelProps & { events: D
 function AIAgentLog({ entries, loading, error }: PanelProps & { entries: AgentLogEntry[] }) {
     const ready = !loading && !error && entries.length > 0;
     const typeIcons: Record<string, string> = {
-        alert: '🚨', route: '📨', create: '📄', filter: '🗑️', check: '✅',
+        alert: '', route: '', create: '', filter: '', check: '',
     };
     return (
         <div className="a-panel a-agent-log">
@@ -1027,7 +1027,7 @@ const ARB_COLORS: Record<string, string> = {
 function QuickArbitrage() {
     return (
         <div className="a-panel a-panel--glass">
-            <h3 className="a-panel__title">⚡ 90-Day Quick Arbitrage <MockBadge /></h3>
+            <h3 className="a-panel__title">90-Day Quick Arbitrage <MockBadge /></h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {ARBITRAGE_OPPORTUNITIES.map(opp => (
                     <div key={opp.id} style={{
@@ -1072,7 +1072,7 @@ const DOMAIN_VIEWS: { id: string; name: string; module: string; filters: Record<
 function DomainViews() {
     return (
         <div className="a-panel a-panel--glass">
-            <h3 className="a-panel__title">🔍 Saved Domain Views <MockBadge /></h3>
+            <h3 className="a-panel__title">Saved Domain Views <MockBadge /></h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 {DOMAIN_VIEWS.map(view => (
                     <div key={view.id} style={{

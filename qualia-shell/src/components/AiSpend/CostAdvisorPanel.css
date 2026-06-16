@@ -1,0 +1,60 @@
+/* CostAdvisorPanel — $/hr KPI slider + "do it cheaper" recommendations */
+
+.cadv {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.cadv__kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    background: var(--surface-2, rgba(255, 255, 255, 0.03));
+}
+.cadv__kpi-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-secondary); }
+.cadv__kpi-label svg { color: var(--accent, #D6FE51); }
+.cadv__kpi-value { margin-left: auto; font-size: 18px; color: var(--text-primary); }
+
+.cadv__slider { width: 100%; accent-color: var(--accent, #D6FE51); cursor: pointer; }
+.cadv__kpi-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary, #808080); }
+
+.cadv__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cadv__title { display: flex; align-items: center; gap: 7px; font-weight: 700; color: var(--text-primary); }
+.cadv__title svg { color: var(--accent, #D6FE51); }
+.cadv__total {
+    font-size: 11px; font-weight: 600;
+    color: var(--accent, #D6FE51);
+    background: color-mix(in srgb, var(--accent, #D6FE51) 14%, transparent);
+    padding: 2px 8px; border-radius: 999px;
+}
+
+.cadv__empty { color: var(--text-tertiary, #808080); line-height: 1.5; margin: 0; }
+
+.cadv__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cadv__item {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 9px 10px; border-radius: 9px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.07));
+    background: var(--surface-2, rgba(255, 255, 255, 0.02));
+}
+.cadv__item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.cadv__item-title { color: var(--text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cadv__save { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--accent, #D6FE51); }
+
+.cadv__item-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11px; }
+.cadv__badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 999px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    color: var(--text-secondary); text-transform: capitalize;
+}
+.cadv__badge svg { color: var(--accent, #D6FE51); }
+.cadv__cost { color: var(--text-tertiary, #808080); }
+
+.cadv__foot { font-size: 10px; color: var(--text-tertiary, #808080); line-height: 1.5; }

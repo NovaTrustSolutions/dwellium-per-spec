@@ -40,7 +40,7 @@ export default function TagFile() {
     return (
         <div className="tf">
             <div className="tf__head">
-                <span className="tf__title">🏷️ Tag File</span>
+                <span className="tf__title">Tag File</span>
                 <span className="tf__count">{items.length} tagged · {counts.length} tag{counts.length === 1 ? '' : 's'}</span>
                 {sel && <button className="tf__clear" onClick={() => setSel(null)}>clear filter</button>}
             </div>

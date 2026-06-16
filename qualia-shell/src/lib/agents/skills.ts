@@ -20,6 +20,7 @@
  */
 import type { IntegrationsBundle } from '../../types/integrations';
 import { callLlm } from '../llmClient';
+import { recordLlmUsage } from '../llmUsageStore';
 import { DEFAULT_MODELS } from '../../types/integrations';
 import { recall, remember } from '../unifiedMemory';
 import { performWidgetAction, resolveComposeTarget, lastOpenedWidgetHolder } from '../widgetActions';
@@ -95,7 +96,7 @@ export function evaluateMath(expr: string): number | null {
 const calculatorSkill: AgentSkill = {
     id: 'skill-calculator',
     name: 'Calculator',
-    icon: '🧮',
+    icon: '',
     description: 'Exact arithmetic — percentages, powers, roots, trig. Runs instantly in-app, no key needed.',
     derivedFrom: 'LibreChat: Calculator',
     requires: 'none',
@@ -117,7 +118,7 @@ const calculatorSkill: AgentSkill = {
 const codeRunnerSkill: AgentSkill = {
     id: 'skill-code-runner',
     name: 'Code Runner (JS)',
-    icon: '⚙️',
+    icon: '',
     description: 'Run a JavaScript snippet in a sandboxed scope and show the result — the in-browser cousin of a code interpreter.',
     derivedFrom: 'LibreChat: Code Interpreter',
     requires: 'none',
@@ -147,7 +148,7 @@ const codeRunnerSkill: AgentSkill = {
 const webSearchSkill: AgentSkill = {
     id: 'skill-web-search',
     name: 'Web Search',
-    icon: '🔎',
+    icon: '',
     description: 'Search the live web — Anthropic web-search tool, or your Tavily/Brave key (P11-9).',
     derivedFrom: 'LibreChat: Google / Tavily Search',
     requires: 'llm',
@@ -178,7 +179,15 @@ const webSearchSkill: AgentSkill = {
                     const text = (data.content || [])
                         .filter((b: any) => b.type === 'text')
                         .map((b: any) => b.text).join('\n').trim();
-                    if (text) return { ok: true, text, via: 'anthropic web_search' };
+                    if (text) {
+                        recordLlmUsage({
+                            provider: 'anthropic',
+                            model: ctx.llm.anthropic?.model || DEFAULT_MODELS.anthropic,
+                            promptChars: query.length + 50,
+                            responseChars: text.length,
+                        });
+                        return { ok: true, text, via: 'anthropic web_search' };
+                    }
                 }
             } catch { /* fall through to plain LLM */ }
         }
@@ -231,7 +240,7 @@ const webSearchSkill: AgentSkill = {
 const imageGenSkill: AgentSkill = {
     id: 'skill-image-gen',
     name: 'Image Generation',
-    icon: '🎨',
+    icon: '',
     description: 'Generate an image — OpenAI DALL-E 3, or your Gemini key as the fallback (P11-9).',
     derivedFrom: 'LibreChat: DALL-E-3 / Flux / Gemini Image Tools',
     requires: 'llm',
@@ -263,6 +272,12 @@ const imageGenSkill: AgentSkill = {
                 if (!b64) throw new Error('no image in response');
                 // P12-3: generated images land in the Artifact Gallery.
                 recordArtifact({ content: `data:image/png;base64,${b64}`, source: 'skill', title: prompt.slice(0, 60), type: 'image' });
+                recordLlmUsage({
+                    provider: 'openai',
+                    model: 'dall-e-3',
+                    promptChars: 4000,
+                    responseChars: 0,
+                });
                 return { ok: true, text: `![${prompt.slice(0, 60)}](data:image/png;base64,${b64})`, via: 'dall-e-3' };
             } catch (err: any) {
                 openaiError = err?.message || String(err);
@@ -284,6 +299,12 @@ const imageGenSkill: AgentSkill = {
                 const part = (data?.candidates?.[0]?.content?.parts || []).find((p: any) => p.inlineData?.data);
                 if (!part) throw new Error('no image in response');
                 const mime = part.inlineData.mimeType || 'image/png';
+                recordLlmUsage({
+                    provider: 'gemini',
+                    model: 'image-generation',
+                    promptChars: 4000,
+                    responseChars: 0,
+                });
                 return { ok: true, text: `![${prompt.slice(0, 60)}](data:${mime};base64,${part.inlineData.data})`, via: 'gemini-image' };
             } catch (err: any) {
                 return { ok: false, text: `Image generation failed (${openaiError ? `DALL-E: ${openaiError}; ` : ''}Gemini: ${err?.message || err}).`, via: 'image-gen' };
@@ -305,7 +326,7 @@ const WEATHER_CODES: Record<number, string> = {
 const weatherSkill: AgentSkill = {
     id: 'skill-weather',
     name: 'Weather',
-    icon: '🌤️',
+    icon: '',
     description: 'Current conditions + today\'s range for any city — keyless (open-meteo), so it always works.',
     derivedFrom: 'LibreChat: OpenWeather',
     requires: 'none',
@@ -339,7 +360,7 @@ const weatherSkill: AgentSkill = {
 const memoryRecallSkill: AgentSkill = {
     id: 'skill-memory-recall',
     name: 'Memory Recall',
-    icon: '🧠',
+    icon: '',
     description: 'Search everything you\'ve asked Dwellium to remember.',
     derivedFrom: 'LibreChat: Memory',
     requires: 'none',
@@ -356,7 +377,7 @@ const memoryRecallSkill: AgentSkill = {
 const memoryRememberSkill: AgentSkill = {
     id: 'skill-memory-remember',
     name: 'Remember',
-    icon: '📌',
+    icon: '',
     description: 'Pin a fact to persistent memory — every agent can recall it later.',
     derivedFrom: 'LibreChat: Memory',
     requires: 'none',
@@ -377,7 +398,7 @@ const memoryRememberSkill: AgentSkill = {
 const composeIntoWidgetSkill: AgentSkill = {
     id: 'skill-compose-widget',
     name: 'Compose into Widget',
-    icon: '📝',
+    icon: '',
     description: 'Draft text with the LLM and place it inside a widget ("draft a letter in notepad", "…in it" after opening one).',
     derivedFrom: 'Dwellium P11-7 widget-action bus',
     requires: 'llm',
@@ -414,7 +435,7 @@ const composeIntoWidgetSkill: AgentSkill = {
 const knowledgeGraphSkill: AgentSkill = {
     id: 'skill-knowledge-graph',
     name: 'Knowledge Graph',
-    icon: '🕸️',
+    icon: '',
     description: 'Query the knowledge graph built from your memories, captures, notes, and tasks ("ask the graph about X").',
     derivedFrom: 'graphify (github.com/safishamsi/graphify)',
     requires: 'none',

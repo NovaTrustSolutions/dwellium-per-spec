@@ -56,7 +56,7 @@ export default function HydraIntro() {
                 <source src="/assets/hydra-intro.mp4" type="video/mp4" />
             </video>
             <div className="hydra-intro__controls">
-                {needsUnmute && <button type="button" className="hydra-intro__btn" onClick={unmute}>🔊 Tap for sound</button>}
+                {needsUnmute && <button type="button" className="hydra-intro__btn" onClick={unmute}>Tap for sound</button>}
                 <button type="button" className="hydra-intro__btn hydra-intro__skip" onClick={() => setShow(false)}>Skip ▶</button>
             </div>
         </div>

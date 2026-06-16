@@ -22,26 +22,18 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
-import { testProvider } from '../../lib/llmClient';
 import { API_BASE } from '../../config';
+import ApiKeysPanel from './ApiKeysPanel';
+import { ApiKeyField } from './ApiKeyField';
 import type {
     IntegrationsBundle,
-    LlmProvider,
-    LlmAnthropicConfig,
-    LlmOpenAIConfig,
-    LlmGeminiConfig,
-    LlmLocalConfig,
-    LlmCustomConfig,
     SupabaseConfig,
     PostgresConfig,
 } from '../../types/integrations';
-import { DEFAULT_MODELS, PROVIDER_LABELS, maskKey } from '../../types/integrations';
-
-const PROVIDER_ORDER: LlmProvider[] = ['anthropic', 'openai', 'gemini', 'local', 'custom'];
 
 export default function LlmIntegrationsSection() {
     const { user } = useUser();
-    const { integrations, update } = useIntegrations();
+    const { integrations, update, removeSecret } = useIntegrations();
 
     if (!user) {
         return (
@@ -69,43 +61,19 @@ export default function LlmIntegrationsSection() {
                 marginBottom: 12,
                 lineHeight: 1.5,
             }}>
-                ⚠️ Keys are stored locally in your browser under your user account ({user.id.slice(0, 8)}…).
+                Keys are stored locally in your browser under your user account ({user.id.slice(0, 8)}…).
                 They are visible to anyone with access to this device. Clear via Reset to remove.
             </div>
 
-            {/* Active LLM picker */}
-            <div className="cp-field">
-                <label className="cp-label">Active LLM Provider</label>
-                <select
-                    className="cp-select"
-                    value={integrations.llm.active || ''}
-                    onChange={e => update(b => ({
-                        ...b,
-                        llm: { ...b.llm, active: (e.target.value || null) as LlmProvider | null },
-                    }))}
-                >
-                    <option value="">— None —</option>
-                    {PROVIDER_ORDER.map(p => (
-                        <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
-                    ))}
-                </select>
-                <p style={{ color: 'var(--text-tertiary)', fontSize: 11, marginTop: 4 }}>
-                    Widgets that need an LLM (ThoughtWeaver, Fact Check, Stella, Hydra, etc.) route through this provider.
-                </p>
-            </div>
-
-            {/* Anthropic */}
-            <AnthropicCard bundle={integrations} update={update} />
-            <OpenAICard bundle={integrations} update={update} />
-            <GeminiCard bundle={integrations} update={update} />
-            <LocalCard bundle={integrations} update={update} />
-            <CustomCard bundle={integrations} update={update} />
+            {/* LLM providers (active picker + 5 write-only key cards) live in
+                ApiKeysPanel so the same panel can mount inside a widget. */}
+            <ApiKeysPanel />
 
             {/* P11-9: live web search (the non-Anthropic path) */}
             <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 20, marginBottom: 8 }}>
                 Web Search
             </h4>
-            <SearchProvidersCard bundle={integrations} update={update} />
+            <SearchProvidersCard bundle={integrations} update={update} removeSecret={removeSecret} />
 
             {/* P11-14: Google (Gmail + Calendar) web OAuth connect */}
             <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 20, marginBottom: 8 }}>
@@ -117,8 +85,8 @@ export default function LlmIntegrationsSection() {
             <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 20, marginBottom: 8 }}>
                 Databases
             </h4>
-            <SupabaseCard bundle={integrations} update={update} />
-            <PostgresCard bundle={integrations} update={update} />
+            <SupabaseCard bundle={integrations} update={update} removeSecret={removeSecret} />
+            <PostgresCard bundle={integrations} update={update} removeSecret={removeSecret} />
         </section>
     );
 }
@@ -141,7 +109,7 @@ function GoogleConnectCard() {
             <div className="cp-integration-card__header">
                 <span className="cp-integration-card__title">Google Account</span>
                 <span style={{ fontSize: 11, color: status?.connected ? 'var(--accent)' : 'var(--text-tertiary)' }}>
-                    {status === null ? 'backend offline' : status.connected ? 'Connected ✓' : status.configured ? 'Ready to connect' : 'Awaiting credentials'}
+                    {status === null ? 'backend offline' : status.connected ? 'Connected' : status.configured ? 'Ready to connect' : 'Awaiting credentials'}
                 </span>
             </div>
             {status?.configured && !status.connected && (
@@ -162,11 +130,15 @@ function GoogleConnectCard() {
 
 // P11-9: Tavily / Brave keys give Web Search a live path that doesn't need
 // an Anthropic key (skills.ts cascade: Anthropic → Tavily → Brave → LLM).
-function SearchProvidersCard({ bundle, update }: CardProps) {
+function SearchProvidersCard({ bundle, update, removeSecret }: CardProps) {
     const cfg = bundle.search || { active: null as 'tavily' | 'brave' | null };
     const tavily = cfg.tavily || { apiKey: '', enabled: true };
     const brave = cfg.brave || { apiKey: '', enabled: true };
     const set = (patch: Partial<NonNullable<typeof bundle.search>>) => update(b => ({
+        ...b,
+        search: { active: cfg.active ?? null, tavily, brave, ...patch },
+    }));
+    const remove = (patch: Partial<NonNullable<typeof bundle.search>>) => removeSecret(b => ({
         ...b,
         search: { active: cfg.active ?? null, tavily, brave, ...patch },
     }));
@@ -175,13 +147,25 @@ function SearchProvidersCard({ bundle, update }: CardProps) {
             <div className="cp-integration-card__header">
                 <span className="cp-integration-card__title">Search Providers (Tavily / Brave)</span>
             </div>
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Tavily API Key</label>
-                <ApiKeyInput value={tavily.apiKey} onChange={v => set({ tavily: { ...tavily, apiKey: v } })} placeholder="tvly-…" />
+            <div style={{ marginBottom: 8 }}>
+                <ApiKeyField
+                    label="Tavily API key"
+                    provider="tavily"
+                    value={tavily.apiKey}
+                    onChange={v => set({ tavily: { ...tavily, apiKey: v } })}
+                    onRemove={() => remove({ tavily: { ...tavily, apiKey: '' } })}
+                    placeholder="tvly-…"
+                />
             </div>
-            <div className="cp-field">
-                <label className="cp-label">Brave Search API Key</label>
-                <ApiKeyInput value={brave.apiKey} onChange={v => set({ brave: { ...brave, apiKey: v } })} placeholder="BSA…" />
+            <div style={{ marginBottom: 8 }}>
+                <ApiKeyField
+                    label="Brave Search API key"
+                    provider="brave"
+                    value={brave.apiKey}
+                    onChange={v => set({ brave: { ...brave, apiKey: v } })}
+                    onRemove={() => remove({ brave: { ...brave, apiKey: '' } })}
+                    placeholder="BSA…"
+                />
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
                 Used by the Web Search skill when no Anthropic key is configured (or its live search fails). Tavily is tried first.
@@ -190,304 +174,27 @@ function SearchProvidersCard({ bundle, update }: CardProps) {
     );
 }
 
-// ── Card components ─────────────────────────────────────────────────
+// ── Card components (non-LLM: Search / Supabase / Postgres) ─────────────
+// The 5 LLM provider cards moved to ApiKeysPanel. These remaining cards keep
+// their existing behavior; their secret inputs now use the write-only
+// ApiKeyField (no reveal toggle) and route key-clears through removeSecret.
 
 type Updater = (next: (current: IntegrationsBundle) => IntegrationsBundle) => void;
 
 interface CardProps {
     bundle: IntegrationsBundle;
     update: Updater;
+    /** Force-persist a key clear through the anti-clobber guard. */
+    removeSecret: Updater;
 }
 
-function ProviderCardShell({
-    title,
-    provider,
-    enabled,
-    onEnabledChange,
-    children,
-    bundle,
-}: {
-    title: string;
-    provider: LlmProvider;
-    enabled: boolean;
-    onEnabledChange: (v: boolean) => void;
-    children: React.ReactNode;
-    bundle: IntegrationsBundle;
-}) {
-    const [testing, setTesting] = useState(false);
-    const [testMsg, setTestMsg] = useState<string | null>(null);
-    const test = bundle.tests[provider];
-
-    const handleTest = async () => {
-        setTesting(true);
-        setTestMsg(null);
-        const result = await testProvider(provider, bundle.llm);
-        setTesting(false);
-        setTestMsg(result.ok ? `✓ ${PROVIDER_LABELS[provider]} responded` : `✗ ${result.error}`);
-        // (Test results aren't persisted to the bundle to avoid race with active updates.)
-    };
-
-    return (
-        <div className="cp-integration-card" style={{ marginBottom: 12 }}>
-            <div className="cp-integration-card__header">
-                <span className="cp-integration-card__title">{title}</span>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
-                    <input
-                        type="checkbox"
-                        checked={enabled}
-                        onChange={e => onEnabledChange(e.target.checked)}
-                    />
-                    Enabled
-                </label>
-            </div>
-            {children}
-            <div className="cp-actions" style={{ marginTop: 8 }}>
-                <button className="cp-btn" onClick={handleTest} disabled={testing || !enabled}>
-                    {testing ? 'Testing…' : 'Test Connection'}
-                </button>
-                {testMsg && (
-                    <span style={{
-                        fontSize: 11,
-                        color: testMsg.startsWith('✓') ? '#22c55e' : '#ef4444',
-                        marginLeft: 8,
-                        alignSelf: 'center',
-                    }}>{testMsg}</span>
-                )}
-                {test && !testMsg && (
-                    <span style={{ fontSize: 11, color: test.ok ? '#22c55e' : '#ef4444', marginLeft: 8, alignSelf: 'center' }}>
-                        {test.ok ? '✓ Last tested' : `✗ ${test.error}`} {new Date(test.testedAt).toLocaleTimeString()}
-                    </span>
-                )}
-            </div>
-        </div>
-    );
-}
-
-function ApiKeyInput({
-    value,
-    onChange,
-    placeholder = 'sk-…',
-}: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-    const [reveal, setReveal] = useState(false);
-    return (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <input
-                className="cp-input"
-                type={reveal ? 'text' : 'password'}
-                placeholder={placeholder}
-                value={value}
-                onChange={e => onChange(e.target.value)}
-                style={{ flex: 1, fontFamily: reveal ? 'inherit' : 'monospace' }}
-                autoComplete="off"
-                spellCheck={false}
-            />
-            <button
-                type="button"
-                className="cp-btn cp-btn--subtle"
-                onClick={() => setReveal(r => !r)}
-                title={reveal ? 'Hide' : 'Reveal'}
-                style={{ fontSize: 11, padding: '4px 8px' }}
-            >
-                {reveal ? '🙈' : '👁'}
-            </button>
-            {!reveal && value && (
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
-                    {maskKey(value)}
-                </span>
-            )}
-        </div>
-    );
-}
-
-function AnthropicCard({ bundle, update }: CardProps) {
-    const cfg: LlmAnthropicConfig = bundle.llm.anthropic || { apiKey: '', model: DEFAULT_MODELS.anthropic, enabled: false };
-    const setField = (patch: Partial<LlmAnthropicConfig>) => update(b => ({
-        ...b,
-        llm: { ...b.llm, anthropic: { ...cfg, ...patch } },
-    }));
-    return (
-        <ProviderCardShell
-            title="Anthropic"
-            provider="anthropic"
-            enabled={cfg.enabled}
-            onEnabledChange={v => setField({ enabled: v })}
-            bundle={bundle}
-        >
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">API Key</label>
-                <ApiKeyInput value={cfg.apiKey} onChange={v => setField({ apiKey: v })} placeholder="sk-ant-…" />
-            </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder={DEFAULT_MODELS.anthropic}
-                />
-            </div>
-        </ProviderCardShell>
-    );
-}
-
-function OpenAICard({ bundle, update }: CardProps) {
-    const cfg: LlmOpenAIConfig = bundle.llm.openai || { apiKey: '', model: DEFAULT_MODELS.openai, enabled: false };
-    const setField = (patch: Partial<LlmOpenAIConfig>) => update(b => ({
-        ...b,
-        llm: { ...b.llm, openai: { ...cfg, ...patch } },
-    }));
-    return (
-        <ProviderCardShell
-            title="OpenAI"
-            provider="openai"
-            enabled={cfg.enabled}
-            onEnabledChange={v => setField({ enabled: v })}
-            bundle={bundle}
-        >
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">API Key</label>
-                <ApiKeyInput value={cfg.apiKey} onChange={v => setField({ apiKey: v })} placeholder="sk-…" />
-            </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder={DEFAULT_MODELS.openai}
-                />
-            </div>
-        </ProviderCardShell>
-    );
-}
-
-function GeminiCard({ bundle, update }: CardProps) {
-    const cfg: LlmGeminiConfig = bundle.llm.gemini || { apiKey: '', model: DEFAULT_MODELS.gemini, enabled: false };
-    const setField = (patch: Partial<LlmGeminiConfig>) => update(b => ({
-        ...b,
-        llm: { ...b.llm, gemini: { ...cfg, ...patch } },
-    }));
-    return (
-        <ProviderCardShell
-            title="Google Gemini"
-            provider="gemini"
-            enabled={cfg.enabled}
-            onEnabledChange={v => setField({ enabled: v })}
-            bundle={bundle}
-        >
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">API Key</label>
-                <ApiKeyInput value={cfg.apiKey} onChange={v => setField({ apiKey: v })} placeholder="AIza…" />
-            </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder={DEFAULT_MODELS.gemini}
-                />
-            </div>
-        </ProviderCardShell>
-    );
-}
-
-function LocalCard({ bundle, update }: CardProps) {
-    const cfg: LlmLocalConfig = bundle.llm.local || { baseUrl: 'http://localhost:11434', model: DEFAULT_MODELS.local, enabled: false };
-    const setField = (patch: Partial<LlmLocalConfig>) => update(b => ({
-        ...b,
-        llm: { ...b.llm, local: { ...cfg, ...patch } },
-    }));
-    return (
-        <ProviderCardShell
-            title="Local LLM (Ollama, LM Studio)"
-            provider="local"
-            enabled={cfg.enabled}
-            onEnabledChange={v => setField({ enabled: v })}
-            bundle={bundle}
-        >
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Base URL</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.baseUrl}
-                    onChange={e => setField({ baseUrl: e.target.value })}
-                    placeholder="http://localhost:11434"
-                />
-            </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder={DEFAULT_MODELS.local}
-                />
-            </div>
-        </ProviderCardShell>
-    );
-}
-
-function CustomCard({ bundle, update }: CardProps) {
-    const cfg: LlmCustomConfig = bundle.llm.custom || { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', apiKey: '', model: '', enabled: false };
-    const setField = (patch: Partial<LlmCustomConfig>) => update(b => ({
-        ...b,
-        llm: { ...b.llm, custom: { ...cfg, ...patch } },
-    }));
-    return (
-        <ProviderCardShell
-            title="Custom (OpenRouter, Together, Anyscale, etc.)"
-            provider="custom"
-            enabled={cfg.enabled}
-            onEnabledChange={v => setField({ enabled: v })}
-            bundle={bundle}
-        >
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Provider Name</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.name}
-                    onChange={e => setField({ name: e.target.value })}
-                    placeholder="OpenRouter"
-                />
-            </div>
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Base URL</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.baseUrl}
-                    onChange={e => setField({ baseUrl: e.target.value })}
-                    placeholder="https://openrouter.ai/api/v1"
-                />
-            </div>
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">API Key</label>
-                <ApiKeyInput value={cfg.apiKey} onChange={v => setField({ apiKey: v })} placeholder="sk-or-…" />
-            </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder="anthropic/claude-3-5-sonnet"
-                />
-            </div>
-        </ProviderCardShell>
-    );
-}
-
-function SupabaseCard({ bundle, update }: CardProps) {
+function SupabaseCard({ bundle, update, removeSecret }: CardProps) {
     const cfg: SupabaseConfig = bundle.supabase || { url: '', anonKey: '', enabled: false };
     const setField = (patch: Partial<SupabaseConfig>) => update(b => ({
+        ...b,
+        supabase: { ...cfg, ...patch },
+    }));
+    const removeField = (patch: Partial<SupabaseConfig>) => removeSecret(b => ({
         ...b,
         supabase: { ...cfg, ...patch },
     }));
@@ -514,19 +221,31 @@ function SupabaseCard({ bundle, update }: CardProps) {
                     placeholder="https://xyzproject.supabase.co"
                 />
             </div>
-            <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Anon Key (public)</label>
-                <ApiKeyInput value={cfg.anonKey} onChange={v => setField({ anonKey: v })} placeholder="eyJ…" />
+            <div style={{ marginBottom: 8 }}>
+                <ApiKeyField
+                    label="Anon Key (public)"
+                    provider="supabase-anon"
+                    value={cfg.anonKey}
+                    onChange={v => setField({ anonKey: v })}
+                    onRemove={() => removeField({ anonKey: '' })}
+                    placeholder="eyJ…"
+                />
             </div>
-            <div className="cp-field">
-                <label className="cp-label">Service Key (optional, server-side admin)</label>
-                <ApiKeyInput value={cfg.serviceKey || ''} onChange={v => setField({ serviceKey: v })} placeholder="eyJ…" />
+            <div style={{ marginBottom: 8 }}>
+                <ApiKeyField
+                    label="Service Key (optional, server-side admin)"
+                    provider="supabase-service"
+                    value={cfg.serviceKey || ''}
+                    onChange={v => setField({ serviceKey: v })}
+                    onRemove={() => removeField({ serviceKey: '' })}
+                    placeholder="eyJ…"
+                />
             </div>
         </div>
     );
 }
 
-function PostgresCard({ bundle, update }: CardProps) {
+function PostgresCard({ bundle, update, removeSecret }: CardProps) {
     const cfg: PostgresConfig = bundle.postgres || {
         connectionString: '',
         host: '',
@@ -542,14 +261,20 @@ function PostgresCard({ bundle, update }: CardProps) {
         ...b,
         postgres: { ...cfg, ...patch },
     }));
+    const removeField = (patch: Partial<PostgresConfig>) => removeSecret(b => ({
+        ...b,
+        postgres: { ...cfg, ...patch },
+    }));
 
     const [mode, setMode] = useState<'string' | 'fields'>(cfg.connectionString ? 'string' : 'fields');
     const [testing, setTesting] = useState(false);
     const [testMsg, setTestMsg] = useState<string | null>(null);
+    const [testOk, setTestOk] = useState(false);
 
     const handleTest = async () => {
         setTesting(true);
         setTestMsg(null);
+        setTestOk(false);
         // Browser can't speak Postgres wire protocol directly. We POST to a
         // backend route that runs the connection on our behalf. If the route
         // doesn't exist yet (404), surface that clearly so the user knows
@@ -571,17 +296,18 @@ function PostgresCard({ bundle, update }: CardProps) {
                 body: JSON.stringify(payload),
             });
             if (res.status === 404) {
-                setTestMsg('✗ Backend route /api/integrations/test-postgres not implemented yet. Config saved; test wiring is backend work.');
+                setTestMsg('Backend route /api/integrations/test-postgres not implemented yet. Config saved; test wiring is backend work.');
                 return;
             }
             const json = await res.json().catch(() => ({}));
             if (res.ok && json?.success) {
-                setTestMsg(`✓ Connected${json.version ? ` (${json.version})` : ''}`);
+                setTestMsg(`Connected${json.version ? ` (${json.version})` : ''}`);
+                setTestOk(true);
             } else {
-                setTestMsg(`✗ ${json?.error || `HTTP ${res.status}`}`);
+                setTestMsg(`${json?.error || `HTTP ${res.status}`}`);
             }
         } catch (e: any) {
-            setTestMsg(`✗ Network error: ${e?.message || 'unreachable'}`);
+            setTestMsg(`Network error: ${e?.message || 'unreachable'}`);
         } finally {
             setTesting(false);
         }
@@ -617,11 +343,13 @@ function PostgresCard({ bundle, update }: CardProps) {
             </div>
 
             {mode === 'string' ? (
-                <div className="cp-field" style={{ marginBottom: 8 }}>
-                    <label className="cp-label">Connection String</label>
-                    <ApiKeyInput
+                <div style={{ marginBottom: 8 }}>
+                    <ApiKeyField
+                        label="Connection String"
+                        provider="postgres-conn"
                         value={cfg.connectionString || ''}
                         onChange={v => setField({ connectionString: v })}
+                        onRemove={() => removeField({ connectionString: '' })}
                         placeholder="postgres://user:pass@host:5432/db?sslmode=require"
                     />
                 </div>
@@ -670,11 +398,13 @@ function PostgresCard({ bundle, update }: CardProps) {
                             autoComplete="off"
                         />
                     </div>
-                    <div className="cp-field" style={{ marginBottom: 8 }}>
-                        <label className="cp-label">Password</label>
-                        <ApiKeyInput
+                    <div style={{ marginBottom: 8 }}>
+                        <ApiKeyField
+                            label="Password"
+                            provider="postgres-password"
                             value={cfg.password || ''}
                             onChange={v => setField({ password: v })}
+                            onRemove={() => removeField({ password: '' })}
                             placeholder="••••••••"
                         />
                     </div>
@@ -719,7 +449,7 @@ function PostgresCard({ bundle, update }: CardProps) {
                 {testMsg && (
                     <span style={{
                         fontSize: 11,
-                        color: testMsg.startsWith('✓') ? '#22c55e' : '#ef4444',
+                        color: testOk ? '#22c55e' : '#ef4444',
                         marginLeft: 8,
                         alignSelf: 'center',
                         lineHeight: 1.4,

@@ -104,7 +104,7 @@ interface DwelliumWidgetPayload {
 
 function formatWidgetReference(payload: DwelliumWidgetPayload): string {
     const title = payload.title ?? payload.widgetType ?? 'widget';
-    const lines = [`> **📎 ${title}** _(from Dwellium ${payload.widgetType})_`];
+    const lines = [`> **${title}** _(from Dwellium ${payload.widgetType})_`];
     if (payload.state) {
         for (const [k, v] of Object.entries(payload.state)) {
             const valStr = typeof v === 'string' ? v : JSON.stringify(v);
@@ -165,7 +165,7 @@ async function handleDrop(view: EditorView, e: DragEvent): Promise<boolean> {
             } else {
                 // Folder/tier: insert a markdown reference link
                 const tierLabel = payload.tier.charAt(0).toUpperCase() + payload.tier.slice(1);
-                insertAt(view, dropPos, `\n📁 **${payload.name}** _(${tierLabel} — ${payload.path})_\n`);
+                insertAt(view, dropPos, `\n**${payload.name}** _(${tierLabel} — ${payload.path})_\n`);
             }
             return true;
         } catch {

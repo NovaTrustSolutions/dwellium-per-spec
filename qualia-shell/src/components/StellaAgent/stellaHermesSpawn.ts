@@ -43,13 +43,13 @@ export function parseHermesCommand(text: string): ParsedHermesCommand {
  * the user can see the self-improvement loop working.
  */
 export function formatHermesReply(result: HermesRunResult): string {
-    const head = result.outcome === 'success' ? '⚡ **Hermes** completed the task' : '⚡ **Hermes** could not finish the task';
+    const head = result.outcome === 'success' ? '**Hermes** completed the task' : '**Hermes** could not finish the task';
     const lines: string[] = [head, ''];
 
     if (result.outcome === 'success') {
         lines.push(result.result || '_(no answer text returned)_');
     } else {
-        lines.push(`⚠️ ${result.error || 'The run failed.'}`);
+        lines.push(`${result.error || 'The run failed.'}`);
     }
 
     const trace = result.steps
@@ -61,10 +61,10 @@ export function formatHermesReply(result: HermesRunResult): string {
 
     const footer: string[] = [];
     if (result.fewShotCount > 0) {
-        footer.push(`🧠 learned from ${result.fewShotCount} similar past run${result.fewShotCount === 1 ? '' : 's'}`);
+        footer.push(`learned from ${result.fewShotCount} similar past run${result.fewShotCount === 1 ? '' : 's'}`);
     }
     if (result.toolsUsed.length) {
-        footer.push(`🔧 ${result.toolsUsed.join(', ')}`);
+        footer.push(`${result.toolsUsed.join(', ')}`);
     }
     if (footer.length) lines.push('', `_${footer.join(' · ')}_`);
 

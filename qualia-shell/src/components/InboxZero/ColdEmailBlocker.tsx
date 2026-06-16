@@ -135,7 +135,7 @@ export default function ColdEmailBlocker() {
     return (
         <div style={s.container}>
             <div style={s.header}>
-                <div style={s.title}>🛡️ Cold Email Blocker</div>
+                <div style={s.title}>Cold Email Blocker</div>
                 <div style={s.tabs}>
                     <button style={s.tab(view === 'overview')} onClick={() => setView('overview')}>Overview</button>
                     <button style={s.tab(view === 'log')} onClick={() => { setView('log'); fetchLog(); }}>Blocked Log</button>
@@ -168,7 +168,7 @@ export default function ColdEmailBlocker() {
                     {/* Top cold-sending domains */}
                     {stats.topDomains.length > 0 && (
                         <div style={s.section}>
-                            <div style={s.sectionTitle}>🏢 TOP COLD-SENDING DOMAINS</div>
+                            <div style={s.sectionTitle}>TOP COLD-SENDING DOMAINS</div>
                             <table style={s.table}>
                                 <thead>
                                     <tr>
@@ -193,7 +193,7 @@ export default function ColdEmailBlocker() {
                     {/* Recent blocked */}
                     {stats.recentBlocked.length > 0 && (
                         <div style={s.section}>
-                            <div style={s.sectionTitle}>🚫 RECENTLY BLOCKED</div>
+                            <div style={s.sectionTitle}>RECENTLY BLOCKED</div>
                             <table style={s.table}>
                                 <thead>
                                     <tr>
@@ -261,7 +261,7 @@ export default function ColdEmailBlocker() {
                                             </td>
                                             <td style={{ ...s.td, whiteSpace: 'nowrap', opacity: 0.5 }}>{new Date(entry.created_at).toLocaleDateString()}</td>
                                             <td style={s.td}>
-                                                <button style={s.btn('ghost')} onClick={() => clearColdFlag(entry.inbox_item_id)} title="Not cold — false positive">✓ Clear</button>
+                                                <button style={s.btn('ghost')} onClick={() => clearColdFlag(entry.inbox_item_id)} title="Not cold — false positive">Clear</button>
                                             </td>
                                         </tr>
                                     );
@@ -278,7 +278,7 @@ export default function ColdEmailBlocker() {
                     {/* Enable/Disable toggle */}
                     <div style={s.toggle}>
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: '13px' }}>🛡️ Cold Email Detection</div>
+                            <div style={{ fontWeight: 700, fontSize: '13px' }}>Cold Email Detection</div>
                             <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>Automatically detect and flag unsolicited cold outreach</div>
                         </div>
                         <button
@@ -289,14 +289,14 @@ export default function ColdEmailBlocker() {
                             onClick={() => updateConfig({ enabled: !config.enabled })}
                             disabled={saving}
                         >
-                            {config.enabled ? '🟢 ON' : '⚪ OFF'}
+                            {config.enabled ? 'ON' : 'OFF'}
                         </button>
                     </div>
 
                     {/* Auto-archive toggle */}
                     <div style={s.toggle}>
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: '13px' }}>📦 Auto-Archive Cold Emails</div>
+                            <div style={{ fontWeight: 700, fontSize: '13px' }}>Auto-Archive Cold Emails</div>
                             <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>Automatically archive emails flagged as cold (instead of just tagging)</div>
                         </div>
                         <button
@@ -307,7 +307,7 @@ export default function ColdEmailBlocker() {
                             onClick={() => updateConfig({ autoArchive: !config.autoArchive })}
                             disabled={saving}
                         >
-                            {config.autoArchive ? '🟢 ON' : '⚪ OFF'}
+                            {config.autoArchive ? 'ON' : 'OFF'}
                         </button>
                     </div>
 
@@ -315,7 +315,7 @@ export default function ColdEmailBlocker() {
                     <div style={{ ...s.toggle, flexDirection: 'column', alignItems: 'stretch' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <div>
-                                <div style={{ fontWeight: 700, fontSize: '13px' }}>🎯 Detection Threshold</div>
+                                <div style={{ fontWeight: 700, fontSize: '13px' }}>Detection Threshold</div>
                                 <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '2px' }}>Higher = fewer false positives, lower = catch more cold emails</div>
                             </div>
                             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent)' }}>{config.threshold.toFixed(2)}</div>
@@ -342,7 +342,7 @@ export default function ColdEmailBlocker() {
 
                     {/* Whitelist domains */}
                     <div style={{ ...s.toggle, flexDirection: 'column', alignItems: 'stretch' }}>
-                        <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px' }}>✅ Whitelisted Domains</div>
+                        <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px' }}>Whitelisted Domains</div>
                         <div style={{ fontSize: '11px', opacity: 0.5, marginBottom: '8px' }}>
                             Emails from these domains will never be flagged as cold. Comma-separated.
                         </div>

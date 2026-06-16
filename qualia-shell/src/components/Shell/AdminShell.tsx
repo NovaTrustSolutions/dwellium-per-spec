@@ -120,7 +120,7 @@ function ShellLayout() {
                 // Focus this window so user sees it
                 window.focus();
                 // Open the widget in the best available quadrant
-                openWindow(component, title || component, icon || '🪟');
+                openWindow(component, title || component, icon || '');
                 window.dispatchEvent(new CustomEvent('qualia-toast', {
                     detail: `"${title}" docked back ↩`,
                 }));

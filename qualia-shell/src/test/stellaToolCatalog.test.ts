@@ -112,8 +112,8 @@ describe('groupByCategory', () => {
 
     it('appends an unknown category after the ordered ones', () => {
         const custom: StellaTool[] = [
-            { id: 'x', name: 'X', category: 'Zeta', description: 'd', icon: '🔧', keywords: ['x'], action: { kind: 'info', tab: 'mcp' } },
-            { id: 'y', name: 'Y', category: 'Agents & Automation', description: 'd', icon: '🔧', keywords: ['y'], action: { kind: 'info', tab: 'mcp' } },
+            { id: 'x', name: 'X', category: 'Zeta', description: 'd', icon: 'wrench', keywords: ['x'], action: { kind: 'info', tab: 'mcp' } },
+            { id: 'y', name: 'Y', category: 'Agents & Automation', description: 'd', icon: 'wrench', keywords: ['y'], action: { kind: 'info', tab: 'mcp' } },
         ];
         const groups = groupByCategory(custom);
         expect(groups.map((g) => g.category)).toEqual(['Agents & Automation', 'Zeta']);

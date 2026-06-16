@@ -71,7 +71,7 @@ describe('formatHermesReply', () => {
             steps: [{ type: 'final_answer', content: 'Error: backend offline', timestamp: 't' }],
         }));
         expect(md).toContain('could not finish');
-        expect(md).toContain('⚠️ backend offline');
+        expect(md).toContain('backend offline');
         expect(md).not.toContain('learned from');
         expect(md).not.toContain('Trace'); // only final_answer present → no trace block
     });
@@ -100,6 +100,6 @@ describe('spawnHermesFromStella', () => {
         const run = vi.fn().mockResolvedValue(result({ outcome: 'fail', result: '', error: 'boom' }));
         const out = await spawnHermesFromStella('x', { run, authFetch: vi.fn() });
         expect(out.result.outcome).toBe('fail');
-        expect(out.reply).toContain('⚠️ boom');
+        expect(out.reply).toContain('boom');
     });
 });

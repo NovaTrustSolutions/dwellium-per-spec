@@ -238,3 +238,9 @@ textarea.avd-desc:focus, .avd-note-body:focus { outline: none; border-color: var
     .avd-corner-video { width: 84px; }
     .avd-topbar { padding-right: 104px; }
 }
+
+/* Persona identity icon picker (editable avatar icon) */
+.avd-icon-picker { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; width: 100%; max-height: 88px; overflow-y: auto; padding: 2px; }
+.avd-icon-opt { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03); color: var(--text-secondary, #ccc); cursor: pointer; padding: 0; }
+.avd-icon-opt:hover { background: rgba(81,212,255,.12); }
+.avd-icon-opt--active { border-color: var(--accent, #D6FE51); color: var(--accent, #D6FE51); background: color-mix(in srgb, var(--accent, #D6FE51) 16%, transparent); }

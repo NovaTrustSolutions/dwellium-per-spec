@@ -56,7 +56,7 @@ describe('workspaceScribe helpers', () => {
         expect(openFile).toHaveBeenNthCalledWith(1, 'Dom/Proj/Thread A/a.md');
         expect(openFile).toHaveBeenNthCalledWith(2, 'Dom/Proj/Thread A/b.md');
         expect(openWidget).toHaveBeenCalledTimes(1);
-        expect(openWidget).toHaveBeenCalledWith('scribe', 'Scribe', '📝');
+        expect(openWidget).toHaveBeenCalledWith('scribe', 'Scribe', 'pen-tool');
     });
 
     it('a fileless thread opens nothing and never surfaces the widget', () => {
@@ -72,10 +72,10 @@ describe('workspaceScribe helpers', () => {
         const handler = vi.fn();
         window.addEventListener('dwellium:open-widget', handler);
         try {
-            dispatchOpenWidget('scribe', 'Scribe', '📝');
+            dispatchOpenWidget('scribe', 'Scribe', 'pen-tool');
             expect(handler).toHaveBeenCalledTimes(1);
             const detail = (handler.mock.calls[0][0] as CustomEvent).detail;
-            expect(detail).toEqual({ widgetId: 'scribe', label: 'Scribe', icon: '📝' });
+            expect(detail).toEqual({ widgetId: 'scribe', label: 'Scribe', icon: 'pen-tool' });
         } finally {
             window.removeEventListener('dwellium:open-widget', handler);
         }

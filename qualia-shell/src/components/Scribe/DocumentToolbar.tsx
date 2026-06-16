@@ -45,7 +45,7 @@ export function DocumentToolbar() {
             const newPath = await createVersion(activeFilepath);
             if (newPath) {
                 const name = newPath.split('/').pop() ?? newPath;
-                setToast(`✓ Saved as ${name}`);
+                setToast(`Saved as ${name}`);
                 setTimeout(() => setToast(''), 2500);
             }
         } finally {
@@ -74,7 +74,7 @@ export function DocumentToolbar() {
             const base = (activeFilepath.split('/').pop() ?? 'document').replace(/\.md$/i, '');
             const bytes = await markdownToPdfBytes(base, content);
             downloadPdf(base, bytes);
-            setToast('✓ Exported PDF');
+            setToast('Exported PDF');
             setTimeout(() => setToast(''), 2500);
         } finally {
             setExporting(false);
@@ -88,7 +88,7 @@ export function DocumentToolbar() {
             const content = openFiles.find((f) => f.filepath === activeFilepath)?.content ?? '';
             const base = (activeFilepath.split('/').pop() ?? 'document').replace(/\.md$/i, '');
             await downloadDocx(base, base, content);
-            setToast('✓ Exported DOCX');
+            setToast('Exported DOCX');
             setTimeout(() => setToast(''), 2500);
         } finally {
             setExportingDocx(false);
@@ -113,32 +113,32 @@ export function DocumentToolbar() {
     return (
         <div className="scribe__toolbar">
             <ToolbarBtn
-                label="☰ Contents"
+                label="Contents"
                 title={tocVisible ? 'Hide table of contents' : 'Show table of contents'}
                 active={tocVisible}
                 onClick={() => setTocVisible(!tocVisible)}
             />
             <ToolbarBtn
-                label="🗺 Minimap"
+                label="Minimap"
                 title={minimapVisible ? 'Hide minimap' : 'Show minimap'}
                 active={minimapVisible}
                 onClick={() => setMinimapVisible(!minimapVisible)}
             />
             <ToolbarBtn
-                label="🔍 Find"
+                label="Find"
                 title="Find & replace (⌘F)"
                 active={findReplaceOpen}
                 onClick={() => setFindReplaceOpen(!findReplaceOpen)}
             />
             <ToolbarBtn
-                label="⛶ Focus"
+                label="Focus"
                 title="Focus mode — hide chrome for distraction-free writing (⌘⇧F)"
                 active={focusMode}
                 onClick={() => setFocusMode(!focusMode)}
             />
             <PriorityBadge />
             <ToolbarBtn
-                label={versioning ? '...' : '🕒 Version'}
+                label={versioning ? '...' : 'Version'}
                 title="Save a snapshot of current content"
                 disabled={versioning}
                 onClick={() => void handleVersion()}
@@ -183,13 +183,13 @@ export function DocumentToolbar() {
                 )}
             </div>
             <ToolbarBtn
-                label={exporting ? '...' : '⬇ PDF'}
+                label={exporting ? '...' : 'PDF'}
                 title="Export this document as a PDF"
                 disabled={exporting}
                 onClick={() => void handleExportPdf()}
             />
             <ToolbarBtn
-                label={exportingDocx ? '...' : '⬇ DOCX'}
+                label={exportingDocx ? '...' : 'DOCX'}
                 title="Export this document as a Word .docx"
                 disabled={exportingDocx}
                 onClick={() => void handleExportDocx()}
@@ -197,7 +197,7 @@ export function DocumentToolbar() {
             {toast && <span className="scribe__toolbar-toast">{toast}</span>}
             <span style={{ flex: 1 }} />
             <ToolbarBtn
-                label={deleting ? '...' : '🗑 Delete'}
+                label={deleting ? '...' : 'Delete'}
                 title="Delete this file"
                 danger
                 disabled={deleting}

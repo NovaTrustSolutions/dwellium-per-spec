@@ -7,6 +7,7 @@
  * background/foreground and reloads. Markdown is XSS-sanitised via safeMarkdown.
  */
 import { useState, useRef, useEffect } from 'react';
+import { Send } from 'lucide-react';
 import { API_BASE } from '../../config';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import { getAuthToken } from '../../context/UserContext';
@@ -87,7 +88,7 @@ export default function AntigravityChat() {
             const usedModel = data.data?.model || model;
             setMessages(prev => prev.map(m => m.id === thinking.id ? { ...m, content: reply, thinking: false, model: usedModel } : m));
         } catch (e: any) {
-            setMessages(prev => prev.map(m => m.id === thinking.id ? { ...m, content: `⚠️ Connection error: ${e?.message || e}`, thinking: false } : m));
+            setMessages(prev => prev.map(m => m.id === thinking.id ? { ...m, content: `Connection error: ${e?.message || e}`, thinking: false } : m));
         } finally {
             setIsLoading(false);
         }
@@ -133,7 +134,7 @@ export default function AntigravityChat() {
                     disabled={isLoading}
                 />
                 <button className="alc-send-btn" onClick={send} disabled={!input.trim() || isLoading} title="Send">
-                    {isLoading ? <span className="alc-send-spinner" /> : '➤'}
+                    {isLoading ? <span className="alc-send-spinner" /> : <Send size={14} />}
                 </button>
             </div>
         </div>

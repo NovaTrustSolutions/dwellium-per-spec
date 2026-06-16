@@ -75,11 +75,11 @@ describe('StellaAgent', () => {
 
     it('renders tab bar with all 5 tabs', async () => {
         render(<StellaAgent />);
-        expect(screen.getByText('💬 Chat')).toBeInTheDocument();
-        expect(screen.getByText('🧩 Skills')).toBeInTheDocument();
-        expect(screen.getByText('📂 Memory')).toBeInTheDocument();
-        expect(screen.getByText('🎙️ Voice')).toBeInTheDocument();
-        expect(screen.getByText('⚙️ Settings')).toBeInTheDocument();
+        expect(screen.getByText('Chat')).toBeInTheDocument();
+        expect(screen.getByText('Skills')).toBeInTheDocument();
+        expect(screen.getByText('Memory')).toBeInTheDocument();
+        expect(screen.getByText('Voice')).toBeInTheDocument();
+        expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
     it('shows Stella Online after init + status check', async () => {
@@ -127,7 +127,7 @@ describe('StellaAgent', () => {
             expect(screen.getByText(/Stella Online/)).toBeInTheDocument();
         });
 
-        await user.click(screen.getByText('🧩 Skills'));
+        await user.click(screen.getByText('Skills'));
 
         await waitFor(() => {
             expect(screen.getByText('web-search')).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe('StellaAgent', () => {
             expect(screen.getByText(/Stella Online/)).toBeInTheDocument();
         });
 
-        await user.click(screen.getByText('📂 Memory'));
+        await user.click(screen.getByText('Memory'));
 
         await waitFor(() => {
             expect(screen.getByText(/context\.md/)).toBeInTheDocument();
@@ -154,9 +154,9 @@ describe('StellaAgent', () => {
         const user = userEvent.setup();
         render(<StellaAgent />);
 
-        await user.click(screen.getByText('⚙️ Settings'));
+        await user.click(screen.getByText('Settings'));
 
-        expect(screen.getByText('🔧 Stella Configuration')).toBeInTheDocument();
+        expect(screen.getByText('Stella Configuration')).toBeInTheDocument();
         expect(screen.getByText('LLM Provider')).toBeInTheDocument();
     });
 

@@ -6,6 +6,7 @@ import { API_BASE } from '../../config';
 import { useUser } from '../../context/UserContext';
 import { runLocalCommand } from './localShell';
 import { consumePendingTerminalRun } from '../../lib/terminalLaunch';
+import { useIntegrations } from '../../hooks/useIntegrations';
 import type { Terminal as XTermTerminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import './Terminal.css';
@@ -65,6 +66,7 @@ function keyToControlSequence(event: React.KeyboardEvent<HTMLTextAreaElement>): 
 
 export default function Terminal() {
     const { authFetch } = useUser();
+    const { integrations } = useIntegrations();
     const [capabilities, setCapabilities] = useState<TerminalCapabilities | null>(null);
     const [session, setSession] = useState<TerminalSession | null>(null);
     const [cursor, setCursor] = useState(0);
@@ -262,9 +264,21 @@ export default function Terminal() {
             }
             setCapabilities(caps);
 
+            const envVars: Record<string, string> = {};
+            if (integrations?.llm?.anthropic?.apiKey) {
+                envVars['ANTHROPIC_API_KEY'] = integrations.llm.anthropic.apiKey;
+            }
+            if (integrations?.llm?.gemini?.apiKey) {
+                envVars['GEMINI_API_KEY'] = integrations.llm.gemini.apiKey;
+            }
+            if (integrations?.llm?.openai?.apiKey) {
+                envVars['OPENAI_API_KEY'] = integrations.llm.openai.apiKey;
+                envVars['CODEX_API_KEY'] = integrations.llm.openai.apiKey;
+            }
+
             const res = await authFetch(`${API_TERMINAL}/sessions`, {
                 method: 'POST',
-                body: JSON.stringify({ cwd: caps.cwd }),
+                body: JSON.stringify({ cwd: caps.cwd, env: envVars }),
             });
             const json = await res.json();
             // Session response is also flat ({ success, session }) on the backend;
@@ -303,7 +317,7 @@ export default function Terminal() {
             setIsConnecting(false);
             setIsBusy(false);
         }
-    }, [authFetch, writeToTerm]);
+    }, [authFetch, writeToTerm, integrations]);
 
     useEffect(() => {
         void createSession();
@@ -429,6 +443,8 @@ export default function Terminal() {
         if (offline) return ['help', 'date', 'clear'];
         const commands = ['pwd', 'ls -la', 'git status'];
         if (toolMap.get('claude')) commands.push('claude');
+        if (toolMap.get('codex')) commands.push('codex');
+        if (toolMap.get('antigravity')) commands.push('antigravity');
         return commands;
     }, [offline, toolMap]);
 
@@ -504,7 +520,7 @@ export default function Terminal() {
                     role="status"
                     style={{ padding: '6px 12px', background: 'rgba(249,115,22,0.12)', borderTop: '1px solid rgba(249,115,22,0.4)', borderBottom: '1px solid rgba(249,115,22,0.4)', color: '#fdba74', fontSize: 12 }}
                 >
-                    ⚠ Backend terminal unavailable — running a limited <strong>offline shell</strong>. Type <code>help</code>; connect the backend for a full PTY shell.
+                    Backend terminal unavailable — running a limited <strong>offline shell</strong>. Type <code>help</code>; connect the backend for a full PTY shell.
                 </div>
             )}
             <div

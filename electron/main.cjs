@@ -188,6 +188,10 @@ ipcMain.handle('dwellium:chooseDataRoot', async () => {
     const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory', 'createDirectory'], title: 'Choose Dwellium data folder (e.g. on your passport drive)' });
     return r.canceled ? null : r.filePaths[0];
 });
+ipcMain.handle('dwellium:chooseDirectory', async () => {
+    const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory', 'createDirectory'], title: 'Select Folder' });
+    return r.canceled ? null : r.filePaths[0];
+});
 ipcMain.handle('dwellium:dataRoot', () => DATA_ROOT);
 // Persist a new data root (Settings → Data Folder). Takes effect on relaunch
 // (the backend sidecar is spawned with DATA_ROOT at startup).
@@ -217,6 +221,269 @@ ipcMain.handle('dwellium:restartBackend', async () => {
 // Synchronous read so the preload can inject window.__dwelliumWorkspaceRoot
 // BEFORE the SPA's first render (the File Explorer header reads it synchronously).
 ipcMain.on('dwellium:dataRootSync', (e) => { e.returnValue = DATA_ROOT; });
+
+// ── BACKGROUND (botless, private) meeting capture via Recall.ai Desktop SDK ───
+//
+// What this is: a LOCAL, bot-free meeting recorder. Unlike the visible Meet-bot
+// path (a Recall *bot* dials into the call), NOTHING joins the meeting here — the
+// Recall Desktop SDK (`@recallai/desktop-sdk`) records this Mac's mic + system
+// audio locally, transcribes in real time, and we forward each utterance to the
+// backend. The other participants never see a bot in the room.
+//
+// Platform + signing constraints (HARD):
+//   • Apple-Silicon Mac or Windows ONLY. The SDK's init() throws on any other
+//     platform ("Platform <x> is not supported by Desktop SDK"). We surface that
+//     as a structured { ok:false, reason } so the renderer can tell the user
+//     "background mode needs the desktop app on Apple-Silicon Mac / Windows".
+//   • The SDK ships a NATIVE helper binary (macOS: desktop_sdk_macos_exe; Windows:
+//     agent-windows.exe) + bundled GStreamer. `npm install` MUST run on the Mac,
+//     and the packaged .app MUST be code-signed with Recall's osx-sign fork
+//     (mic / screen-capture / system-audio entitlements + hardened runtime) or
+//     macOS silently denies capture. See electron/package.json dependency note.
+//   • macOS permissions required at first run: Microphone, Screen Recording (for
+//     system audio / video), and Accessibility (window detection). The SDK
+//     exposes requestPermission('microphone'|'screen-capture'|'system-audio'|
+//     'accessibility'|'full-disk-access'); the OS shows its own consent prompts.
+//
+// API coded against (verified from the published package @recallai/desktop-sdk
+// @2.0.19 — index.js + index.d.ts — and https://docs.recall.ai/docs/desktop-sdk):
+//   • init({ api_url?, apiUrl?, acquirePermissionsOnStartup?, ... }) → Promise
+//   • requestPermission(permission) → Promise
+//   • startRecording({ windowId, uploadToken }) → Promise   (config JSON-encoded
+//     internally; the upload token is minted by the BACKEND from Recall's
+//     "Create Desktop SDK Upload" API, which is also where the real-time
+//     transcript provider + realtime_endpoints config lives — see TODO below)
+//   • stopRecording({ windowId }) / pauseRecording / resumeRecording
+//   • addEventListener(type, cb) / removeEventListener / removeAllEventListeners
+//   • shutdown() → Promise
+//   Event types (EventTypeToPayloadMap in index.d.ts): 'meeting-detected',
+//   'recording-started', 'recording-ended', 'realtime-event', 'error',
+//   'permission-status', 'shutdown', … The live transcript arrives on
+//   'realtime-event' as { window, event, data }, where `event` is the sub-type
+//   ('transcript.data' = finalized utterance, 'transcript.partial_data' = interim)
+//   and `data` carries the Recall envelope → words[] + participant.
+//
+// NOTE / backend contract: minting the upload token requires a backend route
+//   POST ${apiBase}/api/ara/meeting/desktop-token  → { uploadToken, recordingId? }
+// that calls Recall's "Create Desktop SDK Upload" API server-side (keeps the
+// Recall API key off the client) and sets recording_config.realtime_endpoints to
+//   [{ type: 'desktop_sdk_callback', events: ['transcript.data','transcript.partial_data'] }]
+// plus a transcript provider (e.g. assembly_ai_v3_streaming / deepgram). The
+// SDK then delivers those events to THIS process via the 'realtime-event'
+// listener. If that route is absent we still record locally but cannot start an
+// upload (see HALT in the structured failure below). We forward each utterance to
+// the agreed ingest:  POST ${apiBase}/api/ara/meeting/transcript
+//   body { sessionId, speaker?, text, isFinal, tsMs, mode:'background' }.
+
+let recallSdk = null;            // lazily-required module (native; absent in Linux build sandbox)
+let meetingState = null;         // { sessionId, apiBase, windowId, listeners } while capturing
+
+/** Lazy + guarded require so a missing native binary / unsupported platform never
+ *  crashes app startup — only the start handler reports the failure. */
+function loadRecallSdk() {
+    if (recallSdk) return recallSdk;
+    // eslint-disable-next-line global-require
+    recallSdk = require('@recallai/desktop-sdk');
+    return recallSdk.default || recallSdk;
+}
+
+/** POST one transcript utterance to the backend ingest. Fire-and-forget: a
+ *  failed POST must never tear down an in-progress recording (matches the
+ *  repo rule "backend failure never logs the user out"). */
+function postTranscript(apiBase, body) {
+    try {
+        const u = new URL(`${apiBase}/api/ara/meeting/transcript`);
+        const payload = Buffer.from(JSON.stringify(body), 'utf-8');
+        const lib = u.protocol === 'https:' ? require('https') : http;
+        const req = lib.request({
+            hostname: u.hostname,
+            port: u.port || (u.protocol === 'https:' ? 443 : 80),
+            path: u.pathname + u.search,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length, 'X-Qualia-API': 'v2' },
+        }, (r) => { r.resume(); }); // drain so the socket frees
+        req.on('error', (e) => logBackend(`meeting transcript POST failed: ${e && e.message}`));
+        req.write(payload);
+        req.end();
+    } catch (e) {
+        logBackend(`meeting transcript POST threw: ${e && e.message}`);
+    }
+}
+
+/** Pull the best speaker label + text + finality out of a 'realtime-event'.
+ *  Defensive across envelope nesting: Recall wraps the provider payload, and the
+ *  exact depth differs by provider, so we probe the documented locations and
+ *  fall back gracefully. */
+function parseRealtimeTranscript(evt) {
+    // evt = { window, event: 'transcript.data' | 'transcript.partial_data', data }
+    const isFinal = evt.event === 'transcript.data';
+    // Recall envelope: words + participant typically at evt.data.data (one wrap),
+    // occasionally one level deeper for some providers (evt.data.data.data.payload).
+    const d = evt.data || {};
+    const core = d.data?.data || d.data || d;
+    const payload = core?.payload || core || {};
+    const words = payload.words || core?.words || d.words || [];
+    const participant = payload.participant || core?.participant || d.participant || {};
+    let text = '';
+    if (Array.isArray(words) && words.length) {
+        text = words.map((w) => (w && (w.text ?? w.word)) || '').join(' ').replace(/\s+/g, ' ').trim();
+    } else if (typeof payload.text === 'string') {
+        text = payload.text.trim();
+    } else if (typeof core?.text === 'string') {
+        text = core.text.trim();
+    }
+    const speaker = participant.name || participant.id || undefined;
+    return { text, speaker, isFinal };
+}
+
+ipcMain.handle('meeting:start-background', async (_e, args) => {
+    const sessionId = args && args.sessionId;
+    const apiBase = (args && args.apiBase) || `http://127.0.0.1:${FRONT_PORT}`;
+    if (!sessionId) return { ok: false, reason: 'missing-session', message: 'A sessionId is required to start background capture.' };
+    if (meetingState) return { ok: false, reason: 'already-recording', message: 'Background capture is already running.' };
+    if (process.platform !== 'darwin' && process.platform !== 'win32') {
+        return { ok: false, reason: 'unsupported-platform', message: 'Background (botless) capture needs the desktop app on an Apple-Silicon Mac or Windows.' };
+    }
+    let sdk;
+    try {
+        sdk = loadRecallSdk();
+    } catch (err) {
+        // Native binary not packaged (e.g. installed in the Linux build sandbox,
+        // or `npm install` not yet run on the Mac).
+        return { ok: false, reason: 'sdk-unavailable', message: 'The Recall Desktop SDK native module is not installed. Run `npm install` in electron/ on the Mac and code-sign the build.', detail: String(err && err.message) };
+    }
+    try {
+        // 1) Mint an upload token from the backend (keeps the Recall API key
+        //    server-side and is where the real-time transcript config lives).
+        let uploadToken = null;
+        try {
+            uploadToken = await fetchUploadToken(apiBase, sessionId);
+        } catch (tokenErr) {
+            logBackend(`meeting desktop-token fetch failed: ${tokenErr && tokenErr.message}`);
+        }
+        if (!uploadToken) {
+            // HALT: cannot start a Recall upload without a token. Tell the UI
+            // exactly what's missing so the backend agent can add the route.
+            return {
+                ok: false,
+                reason: 'no-upload-token',
+                message: 'Background capture needs a Recall upload token. The backend must expose POST /api/ara/meeting/desktop-token (calls Recall’s "Create Desktop SDK Upload" with realtime_endpoints desktop_sdk_callback + transcript.data/partial_data).',
+            };
+        }
+
+        // 2) Init the SDK and proactively request capture permissions. The OS
+        //    shows its own consent dialogs; we don't block on the result.
+        await sdk.init({ acquirePermissionsOnStartup: ['microphone', 'screen-capture', 'system-audio', 'accessibility'] });
+        for (const p of ['microphone', 'screen-capture', 'system-audio', 'accessibility']) {
+            try { await sdk.requestPermission(p); } catch { /* OS will surface the prompt; non-fatal */ }
+        }
+
+        // 3) Wire listeners. The transcript rides on 'realtime-event'; we also
+        //    log lifecycle + errors. Keep handles so the stop handler can detach.
+        const onRealtime = (evt) => {
+            try {
+                if (!evt || (evt.event !== 'transcript.data' && evt.event !== 'transcript.partial_data')) return;
+                const { text, speaker, isFinal } = parseRealtimeTranscript(evt);
+                if (!text) return;
+                postTranscript(apiBase, { sessionId, speaker, text, isFinal, tsMs: Date.now(), mode: 'background' });
+            } catch (e) {
+                logBackend(`meeting realtime-event handler error: ${e && e.message}`);
+            }
+        };
+        const onRecordingStarted = (evt) => logBackend(`meeting recording-started: ${evt && evt.window && evt.window.id}`);
+        const onRecordingEnded = (evt) => logBackend(`meeting recording-ended: ${evt && evt.window && evt.window.id}`);
+        const onError = (evt) => logBackend(`meeting SDK error: ${evt && evt.type} ${evt && evt.message}`);
+        sdk.addEventListener('realtime-event', onRealtime);
+        sdk.addEventListener('recording-started', onRecordingStarted);
+        sdk.addEventListener('recording-ended', onRecordingEnded);
+        sdk.addEventListener('error', onError);
+
+        // 4) Start recording. The Desktop SDK supports recording a detected
+        //    meeting window OR a desktop-audio session. For botless background
+        //    capture of the local machine we use the desktop-audio path when no
+        //    specific meeting window is supplied; `prepareDesktopAudioRecording`
+        //    returns a synthetic windowId that startRecording then drives.
+        let windowId = (args && args.windowId) || null;
+        if (!windowId && typeof sdk.prepareDesktopAudioRecording === 'function') {
+            try { windowId = await sdk.prepareDesktopAudioRecording({}); } catch (e) { logBackend(`prepareDesktopAudioRecording failed: ${e && e.message}`); }
+        }
+        await sdk.startRecording({ windowId: windowId || undefined, uploadToken });
+
+        meetingState = {
+            sessionId, apiBase, windowId,
+            listeners: { onRealtime, onRecordingStarted, onRecordingEnded, onError },
+        };
+        logBackend(`meeting background capture started (session ${sessionId})`);
+        return { ok: true, sessionId, windowId };
+    } catch (err) {
+        logBackend(`meeting start-background failed: ${err && err.message}`);
+        // Best-effort cleanup of any half-wired SDK state.
+        try { recallSdk && (recallSdk.default || recallSdk).removeAllEventListeners(); } catch { /* */ }
+        try { await (recallSdk && (recallSdk.default || recallSdk).shutdown()); } catch { /* */ }
+        meetingState = null;
+        return { ok: false, reason: 'start-failed', message: 'Failed to start background capture.', detail: String(err && err.message) };
+    }
+});
+
+ipcMain.handle('meeting:stop-background', async () => {
+    if (!meetingState) return { ok: true, stopped: false };
+    const sdk = recallSdk && (recallSdk.default || recallSdk);
+    const { windowId, listeners } = meetingState;
+    try {
+        if (sdk) {
+            try { if (windowId) await sdk.stopRecording({ windowId }); } catch (e) { logBackend(`meeting stopRecording failed: ${e && e.message}`); }
+            try {
+                sdk.removeEventListener('realtime-event', listeners.onRealtime);
+                sdk.removeEventListener('recording-started', listeners.onRecordingStarted);
+                sdk.removeEventListener('recording-ended', listeners.onRecordingEnded);
+                sdk.removeEventListener('error', listeners.onError);
+            } catch { /* */ }
+            try { await sdk.shutdown(); } catch (e) { logBackend(`meeting SDK shutdown failed: ${e && e.message}`); }
+        }
+        logBackend('meeting background capture stopped');
+        return { ok: true, stopped: true };
+    } catch (err) {
+        logBackend(`meeting stop-background failed: ${err && err.message}`);
+        return { ok: false, reason: 'stop-failed', message: 'Failed to cleanly stop background capture.', detail: String(err && err.message) };
+    } finally {
+        meetingState = null;
+    }
+});
+
+/** Ask the backend to mint a Recall Desktop SDK upload token for this session.
+ *  Expected route (backend agent owns it):
+ *    POST ${apiBase}/api/ara/meeting/desktop-token  body { sessionId }
+ *    → { uploadToken: string, recordingId?: string }
+ *  Returns the token string, or null when the route is absent / errors. */
+function fetchUploadToken(apiBase, sessionId) {
+    return new Promise((resolve, reject) => {
+        let u;
+        try { u = new URL(`${apiBase}/api/ara/meeting/desktop-token`); } catch (e) { return reject(e); }
+        const payload = Buffer.from(JSON.stringify({ sessionId }), 'utf-8');
+        const lib = u.protocol === 'https:' ? require('https') : http;
+        const req = lib.request({
+            hostname: u.hostname,
+            port: u.port || (u.protocol === 'https:' ? 443 : 80),
+            path: u.pathname + u.search,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length, 'X-Qualia-API': 'v2' },
+        }, (r) => {
+            let buf = '';
+            r.setEncoding('utf-8');
+            r.on('data', (c) => { buf += c; });
+            r.on('end', () => {
+                if (!r.statusCode || r.statusCode >= 400) return resolve(null); // route absent / not implemented
+                try {
+                    const j = JSON.parse(buf || '{}');
+                    resolve(j.uploadToken || j.upload_token || (j.data && (j.data.uploadToken || j.data.upload_token)) || null);
+                } catch { resolve(null); }
+            });
+        });
+        req.on('error', reject);
+        req.write(payload);
+        req.end();
+    });
+}
 
 app.whenReady().then(async () => {
     startBackend();

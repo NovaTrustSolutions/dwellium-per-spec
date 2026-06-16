@@ -161,7 +161,7 @@ describe('InboxZero', () => {
     });
 
     // Cycle 9 a11y — icon-only controls must expose a discernible accessible name
-    // (WCAG 2.0 AA 4.1.2 button-name). The search-clear "✕" is the icon-only button
+    // (WCAG 2.0 AA 4.1.2 button-name). The search-clear "X" is the icon-only button
     // reachable from the default triage view; it renders only once the query is set.
     it('gives the icon-only search-clear button an accessible name (WCAG 4.1.2)', async () => {
         authFetch.mockImplementation(
@@ -176,10 +176,10 @@ describe('InboxZero', () => {
 
         fireEvent.change(search, { target: { value: 'lease' } });
 
-        // Once a query exists, the "✕" clear button appears WITH an accessible name
+        // Once a query exists, the "X" clear button appears WITH an accessible name
         // (queryable by role+name only because aria-label is present — proves the fix).
         const clear = await screen.findByRole('button', { name: 'Clear search' });
         expect(clear).toBeInTheDocument();
-        expect(clear).toHaveTextContent('✕');
+        expect(clear.querySelector('svg')).toBeInTheDocument();
     });
 });

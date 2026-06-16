@@ -1,8 +1,10 @@
 import { useRef } from 'react';
+import { X } from 'lucide-react';
 import {
     type PersonaDossier, type DossierKV, type DossierChannel, type DossierNote,
     type PersonaAvatar, NEURAL_VIDEOS,
 } from '../../lib/agents/personas';
+import { getIcon, ICON_KEYS } from '../Sidebar/iconMap';
 import './AvatarDossier.css';
 
 /**
@@ -32,7 +34,7 @@ function KVList({ rows, onChange, addLabel }: { rows: DossierKV[]; onChange: (ro
                 <li key={i} className="avd-row">
                     <Txt className="avd-row-label" value={r.label} onChange={v => set(i, { label: v })} placeholder="Label" />
                     <Txt className="avd-row-value" value={r.value} onChange={v => set(i, { value: v })} placeholder="Value" />
-                    <button type="button" className="avd-del" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label="Remove field">✕</button>
+                    <button type="button" className="avd-del" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label="Remove field"><X size={16} /></button>
                 </li>
             ))}
             <li><button type="button" className="avd-add" onClick={() => onChange([...rows, { label: 'New', value: '' }])}>+ {addLabel}</button></li>
@@ -66,13 +68,16 @@ function readImageScaled(file: File, max = 256): Promise<string> {
     });
 }
 
-export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChange, neuralVideo, onNeuralVideoChange }: {
+export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChange, neuralVideo, onNeuralVideoChange, icon, onIconChange }: {
     dossier: PersonaDossier;
     onChange: (d: PersonaDossier) => void;
     avatar: PersonaAvatar;
     onAvatarChange: (a: PersonaAvatar) => void;
     neuralVideo: string;
     onNeuralVideoChange: (src: string) => void;
+    /** Persona identity icon key (lucide) — editable via the picker. */
+    icon?: string;
+    onIconChange?: (k: string) => void;
 }) {
     const patch = (p: Partial<PersonaDossier>) => onChange({ ...dossier, ...p });
     const fileRef = useRef<HTMLInputElement | null>(null);
@@ -166,6 +171,30 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                                 {NEURAL_VIDEOS.map((_, i) => <option key={i} value={i}>Neural {i + 1}</option>)}
                             </select>
                             <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => onUpload(e.target.files?.[0])} />
+                            {onIconChange && (
+                                <>
+                                    <span className="avd-tool-label">Icon</span>
+                                    <div className="avd-icon-picker" role="group" aria-label="Persona icon">
+                                        {ICON_KEYS.map(key => {
+                                            const Ic = getIcon(key);
+                                            if (!Ic) return null;
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    className={`avd-icon-opt ${icon === key ? 'avd-icon-opt--active' : ''}`}
+                                                    title={key}
+                                                    aria-label={`Use ${key} icon`}
+                                                    aria-pressed={icon === key}
+                                                    onClick={() => onIconChange(key)}
+                                                >
+                                                    <Ic size={16} />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {!isHidden('metrics') && (
@@ -202,7 +231,7 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                                                 <Txt className="avd-channel-label" value={c.label} onChange={v => setChannel(i, { label: v })} placeholder="Channel" />
                                                 <input className="avd-channel-pct" type="number" min={0} max={100} value={c.pct} onChange={e => setChannel(i, { pct: clampPct(Number(e.target.value)) })} />
                                                 <span className="avd-channel-unit">%</span>
-                                                <button type="button" className="avd-del" onClick={() => patch({ channels: dossier.channels.filter((_, j) => j !== i) })} aria-label="Remove channel">✕</button>
+                                                <button type="button" className="avd-del" onClick={() => patch({ channels: dossier.channels.filter((_, j) => j !== i) })} aria-label="Remove channel"><X size={16} /></button>
                                             </div>
                                             <div className="avd-bar"><i style={{ width: `${clampPct(c.pct)}%` }} /></div>
                                         </div>
@@ -219,7 +248,7 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
                                         <div key={i} className="avd-note">
                                             <div className="avd-note-head">
                                                 <Txt className="avd-note-title" value={n.title} onChange={v => setNote(i, { title: v })} placeholder="Note title" />
-                                                <button type="button" className="avd-del" onClick={() => patch({ notes: dossier.notes.filter((_, j) => j !== i) })} aria-label="Remove note">✕</button>
+                                                <button type="button" className="avd-del" onClick={() => patch({ notes: dossier.notes.filter((_, j) => j !== i) })} aria-label="Remove note"><X size={16} /></button>
                                             </div>
                                             <textarea className="avd-note-body" value={n.body} onChange={e => setNote(i, { body: e.target.value })} placeholder="Note…" />
                                         </div>

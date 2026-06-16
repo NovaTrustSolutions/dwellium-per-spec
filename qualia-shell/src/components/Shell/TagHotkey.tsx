@@ -52,7 +52,7 @@ export default function TagHotkey() {
     return (
         <div className="tagdlg__scrim" onClick={() => setOpenDlg(false)}>
             <div className="tagdlg" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Create tag">
-                <div className="tagdlg__h">🏷 Tag {selection ? 'selection' : 'something'}</div>
+                <div className="tagdlg__h">Tag {selection ? 'selection' : 'something'}</div>
                 {selection && <div className="tagdlg__sel">“{selection.slice(0, 160)}{selection.length > 160 ? '…' : ''}”</div>}
                 <label className="tagdlg__lbl">Tag name</label>
                 <input className="tagdlg__input" autoFocus value={name} onChange={(e) => setName(e.target.value)}
@@ -65,7 +65,7 @@ export default function TagHotkey() {
                 </div>
                 <div className="tagdlg__actions">
                     <button className="tagdlg__cancel" onClick={() => setOpenDlg(false)}>Cancel</button>
-                    <button className="tagdlg__save" onClick={save} disabled={!name.trim()}>{saved ? 'Saved ✓' : `Save tag${chosen.length ? ` → ${chosen.length} project${chosen.length > 1 ? 's' : ''}` : ''}`}</button>
+                    <button className="tagdlg__save" onClick={save} disabled={!name.trim()}>{saved ? 'Saved' : `Save tag${chosen.length ? ` → ${chosen.length} project${chosen.length > 1 ? 's' : ''}` : ''}`}</button>
                 </div>
             </div>
         </div>

@@ -133,7 +133,7 @@ export default function OpenNotebookPanel() {
                     </ol>
                     <div className="onb-snippet-head">
                         <span>docker-compose.yml</span>
-                        <button className="onb-btn onb-btn--primary" onClick={copySnippet}>{copied ? 'Copied ✓' : 'Copy'}</button>
+                        <button className="onb-btn onb-btn--primary" onClick={copySnippet}>{copied ? 'Copied' : 'Copy'}</button>
                     </div>
                     <pre className="onb-snippet">{DOCKER_SNIPPET}</pre>
                     <p className="onb-setup-note">
@@ -147,7 +147,7 @@ export default function OpenNotebookPanel() {
             <div className="onb-frame-wrap">
                 {reach === 'down' ? (
                     <div className="onb-empty">
-                        <div className="onb-empty-icon">📔</div>
+                        <div className="onb-empty-icon"></div>
                         <p className="onb-empty-title">Open Notebook isn’t reachable at {url}</p>
                         <p className="onb-empty-sub">Start it with Docker, then Reload. Click <strong>Setup</strong> above for the exact commands.</p>
                         <div className="onb-empty-actions">

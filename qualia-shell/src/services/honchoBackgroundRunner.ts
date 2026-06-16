@@ -32,6 +32,9 @@ import { upsertBrief } from '../lib/morningBriefStore';
 import { goalsStore, goalProgress } from '../lib/goalsStore';
 import { artifactStore } from '../lib/artifactStore';
 import { lastNDays, planAdvice } from '../lib/llmUsageStore';
+import { personaWorkStore, personaWorkUserIdHolder } from '../lib/agents/personaWorkStore';
+import { getCostKpi } from '../lib/costKpiStore';
+import { evaluateTasks, liveRateRequestItems, buildLiveRatePrompt, parseLiveRates, LIVE_RATE_SYSTEM } from '../lib/costAdvisor';
 
 const CHECK_EVERY_MS = 10 * 60 * 1000;   // re-evaluate every 10 min while logged in
 const MIN_GAP_MS = 6 * 60 * 60 * 1000;   // at most one auto-reflection per 6 h
@@ -69,6 +72,9 @@ export function useHonchoBackgroundRunner(): void {
         // integrationsUserIdHolder, already set by UserProvider).
         hermesLearningUserIdHolder.current = uid;
         thoughtWeaverUserIdHolder.current = uid;
+        // Cost advisor reads the user's Hermes/Honcho tasks; KPI rides
+        // integrationsUserIdHolder (already set by UserProvider).
+        personaWorkUserIdHolder.current = uid;
 
         let cancelled = false;
 
@@ -94,6 +100,26 @@ export function useHonchoBackgroundRunner(): void {
             if (calls > 0) dataLines.push(`AI usage 7d: ${calls} calls (~$${cost.toFixed(2)}). ${planAdvice()}`);
             const artifacts = artifactStore.getSnapshot();
             if (artifacts.length > 0) dataLines.push(`Artifacts on file: ${artifacts.length} (latest: ${artifacts[0].title})`);
+            // Cost advisor: tasks AI/outsourcing can do below the user's $/hr KPI.
+            // Benchmark rates work key-less; with an LLM, refresh the online
+            // outsourcing rate per flagged task with a CURRENT estimate.
+            const kpi = getCostKpi();
+            const workState = personaWorkStore.getSnapshot();
+            let costRecs = evaluateTasks(workState, kpi, { max: 2 });
+            if (costRecs.length > 0 && hasActiveLlm(llm)) {
+                try {
+                    const rateItems = liveRateRequestItems(costRecs);
+                    const rateRes = await callLlm(
+                        { systemPrompt: LIVE_RATE_SYSTEM, prompt: buildLiveRatePrompt(rateItems), responseFormat: 'json', maxTokens: 300, temperature: 0 },
+                        llm,
+                    );
+                    const rateOverrides = parseLiveRates(rateRes?.text, new Set(rateItems.map(i => i.taskId)));
+                    if (Object.keys(rateOverrides).length > 0) {
+                        costRecs = evaluateTasks(workState, kpi, { max: 2, rateOverrides });
+                    }
+                } catch { /* fall back to benchmark rates */ }
+            }
+            for (const r of costRecs) dataLines.push(`${r.message}`);
 
             // Deep dream (LLM, optional).
             let insights: Array<{ title: string; text: string }> = [];

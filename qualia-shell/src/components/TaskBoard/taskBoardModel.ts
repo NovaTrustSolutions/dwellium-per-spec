@@ -32,6 +32,9 @@ export interface BoardColumn {
     title: string;
     width: number;   // px — user-resizable
     order: number;
+    minWip?: number; // min WIP limit (optional)
+    maxWip?: number; // max WIP limit (optional)
+    policies?: string[]; // definition of done / agreements
 }
 
 /** Routing target for a card: an AI agent (ARA/Stella) or a person (email). */
@@ -89,7 +92,10 @@ export type BoardAction =
     | { type: 'ADD_ATTACHMENT'; cardId: string; attachment: Attachment }
     | { type: 'REMOVE_ATTACHMENT'; cardId: string; attachmentId: string }
     | { type: 'RESTORE_ATTACHMENT'; cardId: string; attachment: Attachment } // inverse of REMOVE_ATTACHMENT
-    | { type: 'LOG_EVENT'; summary: string; cardId?: string };               // external effect (routing) — audit-only, not reversible
+    | { type: 'LOG_EVENT'; summary: string; cardId?: string }               // external effect (routing) — audit-only, not reversible
+    | { type: 'UPDATE_COLUMN_LIMITS'; columnId: string; minWip?: number; maxWip?: number }
+    | { type: 'UPDATE_COLUMN_POLICIES'; columnId: string; policies: string[] }
+    | { type: 'REPLACE_BOARD'; board: BoardState };
 
 export interface AuditEntry {
     id: string;
@@ -309,6 +315,22 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
                 inverse: { type: 'RESIZE_COLUMN', columnId: column.id, width: column.width },
             };
         }
+        case 'UPDATE_COLUMN_LIMITS': {
+            const column = state.columns.find(c => c.id === action.columnId);
+            if (!column) return { next: state, inverse: null };
+            return {
+                next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, minWip: action.minWip, maxWip: action.maxWip } : c) },
+                inverse: { type: 'UPDATE_COLUMN_LIMITS', columnId: column.id, minWip: column.minWip, maxWip: column.maxWip },
+            };
+        }
+        case 'UPDATE_COLUMN_POLICIES': {
+            const column = state.columns.find(c => c.id === action.columnId);
+            if (!column) return { next: state, inverse: null };
+            return {
+                next: { ...state, columns: state.columns.map(c => c.id === column.id ? { ...c, policies: action.policies } : c) },
+                inverse: { type: 'UPDATE_COLUMN_POLICIES', columnId: column.id, policies: column.policies ?? [] },
+            };
+        }
         case 'ADD_ATTACHMENT': {
             const card = state.cards.find(c => c.id === action.cardId);
             if (!card) return { next: state, inverse: null };
@@ -334,6 +356,12 @@ function reduceData(state: BoardData, action: BoardAction, ctx: ActionContext): 
             // audit + timeline, no board-state change, not reversible.
             return { next: state, inverse: null };
         }
+        case 'REPLACE_BOARD': {
+            return {
+                next: action.board,
+                inverse: { type: 'REPLACE_BOARD', board: { columns: state.columns, cards: state.cards, audit: [] } }
+            };
+        }
         default:
             return { next: state, inverse: null };
     }
@@ -354,6 +382,8 @@ function summarize(state: BoardData, action: BoardAction): string {
         case 'RESTORE_COLUMN': return `Restored column "${action.column.title}"`;
         case 'RENAME_COLUMN': return `Renamed column to "${action.title}"`;
         case 'RESIZE_COLUMN': return `Resized column "${colTitle(state, action.columnId)}" → ${action.width}px`;
+        case 'UPDATE_COLUMN_LIMITS': return `Updated limits for column "${colTitle(state, action.columnId)}"`;
+        case 'UPDATE_COLUMN_POLICIES': return `Updated policies for column "${colTitle(state, action.columnId)}"`;
         case 'ADD_ATTACHMENT': return `Attached "${action.attachment.name}" to "${cardTitle(state, action.cardId)}"`;
         case 'RESTORE_ATTACHMENT': return `Restored attachment "${action.attachment.name}"`;
         case 'REMOVE_ATTACHMENT': return `Removed an attachment from "${cardTitle(state, action.cardId)}"`;

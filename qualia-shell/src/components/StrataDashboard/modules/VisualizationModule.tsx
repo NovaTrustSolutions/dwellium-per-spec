@@ -329,7 +329,7 @@ export default function VisualizationModule() {
                                                 {wi.type && <span>• {wi.type}</span>}
                                                 {wi.propertyId && (
                                                     <button className="s-property-link" style={{ fontSize: 'inherit', color: 'var(--accent)' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
-                                                        🏠 {properties.find(p => p.id === wi.propertyId)?.name || 'Unknown'}
+                                                        {properties.find(p => p.id === wi.propertyId)?.name || 'Unknown'}
                                                     </button>
                                                 )}
                                             </div>

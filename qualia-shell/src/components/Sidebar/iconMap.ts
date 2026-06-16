@@ -115,4 +115,7 @@ export function isLucideKey(key: string): boolean {
     return key in ICON_MAP;
 }
 
+/** All available icon keys — used by the persona icon picker (Agent Lab). */
+export const ICON_KEYS: string[] = Object.keys(ICON_MAP);
+
 export type { LucideIcon };

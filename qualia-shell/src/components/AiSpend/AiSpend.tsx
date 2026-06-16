@@ -7,6 +7,7 @@
 import { useMemo, useState } from 'react';
 import { Coins, Trash2 } from 'lucide-react';
 import { useLlmUsage, lastNDays, planAdvice, clearLlmUsage } from '../../lib/llmUsageStore';
+import CostAdvisorPanel from './CostAdvisorPanel';
 import './AiSpend.css';
 
 const fmt$ = (n: number) => (n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(4)}`);
@@ -83,6 +84,10 @@ export default function AiSpend() {
                         <span className="spend__prov-cost">{fmt$(v.estCost)}</span>
                     </div>
                 ))}
+            </section>
+
+            <section className="spend__advisor" aria-label="Time-value advisor">
+                <CostAdvisorPanel variant="full" />
             </section>
 
             <footer className="spend__foot">

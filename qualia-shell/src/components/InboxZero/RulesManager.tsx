@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { API_BASE as API_ROOT } from '../../config';
 
 const API = `${API_ROOT}/api/v1/inbox/rules`;
@@ -318,8 +319,8 @@ export default function RulesManager() {
 
     // ── Urgency Badge ──
     const urgencyBadge = (u: string) => {
-        const map: Record<string, string> = { high: '🔴', medium: '🟡', low: '🟢' };
-        return map[u] || '⚪';
+        const map: Record<string, string> = { high: '', medium: '', low: '' };
+        return map[u] || '';
     };
 
     // ── Render ──
@@ -333,24 +334,24 @@ export default function RulesManager() {
             {/* Alerts */}
             {error && (
                 <div className="iz-alert" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: 'var(--text-primary)' }}>⚠️ {error}</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{error}</span>
                     <button aria-label="Dismiss error" onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '1.1rem' }}>×</button>
                 </div>
             )}
             {success && (
                 <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', padding: '0.75rem 1rem', color: 'var(--text-primary)' }}>
-                    ✅ {success}
+                    {success}
                 </div>
             )}
 
             {/* Sub-navigation */}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 {([
-                    { id: 'list' as RulesView, label: '📋 Rules', count: rules.length },
-                    { id: 'add' as RulesView, label: editingRule ? '✏️ Edit' : '➕ Add' },
-                    { id: 'stats' as RulesView, label: '📊 Analytics' },
-                    { id: 'knowledge' as RulesView, label: '🧠 Knowledge' },
-                    { id: 'ai-settings' as RulesView, label: '🤖 AI' },
+                    { id: 'list' as RulesView, label: 'Rules', count: rules.length },
+                    { id: 'add' as RulesView, label: editingRule ? 'Edit' : 'Add' },
+                    { id: 'stats' as RulesView, label: 'Analytics' },
+                    { id: 'knowledge' as RulesView, label: 'Knowledge' },
+                    { id: 'ai-settings' as RulesView, label: 'AI' },
                 ]).map(tab => (
                     <button
                         key={tab.id}
@@ -377,7 +378,7 @@ export default function RulesManager() {
             {/* PROMPT-TO-RULE ENGINE (always visible) */}
             {/* ════════════════════════════════════ */}
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>🪄 Describe a rule in plain English</h4>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>Describe a rule in plain English</h4>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <textarea
                         value={promptText}
@@ -399,7 +400,7 @@ export default function RulesManager() {
                                 fontSize: '0.8rem', opacity: promptLoading ? 0.5 : 1,
                             }}
                         >
-                            {promptLoading ? '⏳' : '👁️'} Preview
+                            {promptLoading ? '' : ''} Preview
                         </button>
                         <button
                             onClick={handlePromptSave}
@@ -410,7 +411,7 @@ export default function RulesManager() {
                                 fontSize: '0.8rem', fontWeight: 600, opacity: promptLoading ? 0.5 : 1,
                             }}
                         >
-                            {promptLoading ? '⏳' : '💾'} Save
+                            {promptLoading ? '' : ''} Save
                         </button>
                     </div>
                 </div>
@@ -478,12 +479,12 @@ export default function RulesManager() {
                                         <button onClick={() => handleToggleRule(rule.id)} title={rule.enabled ? 'Disable' : 'Enable'}
                                             aria-label={rule.enabled ? 'Disable rule' : 'Enable rule'} aria-pressed={rule.enabled}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem' }}>
-                                            {rule.enabled ? '✅' : '⬜'}
+                                            {rule.enabled ? '' : ''}
                                         </button>
                                         <button onClick={() => startEdit(rule)} title="Edit" aria-label="Edit rule"
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>✏️</button>
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}><Pencil size={16} /></button>
                                         <button onClick={() => handleDeleteRule(rule.id)} title="Delete" aria-label="Delete rule"
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>🗑️</button>
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}><Trash2 size={16} /></button>
                                     </div>
                                 </div>
                             ))}
@@ -529,9 +530,9 @@ export default function RulesManager() {
                             <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Urgency</label>
                             <select value={formUrgency} onChange={e => setFormUrgency(e.target.value as any)}
                                 style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--input-bg, var(--surface-bg))', color: 'var(--text-primary)' }}>
-                                <option value="high">🔴 High</option>
-                                <option value="medium">🟡 Medium</option>
-                                <option value="low">🟢 Low</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
                             </select>
                         </div>
                         <div>
@@ -544,7 +545,7 @@ export default function RulesManager() {
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                         <button onClick={editingRule ? handleUpdateRule : handleCreateRule}
                             style={{ padding: '0.6rem 1.5rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
-                            {editingRule ? '💾 Save Changes' : '➕ Create Rule'}
+                            {editingRule ? 'Save Changes' : 'Create Rule'}
                         </button>
                         <button onClick={() => { resetForm(); setView('list'); }}
                             style={{ padding: '0.6rem 1rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>
@@ -559,7 +560,7 @@ export default function RulesManager() {
             {/* ════════════════════════════════════ */}
             {view === 'stats' && (
                 <div>
-                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>📊 Rule Execution Analytics</h4>
+                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>Rule Execution Analytics</h4>
                     {stats.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No execution data yet. Rules will log stats as emails are processed.</div>
                     ) : (
@@ -598,7 +599,7 @@ export default function RulesManager() {
             {/* ════════════════════════════════════ */}
             {view === 'knowledge' && (
                 <div>
-                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>🧠 Knowledge Base</h4>
+                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>Knowledge Base</h4>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                         Add organizational context that helps the AI make smarter routing decisions.
                     </p>
@@ -611,7 +612,7 @@ export default function RulesManager() {
                             style={{ width: '100%', minHeight: '4rem', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--input-bg, var(--surface-bg))', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.85rem' }} />
                         <button onClick={handleAddKnowledge} disabled={!knowledgeTitle || !knowledgeContent}
                             style={{ marginTop: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600, opacity: (!knowledgeTitle || !knowledgeContent) ? 0.5 : 1 }}>
-                            ➕ Add Entry
+                            Add Entry
                         </button>
                     </div>
 
@@ -626,7 +627,7 @@ export default function RulesManager() {
                                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{k.title}</span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{k.charCount} chars</span>
-                                            <button aria-label="Delete knowledge entry" onClick={() => handleDeleteKnowledge(k.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}>🗑️</button>
+                                            <button aria-label="Delete knowledge entry" onClick={() => handleDeleteKnowledge(k.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}><Trash2 size={16} /></button>
                                         </div>
                                     </div>
                                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap', maxHeight: '4rem', overflow: 'hidden' }}>{k.content}</p>
@@ -642,7 +643,7 @@ export default function RulesManager() {
             {/* ════════════════════════════════════ */}
             {view === 'ai-settings' && (
                 <div>
-                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>🤖 AI Provider Configuration</h4>
+                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>AI Provider Configuration</h4>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
                         <div style={{ padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '10px' }}>
@@ -662,7 +663,7 @@ export default function RulesManager() {
                                 padding: '0.75rem 1rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '8px',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '1.1rem' }}>{p.configured ? '✅' : '❌'}</span>
+                                    <span style={{ fontSize: '1.1rem' }}>{p.configured ? '' : ''}</span>
                                     <span style={{ fontWeight: 600, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{p.name}</span>
                                     {p.model && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--surface-bg)', padding: '1px 6px', borderRadius: '4px' }}>{p.model}</span>}
                                 </div>
@@ -685,7 +686,7 @@ export default function RulesManager() {
                     </div>
 
                     <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(59,130,246,0.08)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.15)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        💡 Set <code style={{ background: 'rgba(0,0,0,0.1)', padding: '0 4px', borderRadius: '3px' }}>AI_PROVIDER</code> and <code style={{ background: 'rgba(0,0,0,0.1)', padding: '0 4px', borderRadius: '3px' }}>AI_FALLBACK_CHAIN</code> in your <code>.env</code> to configure.
+                        Set <code style={{ background: 'rgba(0,0,0,0.1)', padding: '0 4px', borderRadius: '3px' }}>AI_PROVIDER</code> and <code style={{ background: 'rgba(0,0,0,0.1)', padding: '0 4px', borderRadius: '3px' }}>AI_FALLBACK_CHAIN</code> in your <code>.env</code> to configure.
                     </div>
                 </div>
             )}

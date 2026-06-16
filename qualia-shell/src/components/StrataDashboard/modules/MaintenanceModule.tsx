@@ -471,7 +471,7 @@ export default function MaintenanceModule() {
                     const diffDays = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                     const pastDays = Math.ceil((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 
-                    if (item.dueDate && diffDays < 0) { key = 'Overdue'; label = `⚠️ Overdue`; color = '#ef4444'; sortKey = 0; }
+                    if (item.dueDate && diffDays < 0) { key = 'Overdue'; label = `Overdue`; color = '#ef4444'; sortKey = 0; }
                     else if (item.dueDate && diffDays <= 7) { key = 'Due This Week'; label = 'Due This Week'; color = '#f59e0b'; sortKey = 1; }
                     else if (item.dueDate && diffDays <= 30) { key = 'Due This Month'; label = 'Due This Month'; color = '#D6FE51'; sortKey = 2; }
                     else if (item.dueDate) { key = 'Due Later'; label = 'Due Later'; color = '#22c55e'; sortKey = 3; }

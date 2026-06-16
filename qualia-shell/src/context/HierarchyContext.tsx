@@ -95,7 +95,7 @@ function upsertImportedProjects(items: HierarchyItem[], folders: ImportedFolder[
         next.push({
             id: IMPORTED_DOMAIN_ID,
             name: 'Imported Files',
-            icon: '🗂️',
+            icon: '',
             type: 'domain',
             children: [],
             metadata: { source: 'backend-files' }
@@ -106,7 +106,7 @@ function upsertImportedProjects(items: HierarchyItem[], folders: ImportedFolder[
         next = insertChild(next, IMPORTED_DOMAIN_ID, {
             id: IMPORTED_NODE_ID,
             name: 'Vacation Requests',
-            icon: '🧳',
+            icon: '',
             type: 'node',
             children: [],
             metadata: { source: 'backend-files' }
@@ -133,7 +133,7 @@ function upsertImportedProjects(items: HierarchyItem[], folders: ImportedFolder[
         .map(folder => ({
             id: folder.id,
             name: folder.name,
-            icon: '📋',
+            icon: '',
             type: 'project' as const,
             metadata: { source: 'backend-files' }
         }))
@@ -143,9 +143,9 @@ function upsertImportedProjects(items: HierarchyItem[], folders: ImportedFolder[
 }
 
 const ICONS: Record<string, string> = {
-    domain: '📂',
-    node: '📁',
-    project: '📋',
+    domain: '',
+    node: '',
+    project: '',
 };
 
 /* ── load / save ───────────────────────────────── */
@@ -297,7 +297,7 @@ export function HierarchyProvider({ children }: { children: ReactNode }) {
         const newItem: HierarchyItem = {
             id: generateId(type),
             name,
-            icon: ICONS[type] || '📄',
+            icon: ICONS[type] || '',
             type,
             children: type !== 'project' ? [] : undefined,
         };

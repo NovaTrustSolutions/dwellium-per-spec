@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Bot, Check, Wrench, X } from 'lucide-react';
 import './HomeUpkeepAI.css';
 import { API_BASE } from '../../config';
 
@@ -80,15 +81,15 @@ type Tab = 'dashboard' | 'alerts' | 'systems' | 'inspect';
 // ============================================
 
 const CATEGORY_ICONS: Record<string, string> = {
-    'Plumbing': '🚿',
-    'HVAC': '❄️',
-    'Roofing': '🏠',
-    'Exterior': '🏡',
-    'Electrical': '⚡',
-    'Appliances': '🍳',
-    'Structure': '🧱',
-    'Safety': '🧯',
-    'Landscaping': '🌿',
+    'Plumbing': '',
+    'HVAC': '',
+    'Roofing': '',
+    'Exterior': '',
+    'Electrical': '',
+    'Appliances': '',
+    'Structure': '',
+    'Safety': '',
+    'Landscaping': '',
 };
 
 const CONDITION_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
@@ -100,9 +101,9 @@ const CONDITION_CONFIG: Record<string, { color: string; bg: string; label: strin
 };
 
 const SEVERITY_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
-    'critical': { color: '#ef4444', bg: 'rgba(239,68,68,0.10)', icon: '🔴' },
-    'warning': { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', icon: '🟡' },
-    'info': { color: '#3b82f6', bg: 'rgba(59,130,246,0.10)', icon: '🔵' },
+    'critical': { color: '#ef4444', bg: 'rgba(239,68,68,0.10)', icon: '' },
+    'warning': { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', icon: '' },
+    'info': { color: '#3b82f6', bg: 'rgba(59,130,246,0.10)', icon: '' },
 };
 
 // ============================================
@@ -303,7 +304,7 @@ export default function HomeUpkeepAI() {
 
                 {/* Lifespan Timeline */}
                 <div className="huai-dashboard__section">
-                    <h3 className="huai-section-title">🔋 System Lifespan Monitor</h3>
+                    <h3 className="huai-section-title">System Lifespan Monitor</h3>
                     <div className="huai-timeline-list">
                         {timeline.slice(0, 8).map(item => {
                             const barColor = item.lifespanPct >= 90 ? '#ef4444'
@@ -313,7 +314,7 @@ export default function HomeUpkeepAI() {
                                 <div key={item.systemId} className="huai-timeline-item">
                                     <div className="huai-timeline-item__header">
                                         <span className="huai-timeline-item__icon">
-                                            {CATEGORY_ICONS[item.category] || '🔧'}
+                                            {CATEGORY_ICONS[item.category] || ''}
                                         </span>
                                         <span className="huai-timeline-item__name">{item.systemName}</span>
                                         <span className="huai-timeline-item__age" style={{ color: barColor }}>
@@ -338,11 +339,11 @@ export default function HomeUpkeepAI() {
 
                 {/* Category Breakdown */}
                 <div className="huai-dashboard__section">
-                    <h3 className="huai-section-title">📊 Systems by Category</h3>
+                    <h3 className="huai-section-title">Systems by Category</h3>
                     <div className="huai-category-grid">
                         {Object.entries(stats.categoryCounts).map(([cat, count]) => (
                             <div key={cat} className="huai-category-card">
-                                <span className="huai-category-card__icon">{CATEGORY_ICONS[cat] || '🔧'}</span>
+                                <span className="huai-category-card__icon">{CATEGORY_ICONS[cat] || ''}</span>
                                 <span className="huai-category-card__count">{count}</span>
                                 <span className="huai-category-card__label">{cat}</span>
                             </div>
@@ -358,7 +359,7 @@ export default function HomeUpkeepAI() {
         if (alerts.length === 0) {
             return (
                 <div className="huai-empty">
-                    <span className="huai-empty__icon">✅</span>
+                    <span className="huai-empty__icon"><Check size={14} /></span>
                     <p>No active alerts — all systems healthy!</p>
                 </div>
             );
@@ -379,7 +380,7 @@ export default function HomeUpkeepAI() {
                                     <div className="huai-alert-card__info">
                                         <h4 className="huai-alert-card__title">{alert.title}</h4>
                                         <span className="huai-alert-card__category">
-                                            {CATEGORY_ICONS[alert.category] || '🔧'} {alert.category} · {alert.propertyName}
+                                            {CATEGORY_ICONS[alert.category] || ''} {alert.category} · {alert.propertyName}
                                         </span>
                                     </div>
                                     <span className="huai-alert-card__severity" style={{ color: sev.color }}>
@@ -388,12 +389,12 @@ export default function HomeUpkeepAI() {
                                 </div>
                                 <p className="huai-alert-card__message">{alert.message}</p>
                                 {alert.dueDate && (
-                                    <span className="huai-alert-card__due">📅 Due: {alert.dueDate}</span>
+                                    <span className="huai-alert-card__due">Due: {alert.dueDate}</span>
                                 )}
                                 <div className="huai-alert-card__actions">
-                                    <button className="huai-btn huai-btn--sm huai-btn--resolve" onClick={() => handleAlertAction(alert.id, 'resolved')}>✅ Resolve</button>
-                                    <button className="huai-btn huai-btn--sm huai-btn--snooze" onClick={() => handleAlertAction(alert.id, 'snoozed')}>💤 Snooze</button>
-                                    <button className="huai-btn huai-btn--sm huai-btn--dismiss" onClick={() => handleAlertAction(alert.id, 'dismissed')}>✕ Dismiss</button>
+                                    <button className="huai-btn huai-btn--sm huai-btn--resolve" onClick={() => handleAlertAction(alert.id, 'resolved')}>Resolve</button>
+                                    <button className="huai-btn huai-btn--sm huai-btn--snooze" onClick={() => handleAlertAction(alert.id, 'snoozed')}>Snooze</button>
+                                    <button className="huai-btn huai-btn--sm huai-btn--dismiss" onClick={() => handleAlertAction(alert.id, 'dismissed')}>Dismiss</button>
                                 </div>
                             </div>
                         );
@@ -422,7 +423,7 @@ export default function HomeUpkeepAI() {
                 {Object.entries(grouped).map(([category, items]) => (
                     <div key={category} className="huai-system-group">
                         <h4 className="huai-system-group__title">
-                            {CATEGORY_ICONS[category] || '🔧'} {category}
+                            {CATEGORY_ICONS[category] || ''} {category}
                             <span className="huai-system-group__count">{items.length}</span>
                         </h4>
                         <div className="huai-system-group__list">
@@ -467,7 +468,7 @@ export default function HomeUpkeepAI() {
     const renderInspect = () => (
         <div className="huai-inspect">
             <div className="huai-inspect__form">
-                <h3 className="huai-section-title">📸 Log Inspection</h3>
+                <h3 className="huai-section-title">Log Inspection</h3>
 
                 <label className="huai-label">System</label>
                 <select className="huai-select" value={inspectSystem} onChange={e => setInspectSystem(e.target.value)}>
@@ -505,32 +506,32 @@ export default function HomeUpkeepAI() {
                     placeholder="Describe what you observed…"
                 />
 
-                <label className="huai-label">📷 Upload Photo (optional)</label>
+                <label className="huai-label">Upload Photo (optional)</label>
                 <input type="file" accept="image/*" className="huai-file-input" onChange={handlePhotoUpload} />
 
                 {inspectPhoto && (
                     <div className="huai-inspect__photo-actions">
                         <button className="huai-btn huai-btn--analyze" onClick={handleAnalyzePhoto} disabled={analyzing}>
-                            {analyzing ? '🔍 Analyzing…' : '🤖 Analyze with AI'}
+                            {analyzing ? 'Analyzing…' : 'Analyze with AI'}
                         </button>
                     </div>
                 )}
 
                 {analysisResult && (
                     <div className="huai-inspect__analysis">
-                        <h4>🤖 AI Analysis</h4>
+                        <h4>AI Analysis</h4>
                         <p>{analysisResult}</p>
                     </div>
                 )}
 
                 <button className="huai-btn huai-btn--primary huai-btn--lg" onClick={handleLogInspection} disabled={!inspectSystem || !inspectNotes}>
-                    💾 Log Inspection
+                    Log Inspection
                 </button>
             </div>
 
             {/* Recent Inspections */}
             <div className="huai-inspect__history">
-                <h3 className="huai-section-title">📋 Recent Inspections</h3>
+                <h3 className="huai-section-title">Recent Inspections</h3>
                 {inspections.length === 0 ? (
                     <p className="huai-empty-text">No inspections logged yet.</p>
                 ) : (
@@ -548,7 +549,7 @@ export default function HomeUpkeepAI() {
                                     <p className="huai-inspection-card__notes">{insp.notes}</p>
                                     {insp.analysisResult && (
                                         <div className="huai-inspection-card__ai">
-                                            <span>🤖</span> {insp.analysisResult.substring(0, 120)}…
+                                            <span><Bot size={14} /></span> {insp.analysisResult.substring(0, 120)}…
                                         </div>
                                     )}
                                 </div>
@@ -571,7 +572,7 @@ export default function HomeUpkeepAI() {
                 <div className="huai-modal" onClick={e => e.stopPropagation()}>
                     <div className="huai-modal__header">
                         <h3>＋ Add Building System</h3>
-                        <button className="huai-modal__close" onClick={() => setShowAddModal(false)}>✕</button>
+                        <button className="huai-modal__close" onClick={() => setShowAddModal(false)}><X size={16} /></button>
                     </div>
 
                     {/* Quick templates */}
@@ -581,7 +582,7 @@ export default function HomeUpkeepAI() {
                             {categories.map(cat => (
                                 <details key={cat} className="huai-template-group">
                                     <summary className="huai-template-group__title">
-                                        {CATEGORY_ICONS[cat] || '🔧'} {cat}
+                                        {CATEGORY_ICONS[cat] || ''} {cat}
                                     </summary>
                                     <div className="huai-template-group__items">
                                         {templates.filter(t => t.category === cat).map(t => (
@@ -664,10 +665,10 @@ export default function HomeUpkeepAI() {
 
     // ──── RENDER ────
     const tabs: { id: Tab; icon: string; label: string }[] = [
-        { id: 'dashboard', icon: '🏠', label: 'Dashboard' },
-        { id: 'alerts', icon: '⚠️', label: `Alerts${alerts.length ? ` (${alerts.length})` : ''}` },
-        { id: 'systems', icon: '📋', label: 'Systems' },
-        { id: 'inspect', icon: '📸', label: 'Inspect' },
+        { id: 'dashboard', icon: '', label: 'Dashboard' },
+        { id: 'alerts', icon: '', label: `Alerts${alerts.length ? ` (${alerts.length})` : ''}` },
+        { id: 'systems', icon: '', label: 'Systems' },
+        { id: 'inspect', icon: '', label: 'Inspect' },
     ];
 
     return (
@@ -675,7 +676,7 @@ export default function HomeUpkeepAI() {
             {/* Header */}
             <div className="huai-header">
                 <div className="huai-header__brand">
-                    <span className="huai-header__icon">🔧</span>
+                    <span className="huai-header__icon"><Wrench size={14} /></span>
                     <div>
                         <h2 className="huai-header__title">Home Upkeep AI</h2>
                         <p className="huai-header__subtitle">Proactive Maintenance Intelligence</p>

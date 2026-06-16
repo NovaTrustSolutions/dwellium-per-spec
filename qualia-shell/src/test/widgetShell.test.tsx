@@ -76,7 +76,7 @@ describe('WidgetErrorBoundary', () => {
 describe('WidgetShell', () => {
     beforeEach(() => widgetEnhancementsStore.reset());
 
-    it('🔴 ZERO-DOM contract: renders the widget with NO wrapper element', () => {
+    it('ZERO-DOM contract: renders the widget with NO wrapper element', () => {
         // The widget root must remain the DIRECT child of whatever hosts
         // WidgetShell — 23 `.window__content > X` selectors in global.css +
         // the `:has(>)` flex contracts in Window.css depend on it. The

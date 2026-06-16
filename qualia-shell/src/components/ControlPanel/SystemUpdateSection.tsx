@@ -39,14 +39,14 @@ interface CheckResp {
 }
 
 const STATE_LABELS: Record<string, string> = {
-    idle: '⚪ Idle',
-    fetching: '📡 Fetching…',
-    pulling: '⬇️ Pulling…',
-    installing: '📦 Installing deps…',
-    building: '🔨 Building…',
-    restarting: '🔁 Restarting…',
-    done: '✓ Up to date',
-    error: '✗ Failed',
+    idle: 'Idle',
+    fetching: 'Fetching…',
+    pulling: 'Pulling…',
+    installing: 'Installing deps…',
+    building: 'Building…',
+    restarting: 'Restarting…',
+    done: 'Up to date',
+    error: 'Failed',
 };
 
 export default function SystemUpdateSection() {
@@ -195,7 +195,7 @@ export default function SystemUpdateSection() {
                         onClick={() => void handleCheck()}
                         disabled={busy}
                     >
-                        🔍 Check for updates
+                        Check for updates
                     </button>
                     <button
                         className="cp-btn cp-btn--primary"
@@ -203,7 +203,7 @@ export default function SystemUpdateSection() {
                         disabled={busy || upToDate || state === 'fetching' || state === 'pulling' || state === 'installing' || state === 'building' || state === 'restarting'}
                         title={upToDate ? 'Nothing to update' : 'Pull, rebuild, restart'}
                     >
-                        {busy && state !== 'idle' && state !== 'done' && state !== 'error' ? '⏳ Updating…' : '⬇️ Update now'}
+                        {busy && state !== 'idle' && state !== 'done' && state !== 'error' ? 'Updating…' : 'Update now'}
                     </button>
                 </div>
 
@@ -225,7 +225,7 @@ export default function SystemUpdateSection() {
 
                 {error && (
                     <div className="cp-update-error">
-                        ⚠️ {error}
+                        {error}
                     </div>
                 )}
             </div>

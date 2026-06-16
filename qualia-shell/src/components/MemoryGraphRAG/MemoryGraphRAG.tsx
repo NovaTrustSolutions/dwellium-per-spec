@@ -230,12 +230,12 @@ export default function MemoryGraphRAG() {
             <input ref={fileRef} type="file" accept=".txt,.md,.json,.csv" multiple hidden onChange={onFile} />
 
             <div className="mgr__head">
-                <div className="mgr__title">🌍 Cognitive M Network</div>
+                <div className="mgr__title">Cognitive M Network</div>
                 <span className={`mgr__llm ${llmReady ? 'is-on' : ''}`}>{llmReady ? `LLM: ${integrations.llm.active}` : 'Offline (heuristic) mode'}</span>
                 <div className="mgr__spacer" />
                 <div className="mgr__viewtoggle" role="tablist" aria-label="View">
                     <button className={`mgr__seg ${view === 'graph' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'graph'} onClick={() => setView('graph')}>◈ Network</button>
-                    <button className={`mgr__seg ${view === 'panels' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'panels'} onClick={() => setView('panels')}>☰ Panels</button>
+                    <button className={`mgr__seg ${view === 'panels' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'panels'} onClick={() => setView('panels')}>Panels</button>
                 </div>
                 <span className="mgr__counts">{counts.entities} ent · {counts.facts} facts · {counts.passages} psg · {counts.types} types</span>
                 <button className="mgr__btn" onClick={reset}>Reset</button>
@@ -271,7 +271,7 @@ export default function MemoryGraphRAG() {
                 <input className="mgr__inp" placeholder="Title (optional)" value={pasteTitle} onChange={(e) => setPasteTitle(e.target.value)} />
                 <textarea className="mgr__ta" placeholder="Paste text to ingest into the three-layer memory…" value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={3} />
                 <div className="mgr__row">
-                    <button className="mgr__btn mgr__btn--primary" onClick={loadDemo} disabled={!!busy} title="Import a few sample files so you can ask questions right away">🌍 Load demo</button>
+                    <button className="mgr__btn mgr__btn--primary" onClick={loadDemo} disabled={!!busy} title="Import a few sample files so you can ask questions right away">Load demo</button>
                     <button className="mgr__btn" onClick={ingestPaste} disabled={!!busy}>Ingest text</button>
                     <button className="mgr__btn" onClick={() => fileRef.current?.click()} disabled={!!busy}>Upload files</button>
                     <button className="mgr__btn" onClick={pullTags} disabled={!!busy}>Pull Tag File</button>
@@ -279,7 +279,7 @@ export default function MemoryGraphRAG() {
                     <button className="mgr__btn" onClick={pullCaptures} disabled={!!busy}>Pull Captures</button>
                     <button className="mgr__btn" onClick={pullTranscripts} disabled={!!busy}>Pull Transcripts</button>
                     <button className="mgr__btn" onClick={pullWorkspace} disabled={!!busy}>Pull Workspace files</button>
-                    {busy && <span className="mgr__busy">⏳ {busy}</span>}
+                    {busy && <span className="mgr__busy">{busy}</span>}
                 </div>
             </div>
 
@@ -331,7 +331,7 @@ export default function MemoryGraphRAG() {
             )}
 
             {resolutions.length > 0 && (
-                <div className="mgr__conflicts">⚖ Resolved {resolutions.length} conflict(s): {resolutions.map((r) => r.reason).join(' · ')}</div>
+                <div className="mgr__conflicts">Resolved {resolutions.length} conflict(s): {resolutions.map((r) => r.reason).join(' · ')}</div>
             )}
 
             {/* Query */}
@@ -343,7 +343,7 @@ export default function MemoryGraphRAG() {
 
             {answer && (
                 <div className="mgr__answer">
-                    <div className="mgr__answer-head">{answer.generatedByLlm ? '✦ Answer' : '✦ Top passages (offline)'}</div>
+                    <div className="mgr__answer-head">{answer.generatedByLlm ? 'Answer' : 'Top passages (offline)'}</div>
                     <div className="mgr__answer-body">{answer.answer}</div>
                     {answer.rankedPassages.length > 0 && (
                         <div className="mgr__evidence">

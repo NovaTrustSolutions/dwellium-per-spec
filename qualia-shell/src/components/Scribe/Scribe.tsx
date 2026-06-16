@@ -226,7 +226,7 @@ export default function Scribe() {
                     className={`scribe__preview-toggle ${previewVisible ? 'on' : ''}`}
                     onClick={() => setPreviewVisible((v) => !v)}
                     title="Toggle live preview"
-                >{previewVisible ? '✓ Preview' : 'Preview'}</button>
+                >{previewVisible ? 'Preview' : 'Preview'}</button>
                 {previewVisible && (
                     <>
                         <Splitter
@@ -444,7 +444,7 @@ function FocusExitChip() {
                 backdropFilter: 'blur(4px)', transition: 'color 120ms, border-color 120ms, background 120ms',
             }}
         >
-            ⛶ Focus · Esc to exit
+            Focus · Esc to exit
         </button>
     );
 }
@@ -542,7 +542,7 @@ function EmptyState() {
             )}
 
             <label className="scribe__new-btn" style={{ cursor: 'pointer', display: 'inline-block' }} title="Import a Word .docx file as Markdown">
-                ⬆ Import .docx
+                Import .docx
                 <input type="file" accept=".docx" onChange={(e) => void handleDocxFile(e)} style={{ display: 'none' }} />
             </label>
 

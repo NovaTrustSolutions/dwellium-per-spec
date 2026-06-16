@@ -3,9 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ── Mock UserContext with correct relative path from test file ───────────
-vi.mock('../context/UserContext', () => ({
-    useUser: () => ({ authFetch: mockAuthFetch, isAuthenticated: true }),
-}));
+vi.mock('../context/UserContext', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../context/UserContext')>();
+    return {
+        ...actual,
+        useUser: () => ({ authFetch: mockAuthFetch, isAuthenticated: true }),
+    };
+});
 
 // ── Mock config ─────────────────────────────────────────────────────────
 vi.mock('../config', () => ({

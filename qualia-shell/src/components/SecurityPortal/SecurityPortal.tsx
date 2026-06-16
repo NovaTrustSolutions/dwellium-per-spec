@@ -7,20 +7,21 @@
  */
 
 import { useState, useEffect } from 'react';
+import { Shield } from 'lucide-react';
 import { API_BASE } from '../../config';
 import './SecurityPortal.css';
 
 const CATEGORIES = [
-    { id: 'vehicle', label: 'Vehicle Incident', emoji: '🚗' },
-    { id: 'fire', label: 'Fire', emoji: '🔥' },
-    { id: 'flood', label: 'Flood / Water Damage', emoji: '💧' },
-    { id: 'security', label: 'Security Breach', emoji: '🔒' },
-    { id: 'trespass', label: 'Trespassing', emoji: '🚷' },
-    { id: 'vandalism', label: 'Vandalism', emoji: '🎨' },
-    { id: 'injury', label: 'Personal Injury', emoji: '🏥' },
-    { id: 'noise', label: 'Noise Complaint', emoji: '🔊' },
-    { id: 'theft', label: 'Theft', emoji: '🕵️' },
-    { id: 'other', label: 'Other', emoji: '📋' },
+    { id: 'vehicle', label: 'Vehicle Incident', emoji: '' },
+    { id: 'fire', label: 'Fire', emoji: '' },
+    { id: 'flood', label: 'Flood / Water Damage', emoji: '' },
+    { id: 'security', label: 'Security Breach', emoji: '' },
+    { id: 'trespass', label: 'Trespassing', emoji: '' },
+    { id: 'vandalism', label: 'Vandalism', emoji: '' },
+    { id: 'injury', label: 'Personal Injury', emoji: '' },
+    { id: 'noise', label: 'Noise Complaint', emoji: '' },
+    { id: 'theft', label: 'Theft', emoji: '' },
+    { id: 'other', label: 'Other', emoji: '' },
 ];
 
 interface PropertyOption {
@@ -127,7 +128,7 @@ export default function SecurityPortal() {
         return (
             <div className="sp-container">
                 <div className="sp-auth-card">
-                    <div className="sp-logo">🛡️</div>
+                    <div className="sp-logo"></div>
                     <h1 className="sp-title">Security Portal</h1>
                     <p className="sp-subtitle">Dwellium Incident Reporting</p>
                     <div className="sp-auth-form">
@@ -155,7 +156,7 @@ export default function SecurityPortal() {
         return (
             <div className="sp-container">
                 <div className="sp-auth-card">
-                    <div className="sp-logo sp-logo-success">✅</div>
+                    <div className="sp-logo sp-logo-success"></div>
                     <h1 className="sp-title">Incident Reported</h1>
                     <p className="sp-subtitle">Your report has been submitted and management has been notified.</p>
                     <button onClick={resetForm} className="sp-btn sp-btn-primary" style={{ marginTop: 20 }}>
@@ -171,7 +172,7 @@ export default function SecurityPortal() {
         <div className="sp-container">
             <div className="sp-form-card">
                 <div className="sp-form-header">
-                    <span className="sp-logo-sm">🛡️</span>
+                    <span className="sp-logo-sm"><Shield size={14} /></span>
                     <div>
                         <h1 className="sp-form-title">File Incident Report</h1>
                         <p className="sp-form-subtitle">All fields marked * are required</p>
@@ -262,13 +263,13 @@ export default function SecurityPortal() {
 
                     {submitError && (
                         <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                            ✗ {submitError}
+                            {submitError}
                         </div>
                     )}
 
                     {/* Submit */}
                     <button type="submit" className="sp-btn sp-btn-primary sp-btn-submit" disabled={submitting || !propertyId || !title.trim()}>
-                        {submitting ? 'Submitting…' : '🛡️ Submit Incident Report'}
+                        {submitting ? 'Submitting…' : 'Submit Incident Report'}
                     </button>
                 </form>
             </div>

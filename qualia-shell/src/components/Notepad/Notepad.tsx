@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link, Pencil } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { TagInput } from '../Tags/TagInput';
@@ -57,9 +58,9 @@ export default function Notepad() {
         const flatten = (nodes: any[]) => {
             for (const n of nodes) {
                 if (n.type === 'project') {
-                    items.push({ id: n.id, name: n.name, type: 'project', icon: '📋' });
+                    items.push({ id: n.id, name: n.name, type: 'project', icon: '' });
                 } else if (n.type === 'domain') {
-                    items.push({ id: n.id, name: n.name, type: 'project', icon: '📂' });
+                    items.push({ id: n.id, name: n.name, type: 'project', icon: '' });
                 }
                 if (n.children) flatten(n.children);
             }
@@ -76,7 +77,7 @@ export default function Notepad() {
                 const json = await filesRes.value.json();
                 if (json.success && Array.isArray(json.data)) {
                     for (const f of json.data.slice(0, 10)) {
-                        items.push({ id: f.id, name: f.name, type: 'file', icon: '📄' });
+                        items.push({ id: f.id, name: f.name, type: 'file', icon: '' });
                     }
                 }
             }
@@ -84,7 +85,7 @@ export default function Notepad() {
                 const json = await tasksRes.value.json();
                 if (json.success && Array.isArray(json.data)) {
                     for (const t of json.data.slice(0, 10)) {
-                        items.push({ id: t.id, name: t.title || t.name, type: 'task', icon: '✅' });
+                        items.push({ id: t.id, name: t.title || t.name, type: 'task', icon: '' });
                     }
                 }
             }
@@ -324,7 +325,7 @@ export default function Notepad() {
             {/* Sidebar */}
             <div className="np-sidebar">
                 <div className="np-sidebar__header">
-                    <span className="np-sidebar__title">📝 Notes</span>
+                    <span className="np-sidebar__title">Notes</span>
                     <button className="np-sidebar__new-btn" onClick={createNote} title="New Note">+</button>
                 </div>
                 <input className="np-sidebar__search" type="text" placeholder="Search notes..."
@@ -356,12 +357,12 @@ export default function Notepad() {
                         <div className="np-editor__toolbar-divider" />
                         <button className="np-editor__toolbar-btn" title="Code" onClick={() => insertMarkdown('`', '`')}>{'<>'}</button>
                         <button className="np-editor__toolbar-btn" title="Bullet List" onClick={() => insertMarkdown('- ')}>•</button>
-                        <button className="np-editor__toolbar-btn" title="Link" onClick={() => insertMarkdown('[', '](url)')}>🔗</button>
+                        <button className="np-editor__toolbar-btn" title="Link" onClick={() => insertMarkdown('[', '](url)')}><Link size={16} /></button>
                         <div className="np-editor__toolbar-divider" />
                         <button className="np-editor__toolbar-btn" title="Toggle Preview"
                             onClick={() => setShowPreview(!showPreview)}
                             style={{ color: showPreview ? '#D6FE51' : undefined }}>
-                            👁
+                           
                         </button>
                     </div>
 
@@ -413,7 +414,7 @@ export default function Notepad() {
                 </div>
             ) : (
                 <div className="np-empty">
-                    <span className="np-empty__icon">📝</span>
+                    <span className="np-empty__icon"><Pencil size={14} /></span>
                     <span className="np-empty__text">Select a note or create a new one</span>
                 </div>
             )}

@@ -176,9 +176,9 @@ export default function AstraWorkspace() {
 
             pushDraft(sendBody, 'sent');
             setShowSendModal(false);
-            showFeedback('✅ Email sent & logged');
+            showFeedback('Email sent & logged');
         } catch {
-            showFeedback('❌ Failed to send email');
+            showFeedback('Failed to send email');
         }
     };
 
@@ -201,9 +201,9 @@ export default function AstraWorkspace() {
                 method: 'POST',
                 body: formData,
             });
-            showFeedback('📄 Saved as document');
+            showFeedback('Saved as document');
         } catch {
-            showFeedback('❌ Failed to save document');
+            showFeedback('Failed to save document');
         }
     };
 
@@ -215,11 +215,11 @@ export default function AstraWorkspace() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             });
-            showFeedback('🚀 Promoted to Strata');
+            showFeedback('Promoted to Strata');
             setWorkitems(prev => prev.filter(w => w.id !== selectedItem.id));
             setSelectedItem(null);
         } catch {
-            showFeedback('❌ Failed to promote');
+            showFeedback('Failed to promote');
         }
     };
 
@@ -237,7 +237,7 @@ export default function AstraWorkspace() {
                 fetchWorkitems();
             }
         } catch {
-            showFeedback('❌ Failed to un-promote');
+            showFeedback('Failed to un-promote');
         }
     };
 
@@ -422,7 +422,7 @@ export default function AstraWorkspace() {
                                 <div key={draft.id} className="aw-draft-item">
                                     <div className="aw-draft-header">
                                         <span className={`aw-draft-badge aw-draft-${draft.action}`}>
-                                            {draft.action === 'ara_response' ? '◈ ARA Draft' : draft.action === 'sent' ? '✉ Sent' : '✎ Edited'}
+                                            {draft.action === 'ara_response' ? '◈ ARA Draft' : draft.action === 'sent' ? 'Sent' : 'Edited'}
                                         </span>
                                         <span className="aw-draft-time">{new Date(draft.timestamp).toLocaleTimeString()}</span>
                                     </div>

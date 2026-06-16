@@ -566,8 +566,8 @@ export default function LegalModule() {
                                 />
                                 <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-tertiary)' }}>
                                     {formAccessList.length === 0
-                                        ? '🌐 No restrictions — all users can view this issue'
-                                        : `🔒 ${formAccessList.length + 1} user(s) will have access (you are always included)`}
+                                        ? 'No restrictions — all users can view this issue'
+                                        : `${formAccessList.length + 1} user(s) will have access (you are always included)`}
                                 </p>
                             </div>
                             <div className="s-modal-footer">

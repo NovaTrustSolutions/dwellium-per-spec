@@ -19,6 +19,9 @@ import { goalsStore, goalProgress } from './goalsStore';
 import { thoughtWeaverStore } from '../components/ThoughtWeaver/thoughtWeaverStore';
 import { artifactStore } from './artifactStore';
 import { lastNDays, planAdvice } from './llmUsageStore';
+import { personaWorkStore } from './agents/personaWorkStore';
+import { getCostKpi } from './costKpiStore';
+import { costAdvisoryLines } from './costAdvisor';
 
 export interface DreamCorpus {
     /** Markdown-ish prompt body, sections in a stable order. */
@@ -45,7 +48,7 @@ export function buildDreamCorpus(): DreamCorpus {
     const runs = hermesLearningStore.getSnapshot().slice(0, 8);
     counts.conversations = runs.length;
     if (runs.length > 0) {
-        parts.push(`## Recent agent exchanges\n${runs.map(r => `- (${r.taskType}${r.rating !== undefined ? `, rated ${r.rating > 0 ? '👍' : '👎'}` : ''}) ${cap(r.prompt, 140)}${r.summary ? ` → ${cap(r.summary, 120)}` : ''}`).join('\n')}`);
+        parts.push(`## Recent agent exchanges\n${runs.map(r => `- (${r.taskType}${r.rating !== undefined ? `, rated ${r.rating > 0 ? '' : ''}` : ''}) ${cap(r.prompt, 140)}${r.summary ? ` → ${cap(r.summary, 120)}` : ''}`).join('\n')}`);
     }
 
     const goals = goalsStore.getSnapshot().filter(g => g.status !== 'done').slice(0, 6);
@@ -75,6 +78,13 @@ export function buildDreamCorpus(): DreamCorpus {
         const calls = week.reduce((s, d) => s + d.calls, 0);
         const cost = week.reduce((s, d) => s + d.estCost, 0);
         parts.push(`## AI usage (7 days)\n- ${calls} calls, ~$${cost.toFixed(2)} estimated\n- ${planAdvice()}`);
+    }
+
+    const kpi = getCostKpi();
+    const costLines = costAdvisoryLines(personaWorkStore.getSnapshot(), kpi, 3);
+    counts.costFlags = costLines.length;
+    if (costLines.length > 0) {
+        parts.push(`## Cost optimization (your time at $${kpi}/hr)\n${costLines.map(l => `- ${l}`).join('\n')}`);
     }
 
     return { text: parts.join('\n\n'), sections: parts.length, counts };

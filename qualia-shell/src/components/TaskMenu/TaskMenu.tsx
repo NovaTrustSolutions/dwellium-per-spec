@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { Brain, Check } from 'lucide-react';
 import './TaskMenu.css';
 
 // The Kanban subview reuses the existing Task Board. Lazy at sub-component
@@ -22,22 +23,22 @@ interface Task {
 }
 
 const URGENCY_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
-    high: { icon: '🔴', label: 'High', color: '#ef4444' },
-    medium: { icon: '🟡', label: 'Medium', color: '#eab308' },
-    low: { icon: '🟢', label: 'Low', color: '#22c55e' },
+    high: { icon: '', label: 'High', color: '#ef4444' },
+    medium: { icon: '', label: 'Medium', color: '#eab308' },
+    low: { icon: '', label: 'Low', color: '#22c55e' },
 };
 
 const PROJECT_NAMES: Record<string, string> = {
-    'proj-invoicing': '💰 Invoicing',
-    'proj-msa': '📜 MSA Management',
-    'proj-onboarding': '👋 Onboarding',
-    'proj-gdpr': '🔒 GDPR / Privacy',
-    'proj-inventory': '📦 Inventory',
-    'proj-brand-guidelines': '🎨 Brand Guidelines',
-    'proj-reports': '📊 Financial Reports',
-    'proj-hive': '🐝 The Hive',
-    'proj-dashboard': '⚙️ AI-Dashboard369',
-    'unrouted': '📥 Unrouted',
+    'proj-invoicing': 'Invoicing',
+    'proj-msa': 'MSA Management',
+    'proj-onboarding': 'Onboarding',
+    'proj-gdpr': 'GDPR / Privacy',
+    'proj-inventory': 'Inventory',
+    'proj-brand-guidelines': 'Brand Guidelines',
+    'proj-reports': 'Financial Reports',
+    'proj-hive': 'The Hive',
+    'proj-dashboard': 'AI-Dashboard369',
+    'unrouted': 'Unrouted',
 };
 
 function normalizeAiViewTasks(tasks: Task[], urgencyFilter: string): Task[] {
@@ -325,15 +326,15 @@ export default function TaskMenu() {
                         onChange={(e) => handleUrgencyChange(task.id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <option value="high">🔴 High</option>
-                        <option value="medium">🟡 Medium</option>
-                        <option value="low">🟢 Low</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
                     </select>
                 </div>
                 <p className="task-desc">{task.description}</p>
                 {/* AI Reason */}
                 {sortBy === 'ai' && task.aiReason && (
-                    <p className="ai-reason">🧠 {task.aiReason}</p>
+                    <p className="ai-reason">{task.aiReason}</p>
                 )}
             </div>
 
@@ -388,7 +389,7 @@ export default function TaskMenu() {
         <div className="task-menu">
             {/* View toggle: List ⇄ Board (Kanban subview, reuses Task Board) */}
             <div className="task-viewtoggle" role="tablist" aria-label="Task view">
-                <button role="tab" aria-selected={view === 'list'} className={`task-viewtoggle__btn ${view === 'list' ? 'is-active' : ''}`} onClick={() => chooseView('list')}>☰ List</button>
+                <button role="tab" aria-selected={view === 'list'} className={`task-viewtoggle__btn ${view === 'list' ? 'is-active' : ''}`} onClick={() => chooseView('list')}>List</button>
                 <button role="tab" aria-selected={view === 'board'} className={`task-viewtoggle__btn ${view === 'board' ? 'is-active' : ''}`} onClick={() => chooseView('board')}>▤ Board</button>
             </div>
 
@@ -408,7 +409,7 @@ export default function TaskMenu() {
                     disabled={aiAnalyzing}
                     title="AI analyzes all tasks and ranks by importance"
                 >
-                    <span className="ai-organize-icon">🧠</span>
+                    <span className="ai-organize-icon"><Brain size={14} /></span>
                     <span className="ai-organize-label">
                         {aiAnalyzing ? 'Analyzing...' : sortBy === 'ai' ? `AI Ranked (${aiMethodLabel})` : 'AI Organize'}
                     </span>
@@ -436,7 +437,7 @@ export default function TaskMenu() {
             {/* Gmail sync result toast */}
             {gmailResult && (
                 <div className="gmail-result-toast">
-                    <span className="gmail-result-icon">✅</span>
+                    <span className="gmail-result-icon"><Check size={14} /></span>
                     <span>Imported <strong>{gmailResult.created}</strong> tasks from <strong>{gmailResult.scanned}</strong> emails</span>
                 </div>
             )}
@@ -462,7 +463,7 @@ export default function TaskMenu() {
                             className={`sort-btn sort-btn--ai ${sortBy === 'ai' ? 'active' : ''}`}
                             onClick={() => setSortBy('ai')}
                         >
-                            🧠 AI
+                            AI
                         </button>
                     )}
                 </div>
@@ -489,7 +490,7 @@ export default function TaskMenu() {
                         aiRankedTasks.map(renderTaskCard)
                     ) : (
                         <div className="task-empty">
-                            <span className="empty-icon">🧠</span>
+                            <span className="empty-icon"><Brain size={14} /></span>
                             <p>Click "AI Organize" to analyze and rank your tasks</p>
                         </div>
                     )
@@ -497,19 +498,19 @@ export default function TaskMenu() {
                     <>
                         {highTasks.length > 0 && (
                             <div className="urgency-group">
-                                <h4 className="group-header high">🔴 High Priority ({highTasks.length})</h4>
+                                <h4 className="group-header high">High Priority ({highTasks.length})</h4>
                                 {highTasks.map(renderTaskCard)}
                             </div>
                         )}
                         {mediumTasks.length > 0 && (
                             <div className="urgency-group">
-                                <h4 className="group-header medium">🟡 Medium Priority ({mediumTasks.length})</h4>
+                                <h4 className="group-header medium">Medium Priority ({mediumTasks.length})</h4>
                                 {mediumTasks.map(renderTaskCard)}
                             </div>
                         )}
                         {lowTasks.length > 0 && (
                             <div className="urgency-group">
-                                <h4 className="group-header low">🟢 Low Priority ({lowTasks.length})</h4>
+                                <h4 className="group-header low">Low Priority ({lowTasks.length})</h4>
                                 {lowTasks.map(renderTaskCard)}
                             </div>
                         )}
@@ -520,7 +521,7 @@ export default function TaskMenu() {
 
                 {!loading && displayTasks.length === 0 && sortBy !== 'ai' && (
                     <div className="task-empty">
-                        <span className="empty-icon">✅</span>
+                        <span className="empty-icon"><Check size={14} /></span>
                         <p>No tasks yet — click "Link Gmail" to import from your inbox</p>
                     </div>
                 )}

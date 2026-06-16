@@ -22,11 +22,11 @@ import { withSync } from '../../lib/oneSaveStore';
 export type WikiFolder = 'raw' | 'wiki' | 'meetings' | 'docs' | 'facts';
 
 export const WIKI_FOLDERS: { id: WikiFolder; label: string; icon: string; blurb: string }[] = [
-    { id: 'raw', label: 'raw', icon: '📥', blurb: 'Unprocessed inbox — everything lands here first' },
-    { id: 'wiki', label: 'wiki', icon: '📚', blurb: 'Curated, linked knowledge pages' },
-    { id: 'meetings', label: 'meetings', icon: '🗓️', blurb: 'Granola / call transcripts & summaries' },
-    { id: 'docs', label: 'docs', icon: '📄', blurb: 'Long-form source documents' },
-    { id: 'facts', label: 'facts', icon: '🧩', blurb: 'Atomic, deduped claims distilled from sources' },
+    { id: 'raw', label: 'raw', icon: '', blurb: 'Unprocessed inbox — everything lands here first' },
+    { id: 'wiki', label: 'wiki', icon: '', blurb: 'Curated, linked knowledge pages' },
+    { id: 'meetings', label: 'meetings', icon: '', blurb: 'Granola / call transcripts & summaries' },
+    { id: 'docs', label: 'docs', icon: '', blurb: 'Long-form source documents' },
+    { id: 'facts', label: 'facts', icon: '', blurb: 'Atomic, deduped claims distilled from sources' },
 ];
 
 export interface WikiPage {
@@ -228,7 +228,7 @@ export function buildWikiContext(maxFacts = 24): string {
     lines.push(identity['SOUL.md']);
     if (facts.length) {
         lines.push('\n## Known facts (from the wiki)');
-        for (const f of facts) lines.push(`- ${f.body}${f.contradicts ? '  ⚠️(contested)' : ''}`);
+        for (const f of facts) lines.push(`- ${f.body}${f.contradicts ? ' (contested)' : ''}`);
     }
     return lines.join('\n').slice(0, 6000);
 }

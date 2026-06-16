@@ -49,7 +49,7 @@ export function openThreadInScribe(thread: FileEntry, deps: ScribeHandoffDeps): 
     for (const f of files) {
         void deps.openFile(f.path);
     }
-    deps.openWidget('scribe', 'Scribe', '📝');
+    deps.openWidget('scribe', 'Scribe', 'pen-tool');
     return files.length;
 }
 

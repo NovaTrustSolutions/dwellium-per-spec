@@ -256,7 +256,7 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                                                             )}
                                                             {v.location && (
                                                                 <div className="s-owner-prop-meta" style={{ fontSize: '0.7rem', opacity: 0.6, marginTop: '0.15rem' }}>
-                                                                    📍 {v.location}
+                                                                    {v.location}
                                                                 </div>
                                                             )}
                                                         </div>

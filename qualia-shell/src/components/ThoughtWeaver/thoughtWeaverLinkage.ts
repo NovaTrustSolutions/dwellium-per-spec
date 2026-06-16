@@ -108,7 +108,7 @@ export function saveToHonchoMemory(seed: HonchoMemorySeed | null, deps?: SaveToH
     });
     // Surface the Honcho widget unless explicitly suppressed (deps.openWidget === null).
     const open = deps && 'openWidget' in deps ? deps.openWidget : dispatchOpenWidget;
-    if (open) open('honcho', 'Honcho', '🧠');
+    if (open) open('honcho', 'Honcho', 'brain-circuit');
     return entry;
 }
 

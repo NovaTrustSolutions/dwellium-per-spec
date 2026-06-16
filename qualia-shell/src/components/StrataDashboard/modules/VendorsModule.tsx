@@ -589,7 +589,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
         try {
             const res = await strataPost<any>(`/vendors/${vendorId}/onboard`, {});
             showToast(res.message || 'Onboarding queued', 'success');
-            if (res.warnings?.length) showToast(`⚠ ${res.warnings.join(', ')}`, 'error');
+            if (res.warnings?.length) showToast(`${res.warnings.join(', ')}`, 'error');
             fetchVendors();
         } catch (err: any) { showToast(err?.message || 'Failed to start onboarding', 'error'); }
     };
@@ -712,9 +712,9 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                     color: 'var(--text-primary)', fontFamily: 'inherit',
                 }}>
                     <option value="all">All Compliance</option>
-                    <option value="compliant">✅ Compliant</option>
-                    <option value="expiring">⚠ Expiring</option>
-                    <option value="non-compliant">❌ Non-Compliant</option>
+                    <option value="compliant">Compliant</option>
+                    <option value="expiring">Expiring</option>
+                    <option value="non-compliant">Non-Compliant</option>
                 </select>
                 <select aria-label="Filter vendors by property" value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} style={{
                     padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
@@ -805,7 +805,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                     {selected.metadata?.rating > 0 && (
                                         <div className="s-vendor-rating">
                                             <span>Rating:</span>
-                                            <span className="s-rating-stars">{'★'.repeat(Math.round(selected.metadata.rating))}{'☆'.repeat(5 - Math.round(selected.metadata.rating))}</span>
+                                            <span className="s-rating-stars">{''.repeat(Math.round(selected.metadata.rating))}{''.repeat(5 - Math.round(selected.metadata.rating))}</span>
                                             <span className='s-text-muted'>({selected.metadata.rating})</span>
                                         </div>
                                     )}
@@ -1298,7 +1298,7 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                                 <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{doc.description}</span>
                                                                 {doc.expirationDate && (
                                                                     <span style={{ fontSize: 10, color: isExpired ? '#ef4444' : '#64748b' }}>
-                                                                        {isExpired ? '⚠ Expired' : 'Exp'}: {doc.expirationDate.slice(0, 10)}
+                                                                        {isExpired ? 'Expired' : 'Exp'}: {doc.expirationDate.slice(0, 10)}
                                                                     </span>
                                                                 )}
                                                                 <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>

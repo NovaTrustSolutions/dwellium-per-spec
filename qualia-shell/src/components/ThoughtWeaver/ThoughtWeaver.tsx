@@ -1,4 +1,5 @@
 import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { Brain, Check, Clock, Package, Pencil, Trash2, TrendingUp, X } from 'lucide-react';
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -131,25 +132,25 @@ interface BucketItem {
 // ── Constants ────────────────────────────────────────────────────────
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
-    { id: 'capture', label: 'Capture', icon: '📝' },
-    { id: 'today', label: 'Today', icon: '✅' },
-    { id: 'reports', label: 'Reports', icon: '📈' },
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'timeline', label: 'Timeline', icon: '🕐' },
+    { id: 'capture', label: 'Capture', icon: '' },
+    { id: 'today', label: 'Today', icon: '' },
+    { id: 'reports', label: 'Reports', icon: '' },
+    { id: 'dashboard', label: 'Dashboard', icon: '' },
+    { id: 'timeline', label: 'Timeline', icon: '' },
 ];
 
 const BUCKETS: { id: BucketId; label: string; icon: string; color: string }[] = [
-    { id: 'people', label: 'People', icon: '👤', color: 'var(--accent)' },
-    { id: 'projects', label: 'Projects', icon: '📁', color: '#60a5fa' },
-    { id: 'ideas', label: 'Ideas', icon: '💡', color: '#f59e0b' },
-    { id: 'admin', label: 'Tasks', icon: '📋', color: '#22c55e' },
+    { id: 'people', label: 'People', icon: '', color: 'var(--accent)' },
+    { id: 'projects', label: 'Projects', icon: '', color: '#60a5fa' },
+    { id: 'ideas', label: 'Ideas', icon: '', color: '#f59e0b' },
+    { id: 'admin', label: 'Tasks', icon: '', color: '#22c55e' },
 ];
 
 const TEMPLATES = [
-    { icon: '👤', label: 'Person', template: 'Met [name] — context: [where/how]. Follow up: [action].' },
-    { icon: '📁', label: 'Project', template: 'Project: [name]. Next action: [step]. Notes: [details].' },
-    { icon: '💡', label: 'Idea', template: 'Idea: [one-liner]. Details: [expand]. Could be useful for: [context].' },
-    { icon: '📋', label: 'Task', template: 'Need to: [action]. Due: [date/timeframe]. Notes: [context].' },
+    { icon: '', label: 'Person', template: 'Met [name] — context: [where/how]. Follow up: [action].' },
+    { icon: '', label: 'Project', template: 'Project: [name]. Next action: [step]. Notes: [details].' },
+    { icon: '', label: 'Idea', template: 'Idea: [one-liner]. Details: [expand]. Could be useful for: [context].' },
+    { icon: '', label: 'Task', template: 'Need to: [action]. Due: [date/timeframe]. Notes: [context].' },
 ];
 
 const API = `${API_BASE}/api/thought-weaver`;
@@ -192,7 +193,7 @@ function bucketColor(bucket: string): string {
 
 function bucketIcon(bucket: string): string {
     const found = BUCKETS.find(b => b.id === bucket);
-    return found ? found.icon : '📌';
+    return found ? found.icon : '';
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -651,13 +652,13 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             {/* Header */}
             <div className="tw-header">
                 <div className="tw-header__top">
-                    <h2 className="tw-title">🧠 Thought Weaver</h2>
+                    <h2 className="tw-title">Thought Weaver</h2>
                     {effectiveStats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent)' }}>👤 {effectiveStats.activePeople}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>📁 {effectiveStats.activeProjects}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#f59e0b' }}>💡 {effectiveStats.totalIdeas}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#22c55e' }}>📋 {effectiveStats.tasksDue}</span>
+                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent)' }}>{effectiveStats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>{effectiveStats.activeProjects}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#f59e0b' }}>{effectiveStats.totalIdeas}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#22c55e' }}>{effectiveStats.tasksDue}</span>
                         </div>
                     )}
                 </div>
@@ -684,7 +685,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                         color: '#fdba74', fontSize: 12.5, lineHeight: 1.4,
                     }}
                 >
-                    ⚠ <strong>Backend offline</strong> — the Dwellium server isn’t reachable, so you’re seeing the thoughts stored on this device. Nothing is lost; your captures stay saved here.
+                    <strong>Backend offline</strong> — the Dwellium server isn’t reachable, so you’re seeing the thoughts stored on this device. Nothing is lost; your captures stay saved here.
                 </div>
             )}
 
@@ -725,19 +726,19 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 </span>
                                 {captureSource && (
                                     <span className="tw-source-badge" title="How this thought was sorted">
-                                        {captureSource === 'llm' ? '✨ via your LLM'
-                                            : captureSource === 'backend' ? '🛰 via backend'
-                                            : '💾 sorted locally · offline'}
+                                        {captureSource === 'llm' ? 'via your LLM'
+                                            : captureSource === 'backend' ? 'via backend'
+                                            : 'sorted locally · offline'}
                                     </span>
                                 )}
                             </div>
-                            <button className="tw-result__close" onClick={() => { setLastResult(null); setCaptureSource(null); }}>✕</button>
+                            <button className="tw-result__close" onClick={() => { setLastResult(null); setCaptureSource(null); }}><X size={16} /></button>
                         </div>
                     )}
 
                     {/* Seed button */}
                     {captures.length === 0 && !seeded && (
-                        <button className="tw-seed-btn" onClick={handleSeed}>🌱 Seed demo thoughts</button>
+                        <button className="tw-seed-btn" onClick={handleSeed}>Seed demo thoughts</button>
                     )}
 
                     {/* Recent captures (merged: local + backend) */}
@@ -750,13 +751,13 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                     onClick={handleClearAllLocal}
                                     title={`Delete YOUR ${localCaptures.length} local captures`}
                                 >
-                                    🗑 Clear my captures ({localCaptures.length})
+                                    Clear my captures ({localCaptures.length})
                                 </button>
                             )}
                         </div>
                         {mergedCaptures.length === 0 ? (
                             <div className="tw-empty">
-                                <span className="tw-empty__icon">🧠</span>
+                                <span className="tw-empty__icon"><Brain size={14} /></span>
                                 <p>No thoughts yet. Start capturing!</p>
                             </div>
                         ) : (
@@ -770,7 +771,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                             </span>
                                             <span className="tw-confidence-mini">{Math.round(c.confidence * 100)}%</span>
                                             {c.source === 'local' && (
-                                                <span className="tw-local-badge" title="Stored in this browser — only you can delete it">💾 local</span>
+                                                <span className="tw-local-badge" title="Stored in this browser — only you can delete it">local</span>
                                             )}
                                             {/* User override of the AI's category — you always have the final say. */}
                                             {c.source === 'local' && (
@@ -781,10 +782,10 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                                 {b.icon}
                                                             </button>
                                                         ))}
-                                                        <button className="tw-resolve-cancel" onClick={() => setRefileId(null)}>✕</button>
+                                                        <button className="tw-resolve-cancel" onClick={() => setRefileId(null)}><X size={16} /></button>
                                                     </div>
                                                 ) : (
-                                                    <button className="tw-categorize-btn" onClick={() => setRefileId(c.id)} title="Re-file — you decide the category; the AI never has the final say on your stored thought">✎ Re-file</button>
+                                                    <button className="tw-categorize-btn" onClick={() => setRefileId(c.id)} title="Re-file — you decide the category; the AI never has the final say on your stored thought">Re-file</button>
                                                 )
                                             )}
                                             {c.status === 'needs_review' && c.source !== 'local' && (
@@ -795,7 +796,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                                 {b.icon}
                                                             </button>
                                                         ))}
-                                                        <button className="tw-resolve-cancel" onClick={() => setResolveId(null)}>✕</button>
+                                                        <button className="tw-resolve-cancel" onClick={() => setResolveId(null)}><X size={16} /></button>
                                                     </div>
                                                 ) : (
                                                     <button className="tw-categorize-btn" onClick={() => setResolveId(c.id)}>Categorize</button>
@@ -808,7 +809,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                     onClick={() => handleLocalDelete(c.id)}
                                                     title="Delete this capture (local only — backend records can't be removed from here)"
                                                 >
-                                                    🗑
+                                                   
                                                 </button>
                                             )}
                                         </div>
@@ -844,7 +845,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             </button>
                             {todos.some(t => t.done) && (
                                 <button className="tw-today__clear-btn" onClick={clearDoneTodos}>
-                                    🧹 Clear done ({todos.filter(t => t.done).length})
+                                    Clear done ({todos.filter(t => t.done).length})
                                 </button>
                             )}
                         </div>
@@ -880,7 +881,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {/* List */}
                     {todos.length === 0 ? (
                         <div className="tw-empty">
-                            <span className="tw-empty__icon">✅</span>
+                            <span className="tw-empty__icon"><Check size={14} /></span>
                             <p>Nothing here yet. Click "Sync from captures" or add an item.</p>
                         </div>
                     ) : (
@@ -890,7 +891,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             return (
                                 <div key={pri} className={`tw-today__group tw-today__group--${pri}`}>
                                     <h4 className="tw-today__group-title">
-                                        {pri === 'high' ? '🔥' : pri === 'medium' ? '⚡' : '💭'} {pri.toUpperCase()}
+                                        {pri === 'high' ? '' : pri === 'medium' ? '' : ''} {pri.toUpperCase()}
                                         <span className="tw-today__group-count">{bucket.filter(t => !t.done).length}/{bucket.length}</span>
                                     </h4>
                                     {bucket.map(t => (
@@ -903,14 +904,14 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                             />
                                             <span className="tw-todo__text">{t.text}</span>
                                             {t.sourceCaptureId && (
-                                                <span className="tw-todo__source" title="From a capture">📝</span>
+                                                <span className="tw-todo__source" title="From a capture"><Pencil size={14} /></span>
                                             )}
                                             <button
                                                 className="tw-delete-btn"
                                                 onClick={() => deleteTodo(t.id)}
                                                 title="Delete to-do"
                                             >
-                                                🗑
+                                               
                                             </button>
                                         </div>
                                     ))}
@@ -934,7 +935,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 aria-busy={generating}
                                 title="Draft today's report, refresh to-dos, roll up the week, and surface insights"
                             >
-                                {generating ? '⏳ Generating…' : '✨ Generate now'}
+                                {generating ? 'Generating…' : 'Generate now'}
                             </button>
                             <button
                                 className="tw-reports__handoff-btn"
@@ -946,7 +947,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             </button>
                             {(reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length) > 0 && (
                                 <button className="tw-reports__clear-btn" onClick={handleClearReports} disabled={generating}>
-                                    🧹 Clear reports
+                                    Clear reports
                                 </button>
                             )}
                         </div>
@@ -967,7 +968,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
 
                     {(reports.dailyReports.length + reports.weeklySummaries.length + reports.insights.length) === 0 ? (
                         <div className="tw-empty">
-                            <span className="tw-empty__icon">📈</span>
+                            <span className="tw-empty__icon"><TrendingUp size={14} /></span>
                             <p>
                                 {mergedCaptures.length === 0
                                     ? 'Capture a few thoughts first, then come back to generate a report.'
@@ -979,7 +980,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             {/* Non-obvious insights */}
                             {reports.insights.length > 0 && (
                                 <section className="tw-reports__section" aria-label="Insights">
-                                    <h4 className="tw-reports__section-title">💡 Insights</h4>
+                                    <h4 className="tw-reports__section-title">Insights</h4>
                                     {reports.insights.map(i => (
                                         <div key={i.id} className={`tw-insight tw-insight--${i.kind}`}>
                                             <span className="tw-insight__kind">{i.kind}</span>
@@ -999,7 +1000,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                     title="Save this insight to Honcho memory"
                                                     aria-label="Save insight to Honcho memory"
                                                 >
-                                                    🧠 Honcho
+                                                    Honcho
                                                 </button>
                                             </div>
                                         </div>
@@ -1010,7 +1011,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             {/* Daily reports */}
                             {reports.dailyReports.length > 0 && (
                                 <section className="tw-reports__section" aria-label="Daily reports">
-                                    <h4 className="tw-reports__section-title">📅 Daily Reports</h4>
+                                    <h4 className="tw-reports__section-title">Daily Reports</h4>
                                     {reports.dailyReports.map(r => (
                                         <article key={r.id} className="tw-report-card">
                                             <header className="tw-report-card__head">
@@ -1026,7 +1027,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             {/* Weekly summaries */}
                             {reports.weeklySummaries.length > 0 && (
                                 <section className="tw-reports__section" aria-label="Weekly summaries">
-                                    <h4 className="tw-reports__section-title">🗓️ Weekly Summaries</h4>
+                                    <h4 className="tw-reports__section-title">Weekly Summaries</h4>
                                     {reports.weeklySummaries.map(w => (
                                         <article key={w.id} className="tw-report-card">
                                             <header className="tw-report-card__head">
@@ -1050,12 +1051,12 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {effectiveStats && (
                         <div className="tw-stats-bar">
                             {[
-                                { icon: '🧠', label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent)' },
-                                { icon: '📥', label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
-                                { icon: '👤', label: 'People', value: effectiveStats.activePeople, color: 'var(--accent)' },
-                                { icon: '📁', label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
-                                { icon: '💡', label: 'Ideas', value: effectiveStats.totalIdeas, color: '#f59e0b' },
-                                { icon: '📋', label: 'Due', value: effectiveStats.tasksDue, color: '#22c55e', highlight: effectiveStats.tasksDue > 0 },
+                                { icon: '', label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent)' },
+                                { icon: '', label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
+                                { icon: '', label: 'People', value: effectiveStats.activePeople, color: 'var(--accent)' },
+                                { icon: '', label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
+                                { icon: '', label: 'Ideas', value: effectiveStats.totalIdeas, color: '#f59e0b' },
+                                { icon: '', label: 'Due', value: effectiveStats.tasksDue, color: '#22c55e', highlight: effectiveStats.tasksDue > 0 },
                             ].map(s => (
                                 <div key={s.label} className={`tw-stat-card ${s.highlight ? 'tw-stat-card--highlight' : ''}`}>
                                     <span className="tw-stat-card__icon">{s.icon}</span>
@@ -1084,7 +1085,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {/* Items list */}
                     <div className="tw-items-list">
                         {allBucketItems.length === 0 ? (
-                            <div className="tw-empty"><span className="tw-empty__icon">📦</span><p>No items yet. Capture some thoughts!</p></div>
+                            <div className="tw-empty"><span className="tw-empty__icon"><Package size={14} /></span><p>No items yet. Capture some thoughts!</p></div>
                         ) : (
                             allBucketItems.map(item => (
                                 <div key={item.id} className="tw-item-card" style={{ borderLeftColor: bucketColor(item.type || '') }}>
@@ -1102,7 +1103,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                         </div>
                                         <div className="tw-item-card__actions">
                                             <span className="tw-time">{timeAgo(item.createdAt)}</span>
-                                            <button className="tw-delete-btn" onClick={() => (item as { source?: string }).source === 'local' ? deleteLocalCapture(item.id) : handleDelete(item.type || '', item.id)} title="Delete">🗑</button>
+                                            <button className="tw-delete-btn" onClick={() => (item as { source?: string }).source === 'local' ? deleteLocalCapture(item.id) : handleDelete(item.type || '', item.id)} title="Delete"><Trash2 size={16} /></button>
                                         </div>
                                     </div>
                                 </div>
@@ -1129,7 +1130,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     </div>
 
                     {Object.keys(groupedTimeline).length === 0 ? (
-                        <div className="tw-empty"><span className="tw-empty__icon">🕐</span><p>No timeline entries yet.</p></div>
+                        <div className="tw-empty"><span className="tw-empty__icon"><Clock size={14} /></span><p>No timeline entries yet.</p></div>
                     ) : (
                         Object.entries(groupedTimeline).map(([group, items]) => (
                             <div key={group} className="tw-timeline-group">

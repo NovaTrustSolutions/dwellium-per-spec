@@ -134,10 +134,10 @@ describe('routing accuracy gate (≥95% on the corpus)', () => {
 });
 
 describe('mis-route collection (re-training surface)', () => {
-    it('collects correct=false decisions and 👎-rated decisions, nothing else', () => {
+    it('collects correct=false decisions and thumbs-down-rated decisions, nothing else', () => {
         recordRoutingDecision('open strata', { intent: 'command', confidence: 0.95, via: 'heuristic' }); // good
         recordRoutingDecision('spawn cleanup', { intent: 'chat', confidence: 0.5, via: 'heuristic' }, false); // mis-route
-        const voted = recordRoutingDecision('weird one', { intent: 'skill', confidence: 0.9, via: 'llm' }); // 👎 later
+        const voted = recordRoutingDecision('weird one', { intent: 'skill', confidence: 0.9, via: 'llm' }); // thumbs-down later
         rateRun(voted.id, -1);
         const mis = collectMisRoutes();
         expect(mis.map(m => m.prompt).sort()).toEqual(['spawn cleanup', 'weird one']);

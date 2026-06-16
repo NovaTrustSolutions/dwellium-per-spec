@@ -102,7 +102,7 @@ export default function BuilderAgents() {
                         {busy ? <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Play size={13} />}
                         {busy ? 'Running…' : `Run ${def.label}`}
                     </button>
-                    {err && <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 11 }}>⚠ {err}</div>}
+                    {err && <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 11 }}>{err}</div>}
                 </div>
 
                 {/* Output */}

@@ -10,6 +10,7 @@
  * for the current Scribe session. Closing the panel clears the buffer.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertOctagon, AlertTriangle } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { buildContextWarning, sumTokens } from '../../lib/contextWindow';
@@ -163,7 +164,7 @@ export function AraMiniPanel() {
                         if (w.level === 'ok') return null;
                         return (
                             <div className={`scribe-ara-ctx-warn scribe-ara-ctx-warn--${w.level}`}>
-                                <span>{w.level === 'warn' ? '⚠️' : '🛑'}</span>
+                                <span>{w.level === 'warn' ? <AlertTriangle size={14} /> : <AlertOctagon size={14} />}</span>
                                 <span style={{ flex: 1 }}>{w.message}</span>
                                 <button
                                     className="scribe-ara-ctx-warn-btn"

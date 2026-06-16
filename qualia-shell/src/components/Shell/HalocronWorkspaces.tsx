@@ -6,6 +6,7 @@
  * the same apps, layout, and notes restore, so you continue where you left off.
  */
 import { Suspense, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
@@ -77,7 +78,7 @@ export default function HalocronWorkspaces() {
                         <div key={w.id} className="hos-card hos-space" onClick={() => setOpenId(w.id)} role="button" tabIndex={0}>
                             <div className="hos-space__name">“{w.name}”</div>
                             <div className="hos-space__w">{w.appIds.length} app{w.appIds.length === 1 ? '' : 's'} · {w.split}-up{w.notes.trim() ? ' · notes' : ''}</div>
-                            <button className="ws-del" onClick={(e) => { e.stopPropagation(); removeWorkspace(w.id); }} aria-label={`Delete ${w.name}`}>✕</button>
+                            <button className="ws-del" onClick={(e) => { e.stopPropagation(); removeWorkspace(w.id); }} aria-label={`Delete ${w.name}`}><X size={16} /></button>
                         </div>
                     ))}
                     <button type="button" className="hos-card ws-new" onClick={createWorkspace}>
@@ -136,7 +137,7 @@ export default function HalocronWorkspaces() {
                             <div key={id} className="ws-pane ws-pane--float" style={{ left: `${f.x}%`, top: `${f.y}%`, width: `${f.w}%`, height: `${f.h}%` }}>
                                 <div className="ws-pane__hdr ws-pane__hdr--drag" onPointerDown={(e) => startDrag(e, id, i, 'move')}>
                                     <span className="ws-pane__name">{meta?.label ?? id}</span>
-                                    <button className="ws-pane__x" onPointerDown={(e) => e.stopPropagation()} onClick={() => removeApp(id)} aria-label={`Remove ${meta?.label ?? id}`}>✕</button>
+                                    <button className="ws-pane__x" onPointerDown={(e) => e.stopPropagation()} onClick={() => removeApp(id)} aria-label={`Remove ${meta?.label ?? id}`}><X size={16} /></button>
                                 </div>
                                 <div className="ws-pane__body window__content" data-widget-id={id}>
                                     <WidgetErrorBoundary widgetLabel={meta?.label ?? id} enabled surfaceErrors>
@@ -159,7 +160,7 @@ export default function HalocronWorkspaces() {
                             <div key={id} className="ws-pane">
                                 <div className="ws-pane__hdr">
                                     <span className="ws-pane__name">{meta?.label ?? id}</span>
-                                    <button className="ws-pane__x" onClick={() => removeApp(id)} aria-label={`Remove ${meta?.label ?? id}`}>✕</button>
+                                    <button className="ws-pane__x" onClick={() => removeApp(id)} aria-label={`Remove ${meta?.label ?? id}`}><X size={16} /></button>
                                 </div>
                                 <div className="ws-pane__body window__content" data-widget-id={id}>
                                     <WidgetErrorBoundary widgetLabel={meta?.label ?? id} enabled surfaceErrors>

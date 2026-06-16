@@ -4,6 +4,7 @@
  * Supports PDF, images, text, and generic file previews.
  */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { ClipboardList } from 'lucide-react';
 import { API_BASE } from '../../config';
 import './QuickLook.css';
 
@@ -145,7 +146,7 @@ export default function QuickLook({ file, onClose, onOpenInWindow }: QuickLookPr
                             </button>
                         )}
                         <button className="ql-btn ql-btn--close" onClick={onClose} title="Close (Space / Esc)">
-                            ✕
+                           
                         </button>
                     </div>
                 </div>
@@ -191,7 +192,7 @@ export default function QuickLook({ file, onClose, onOpenInWindow }: QuickLookPr
 
                     {preview.kind === 'unsupported' && (
                         <div className="ql-unsupported">
-                            <span className="ql-unsupported__icon">📋</span>
+                            <span className="ql-unsupported__icon"><ClipboardList size={14} /></span>
                             <p className="ql-unsupported__text">{preview.message}</p>
                             {onOpenInWindow && (
                                 <button
@@ -218,18 +219,18 @@ export default function QuickLook({ file, onClose, onOpenInWindow }: QuickLookPr
 
 function getQuickLookIcon(type: string): string {
     const icons: Record<string, string> = {
-        pdf: '📄',
-        png: '🖼️',
-        jpg: '🖼️',
-        jpeg: '🖼️',
-        gif: '🖼️',
-        txt: '📃',
-        md: '📃',
-        csv: '📊',
+        pdf: '',
+        png: '',
+        jpg: '',
+        jpeg: '',
+        gif: '',
+        txt: '',
+        md: '',
+        csv: '',
         json: '{ }',
-        html: '🌐',
-        doc: '📝',
-        docx: '📝',
+        html: '',
+        doc: '',
+        docx: '',
     };
-    return icons[type?.toLowerCase()] || '📎';
+    return icons[type?.toLowerCase()] || '';
 }

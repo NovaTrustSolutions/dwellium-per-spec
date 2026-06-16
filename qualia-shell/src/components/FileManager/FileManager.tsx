@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, DragEvent, ChangeEvent } from 'react';
+import { FolderOpen, Home, Inbox, Menu } from 'lucide-react';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useWindows } from '../../context/WindowContext';
 import './FileManager.css';
@@ -26,12 +27,12 @@ interface FolderNode {
 const API_FILES = `${API_BASE}/api/files`;
 
 const FILE_ICONS: Record<string, string> = {
-    pdf: '📄', doc: '📝', docx: '📝', txt: '📃', md: '📃',
-    jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', svg: '🖼️',
-    mp3: '🎵', wav: '🎵', mp4: '🎬', mov: '🎬',
-    zip: '📦', rar: '📦', csv: '📊', json: '⚙️',
-    ts: '💻', js: '💻', html: '🌐', css: '🎨',
-    unknown: '📎'
+    pdf: '', doc: '', docx: '', txt: '', md: '',
+    jpg: '', jpeg: '', png: '', gif: '', svg: '',
+    mp3: '', wav: '', mp4: '', mov: '',
+    zip: '', rar: '', csv: '', json: '',
+    ts: '', js: '', html: '', css: '',
+    unknown: ''
 };
 
 // ============================================
@@ -168,7 +169,7 @@ export default function FileManager() {
             const detail = { fileId: file.id, name: file.name };
             (window as any).__qualiaDocViewerPendingFile = detail;
             // Open DocViewer window (may be lazy-loaded)
-            openWindow('doc-viewer', file.name, '📑');
+            openWindow('doc-viewer', file.name, '');
             // Dispatch event with retry — DocViewer needs time to mount and register listener
             const dispatch = (attempt: number) => {
                 if (attempt > 5) return;
@@ -202,20 +203,20 @@ export default function FileManager() {
             {/* Sidebar — Hierarchy Tree */}
             <div className="fm-sidebar">
                 <div className="fm-sidebar__header">
-                    <span>📂</span>
+                    <span><FolderOpen size={14} /></span>
                     <span className="fm-sidebar__title">Files</span>
                 </div>
                 <div className="fm-sidebar__tree">
                     <div className={`fm-tree-item ${!selectedId ? 'fm-tree-item--active' : ''}`}
                         onClick={() => selectItem('')}>
-                        <span className="fm-tree-item__icon">🏠</span>
+                        <span className="fm-tree-item__icon"><Home size={14} /></span>
                         <span className="fm-tree-item__name">All Files</span>
                     </div>
                     {hierarchy.map(domain => (
                         <div key={domain.id}>
                             <div className={`fm-tree-item fm-tree-item--domain ${selectedId === domain.id ? 'fm-tree-item--active' : ''}`}
                                 onClick={() => { selectItem(domain.id); toggleExpand(domain.id); }}>
-                                <span className="fm-tree-item__icon">{domain.icon || '📂'}</span>
+                                <span className="fm-tree-item__icon">{domain.icon || ''}</span>
                                 <span className="fm-tree-item__name">{domain.name}</span>
                                 <span className="fm-tree-item__count">{expandedIds.has(domain.id) ? '▾' : '▸'}</span>
                             </div>
@@ -224,7 +225,7 @@ export default function FileManager() {
                                     <div className={`fm-tree-item fm-tree-item--node ${selectedId === node.id ? 'fm-tree-item--active' : ''}`}
                                         onClick={() => { selectItem(node.id); toggleExpand(node.id); }}
                                         style={{ paddingLeft: 24 }}>
-                                        <span className="fm-tree-item__icon">{node.icon || '📁'}</span>
+                                        <span className="fm-tree-item__icon">{node.icon || ''}</span>
                                         <span className="fm-tree-item__name">{node.name}</span>
                                         <span className="fm-tree-item__count">{node.children ? (expandedIds.has(node.id) ? '▾' : '▸') : ''}</span>
                                     </div>
@@ -233,7 +234,7 @@ export default function FileManager() {
                                             className={`fm-tree-item fm-tree-item--project ${selectedId === project.id ? 'fm-tree-item--active' : ''}`}
                                             onClick={() => selectItem(project.id)}
                                             style={{ paddingLeft: 44 }}>
-                                            <span className="fm-tree-item__icon">{project.icon || '📋'}</span>
+                                            <span className="fm-tree-item__icon">{project.icon || ''}</span>
                                             <span className="fm-tree-item__name">{project.name}</span>
                                         </div>
                                     ))}
@@ -252,14 +253,14 @@ export default function FileManager() {
                         value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                     <button className="fm-toolbar__btn fm-toolbar__btn--upload"
                         onClick={handleUploadClick} title="Upload Files" disabled={isUploading}>
-                        {isUploading ? '⏳' : '📤'} Upload
+                        {isUploading ? '' : ''} Upload
                     </button>
                     <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }}
                         onChange={handleFileInputChange} />
                     <button className={`fm-toolbar__btn ${viewMode === 'grid' ? 'fm-toolbar__btn--active' : ''}`}
                         onClick={() => setViewMode('grid')} title="Grid View">⊞</button>
                     <button className={`fm-toolbar__btn ${viewMode === 'list' ? 'fm-toolbar__btn--active' : ''}`}
-                        onClick={() => setViewMode('list')} title="List View">☰</button>
+                        onClick={() => setViewMode('list')} title="List View"><Menu size={16} /></button>
                 </div>
 
                 {/* Files Grid/List */}
@@ -279,7 +280,7 @@ export default function FileManager() {
                                         title="Open in Doc Viewer"
                                         onClick={() => handleOpenFile(file)}
                                     >
-                                        📑
+                                       
                                     </button>
                                     <button
                                         className="fm-share-btn fm-share-btn--airdrop"
@@ -303,7 +304,7 @@ export default function FileManager() {
                                             }
                                         }}
                                     >
-                                        📡
+                                       
                                     </button>
                                     <button
                                         className="fm-share-btn fm-share-btn--email"
@@ -317,7 +318,7 @@ export default function FileManager() {
                                             window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
                                         }}
                                     >
-                                        ✉️
+                                       
                                     </button>
                                     <button
                                         className="fm-share-btn fm-share-btn--sms"
@@ -329,7 +330,7 @@ export default function FileManager() {
                                             window.open(`sms:?&body=${body}`, '_blank');
                                         }}
                                     >
-                                        💬
+                                       
                                     </button>
                                 </div>
                             </div>
@@ -337,7 +338,7 @@ export default function FileManager() {
                     </div>
                 ) : (
                     <div className="fm-empty">
-                        <span className="fm-empty__icon">📂</span>
+                        <span className="fm-empty__icon"><FolderOpen size={14} /></span>
                         <span className="fm-empty__text">
                             {searchQuery ? 'No matching files' : 'Drop files here to upload'}
                         </span>
@@ -347,7 +348,7 @@ export default function FileManager() {
                 {/* Drop Zone Overlay */}
                 {isDragging && (
                     <div className="fm-dropzone">
-                        <span className="fm-dropzone__icon">📥</span>
+                        <span className="fm-dropzone__icon"><Inbox size={14} /></span>
                         <span className="fm-dropzone__text">Drop files to upload</span>
                     </div>
                 )}

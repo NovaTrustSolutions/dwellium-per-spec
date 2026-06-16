@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowUp, Bookmark, Eraser, FileText, Highlighter, Image, Paperclip, PenTool, Pencil, Trash2, X } from 'lucide-react';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import './DocViewer.css';
 import { API_BASE } from '../../config';
@@ -1352,15 +1353,15 @@ export default function DocViewer() {
                             )}
 
                             <button className="dv-toolbar__btn dv-toolbar__btn--download" onClick={downloadCurrentDocument} title="Export current document">
-                                ⬇ Export
+                                Export
                             </button>
                             {canSaveBack && (
                                 <button className="dv-toolbar__btn" onClick={() => void saveDocumentToQualia()} disabled={isSaving || (previewMode === 'text' && !isTextDirty)}>
-                                    {isSaving ? 'Saving…' : '💾 Save Back'}
+                                    {isSaving ? 'Saving…' : 'Save Back'}
                                 </button>
                             )}
                             <button className="dv-toolbar__btn" onClick={() => void materializeLocalCopy()} title="Materialize local copy and copy path">
-                                📥 Cache Local
+                                Cache Local
                             </button>
                             <button className="dv-toolbar__btn" onClick={openOriginalFile} title="Open original file route">
                                 ↗ Open Original
@@ -1381,12 +1382,12 @@ export default function DocViewer() {
                         <div className="dv-edit-toolbar__group">
                             <button className={`dv-edit-btn ${activeTool === 'select' ? 'dv-edit-btn--active' : ''}`}
                                 onClick={() => { setActiveTool('select'); setEditingTextItem(null); }} title="Select">
-                                <span className="dv-edit-btn__icon">☝</span>
+                                <span className="dv-edit-btn__icon"><ArrowUp size={14} /></span>
                                 <span className="dv-edit-btn__label">Select</span>
                             </button>
                             <button className={`dv-edit-btn ${activeTool === 'editText' ? 'dv-edit-btn--active' : ''}`}
                                 onClick={() => { setActiveTool('editText'); showToast('Click on any text to edit it'); }} title="Edit Existing Text">
-                                <span className="dv-edit-btn__icon">✏️</span>
+                                <span className="dv-edit-btn__icon"><Pencil size={14} /></span>
                                 <span className="dv-edit-btn__label">Edit Text</span>
                             </button>
                             <button className={`dv-edit-btn ${activeTool === 'text' ? 'dv-edit-btn--active' : ''}`}
@@ -1396,12 +1397,12 @@ export default function DocViewer() {
                             </button>
                             <button className={`dv-edit-btn ${activeTool === 'highlight' ? 'dv-edit-btn--active' : ''}`}
                                 onClick={() => { setActiveTool('highlight'); setDrawColor('#f59e0b'); }} title="Highlight">
-                                <span className="dv-edit-btn__icon">🖍</span>
+                                <span className="dv-edit-btn__icon"><Highlighter size={14} /></span>
                                 <span className="dv-edit-btn__label">Highlight</span>
                             </button>
                             <button className={`dv-edit-btn ${activeTool === 'draw' ? 'dv-edit-btn--active' : ''}`}
                                 onClick={() => setActiveTool('draw')} title="Freehand Draw">
-                                <span className="dv-edit-btn__icon">✏</span>
+                                <span className="dv-edit-btn__icon"><Pencil size={14} /></span>
                                 <span className="dv-edit-btn__label">Draw</span>
                             </button>
                             <button className={`dv-edit-btn ${activeTool === 'shape' ? 'dv-edit-btn--active' : ''}`}
@@ -1419,12 +1420,12 @@ export default function DocViewer() {
                                     if (signatureStrokes.length === 0) setShowSignatureModal(true);
                                     else setActiveTool('signature');
                                 }} title="Signature">
-                                <span className="dv-edit-btn__icon">✒</span>
+                                <span className="dv-edit-btn__icon"><PenTool size={14} /></span>
                                 <span className="dv-edit-btn__label">Sign</span>
                             </button>
                             <button className={`dv-edit-btn ${activeTool === 'stamp' ? 'dv-edit-btn--active' : ''}`}
                                 onClick={() => { setActiveTool('stamp'); setShowStampPicker(!showStampPicker); }} title="Stamps">
-                                <span className="dv-edit-btn__icon">🔖</span>
+                                <span className="dv-edit-btn__icon"><Bookmark size={14} /></span>
                                 <span className="dv-edit-btn__label">Stamp</span>
                             </button>
                         </div>
@@ -1433,11 +1434,11 @@ export default function DocViewer() {
 
                         <div className="dv-edit-toolbar__group">
                             <button className="dv-edit-btn" onClick={insertPage} title="Insert Blank Page">
-                                <span className="dv-edit-btn__icon">📄+</span>
+                                <span className="dv-edit-btn__icon">+</span>
                                 <span className="dv-edit-btn__label">Insert</span>
                             </button>
                             <button className="dv-edit-btn" onClick={deletePage} title="Delete Current Page">
-                                <span className="dv-edit-btn__icon">🗑</span>
+                                <span className="dv-edit-btn__icon"><Trash2 size={14} /></span>
                                 <span className="dv-edit-btn__label">Delete</span>
                             </button>
                             <button className="dv-edit-btn" onClick={() => rotatePage('cw')} title="Rotate CW">
@@ -1458,7 +1459,7 @@ export default function DocViewer() {
                                 <span className="dv-edit-btn__label">Redo</span>
                             </button>
                             <button className="dv-edit-btn" onClick={clearAnnotations} title="Clear Annotations">
-                                <span className="dv-edit-btn__icon">🧹</span>
+                                <span className="dv-edit-btn__icon"><Eraser size={14} /></span>
                                 <span className="dv-edit-btn__label">Clear</span>
                             </button>
                         </div>
@@ -1633,20 +1634,20 @@ export default function DocViewer() {
                             />
                         ) : (
                             <div className="dv-empty">
-                                <span className="dv-empty__icon">🖼️</span>
+                                <span className="dv-empty__icon"><Image size={14} /></span>
                                 <span className="dv-empty__text">Image preview unavailable</span>
                             </div>
                         )}
                     </div>
                 ) : selectedFile ? (
                     <div className="dv-empty">
-                        <span className="dv-empty__icon">📎</span>
+                        <span className="dv-empty__icon"><Paperclip size={14} /></span>
                         <span className="dv-empty__text">This file opens in the Docs workspace, but inline preview is not ready yet.</span>
                         <span className="dv-empty__hint">Use Cache Local to get a local copy path or Open Original to use the raw file.</span>
                     </div>
                 ) : (
                     <div className="dv-empty">
-                        <span className="dv-empty__icon">📄</span>
+                        <span className="dv-empty__icon"><FileText size={14} /></span>
                         <span className="dv-empty__text">Select a document to view</span>
                         <span className="dv-empty__hint">Supports PDF, text, JSON, HTML, and image previews</span>
                     </div>
@@ -1659,7 +1660,7 @@ export default function DocViewer() {
                     <div className="dv-modal" onClick={e => e.stopPropagation()}>
                         <div className="dv-modal__header">
                             <h3>Draw Your Signature</h3>
-                            <button className="dv-modal__close" onClick={() => setShowSignatureModal(false)}>✕</button>
+                            <button className="dv-modal__close" onClick={() => setShowSignatureModal(false)}><X size={16} /></button>
                         </div>
                         <div className="dv-modal__body">
                             <canvas

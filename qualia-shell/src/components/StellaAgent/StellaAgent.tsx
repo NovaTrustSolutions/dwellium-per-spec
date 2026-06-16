@@ -3,6 +3,7 @@
  * Integrates Stella (Python/AgentScope) into the Qualia shell.
  */
 import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { Search, Trash2 } from 'lucide-react';
 import './StellaAgent.css';
 import { FileUploadButton } from '../shared/FileUploadButton';
 import '../shared/FileUploadButton.css';
@@ -214,15 +215,15 @@ const PROVIDERS = [
 ];
 
 const TAB_CONFIG: { id: Tab; label: string; icon: string }[] = [
-    { id: 'chat', label: 'Chat', icon: '💬' },
-    { id: 'honcho', label: 'Honcho', icon: '🧠' },
-    { id: 'hermes', label: 'Hermes', icon: '⚡' },
-    { id: 'skills', label: 'Skills', icon: '🧩' },
-    { id: 'memory', label: 'Memory', icon: '📂' },
-    { id: 'automation', label: 'Cron', icon: '⏰' },
-    { id: 'mcp', label: 'MCP', icon: '🔌' },
-    { id: 'voice', label: 'Voice', icon: '🎙️' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
+    { id: 'chat', label: 'Chat', icon: '' },
+    { id: 'honcho', label: 'Honcho', icon: '' },
+    { id: 'hermes', label: 'Hermes', icon: '' },
+    { id: 'skills', label: 'Skills', icon: '' },
+    { id: 'memory', label: 'Memory', icon: '' },
+    { id: 'automation', label: 'Cron', icon: '' },
+    { id: 'mcp', label: 'MCP', icon: '' },
+    { id: 'voice', label: 'Voice', icon: '' },
+    { id: 'settings', label: 'Settings', icon: '' },
 ];
 
 export default function StellaAgent() {
@@ -262,7 +263,7 @@ export default function StellaAgent() {
         {
             id: 'welcome',
             role: 'system',
-            content: '⭐ Stella connected. Ask me anything — I can help with tasks, research, file management, and more. Tip: type `/hermes <task>` to spawn the Hermes agent.',
+            content: 'Stella connected. Ask me anything — I can help with tasks, research, file management, and more. Tip: type `/hermes <task>` to spawn the Hermes agent.',
             timestamp: Date.now(),
         },
     ]);
@@ -333,6 +334,7 @@ export default function StellaAgent() {
     const [permissions, setPermissions] = useState<StellaPermissions | null>(null);
     const [bootstrapLoading, setBootstrapLoading] = useState(false);
     const [bootstrapResult, setBootstrapResult] = useState<string | null>(null);
+    const [bootstrapOk, setBootstrapOk] = useState(false);
     const [circuitState, setCircuitState] = useState<string | null>(null);
     const [editMemoryDraft, setEditMemoryDraft] = useState('');
 
@@ -398,7 +400,7 @@ export default function StellaAgent() {
     };
 
     const saveTgConfig = async () => {
-        if (!tgBotToken.trim()) { setTgSaveMsg('❌ Bot token is required'); return; }
+        if (!tgBotToken.trim()) { setTgSaveMsg('Bot token is required'); return; }
         setTgLoading(true);
         setTgSaveMsg('');
         try {
@@ -409,12 +411,12 @@ export default function StellaAgent() {
             });
             const json = await res.json();
             if (json.success) {
-                setTgSaveMsg(`✅ @${json.data.bot.username} connected`);
+                setTgSaveMsg(`@${json.data.bot.username} connected`);
                 await loadTgStatus();
             } else {
-                setTgSaveMsg(`❌ ${json.error}`);
+                setTgSaveMsg(`${json.error}`);
             }
-        } catch { setTgSaveMsg('❌ Network error'); }
+        } catch { setTgSaveMsg('Network error'); }
         finally { setTgLoading(false); }
     };
 
@@ -428,9 +430,9 @@ export default function StellaAgent() {
                 body: JSON.stringify({ webhookUrl: tgWebhookUrl }),
             });
             const json = await res.json();
-            setTgSaveMsg(json.success ? `✅ Webhook registered` : `❌ ${json.error}`);
+            setTgSaveMsg(json.success ? `Webhook registered` : `${json.error}`);
             if (json.success) await loadTgStatus();
-        } catch { setTgSaveMsg('❌ Network error'); }
+        } catch { setTgSaveMsg('Network error'); }
         finally { setTgLoading(false); }
     };
 
@@ -438,15 +440,15 @@ export default function StellaAgent() {
         setTgLoading(true);
         try {
             await fetch(`${TG_API}/disconnect`, { method: 'POST', headers: getAuthHeaders() });
-            setTgSaveMsg('✅ Disconnected');
+            setTgSaveMsg('Disconnected');
             setTgStatus(null);
             await loadTgStatus();
-        } catch { setTgSaveMsg('❌ Failed to disconnect'); }
+        } catch { setTgSaveMsg('Failed to disconnect'); }
         finally { setTgLoading(false); }
     };
 
     const sendTgTest = async () => {
-        if (!tgTestChatId.trim()) { setTgSaveMsg('❌ Enter a Chat ID for the test'); return; }
+        if (!tgTestChatId.trim()) { setTgSaveMsg('Enter a Chat ID for the test'); return; }
         setTgLoading(true);
         try {
             const res = await fetch(`${TG_API}/test`, {
@@ -455,8 +457,8 @@ export default function StellaAgent() {
                 body: JSON.stringify({ chatId: tgTestChatId }),
             });
             const json = await res.json();
-            setTgSaveMsg(json.success ? '✅ Test message sent!' : `❌ ${json.error}`);
-        } catch { setTgSaveMsg('❌ Network error'); }
+            setTgSaveMsg(json.success ? 'Test message sent!' : `${json.error}`);
+        } catch { setTgSaveMsg('Network error'); }
         finally { setTgLoading(false); }
     };
 
@@ -630,7 +632,7 @@ export default function StellaAgent() {
             } catch (err) {
                 setMessages(prev => [...prev, {
                     id: `error-${Date.now()}`, role: 'system',
-                    content: `⚠️ ${skillHit.skill.name} failed: ${err instanceof Error ? err.message : 'error'}`,
+                    content: `${skillHit.skill.name} failed: ${err instanceof Error ? err.message : 'error'}`,
                     timestamp: Date.now(),
                 }]);
             } finally {
@@ -684,7 +686,7 @@ export default function StellaAgent() {
                     setMessages(prev => [...prev, {
                         id: `error-${Date.now()}`,
                         role: 'system',
-                        content: `⚠️ LLM error: ${err instanceof Error ? err.message : 'Failed'}`,
+                        content: `LLM error: ${err instanceof Error ? err.message : 'Failed'}`,
                         timestamp: Date.now(),
                     }]);
                     setIsTyping(false);
@@ -786,7 +788,7 @@ export default function StellaAgent() {
             setMessages(prev => [...prev, {
                 id: `error-${Date.now()}`,
                 role: 'system',
-                content: `⚠️ ${err instanceof Error ? err.message : 'Failed to reach Stella'}`,
+                content: `${err instanceof Error ? err.message : 'Failed to reach Stella'}`,
                 timestamp: Date.now(),
             }]);
         } finally {
@@ -997,7 +999,7 @@ export default function StellaAgent() {
     const HERMES_API = '/api/hermes';
 
     const TYPE_ICONS: Record<string, string> = {
-        fact: '📋', preference: '⭐', decision: '🔨', observation: '👁️', insight: '💡', manual: '✍️',
+        fact: '', preference: '', decision: '', observation: '', insight: '', manual: '',
     };
     const TYPE_COLORS: Record<string, string> = {
         fact: '#3b82f6', preference: '#f59e0b', decision: '#ef4444',
@@ -1137,7 +1139,7 @@ export default function StellaAgent() {
                 content: data.data?.response || data.data?.answer || data.error || 'No response.',
                 timestamp: Date.now(),
             }]);
-        } catch { setHonchoChatMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Chat failed.', timestamp: Date.now() }]); }
+        } catch { setHonchoChatMessages(prev => [...prev, { role: 'assistant', content: 'Chat failed.', timestamp: Date.now() }]); }
         setHonchoChatLoading(false);
     };
 
@@ -1517,7 +1519,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                 softer banner that explains the fallback rather than blocking. */}
             {status === 'offline' && !hasActiveLlm(integrations.llm) && (
                 <div className="stella__offline-banner">
-                    ⚠️ Stella agent is offline — requires the Stella Python agent service, OR configure a personal LLM in Settings → API Keys.
+                    Stella agent is offline — requires the Stella Python agent service, OR configure a personal LLM in Settings → API Keys.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry</button>
                     <button className="stella__retry-btn" onClick={async () => {
                         setInitLoading(true);
@@ -1530,13 +1532,13 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
             )}
             {status === 'offline' && hasActiveLlm(integrations.llm) && (
                 <div className="stella__offline-banner" style={{ background: 'rgba(214,254,81,0.08)', borderColor: 'rgba(214,254,81,0.3)' }}>
-                    💡 Stella's Python agent is offline — chat is using your personal LLM ({integrations.llm.active}) instead. Skills/memory tabs require the agent.
+                    Stella's Python agent is offline — chat is using your personal LLM ({integrations.llm.active}) instead. Skills/memory tabs require the agent.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry agent</button>
                 </div>
             )}
             {status === 'degraded' && (
                 <div className="stella__offline-banner" style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.3)' }}>
-                    ⚠️ Stella agent is degraded — it's reachable, but a health signal is impaired. Chat still works; some replies may be slower or fall back.
+                    Stella agent is degraded — it's reachable, but a health signal is impaired. Chat still works; some replies may be slower or fall back.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry</button>
                 </div>
             )}
@@ -1574,7 +1576,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         if (w.level === 'ok') return null;
                         return (
                             <div className={`stella__ctx-warn stella__ctx-warn--${w.level}`}>
-                                <span>{w.level === 'warn' ? '⚠️' : '🛑'}</span>
+                                <span>{w.level === 'warn' ? '' : ''}</span>
                                 <span style={{ flex: 1 }}>{w.message}</span>
                                 <button
                                     className="stella__ctx-warn-btn"
@@ -1590,7 +1592,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         show a clear CTA to fix it. Replaces silent disabled input. */}
                     {!isBackendReachable(status) && !hasActiveLlm(integrations.llm) && (
                         <div className="stella__diagnose-banner">
-                            <span className="stella__diagnose-icon">⚠️</span>
+                            <span className="stella__diagnose-icon"></span>
                             <div className="stella__diagnose-body">
                                 <strong>Stella can't answer right now</strong>
                                 <p>Backend is offline and no LLM key is configured. Add a key in Settings → API Keys to chat with Stella.</p>
@@ -1632,7 +1634,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 const analysisMsg: ChatMessage = {
                                     id: `upload-${Date.now()}`,
                                     role: 'assistant',
-                                    content: `📎 **${result.originalName}** analyzed\n\n${result.analysis}${result.savedDocumentId ? `\n\n✅ *Saved as document (ID: ${result.savedDocumentId.slice(0, 8)}…)*` : ''}`,
+                                    content: `**${result.originalName}** analyzed\n\n${result.analysis}${result.savedDocumentId ? `\n\n*Saved as document (ID: ${result.savedDocumentId.slice(0, 8)}…)*` : ''}`,
                                     timestamp: Date.now(),
                                 };
                                 setMessages(prev => [...prev, analysisMsg]);
@@ -1664,7 +1666,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             }
                             title="Send"
                         >
-                            ➤
+                           
                         </button>
                     </div>
                 </div>
@@ -1676,21 +1678,21 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                     {/* Sub-Navigation Sidebar */}
                     <div className="stella__honcho-nav">
                         <div className="stella__honcho-nav-header">
-                            <span className="stella__honcho-nav-logo">🧠</span>
+                            <span className="stella__honcho-nav-logo"></span>
                             <div><strong>Honcho</strong><p>Context engineering</p></div>
                         </div>
                         {([
-                            { id: 'memory-explorer', label: 'Memory Explorer', icon: '📋' },
-                            { id: 'memory-network', label: 'Memory Network', icon: '🕸️' },
-                            { id: 'peers-sessions', label: 'Peers & Sessions', icon: '👥' },
-                            { id: 'chat', label: 'Chat', icon: '💬' },
-                            { id: 'data-ingestion', label: 'Data Ingestion', icon: '📥' },
-                            { id: 'ambient', label: 'Ambient', icon: '🌊' },
-                            { id: 'search', label: 'Semantic Search', icon: '🔍' },
-                            { id: 'memory-map', label: 'Memory Map', icon: '🗺️' },
-                            { id: 'dream', label: 'Dream', icon: '🌙' },
-                            { id: 'interactions', label: 'Interactions', icon: '🖱️' },
-                            { id: 'setup', label: 'Setup', icon: '⚙️' },
+                            { id: 'memory-explorer', label: 'Memory Explorer', icon: '' },
+                            { id: 'memory-network', label: 'Memory Network', icon: '' },
+                            { id: 'peers-sessions', label: 'Peers & Sessions', icon: '' },
+                            { id: 'chat', label: 'Chat', icon: '' },
+                            { id: 'data-ingestion', label: 'Data Ingestion', icon: '' },
+                            { id: 'ambient', label: 'Ambient', icon: '' },
+                            { id: 'search', label: 'Semantic Search', icon: '' },
+                            { id: 'memory-map', label: 'Memory Map', icon: '' },
+                            { id: 'dream', label: 'Dream', icon: '' },
+                            { id: 'interactions', label: 'Interactions', icon: '' },
+                            { id: 'setup', label: 'Setup', icon: '' },
                         ] as { id: typeof honchoSection; label: string; icon: string }[]).map(s => (
                             <button key={s.id} className={`stella__honcho-nav-item ${honchoSection === s.id ? 'stella__honcho-nav-item--active' : ''}`}
                                 onClick={() => setHonchoSection(s.id)}><span className="stella__honcho-nav-icon">{s.icon}</span><span>{s.label}</span></button>
@@ -1699,7 +1701,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                     {/* Content Area */}
                     <div className="stella__honcho-content stella__panel">
                         {honchoSection === 'memory-explorer' && (<>
-                            <h5 className="stella__skill-hub-title">📋 Memory Explorer</h5>
+                            <h5 className="stella__skill-hub-title">Memory Explorer</h5>
                             {honchoStats && (<div className="stella__honcho-stats">
                                 <div className="stella__honcho-stat"><span className="stella__honcho-stat-val">{honchoStats.totalMemories || 0}</span><span className="stella__honcho-stat-key">Memories</span></div>
                                 <div className="stella__honcho-stat"><span className="stella__honcho-stat-val">{honchoStats.totalSessions || 0}</span><span className="stella__honcho-stat-key">Sessions</span></div>
@@ -1709,36 +1711,36 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             <div className="stella__honcho-toolbar">
                                 <input className="stella__honcho-search" placeholder="Search memories..." value={honchoFilter} onChange={e => setHonchoFilter(e.target.value)} />
                                 <select className="stella__honcho-type-filter" value={honchoTypeFilter} onChange={e => setHonchoTypeFilter(e.target.value)}>
-                                    <option value="all">All Types</option><option value="fact">📋 Facts</option><option value="preference">⭐ Preferences</option>
-                                    <option value="decision">🔨 Decisions</option><option value="observation">👁️ Observations</option><option value="insight">💡 Insights</option>
+                                    <option value="all">All Types</option><option value="fact">Facts</option><option value="preference">Preferences</option>
+                                    <option value="decision">Decisions</option><option value="observation">Observations</option><option value="insight">Insights</option>
                                 </select>
-                                <button className="stella__btn-sm" aria-label={showAddHonchoMemory ? 'Cancel adding memory' : 'Add memory'} aria-expanded={showAddHonchoMemory} onClick={() => setShowAddHonchoMemory(!showAddHonchoMemory)}>{showAddHonchoMemory ? '✕' : '+ Add'}</button>
+                                <button className="stella__btn-sm" aria-label={showAddHonchoMemory ? 'Cancel adding memory' : 'Add memory'} aria-expanded={showAddHonchoMemory} onClick={() => setShowAddHonchoMemory(!showAddHonchoMemory)}>{showAddHonchoMemory ? '' : '+ Add'}</button>
                             </div>
                             {showAddHonchoMemory && (<div className="stella__honcho-add-form">
                                 <textarea className="stella__honcho-textarea" placeholder="What should Honcho remember?" value={newHonchoMemory.content} onChange={e => setNewHonchoMemory({ ...newHonchoMemory, content: e.target.value })} rows={3} />
                                 <div className="stella__honcho-add-row">
                                     <select value={newHonchoMemory.memoryType} onChange={e => setNewHonchoMemory({ ...newHonchoMemory, memoryType: e.target.value })}>
-                                        <option value="fact">📋 Fact</option><option value="preference">⭐ Preference</option><option value="decision">🔨 Decision</option>
-                                        <option value="observation">👁️ Observation</option><option value="insight">💡 Insight</option>
+                                        <option value="fact">Fact</option><option value="preference">Preference</option><option value="decision">Decision</option>
+                                        <option value="observation">Observation</option><option value="insight">Insight</option>
                                     </select>
                                     <label>Importance: {(newHonchoMemory.importance * 100).toFixed(0)}%<input type="range" min={0} max={1} step={0.1} value={newHonchoMemory.importance} onChange={e => setNewHonchoMemory({ ...newHonchoMemory, importance: parseFloat(e.target.value) })} /></label>
-                                    <button className="stella__btn-sm stella__btn-sm--install" onClick={addHonchoMemory} disabled={!newHonchoMemory.content.trim()}>💾 Save</button>
+                                    <button className="stella__btn-sm stella__btn-sm--install" onClick={addHonchoMemory} disabled={!newHonchoMemory.content.trim()}>Save</button>
                                 </div>
                             </div>)}
                             <div className="stella__honcho-list">{honchoLoading ? (<div className="stella__loading"><div className="stella__spinner" /> Loading…</div>
-                            ) : filteredHonchoMemories.length === 0 ? (<div className="stella__empty"><span className="stella__empty-icon">🧠</span><p className="stella__empty-text">No memories yet.</p></div>
+                            ) : filteredHonchoMemories.length === 0 ? (<div className="stella__empty"><span className="stella__empty-icon"></span><p className="stella__empty-text">No memories yet.</p></div>
                             ) : filteredHonchoMemories.map(m => (
                                 <div key={m.id} className="stella__honcho-memory" style={{ borderLeftColor: TYPE_COLORS[m.memoryType] || '#D6FE51' }}>
-                                    <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">{TYPE_ICONS[m.memoryType] || '📋'} {m.memoryType}</span>
+                                    <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">{TYPE_ICONS[m.memoryType] || ''} {m.memoryType}</span>
                                         <span className={`stella__honcho-importance imp-${getImportanceLabel(m.importance).toLowerCase()}`}>{getImportanceLabel(m.importance)}</span>
                                         <span className="stella__honcho-source">{m.source}</span></div>
                                     <p className="stella__honcho-content">{m.content}</p>
                                     <div className="stella__honcho-meta"><span>{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : ''}</span>
-                                        <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete memory" onClick={() => deleteHonchoMemory(m.id)}>🗑️</button></div>
+                                        <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete memory" onClick={() => deleteHonchoMemory(m.id)}><Trash2 size={14} /></button></div>
                                 </div>))}</div>
                         </>)}
                         {honchoSection === 'memory-network' && (<>
-                            <h5 className="stella__skill-hub-title">🕸️ Memory Network</h5>
+                            <h5 className="stella__skill-hub-title">Memory Network</h5>
                             <p className="stella__honcho-learn-desc" style={{ marginBottom: 12 }}>Memory connections, associations, and semantic clusters.</p>
                             {honchoStats && (<div className="stella__honcho-stats">
                                 <div className="stella__honcho-stat"><span className="stella__honcho-stat-val">{honchoStats.totalConnections || 0}</span><span className="stella__honcho-stat-key">Connections</span></div>
@@ -1750,31 +1752,31 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                     <div key={m.id} className="stella__honcho-network-node" style={{
                                         left: `${15 + (i % 5) * 18}%`, top: `${10 + Math.floor(i / 5) * 22}%`,
                                         borderColor: TYPE_COLORS[m.memoryType] || '#D6FE51',
-                                    }}><span>{TYPE_ICONS[m.memoryType] || '📋'}</span><span className="stella__honcho-network-text">{m.content?.substring(0, 30)}…</span></div>
+                                    }}><span>{TYPE_ICONS[m.memoryType] || ''}</span><span className="stella__honcho-network-text">{m.content?.substring(0, 30)}…</span></div>
                                 ))}
-                                {filteredHonchoMemories.length === 0 && (<div className="stella__empty"><span className="stella__empty-icon">🕸️</span><p className="stella__empty-text">No memories to visualize.</p></div>)}
+                                {filteredHonchoMemories.length === 0 && (<div className="stella__empty"><span className="stella__empty-icon"></span><p className="stella__empty-text">No memories to visualize.</p></div>)}
                             </div>
                         </>)}
                         {honchoSection === 'peers-sessions' && (<>
-                            <h5 className="stella__skill-hub-title">👥 Peers ({honchoPeers.length})</h5>
+                            <h5 className="stella__skill-hub-title">Peers ({honchoPeers.length})</h5>
                             <div className="stella__honcho-list">{honchoPeers.length === 0 ? (
-                                <div className="stella__empty"><span className="stella__empty-icon">👥</span><p className="stella__empty-text">No peers registered.</p></div>
+                                <div className="stella__empty"><span className="stella__empty-icon"></span><p className="stella__empty-text">No peers registered.</p></div>
                             ) : honchoPeers.map((p: any) => (<div key={p.id} className="stella__honcho-memory">
-                                <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">👤 {p.name || p.id}</span><span className="stella__honcho-source">{p.type || 'peer'}</span></div>
+                                <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">{p.name || p.id}</span><span className="stella__honcho-source">{p.type || 'peer'}</span></div>
                                 <p className="stella__honcho-content">{p.description || p.representation || `Peer ${p.id}`}</p>
                             </div>))}</div>
-                            <h5 className="stella__skill-hub-title" style={{ marginTop: 14 }}>📝 Sessions ({honchoSessions.length})</h5>
+                            <h5 className="stella__skill-hub-title" style={{ marginTop: 14 }}>Sessions ({honchoSessions.length})</h5>
                             <div className="stella__honcho-list">{honchoSessions.length === 0 ? (
-                                <div className="stella__empty"><span className="stella__empty-icon">📝</span><p className="stella__empty-text">No sessions yet.</p></div>
+                                <div className="stella__empty"><span className="stella__empty-icon"></span><p className="stella__empty-text">No sessions yet.</p></div>
                             ) : honchoSessions.map((s: any) => (<div key={s.id} className="stella__honcho-memory">
-                                <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">📝 {s.summary || `Session ${s.id?.substring(0, 8)}`}</span><span className="stella__honcho-source">{s.messageCount || 0} msgs</span></div>
+                                <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">{s.summary || `Session ${s.id?.substring(0, 8)}`}</span><span className="stella__honcho-source">{s.messageCount || 0} msgs</span></div>
                                 <p className="stella__honcho-content">{s.createdAt ? new Date(s.createdAt).toLocaleString() : 'Active'}</p>
                             </div>))}</div>
                         </>)}
                         {honchoSection === 'chat' && (<>
-                            <h5 className="stella__skill-hub-title">💬 Chat with Honcho</h5>
+                            <h5 className="stella__skill-hub-title">Chat with Honcho</h5>
                             <div className="stella__honcho-chat-messages stella__messages">
-                                {honchoChatMessages.length === 0 && (<div className="stella__empty"><span className="stella__empty-icon">💬</span><p className="stella__empty-text">Ask Honcho about your memories.</p></div>)}
+                                {honchoChatMessages.length === 0 && (<div className="stella__empty"><span className="stella__empty-icon"></span><p className="stella__empty-text">Ask Honcho about your memories.</p></div>)}
                                 {honchoChatMessages.map((m: any, i: number) => (<div key={i} className={`stella__msg stella__msg--${m.role}`}>{m.content}</div>))}
                                 {honchoChatLoading && <div className="stella__typing"><div className="stella__typing-dot" /><div className="stella__typing-dot" /><div className="stella__typing-dot" /></div>}
                             </div>
@@ -1783,49 +1785,49 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 <button className="stella__send-btn" aria-label="Send" onClick={honchoChatSend} disabled={!honchoChatInput.trim() || honchoChatLoading}>▶</button></div>
                         </>)}
                         {honchoSection === 'data-ingestion' && (<>
-                            <h5 className="stella__skill-hub-title">📥 Data Ingestion</h5>
+                            <h5 className="stella__skill-hub-title">Data Ingestion</h5>
                             <div className="stella__honcho-add-form"><textarea className="stella__honcho-textarea" placeholder="Paste text, notes, or data to ingest…"
                                 value={honchoIngestText} onChange={e => setHonchoIngestText(e.target.value)} rows={6} />
                                 <div className="stella__honcho-add-row">
                                     <select value={honchoIngestSource} onChange={e => setHonchoIngestSource(e.target.value)}>
-                                        <option value="manual">📝 Manual</option><option value="document">📄 Document</option><option value="email">📧 Email</option><option value="trello">📌 Trello</option>
+                                        <option value="manual">Manual</option><option value="document">Document</option><option value="email">Email</option><option value="trello">Trello</option>
                                     </select>
-                                    <button className="stella__btn-sm stella__btn-sm--install" onClick={honchoIngest} disabled={!honchoIngestText.trim()}>📥 Ingest</button>
+                                    <button className="stella__btn-sm stella__btn-sm--install" onClick={honchoIngest} disabled={!honchoIngestText.trim()}>Ingest</button>
                                 </div>
                             </div>
-                            <h5 className="stella__skill-hub-title" style={{ marginTop: 14, fontSize: 12 }}>📚 Collections ({honchoCollections.length})</h5>
+                            <h5 className="stella__skill-hub-title" style={{ marginTop: 14, fontSize: 12 }}>Collections ({honchoCollections.length})</h5>
                             <div className="stella__honcho-list">{honchoCollections.length === 0 ? (
-                                <div className="stella__empty"><span className="stella__empty-icon">📚</span><p className="stella__empty-text">No collections yet.</p></div>
+                                <div className="stella__empty"><span className="stella__empty-icon"></span><p className="stella__empty-text">No collections yet.</p></div>
                             ) : honchoCollections.map((c: any) => (<div key={c.id} className="stella__honcho-memory">
-                                <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">📚 {c.name || c.id}</span><span className="stella__honcho-source">{c.documentCount || 0} docs</span></div>
+                                <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">{c.name || c.id}</span><span className="stella__honcho-source">{c.documentCount || 0} docs</span></div>
                             </div>))}</div>
                         </>)}
                         {honchoSection === 'ambient' && (<>
-                            <h5 className="stella__skill-hub-title">🌊 Ambient Learning</h5>
+                            <h5 className="stella__skill-hub-title">Ambient Learning</h5>
                             <div className={`stella__honcho-learn ${honchoLearnActive ? 'stella__honcho-learn--active' : ''}`}>
-                                <div className="stella__honcho-learn-info"><span className="stella__honcho-learn-icon">{honchoLearnActive ? '🟢' : '⚪'}</span><div><strong>Honcho Learn</strong>
+                                <div className="stella__honcho-learn-info"><span className="stella__honcho-learn-icon">{honchoLearnActive ? '' : ''}</span><div><strong>Honcho Learn</strong>
                                     <p className="stella__honcho-learn-desc">{honchoLearnActive ? `Active — ${honchoLearnStats.captured} snapshots${honchoLearnStats.lastCapture ? `, last: ${honchoLearnStats.lastCapture}` : ''}` : 'Off — click to start monitoring'}</p></div></div>
                                 <button className={`stella__honcho-learn-btn ${honchoLearnActive ? 'stella__honcho-learn-btn--on' : ''}`}
-                                    onClick={() => setHonchoLearnActive(!honchoLearnActive)}>{honchoLearnActive ? '⏹ Stop' : '▶ Learn'}</button>
+                                    onClick={() => setHonchoLearnActive(!honchoLearnActive)}>{honchoLearnActive ? 'Stop' : '▶ Learn'}</button>
                             </div>
                             <div className="stella__honcho-list" style={{ marginTop: 14 }}>
-                                <div className="stella__honcho-memory"><p className="stella__honcho-content">🖥️ Monitors open windows and widgets every 15s</p></div>
-                                <div className="stella__honcho-memory"><p className="stella__honcho-content">📂 Tracks file edits and document activity</p></div>
-                                <div className="stella__honcho-memory"><p className="stella__honcho-content">📧 Captures inbox items and communication</p></div>
-                                <div className="stella__honcho-memory"><p className="stella__honcho-content">🧠 Extracts observations as low-importance memories</p></div>
-                                <div className="stella__honcho-memory"><p className="stella__honcho-content">♻️ Persists across sessions until stopped</p></div>
+                                <div className="stella__honcho-memory"><p className="stella__honcho-content">Monitors open windows and widgets every 15s</p></div>
+                                <div className="stella__honcho-memory"><p className="stella__honcho-content">Tracks file edits and document activity</p></div>
+                                <div className="stella__honcho-memory"><p className="stella__honcho-content">Captures inbox items and communication</p></div>
+                                <div className="stella__honcho-memory"><p className="stella__honcho-content">Extracts observations as low-importance memories</p></div>
+                                <div className="stella__honcho-memory"><p className="stella__honcho-content">Persists across sessions until stopped</p></div>
                             </div>
                         </>)}
                         {honchoSection === 'search' && (<>
-                            <h5 className="stella__skill-hub-title">🔍 Semantic Search</h5>
+                            <h5 className="stella__skill-hub-title">Semantic Search</h5>
                             <div className="stella__hermes-delegate-row"><input className="stella__hermes-input" placeholder="Semantic search across workspace…"
                                 value={honchoSearchQuery} onChange={e => setHonchoSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && honchoSemanticSearch()} />
-                                <button className="stella__send-btn" aria-label="Search" onClick={honchoSemanticSearch} disabled={!honchoSearchQuery.trim()}>🔍</button></div>
+                                <button className="stella__send-btn" aria-label="Search" onClick={honchoSemanticSearch} disabled={!honchoSearchQuery.trim()}><Search size={14} /></button></div>
                             <div className="stella__honcho-list">{honchoSearchResults.length === 0 ? (
-                                <div className="stella__empty"><span className="stella__empty-icon">🔍</span><p className="stella__empty-text">Enter a query to search.</p></div>
+                                <div className="stella__empty"><span className="stella__empty-icon"></span><p className="stella__empty-text">Enter a query to search.</p></div>
                             ) : honchoSearchResults.map((r: any, i: number) => (
                                 <div key={i} className="stella__honcho-memory" style={{ borderLeftColor: '#D6FE51' }}>
-                                    <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">🔍 {r.memoryType || 'result'}</span>
+                                    <div className="stella__honcho-memory-top"><span className="stella__honcho-memory-type">{r.memoryType || 'result'}</span>
                                         {r.score && <span className="stella__honcho-importance imp-medium">{(r.score * 100).toFixed(0)}%</span>}</div>
                                     <p className="stella__honcho-content">{r.content || r.text}</p></div>))}</div>
                         </>)}
@@ -1856,7 +1858,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                             return (<>
                                 <div className="stella__memory-map-header">
-                                    <h5 className="stella__skill-hub-title">🗺️ Memory Map</h5>
+                                    <h5 className="stella__skill-hub-title">Memory Map</h5>
                                     <span className="stella__memory-map-counts">{totalNodes} nodes &nbsp; {totalEdges} edges</span>
                                 </div>
                                 <div className="stella__memory-map-canvas-wrap" ref={(el) => {
@@ -1959,7 +1961,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                         {honchoSection === 'dream' && (<>
                             <div className="stella__honcho-dream-header">
-                                <h5 className="stella__skill-hub-title">🌙 Dream Mode</h5>
+                                <h5 className="stella__skill-hub-title">Dream Mode</h5>
                                 <div className="stella__honcho-dream-actions">
                                     <button
                                         className="stella__honcho-dream-btn"
@@ -1967,7 +1969,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                         disabled={dreaming}
                                         title="Run LLM reflection over recent memories + captures"
                                     >
-                                        {dreaming ? '⏳ Dreaming…' : '✨ Dream now'}
+                                        {dreaming ? 'Dreaming…' : 'Dream now'}
                                     </button>
                                     <label className="stella__honcho-dream-auto">
                                         <input
@@ -1982,7 +1984,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             className="stella__honcho-dream-clear"
                                             onClick={() => { if (window.confirm(`Clear all ${dreams.length} dreams?`)) clearDreams(); }}
                                         >
-                                            🗑 Clear all
+                                            Clear all
                                         </button>
                                     )}
                                 </div>
@@ -1992,7 +1994,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             </p>
                             {dreams.length === 0 ? (
                                 <div className="stella__honcho-empty">
-                                    <span>🌙</span>
+                                    <span></span>
                                     <p>No dreams yet. Click "Dream now" to surface a pattern.</p>
                                 </div>
                             ) : (
@@ -2002,7 +2004,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             <div className="stella__honcho-dream-card-header">
                                                 <strong>{d.title}</strong>
                                                 <span className="stella__honcho-dream-time">{new Date(d.createdAt).toLocaleString()}</span>
-                                                <button className="stella__honcho-dream-del" onClick={() => deleteDream(d.id)} title="Delete" aria-label="Delete dream">✕</button>
+                                                <button className="stella__honcho-dream-del" onClick={() => deleteDream(d.id)} title="Delete" aria-label="Delete dream"><Trash2 size={14} /></button>
                                             </div>
                                             <p className="stella__honcho-dream-text">{d.text}</p>
                                             {d.sources.length > 0 && (
@@ -2016,12 +2018,12 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                         {honchoSection === 'interactions' && (<>
                             <div className="stella__honcho-interactions-header">
-                                <h5 className="stella__skill-hub-title">🖱️ Desktop Interactions</h5>
+                                <h5 className="stella__skill-hub-title">Desktop Interactions</h5>
                                 <button
                                     className={`stella__honcho-interactions-btn ${interactionsEnabled ? 'stella__honcho-interactions-btn--on' : ''}`}
                                     onClick={() => setInteractionsEnabled(!interactionsEnabled)}
                                 >
-                                    {interactionsEnabled ? '⏹ Stop recording' : '▶ Start recording'}
+                                    {interactionsEnabled ? 'Stop recording' : '▶ Start recording'}
                                 </button>
                             </div>
                             <p className="stella__honcho-dream-desc">
@@ -2033,7 +2035,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             </p>
                             {interactionsLog.length === 0 ? (
                                 <div className="stella__honcho-empty">
-                                    <span>🖱️</span>
+                                    <span></span>
                                     <p>No interactions captured yet. Start recording, then click around.</p>
                                 </div>
                             ) : (
@@ -2050,16 +2052,16 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         </>)}
 
                         {honchoSection === 'setup' && (<>
-                            <h5 className="stella__skill-hub-title">⚙️ Setup</h5>
+                            <h5 className="stella__skill-hub-title">Setup</h5>
                             <div className="stella__settings"><div className="stella__settings-status">
                                 <strong>Honcho Status</strong><span>API: {HONCHO_API}</span>
                                 <span>Memories: {honchoStats?.totalMemories || 0} | Sessions: {honchoStats?.totalSessions || 0} | Peers: {honchoStats?.totalPeers || 0}</span>
-                                <span>Ambient: {honchoLearnActive ? '🟢 On' : '⚪ Off'} ({honchoLearnStats.captured} snapshots)</span>
+                                <span>Ambient: {honchoLearnActive ? 'On' : 'Off'} ({honchoLearnStats.captured} snapshots)</span>
                             </div><hr className="stella__settings-divider" /><div className="stella__settings-actions">
-                                <button className="stella__settings-btn" onClick={() => { fetchHonchoMemories(); fetchHonchoStats(); fetchHonchoPeers(); fetchHonchoSessions(); }}>🔄 Refresh</button>
-                                <button className="stella__settings-btn" onClick={async () => { const t = getAuthToken(); await fetch(`${HONCHO_API}/memories/reindex`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) } }); fetchHonchoStats(); }}>🔧 Reindex</button>
+                                <button className="stella__settings-btn" onClick={() => { fetchHonchoMemories(); fetchHonchoStats(); fetchHonchoPeers(); fetchHonchoSessions(); }}>Refresh</button>
+                                <button className="stella__settings-btn" onClick={async () => { const t = getAuthToken(); await fetch(`${HONCHO_API}/memories/reindex`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) } }); fetchHonchoStats(); }}>Reindex</button>
                                 <button className="stella__settings-btn" onClick={async () => { const t = getAuthToken(); await fetch(`${HONCHO_API}/deriver/start`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) } }); }}>▶ Start Deriver</button>
-                                <button className="stella__settings-btn stella__settings-btn--danger" onClick={async () => { const t = getAuthToken(); await fetch(`${HONCHO_API}/deriver/stop`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) } }); }}>⏹ Stop Deriver</button>
+                                <button className="stella__settings-btn stella__settings-btn--danger" onClick={async () => { const t = getAuthToken(); await fetch(`${HONCHO_API}/deriver/stop`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) } }); }}>Stop Deriver</button>
                             </div></div>
                         </>)}
                     </div>
@@ -2072,7 +2074,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                 <div className="stella__panel">
                     {/* Status */}
                     <div className={`stella__hermes-status ${hermesOnline ? 'stella__hermes-status--online' : 'stella__hermes-status--offline'}`}>
-                        <span className="stella__hermes-status-icon">{hermesOnline ? '⚡' : '💤'}</span>
+                        <span className="stella__hermes-status-icon">{hermesOnline ? '' : ''}</span>
                         <div>
                             <strong>{hermesOnline ? 'Hermes Online' : 'Hermes Offline'}</strong>
                             <p>{hermesOnline ? 'ReAct reasoning loop ready. Local LLM connected.' : 'Ollama not available. Start Ollama to enable Hermes.'}</p>
@@ -2081,7 +2083,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                     {/* Tool Registry */}
                     <div className="stella__hermes-section">
-                        <h5 className="stella__skill-hub-title">🔧 Registered Tools ({hermesTools.length})</h5>
+                        <h5 className="stella__skill-hub-title">Registered Tools ({hermesTools.length})</h5>
                         <div className="stella__hermes-tools">
                             {hermesTools.map((t: any) => (
                                 <div key={t.name} className="stella__hermes-tool">
@@ -2094,7 +2096,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                     {/* Task Delegation */}
                     <div className="stella__hermes-section">
-                        <h5 className="stella__skill-hub-title">🎯 Delegate Task</h5>
+                        <h5 className="stella__skill-hub-title">Delegate Task</h5>
                         <div className="stella__hermes-delegate-row">
                             <input className="stella__hermes-input" placeholder="Ask Hermes to investigate, analyze, or search..."
                                 value={hermesPrompt} onChange={e => setHermesPrompt(e.target.value)}
@@ -2102,7 +2104,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 disabled={!hermesOnline || hermesRunning} />
                             <button className="stella__send-btn" onClick={delegateToHermes}
                                 disabled={!hermesOnline || hermesRunning || !hermesPrompt.trim()}>
-                                {hermesRunning ? '⏳' : '⚡'}
+                                {hermesRunning ? '' : ''}
                             </button>
                         </div>
 
@@ -2112,7 +2114,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 {hermesSteps.map((step: any, i: number) => (
                                     <div key={i} className={`stella__hermes-step stella__hermes-step--${step.type}`}>
                                         <span className="stella__hermes-step-icon">
-                                            {{ thought: '💭', action: '⚙️', observation: '👁️', final_answer: '✅' }[step.type as string] || '📋'}
+                                            {{ thought: '', action: '', observation: '', final_answer: '' }[step.type as string] || ''}
                                         </span>
                                         <div className="stella__hermes-step-body">
                                             <span className="stella__hermes-step-label">{(step.type as string).replace('_', ' ').toUpperCase()}</span>
@@ -2127,7 +2129,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         {/* Final Result */}
                         {hermesResult && !hermesRunning && (
                             <div className="stella__hermes-result">
-                                <h5>📋 Result</h5>
+                                <h5>Result</h5>
                                 <pre>{hermesResult}</pre>
                             </div>
                         )}
@@ -2149,12 +2151,12 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             onKeyDown={e => { if (e.key === 'Enter') searchSkills(skillSearchQuery); }}
                         />
                         <button className="stella__btn-sm" onClick={() => searchSkills(skillSearchQuery)}>
-                            {skillSearching ? '⏳' : '🔍'} Search
+                            {skillSearching ? '' : ''} Search
                         </button>
                     </div>
                     {skillSearchResults.length > 0 && (
                         <div className="stella__skill-hub-results">
-                            <h5 className="stella__skill-hub-title">📦 Hub Results</h5>
+                            <h5 className="stella__skill-hub-title">Hub Results</h5>
                             {skillSearchResults.map(r => (
                                 <div key={r.slug} className="stella__skill-card stella__skill-card--hub">
                                     <div className="stella__skill-info">
@@ -2166,7 +2168,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                         onClick={() => installSkill(r.slug)}
                                         disabled={installingSkill === r.slug}
                                     >
-                                        {installingSkill === r.slug ? '⏳ Installing…' : '📥 Install'}
+                                        {installingSkill === r.slug ? 'Installing…' : 'Install'}
                                     </button>
                                 </div>
                             ))}
@@ -2177,7 +2179,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         built-in capabilities; each entry runs via an existing mechanism.
                         Additive section, always available (independent of backend skills). */}
                     <div className="stella__tool-catalog" role="region" aria-label="Stella tool catalog">
-                        <h5 className="stella__skill-hub-title">🛠️ Tool Catalog ({toolCount()})</h5>
+                        <h5 className="stella__skill-hub-title">Tool Catalog ({toolCount()})</h5>
                         <div className="stella__skill-search">
                             <input
                                 className="stella__skill-search-input"
@@ -2190,7 +2192,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         </div>
                         {catalogGroups.length === 0 ? (
                             <div className="stella__empty">
-                                <span className="stella__empty-icon">🛠️</span>
+                                <span className="stella__empty-icon"></span>
                                 <p className="stella__empty-text">No tools match “{toolCatalogQuery}”.</p>
                             </div>
                         ) : (
@@ -2219,14 +2221,14 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         )}
                     </div>
 
-                    <h5 className="stella__skill-hub-title">🧩 Installed Skills</h5>
+                    <h5 className="stella__skill-hub-title">Installed Skills</h5>
                     {skillsLoading ? (
                         <div className="stella__loading">
                             <div className="stella__spinner" /> Loading skills…
                         </div>
                     ) : skills.length === 0 ? (
                         <div className="stella__empty">
-                            <span className="stella__empty-icon">🧩</span>
+                            <span className="stella__empty-icon"></span>
                             <p className="stella__empty-text">
                                 {status === 'online'
                                     ? 'No skills found. Use the search bar above to discover and install skills.'
@@ -2237,7 +2239,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         skills.map(skill => (
                             <div key={skill.name} className="stella__skill-card">
                                 <div className="stella__skill-icon">
-                                    {skill.source === 'builtin' ? '📦' : '✨'}
+                                    {skill.source === 'builtin' ? '' : ''}
                                 </div>
                                 <div className="stella__skill-info">
                                     <div className="stella__skill-name">{skill.name}</div>
@@ -2255,7 +2257,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             onClick={() => uninstallSkill(skill.name)}
                                             title="Uninstall"
                                             aria-label="Uninstall skill"
-                                        >🗑️</button>
+                                        ></button>
                                     )}
                                 </div>
                             </div>
@@ -2273,7 +2275,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         </div>
                     ) : memoryFiles.length === 0 ? (
                         <div className="stella__empty">
-                            <span className="stella__empty-icon">🧠</span>
+                            <span className="stella__empty-icon"></span>
                             <p className="stella__empty-text">
                                 {status === 'online'
                                     ? 'No memory files yet. Stella stores context here as you interact.'
@@ -2288,7 +2290,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             >
                                 <div className="stella__memory-header" onClick={() => loadMemoryContent(file.filename)}>
                                     <div className="stella__memory-filename">
-                                        📄 {file.filename}
+                                        {file.filename}
                                     </div>
                                     <div className="stella__memory-meta">
                                         {formatSize(file.size)} • Modified {file.modified_time}
@@ -2305,8 +2307,8 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                                     rows={10}
                                                 />
                                                 <div className="stella__memory-edit-actions">
-                                                    <button className="stella__btn-sm stella__btn-sm--install" onClick={() => saveMemory(file.filename, editMemoryDraft)}>💾 Save</button>
-                                                    <button className="stella__btn-sm" onClick={() => setEditingMemory(null)}>✖ Cancel</button>
+                                                    <button className="stella__btn-sm stella__btn-sm--install" onClick={() => saveMemory(file.filename, editMemoryDraft)}>Save</button>
+                                                    <button className="stella__btn-sm" onClick={() => setEditingMemory(null)}>Cancel</button>
                                                 </div>
                                             </>
                                         ) : (
@@ -2317,7 +2319,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                                 <button className="stella__btn-sm" onClick={() => {
                                                     setEditingMemory(file.filename);
                                                     setEditMemoryDraft(memoryContent[file.filename] || '');
-                                                }}>✏️ Edit</button>
+                                                }}>Edit</button>
                                             </>
                                         )}
                                     </div>
@@ -2338,7 +2340,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Read Stella's replies aloud{openaiKey ? '' : ' · browser voices (add an OpenAI key in Settings → API Keys for premium voices)'}</div>
                             </div>
                             <button onClick={toggleTts} style={{ fontSize: 12, padding: '6px 14px', borderRadius: 999, cursor: 'pointer', border: '1px solid var(--border-default, rgba(255,255,255,0.15))', background: ttsSpeak ? 'var(--accent)' : 'transparent', color: ttsSpeak ? 'var(--text-inverse, #000)' : 'var(--text-primary)' }}>
-                                {ttsSpeak ? '🔊 Speaking On' : '🔈 Speak Off'}{stellaSpeaking ? ' …' : ''}
+                                {ttsSpeak ? 'Speaking On' : 'Speak Off'}{stellaSpeaking ? ' …' : ''}
                             </button>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
@@ -2359,7 +2361,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Warmer and more conversational — less robotic. Applies to every Stella reply.</div>
                             </div>
                             <button onClick={toggleHumanize} style={{ fontSize: 12, padding: '6px 14px', borderRadius: 999, cursor: 'pointer', border: '1px solid var(--border-default, rgba(255,255,255,0.15))', background: humanizeEnabled ? 'var(--accent)' : 'transparent', color: humanizeEnabled ? 'var(--text-inverse, #000)' : 'var(--text-primary)' }}>
-                                {humanizeEnabled ? '✨ On' : 'Off'}
+                                {humanizeEnabled ? 'On' : 'Off'}
                             </button>
                         </div>
                     </div>
@@ -2376,7 +2378,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         />
                     ) : (
                         <div className="stella__empty">
-                            <span className="stella__empty-icon">🎙️</span>
+                            <span className="stella__empty-icon"></span>
                             <p className="stella__empty-text">
                                 Stella Voice service is not running.
                                 Start it with: <code>cd stella-livekit && npm run dev</code>
@@ -2397,7 +2399,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                         .catch(() => setVoiceChecked(true));
                                 }}
                             >
-                                🔄 Retry Connection
+                                Retry Connection
                             </button>
                         </div>
                     )}
@@ -2407,9 +2409,9 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
             {/* Automation Tab (Phase 2.2) */}
             {tab === 'automation' && (
                 <div className="stella__panel stella__automation">
-                    <h4 className="stella__panel-title">⏰ Automation &amp; Cron Jobs
+                    <h4 className="stella__panel-title">Automation &amp; Cron Jobs
                         {permissions && !permissions.canManageAutomation && (
-                            <span className="stella__rbac-badge" title="Read-only: manager role required">👁️ View Only</span>
+                            <span className="stella__rbac-badge" title="Read-only: manager role required">View Only</span>
                         )}
                     </h4>
 
@@ -2430,7 +2432,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             </div>
                             {cronSummary.nextJob && (
                                 <div className="stella__cron-stat">
-                                    <span className="stella__cron-stat-value">⏭️</span>
+                                    <span className="stella__cron-stat-value"></span>
                                     <span className="stella__cron-stat-label">{cronSummary.nextJob.name}</span>
                                 </div>
                             )}
@@ -2441,7 +2443,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                         <div className="stella__loading">Loading cron jobs…</div>
                     ) : cronJobs.length === 0 ? (
                         <div className="stella__empty">
-                            <div className="stella__empty-icon">⏰</div>
+                            <div className="stella__empty-icon"></div>
                             <p>No scheduled jobs yet.</p>
                             <p className="stella__empty-hint">Cron jobs automate Stella tasks on a schedule.</p>
                         </div>
@@ -2455,12 +2457,12 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             {job.enabled ? '● Active' : '○ Paused'}
                                         </span>
                                     </div>
-                                    {job.schedule && <div className="stella__cron-schedule">🕐 {job.schedule.cron} ({job.schedule.timezone || 'UTC'})</div>}
+                                    {job.schedule && <div className="stella__cron-schedule">{job.schedule.cron} ({job.schedule.timezone || 'UTC'})</div>}
                                     <div className="stella__cron-actions">
                                         <button className="stella__btn-sm" onClick={async () => {
                                             await fetch(`${API_BASE}/cron/jobs/${job.id}/${job.enabled ? 'pause' : 'resume'}`, { method: 'POST', headers: getAuthHeaders() });
                                             await loadCronJobs();
-                                        }} disabled={!permissions?.canManageAutomation}>{job.enabled ? '⏸️ Pause' : '▶️ Resume'}</button>
+                                        }} disabled={!permissions?.canManageAutomation}>{job.enabled ? 'Pause' : '▶️ Resume'}</button>
                                         <button className="stella__btn-sm" onClick={async () => {
                                             await fetch(`${API_BASE}/cron/jobs/${job.id}/run`, { method: 'POST', headers: getAuthHeaders() });
                                         }} disabled={!permissions?.canManageAutomation}>▶▶ Run Now</button>
@@ -2468,29 +2470,29 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                             if (!confirm(`Delete job "${job.name}"?`)) return;
                                             await fetch(`${API_BASE}/cron/jobs/${job.id}`, { method: 'DELETE', headers: getAuthHeaders() });
                                             await loadCronJobs();
-                                        }} disabled={!permissions?.canDeleteCron}>🗑️</button>
+                                        }} disabled={!permissions?.canDeleteCron}><Trash2 size={14} /></button>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     )}
-                    <button className="stella__btn-primary" onClick={loadCronJobs}>🔄 Refresh</button>
+                    <button className="stella__btn-primary" onClick={loadCronJobs}>Refresh</button>
                 </div>
             )}
 
             {/* MCP Servers Tab (Phase 2.3) */}
             {tab === 'mcp' && (
                 <div className="stella__panel stella__mcp">
-                    <h4 className="stella__panel-title">🔌 MCP Servers
+                    <h4 className="stella__panel-title">MCP Servers
                         {permissions && !permissions.canManageMCP && (
-                            <span className="stella__rbac-badge" title="Read-only: admin role required">👁️ View Only</span>
+                            <span className="stella__rbac-badge" title="Read-only: admin role required">View Only</span>
                         )}
                     </h4>
                     {mcpLoading ? (
                         <div className="stella__loading">Loading MCP servers…</div>
                     ) : mcpServers.length === 0 ? (
                         <div className="stella__empty">
-                            <div className="stella__empty-icon">🔌</div>
+                            <div className="stella__empty-icon"></div>
                             <p>No MCP servers configured.</p>
                             <p className="stella__empty-hint">MCP servers extend Stella with external tools and data sources.</p>
                         </div>
@@ -2505,32 +2507,32 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                         </span>
                                     </div>
                                     <div className="stella__mcp-transport">
-                                        📡 {srv.transport}{srv.url ? ` → ${srv.url}` : srv.command ? ` → ${srv.command}` : ''}
+                                        {srv.transport}{srv.url ? ` → ${srv.url}` : srv.command ? ` → ${srv.command}` : ''}
                                     </div>
                                     {srv.description && <div className="stella__mcp-desc">{srv.description}</div>}
                                     <div className="stella__mcp-actions">
                                         <button className="stella__btn-sm" onClick={async () => {
                                             await fetch(`${API_BASE}/mcp/${encodeURIComponent(srv.key)}/toggle`, { method: 'PATCH', headers: getAuthHeaders() });
                                             await loadMcpServers();
-                                        }} disabled={!permissions?.canManageMCP}>{srv.enabled ? '⏸️ Disable' : '▶️ Enable'}</button>
+                                        }} disabled={!permissions?.canManageMCP}>{srv.enabled ? 'Disable' : '▶️ Enable'}</button>
                                         <button className="stella__btn-sm stella__btn-sm--danger" aria-label="Delete MCP server" onClick={async () => {
                                             if (!confirm(`Delete MCP server "${srv.name}"?`)) return;
                                             await fetch(`${API_BASE}/mcp/${encodeURIComponent(srv.key)}`, { method: 'DELETE', headers: getAuthHeaders() });
                                             await loadMcpServers();
-                                        }} disabled={!permissions?.canManageMCP}>🗑️</button>
+                                        }} disabled={!permissions?.canManageMCP}><Trash2 size={14} /></button>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     )}
-                    <button className="stella__btn-primary" onClick={loadMcpServers}>🔄 Refresh</button>
+                    <button className="stella__btn-primary" onClick={loadMcpServers}>Refresh</button>
                 </div>
             )}
 
             {/* Settings Tab */}
             {tab === 'settings' && (
                 <div className="stella__panel stella__settings">
-                    <h4 className="stella__settings-title">🔧 Stella Configuration</h4>
+                    <h4 className="stella__settings-title">Stella Configuration</h4>
 
                     <div className="stella__settings-group">
                         <label className="stella__settings-label">LLM Provider</label>
@@ -2571,12 +2573,12 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             } catch { }
                         }}
                     >
-                        📡 Apply Provider
+                        Apply Provider
                     </button>
 
                     <hr className="stella__settings-divider" />
 
-                    <h4 className="stella__settings-title">🛠️ Lifecycle</h4>
+                    <h4 className="stella__settings-title">Lifecycle</h4>
                     <div className="stella__settings-actions">
                         <button
                             className="stella__settings-btn"
@@ -2589,7 +2591,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             }}
                             disabled={initLoading}
                         >
-                            {initLoading ? '⏳ Initializing...' : '🚀 Initialize'}
+                            {initLoading ? 'Initializing...' : 'Initialize'}
                         </button>
                         <button
                             className="stella__settings-btn stella__settings-btn--danger"
@@ -2600,7 +2602,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 } catch { }
                             }}
                         >
-                            🧹 Port Cleanup
+                            Port Cleanup
                         </button>
                         <button
                             className="stella__settings-btn"
@@ -2614,7 +2616,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 }
                             }}
                         >
-                            🏥 Health Ping
+                            Health Ping
                         </button>
                     </div>
 
@@ -2622,35 +2624,35 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                     {permissions?.canBootstrap && (
                         <>
                             <hr className="stella__settings-divider" />
-                            <h4 className="stella__settings-title">🏢 Dwellium Integration</h4>
+                            <h4 className="stella__settings-title">Dwellium Integration</h4>
                             <p className="stella__settings-hint">Sync Dwellium property data into Stella's memory for property-aware AI responses.</p>
                             <div className="stella__settings-actions">
                                 <button
                                     className="stella__settings-btn stella__settings-btn--primary"
                                     onClick={async () => {
                                         setBootstrapLoading(true);
-                                        setBootstrapResult(null);
+                                        setBootstrapResult(null); setBootstrapOk(false);
                                         try {
                                             const resp = await fetch(`${API_BASE}/bootstrap`, { method: 'POST', headers: getAuthHeaders() });
                                             const data = await resp.json();
                                             if (data.success) {
-                                                setBootstrapResult(`✅ Bootstrapped: ${data.data.propertiesLoaded} properties, ${data.data.unitsLoaded} units loaded`);
+                                                setBootstrapResult(`Bootstrapped: ${data.data.propertiesLoaded} properties, ${data.data.unitsLoaded} units loaded`); setBootstrapOk(true);
                                             } else {
-                                                setBootstrapResult(`❌ ${data.error}`);
+                                                setBootstrapResult(`${data.error}`);
                                             }
                                         } catch (err) {
-                                            setBootstrapResult('❌ Bootstrap failed — is Stella running?');
+                                            setBootstrapResult('Bootstrap failed — is Stella running?');
                                         } finally {
                                             setBootstrapLoading(false);
                                         }
                                     }}
                                     disabled={bootstrapLoading || status !== 'online'}
                                 >
-                                    {bootstrapLoading ? '⏳ Syncing…' : '🔄 Bootstrap Dwellium Context'}
+                                    {bootstrapLoading ? 'Syncing…' : 'Bootstrap Dwellium Context'}
                                 </button>
                             </div>
                             {bootstrapResult && (
-                                <div className={`stella__bootstrap-result ${bootstrapResult.startsWith('✅') ? 'stella__bootstrap-result--ok' : 'stella__bootstrap-result--err'}`}>
+                                <div className={`stella__bootstrap-result ${bootstrapOk ? 'stella__bootstrap-result--ok' : 'stella__bootstrap-result--err'}`}>
                                     {bootstrapResult}
                                 </div>
                             )}
@@ -2659,21 +2661,21 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                     {/* ── Telegram Integration ── */}
                     <hr className="stella__settings-divider" />
-                    <h4 className="stella__settings-title">📱 Telegram Integration</h4>
+                    <h4 className="stella__settings-title">Telegram Integration</h4>
                     <p className="stella__settings-hint">Connect a Telegram bot so Stella can receive and reply to messages from Telegram.</p>
 
                     {/* Connection Status Badge */}
                     {tgStatus && (
                         <div className={`stella__tg-badge ${tgStatus.connected ? 'stella__tg-badge--connected' : 'stella__tg-badge--offline'}`}>
                             {tgStatus.connected ? (
-                                <>🟢 @{tgStatus.bot?.username} connected{tgStatus.webhook?.configured ? ` · webhook active` : ' · no webhook'}</>
+                                <>@{tgStatus.bot?.username} connected{tgStatus.webhook?.configured ? ` · webhook active` : ' · no webhook'}</>
                             ) : (
-                                <>🔴 Not connected{tgStatus.error ? `: ${tgStatus.error}` : ''}</>
+                                <>Not connected{tgStatus.error ? `: ${tgStatus.error}` : ''}</>
                             )}
                         </div>
                     )}
                     {!tgStatus && (
-                        <button className="stella__settings-btn" onClick={loadTgStatus}>🔄 Check Status</button>
+                        <button className="stella__settings-btn" onClick={loadTgStatus}>Check Status</button>
                     )}
 
                     {/* Bot Token */}
@@ -2708,7 +2710,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                             onClick={saveTgConfig}
                             disabled={tgLoading}
                         >
-                            {tgLoading ? '⏳…' : '💾 Save & Verify Token'}
+                            {tgLoading ? '…' : 'Save & Verify Token'}
                         </button>
                         {tgStatus?.connected && (
                             <>
@@ -2717,14 +2719,14 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                     onClick={connectTgWebhook}
                                     disabled={tgLoading || !tgWebhookUrl}
                                 >
-                                    {tgLoading ? '⏳…' : '🔗 Register Webhook'}
+                                    {tgLoading ? '…' : 'Register Webhook'}
                                 </button>
                                 <button
                                     className="stella__settings-btn stella__settings-btn--danger"
                                     onClick={disconnectTg}
                                     disabled={tgLoading}
                                 >
-                                    🔌 Disconnect
+                                    Disconnect
                                 </button>
                             </>
                         )}
@@ -2747,7 +2749,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                     onClick={sendTgTest}
                                     disabled={tgLoading}
                                 >
-                                    📤 Send Test
+                                    Send Test
                                 </button>
                             </div>
                         </div>
@@ -2755,7 +2757,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                     {/* Status message */}
                     {tgSaveMsg && (
-                        <div className={`stella__tg-toast ${tgSaveMsg.startsWith('✅') ? 'stella__tg-toast--ok' : 'stella__tg-toast--err'}`}>
+                        <div className={`stella__tg-toast ${!/error|fail|required|enter a/i.test(tgSaveMsg) ? 'stella__tg-toast--ok' : 'stella__tg-toast--err'}`}>
                             {tgSaveMsg}
                         </div>
                     )}
@@ -2767,7 +2769,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                 className="stella__settings-btn"
                                 onClick={async () => { setTgShowLogs(!tgShowLogs); if (!tgShowLogs) await loadTgLogs(); }}
                             >
-                                {tgShowLogs ? '▲ Hide' : '📋 View'} Message Log
+                                {tgShowLogs ? '▲ Hide' : 'View'} Message Log
                             </button>
                             {tgShowLogs && (
                                 <div className="stella__tg-log">
@@ -2776,7 +2778,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                                     ) : (
                                         tgLogs.map((entry, i) => (
                                             <div key={i} className={`stella__tg-log-row stella__tg-log-row--${entry.direction}`}>
-                                                <span className="stella__tg-log-dir">{entry.direction === 'in' ? '📩' : '📤'}</span>
+                                                <span className="stella__tg-log-dir">{entry.direction === 'in' ? '' : ''}</span>
                                                 <span className="stella__tg-log-user">@{entry.username}</span>
                                                 <span className="stella__tg-log-text">{entry.message_text}</span>
                                                 <span className="stella__tg-log-time">{new Date(entry.created_at).toLocaleTimeString()}</span>
@@ -2790,7 +2792,7 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                     {/* Setup Guide */}
                     <details className="stella__tg-guide">
-                        <summary>📖 Setup Guide</summary>
+                        <summary>Setup Guide</summary>
                         <ol className="stella__tg-guide-list">
                             <li>Open Telegram → search for <strong>@BotFather</strong></li>
                             <li>Send <code>/newbot</code> → follow prompts → copy your <strong>Bot Token</strong></li>
@@ -2804,21 +2806,21 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
 
                     {/* Status Details */}
                     <div className="stella__settings-status">
-                        <div>🔴 Status: <strong>{status}</strong></div>
-                        {healthMs !== null && <div>⏱️ Latency: <strong>{healthMs}ms</strong></div>}
-                        {pid && <div>💻 PID: <strong>{pid}</strong></div>}
-                        {version && <div>🌟 Version: <strong>{version}</strong></div>}
-                        <div>🤖 Provider: <strong>{provider} / {model}</strong></div>
-                        {permissions && <div>🛡️ Role: <strong>{permissions.role}</strong></div>}
-                        {permissions?.properties?.length ? <div>🏠 Properties: <strong>{permissions.properties.length}</strong></div> : null}
+                        <div>Status: <strong>{status}</strong></div>
+                        {healthMs !== null && <div>Latency: <strong>{healthMs}ms</strong></div>}
+                        {pid && <div>PID: <strong>{pid}</strong></div>}
+                        {version && <div>Version: <strong>{version}</strong></div>}
+                        <div>Provider: <strong>{provider} / {model}</strong></div>
+                        {permissions && <div>Role: <strong>{permissions.role}</strong></div>}
+                        {permissions?.properties?.length ? <div>Properties: <strong>{permissions.properties.length}</strong></div> : null}
                         {circuitState && (
                             <div>
-                                ⚡ Circuit: <strong className={circuitState === 'CLOSED' ? 'stella__circuit-ok' : 'stella__circuit-warn'}>{circuitState}</strong>
+                                Circuit: <strong className={circuitState === 'CLOSED' ? 'stella__circuit-ok' : 'stella__circuit-warn'}>{circuitState}</strong>
                                 {circuitState === 'OPEN' && permissions?.canBootstrap && (
                                     <button className="stella__btn-sm" style={{marginLeft: 8}} onClick={async () => {
                                         await fetch(`${API_BASE}/circuit/reset`, { method: 'POST', headers: getAuthHeaders() });
                                         await loadCircuitState();
-                                    }}>🔄 Reset</button>
+                                    }}>Reset</button>
                                 )}
                             </div>
                         )}

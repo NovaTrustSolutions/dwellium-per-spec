@@ -57,6 +57,12 @@ function deserialize(raw: string | null): IntegrationsBundle {
             llm: { ...empty.llm, ...(parsed.llm || {}) },
             google: { ...empty.google, ...(parsed.google || {}) },
             supabase: parsed.supabase,
+            postgres: parsed.postgres,
+            // Recall.ai meeting-bot key — preserve across reload (the secret is
+            // encrypted at rest like the LLM keys; integrationsCrypto handles it).
+            recall: parsed.recall,
+            search: parsed.search ? { ...empty.search, ...parsed.search } : empty.search,
+            storage: parsed.storage,
             tests: { ...empty.tests, ...(parsed.tests || {}) },
         };
     } catch {
@@ -191,6 +197,43 @@ export async function unlockIntegrations(userId: string | null): Promise<void> {
     } catch {
         /* leave snapshot as-is */
     }
+}
+
+/**
+ * Force-persist a bundle whose secret-bearing field(s) have just been CLEARED.
+ *
+ * `saveIntegrationsSecure` deliberately REFUSES to persist a bundle that no
+ * longer carries a plaintext secret while one still sits at-rest (the
+ * decrypt-failed → auto-save-empty anti-clobber guard). That guard is exactly
+ * wrong for an INTENTIONAL single-provider Remove: when the user removes the
+ * only key, the next bundle is legitimately secret-free and MUST overwrite the
+ * stored ciphertext, otherwise the encrypted key lingers on disk and One Save.
+ *
+ * This helper writes through the anti-clobber guard for that intentional case:
+ * it re-encrypts the REMAINING secrets (so other providers' keys stay
+ * ciphertext at rest) and persists locally + to One Save. The in-memory
+ * snapshot is updated synchronously first so consumers see the removal at once.
+ * Encryption itself is never weakened — a cleared field is simply absent.
+ */
+export async function saveIntegrationsForceRemoval(
+    bundle: IntegrationsBundle,
+    userId: string | null,
+): Promise<void> {
+    if (typeof window === 'undefined') return;
+    // Make the cleared bundle visible to consumers immediately (synchronous).
+    setMemoryOnly(bundle);
+    const seq = ++persistSeq;
+    const key = resolveKey();
+    let encrypted: IntegrationsBundle;
+    try {
+        encrypted = await encryptBundle(bundle, userId);
+        if (seq !== persistSeq) return; // a newer save superseded this one
+        localStorage.setItem(key, JSON.stringify(encrypted));
+    } catch {
+        try { localStorage.setItem(key, JSON.stringify(bundle)); } catch { /* storage full / sandboxed */ }
+        return;
+    }
+    try { await syncEncryptedBundle(encrypted, userId); } catch { /* local encrypted copy remains authoritative offline */ }
 }
 
 /** Clear active user's integrations (e.g., manual reset from UI). */

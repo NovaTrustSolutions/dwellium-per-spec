@@ -437,7 +437,7 @@ export default function WorkOrdersModule() {
                                 {md.techSignature ? (
                                     <div style={{ padding: 6, borderRadius: 6, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.05)' }}>
                                         <img src={md.techSignature} alt="Tech Signature" style={{ maxWidth: 200, maxHeight: 60, borderRadius: 4 }} />
-                                        <div style={{ fontSize: 9, color: '#10b981', marginTop: 4 }}>✓ Signed</div>
+                                        <div style={{ fontSize: 9, color: '#10b981', marginTop: 4 }}>Signed</div>
                                     </div>
                                 ) : ['in_progress', 'review'].includes(selectedWO.status) ? (
                                     showSignPad ? (
@@ -475,7 +475,7 @@ export default function WorkOrdersModule() {
                                         padding: '8px 12px', borderRadius: 8,
                                         background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
                                     }}>
-                                        <div style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>✓ Signed Off</div>
+                                        <div style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>Signed Off</div>
                                         <div style={{ fontSize: 9, color: '#64748b' }}>
                                             Method: {md.tenantSignoff.method} · {md.tenantSignoff.signedAt ? new Date(md.tenantSignoff.signedAt).toLocaleString() : '—'}
                                             {md.tenantSignoff.ip && ` · IP: ${md.tenantSignoff.ip}`}

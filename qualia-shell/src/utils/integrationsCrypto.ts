@@ -165,6 +165,7 @@ async function transformBundle(
         if (llm.gemini?.apiKey != null) llm.gemini.apiKey = await xf(llm.gemini.apiKey, userId);
         if (llm.custom?.apiKey != null) llm.custom.apiKey = await xf(llm.custom.apiKey, userId);
     }
+    if (next.recall?.apiKey != null) next.recall.apiKey = await xf(next.recall.apiKey, userId);
     if (next.supabase?.anonKey != null) next.supabase.anonKey = await xf(next.supabase.anonKey, userId);
     if (next.supabase?.serviceKey != null) next.supabase.serviceKey = await xf(next.supabase.serviceKey, userId);
     if (next.postgres?.connectionString != null) next.postgres.connectionString = await xf(next.postgres.connectionString, userId);
@@ -194,6 +195,7 @@ export function bundleHasCiphertext(bundle: IntegrationsBundle): boolean {
         isEncrypted(llm?.openai?.apiKey) ||
         isEncrypted(llm?.gemini?.apiKey) ||
         isEncrypted(llm?.custom?.apiKey) ||
+        isEncrypted(bundle.recall?.apiKey) ||
         isEncrypted(bundle.supabase?.anonKey) ||
         isEncrypted(bundle.supabase?.serviceKey) ||
         isEncrypted(bundle.postgres?.connectionString) ||
@@ -216,6 +218,7 @@ export function bundleHasPlaintextSecret(bundle: IntegrationsBundle): boolean {
         plain(llm?.openai?.apiKey) ||
         plain(llm?.gemini?.apiKey) ||
         plain(llm?.custom?.apiKey) ||
+        plain(bundle.recall?.apiKey) ||
         plain(bundle.supabase?.anonKey) ||
         plain(bundle.supabase?.serviceKey) ||
         plain(bundle.postgres?.connectionString) ||

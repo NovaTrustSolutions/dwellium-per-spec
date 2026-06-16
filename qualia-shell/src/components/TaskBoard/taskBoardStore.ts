@@ -27,10 +27,15 @@ import { aiEndpoint, buildGmailComposeUrl, composeCardEmail, composeCardPrompt }
 // (TaskBoard.tsx) before useSyncExternalStore fires — mirrors WindowContext's
 // savedLayoutsUserIdHolder pattern. Exposed for test access.
 export const taskBoardUserIdHolder: { current: string | null } = { current: null };
+export const taskBoardProjectIdHolder: { current: string | null } = { current: null };
 
 function resolveKey(): string {
     const uid = taskBoardUserIdHolder.current;
-    return uid ? `taskboard:${uid}` : 'taskboard:_anonymous';
+    const pid = taskBoardProjectIdHolder.current;
+    if (uid) {
+        return pid && pid !== 'global' ? `taskboard:${uid}:${pid}` : `taskboard:${uid}`;
+    }
+    return pid && pid !== 'global' ? `taskboard:_anonymous:${pid}` : 'taskboard:_anonymous';
 }
 
 function isCard(c: any): c is TaskCard {
@@ -139,6 +144,14 @@ export function resizeColumn(columnId: string, width: number, actor: Actor = { k
     return dispatch({ type: 'RESIZE_COLUMN', columnId, width }, actor);
 }
 
+export function updateColumnLimits(columnId: string, minWip?: number, maxWip?: number, actor: Actor = { kind: 'user' }): BoardState {
+    return dispatch({ type: 'UPDATE_COLUMN_LIMITS', columnId, minWip, maxWip }, actor);
+}
+
+export function updateColumnPolicies(columnId: string, policies: string[], actor: Actor = { kind: 'user' }): BoardState {
+    return dispatch({ type: 'UPDATE_COLUMN_POLICIES', columnId, policies }, actor);
+}
+
 // ── Undo / report ──────────────────────────────────────────────────
 export function undo(actor: Actor = { kind: 'user' }): BoardState {
     const { state } = undoModel(taskBoardStore.getSnapshot(), ctx, actor);
@@ -242,6 +255,10 @@ export async function routeCard(cardId: string): Promise<RouteResult> {
     if (typeof window !== 'undefined') window.open(url, '_blank', 'noopener');
     logEvent(`Drafted email to ${a.label}${a.email ? ` <${a.email}>` : ''}`, cardId);
     return { status: 'drafted', detail: `Opened a Gmail draft to ${a.label} for you to review + send.` };
+}
+
+export function loadBoardState(board: BoardState, actor: Actor = { kind: 'user' }): BoardState {
+    return dispatch({ type: 'REPLACE_BOARD', board }, actor);
 }
 
 /** Test/escape-hatch reset (standing convention for factory stores). */

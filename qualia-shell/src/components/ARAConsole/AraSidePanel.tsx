@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import HonchoHermesPanel from '../HonchoHermesPanel/HonchoHermesPanel';
 import { STELLA_TOOL_CATALOG, CATEGORY_ORDER, type StellaTool } from '../StellaAgent/stellaToolCatalog';
 import { openWidget } from '../../lib/dwelliumCommands';
@@ -15,10 +16,10 @@ import { ARA_SKIP_INTRO_KEY } from './AraIntroVideo';
 export type AraSidePanelView = 'honcho' | 'hermes' | 'tools' | 'settings';
 
 const VIEW_TABS: { id: AraSidePanelView; label: string; icon: string }[] = [
-    { id: 'honcho', label: 'Honcho', icon: '🧠' },
-    { id: 'hermes', label: 'Hermes', icon: '⚡' },
-    { id: 'tools', label: 'Tools', icon: '🧰' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
+    { id: 'honcho', label: 'Honcho', icon: '' },
+    { id: 'hermes', label: 'Hermes', icon: '' },
+    { id: 'tools', label: 'Tools', icon: '' },
+    { id: 'settings', label: 'Settings', icon: '' },
 ];
 
 export default function AraSidePanel({
@@ -45,7 +46,7 @@ export default function AraSidePanel({
                         <span aria-hidden>{t.icon}</span> {t.label}
                     </button>
                 ))}
-                <button type="button" className="ara-side__close" onClick={onClose} aria-label="Close panel">✕</button>
+                <button type="button" className="ara-side__close" onClick={onClose} aria-label="Close panel"><X size={16} /></button>
             </div>
             <div className="ara-side__body">
                 {view === 'honcho' && <HonchoHermesPanel initialTab="memory" />}

@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Trash2 } from 'lucide-react';
 import { API_BASE as API_ROOT } from '../../config';
 import { getDraftHandoffs, openWidgetHandoff } from './inboxLinkage';
 
@@ -351,9 +352,9 @@ export default function SmartActions() {
             {/* Sub-view tabs */}
             <div style={styles.header}>
                 {([
-                    { id: 'templates' as SubView, label: '📋 Templates', count: templates.length },
-                    { id: 'quick' as SubView, label: '⚡ Quick Actions' },
-                    { id: 'batch' as SubView, label: '📦 Batch Ops' },
+                    { id: 'templates' as SubView, label: 'Templates', count: templates.length },
+                    { id: 'quick' as SubView, label: 'Quick Actions' },
+                    { id: 'batch' as SubView, label: 'Batch Ops' },
                 ]).map(tab => (
                     <button
                         key={tab.id}
@@ -373,7 +374,7 @@ export default function SmartActions() {
             {/* Status message */}
             {status && (
                 <div style={{ ...styles.statusMsg, ...(status.type === 'success' ? styles.success : styles.error) }}>
-                    {status.type === 'success' ? '✅' : '❌'} {status.msg}
+                    {status.type === 'success' ? '' : ''} {status.msg}
                 </div>
             )}
 
@@ -386,7 +387,7 @@ export default function SmartActions() {
                             style={{ ...styles.btn, ...styles.btnPrimary }}
                             onClick={() => { resetForm(); setShowForm(!showForm); }}
                         >
-                            {showForm ? '✕ Cancel' : '+ New Template'}
+                            {showForm ? 'Cancel' : '+ New Template'}
                         </button>
                     </div>
 
@@ -400,7 +401,7 @@ export default function SmartActions() {
                             <input style={styles.input} placeholder="Project ID (optional)" value={formProject} onChange={e => setFormProject(e.target.value)} />
                             <div style={styles.row}>
                                 <button style={{ ...styles.btn, ...styles.btnPrimary }} onClick={handleSaveTemplate} disabled={loading}>
-                                    {loading ? '⏳ Saving...' : editingId ? '💾 Update' : '✅ Create'}
+                                    {loading ? 'Saving...' : editingId ? 'Update' : 'Create'}
                                 </button>
                                 {editingId && (
                                     <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={resetForm}>Cancel</button>
@@ -412,7 +413,7 @@ export default function SmartActions() {
                     {/* Template List */}
                     {templates.length === 0 ? (
                         <div style={styles.empty}>
-                            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📋</div>
+                            <div style={{ fontSize: '32px', marginBottom: '8px' }}></div>
                             <div>No reply templates yet. Create one to speed up your workflow.</div>
                         </div>
                     ) : (
@@ -426,7 +427,7 @@ export default function SmartActions() {
                                         </span>
                                     </div>
                                     {t.subjectTemplate && (
-                                        <div style={styles.cardSubtext}>📧 {t.subjectTemplate}</div>
+                                        <div style={styles.cardSubtext}>{t.subjectTemplate}</div>
                                     )}
                                     <div style={{ ...styles.cardSubtext, whiteSpace: 'pre-wrap', maxHeight: '60px', overflow: 'hidden' }}>
                                         {t.bodyTemplate}
@@ -441,8 +442,8 @@ export default function SmartActions() {
                                         </div>
                                     )}
                                     <div style={{ ...styles.row, marginTop: '10px' }}>
-                                        <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={() => editTemplate(t)}>✏️ Edit</button>
-                                        <button aria-label="Delete template" style={{ ...styles.btn, ...styles.btnDanger }} onClick={() => handleDeleteTemplate(t.id)}>🗑️</button>
+                                        <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={() => editTemplate(t)}>Edit</button>
+                                        <button aria-label="Delete template" style={{ ...styles.btn, ...styles.btnDanger }} onClick={() => handleDeleteTemplate(t.id)}><Trash2 size={16} /></button>
                                     </div>
                                 </div>
                             ))}
@@ -468,7 +469,7 @@ export default function SmartActions() {
                     {/* AI Draft */}
                     <div style={styles.section}>
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>🤖 AI Auto-Draft</div>
+                            <div style={styles.cardTitle}>AI Auto-Draft</div>
                             <div style={styles.cardSubtext}>Generate a professional reply draft using AI</div>
                             <input
                                 style={{ ...styles.input, marginTop: '8px' }}
@@ -481,7 +482,7 @@ export default function SmartActions() {
                                 onClick={generateDraft}
                                 disabled={loading || !quickItemId.trim()}
                             >
-                                {loading ? '⏳ Generating...' : '✨ Generate Draft'}
+                                {loading ? 'Generating...' : 'Generate Draft'}
                             </button>
 
                             {draftResult && (
@@ -520,14 +521,14 @@ export default function SmartActions() {
                     {/* Calendar Extraction */}
                     <div style={styles.section}>
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>📅 Calendar Event Extraction</div>
+                            <div style={styles.cardTitle}>Calendar Event Extraction</div>
                             <div style={styles.cardSubtext}>Extract dates, meetings, and scheduling info from email</div>
                             <button
                                 style={{ ...styles.btn, ...styles.btnPrimary, marginTop: '8px' }}
                                 onClick={extractEvents}
                                 disabled={loading || !quickItemId.trim()}
                             >
-                                {loading ? '⏳ Extracting...' : '📅 Extract Events'}
+                                {loading ? 'Extracting...' : 'Extract Events'}
                             </button>
 
                             {events.length > 0 && (
@@ -541,11 +542,11 @@ export default function SmartActions() {
                                                 </span>
                                             </div>
                                             <div style={styles.cardSubtext}>
-                                                📅 {e.date || 'TBD'} {e.time ? `⏰ ${e.time}` : ''} {e.duration ? `⏱️ ${e.duration}` : ''}
+                                                {e.date || 'TBD'} {e.time ? `${e.time}` : ''} {e.duration ? `${e.duration}` : ''}
                                             </div>
-                                            {e.location && <div style={styles.cardSubtext}>📍 {e.location}</div>}
+                                            {e.location && <div style={styles.cardSubtext}>{e.location}</div>}
                                             {e.attendees.length > 0 && (
-                                                <div style={styles.cardSubtext}>👤 {e.attendees.join(', ')}</div>
+                                                <div style={styles.cardSubtext}>{e.attendees.join(', ')}</div>
                                             )}
                                         </div>
                                     ))}
@@ -557,14 +558,14 @@ export default function SmartActions() {
                     {/* Workflow Triggers */}
                     <div style={styles.section}>
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>🔧 Workflow Triggers</div>
+                            <div style={styles.cardTitle}>Workflow Triggers</div>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
                                 <button
                                     style={{ ...styles.btn, ...styles.btnPrimary }}
                                     onClick={createWorkitem}
                                     disabled={loading || !quickItemId.trim()}
                                 >
-                                    📝 Create Workitem
+                                    Create Workitem
                                 </button>
                             </div>
                         </div>
@@ -577,7 +578,7 @@ export default function SmartActions() {
                 <div>
                     <h3 style={styles.sectionTitle}>Batch Operations</h3>
                     <div style={styles.card}>
-                        <div style={styles.cardTitle}>📋 Item IDs</div>
+                        <div style={styles.cardTitle}>Item IDs</div>
                         <div style={styles.cardSubtext}>Enter IDs separated by commas or newlines</div>
                         <textarea
                             style={styles.textarea}
@@ -590,7 +591,7 @@ export default function SmartActions() {
                     <div style={styles.grid}>
                         {/* Bulk Route */}
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>🔀 Bulk Route</div>
+                            <div style={styles.cardTitle}>Bulk Route</div>
                             <div style={styles.cardSubtext}>Route multiple items to a project</div>
                             <input
                                 style={{ ...styles.input, marginTop: '8px' }}
@@ -603,13 +604,13 @@ export default function SmartActions() {
                                 onClick={performBatchRoute}
                                 disabled={loading || !batchIds.trim() || !batchProject.trim()}
                             >
-                                {loading ? '⏳...' : '🚀 Route All'}
+                                {loading ? '...' : 'Route All'}
                             </button>
                         </div>
 
                         {/* Bulk Assign */}
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>👤 Bulk Assign</div>
+                            <div style={styles.cardTitle}>Bulk Assign</div>
                             <div style={styles.cardSubtext}>Assign multiple items to a team member</div>
                             <input
                                 style={{ ...styles.input, marginTop: '8px' }}
@@ -622,7 +623,7 @@ export default function SmartActions() {
                                 onClick={performBatchAssign}
                                 disabled={loading || !batchIds.trim() || !batchAssignee.trim()}
                             >
-                                {loading ? '⏳...' : '👤 Assign All'}
+                                {loading ? '...' : 'Assign All'}
                             </button>
                         </div>
                     </div>

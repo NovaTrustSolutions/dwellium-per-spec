@@ -1,4 +1,5 @@
 import { getAuthToken } from '../../context/UserContext';
+import { FileText, Image, Pencil } from 'lucide-react';
 /**
  * FileUploadButton — Shared upload component for Stella, ARA, and Jarvis
  * 
@@ -214,15 +215,15 @@ export function FileUploadButton({
                 <div className="fub-modal-overlay" onClick={reset}>
                     <div className="fub-modal" onClick={e => e.stopPropagation()}>
                         <div className="fub-modal-header">
-                            <span>📎 Upload & Analyze</span>
+                            <span>Upload & Analyze</span>
                             <button onClick={reset} className="fub-modal-close">×</button>
                         </div>
 
                         {/* File preview */}
                         <div className="fub-file-pill">
                             <span className="fub-file-icon">
-                                {selectedFile?.type.startsWith('image/') ? '🖼️' :
-                                    selectedFile?.type === 'application/pdf' ? '📄' : '📝'}
+                                {selectedFile?.type.startsWith('image/') ? <Image size={14} /> :
+                                    selectedFile?.type === 'application/pdf' ? <FileText size={14} /> : <Pencil size={14} />}
                             </span>
                             <div className="fub-file-info">
                                 <span className="fub-file-name">{selectedFile?.name}</span>
@@ -267,7 +268,7 @@ export function FileUploadButton({
 
                         {/* Error state */}
                         {phase === 'error' && (
-                            <div className="fub-error">⚠️ {errorMsg}</div>
+                            <div className="fub-error">{errorMsg}</div>
                         )}
 
                         {/* Progress bar */}
@@ -286,7 +287,7 @@ export function FileUploadButton({
                                 className="fub-btn-upload"
                                 disabled={!selectedFile || isUploading}
                             >
-                                {isUploading ? '⏳ Analyzing…' : '🔍 Analyze'}
+                                {isUploading ? 'Analyzing…' : 'Analyze'}
                             </button>
                         </div>
                     </div>

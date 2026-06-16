@@ -49,7 +49,7 @@ describe('LoginScreen local multi-step login', () => {
 
         const names = [...document.querySelectorAll('.login-avatar__name')].map((n) => n.textContent);
         expect(names).toEqual(['Andy', 'Lisa', 'Archi']);
-        expect(screen.getByRole('button', { name: /Lisa/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Lisa/ })).toBeEnabled();
 
         fireEvent.click(screen.getByRole('button', { name: /Andy/ }));
         expect(screen.getByLabelText('Email')).toBeInTheDocument();

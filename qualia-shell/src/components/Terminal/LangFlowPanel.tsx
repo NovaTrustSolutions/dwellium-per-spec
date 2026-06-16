@@ -110,18 +110,18 @@ export default function LangFlowPanel() {
                     </p>
 
                     <div className="lf-snippet-head"><span>1 · Run LangFlow (uv tool — no venv needed)</span>
-                        <button className="lf-btn lf-btn--primary" onClick={() => copy('uv tool install langflow\nlangflow run', 'uv')}>{copied === 'uv' ? 'Copied ✓' : 'Copy'}</button>
+                        <button className="lf-btn lf-btn--primary" onClick={() => copy('uv tool install langflow\nlangflow run', 'uv')}>{copied === 'uv' ? 'Copied' : 'Copy'}</button>
                     </div>
                     <pre className="lf-snippet">{`uv tool install langflow
 langflow run            # serves at http://localhost:7860`}</pre>
 
                     <div className="lf-snippet-head"><span>or · Docker</span>
-                        <button className="lf-btn lf-btn--primary" onClick={() => copy('docker run -p 7860:7860 langflowai/langflow:latest', 'd')}>{copied === 'd' ? 'Copied ✓' : 'Copy'}</button>
+                        <button className="lf-btn lf-btn--primary" onClick={() => copy('docker run -p 7860:7860 langflowai/langflow:latest', 'd')}>{copied === 'd' ? 'Copied' : 'Copy'}</button>
                     </div>
                     <pre className="lf-snippet">docker run -p 7860:7860 langflowai/langflow:latest</pre>
 
                     <div className="lf-snippet-head"><span>2 · Use your LangChain fork (into LangFlow’s env)</span>
-                        <button className="lf-btn lf-btn--primary" onClick={() => copy(FORK_INSTALL, 'lc')}>{copied === 'lc' ? 'Copied ✓' : 'Copy'}</button>
+                        <button className="lf-btn lf-btn--primary" onClick={() => copy(FORK_INSTALL, 'lc')}>{copied === 'lc' ? 'Copied' : 'Copy'}</button>
                     </div>
                     <pre className="lf-snippet">{FORK_INSTALL}</pre>
 
@@ -136,7 +136,7 @@ langflow run            # serves at http://localhost:7860`}</pre>
             <div className="lf-frame-wrap">
                 {reach === 'down' ? (
                     <div className="lf-empty">
-                        <div className="lf-empty-icon">🔗</div>
+                        <div className="lf-empty-icon"></div>
                         <p className="lf-empty-title">LangFlow isn’t reachable at {url}</p>
                         <p className="lf-empty-sub">Start it, then Reload. Click <strong>Setup</strong> above for the exact commands (LangFlow + your LangChain fork).</p>
                         <div className="lf-empty-actions">

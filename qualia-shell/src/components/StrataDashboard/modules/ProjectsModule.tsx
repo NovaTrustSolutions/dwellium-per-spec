@@ -11,11 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-    FolderKanban, RefreshCw, ChevronDown, ChevronUp, Clock, Tag,
-    CheckCircle2, XCircle, ArrowRightLeft, Search, LayoutGrid, List,
-    Building2, Truck, Users, GitBranch, Layers, Plus,
-} from 'lucide-react';
+import { ArrowRightLeft, Building2, CheckCircle2, ChevronDown, ChevronUp, Clock, FolderKanban, GitBranch, Home, Layers, LayoutGrid, List, Plus, RefreshCw, Search, Tag, Truck, Users, XCircle } from 'lucide-react';
 import { strataGet, strataPost, strataPut, isStaticMode } from '../strataApi';
 import type { Workitem, Property } from '../strataTypes';
 import { useStrataNav } from '../StrataNavContext';
@@ -94,7 +90,7 @@ function ProjectsModuleInner() {
         // an inline import.meta.env check to avoid divergence with the
         // router's routing decision. Mirrors SentimentModule.tsx:89-100.
         if (isStaticMode) {
-            setStatusFeedback('🗒️ Status updates require backend mode (static deck is read-only).');
+            setStatusFeedback('Status updates require backend mode (static deck is read-only).');
             try {
                 Sentry.addBreadcrumb({
                     category: 'ui.submit',
@@ -268,7 +264,7 @@ function ProjectsModuleInner() {
                             {wi.type && <span>Type: {wi.type}</span>}
                             {md.boardName && <span>Board: {md.boardName}</span>}
                             {md.listName && <span>List: {md.listName}</span>}
-                            {wi.propertyId && <span>🏠 <button className="s-property-link" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>{propMap.get(wi.propertyId)?.name || wi.propertyId.slice(0, 8)}</button></span>}
+                            {wi.propertyId && <span><button className="s-property-link" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>{propMap.get(wi.propertyId)?.name || wi.propertyId.slice(0, 8)}</button><Home size={14} /></span>}
                         </div>
                         <button
                             onClick={(e) => { e.stopPropagation(); toggleStatus(wi.id, wi.status); }}

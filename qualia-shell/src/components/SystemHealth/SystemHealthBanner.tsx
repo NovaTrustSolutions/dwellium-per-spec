@@ -6,6 +6,7 @@
  * everything is ready.
  */
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import { useSystemHealth } from '../../hooks/useSystemHealth';
 import { useWindows } from '../../context/WindowContext';
 // 2026-06-12 (Ilya: "AI services split screen"): the banner rendered UNSTYLED
@@ -34,7 +35,7 @@ export default function SystemHealthBanner() {
             >
                 Open System Health
             </button>
-            <button className="sysh-banner-x" onClick={() => setDismissed(true)} aria-label="Dismiss">✕</button>
+            <button className="sysh-banner-x" onClick={() => setDismissed(true)} aria-label="Dismiss"><X size={16} /></button>
         </div>
     );
 }

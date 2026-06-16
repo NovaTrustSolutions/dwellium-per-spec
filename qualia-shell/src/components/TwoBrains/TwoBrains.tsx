@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Brain, Lock, MessageSquare, Monitor, Package, Pencil, Pin, Scroll, Trash2, User, X } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import './TwoBrains.css';
 
@@ -44,14 +45,14 @@ interface AuditEntry {
 }
 
 /* ─── Constants ─── */
-const TYPE_ICONS: Record<string, string> = { note: '📝', task: '✅', link: '🔗', file: '📄', idea: '💡' };
+const TYPE_ICONS: Record<string, string> = { note: '', task: '', link: '', file: '', idea: '' };
 const STATUS_LABELS: Record<string, { label: string; icon: string; cls: string }> = {
-    open: { label: 'Open', icon: '⭕', cls: 'status-open' },
-    'in-progress': { label: 'In Progress', icon: '🔄', cls: 'status-progress' },
-    done: { label: 'Done', icon: '✅', cls: 'status-done' },
-    blocked: { label: 'Blocked', icon: '🚫', cls: 'status-blocked' },
+    open: { label: 'Open', icon: '', cls: 'status-open' },
+    'in-progress': { label: 'In Progress', icon: '', cls: 'status-progress' },
+    done: { label: 'Done', icon: '', cls: 'status-done' },
+    blocked: { label: 'Blocked', icon: '', cls: 'status-blocked' },
 };
-const QUICK_REACTIONS = ['👍', '❤️', '🔥', '👀', '🎯'];
+const QUICK_REACTIONS = ['', '', '', '', ''];
 // SECURITY: Email allowlist moved to server-side. See twoBrainsStore.ts + twoBrainsRoutes.ts.
 
 export default function TwoBrains() {
@@ -308,7 +309,7 @@ export default function TwoBrains() {
             // Send chat notification
             await authFetch('/api/two-brains/chat', {
                 method: 'POST',
-                body: JSON.stringify({ body: `🖥️ ${myName} started sharing their screen`, replyTo: null }),
+                body: JSON.stringify({ body: `${myName} started sharing their screen`, replyTo: null }),
             });
             fetchMessages();
         } catch (err) {
@@ -339,7 +340,7 @@ export default function TwoBrains() {
         try {
             await authFetch('/api/two-brains/chat', {
                 method: 'POST',
-                body: JSON.stringify({ body: `🖥️ ${myName} stopped sharing their screen`, replyTo: null }),
+                body: JSON.stringify({ body: `${myName} stopped sharing their screen`, replyTo: null }),
             });
             fetchMessages();
         } catch { /* silent */ }
@@ -421,7 +422,7 @@ export default function TwoBrains() {
     };
 
     const getActionIcon = (a: string) => {
-        const icons: Record<string, string> = { added: '➕', edited: '✏️', removed: '🗑️', moved: '↔️', pinned: '📌', unpinned: '📌', tagged: '🏷️', assigned: '👤', 'status-changed': '🔄', message: '💬', dropped: '📦' };
+        const icons: Record<string, string> = { added: '', edited: '', removed: '', moved: '↔️', pinned: '', unpinned: '', tagged: '', assigned: '', 'status-changed': '', message: '', dropped: '' };
         return icons[a] || '•';
     };
 
@@ -442,7 +443,7 @@ export default function TwoBrains() {
         return (
             <div className="two-brains">
                 <div className="two-brains__denied">
-                    <span className="denied-icon">🔒</span>
+                    <span className="denied-icon"><Lock size={14} /></span>
                     <h2>Two Brains Are Better Than One</h2>
                     <p>This shared workspace requires authorization.</p>
                     <p className="denied-sub">Contact an administrator to request access.</p>
@@ -457,7 +458,7 @@ export default function TwoBrains() {
             {/* ── Header ── */}
             <div className="two-brains__header">
                 <div className="header-left">
-                    <span className="header-icon">🧠🧠</span>
+                    <span className="header-icon"><Brain size={14} /></span>
                     <div>
                         <h2 className="header-title">Two Brains</h2>
                         <p className="header-subtitle">
@@ -483,13 +484,13 @@ export default function TwoBrains() {
             <div className="two-brains__tabs">
                 {(['split', 'board', 'chat', 'tasks', 'audit', 'screen'] as const).map(v => (
                     <button key={v} className={`tab-btn ${activeView === v ? 'active' : ''} ${v === 'screen' && (isScreenSharing || remoteScreen) ? 'tab-btn--live' : ''}`} onClick={() => setActiveView(v)}>
-                        {{ split: '◧ Split', board: '📋 Board', chat: '💬 Chat', tasks: '📊 Tasks', audit: '📜 Log', screen: `🖥️ Screen${isScreenSharing || remoteScreen ? ' 🔴' : ''}` }[v]}
+                        {{ split: '◧ Split', board: 'Board', chat: 'Chat', tasks: 'Tasks', audit: 'Log', screen: `Screen${isScreenSharing || remoteScreen ? '' : ''}` }[v]}
                     </button>
                 ))}
                 <div className="tab-spacer" />
                 {(activeView === 'split' || activeView === 'board') && (
                     <button className="add-item-btn" onClick={() => setShowAddForm(!showAddForm)}>
-                        {showAddForm ? '✕ Cancel' : '+ New'}
+                        {showAddForm ? 'Cancel' : '+ New'}
                     </button>
                 )}
             </div>
@@ -505,11 +506,11 @@ export default function TwoBrains() {
                             onKeyDown={e => e.key === 'Enter' && addItem()} autoFocus />
                         <select className="add-form__type" value={newItem.type}
                             onChange={e => setNewItem({ ...newItem, type: e.target.value as SharedItem['type'] })}>
-                            <option value="note">📝 Note</option>
-                            <option value="task">✅ Task</option>
-                            <option value="link">🔗 Link</option>
-                            <option value="file">📄 File</option>
-                            <option value="idea">💡 Idea</option>
+                            <option value="note">Note</option>
+                            <option value="task">Task</option>
+                            <option value="link">Link</option>
+                            <option value="file">File</option>
+                            <option value="idea">Idea</option>
                         </select>
                     </div>
                     <div className="add-form__row">
@@ -521,7 +522,7 @@ export default function TwoBrains() {
                     <textarea className="add-form__desc" placeholder="Add details (optional)..." value={newItem.description}
                         onChange={e => setNewItem({ ...newItem, description: e.target.value })} rows={2} />
                     <button className="add-form__submit" onClick={addItem} disabled={!newItem.title.trim()}>
-                        Drop It 🎤
+                        Drop It
                     </button>
                 </div>
             )}
@@ -534,17 +535,17 @@ export default function TwoBrains() {
                     {(activeView === 'split' || activeView === 'board') && (
                         <div className={`panel panel--board ${isDragOver ? 'drag-over' : ''}`}
                             onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-                            {activeView === 'split' && <div className="panel-label">📋 Board</div>}
+                            {activeView === 'split' && <div className="panel-label">Board</div>}
                             {isDragOver && (
                                 <div className="drop-overlay">
-                                    <span className="drop-icon">📦</span>
+                                    <span className="drop-icon"><Package size={14} /></span>
                                     <p>Drop anything here</p>
                                 </div>
                             )}
                             <div className="two-brains__board">
                                 {items.length === 0 ? (
                                     <div className="board-empty">
-                                        <span className="empty-icon">🧠🤝🧠</span>
+                                        <span className="empty-icon"></span>
                                         <p>Drop something to start collaborating!</p>
                                         <p className="empty-hint">Drag files, emails, or tasks here — or use + New above</p>
                                     </div>
@@ -578,17 +579,17 @@ export default function TwoBrains() {
                                                             </button>
                                                         )}
                                                         <div className="card-actions">
-                                                            <button onClick={() => togglePin(item.id, item.pinned)} title={item.pinned ? 'Unpin' : 'Pin'}>📌</button>
-                                                            <button onClick={() => { setEditingId(item.id); setEditData({ title: item.title, description: item.description }); }} title="Edit">✏️</button>
+                                                            <button onClick={() => togglePin(item.id, item.pinned)} title={item.pinned ? 'Unpin' : 'Pin'}><Pin size={16} /></button>
+                                                            <button onClick={() => { setEditingId(item.id); setEditData({ title: item.title, description: item.description }); }} title="Edit"><Pencil size={16} /></button>
                                                             {item.assignee ? (
                                                                 <button onClick={() => assignItem(item.id, null)} title={`Assigned: ${item.assignee}`}
                                                                     className={`assign-btn ${item.assignee === 'Andy' ? 'assign-andy' : 'assign-lisa'}`}>
-                                                                    {item.assignee === 'Andy' ? '🅰️' : '🅻'}
+                                                                    {item.assignee === 'Andy' ? '' : ''}
                                                                 </button>
                                                             ) : (
-                                                                <button onClick={() => assignItem(item.id, myName === 'Andy' ? 'Lisa' : 'Andy')} title="Assign">👤</button>
+                                                                <button onClick={() => assignItem(item.id, myName === 'Andy' ? 'Lisa' : 'Andy')} title="Assign"><User size={16} /></button>
                                                             )}
-                                                            <button onClick={() => deleteItem(item.id)} title="Remove">🗑️</button>
+                                                            <button onClick={() => deleteItem(item.id)} title="Remove"><Trash2 size={16} /></button>
                                                         </div>
                                                     </div>
                                                     <h3 className="card-title">{item.title}</h3>
@@ -612,9 +613,9 @@ export default function TwoBrains() {
                                                     </div>
                                                     <div className="card-meta">
                                                         <span className={`card-author ${item.addedByName === 'Andy' ? 'author-andy' : 'author-lisa'}`}>
-                                                            {item.addedByName === 'Andy' ? '🅰️' : '🅻'} {item.addedByName}
+                                                            {item.addedByName === 'Andy' ? '' : ''} {item.addedByName}
                                                         </span>
-                                                        {item.dragSource && <span className="card-source" title={`From: ${item.dragSource}`}>📦</span>}
+                                                        {item.dragSource && <span className="card-source" title={`From: ${item.dragSource}`}><Package size={14} /></span>}
                                                         <span className="card-time">{formatTime(item.createdAt)}</span>
                                                     </div>
                                                 </>
@@ -629,11 +630,11 @@ export default function TwoBrains() {
                     {/* ── CHAT PANEL ── */}
                     {(activeView === 'split' || activeView === 'chat') && (
                         <div className="panel panel--chat">
-                            {activeView === 'split' && <div className="panel-label">💬 Chat</div>}
+                            {activeView === 'split' && <div className="panel-label">Chat</div>}
                             <div className="chat-thread">
                                 {messages.length === 0 ? (
                                     <div className="chat-empty">
-                                        <span>💬</span>
+                                        <span><MessageSquare size={14} /></span>
                                         <p>Start a conversation</p>
                                     </div>
                                 ) : (
@@ -657,7 +658,7 @@ export default function TwoBrains() {
                                                     <div className={`chat-msg__body ${isTaskCmd ? 'task-command' : ''}`}>
                                                         {isTaskCmd ? (
                                                             <>
-                                                                <span className="task-cmd-badge">📋 Task Created</span>
+                                                                <span className="task-cmd-badge">Task Created</span>
                                                                 {msg.body.replace(/^@task\s+\w+:\s*/, '')}
                                                             </>
                                                         ) : msg.body}
@@ -689,7 +690,7 @@ export default function TwoBrains() {
                                 {replyTo && (
                                     <div className="chat-compose__reply">
                                         <span>↩ Replying to <strong>{replyTo.senderName}</strong>: {replyTo.body.slice(0, 40)}...</span>
-                                        <button onClick={() => setReplyTo(null)}>✕</button>
+                                        <button onClick={() => setReplyTo(null)}><X size={16} /></button>
                                     </div>
                                 )}
                                 <div className="chat-compose__row">
@@ -708,7 +709,7 @@ export default function TwoBrains() {
                     {activeView === 'tasks' && (
                         <div className="panel panel--tasks">
                             <div className="tasks-header">
-                                <h3>📊 Task Board</h3>
+                                <h3>Task Board</h3>
                                 <div className="tasks-stats">
                                     <span className="stat stat-open">{taskItems.filter(t => t.status === 'open').length} open</span>
                                     <span className="stat stat-progress">{taskItems.filter(t => t.status === 'in-progress').length} active</span>
@@ -748,7 +749,7 @@ export default function TwoBrains() {
                         <div className="panel panel--audit">
                             <div className="two-brains__audit">
                                 {auditLog.length === 0 ? (
-                                    <div className="board-empty"><span className="empty-icon">📜</span><p>No activity yet</p></div>
+                                    <div className="board-empty"><span className="empty-icon"><Scroll size={14} /></span><p>No activity yet</p></div>
                                 ) : (
                                     auditLog.map(entry => (
                                         <div key={entry.id} className="audit-entry">
@@ -775,15 +776,15 @@ export default function TwoBrains() {
                     {activeView === 'screen' && (
                         <div className="panel panel--screen">
                             <div className="screen-controls">
-                                <h3>🖥️ Screen Sharing</h3>
+                                <h3>Screen Sharing</h3>
                                 <div className="screen-controls__actions">
                                     {!isScreenSharing ? (
                                         <button className="screen-share-btn screen-share-btn--start" onClick={startScreenShare}>
-                                            📺 Share My Screen
+                                            Share My Screen
                                         </button>
                                     ) : (
                                         <button className="screen-share-btn screen-share-btn--stop" onClick={stopScreenShare}>
-                                            ⏹ Stop Sharing
+                                            Stop Sharing
                                         </button>
                                     )}
                                     <label className="screen-interval">
@@ -812,7 +813,7 @@ export default function TwoBrains() {
                                 {isScreenSharing && (
                                     <div className="screen-panel">
                                         <div className="screen-panel__header">
-                                            <span className="screen-panel__live">🔴 LIVE</span>
+                                            <span className="screen-panel__live">LIVE</span>
                                             <span>Your Screen ({myName})</span>
                                         </div>
                                         <div className="screen-panel__video-wrap">
@@ -825,7 +826,7 @@ export default function TwoBrains() {
                                 {remoteScreen && (
                                     <div className="screen-panel">
                                         <div className="screen-panel__header">
-                                            <span className="screen-panel__live">🟢 WATCHING</span>
+                                            <span className="screen-panel__live">WATCHING</span>
                                             <span>{remoteScreenUser}'s Screen</span>
                                         </div>
                                         <div className="screen-panel__video-wrap">
@@ -837,7 +838,7 @@ export default function TwoBrains() {
                                 {/* Empty state */}
                                 {!isScreenSharing && !remoteScreen && (
                                     <div className="screen-empty">
-                                        <span className="screen-empty__icon">🖥️</span>
+                                        <span className="screen-empty__icon"><Monitor size={14} /></span>
                                         <h4>No Active Screen Shares</h4>
                                         <p>Click "Share My Screen" to let the other person see what you're looking at.</p>
                                         <p className="screen-empty__hint">Either or both of you can share simultaneously.</p>

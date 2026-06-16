@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
+import { Check, Key, Lock, Mail, Zap } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import './TenantLoginScreen.css';
 
@@ -170,15 +171,15 @@ export default function TenantLoginScreen({ onBackToAdmin }: TenantLoginScreenPr
                         {/* Trust indicators */}
                         <div className="tenant-login__trust-bar">
                             <div className="tenant-login__trust-item">
-                                <span className="tenant-login__trust-icon">🔒</span>
+                                <span className="tenant-login__trust-icon"><Lock size={14} /></span>
                                 <span>256-bit Encrypted</span>
                             </div>
                             <div className="tenant-login__trust-item">
-                                <span className="tenant-login__trust-icon">⚡</span>
+                                <span className="tenant-login__trust-icon"><Zap size={14} /></span>
                                 <span>24/7 Support</span>
                             </div>
                             <div className="tenant-login__trust-item">
-                                <span className="tenant-login__trust-icon">✓</span>
+                                <span className="tenant-login__trust-icon"><Check size={14} /></span>
                                 <span>SOC 2 Compliant</span>
                             </div>
                         </div>
@@ -196,7 +197,7 @@ export default function TenantLoginScreen({ onBackToAdmin }: TenantLoginScreenPr
                         <form onSubmit={handleLogin}>
                             {error && (
                                 <div className="tenant-login__error">
-                                    ⚠ {error}
+                                    {error}
                                 </div>
                             )}
 
@@ -205,7 +206,7 @@ export default function TenantLoginScreen({ onBackToAdmin }: TenantLoginScreenPr
                                     Email Address
                                 </label>
                                 <div className="tenant-login__input-wrapper">
-                                    <span className="tenant-login__input-icon">✉</span>
+                                    <span className="tenant-login__input-icon"><Mail size={14} /></span>
                                     <input
                                         type="email"
                                         id="tl-email"
@@ -225,7 +226,7 @@ export default function TenantLoginScreen({ onBackToAdmin }: TenantLoginScreenPr
                                     Password
                                 </label>
                                 <div className="tenant-login__input-wrapper">
-                                    <span className="tenant-login__input-icon">🔑</span>
+                                    <span className="tenant-login__input-icon"><Key size={14} /></span>
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         id="tl-password"

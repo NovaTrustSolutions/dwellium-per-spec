@@ -4,7 +4,7 @@
    colors come from theme tokens (no hardcoded palette) so BL4 + every theme
    inherit correctly.
 
-   🔴 ZERO-DOM CONTRACT: these classes are applied by Window.tsx to
+   ZERO-DOM CONTRACT: these classes are applied by Window.tsx to
    `.window__content` ITSELF — there is no `.widget-shell` wrapper element.
    The original wrapper div broke every `.window__content > X` direct-child
    selector (widget roots collapsed to 0 height). Do NOT reintroduce a box

@@ -1,4 +1,5 @@
 import { getAuthToken } from '../../context/UserContext';
+import { X } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import './TrelloBoard.css';
 import { API_BASE } from '../../config';
@@ -174,6 +175,7 @@ export default function TrelloBoard() {
     const [dragCardId, setDragCardId] = useState<string | null>(null);
     const [dragOverListId, setDragOverListId] = useState<string | null>(null);
     const didDrag = useRef(false);
+    const dragCounter = useRef<Record<string, number>>({});
 
     // Add-card state
     const [addingToList, setAddingToList] = useState<string | null>(null);
@@ -272,17 +274,34 @@ export default function TrelloBoard() {
     const onDragStart = useCallback((cardId: string) => {
         didDrag.current = false;
         setDragCardId(cardId);
+        dragCounter.current = {};
     }, []);
 
     const onDragOver = useCallback((e: React.DragEvent, listId: string) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         didDrag.current = true;
-        setDragOverListId(listId);
     }, []);
 
-    const onDragLeave = useCallback(() => {
+    const onDragEnter = useCallback((e: React.DragEvent, listId: string) => {
+        e.preventDefault();
+        dragCounter.current[listId] = (dragCounter.current[listId] || 0) + 1;
+        if (dragOverListId !== listId) {
+            setDragOverListId(listId);
+        }
+    }, [dragOverListId]);
+
+    const onDragLeave = useCallback((e: React.DragEvent, listId: string) => {
+        dragCounter.current[listId] = Math.max(0, (dragCounter.current[listId] || 0) - 1);
+        if (dragCounter.current[listId] === 0) {
+            setDragOverListId(prev => prev === listId ? null : prev);
+        }
+    }, []);
+
+    const onDragEnd = useCallback(() => {
+        setDragCardId(null);
         setDragOverListId(null);
+        dragCounter.current = {};
     }, []);
 
     const onDrop = useCallback(async (listId: string) => {
@@ -291,6 +310,7 @@ export default function TrelloBoard() {
         if (!card || card.idList === listId) {
             setDragCardId(null);
             setDragOverListId(null);
+            dragCounter.current = {};
             return;
         }
 
@@ -299,6 +319,7 @@ export default function TrelloBoard() {
         ));
         setDragCardId(null);
         setDragOverListId(null);
+        dragCounter.current = {};
 
         try {
             await authFetch(`${API}/cards/${dragCardId}/move`, {
@@ -439,7 +460,7 @@ export default function TrelloBoard() {
     if (error && boards.length === 0) {
         return (
             <div className="trello-board trello-board--error">
-                <span className="trello-error-icon">⚠️</span>
+                <span className="trello-error-icon"></span>
                 <p>{error}</p>
                 <button className="trello-btn" onClick={() => window.location.reload()}>Retry</button>
             </div>
@@ -461,14 +482,14 @@ export default function TrelloBoard() {
                     ))}
                 </select>
                 <button className="trello-btn trello-btn--icon" onClick={refresh} title="Refresh">
-                    🔄
+                   
                 </button>
                 {loading && <span className="trello-loading-dot" />}
             </div>
 
             {error && (
                 <div className="trello-inline-error">
-                    ⚠️ {error}
+                    {error}
                 </div>
             )}
 
@@ -485,7 +506,8 @@ export default function TrelloBoard() {
                             key={list.id}
                             className={`trello-column ${isDragOver ? 'trello-column--drag-over' : ''}`}
                             onDragOver={e => onDragOver(e, list.id)}
-                            onDragLeave={onDragLeave}
+                            onDragEnter={e => onDragEnter(e, list.id)}
+                            onDragLeave={e => onDragLeave(e, list.id)}
                             onDrop={() => onDrop(list.id)}
                         >
                             <div className="trello-column__header">
@@ -500,6 +522,7 @@ export default function TrelloBoard() {
                                         className={`trello-card ${dragCardId === card.id ? 'trello-card--dragging' : ''}`}
                                         draggable
                                         onDragStart={() => onDragStart(card.id)}
+                                        onDragEnd={onDragEnd}
                                         onClick={() => onCardClick(card.id)}
                                     >
                                         {card.labels && card.labels.length > 0 && (
@@ -519,7 +542,7 @@ export default function TrelloBoard() {
                                         <span className="trello-card__title">{card.name}</span>
                                         {card.due && (
                                             <span className="trello-card__due">
-                                                🕐 {new Date(card.due).toLocaleDateString()}
+                                                {new Date(card.due).toLocaleDateString()}
                                             </span>
                                         )}
                                     </div>
@@ -600,7 +623,7 @@ export default function TrelloBoard() {
                                                 className="trello-btn"
                                                 onClick={cancelAddCard}
                                             >
-                                                ✕
+                                               
                                             </button>
                                         </div>
                                     </div>
@@ -635,17 +658,17 @@ export default function TrelloBoard() {
                                 {/* Header */}
                                 <div className="trello-detail__header">
                                     <h3 className="trello-detail__title">{activeCard.name}</h3>
-                                    <button className="trello-detail__close" onClick={closeDetail}>✕</button>
+                                    <button className="trello-detail__close" onClick={closeDetail}><X size={16} /></button>
                                 </div>
 
                                 {/* Meta: list + due */}
                                 <div className="trello-detail__meta">
                                     <span className="trello-detail__list-badge">
-                                        📋 {getListName(activeCard.idList)}
+                                        {getListName(activeCard.idList)}
                                     </span>
                                     {activeCard.due && (
                                         <span className="trello-detail__due-badge">
-                                            🕐 {new Date(activeCard.due).toLocaleDateString()}
+                                            {new Date(activeCard.due).toLocaleDateString()}
                                         </span>
                                     )}
                                 </div>
@@ -670,14 +693,14 @@ export default function TrelloBoard() {
                                     {/* Description */}
                                     {activeCard.desc ? (
                                         <section className="trello-detail__section">
-                                            <h4>📝 Description</h4>
+                                            <h4>Description</h4>
                                             <div className="trello-detail__desc">
                                                 {activeCard.desc}
                                             </div>
                                         </section>
                                     ) : (
                                         <section className="trello-detail__section">
-                                            <h4>📝 Description</h4>
+                                            <h4>Description</h4>
                                             <p className="trello-detail__empty-text">No description</p>
                                         </section>
                                     )}
@@ -685,7 +708,7 @@ export default function TrelloBoard() {
                                     {/* Checklists */}
                                     {activeCard.checklists && activeCard.checklists.length > 0 && (
                                         <section className="trello-detail__section">
-                                            <h4>☑️ Checklists</h4>
+                                            <h4>Checklists</h4>
                                             {activeCard.checklists.map(cl => {
                                                 const done = cl.checkItems.filter(i => i.state === 'complete').length;
                                                 const total = cl.checkItems.length;
@@ -708,7 +731,7 @@ export default function TrelloBoard() {
                                                             {cl.checkItems.map(item => (
                                                                 <li key={item.id} className={item.state === 'complete' ? 'checked' : ''}>
                                                                     <span className="trello-detail__check-box">
-                                                                        {item.state === 'complete' ? '☑' : '☐'}
+                                                                        {item.state === 'complete' ? '' : ''}
                                                                     </span>
                                                                     {item.name}
                                                                 </li>
@@ -723,7 +746,7 @@ export default function TrelloBoard() {
                                     {/* Attachments */}
                                     {activeCard.attachments && activeCard.attachments.length > 0 && (
                                         <section className="trello-detail__section">
-                                            <h4>📎 Attachments</h4>
+                                            <h4>Attachments</h4>
                                             <div className="trello-detail__attachments">
                                                 {activeCard.attachments.map(att => (
                                                     <a
@@ -733,7 +756,7 @@ export default function TrelloBoard() {
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                     >
-                                                        <span className="trello-detail__attachment-icon">📄</span>
+                                                        <span className="trello-detail__attachment-icon"></span>
                                                         <span className="trello-detail__attachment-name">{att.name}</span>
                                                     </a>
                                                 ))}
@@ -744,7 +767,7 @@ export default function TrelloBoard() {
                                     {/* Activity / Comments */}
                                     {activity.length > 0 && (
                                         <section className="trello-detail__section">
-                                            <h4>💬 Activity</h4>
+                                            <h4>Activity</h4>
                                             <div className="trello-detail__activity">
                                                 {activity.slice(0, 20).map(act => (
                                                     <div key={act.id} className="trello-detail__activity-item">

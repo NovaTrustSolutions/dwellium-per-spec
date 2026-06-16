@@ -17,6 +17,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { FolderOpen, Globe, Monitor, Sparkles, Trash2, User } from 'lucide-react';
 import { API_BASE } from '../../config';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import { getAuthToken } from '../../context/UserContext';
@@ -134,7 +135,7 @@ function persistHistory(msgs: AGMessage[]) {
 const WELCOME_MSG: AGMessage = {
     id: 'welcome',
     role: 'system',
-    content: `✦ **Antigravity** connected — powered by Google DeepMind.
+    content: `**Antigravity** connected — powered by Google DeepMind.
 
 I have full context of your Dwellium workspace. Ask me anything about your properties, tenants, AI agents, or request I create documents and analyze data.
 
@@ -285,7 +286,7 @@ export function Antigravity({ onClose, defaultOpen = true }: AntigravityProps) {
         } catch (e: any) {
             setMessages(prev => prev.map(m =>
                 m.id === thinkingMsg.id
-                    ? { ...m, content: `⚠️ Connection error: ${e.message}`, thinking: false }
+                    ? { ...m, content: `Connection error: ${e.message}`, thinking: false }
                     : m
             ));
         } finally {
@@ -308,7 +309,7 @@ export function Antigravity({ onClose, defaultOpen = true }: AntigravityProps) {
             const token = getToken();
             const content = messages
                 .filter(m => !m.thinking && m.role !== 'system')
-                .map(m => `**${m.role === 'user' ? '👤 User' : '✦ Antigravity'}:** ${m.content}`)
+                .map(m => `**${m.role === 'user' ? 'User' : 'Antigravity'}:** ${m.content}`)
                 .join('\n\n---\n\n');
 
             const title = `Antigravity Session — ${new Date().toLocaleDateString()}`;
@@ -363,8 +364,8 @@ export function Antigravity({ onClose, defaultOpen = true }: AntigravityProps) {
             id: genId(),
             role: 'system',
             content: mode === 'new'
-                ? '✦ Opening **Google AI Studio** in your browser. You can use the Antigravity coding agent there for full IDE capabilities.'
-                : `✦ Launching **Full Antigravity IDE** with your Dwellium workspace...
+                ? 'Opening **Google AI Studio** in your browser. You can use the Antigravity coding agent there for full IDE capabilities.'
+                : `Launching **Full Antigravity IDE** with your Dwellium workspace...
 
 The full IDE gives you:
 • File editing across your entire codebase
@@ -395,7 +396,7 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                 onClick={() => setIsOpen(true)}
                 title="Open Antigravity AI (⌘G)"
             >
-                <span className="ag-fab-icon">✦</span>
+                <span className="ag-fab-icon"><Sparkles size={14} /></span>
                 <span className="ag-fab-label">AG</span>
             </button>
         );
@@ -421,7 +422,7 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                 style={{ cursor: dragging ? 'grabbing' : 'grab' }}
             >
                 <div className="ag-header-left">
-                    <span className="ag-logo">✦</span>
+                    <span className="ag-logo"><Sparkles size={14} /></span>
                     <div>
                         <span className="ag-title">Antigravity</span>
                         <span className="ag-subtitle">Google DeepMind · Dwellium Integration</span>
@@ -435,18 +436,18 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                             onClick={(e) => { e.stopPropagation(); setShowLaunchMenu(v => !v); }}
                             title="Open Full Antigravity IDE"
                         >
-                            🚀 Full AG
+                            Full AG
                         </button>
                         {showLaunchMenu && (
                             <div className="ag-launch-menu" onClick={(e) => e.stopPropagation()}>
                                 <button onClick={() => launchFullAntigravity('desktop')}>
-                                    <span>🖥️</span> Open Desktop IDE
+                                    <span><Monitor size={14} /></span> Open Desktop IDE
                                 </button>
                                 <button onClick={() => launchFullAntigravity('workspace')}>
-                                    <span>📂</span> Open with Dwellium Workspace
+                                    <span><FolderOpen size={14} /></span> Open with Dwellium Workspace
                                 </button>
                                 <button onClick={() => launchFullAntigravity('new')}>
-                                    <span>🌐</span> Open Google AI Studio
+                                    <span><Globe size={14} /></span> Open Google AI Studio
                                 </button>
                             </div>
                         )}
@@ -470,15 +471,15 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                         disabled={savingDoc || messages.length <= 1}
                         title="Save conversation as document"
                     >
-                        {savingDoc ? '⏳' : docSaved ? '✅' : '💾'}
+                        {savingDoc ? '' : docSaved ? '' : ''}
                     </button>
-                    <button className="ag-action-btn" onClick={(e) => { e.stopPropagation(); clearChat(); }} title="Clear conversation">🗑️</button>
+                    <button className="ag-action-btn" onClick={(e) => { e.stopPropagation(); clearChat(); }} title="Clear conversation"><Trash2 size={16} /></button>
                     <button
                         className="ag-close-btn"
                         onClick={(e) => { e.stopPropagation(); setIsOpen(false); onClose?.(); }}
                         title="Close (⌘G)"
                     >
-                        ✕
+                       
                     </button>
                 </div>
             </div>
@@ -489,7 +490,7 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                     <div key={msg.id} className={`ag-message ag-message--${msg.role}`}>
                         {msg.role !== 'user' && (
                             <span className="ag-avatar">
-                                {msg.role === 'system' ? '✦' : '✦'}
+                                {msg.role === 'system' ? '' : ''}
                             </span>
                         )}
                         <div className="ag-bubble">
@@ -509,7 +510,7 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                                 </>
                             )}
                         </div>
-                        {msg.role === 'user' && <span className="ag-user-avatar">👤</span>}
+                        {msg.role === 'user' && <span className="ag-user-avatar"><User size={14} /></span>}
                     </div>
                 ))}
                 <div ref={endRef} />
@@ -552,7 +553,7 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                     disabled={!input.trim() || isLoading}
                     title="Send"
                 >
-                    {isLoading ? <span className="ag-send-spinner" /> : '➤'}
+                    {isLoading ? <span className="ag-send-spinner" /> : ''}
                 </button>
             </div>
 

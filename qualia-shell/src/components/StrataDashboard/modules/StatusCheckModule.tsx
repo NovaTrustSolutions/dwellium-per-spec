@@ -154,7 +154,7 @@ export default function StatusCheckModule() {
                     background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
                     color: '#ef4444', fontSize: 13,
                 }}>
-                    ⚠ Failed to check status: {error}
+                    Failed to check status: {error}
                 </div>
             )}
 

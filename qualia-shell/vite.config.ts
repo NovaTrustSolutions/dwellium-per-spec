@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import { reactRouter } from '@react-router/dev/vite';
 import { cloneAndAnalyze } from './scripts/kgAnalyze.mjs';
 import { scanFolder } from './scripts/kbScan.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * kgGraphRepoPlugin — dev-server route that REALLY clones + graphs a repo for
@@ -85,12 +87,79 @@ function kbScanPlugin() {
                     }
                 });
             });
+            server.middlewares.use('/__kb/list-directories', (req, res) => {
+                if (req.method !== 'POST') { res.statusCode = 405; res.end('POST only'); return; }
+                let body = '';
+                req.on('data', (c) => { body += c; });
+                req.on('end', () => {
+                    res.setHeader('Content-Type', 'application/json');
+                    try {
+                        const { folder } = JSON.parse(body || '{}');
+                        let targetDir = folder ? String(folder).replace(/^~(?=\/|$)/, process.env.HOME || '') : (process.env.HOME || '.');
+                        targetDir = path.resolve(targetDir);
+                        const stats = fs.statSync(targetDir);
+                        if (!stats.isDirectory()) {
+                            throw new Error('Not a directory');
+                        }
+                        const items = fs.readdirSync(targetDir, { withFileTypes: true });
+                        const subdirs = items
+                            .filter((item: any) => item.isDirectory() && !item.name.startsWith('.'))
+                            .map((item: any) => item.name);
+                        const parent = path.dirname(targetDir);
+                        res.end(JSON.stringify({
+                            success: true,
+                            current: targetDir,
+                            parent: parent !== targetDir ? parent : null,
+                            subdirs: subdirs.sort()
+                        }));
+                    } catch (e) {
+                        res.statusCode = 400;
+                        res.end(JSON.stringify({ success: false, error: (e as Error).message }));
+                    }
+                });
+            });
+        },
+    };
+}
+
+/**
+ * eyeContactPlugin — dev-server route that serves the standalone MediaPipe
+ * eye-correction prototype files from host's scratch folder under the dev origin
+ * /__eye-contact path. Pre-bundled/cached in memory or read from disk.
+ */
+function eyeContactPlugin() {
+    return {
+        name: 'eye-contact-plugin',
+        configureServer(server: import('vite').ViteDevServer) {
+            server.middlewares.use('/__eye-contact', (req, res) => {
+                const url = new URL(req.url || '', 'http://localhost');
+                let pathname = url.pathname;
+                if (pathname === '/' || !pathname) pathname = '/index.html';
+
+                const targetPath = path.join('/Users/ilyaklipinitser/.gemini/antigravity-ide/scratch/eye-contact-prototype', pathname);
+                if (fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
+                    const ext = path.extname(targetPath);
+                    const mimeTypes: Record<string, string> = {
+                        '.html': 'text/html',
+                        '.js': 'application/javascript',
+                        '.css': 'text/css',
+                        '.png': 'image/png',
+                        '.jpg': 'image/jpeg',
+                        '.json': 'application/json'
+                    };
+                    res.setHeader('Content-Type', mimeTypes[ext] || 'text/plain');
+                    res.end(fs.readFileSync(targetPath));
+                } else {
+                    res.statusCode = 404;
+                    res.end('Not found');
+                }
+            });
         },
     };
 }
 
 export default defineConfig({
-    plugins: [reactRouter(), kgGraphRepoPlugin(), kbScanPlugin()],
+    plugins: [reactRouter(), kgGraphRepoPlugin(), kbScanPlugin(), eyeContactPlugin()],
     // 2026-06-12 live-sweep fix: pre-bundle the heavy deps that widgets pull
     // in via dynamic import (terminal → @xterm, doc-viewer/pdf-gear →
     // pdf-lib/pdfjs/tesseract/mammoth/docx, scribe → codemirror family).

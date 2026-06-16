@@ -185,7 +185,7 @@ Generated: ${new Date().toLocaleString()}
                     </h2>
                     <p className="s-module-subtitle">
                         {stats.open} open, {stats.investigating} investigating, {stats.resolved} resolved — {stats.total} total
-                        {stats.highSeverity > 0 && <span style={{ color: '#ef4444', fontWeight: 700 }}> ⚠ {stats.highSeverity} high severity</span>}
+                        {stats.highSeverity > 0 && <span style={{ color: '#ef4444', fontWeight: 700 }}> {stats.highSeverity} high severity</span>}
                     </p>
                 </div>
                 <div className="s-module-actions">
@@ -450,9 +450,9 @@ Generated: ${new Date().toLocaleString()}
                             <div>
                                 <label className="s-label">Severity *</label>
                                 <select name="severity" required className="s-input">
-                                    <option value="high">🔴 High</option>
-                                    <option value="medium" selected>🟡 Medium</option>
-                                    <option value="low">🟢 Low</option>
+                                    <option value="high">High</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="low">Low</option>
                                 </select>
                             </div>
                             <div style={{ gridColumn: '1 / -1' }}>

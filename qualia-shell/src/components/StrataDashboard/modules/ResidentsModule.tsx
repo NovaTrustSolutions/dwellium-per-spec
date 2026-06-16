@@ -49,12 +49,12 @@ const TRANSITIONS: Record<string, string[]> = {
     pending: ['onboarding', 'active'], archived: ['onboarding', 'active'],
 };
 const TEMPLATES: { key: CommunicationTemplate; label: string; icon: string }[] = [
-    { key: 'welcome', label: 'Welcome', icon: '👋' },
-    { key: 'lease_renewal', label: 'Lease Renewal', icon: '📋' },
-    { key: 'rent_reminder', label: 'Rent Reminder', icon: '💰' },
-    { key: 'notice_to_vacate', label: 'Notice to Vacate', icon: '📦' },
-    { key: 'maintenance_scheduled', label: 'Maintenance Scheduled', icon: '🔧' },
-    { key: 'general', label: 'General Notice', icon: '📝' },
+    { key: 'welcome', label: 'Welcome', icon: '' },
+    { key: 'lease_renewal', label: 'Lease Renewal', icon: '' },
+    { key: 'rent_reminder', label: 'Rent Reminder', icon: '' },
+    { key: 'notice_to_vacate', label: 'Notice to Vacate', icon: '' },
+    { key: 'maintenance_scheduled', label: 'Maintenance Scheduled', icon: '' },
+    { key: 'general', label: 'General Notice', icon: '' },
 ];
 
 // ─── Task 3.1: Tenant detail v1 L164 expansion (parallel-batch FINAL survivor) ───
@@ -403,11 +403,12 @@ function CommTab({ tenantId, tenantName }: { tenantId: string; tenantName: strin
     const [customMsg, setCustomMsg] = useState('');
     const [sending, setSending] = useState(false);
     const [sent, setSent] = useState<string | null>(null);
+    const [sentOk, setSentOk] = useState(false);
     const handleSend = async () => {
-        setSending(true); setSent(null);
+        setSending(true); setSent(null); setSentOk(false);
         try {
             await strataPost(`/resident-communication/${tenantId}`, { template: selectedTemplate, channel, customMessage: customMsg });
-            setSent(`✓ ${selectedTemplate.replace('_', ' ')} sent via ${channel}`);
+            setSent(`${selectedTemplate.replace('_', ' ')} sent via ${channel}`); setSentOk(true);
             setCustomMsg('');
         } catch { setSent('Failed to send'); }
         setSending(false);
@@ -447,7 +448,7 @@ function CommTab({ tenantId, tenantName }: { tenantId: string; tenantName: strin
                 background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: 'var(--text-primary)',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1,
             }}><Send size={12} /> {sending ? 'Sending…' : `Send to ${tenantName}`}</button>
-            {sent && <div style={{ fontSize: 11, color: sent.startsWith('✓') ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{sent}</div>}
+            {sent && <div style={{ fontSize: 11, color: sentOk ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{sent}</div>}
         </div>
     );
 }

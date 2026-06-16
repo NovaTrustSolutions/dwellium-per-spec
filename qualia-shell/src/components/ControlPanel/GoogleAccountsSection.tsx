@@ -36,7 +36,7 @@ h1{font-size:20px;margin:0 0 6px}.sub{color:#9a9a9a;font-size:13px;margin:0 0 18
 ol{padding-left:20px}li{margin:10px 0;font-size:14px}a{color:#4d8aff}code{background:#1a1a1a;padding:1px 6px;border-radius:5px;font-size:12px}
 .note{margin-top:18px;font-size:12px;color:#e7c879;background:rgba(231,200,121,.08);border:1px solid rgba(231,200,121,.3);padding:10px 12px;border-radius:8px}
 .btn{display:inline-block;margin-top:18px;background:#4d8aff;color:#fff;text-decoration:none;padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px}</style>
-<h1>🔗 Connect Google — one-time setup</h1>
+<h1>Connect Google — one-time setup</h1>
 <p class="sub">Dwellium needs a Google OAuth client before it can sign you in. Three quick steps:</p>
 <ol>
 <li>Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud → Credentials</a> and create an <b>OAuth client ID</b> (type: Web application).</li>

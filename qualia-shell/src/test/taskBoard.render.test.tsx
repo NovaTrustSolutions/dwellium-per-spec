@@ -1,5 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+
+vi.mock('../context/HierarchyContext', () => ({
+    useHierarchy: () => ({
+        hierarchy: [
+            { id: 'global', name: 'Global Board', type: 'project' }
+        ]
+    })
+}));
+
 import TaskBoard from '../components/TaskBoard/TaskBoard';
 import { taskBoardStore, taskBoardUserIdHolder, addCard } from '../components/TaskBoard/taskBoardStore';
 

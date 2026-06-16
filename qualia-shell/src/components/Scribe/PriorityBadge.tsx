@@ -6,6 +6,7 @@
  */
 
 import { useState, useContext, useSyncExternalStore } from 'react';
+import { Check } from 'lucide-react';
 import { useScribeStore } from './scribeStore';
 import { UserContext } from '../../context/UserContext';
 import {
@@ -91,7 +92,7 @@ export function PriorityBadge() {
                             >
                                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: m.color, flexShrink: 0 }} />
                                 {m.label}
-                                {active && <span style={{ marginLeft: 'auto', color: 'var(--accent)' }}>✓</span>}
+                                {active && <span style={{ marginLeft: 'auto', color: 'var(--accent)' }}><Check size={14} /></span>}
                             </button>
                         );
                     })}

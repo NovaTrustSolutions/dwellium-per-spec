@@ -8,6 +8,7 @@
  * the lesson from the "AI services split screen" 564151d).
  */
 import { useMorningBrief, markBriefSeen, requestBriefInAra } from '../../lib/morningBriefStore';
+import { Sunrise, X } from 'lucide-react';
 import { useWindows } from '../../context/WindowContext';
 import './MorningBriefBanner.css';
 
@@ -25,12 +26,12 @@ export default function MorningBriefBanner() {
 
     return (
         <div className="mbrief-banner" role="status">
-            <span className="mbrief-banner-sun" aria-hidden>🌅</span>
+            <span className="mbrief-banner-sun" aria-hidden><Sunrise size={14} /></span>
             <span className="mbrief-banner-text">
                 Your morning brief is ready{today.insights.length > 0 ? ` — ${today.insights[0].title}` : ''}.
             </span>
             <button className="mbrief-banner-open" onClick={open}>Read brief</button>
-            <button className="mbrief-banner-x" onClick={() => markBriefSeen(today.date)} aria-label="Dismiss morning brief">✕</button>
+            <button className="mbrief-banner-x" onClick={() => markBriefSeen(today.date)} aria-label="Dismiss morning brief"><X size={16} /></button>
         </div>
     );
 }

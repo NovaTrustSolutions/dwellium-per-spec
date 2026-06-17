@@ -7,6 +7,7 @@
  * on error, or when video playback isn't available (tests) so it never blocks.
  */
 import { useEffect, useRef, useState } from 'react';
+import { Volume2 } from 'lucide-react';
 import './HydraIntro.css';
 
 export const HYDRA_SKIP_INTRO_KEY = 'dwellium-hydra-skip-intro';
@@ -56,7 +57,7 @@ export default function HydraIntro() {
                 <source src="/assets/hydra-intro.mp4" type="video/mp4" />
             </video>
             <div className="hydra-intro__controls">
-                {needsUnmute && <button type="button" className="hydra-intro__btn" onClick={unmute}>Tap for sound</button>}
+                {needsUnmute && <button type="button" className="hydra-intro__btn" onClick={unmute}><Volume2 size={14} aria-hidden /> Tap for sound</button>}
                 <button type="button" className="hydra-intro__btn hydra-intro__skip" onClick={() => setShow(false)}>Skip ▶</button>
             </div>
         </div>

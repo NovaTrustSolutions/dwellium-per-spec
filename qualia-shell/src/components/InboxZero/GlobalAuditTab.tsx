@@ -2,6 +2,7 @@
  * GAP-08: GlobalAuditTab — shows cross-item audit log from /api/inbox/audit/global
  */
 import React, { useEffect, useState, useCallback } from 'react';
+import { ClipboardList, Eye, RefreshCw, Undo2 } from 'lucide-react';
 
 interface AuditEntry {
     id?: string;
@@ -87,15 +88,15 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
     return (
         <div style={{ padding: '8px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, opacity: 0.9 }}>
-                    Global Audit Log
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <ClipboardList size={16} aria-hidden /> Global Audit Log
                 </h3>
                 <span style={{ fontSize: '11px', opacity: 0.4 }}>{entries.length} entries</span>
                 <button
                     onClick={fetchAudit}
-                    style={{ marginLeft: 'auto', padding: '4px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'inherit', cursor: 'pointer' }}
+                    style={{ marginLeft: 'auto', padding: '4px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'inherit', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                 >
-                    ↻ Refresh
+                    <RefreshCw size={13} aria-hidden /> Refresh
                 </button>
             </div>
 
@@ -153,19 +154,21 @@ export function GlobalAuditTab({ apiBase, authFetch }: GlobalAuditTabProps) {
                                     onClick={() => handleView(entry.inbox_item_id)}
                                     style={{
                                         padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.15)',
-                                        background: 'transparent', color: 'inherit', fontSize: '10px', cursor: 'pointer'
+                                        background: 'transparent', color: 'inherit', fontSize: '10px', cursor: 'pointer',
+                                        display: 'inline-flex', alignItems: 'center', gap: 4,
                                     }}
                                 >
-                                    View
+                                    <Eye size={12} aria-hidden /> View
                                 </button>
                                 <button
                                     onClick={() => handleRecover(entry.inbox_item_id)}
                                     style={{
                                         padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(239, 68, 68, 0.4)',
-                                        background: 'transparent', color: '#ef4444', fontSize: '10px', cursor: 'pointer'
+                                        background: 'transparent', color: '#ef4444', fontSize: '10px', cursor: 'pointer',
+                                        display: 'inline-flex', alignItems: 'center', gap: 4,
                                     }}
                                 >
-                                    ↩️ Recover
+                                    <Undo2 size={12} aria-hidden /> Recover
                                 </button>
                             </div>
                         </div>

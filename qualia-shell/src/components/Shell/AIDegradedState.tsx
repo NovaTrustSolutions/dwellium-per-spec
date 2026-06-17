@@ -12,7 +12,7 @@
  */
 
 import type { AiAvailability } from '../../hooks/useAIAvailability';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Cloud, Hourglass, Unplug, type LucideIcon } from 'lucide-react';
 import './AIDegradedState.css';
 
 export interface AIDegradedStateProps {
@@ -23,11 +23,11 @@ export interface AIDegradedStateProps {
     ctaLabel?: string;
 }
 
-const STATUS_ICON: Record<string, string> = {
-    'backend-only': '',
-    'rate-limited': '',
-    'erroring': '',
-    'unavailable': '',
+const STATUS_ICON: Record<string, LucideIcon> = {
+    'backend-only': Cloud,
+    'rate-limited': Hourglass,
+    'erroring': AlertTriangle,
+    'unavailable': Unplug,
 };
 
 export default function AIDegradedState({ availability, lastKnownLabel, ctaLabel }: AIDegradedStateProps) {
@@ -35,7 +35,7 @@ export default function AIDegradedState({ availability, lastKnownLabel, ctaLabel
     return (
         <div className={`ai-degraded ai-degraded--${availability.status}`} role="status">
             <span className="ai-degraded__icon" aria-hidden="true">
-                {STATUS_ICON[availability.status] ?? <AlertTriangle size={14} />}
+                {(() => { const Icon = STATUS_ICON[availability.status] ?? AlertTriangle; return <Icon size={14} />; })()}
             </span>
             <span className="ai-degraded__text">
                 {availability.reason}

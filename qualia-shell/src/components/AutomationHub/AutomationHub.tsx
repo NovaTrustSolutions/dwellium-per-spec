@@ -7,9 +7,64 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { BookOpen } from 'lucide-react';
+import type { ComponentType, CSSProperties } from 'react';
+import {
+    BarChart3, Banknote, Bell, BookOpen, Bot, Brain, Building2, Calendar, Check, CircleHelp,
+    ClipboardList, Clock, Cloud, CreditCard, DollarSign, FileText, FolderOpen, Globe, Home, Lightbulb,
+    Link as LinkIcon, Mail, Mic, NotebookText, Package, Pause, Ruler, Satellite, Scale, Search,
+    Settings as SettingsIcon, ShieldCheck, Target, Trash2, User, Wrench, X, Zap,
+} from 'lucide-react';
 import './AutomationHub.css';
 import { API_BASE } from '../../config';
+
+type IconCmp = ComponentType<{ size?: number | string; className?: string; 'aria-hidden'?: boolean; 'aria-label'?: string; style?: CSSProperties }>;
+
+// Automation icon registry — `Automation.icon` is now a stable string KEY (persisted in
+// localStorage) mapped to a Lucide icon here. Originally these were emoji glyphs (shown in
+// the inline comments) stored directly on each automation.
+const AUTO_ICONS: Record<string, IconCmp> = {
+    mic: Mic,                 // 🎙️
+    mail: Mail,               // 📧
+    cloud: Cloud,             // ☁️
+    construction: Building2,  // 🏗️
+    clipboard: ClipboardList, // 📋
+    legal: Scale,             // ⚖️
+    bolt: Zap,                // ⚡
+    bot: Bot,                 // 🤖
+    wrench: Wrench,           // 🔧
+    chart: BarChart3,         // 📊
+    shield: ShieldCheck,      // 🛡️
+    home: Home,               // 🏠
+    idea: Lightbulb,          // 💡
+    package: Package,         // 📦
+    search: Search,           // 🔍
+    globe: Globe,             // 🌐
+    signal: Satellite,        // 📡
+    brain: Brain,             // 🧠
+    target: Target,           // 🎯
+    money: DollarSign,        // 💰
+    ledger: NotebookText,     // 📒
+    card: CreditCard,         // 💳
+    cash: Banknote,           // 💸 / 🏧 / 🏦
+    folder: FolderOpen,       // 📂
+    book: BookOpen,           // 📚
+    calendar: Calendar,       // 📅
+    landmark: Building2,      // 🏛️
+    file: FileText,           // 📄
+    note: FileText,           // 📝
+};
+
+// Picker offers the canonical 20 icon keys (was EMOJI_PICKER of emoji glyphs).
+const ICON_PICKER: string[] = [
+    'mic', 'mail', 'cloud', 'construction', 'clipboard', 'legal', 'bolt', 'bot', 'wrench',
+    'chart', 'shield', 'home', 'idea', 'package', 'search', 'globe', 'signal', 'brain', 'target', 'money',
+];
+
+// Render an automation icon by key, falling back to Wrench for unknown/legacy values.
+function AutoIcon({ icon, size = 16 }: { icon: string; size?: number }) {
+    const Icon = AUTO_ICONS[icon] || Wrench;
+    return <Icon size={size} aria-hidden />;
+}
 
 const API_AUTOMATIONS = `${API_BASE}/api/automations`;
 
@@ -82,15 +137,14 @@ interface AuditLogEntry {
 
 type SettingsTab = 'general' | 'schedule' | 'integrations' | 'execution' | 'notifications';
 
-const SETTINGS_TABS: { key: SettingsTab; label: string; icon: string }[] = [
-    { key: 'general', label: 'General', icon: '' },
-    { key: 'schedule', label: 'Schedule', icon: '' },
-    { key: 'integrations', label: 'Integrations', icon: '' },
-    { key: 'execution', label: 'Execution', icon: '' },
-    { key: 'notifications', label: 'Alerts', icon: '' },
+// Settings-tab icons originally: 📝 / 🕐 / 🔗 / ⚡ / 🔔
+const SETTINGS_TABS: { key: SettingsTab; label: string; icon: IconCmp }[] = [
+    { key: 'general', label: 'General', icon: FileText },
+    { key: 'schedule', label: 'Schedule', icon: Clock },
+    { key: 'integrations', label: 'Integrations', icon: LinkIcon },
+    { key: 'execution', label: 'Execution', icon: Zap },
+    { key: 'notifications', label: 'Alerts', icon: Bell },
 ];
-
-const EMOJI_PICKER = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
 
 const DEFAULT_NOTIFICATIONS: AutomationNotifications = { onSuccess: false, onFailure: true, email: '' };
 const DEFAULT_RETRY: AutomationRetryPolicy = { maxRetries: 0, retryDelay: 30 };
@@ -119,7 +173,7 @@ function seedAutomation(base: Partial<Automation> & { id: string; name: string; 
 const AUTOMATIONS_SEED: Automation[] = [
     // ── Andy's Automations ──
     seedAutomation({
-        id: 'auto-1', name: 'Zero-Touch Transcript Pipeline', description: 'Watch a drop folder → Whisper transcription → Gemini summary → auto-rename & file.', category: 'software', icon: '', setupTime: '2h', annualSaved: '52h', integrations: ['Whisper API', 'Gemini Flash', 'Google Drive'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, envVars: { WHISPER_MODEL: 'large-v3', OUTPUT_DIR: '/transcripts' }, tags: ['ai', 'transcription'], owner: 'andy', setupGuide: [
+        id: 'auto-1', name: 'Zero-Touch Transcript Pipeline', description: 'Watch a drop folder → Whisper transcription → Gemini summary → auto-rename & file.', category: 'software', icon: 'mic', setupTime: '2h', annualSaved: '52h', integrations: ['Whisper API', 'Gemini Flash', 'Google Drive'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, envVars: { WHISPER_MODEL: 'large-v3', OUTPUT_DIR: '/transcripts' }, tags: ['ai', 'transcription'], owner: 'andy', setupGuide: [
             'Open the Settings panel and go to the Integrations tab.',
             'Make sure "Whisper API" and "Google Drive" are listed. If not, type them in and press Enter.',
             'Go to the Integrations tab and set WHISPER_MODEL to "large-v3".',
@@ -129,7 +183,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-2', name: 'Sunday Triage Email Auto-Drafter', description: 'Auto-analyze high-priority emails → summarize to Activity Log → draft replies.', category: 'software', icon: '', setupTime: '4h', annualSaved: '156h', integrations: ['Gmail API', 'GPT-4o', 'Google Docs'], schedule: { enabled: false, frequency: 'daily', time: '07:00' }, envVars: { MAX_EMAILS: '50', PRIORITY_FILTER: 'high' }, tags: ['email', 'ai'], requiresApproval: true, owner: 'andy', setupGuide: [
+        id: 'auto-2', name: 'Sunday Triage Email Auto-Drafter', description: 'Auto-analyze high-priority emails → summarize to Activity Log → draft replies.', category: 'software', icon: 'mail', setupTime: '4h', annualSaved: '156h', integrations: ['Gmail API', 'GPT-4o', 'Google Docs'], schedule: { enabled: false, frequency: 'daily', time: '07:00' }, envVars: { MAX_EMAILS: '50', PRIORITY_FILTER: 'high' }, tags: ['email', 'ai'], requiresApproval: true, owner: 'andy', setupGuide: [
             'Make sure Gmail is connected. Check the backend .env file for your Gmail OAuth token.',
             'Open Settings → Integrations. Confirm "Gmail API" and "GPT-4o" are listed.',
             'Set MAX_EMAILS to how many emails you want checked each run (50 is a good start).',
@@ -139,7 +193,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-3', name: 'Automated Backup & Digital Twin Sync', description: 'Nightly rclone sync of Google Drive to local SSD + Dropbox at 3 AM.', category: 'software', icon: '', setupTime: '0.5h', annualSaved: '26h', integrations: ['rclone', 'Google Drive', 'Dropbox'], schedule: { enabled: false, frequency: 'daily', time: '03:00' }, envVars: { RCLONE_REMOTE: 'gdrive:', BACKUP_PATH: '/backups' }, tags: ['backup'], owner: 'andy', setupGuide: [
+        id: 'auto-3', name: 'Automated Backup & Digital Twin Sync', description: 'Nightly rclone sync of Google Drive to local SSD + Dropbox at 3 AM.', category: 'software', icon: 'cloud', setupTime: '0.5h', annualSaved: '26h', integrations: ['rclone', 'Google Drive', 'Dropbox'], schedule: { enabled: false, frequency: 'daily', time: '03:00' }, envVars: { RCLONE_REMOTE: 'gdrive:', BACKUP_PATH: '/backups' }, tags: ['backup'], owner: 'andy', setupGuide: [
             'Install rclone on your computer. Open Terminal and type: brew install rclone',
             'Run "rclone config" in Terminal. Follow the steps to connect your Google Drive.',
             'Open Settings → Integrations and set RCLONE_REMOTE to your remote name (like "gdrive:").',
@@ -149,7 +203,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-4', name: 'Construction Watchdog', description: 'Forward invoices to Trello → OCR scan → push to Sheets → flag missing Lien Waivers.', category: 'software', icon: '', setupTime: '3h', annualSaved: '52h', integrations: ['Trello', 'Docparser', 'Google Sheets'], schedule: { enabled: false, frequency: 'manual', time: '10:00' }, envVars: { TRELLO_BOARD_ID: '', SHEET_ID: '' }, tags: ['construction', 'compliance'], requiresApproval: true, owner: 'andy', setupGuide: [
+        id: 'auto-4', name: 'Construction Watchdog', description: 'Forward invoices to Trello → OCR scan → push to Sheets → flag missing Lien Waivers.', category: 'software', icon: 'construction', setupTime: '3h', annualSaved: '52h', integrations: ['Trello', 'Docparser', 'Google Sheets'], schedule: { enabled: false, frequency: 'manual', time: '10:00' }, envVars: { TRELLO_BOARD_ID: '', SHEET_ID: '' }, tags: ['construction', 'compliance'], requiresApproval: true, owner: 'andy', setupGuide: [
             'Go to your Trello board for construction projects. Copy the board ID from the URL.',
             'Open Settings → Integrations and paste the board ID into TRELLO_BOARD_ID.',
             'Create a Google Sheet for tracking invoices. Copy the Sheet ID from its URL.',
@@ -159,7 +213,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-5', name: 'Cost-Plus Template Standardization', description: 'Mandatory vendor reporting form: Date, Labor Hours, Materials, Receipts.', category: 'process', icon: '', setupTime: '1h', annualSaved: '26h+', integrations: ['Google Forms', 'Google Sheets'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['vendors', 'reporting'], owner: 'andy', setupGuide: [
+        id: 'auto-5', name: 'Cost-Plus Template Standardization', description: 'Mandatory vendor reporting form: Date, Labor Hours, Materials, Receipts.', category: 'process', icon: 'clipboard', setupTime: '1h', annualSaved: '26h+', integrations: ['Google Forms', 'Google Sheets'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['vendors', 'reporting'], owner: 'andy', setupGuide: [
             'Open Google Forms and create a new form called "Vendor Invoice Report".',
             'Add these fields: Date, Vendor Name, Labor Hours, Materials Cost, and a file upload for Receipts.',
             'Link the form to a Google Sheet so all answers go there automatically.',
@@ -168,7 +222,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-6', name: 'Legal Template Library', description: 'Reusable litigation-grade email snippets: Invoice Disputes, Benefits Denials.', category: 'process', icon: '', setupTime: '2h', annualSaved: '52h', integrations: ['Google Docs'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['legal'], owner: 'andy', setupGuide: [
+        id: 'auto-6', name: 'Legal Template Library', description: 'Reusable litigation-grade email snippets: Invoice Disputes, Benefits Denials.', category: 'process', icon: 'legal', setupTime: '2h', annualSaved: '52h', integrations: ['Google Docs'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['legal'], owner: 'andy', setupGuide: [
             'Create a Google Doc called "Legal Email Templates".',
             'Write template emails for common situations: Invoice Disputes, Benefits Denials, Late Payments.',
             'Use [BRACKETS] for parts that change each time, like [VENDOR NAME] or [AMOUNT].',
@@ -177,7 +231,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-7', name: 'Utility Watchdog Agent', description: 'Scrape utility portals → flag high bills on vacant units → trigger manager walkthrough.', category: 'software', icon: '', setupTime: '2h', annualSaved: '52h', integrations: ['Georgia Power', 'Email', 'AppFolio'], schedule: { enabled: false, frequency: 'monthly', time: '08:00' }, envVars: { THRESHOLD_AMOUNT: '150', VACANT_ONLY: 'true' }, tags: ['utilities', 'monitoring'], requiresApproval: true, owner: 'andy', setupGuide: [
+        id: 'auto-7', name: 'Utility Watchdog Agent', description: 'Scrape utility portals → flag high bills on vacant units → trigger manager walkthrough.', category: 'software', icon: 'bolt', setupTime: '2h', annualSaved: '52h', integrations: ['Georgia Power', 'Email', 'AppFolio'], schedule: { enabled: false, frequency: 'monthly', time: '08:00' }, envVars: { THRESHOLD_AMOUNT: '150', VACANT_ONLY: 'true' }, tags: ['utilities', 'monitoring'], requiresApproval: true, owner: 'andy', setupGuide: [
             'Open Settings → Integrations and make sure your utility portal logins are saved.',
             'Set THRESHOLD_AMOUNT to the dollar amount that triggers a warning (like 150).',
             'Set VACANT_ONLY to "true" if you only want to watch empty units.',
@@ -186,7 +240,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-8', name: 'Trello Knowledge Vector Index', description: 'Crawl all Trello boards, lists, and cards → flatten card data (descriptions, checklists, comments, attachments) into text documents → generate OpenAI embeddings → store in SQLite vector database. Enables semantic search: ask "where is the gate code?" and it finds the exact card. Agents + ARA can query automatically.', category: 'software', icon: '', setupTime: '30m', annualSaved: '104h', integrations: ['Trello', 'OpenAI', 'SQLite Vector DB'], schedule: { enabled: false, frequency: 'daily', time: '02:00' }, envVars: { TRELLO_API_KEY: '', TRELLO_TOKEN: '', OPENAI_API_KEY: '' }, tags: ['ai', 'vector-db', 'search', 'trello'], requiresApproval: false, owner: 'andy', setupGuide: [
+        id: 'auto-8', name: 'Trello Knowledge Vector Index', description: 'Crawl all Trello boards, lists, and cards → flatten card data (descriptions, checklists, comments, attachments) into text documents → generate OpenAI embeddings → store in SQLite vector database. Enables semantic search: ask "where is the gate code?" and it finds the exact card. Agents + ARA can query automatically.', category: 'software', icon: 'brain', setupTime: '30m', annualSaved: '104h', integrations: ['Trello', 'OpenAI', 'SQLite Vector DB'], schedule: { enabled: false, frequency: 'daily', time: '02:00' }, envVars: { TRELLO_API_KEY: '', TRELLO_TOKEN: '', OPENAI_API_KEY: '' }, tags: ['ai', 'vector-db', 'search', 'trello'], requiresApproval: false, owner: 'andy', setupGuide: [
             'Make sure your Trello API key and token are set in the .env file on the backend.',
             'Make sure your OpenAI API key is also set in the .env file.',
             'Click ▶ Launch to start indexing all your Trello boards.',
@@ -202,7 +256,7 @@ const AUTOMATIONS_SEED: Automation[] = [
 
     // ── Phase 1: High-Impact Automations ──
     seedAutomation({
-        id: 'auto-L1', name: 'Recurring Journal Entries for Management Fees', description: 'Auto-post recurring management fees ($1,000/property for Andy Zohoury) as recurring journal entries in AppFolio → eliminates monthly manual review & entry.', category: 'software', icon: '', setupTime: '45m', annualSaved: '26h', integrations: ['AppFolio'], schedule: { enabled: false, frequency: 'monthly', time: '09:00', dayOfMonth: 1 }, tags: ['accounting', 'recurring'], owner: 'lisa', setupGuide: [
+        id: 'auto-L1', name: 'Recurring Journal Entries for Management Fees', description: 'Auto-post recurring management fees ($1,000/property for Andy Zohoury) as recurring journal entries in AppFolio → eliminates monthly manual review & entry.', category: 'software', icon: 'ledger', setupTime: '45m', annualSaved: '26h', integrations: ['AppFolio'], schedule: { enabled: false, frequency: 'monthly', time: '09:00', dayOfMonth: 1 }, tags: ['accounting', 'recurring'], owner: 'lisa', setupGuide: [
             'Log into AppFolio. Go to Accounting → Journal Entries.',
             'Click "Create Recurring Journal Entry".',
             'Set the amount to $1,000 per property for Andy Zohoury.',
@@ -212,7 +266,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L2', name: 'Vendor Insurance (COI) Expiration Alerts', description: 'Track vendor COI expiration dates in AppFolio → auto-email vendors 30 days prior → flag non-compliant vendors. Replaces manual Trello + email tracking.', category: 'software', icon: '', setupTime: '1h', annualSaved: '39h', integrations: ['AppFolio', 'Gmail API', 'Trello'], schedule: { enabled: false, frequency: 'daily', time: '08:00' }, tags: ['vendors', 'compliance'], requiresApproval: true, owner: 'lisa', setupGuide: [
+        id: 'auto-L2', name: 'Vendor Insurance (COI) Expiration Alerts', description: 'Track vendor COI expiration dates in AppFolio → auto-email vendors 30 days prior → flag non-compliant vendors. Replaces manual Trello + email tracking.', category: 'software', icon: 'shield', setupTime: '1h', annualSaved: '39h', integrations: ['AppFolio', 'Gmail API', 'Trello'], schedule: { enabled: false, frequency: 'daily', time: '08:00' }, tags: ['vendors', 'compliance'], requiresApproval: true, owner: 'lisa', setupGuide: [
             'Open AppFolio → Vendors. Make sure every vendor has their COI expiration date entered.',
             'Go to each vendor card and upload their latest Certificate of Insurance (COI) PDF.',
             'Open Settings here and turn on the Daily schedule at 8:00 AM.',
@@ -222,7 +276,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L3', name: 'Recurring "Life" Bill Automation', description: 'Auto-code recurring personal/corporate card charges to correct GL accounts. Maps known vendors (Stoney River → GL 6030, Circle Sushi, Parking) to eliminate manual entry.', category: 'software', icon: '', setupTime: '1.5h', annualSaved: '52h', integrations: ['AppFolio', 'Bank Feed'], schedule: { enabled: false, frequency: 'daily', time: '10:00' }, envVars: { AUTO_CODE_VENDORS: 'true', DEFAULT_GL: '6030' }, tags: ['accounting', 'expenses'], owner: 'lisa', setupGuide: [
+        id: 'auto-L3', name: 'Recurring "Life" Bill Automation', description: 'Auto-code recurring personal/corporate card charges to correct GL accounts. Maps known vendors (Stoney River → GL 6030, Circle Sushi, Parking) to eliminate manual entry.', category: 'software', icon: 'card', setupTime: '1.5h', annualSaved: '52h', integrations: ['AppFolio', 'Bank Feed'], schedule: { enabled: false, frequency: 'daily', time: '10:00' }, envVars: { AUTO_CODE_VENDORS: 'true', DEFAULT_GL: '6030' }, tags: ['accounting', 'expenses'], owner: 'lisa', setupGuide: [
             'Open AppFolio → Banking → Bank Rules.',
             'Create a rule for each charge you see often. For example:',
             '   • "Stoney River" → code to GL 6030 (Meals)',
@@ -233,7 +287,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L4', name: 'Email Filtering & Labeling Rules', description: 'Auto-archive newsletters (Epoch, NewsBreak) and auto-label invoices from known senders (Bill.com, Amazon) → clear 38,000+ email backlog by routing noise away from inbox.', category: 'software', icon: '', setupTime: '2h', annualSaved: '130h', integrations: ['Gmail API'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, envVars: { ARCHIVE_SENDERS: 'epoch,newsbreak', LABEL_INVOICES: 'bill.com,amazon' }, tags: ['email', 'productivity'], owner: 'lisa', setupGuide: [
+        id: 'auto-L4', name: 'Email Filtering & Labeling Rules', description: 'Auto-archive newsletters (Epoch, NewsBreak) and auto-label invoices from known senders (Bill.com, Amazon) → clear 38,000+ email backlog by routing noise away from inbox.', category: 'software', icon: 'mail', setupTime: '2h', annualSaved: '130h', integrations: ['Gmail API'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, envVars: { ARCHIVE_SENDERS: 'epoch,newsbreak', LABEL_INVOICES: 'bill.com,amazon' }, tags: ['email', 'productivity'], owner: 'lisa', setupGuide: [
             'Open Gmail → Settings (gear icon) → See All Settings → Filters.',
             'Click "Create a new filter". Type a newsletter sender (like "epoch").',
             'Check "Skip the Inbox (Archive it)" and "Apply the label: Newsletters".',
@@ -244,7 +298,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L5', name: 'BILL.com Auto-Pay Threshold Adjustment', description: 'Adjust auto-pay cap to prevent manual intervention on recurring vendor invoices (e.g., Yummy Pools $399 vs $300 limit). Monitors threshold breaches and auto-approves known vendors.', category: 'software', icon: '', setupTime: '15m', annualSaved: '13h', integrations: ['Bill.com', 'AppFolio'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['payments', 'vendors'], requiresApproval: true, owner: 'lisa', setupGuide: [
+        id: 'auto-L5', name: 'BILL.com Auto-Pay Threshold Adjustment', description: 'Adjust auto-pay cap to prevent manual intervention on recurring vendor invoices (e.g., Yummy Pools $399 vs $300 limit). Monitors threshold breaches and auto-approves known vendors.', category: 'software', icon: 'cash', setupTime: '15m', annualSaved: '13h', integrations: ['Bill.com', 'AppFolio'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['payments', 'vendors'], requiresApproval: true, owner: 'lisa', setupGuide: [
             'Log into BILL.com. Go to Settings → Auto-Pay.',
             'Find the auto-pay limit (it might be set to $300 right now).',
             'Raise it to $500 so vendors like Yummy Pools ($399) get paid automatically.',
@@ -256,7 +310,7 @@ const AUTOMATIONS_SEED: Automation[] = [
 
     // ── Phase 2: Workflow Optimization ──
     seedAutomation({
-        id: 'auto-L6', name: 'Batch & Blast Accounting Protocol', description: 'Route all receipts to a dedicated digital inbox folder → process in one 2-hour weekly block on Tuesdays. Eliminates context-switching from sporadic bill entry throughout the day.', category: 'process', icon: '', setupTime: '1h', annualSaved: '104h', integrations: ['AppFolio', 'Dropbox', 'Google Drive'], schedule: { enabled: false, frequency: 'weekly', time: '09:00', dayOfWeek: 2 }, tags: ['accounting', 'workflow'], owner: 'lisa', setupGuide: [
+        id: 'auto-L6', name: 'Batch & Blast Accounting Protocol', description: 'Route all receipts to a dedicated digital inbox folder → process in one 2-hour weekly block on Tuesdays. Eliminates context-switching from sporadic bill entry throughout the day.', category: 'process', icon: 'package', setupTime: '1h', annualSaved: '104h', integrations: ['AppFolio', 'Dropbox', 'Google Drive'], schedule: { enabled: false, frequency: 'weekly', time: '09:00', dayOfWeek: 2 }, tags: ['accounting', 'workflow'], owner: 'lisa', setupGuide: [
             'Create a folder in Google Drive called "Receipts Inbox".',
             'Whenever you get a receipt (email, photo, PDF), save it to that folder.',
             'Pick one day per week for accounting. Tuesday mornings work great.',
@@ -266,7 +320,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L7', name: 'Centralized Vendor Truth System', description: 'Consolidate all vendor data into AppFolio vendor cards — attach W-9 and COI directly. No payment issued unless vendor is "Green" (docs current). Replaces 4-app cross-referencing.', category: 'process', icon: '', setupTime: '3h', annualSaved: '78h', integrations: ['AppFolio', 'Trello', 'Gmail API', 'Dashlane'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['vendors', 'compliance'], owner: 'lisa', setupGuide: [
+        id: 'auto-L7', name: 'Centralized Vendor Truth System', description: 'Consolidate all vendor data into AppFolio vendor cards — attach W-9 and COI directly. No payment issued unless vendor is "Green" (docs current). Replaces 4-app cross-referencing.', category: 'process', icon: 'folder', setupTime: '3h', annualSaved: '78h', integrations: ['AppFolio', 'Trello', 'Gmail API', 'Dashlane'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['vendors', 'compliance'], owner: 'lisa', setupGuide: [
             'Open AppFolio → Vendors. Pick a vendor to start with.',
             'Upload their W-9 form and COI to the vendor card under the "Documents" tab.',
             'Check: Is the COI still valid? If yes, mark the vendor as "Green" (current).',
@@ -276,7 +330,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L8', name: 'Legacy Knowledge Wiki, SOPs & Static Knowledge Base', description: 'Record 5-min Loom SOPs for invoice entry and utility coding → build searchable index of deed locations, utility account numbers, gate codes (#2468), combo locks (1124), and vendor histories. Centralizes all "tribal knowledge" currently buried in 38,000+ emails. Eliminates manual inbox searches for codes, logins, and histories.', category: 'process', icon: '', setupTime: '4h', annualSaved: '208h', integrations: ['Loom', 'Google Docs', 'Google Sheets', 'Notion'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['documentation', 'training', 'knowledge-base'], owner: 'lisa', setupGuide: [
+        id: 'auto-L8', name: 'Legacy Knowledge Wiki, SOPs & Static Knowledge Base', description: 'Record 5-min Loom SOPs for invoice entry and utility coding → build searchable index of deed locations, utility account numbers, gate codes (#2468), combo locks (1124), and vendor histories. Centralizes all "tribal knowledge" currently buried in 38,000+ emails. Eliminates manual inbox searches for codes, logins, and histories.', category: 'process', icon: 'book', setupTime: '4h', annualSaved: '208h', integrations: ['Loom', 'Google Docs', 'Google Sheets', 'Notion'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['documentation', 'training', 'knowledge-base'], owner: 'lisa', setupGuide: [
             'Create a Google Sheet called "Master Codes & Logins".',
             'Add columns: Property, Gate Code, Lock Combo, Utility Login, Account Number, Notes.',
             'Fill in every code and login you know. Start with the ones you search for most.',
@@ -289,7 +343,7 @@ const AUTOMATIONS_SEED: Automation[] = [
 
     // ── Phase 3: Strategic Improvements ──
     seedAutomation({
-        id: 'auto-L9', name: 'Bank Feed Rule Optimization', description: 'Set up aggressive bank rules: auto-categorize Uber → Travel & Parking, YogaBody → Personal. Clear $85k+ uncleared item backlog through pattern-based auto-reconciliation.', category: 'software', icon: '', setupTime: '2h', annualSaved: '52h', integrations: ['AppFolio', 'Bank Feed'], schedule: { enabled: false, frequency: 'daily', time: '07:00' }, envVars: { RULE_MODE: 'aggressive', AUTO_MATCH: 'true' }, tags: ['banking', 'reconciliation'], owner: 'lisa', setupGuide: [
+        id: 'auto-L9', name: 'Bank Feed Rule Optimization', description: 'Set up aggressive bank rules: auto-categorize Uber → Travel & Parking, YogaBody → Personal. Clear $85k+ uncleared item backlog through pattern-based auto-reconciliation.', category: 'software', icon: 'cash', setupTime: '2h', annualSaved: '52h', integrations: ['AppFolio', 'Bank Feed'], schedule: { enabled: false, frequency: 'daily', time: '07:00' }, envVars: { RULE_MODE: 'aggressive', AUTO_MATCH: 'true' }, tags: ['banking', 'reconciliation'], owner: 'lisa', setupGuide: [
             'Open AppFolio → Banking → Bank Feed.',
             'Look at the uncleared items list. Find ones that repeat (like Uber, YogaBody).',
             'Click on a repeating item. Click "Create Rule" or "Always code this way".',
@@ -300,7 +354,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L10', name: 'Calendar-Based Compliance Triggers', description: 'Convert calendar events (Backflow Device Annuals, Tax Filings) into recurring tasks assigned to team members 2 weeks prior. Prevents missed deadlines and last-minute scrambles.', category: 'software', icon: '', setupTime: '1.5h', annualSaved: '26h', integrations: ['AppFolio', 'Google Calendar', 'ClickUp'], schedule: { enabled: false, frequency: 'weekly', time: '09:00', dayOfWeek: 1 }, tags: ['compliance', 'tasks'], owner: 'lisa', setupGuide: [
+        id: 'auto-L10', name: 'Calendar-Based Compliance Triggers', description: 'Convert calendar events (Backflow Device Annuals, Tax Filings) into recurring tasks assigned to team members 2 weeks prior. Prevents missed deadlines and last-minute scrambles.', category: 'software', icon: 'calendar', setupTime: '1.5h', annualSaved: '26h', integrations: ['AppFolio', 'Google Calendar', 'ClickUp'], schedule: { enabled: false, frequency: 'weekly', time: '09:00', dayOfWeek: 1 }, tags: ['compliance', 'tasks'], owner: 'lisa', setupGuide: [
             'Open Google Calendar. Find all compliance deadlines (backflow tests, tax filings).',
             'For each deadline, create a recurring calendar event (yearly or quarterly).',
             'Set a reminder for 2 weeks before each deadline.',
@@ -310,7 +364,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L11', name: 'Company History Project Optimizer', description: 'Feed deed PDFs to Gemini AI → auto-extract ownership timelines, scrap values, tax law summaries. Edit AI output instead of writing from scratch. Saves 2-4h per section.', category: 'software', icon: '', setupTime: '1h', annualSaved: '52h', integrations: ['Gemini Flash', 'Google Docs', 'Google Drive'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, envVars: { AI_MODEL: 'gemini-flash', EXTRACT_MODE: 'ownership_timeline' }, tags: ['ai', 'research'], owner: 'lisa', setupGuide: [
+        id: 'auto-L11', name: 'Company History Project Optimizer', description: 'Feed deed PDFs to Gemini AI → auto-extract ownership timelines, scrap values, tax law summaries. Edit AI output instead of writing from scratch. Saves 2-4h per section.', category: 'software', icon: 'landmark', setupTime: '1h', annualSaved: '52h', integrations: ['Gemini Flash', 'Google Docs', 'Google Drive'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, envVars: { AI_MODEL: 'gemini-flash', EXTRACT_MODE: 'ownership_timeline' }, tags: ['ai', 'research'], owner: 'lisa', setupGuide: [
             'Upload your deed PDFs to a Google Drive folder called "Property Deeds".',
             'Open Settings → Integrations. Make sure AI_MODEL is set to "gemini-flash".',
             'Set EXTRACT_MODE to what you want: "ownership_timeline" or "tax_summary".',
@@ -322,7 +376,7 @@ const AUTOMATIONS_SEED: Automation[] = [
 
     // ── Phase 4: DayFlow Round 2 Automations (Feb 18–28 Analysis) ──
     seedAutomation({
-        id: 'auto-L12', name: 'AppFolio Online Payables & ACH Auto-Pay', description: 'Enable AppFolio Online Payables to transition 80% of 201 monthly manual checks to automated ACH payments. Set auto-pay rules for recurring small-balance items (e.g., $1 ACH transfer fees, Amazon orders under $100). Eliminates manual printing, signing, mailing, and tracking of checks.', category: 'software', icon: '', setupTime: '2.5h', annualSaved: '208h', integrations: ['AppFolio', 'Bank of America', 'ACH Network'], schedule: { enabled: false, frequency: 'monthly', time: '09:00', dayOfMonth: 1 }, envVars: { AUTO_PAY_THRESHOLD: '500', ACH_ENABLED: 'true' }, tags: ['payments', 'vendors', 'checks'], requiresApproval: true, owner: 'lisa', setupGuide: [
+        id: 'auto-L12', name: 'AppFolio Online Payables & ACH Auto-Pay', description: 'Enable AppFolio Online Payables to transition 80% of 201 monthly manual checks to automated ACH payments. Set auto-pay rules for recurring small-balance items (e.g., $1 ACH transfer fees, Amazon orders under $100). Eliminates manual printing, signing, mailing, and tracking of checks.', category: 'software', icon: 'cash', setupTime: '2.5h', annualSaved: '208h', integrations: ['AppFolio', 'Bank of America', 'ACH Network'], schedule: { enabled: false, frequency: 'monthly', time: '09:00', dayOfMonth: 1 }, envVars: { AUTO_PAY_THRESHOLD: '500', ACH_ENABLED: 'true' }, tags: ['payments', 'vendors', 'checks'], requiresApproval: true, owner: 'lisa', setupGuide: [
             'Log into AppFolio. Go to Accounting → Payables → Online Payables.',
             'Click "Enable Online Payables" if it is not already turned on.',
             'Connect your Bank of America account for ACH transfers.',
@@ -334,7 +388,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L13', name: 'Email-to-PDF Archiving & Finder Routing', description: 'Auto-save incoming email attachments (statements, invoices) as PDFs and route to correct Finder folder based on sender name. Maps top 20 frequent senders (Amex Serve → yearly statement folders, Relax The Back → vendor folder, Real Floor → vendor folder). Replaces 120-180 min daily manual "Save as PDF" sessions.', category: 'software', icon: '', setupTime: '3.5h', annualSaved: '182h', integrations: ['Gmail API', 'Hazel', 'Google Drive', 'Finder'], schedule: { enabled: false, frequency: 'daily', time: '06:00' }, envVars: { SENDER_MAP_COUNT: '20', PDF_OUTPUT_DIR: '/Documents/Filed', ARCHIVE_YEARS: '2018-2026' }, tags: ['filing', 'pdf', 'archiving'], owner: 'lisa', setupGuide: [
+        id: 'auto-L13', name: 'Email-to-PDF Archiving & Finder Routing', description: 'Auto-save incoming email attachments (statements, invoices) as PDFs and route to correct Finder folder based on sender name. Maps top 20 frequent senders (Amex Serve → yearly statement folders, Relax The Back → vendor folder, Real Floor → vendor folder). Replaces 120-180 min daily manual "Save as PDF" sessions.', category: 'software', icon: 'file', setupTime: '3.5h', annualSaved: '182h', integrations: ['Gmail API', 'Hazel', 'Google Drive', 'Finder'], schedule: { enabled: false, frequency: 'daily', time: '06:00' }, envVars: { SENDER_MAP_COUNT: '20', PDF_OUTPUT_DIR: '/Documents/Filed', ARCHIVE_YEARS: '2018-2026' }, tags: ['filing', 'pdf', 'archiving'], owner: 'lisa', setupGuide: [
             'Install Hazel on your Mac. Download it from noodlesoft.com.',
             'Create a "Downloads" watch folder in Hazel.',
             'Add a rule: If file name contains "Serve Statement" → move to Documents/Amex Serve/[year].',
@@ -346,7 +400,7 @@ const AUTOMATIONS_SEED: Automation[] = [
         ]
     }),
     seedAutomation({
-        id: 'auto-L14', name: 'Trello Template Standardization & Voice-to-Text', description: 'Master "Tenant Move-Out Template" card in Trello with pre-populated utility/login checklists — duplicate per lease end (e.g., Ski Country Chalet 4-30-26). Also connects Plaud AI recorder for voice-to-text medical notes → auto-email into Trello cards. Eliminates manual typing of checklists and appointment summaries.', category: 'process', icon: '', setupTime: '2h', annualSaved: '52h', integrations: ['Trello', 'Plaud AI', 'Gmail API'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['templates', 'voice-to-text', 'checklists'], owner: 'lisa', setupGuide: [
+        id: 'auto-L14', name: 'Trello Template Standardization & Voice-to-Text', description: 'Master "Tenant Move-Out Template" card in Trello with pre-populated utility/login checklists — duplicate per lease end (e.g., Ski Country Chalet 4-30-26). Also connects Plaud AI recorder for voice-to-text medical notes → auto-email into Trello cards. Eliminates manual typing of checklists and appointment summaries.', category: 'process', icon: 'note', setupTime: '2h', annualSaved: '52h', integrations: ['Trello', 'Plaud AI', 'Gmail API'], schedule: { enabled: false, frequency: 'manual', time: '09:00' }, tags: ['templates', 'voice-to-text', 'checklists'], owner: 'lisa', setupGuide: [
             'Open Trello. Create a new card called "TEMPLATE: Tenant Move-Out Checklist".',
             'Add a checklist: Transfer utilities, Change locks, Final walkthrough, Return deposit, Update AppFolio.',
             'Add property-specific items (gate codes, storage pod combos, utility accounts).',
@@ -391,11 +445,18 @@ const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
     draft: { color: 'var(--text-tertiary)', bg: 'rgba(100,116,139,0.12)' },
 };
 
-const RESULT_COLORS: Record<string, { color: string; icon: string }> = {
-    success: { color: '#22c55e', icon: '' },
-    failure: { color: '#ef4444', icon: '' },
-    partial: { color: '#f59e0b', icon: '◐' },
+// Run-result indicator — success ✓ → Check, failure ✕ → X; partial keeps the half-circle glyph.
+const RESULT_COLORS: Record<string, { color: string; Icon?: IconCmp; glyph?: string }> = {
+    success: { color: '#22c55e', Icon: Check },
+    failure: { color: '#ef4444', Icon: X },
+    partial: { color: '#f59e0b', glyph: '◐' },
 };
+
+function ResultIcon({ result, size = 14 }: { result: string; size?: number }) {
+    const r = RESULT_COLORS[result];
+    if (r?.Icon) { const I = r.Icon; return <I size={size} aria-hidden />; }
+    return <span aria-hidden>{r?.glyph ?? ''}</span>;
+}
 
 const FREQUENCY_LABELS: Record<string, string> = {
     manual: 'Manual',
@@ -663,7 +724,7 @@ export default function AutomationHub() {
         return (
             <div key={auto.id} className={`ahub__card ${isRunning ? 'ahub__card--running' : ''}`}>
                 <div className="ahub__card-header">
-                    <span className="ahub__card-icon">{auto.icon}</span>
+                    <span className="ahub__card-icon"><AutoIcon icon={auto.icon} size={20} /></span>
                     <div className="ahub__card-title-group">
                         <h3 className="ahub__card-title">{auto.name}</h3>
                         <span
@@ -679,7 +740,8 @@ export default function AutomationHub() {
 
                 <div className="ahub__card-meta">
                     <span className="ahub__card-meta-item">Setup: {auto.setupTime}</span>
-                    <span className="ahub__card-meta-item">Saves: {auto.annualSaved}/yr</span>
+                    {/* 💰 */}
+                    <span className="ahub__card-meta-item"><DollarSign size={12} aria-hidden /> Saves: {auto.annualSaved}/yr</span>
                 </div>
 
                 <div className="ahub__card-integrations">
@@ -690,14 +752,16 @@ export default function AutomationHub() {
 
                 {auto.schedule.enabled && (
                     <div className="ahub__card-schedule-badge">
-                        {FREQUENCY_LABELS[auto.schedule.frequency]} at {auto.schedule.time}
+                        {/* 🕐 */}
+                        <Clock size={12} aria-hidden /> {FREQUENCY_LABELS[auto.schedule.frequency]} at {auto.schedule.time}
                         {auto.schedule.frequency === 'weekly' && auto.schedule.dayOfWeek != null && ` (${DAYS[auto.schedule.dayOfWeek]})`}
                     </div>
                 )}
 
                 {auto.requiresApproval && (
                     <div className="ahub__card-approval-badge">
-                        Requires Approval
+                        {/* 🛡️ */}
+                        <ShieldCheck size={12} aria-hidden /> Requires Approval
                     </div>
                 )}
 
@@ -705,7 +769,7 @@ export default function AutomationHub() {
                     <div className="ahub__card-lastrun">
                         Last: {formatTimestamp(lastRun.timestamp)} —{' '}
                         <span style={{ color: RESULT_COLORS[lastRun.result].color }}>
-                            {RESULT_COLORS[lastRun.result].icon} {lastRun.result}
+                            <ResultIcon result={lastRun.result} size={12} /> {lastRun.result}
                         </span>
                         {' '}({formatDuration(lastRun.durationMs)})
                     </div>
@@ -730,14 +794,18 @@ export default function AutomationHub() {
                             else { setSettingsId(auto.id); setSettingsTab('general'); }
                         }}
                     >
-                        {settingsId === auto.id ? 'Close' : 'Settings'}
+                        {/* ✕ close / ⚙️ settings */}
+                        {settingsId === auto.id
+                            ? (<><X size={14} aria-hidden /> Close</>)
+                            : (<><SettingsIcon size={14} aria-hidden /> Settings</>)}
                     </button>
                     {auto.status !== 'draft' && (
                         <button
                             className="ahub__btn ahub__btn--toggle"
                             onClick={() => toggleStatus(auto.id)}
                         >
-                            {auto.status === 'active' ? 'Pause' : '▶ Resume'}
+                            {/* ⏸ pause */}
+                            {auto.status === 'active' ? (<><Pause size={14} aria-hidden /> Pause</>) : '▶ Resume'}
                         </button>
                     )}
                     {auto.setupGuide.length > 0 && (
@@ -745,7 +813,10 @@ export default function AutomationHub() {
                             className="ahub__btn ahub__btn--help"
                             onClick={() => setHelpId(helpId === auto.id ? null : auto.id)}
                         >
-                            {helpId === auto.id ? 'Close Help' : 'Help'}
+                            {/* ✕ close / ❓ help */}
+                            {helpId === auto.id
+                                ? (<><X size={14} aria-hidden /> Close Help</>)
+                                : (<><CircleHelp size={14} aria-hidden /> Help</>)}
                         </button>
                     )}
                 </div>
@@ -763,7 +834,8 @@ export default function AutomationHub() {
                             ))}
                         </ol>
                         <div className="ahub__help-footer">
-                            Once everything above is done, just click <strong>▶ Launch</strong> to run it!
+                            {/* 💡 */}
+                            <Lightbulb size={14} aria-hidden /> Once everything above is done, just click <strong>▶ Launch</strong> to run it!
                         </div>
                     </div>
                 )}
@@ -773,15 +845,18 @@ export default function AutomationHub() {
                     <div className="ahub__settings-panel">
                         {/* Settings Tabs */}
                         <div className="ahub__stabs">
-                            {SETTINGS_TABS.map(t => (
-                                <button
-                                    key={t.key}
-                                    className={`ahub__stab ${settingsTab === t.key ? 'ahub__stab--active' : ''}`}
-                                    onClick={() => setSettingsTab(t.key)}
-                                >
-                                    {t.icon} {t.label}
-                                </button>
-                            ))}
+                            {SETTINGS_TABS.map(t => {
+                                const TabIcon = t.icon;
+                                return (
+                                    <button
+                                        key={t.key}
+                                        className={`ahub__stab ${settingsTab === t.key ? 'ahub__stab--active' : ''}`}
+                                        onClick={() => setSettingsTab(t.key)}
+                                    >
+                                        <TabIcon size={13} aria-hidden /> {t.label}
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {/* ── GENERAL TAB ── */}
@@ -808,12 +883,13 @@ export default function AutomationHub() {
                                 <div className="ahub__settings-row">
                                     <label>Icon</label>
                                     <div className="ahub__emoji-picker">
-                                        {EMOJI_PICKER.map(em => (
+                                        {ICON_PICKER.map(key => (
                                             <button
-                                                key={em}
-                                                className={`ahub__emoji-btn ${auto.icon === em ? 'ahub__emoji-btn--active' : ''}`}
-                                                onClick={() => updateAutomation(auto.id, { icon: em })}
-                                            >{em}</button>
+                                                key={key}
+                                                aria-label={`Use ${key} icon`}
+                                                className={`ahub__emoji-btn ${auto.icon === key ? 'ahub__emoji-btn--active' : ''}`}
+                                                onClick={() => updateAutomation(auto.id, { icon: key })}
+                                            ><AutoIcon icon={key} size={16} /></button>
                                         ))}
                                     </div>
                                 </div>
@@ -1146,14 +1222,16 @@ export default function AutomationHub() {
                         className={`ahub__owner-tab ${ownerTab === 'andy' ? 'ahub__owner-tab--active' : ''}`}
                         onClick={() => setOwnerTab('andy')}
                     >
-                        Andy
+                        {/* 👤 */}
+                        <User size={14} aria-hidden /> Andy
                         <span className="ahub__owner-count">{automations.filter(a => a.owner === 'andy').length}</span>
                     </button>
                     <button
                         className={`ahub__owner-tab ${ownerTab === 'lisa' ? 'ahub__owner-tab--active' : ''}`}
                         onClick={() => setOwnerTab('lisa')}
                     >
-                        Lisa
+                        {/* 👤 */}
+                        <User size={14} aria-hidden /> Lisa
                         <span className="ahub__owner-count">{automations.filter(a => a.owner === 'lisa').length}</span>
                     </button>
                 </div>
@@ -1184,7 +1262,8 @@ export default function AutomationHub() {
 
                 {software.length > 0 && (
                     <>
-                        <h4 className="ahub__section-title">Software Automations</h4>
+                        {/* ⚡ */}
+                        <h4 className="ahub__section-title"><Zap size={14} aria-hidden /> Software Automations</h4>
                         <div className="ahub__card-grid">
                             {software.map(renderCard)}
                         </div>
@@ -1193,7 +1272,8 @@ export default function AutomationHub() {
 
                 {process.length > 0 && (
                     <>
-                        <h4 className="ahub__section-title">Process Optimizations</h4>
+                        {/* 📐 */}
+                        <h4 className="ahub__section-title"><Ruler size={14} aria-hidden /> Process Optimizations</h4>
                         <div className="ahub__card-grid">
                             {process.map(renderCard)}
                         </div>
@@ -1208,7 +1288,8 @@ export default function AutomationHub() {
         <div className="ahub__audit">
             {auditLog.length === 0 ? (
                 <div className="ahub__audit-empty">
-                    <div className="ahub__audit-empty-icon"></div>
+                    {/* 📊 */}
+                    <div className="ahub__audit-empty-icon"><BarChart3 size={40} aria-hidden /></div>
                     <p>No automation runs yet. Launch an automation to see results here.</p>
                 </div>
             ) : (
@@ -1235,7 +1316,7 @@ export default function AutomationHub() {
                                             className="ahub__audit-result"
                                             style={{ color: resultStyle.color }}
                                         >
-                                            {resultStyle.icon} {entry.result}
+                                            <ResultIcon result={entry.result} size={12} /> {entry.result}
                                         </span>
                                     </td>
                                     <td className="ahub__audit-summary">{entry.summary}</td>
@@ -1256,19 +1337,22 @@ export default function AutomationHub() {
                     className={`ahub__tab ${tab === 'automations' ? 'ahub__tab--active' : ''}`}
                     onClick={() => setTab('automations')}
                 >
-                    Automations
+                    {/* 🤖 */}
+                    <Bot size={14} aria-hidden /> Automations
                 </button>
                 <button
                     className={`ahub__tab ${tab === 'approvals' ? 'ahub__tab--active' : ''}`}
                     onClick={() => setTab('approvals')}
                 >
-                    Approvals {pendingApprovals.filter(a => a.status === 'pending').length > 0 && <span className="ahub__tab-badge ahub__tab-badge--warn">{pendingApprovals.filter(a => a.status === 'pending').length}</span>}
+                    {/* 🛡️ */}
+                    <ShieldCheck size={14} aria-hidden /> Approvals {pendingApprovals.filter(a => a.status === 'pending').length > 0 && <span className="ahub__tab-badge ahub__tab-badge--warn">{pendingApprovals.filter(a => a.status === 'pending').length}</span>}
                 </button>
                 <button
                     className={`ahub__tab ${tab === 'audit' ? 'ahub__tab--active' : ''}`}
                     onClick={() => setTab('audit')}
                 >
-                    Audit Log {auditLog.length > 0 && <span className="ahub__tab-badge">{auditLog.length}</span>}
+                    {/* 📊 */}
+                    <BarChart3 size={14} aria-hidden /> Audit Log {auditLog.length > 0 && <span className="ahub__tab-badge">{auditLog.length}</span>}
                 </button>
             </div>
 
@@ -1278,7 +1362,8 @@ export default function AutomationHub() {
                     <div className="ahub__approvals">
                         {pendingApprovals.length === 0 ? (
                             <div className="ahub__audit-empty">
-                                <div className="ahub__audit-empty-icon"></div>
+                                {/* 🛡️ */}
+                                <div className="ahub__audit-empty-icon"><ShieldCheck size={40} aria-hidden /></div>
                                 <p>No pending approvals. Automations with approval enabled will appear here before execution.</p>
                             </div>
                         ) : (
@@ -1286,7 +1371,8 @@ export default function AutomationHub() {
                                 {pendingApprovals.filter(a => a.status !== 'pending').length > 0 && (
                                     <div style={{ textAlign: 'right', padding: '0 0 10px' }}>
                                         <button className="ahub__btn ahub__btn--secondary ahub__btn--small" onClick={clearResolvedApprovals}>
-                                            Clear Resolved
+                                            {/* 🗑 */}
+                                            <Trash2 size={13} aria-hidden /> Clear Resolved
                                         </button>
                                     </div>
                                 )}
@@ -1294,25 +1380,29 @@ export default function AutomationHub() {
                                     {pendingApprovals.map(approval => (
                                         <div key={approval.id} className={`ahub__approval-card ahub__approval-card--${approval.status}`}>
                                             <div className="ahub__approval-header">
-                                                <span className="ahub__approval-icon">{approval.automationIcon}</span>
+                                                <span className="ahub__approval-icon"><AutoIcon icon={approval.automationIcon} size={20} /></span>
                                                 <div className="ahub__approval-info">
                                                     <h4 className="ahub__approval-name">{approval.automationName}</h4>
                                                     <span className="ahub__approval-time">Requested: {formatTimestamp(approval.requestedAt)}</span>
                                                 </div>
                                                 <span className={`ahub__approval-status ahub__approval-status--${approval.status}`}>
                                                     {approval.status === 'pending' && 'Pending'}
-                                                    {approval.status === 'approved' && 'Approved'}
-                                                    {approval.status === 'rejected' && 'Rejected'}
+                                                    {/* ✅ */}
+                                                    {approval.status === 'approved' && (<><Check size={13} aria-hidden /> Approved</>)}
+                                                    {/* ❌ */}
+                                                    {approval.status === 'rejected' && (<><X size={13} aria-hidden /> Rejected</>)}
                                                 </span>
                                             </div>
                                             <p className="ahub__approval-desc">{approval.description}</p>
                                             {approval.status === 'pending' && (
                                                 <div className="ahub__approval-actions">
                                                     <button className="ahub__btn ahub__btn--launch" onClick={() => handleApprove(approval)}>
-                                                        Approve & Run
+                                                        {/* ✅ */}
+                                                        <Check size={14} aria-hidden /> Approve & Run
                                                     </button>
                                                     <button className="ahub__btn ahub__btn--secondary" onClick={() => handleReject(approval.id)}>
-                                                        Reject
+                                                        {/* ❌ */}
+                                                        <X size={14} aria-hidden /> Reject
                                                     </button>
                                                 </div>
                                             )}

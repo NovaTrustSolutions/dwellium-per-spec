@@ -14,7 +14,7 @@
  * sub-project timeline view, drag-drop file attachments, app-wide tagging.
  */
 import { useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
-import { X } from 'lucide-react';
+import { ClipboardList, Clock, FileText, Paperclip, Send, Settings, Sparkles, User, X } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import {
@@ -414,7 +414,7 @@ export default function TaskBoard() {
                     onClick={() => aiFileBacklog('ara')}
                     title="Local rule (not an LLM call): ARA files every Backlog card into To Do — reversible via Undo last AI"
                 >
-                    AI: file Backlog
+                    <Sparkles size={14} aria-hidden /> AI: file Backlog
                 </button>
                 <button className="tb-btn" onClick={() => setShowMetrics(m => !m)} aria-pressed={showMetrics}>
                     Metrics
@@ -477,18 +477,20 @@ export default function TaskBoard() {
 
                                     {/* Policies & Limits buttons */}
                                     {col.policies && col.policies.length > 0 && (
-                                        <button 
+                                        <button
                                             className="tb-col__policy-btn"
                                             title="Explicit Policies"
+                                            aria-label="Explicit Policies"
                                             onClick={() => setShowPoliciesCol(showPoliciesCol === col.id ? null : col.id)}
-                                        >📋</button>
+                                        ><ClipboardList size={14} aria-hidden /></button>
                                     )}
 
-                                    <button 
+                                    <button
                                         className="tb-col__policy-btn"
                                         title="Column Settings & Limits"
+                                        aria-label="Column Settings & Limits"
                                         onClick={() => setEditingLimitsCol(editingLimitsCol === col.id ? null : col.id)}
-                                    >⚙</button>
+                                    ><Settings size={14} aria-hidden /></button>
 
                                     {/* WIP limit indicator */}
                                     {(col.minWip !== undefined || col.maxWip !== undefined) ? (
@@ -565,7 +567,7 @@ export default function TaskBoard() {
                                                         aria-label={`Advanced edit ${card.title}`}
                                                         title="Advanced Edit (subtasks, assignments)"
                                                         onClick={() => setOpenCardId(card.id)}
-                                                    ></button>
+                                                    ><ClipboardList size={14} aria-hidden /></button>
                                                     <button
                                                         className="tb-icon-btn tb-card__remove"
                                                         aria-label={`Remove ${card.title}`}
@@ -582,13 +584,13 @@ export default function TaskBoard() {
                                                         title="Click to cycle urgency"
                                                     >● {urg}</button>
                                                     <span className="tb-card__time" title={`Entered this column ${new Date(card.enteredColumnAt).toLocaleString()}`}>
-                                                        {relTime(card.enteredColumnAt)}
+                                                        <Clock size={12} aria-hidden /> {relTime(card.enteredColumnAt)}
                                                     </span>
                                                     {subtasksOf(board.cards, card.id).length > 0 && (
                                                         <span className="tb-card__badge" title="Sub-tasks">⊞ {subtasksOf(board.cards, card.id).length}</span>
                                                     )}
                                                     {(card.attachments?.length ?? 0) > 0 && (
-                                                        <span className="tb-card__badge" title="Attachments">{card.attachments!.length}</span>
+                                                        <span className="tb-card__badge" title="Attachments"><Paperclip size={12} aria-hidden /> {card.attachments!.length}</span>
                                                     )}
                                                 </div>
                                                 <div className="tb-card__assign">
@@ -603,7 +605,7 @@ export default function TaskBoard() {
                                                             onClick={() => doRoute(card.id)}
                                                             aria-label={`Send to ${describeRoute(card.assignee)}`}
                                                             title={card.assignee.kind === 'ai' ? 'Dispatch to the AI agent' : 'Compose an email draft'}
-                                                        >Send</button>
+                                                        ><Send size={12} aria-hidden /> Send</button>
                                                     )}
                                                 </div>
                                                 {assignFor === card.id && (
@@ -741,7 +743,7 @@ function AssigneePicker({ onPick, onClose }: { onPick: (a: Assignee | null) => v
             <button className="tb-icon-btn tb-assign-pop__close" aria-label="Close assignee picker" onClick={onClose}>×</button>
             {BUILT_IN_TARGETS.map(t => (
                 <button key={t.id} className="tb-assign-opt" onClick={() => onPick(t)}>
-                    <span>{t.kind === 'ai' ? '' : ''} {t.label}</span>
+                    <span>{t.kind === 'ai' ? <Sparkles size={14} aria-hidden /> : <User size={14} aria-hidden />} {t.label}</span>
                     <span className="tb-assign-opt__k">{t.kind === 'ai' ? 'AI agent' : 'email'}</span>
                 </button>
             ))}
@@ -826,7 +828,7 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                     <button className={`tb-assign-chip ${card.assignee ? 'tb-assign-chip--set' : ''}`} onClick={() => setAssignOpen(o => !o)}>
                         {card.assignee ? describeRoute(card.assignee) : '＋ Assign'}
                     </button>
-                    {card.assignee && <button className="tb-send-btn" onClick={doRoute}>Send</button>}
+                    {card.assignee && <button className="tb-send-btn" onClick={doRoute}><Send size={12} aria-hidden /> Send</button>}
                     {assignOpen && <AssigneePicker onPick={a => { assignCard(cardId, a); setAssignOpen(false); }} onClose={() => setAssignOpen(false)} />}
                     {routeMsg && <span className="tb-route-msg tb-route-msg--inline">{routeMsg}</span>}
                 </div>
@@ -910,7 +912,7 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                         <div className="tb-pv__atts">
                             {(card.attachments ?? []).map(a => (
                                 <div key={a.id} className="tb-pv__att">
-                                    <span className="tb-pv__att-name">{a.name}</span>
+                                    <span className="tb-pv__att-name"><FileText size={12} aria-hidden /> {a.name}</span>
                                     <span className="tb-pv__att-size">{fmtBytes(a.size)}{a.dataUrl ? '' : ' · meta only'}</span>
                                     <button className="tb-icon-btn" aria-label={`Remove ${a.name}`} onClick={() => removeAttachment(cardId, a.id)}>×</button>
                                 </div>

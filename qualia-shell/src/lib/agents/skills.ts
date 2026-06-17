@@ -96,7 +96,8 @@ export function evaluateMath(expr: string): number | null {
 const calculatorSkill: AgentSkill = {
     id: 'skill-calculator',
     name: 'Calculator',
-    icon: '',
+    // Lucide icon-map KEY (see Sidebar iconMap.ts), consumed as a string key.
+    icon: 'cpu',
     description: 'Exact arithmetic — percentages, powers, roots, trig. Runs instantly in-app, no key needed.',
     derivedFrom: 'LibreChat: Calculator',
     requires: 'none',
@@ -118,7 +119,7 @@ const calculatorSkill: AgentSkill = {
 const codeRunnerSkill: AgentSkill = {
     id: 'skill-code-runner',
     name: 'Code Runner (JS)',
-    icon: '',
+    icon: 'terminal',
     description: 'Run a JavaScript snippet in a sandboxed scope and show the result — the in-browser cousin of a code interpreter.',
     derivedFrom: 'LibreChat: Code Interpreter',
     requires: 'none',
@@ -148,7 +149,7 @@ const codeRunnerSkill: AgentSkill = {
 const webSearchSkill: AgentSkill = {
     id: 'skill-web-search',
     name: 'Web Search',
-    icon: '',
+    icon: 'search-check',
     description: 'Search the live web — Anthropic web-search tool, or your Tavily/Brave key (P11-9).',
     derivedFrom: 'LibreChat: Google / Tavily Search',
     requires: 'llm',
@@ -240,7 +241,7 @@ const webSearchSkill: AgentSkill = {
 const imageGenSkill: AgentSkill = {
     id: 'skill-image-gen',
     name: 'Image Generation',
-    icon: '',
+    icon: 'paintbrush',
     description: 'Generate an image — OpenAI DALL-E 3, or your Gemini key as the fallback (P11-9).',
     derivedFrom: 'LibreChat: DALL-E-3 / Flux / Gemini Image Tools',
     requires: 'llm',
@@ -326,7 +327,7 @@ const WEATHER_CODES: Record<number, string> = {
 const weatherSkill: AgentSkill = {
     id: 'skill-weather',
     name: 'Weather',
-    icon: '',
+    icon: 'sparkles',
     description: 'Current conditions + today\'s range for any city — keyless (open-meteo), so it always works.',
     derivedFrom: 'LibreChat: OpenWeather',
     requires: 'none',
@@ -360,7 +361,7 @@ const weatherSkill: AgentSkill = {
 const memoryRecallSkill: AgentSkill = {
     id: 'skill-memory-recall',
     name: 'Memory Recall',
-    icon: '',
+    icon: 'brain',
     description: 'Search everything you\'ve asked Dwellium to remember.',
     derivedFrom: 'LibreChat: Memory',
     requires: 'none',
@@ -377,7 +378,7 @@ const memoryRecallSkill: AgentSkill = {
 const memoryRememberSkill: AgentSkill = {
     id: 'skill-memory-remember',
     name: 'Remember',
-    icon: '',
+    icon: 'brain',
     description: 'Pin a fact to persistent memory — every agent can recall it later.',
     derivedFrom: 'LibreChat: Memory',
     requires: 'none',
@@ -398,7 +399,7 @@ const memoryRememberSkill: AgentSkill = {
 const composeIntoWidgetSkill: AgentSkill = {
     id: 'skill-compose-widget',
     name: 'Compose into Widget',
-    icon: '',
+    icon: 'file-edit',
     description: 'Draft text with the LLM and place it inside a widget ("draft a letter in notepad", "…in it" after opening one).',
     derivedFrom: 'Dwellium P11-7 widget-action bus',
     requires: 'llm',
@@ -435,7 +436,7 @@ const composeIntoWidgetSkill: AgentSkill = {
 const knowledgeGraphSkill: AgentSkill = {
     id: 'skill-knowledge-graph',
     name: 'Knowledge Graph',
-    icon: '',
+    icon: 'network',
     description: 'Query the knowledge graph built from your memories, captures, notes, and tasks ("ask the graph about X").',
     derivedFrom: 'graphify (github.com/safishamsi/graphify)',
     requires: 'none',

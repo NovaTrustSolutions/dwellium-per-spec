@@ -6,7 +6,7 @@
  *   #5 "Group unknown voices" → clusters Unknown segments so you can bulk-label
  */
 import { useState, useSyncExternalStore } from 'react';
-import { Mic } from 'lucide-react';
+import { Mic, Users } from 'lucide-react';
 import {
     speakerLibraryStore, enrollSpeaker, removeSpeaker, renameSpeaker, addSpeakerSample,
 } from './speakerLibraryStore';
@@ -72,7 +72,7 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
     return (
         <div className="th-voice-library" style={{ border: '1px solid #2a2a2a', borderRadius: 10, padding: 12, marginTop: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>Voice Library</span>
+                <span style={{ fontSize: 13, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Mic size={14} aria-hidden /> Voice Library</span>
                 <span style={{ fontSize: 11, color: '#808080' }}>{speakers.length} enrolled · {modeLabel}</span>
                 <span style={{ flex: 1 }} />
                 <button onClick={enroll} title="Take the most recent voice sample and label it"
@@ -116,8 +116,8 @@ export function LocalVoiceLibrary({ getLatestEmbedding, getUnknownEmbeddings }: 
             <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button onClick={groupUnknowns} disabled={unknownCount < 2}
                     title="Cluster the unidentified segments by voice so you can label each group at once"
-                    style={{ fontSize: 11.5, color: unknownCount < 2 ? '#666' : '#fff', background: 'transparent', border: '1px solid #333', borderRadius: 8, padding: '4px 10px', cursor: unknownCount < 2 ? 'not-allowed' : 'pointer' }}>
-                    Group &amp; label unknown voices ({unknownCount})
+                    style={{ fontSize: 11.5, color: unknownCount < 2 ? '#666' : '#fff', background: 'transparent', border: '1px solid #333', borderRadius: 8, padding: '4px 10px', cursor: unknownCount < 2 ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Users size={14} aria-hidden /> Group &amp; label unknown voices ({unknownCount})
                 </button>
             </div>
 

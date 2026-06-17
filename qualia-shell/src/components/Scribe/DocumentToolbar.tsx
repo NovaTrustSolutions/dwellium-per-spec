@@ -1,12 +1,13 @@
 /**
  * Persistent per-document toolbar — sits below TabBar and above the
- * editor. Hosts: ☰ Contents toggle, 🕒 Version, 🗑 Delete.
+ * editor. Hosts: Contents toggle, Version, Delete.
  *
  * Ported from Holocron's DocumentToolbar.tsx (Cycle 8). Adapted:
  * version logic uses scribeStore.createVersion instead of Electron IPC,
  * delete uses scribeStore.deleteFile. Styling matches Dwellium fey dark.
  */
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { List, Map, Search, Maximize, Clock, Plus, Download, Trash2, Check } from 'lucide-react';
 import { useScribeStore } from './scribeStore';
 import { getActiveEditorView } from './markdownConfig';
 import { markdownToPdfBytes, downloadPdf } from './pdfExport';
@@ -113,39 +114,39 @@ export function DocumentToolbar() {
     return (
         <div className="scribe__toolbar">
             <ToolbarBtn
-                label="Contents"
+                label={<><List size={14} aria-hidden /> Contents</>}
                 title={tocVisible ? 'Hide table of contents' : 'Show table of contents'}
                 active={tocVisible}
                 onClick={() => setTocVisible(!tocVisible)}
             />
             <ToolbarBtn
-                label="Minimap"
+                label={<><Map size={14} aria-hidden /> Minimap</>}
                 title={minimapVisible ? 'Hide minimap' : 'Show minimap'}
                 active={minimapVisible}
                 onClick={() => setMinimapVisible(!minimapVisible)}
             />
             <ToolbarBtn
-                label="Find"
+                label={<><Search size={14} aria-hidden /> Find</>}
                 title="Find & replace (⌘F)"
                 active={findReplaceOpen}
                 onClick={() => setFindReplaceOpen(!findReplaceOpen)}
             />
             <ToolbarBtn
-                label="Focus"
+                label={<><Maximize size={14} aria-hidden /> Focus</>}
                 title="Focus mode — hide chrome for distraction-free writing (⌘⇧F)"
                 active={focusMode}
                 onClick={() => setFocusMode(!focusMode)}
             />
             <PriorityBadge />
             <ToolbarBtn
-                label={versioning ? '...' : 'Version'}
+                label={versioning ? '...' : <><Clock size={14} aria-hidden /> Version</>}
                 title="Save a snapshot of current content"
                 disabled={versioning}
                 onClick={() => void handleVersion()}
             />
             <div style={{ position: 'relative' }}>
                 <ToolbarBtn
-                    label="＋ Insert"
+                    label={<><Plus size={14} aria-hidden /> Insert</>}
                     title="Insert a block: heading, list, table, quote, code, divider…"
                     active={insertOpen}
                     onClick={() => setInsertOpen((v) => !v)}
@@ -183,21 +184,25 @@ export function DocumentToolbar() {
                 )}
             </div>
             <ToolbarBtn
-                label={exporting ? '...' : 'PDF'}
+                label={exporting ? '...' : <><Download size={14} aria-hidden /> PDF</>}
                 title="Export this document as a PDF"
                 disabled={exporting}
                 onClick={() => void handleExportPdf()}
             />
             <ToolbarBtn
-                label={exportingDocx ? '...' : 'DOCX'}
+                label={exportingDocx ? '...' : <><Download size={14} aria-hidden /> DOCX</>}
                 title="Export this document as a Word .docx"
                 disabled={exportingDocx}
                 onClick={() => void handleExportDocx()}
             />
-            {toast && <span className="scribe__toolbar-toast">{toast}</span>}
+            {toast && (
+                <span className="scribe__toolbar-toast" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Check size={13} aria-hidden /> {toast}
+                </span>
+            )}
             <span style={{ flex: 1 }} />
             <ToolbarBtn
-                label={deleting ? '...' : 'Delete'}
+                label={deleting ? '...' : <><Trash2 size={14} aria-hidden /> Delete</>}
                 title="Delete this file"
                 danger
                 disabled={deleting}
@@ -208,7 +213,7 @@ export function DocumentToolbar() {
 }
 
 function ToolbarBtn({ label, title, onClick, disabled, active, danger }: {
-    label: string; title: string; onClick: () => void;
+    label: ReactNode; title: string; onClick: () => void;
     disabled?: boolean; active?: boolean; danger?: boolean;
 }) {
     const bg = active ? '#D6FE51' : 'transparent';

@@ -13,6 +13,8 @@
  *
  * Pure + deterministic → unit-testable without React, an LLM, or a backend.
  */
+import type { ComponentType } from 'react';
+import { Pencil, Bandage, Globe, FileText, type LucideProps } from 'lucide-react';
 import { REDLINE_SYSTEM_PROMPT } from './redlinePrompt';
 
 export type AiActionId = 'rewrite' | 'fix' | 'translate' | 'summarize';
@@ -20,17 +22,18 @@ export type AiActionId = 'rewrite' | 'fix' | 'translate' | 'summarize';
 export interface AiAction {
     id: AiActionId;
     label: string;
-    icon: string;
+    /** Lucide icon component rendered in the selection toolbar. */
+    icon: ComponentType<LucideProps>;
     /** 'redline' → applied via the redline flow; 'ara' → sent to the ARA panel. */
     mode: 'redline' | 'ara';
     title: string;
 }
 
 export const AI_ACTIONS: AiAction[] = [
-    { id: 'rewrite', label: 'Rewrite', icon: '', mode: 'redline', title: 'Rewrite the selection for clarity (proposed as redlines you accept/reject)' },
-    { id: 'fix', label: 'Fix', icon: '', mode: 'redline', title: 'Fix spelling, grammar & punctuation (proposed as redlines)' },
-    { id: 'translate', label: 'Translate', icon: '', mode: 'redline', title: 'Translate the selection (proposed as a redline)' },
-    { id: 'summarize', label: 'Summarize', icon: '', mode: 'ara', title: 'Summarize the selection in the ARA panel' },
+    { id: 'rewrite', label: 'Rewrite', icon: Pencil, mode: 'redline', title: 'Rewrite the selection for clarity (proposed as redlines you accept/reject)' },
+    { id: 'fix', label: 'Fix', icon: Bandage, mode: 'redline', title: 'Fix spelling, grammar & punctuation (proposed as redlines)' },
+    { id: 'translate', label: 'Translate', icon: Globe, mode: 'redline', title: 'Translate the selection (proposed as a redline)' },
+    { id: 'summarize', label: 'Summarize', icon: FileText, mode: 'ara', title: 'Summarize the selection in the ARA panel' },
 ];
 
 const TASK_INSTRUCTIONS: Record<Exclude<AiActionId, 'translate' | 'summarize'>, string> = {

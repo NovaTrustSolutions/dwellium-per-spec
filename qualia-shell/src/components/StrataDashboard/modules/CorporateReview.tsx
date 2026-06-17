@@ -405,7 +405,11 @@ function CorporateReviewInner() {
                     background: '#1a1a2e', border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', borderRadius: 8,
                     padding: '10px 20px', color: 'var(--text-primary)', fontSize: 13, zIndex: 1000,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                    display: 'flex', alignItems: 'center', gap: 8,
                 }}>
+                    {/fail/i.test(feedback)
+                        ? <XCircle size={14} aria-hidden style={{ color: '#ef4444', flexShrink: 0 }} />
+                        : <CheckCircle2 size={14} aria-hidden style={{ color: '#22c55e', flexShrink: 0 }} />}
                     {feedback}
                 </div>
             )}

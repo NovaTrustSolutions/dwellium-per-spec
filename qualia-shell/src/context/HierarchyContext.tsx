@@ -95,7 +95,7 @@ function upsertImportedProjects(items: HierarchyItem[], folders: ImportedFolder[
         next.push({
             id: IMPORTED_DOMAIN_ID,
             name: 'Imported Files',
-            icon: '',
+            icon: 'folder-tree',
             type: 'domain',
             children: [],
             metadata: { source: 'backend-files' }
@@ -106,7 +106,7 @@ function upsertImportedProjects(items: HierarchyItem[], folders: ImportedFolder[
         next = insertChild(next, IMPORTED_DOMAIN_ID, {
             id: IMPORTED_NODE_ID,
             name: 'Vacation Requests',
-            icon: '',
+            icon: 'folder-open',
             type: 'node',
             children: [],
             metadata: { source: 'backend-files' }
@@ -133,7 +133,7 @@ function upsertImportedProjects(items: HierarchyItem[], folders: ImportedFolder[
         .map(folder => ({
             id: folder.id,
             name: folder.name,
-            icon: '',
+            icon: 'layout-list',
             type: 'project' as const,
             metadata: { source: 'backend-files' }
         }))
@@ -142,10 +142,11 @@ function upsertImportedProjects(items: HierarchyItem[], folders: ImportedFolder[
     return replaceChildren(next, IMPORTED_NODE_ID, [...preservedChildren, ...importedProjects]);
 }
 
+// Lucide icon-map KEYS (resolved by Sidebar's getIcon → iconMap.ts), not emoji.
 const ICONS: Record<string, string> = {
-    domain: '',
-    node: '',
-    project: '',
+    domain: 'folder-tree',
+    node: 'folder-open',
+    project: 'layout-list',
 };
 
 /* ── load / save ───────────────────────────────── */

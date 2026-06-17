@@ -33,4 +33,20 @@ describe('workspacesStore account persistence', () => {
         expect(localStorage.getItem('workspaces:google-account-a')).toContain('private to A');
         expect(localStorage.getItem('workspaces:google-account-b')).toBeNull();
     });
+
+    it('preserves four-up workspace splits for Zen-style multi-pane spaces', () => {
+        integrationsUserIdHolder.current = 'google-account-a';
+        saveWorkspaces([{
+            id: newWorkspaceId(),
+            name: 'Four panel workspace',
+            appIds: ['scribe', 'ara-console', 'control-panel', 'notepad'],
+            split: 4,
+            layout: 'grid',
+            frames: {},
+            notes: '',
+            updatedAt: 1,
+        }]);
+
+        expect(workspacesStore.getSnapshot()[0].split).toBe(4);
+    });
 });

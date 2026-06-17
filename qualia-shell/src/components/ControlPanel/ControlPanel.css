@@ -2,10 +2,14 @@
     display: flex;
     flex-direction: column;
     gap: var(--sp-5);
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .cp-section {
     display: flex;
+    flex: 0 0 auto;
     flex-direction: column;
     gap: var(--sp-3);
     background: rgba(255, 255, 255, 0.03);

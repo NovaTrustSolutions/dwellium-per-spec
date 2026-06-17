@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useCallback, useMemo, useState, type ChangeEvent } from 'react';
+import { Check, Eye, Maximize, Upload } from 'lucide-react';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { search } from '@codemirror/search';
@@ -226,7 +227,7 @@ export default function Scribe() {
                     className={`scribe__preview-toggle ${previewVisible ? 'on' : ''}`}
                     onClick={() => setPreviewVisible((v) => !v)}
                     title="Toggle live preview"
-                >{previewVisible ? 'Preview' : 'Preview'}</button>
+                ><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{previewVisible ? <Check size={14} aria-hidden /> : <Eye size={14} aria-hidden />} Preview</span></button>
                 {previewVisible && (
                     <>
                         <Splitter
@@ -444,7 +445,7 @@ function FocusExitChip() {
                 backdropFilter: 'blur(4px)', transition: 'color 120ms, border-color 120ms, background 120ms',
             }}
         >
-            Focus · Esc to exit
+            <Maximize size={13} aria-hidden /> Focus · Esc to exit
         </button>
     );
 }
@@ -541,8 +542,8 @@ function EmptyState() {
                 </button>
             )}
 
-            <label className="scribe__new-btn" style={{ cursor: 'pointer', display: 'inline-block' }} title="Import a Word .docx file as Markdown">
-                Import .docx
+            <label className="scribe__new-btn" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }} title="Import a Word .docx file as Markdown">
+                <Upload size={14} aria-hidden /> Import .docx
                 <input type="file" accept=".docx" onChange={(e) => void handleDocxFile(e)} style={{ display: 'none' }} />
             </label>
 

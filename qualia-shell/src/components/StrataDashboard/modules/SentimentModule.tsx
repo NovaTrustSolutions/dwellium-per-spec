@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, TrendingDown, TrendingUp, Minus, Plus, CheckCircle } from 'lucide-react';
+import { AlertTriangle, TrendingDown, TrendingUp, Minus, Plus, CheckCircle, Newspaper } from 'lucide-react';
 import { strataGet, isStaticMode } from '../strataApi';
 import type { SentimentScore, SentimentScoreView } from '@qualia/types';
 import { useStrataNav } from '../StrataNavContext';
@@ -132,7 +132,7 @@ function SentimentModuleInner() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary)', fontWeight: 700 }}>Tenant Sentiment</h2>
+                    <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><Newspaper size={20} aria-hidden />Tenant Sentiment</h2>
                     <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>Pulse surveys &amp; satisfaction trends across the portfolio</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -215,7 +215,7 @@ function SentimentModuleInner() {
                             style={{ padding: '10px 20px', background: 'var(--accent)', border: 'none', borderRadius: 8, color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                             <CheckCircle size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Save Response
                         </button>
-                        {submitMsg && <span style={{ fontSize: 13, color: !/error|please|requires|fail|invalid|not /i.test(submitMsg) ? '#22c55e' : '#ef4444' }}>{submitMsg}</span>}
+                        {submitMsg && <span style={{ fontSize: 13, color: !/error|please|requires|fail|invalid|not /i.test(submitMsg) ? '#22c55e' : '#ef4444', display: 'inline-flex', alignItems: 'center', gap: 5 }}>{!/error|please|requires|fail|invalid|not /i.test(submitMsg) ? <CheckCircle size={13} aria-hidden /> : <AlertTriangle size={13} aria-hidden />}{submitMsg}</span>}
                     </div>
                 </div>
             )}
@@ -286,7 +286,7 @@ function SentimentModuleInner() {
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: selected.trend === 'declining' ? '#ef4444' : selected.trend === 'improving' ? '#22c55e' : '#94a3b8' }}>
                                     <TrendIcon trend={selected.trend} /> {selected.trend}
                                 </span>
-                                {selected.atRisk && <span data-testid="sentiment-detail-atrisk-badge" style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>At Risk</span>}
+                                {selected.atRisk && <span data-testid="sentiment-detail-atrisk-badge" style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><AlertTriangle size={12} aria-hidden />At Risk</span>}
                             </div>
 
                             {selected.responses.length > 1 && (

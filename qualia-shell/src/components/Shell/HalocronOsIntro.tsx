@@ -1,7 +1,7 @@
 /**
- * HalocronOsIntro — cinematic entry to the Halocron OS (2026-06-12).
+ * HalocronOsIntro — cinematic entry to the Holocron OS (2026-06-12).
  *
- * When you enter the Halocron OS layout, the Lament-cube video plays
+ * When you enter the Holocron OS layout, the Lament-cube video plays
  * fullscreen; as it blooms into the glowing stellated star, we fly INTO its
  * center and the OS shell emerges from inside. Plays once per browser session
  * (so relaunching from the rune doesn't replay it). Click anywhere to skip.
@@ -12,6 +12,7 @@
  * Mounted in Desktop above HalocronOS; renders null whenever it shouldn't play.
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Play } from 'lucide-react';
 import { halocronOsStore } from '../../lib/halocronOsStore';
 import './HalocronOsIntro.css';
 
@@ -104,7 +105,7 @@ export default function HalocronOsIntro() {
                 onError={() => setPhase('done')}
             />
             <div className="hos-intro__flash" aria-hidden="true" />
-            {phase === 'playing' && <button type="button" className="hos-intro__skip" onClick={beginZoom}>Skip</button>}
+            {phase === 'playing' && <button type="button" className="hos-intro__skip" onClick={beginZoom}>Skip <Play size={14} aria-hidden /></button>}
         </div>
     );
 }

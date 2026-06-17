@@ -347,7 +347,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     //  Hermes — dedicated launcher that opens the Honcho+Hermes panel
     //  straight to the Agents persona-card view (initialTab='agents').
     //  Distinct widget so a "Hermes" entry shows in BOTH the sidebar and
-    //  the Halocron OS launcher (which auto-lists the registry).
+    //  the Holocron OS launcher (which auto-lists the registry).
     // ─────────────────────────────────────────────────────────────────
     'hermes': {
         id: 'hermes',

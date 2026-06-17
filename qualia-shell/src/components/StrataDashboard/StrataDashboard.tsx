@@ -33,6 +33,7 @@ import {
     ArrowDownRight,
     TrendingUp,
     Network,
+    Circle,
 } from 'lucide-react';
 import {
     BarChart,
@@ -548,10 +549,10 @@ function OverviewContent() {
                     <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>Financial Health Alert</span>
                 </div>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}><strong style={{ color: '#ef4444' }}>12 delinquent</strong> accounts ($19,050)</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}><strong style={{ color: '#f59e0b' }}>7 leases</strong> expiring in 90 days</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}><strong style={{ color: '#22c55e' }}>87%</strong> rent collected this month</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}><strong style={{ color: '#0ea5e9' }}>3 new move-ins</strong> scheduled</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Circle size={10} aria-hidden style={{ color: '#ef4444', fill: '#ef4444', flexShrink: 0 }} /><strong style={{ color: '#ef4444' }}>12 delinquent</strong> accounts ($19,050)</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Circle size={10} aria-hidden style={{ color: '#f59e0b', fill: '#f59e0b', flexShrink: 0 }} /><strong style={{ color: '#f59e0b' }}>7 leases</strong> expiring in 90 days</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Circle size={10} aria-hidden style={{ color: '#22c55e', fill: '#22c55e', flexShrink: 0 }} /><strong style={{ color: '#22c55e' }}>87%</strong> rent collected this month</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Circle size={10} aria-hidden style={{ color: '#0ea5e9', fill: '#0ea5e9', flexShrink: 0 }} /><strong style={{ color: '#0ea5e9' }}>3 new move-ins</strong> scheduled</span>
                 </div>
             </div>
 

@@ -220,7 +220,7 @@ export default function GlobalSearch({ onNavigate }: Props) {
             {/* Saved searches dropdown */}
             {showSaved && savedSearches.length > 0 && (
                 <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--bg-secondary, #1e1e2e)', border: '1px solid var(--border-subtle)', borderRadius: 8, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: 200, overflowY: 'auto', zIndex: 9999, padding: 4 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', padding: '6px 10px' }}>Saved Searches</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><Star size={11} aria-hidden style={{ flexShrink: 0 }} />Saved Searches</div>
                     {savedSearches.map(s => (
                         <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)' }}
                             onClick={() => handleLoadSaved(s)}>

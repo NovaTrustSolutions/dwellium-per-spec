@@ -362,8 +362,9 @@ export default function TemplateGenerator() {
                                         className="tg-var-row__delete"
                                         onClick={() => removeVariable(v.key)}
                                         title="Remove variable"
+                                        aria-label="Remove variable"
                                     >
-                                       
+                                        <Trash2 size={14} aria-hidden />
                                     </button>
                                 </div>
                             ))}

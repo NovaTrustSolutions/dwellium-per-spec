@@ -22,8 +22,10 @@
 .kg-add__sub { font-size: 10px; color: var(--text-tertiary, #6f6244); }
 
 /* ── body: stage + rail ── */
-.kg-body { display: flex; gap: 14px; flex: 1; min-height: 0; }
-.kg-stage { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--border-default, rgba(255,255,255,.1)); border-radius: 14px; overflow: hidden; background: var(--bg-surface, rgba(12,9,7,.5)); }
+/* Horizontal scroll: when the pane is too narrow for graph + 270px rail, the
+   row scrolls left↔right instead of clipping the rail cards off the right. */
+.kg-body { display: flex; gap: 14px; flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
+.kg-stage { flex: 1; min-width: 340px; display: flex; flex-direction: column; border: 1px solid var(--border-default, rgba(255,255,255,.1)); border-radius: 14px; overflow: hidden; background: var(--bg-surface, rgba(12,9,7,.5)); }
 .kg-stage__hdr { display: flex; align-items: flex-start; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,.06)); flex: none; }
 .kg-stage__proj { font-family: 'Georgia', serif; color: var(--accent-text, var(--accent)); font-size: 14px; }
 .kg-stage__sub { font-size: 11px; color: var(--text-secondary, #9a8757); margin-top: 2px; }

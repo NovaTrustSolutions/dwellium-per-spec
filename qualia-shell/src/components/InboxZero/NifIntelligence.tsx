@@ -9,6 +9,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { BarChart3, Circle, Mail, RefreshCw, Settings, TriangleAlert, Users, VolumeX, Zap } from 'lucide-react';
 
 const API = 'http://localhost:3000/api/v1/inbox/nif';
 
@@ -60,11 +62,11 @@ type SubView = 'report' | 'senders' | 'feedback' | 'config';
 export default function NifIntelligence() {
     const [subView, setSubView] = useState<SubView>('report');
 
-    const tabs: { key: SubView; label: string; icon: string }[] = [
-        { key: 'report', label: 'Report', icon: '' },
-        { key: 'senders', label: 'Senders', icon: '' },
-        { key: 'feedback', label: 'Feedback', icon: '' },
-        { key: 'config', label: 'Config', icon: '' },
+    const tabs: { key: SubView; label: string; icon: LucideIcon }[] = [
+        { key: 'report', label: 'Report', icon: BarChart3 },
+        { key: 'senders', label: 'Senders', icon: Users },
+        { key: 'feedback', label: 'Feedback', icon: RefreshCw },
+        { key: 'config', label: 'Config', icon: Settings },
     ];
 
     return (
@@ -76,7 +78,9 @@ export default function NifIntelligence() {
                 padding: '8px 12px 0',
                 borderBottom: '1px solid var(--border-color, #333)',
             }}>
-                {tabs.map(t => (
+                {tabs.map(t => {
+                    const TabIcon = t.icon;
+                    return (
                     <button
                         key={t.key}
                         onClick={() => setSubView(t.key)}
@@ -90,11 +94,13 @@ export default function NifIntelligence() {
                             background: subView === t.key ? 'var(--accent-color, #6366f1)' : 'transparent',
                             color: subView === t.key ? '#fff' : 'var(--text-secondary, #999)',
                             transition: 'all 0.15s ease',
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
                         }}
                     >
-                        {t.icon} {t.label}
+                        <TabIcon size={13} aria-hidden /> {t.label}
                     </button>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Sub-view content */}
@@ -180,7 +186,7 @@ function ReportView() {
             {/* Top mistakes */}
             {report.feedbackStats.topMistakes.length > 0 && (
                 <div style={{ background: 'var(--card-bg, #1a1a2e)', borderRadius: '8px', padding: '12px' }}>
-                    <h4 style={{ margin: '0 0 8px', fontSize: '13px', color: '#f59e0b' }}>Top Misclassifications</h4>
+                    <h4 style={{ margin: '0 0 8px', fontSize: '13px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 5 }}><TriangleAlert size={13} aria-hidden /> Top Misclassifications</h4>
                     {report.feedbackStats.topMistakes.map((m, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '12px', color: 'var(--text-secondary, #999)' }}>
                             <span>{m.from} → {m.to}</span>
@@ -193,7 +199,7 @@ function ReportView() {
             {/* Sender insights */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={{ background: 'var(--card-bg, #1a1a2e)', borderRadius: '8px', padding: '12px' }}>
-                    <h4 style={{ margin: '0 0 8px', fontSize: '13px', color: '#22c55e' }}>Top Signal Domains</h4>
+                    <h4 style={{ margin: '0 0 8px', fontSize: '13px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: 5 }}><Circle size={11} aria-hidden fill="#22c55e" color="#22c55e" /> Top Signal Domains</h4>
                     {report.senderInsights.topSignalDomains.slice(0, 5).map((d, i) => (
                         <div key={i} style={{ fontSize: '11px', color: 'var(--text-secondary, #999)', padding: '2px 0' }}>
                             {d.domain} <span style={{ color: '#22c55e' }}>({d.count})</span>
@@ -204,7 +210,7 @@ function ReportView() {
                     )}
                 </div>
                 <div style={{ background: 'var(--card-bg, #1a1a2e)', borderRadius: '8px', padding: '12px' }}>
-                    <h4 style={{ margin: '0 0 8px', fontSize: '13px', color: '#ef4444' }}>Top Noise Domains</h4>
+                    <h4 style={{ margin: '0 0 8px', fontSize: '13px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 5 }}><Circle size={11} aria-hidden fill="#ef4444" color="#ef4444" /> Top Noise Domains</h4>
                     {report.senderInsights.topNoiseDomains.slice(0, 5).map((d, i) => (
                         <div key={i} style={{ fontSize: '11px', color: 'var(--text-secondary, #999)', padding: '2px 0' }}>
                             {d.domain} <span style={{ color: '#ef4444' }}>({d.count})</span>
@@ -240,8 +246,8 @@ function SendersView() {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <h4 style={{ margin: '0 0 4px', fontSize: '13px', color: 'var(--text-primary, #e0e0e0)' }}>
-                Sender Domain Reputations ({senders.length})
+            <h4 style={{ margin: '0 0 4px', fontSize: '13px', color: 'var(--text-primary, #e0e0e0)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Users size={13} aria-hidden /> Sender Domain Reputations ({senders.length})
             </h4>
             {senders.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary, #666)', fontSize: '12px' }}>
@@ -262,8 +268,8 @@ function SendersView() {
                             <div style={{ fontWeight: 600, color: 'var(--text-primary, #e0e0e0)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {s.domain}
                             </div>
-                            <div style={{ fontSize: '10px', color: 'var(--text-secondary, #999)', marginTop: '2px' }}>
-                                {s.total_received} · {s.signal_count} signal · {s.noise_count} noise
+                            <div style={{ fontSize: '10px', color: 'var(--text-secondary, #999)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                                <Mail size={11} aria-hidden /> {s.total_received} · <Zap size={11} aria-hidden /> {s.signal_count} signal · <VolumeX size={11} aria-hidden /> {s.noise_count} noise
                             </div>
                         </div>
                         <div style={{ width: '80px' }}>
@@ -304,8 +310,8 @@ function FeedbackView() {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <h4 style={{ margin: '0 0 4px', fontSize: '13px', color: 'var(--text-primary, #e0e0e0)' }}>
-                Classification Corrections ({entries.length})
+            <h4 style={{ margin: '0 0 4px', fontSize: '13px', color: 'var(--text-primary, #e0e0e0)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <RefreshCw size={13} aria-hidden /> Classification Corrections ({entries.length})
             </h4>
             {entries.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary, #666)', fontSize: '12px' }}>
@@ -391,8 +397,8 @@ function ConfigView() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ margin: 0, fontSize: '13px', color: 'var(--text-primary, #e0e0e0)' }}>
-                    Adaptive NIF Thresholds
+                <h4 style={{ margin: 0, fontSize: '13px', color: 'var(--text-primary, #e0e0e0)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Settings size={13} aria-hidden /> Adaptive NIF Thresholds
                 </h4>
                 <button
                     onClick={handleRecalibrate}
@@ -406,7 +412,7 @@ function ConfigView() {
                         opacity: recalibrating ? 0.5 : 1,
                     }}
                 >
-                    {recalibrating ? 'Recalibrating...' : 'Recalibrate'}
+                    {recalibrating ? 'Recalibrating...' : <><RefreshCw size={12} aria-hidden /> Recalibrate</>}
                 </button>
             </div>
 

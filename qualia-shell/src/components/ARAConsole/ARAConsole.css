@@ -1219,7 +1219,7 @@
 
 /* [U45] Mode option active check indicator */
 .ara-mode-option.active::after {
-    content: '';
+    content: '\2713';
     font-size: 12px;
     color: var(--opt-accent, var(--accent));
     margin-left: 6px;
@@ -1353,7 +1353,7 @@
     opacity: 1;
 }
 
-/* Phase-10 A2: 👍/👎 Hermes vote chips (sister styling to .ara-speak-btn) */
+/* Phase-10 A2: thumbs-up/down Hermes vote chips (sister styling to .ara-speak-btn) */
 .ara-vote-group {
     display: inline-flex;
     gap: 1px;

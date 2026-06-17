@@ -23,7 +23,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
-import { Settings, Sparkles, Wrench } from 'lucide-react';
+import { Check, Hourglass, Save, Settings, Sparkles, Wrench, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getAuthToken, UserContext } from '../../context/UserContext';
@@ -344,7 +344,11 @@ function CodeBlockPre({ children, ...props }: any) {
 
 function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
   const [expanded, setExpanded] = useState(false);
-  const emoji = toolCall.status === 'running' ? '' : toolCall.status === 'success' ? '' : '';
+  const statusIcon = toolCall.status === 'running'
+    ? <Hourglass size={14} aria-hidden />
+    : toolCall.status === 'success'
+      ? <Check size={14} aria-hidden />
+      : <X size={14} aria-hidden />;
 
   return (
     <div className="oj-tool-card">
@@ -353,7 +357,7 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
         <span className="oj-tool-icon"><Wrench size={14} /></span>
         <span className="oj-tool-name">{toolCall.tool}</span>
         <span style={{ flex: 1 }} />
-        <span>{emoji}</span>
+        <span>{statusIcon}</span>
         {toolCall.latency != null && (
           <span className="oj-tool-latency">
             {toolCall.latency < 1000 ? `${Math.round(toolCall.latency)}ms` : `${(toolCall.latency / 1000).toFixed(1)}s`}
@@ -446,7 +450,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       )}
       <div className="oj-msg-actions">
         <button onClick={() => { navigator.clipboard.writeText(cleanContent); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="oj-copy-btn" title="Copy">
-          {copied ? '' : '⎘'}
+          {copied ? <Check size={14} aria-hidden /> : '⎘'}
         </button>
       </div>
       <XRayFooter usage={message.usage} telemetry={message.telemetry} />
@@ -989,7 +993,7 @@ export default function OpenJarvisWidget() {
                 className="oj-panel-btn"
                 title="Save conversation as document"
                 style={{ fontSize: 13 }}
-              >{savingDoc ? '' : docSaved ? '' : ''}</button>
+              >{savingDoc ? <Hourglass size={14} aria-hidden /> : docSaved ? <Check size={14} aria-hidden /> : <Save size={14} aria-hidden />}</button>
               <button onClick={() => setSettingsOpen(true)} className="oj-panel-btn" title="Settings"><Settings size={16} /></button>
               <button onClick={() => setIsMinimized(!isMinimized)} className="oj-panel-btn" title="Minimize">─</button>
               <button onClick={togglePanel} className="oj-panel-btn oj-panel-close" title="Close (⌘J)">×</button>
@@ -1013,7 +1017,7 @@ export default function OpenJarvisWidget() {
               <div ref={listRef} onScroll={handleScroll} className="oj-panel-body">
                 {isEmpty ? (
                   <div className="oj-empty">
-                    <div className="oj-empty-icon"></div>
+                    <div className="oj-empty-icon"><Sparkles size={32} aria-hidden /></div>
                     <h2 className="oj-empty-title">{getGreeting()}</h2>
                     <p className="oj-empty-desc">
                       {engine === 'gemini'

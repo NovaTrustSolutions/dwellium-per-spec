@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, Search, RefreshCw, Plus, X, Shield, AlertTriangle, CheckCircle, Mail, Phone, DollarSign, FileText, Link2, Trash2, Tag, Filter, Building2, Unlink, Upload, Award, BarChart3, UserCheck, UserX, Clock, Settings2, ChevronUp, ChevronDown, ExternalLink } from 'lucide-react';
+import { Truck, Search, RefreshCw, Plus, X, Shield, AlertTriangle, CheckCircle, Mail, Phone, DollarSign, FileText, Link2, Trash2, Tag, Filter, Building2, Unlink, Upload, Award, BarChart3, UserCheck, UserX, Clock, Settings2, ChevronUp, ChevronDown, ExternalLink, Star } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import type { EntityProfile, Workitem, VendorFederalTax, VendorAccountingInfo, VendorCompliance } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
@@ -805,7 +805,11 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                     {selected.metadata?.rating > 0 && (
                                         <div className="s-vendor-rating">
                                             <span>Rating:</span>
-                                            <span className="s-rating-stars">{''.repeat(Math.round(selected.metadata.rating))}{''.repeat(5 - Math.round(selected.metadata.rating))}</span>
+                                            <span className="s-rating-stars" style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }} aria-label={`Rating ${selected.metadata.rating} out of 5`}>
+                                                {Array.from({ length: 5 }).map((_, i) => (
+                                                    <Star key={i} size={12} aria-hidden style={{ fill: i < Math.round(selected.metadata.rating) ? 'currentColor' : 'transparent' }} />
+                                                ))}
+                                            </span>
                                             <span className='s-text-muted'>({selected.metadata.rating})</span>
                                         </div>
                                     )}
@@ -1297,8 +1301,8 @@ export default function VendorsModule({ searchNavTarget, onNavComplete }: Vendor
                                                                 }}>{doc.type}</span>
                                                                 <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{doc.description}</span>
                                                                 {doc.expirationDate && (
-                                                                    <span style={{ fontSize: 10, color: isExpired ? '#ef4444' : '#64748b' }}>
-                                                                        {isExpired ? 'Expired' : 'Exp'}: {doc.expirationDate.slice(0, 10)}
+                                                                    <span style={{ fontSize: 10, color: isExpired ? '#ef4444' : '#64748b', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                                                        {isExpired && <AlertTriangle size={10} aria-hidden />}{isExpired ? 'Expired' : 'Exp'}: {doc.expirationDate.slice(0, 10)}
                                                                     </span>
                                                                 )}
                                                                 <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>

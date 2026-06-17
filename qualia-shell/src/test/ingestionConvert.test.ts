@@ -133,6 +133,21 @@ describe('convertFolder', () => {
         expect(written['log.md']).toBe('plain line one\nline two');
     });
 
+    it('returns markdown document bodies for files it converts or passes through', async () => {
+        const source = fakeSource([
+            fakeFile('log.txt', 'plain line one\nline two'),
+            fakeFile('already.md', '# Existing'),
+        ]);
+        const { handle: backup } = fakeBackup();
+
+        const result = await convertFolder({ source, backup, now: CLOCK });
+
+        expect((result as any).documents).toEqual([
+            { sourceName: 'log.txt', destName: 'log.md', content: 'plain line one\nline two' },
+            { sourceName: 'already.md', destName: 'already.md', content: '# Existing' },
+        ]);
+    });
+
     it('queues pdf/docx for the backend without reading or writing them', async () => {
         const source = fakeSource([
             fakeFile('report.pdf', 'BINARY'),

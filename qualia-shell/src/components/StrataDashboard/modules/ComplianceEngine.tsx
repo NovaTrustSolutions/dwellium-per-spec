@@ -771,7 +771,7 @@ export default function ComplianceEngine() {
                                                         marginTop: 4, color: 'var(--accent)', fontSize: 10, fontWeight: 600,
                                                         textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
                                                     }}>
-                                                        View Source Document →
+                                                        <FileText size={10} aria-hidden /> View Source Document →
                                                     </a>
                                                 )}
                                                 {/* ── Navigate to entity profile ── */}
@@ -842,8 +842,8 @@ export default function ComplianceEngine() {
                                                 {monthItems.length} items
                                             </span>
                                             {monthItems.length >= 3 && (
-                                                <span style={{ fontSize: 9, color: '#f59e0b', fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.1)' }}>
-                                                    Cluster — consider staggering
+                                                <span style={{ fontSize: 9, color: '#f59e0b', fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.1)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                                    <AlertTriangle size={9} aria-hidden /> Cluster — consider staggering
                                                 </span>
                                             )}
                                         </div>
@@ -924,9 +924,9 @@ export default function ComplianceEngine() {
                                                 {miss > 0 && <div style={{ width: `${(miss / typeItems.length) * 100}%`, background: '#94a3b8' }} />}
                                             </div>
                                             <div style={{ display: 'flex', gap: 4, fontSize: 9 }}>
-                                                <span style={{ color: '#22c55e' }}>{valid}</span>
-                                                <span style={{ color: '#f59e0b' }}>{warn}</span>
-                                                <span style={{ color: '#ef4444' }}>{exp}</span>
+                                                <span style={{ color: '#22c55e', display: 'inline-flex', alignItems: 'center', gap: 2 }}><CheckCircle2 size={9} aria-hidden />{valid}</span>
+                                                <span style={{ color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 2 }}><AlertTriangle size={9} aria-hidden />{warn}</span>
+                                                <span style={{ color: '#ef4444', display: 'inline-flex', alignItems: 'center', gap: 2 }}><X size={9} aria-hidden />{exp}</span>
                                             </div>
                                         </div>
                                     );
@@ -1063,7 +1063,7 @@ export default function ComplianceEngine() {
                                                             color: STATUS_COLORS[status], fontSize: 10, fontWeight: 700,
                                                         }}>
                                                             {getStatusDot(status)}
-                                                            {status === 'valid' ? '' : status === 'warning' ? '' : status === 'expired' ? '' : '—'}
+                                                            {status === 'valid' ? <CheckCircle2 size={10} aria-label="Valid" /> : status === 'warning' ? <AlertTriangle size={10} aria-label="Warning" /> : status === 'expired' ? <X size={10} aria-label="Expired" /> : '—'}
                                                         </div>
                                                     </td>
                                                 );

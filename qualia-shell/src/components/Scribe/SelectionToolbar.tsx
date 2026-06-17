@@ -8,6 +8,7 @@
  * as scribeStore entries.
  */
 import { useEffect, useRef } from 'react';
+import { MessageSquare, Link, Bot, Hourglass, Sparkles } from 'lucide-react';
 import { useScribeStore, type Redline } from './scribeStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
@@ -184,7 +185,7 @@ export function SelectionToolbar() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#222'; e.currentTarget.style.color = '#fff'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ccc'; }}
             >
-                Comment
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MessageSquare size={14} aria-hidden /> Comment</span>
             </button>
             <button
                 title="Link this selection to a source / citation"
@@ -204,7 +205,7 @@ export function SelectionToolbar() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#2a2410'; e.currentTarget.style.color = '#e7c879'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#c9a44c'; }}
             >
-                Source
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Link size={14} aria-hidden /> Source</span>
             </button>
             <button
                 title="Send this selection to ARA in the floating panel"
@@ -224,7 +225,7 @@ export function SelectionToolbar() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#1a2530'; e.currentTarget.style.color = '#cfe9ff'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ad7ff'; }}
             >
-                Send to ARA
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Bot size={14} aria-hidden /> Send to ARA</span>
             </button>
             <button
                 title={llmReady ? 'Send selection to AI for editing suggestions' : 'Configure an LLM in Settings → API Keys'}
@@ -246,7 +247,9 @@ export function SelectionToolbar() {
                 onMouseEnter={(e) => { if (llmReady && !redlineLoading) e.currentTarget.style.background = '#e0ff6e'; }}
                 onMouseLeave={(e) => { if (llmReady) e.currentTarget.style.background = '#D6FE51'; }}
             >
-                {redlineLoading ? 'Thinking...' : 'Redline'}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {redlineLoading ? <><Hourglass size={14} aria-hidden /> Thinking...</> : <><Sparkles size={14} aria-hidden /> Redline</>}
+                </span>
             </button>
 
             {/* Docs-parity AI writing helpers — one tap each. Icon-only to stay
@@ -272,7 +275,7 @@ export function SelectionToolbar() {
                     onMouseEnter={(e) => { if (!redlineLoading) e.currentTarget.style.background = '#222'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
-                    {action.icon}
+                    <action.icon size={14} aria-hidden />
                 </button>
             ))}
         </div>

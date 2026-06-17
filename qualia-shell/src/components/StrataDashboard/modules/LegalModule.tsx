@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Scale, Plus, X, ChevronDown, ChevronUp, RefreshCw, AlertTriangle,
     Building2, Users, Tag, FileText, Clock, Search, Lock, Shield,
-    MessageSquare, Paperclip, History, Link2, Send, ArrowUpCircle, XCircle, Download,
+    MessageSquare, Paperclip, History, Link2, Send, ArrowUpCircle, XCircle, Download, Globe,
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
 import type { Workitem, Property, EntityProfile } from '../strataTypes';
@@ -564,10 +564,10 @@ export default function LegalModule() {
                                     }}
                                     placeholder="Type to search users…"
                                 />
-                                <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-tertiary)' }}>
+                                <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                     {formAccessList.length === 0
-                                        ? 'No restrictions — all users can view this issue'
-                                        : `${formAccessList.length + 1} user(s) will have access (you are always included)`}
+                                        ? <><Globe size={11} aria-hidden /> No restrictions — all users can view this issue</>
+                                        : <><Lock size={11} aria-hidden /> {`${formAccessList.length + 1} user(s) will have access (you are always included)`}</>}
                                 </p>
                             </div>
                             <div className="s-modal-footer">

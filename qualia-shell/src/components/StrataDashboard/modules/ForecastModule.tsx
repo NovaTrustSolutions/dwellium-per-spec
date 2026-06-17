@@ -94,8 +94,8 @@ function ForecastModuleInner() {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary)', fontWeight: 700 }}>
-                        Cash Flow Forecast
+                    <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <TrendingUp size={20} aria-hidden /> Cash Flow Forecast
                     </h2>
                     <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>
                         12-month rolling projection with scenario modeling

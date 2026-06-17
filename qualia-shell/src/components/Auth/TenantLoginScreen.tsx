@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import { Check, Key, Lock, Mail, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Key, Loader2, Lock, Mail, Zap } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import './TenantLoginScreen.css';
 
@@ -272,13 +272,13 @@ export default function TenantLoginScreen({ onBackToAdmin }: TenantLoginScreenPr
                             >
                                 {loading ? (
                                     <>
-                                        <span className="tenant-login__spinner">↻</span>
+                                        <span className="tenant-login__spinner"><Loader2 size={16} aria-hidden /></span>
                                         <span>{success ? 'Welcome!' : 'Signing in...'}</span>
                                     </>
                                 ) : (
                                     <>
                                         <span>Sign In</span>
-                                        <span className="tenant-login__btn-arrow">→</span>
+                                        <span className="tenant-login__btn-arrow"><ArrowRight size={16} aria-hidden /></span>
                                     </>
                                 )}
                             </button>
@@ -320,7 +320,7 @@ export default function TenantLoginScreen({ onBackToAdmin }: TenantLoginScreenPr
                                 onClick={onBackToAdmin}
                                 type="button"
                             >
-                                ← Staff login
+                                <ArrowLeft size={14} aria-hidden /> Staff login
                             </button>
                         )}
                     </div>

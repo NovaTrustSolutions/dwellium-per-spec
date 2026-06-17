@@ -4,6 +4,8 @@
  * Lists every AI widget with a live status (✓ ready / ⚠ limited / ✗ not connected)
  * and a "Connect" button that opens the right Settings/widget to fix it.
  */
+import type { ReactNode } from 'react';
+import { Check, X } from 'lucide-react';
 import { useWindows } from '../../context/WindowContext';
 import { useSystemHealth } from '../../hooks/useSystemHealth';
 import type { HealthStatus } from '../../lib/systemHealth';
@@ -20,7 +22,7 @@ const OPEN: Record<string, [string, string]> = {
     'terminal': ['Terminal', 'terminal'],
     'notebooklm-context': ['NotebookLM', 'notebook'],
 };
-const GLYPH: Record<HealthStatus, string> = { ok: '', degraded: '!', down: '', checking: '…' };
+const GLYPH: Record<HealthStatus, ReactNode> = { ok: <Check size={14} aria-hidden />, degraded: '!', down: <X size={14} aria-hidden />, checking: '…' };
 
 function detailFor(status: HealthStatus, okText?: string, downText?: string): string {
     if (status === 'ok') return okText || 'Ready';

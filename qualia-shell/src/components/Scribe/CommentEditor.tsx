@@ -6,8 +6,8 @@
  * Ported from Holocron's CommentEditor.tsx (Cycle 7). Adapted: uses
  * callLlm directly instead of ChatPane dispatch. Electron IPC removed.
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import { MessageSquare, Hourglass, Sparkles } from 'lucide-react';
 import { EditorView } from '@codemirror/view';
 import { useScribeStore, type DocComment, type Redline } from './scribeStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -234,7 +234,9 @@ export function CommentEditor({ getView }: Props) {
                         <span style={{ flex: 1 }} />
                         {comment.status === 'open' && comment.body && (
                             <Btn
-                                label={submitting ? '...' : 'Submit'}
+                                label={submitting
+                                    ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Hourglass size={12} aria-hidden /> ...</span>
+                                    : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Sparkles size={12} aria-hidden /> Submit</span>}
                                 primary
                                 disabled={!hasActiveLlm(integrations.llm) || submitting}
                                 onClick={() => void handleSubmitToAgent()}
@@ -248,7 +250,7 @@ export function CommentEditor({ getView }: Props) {
 }
 
 function Btn({ label, onClick, primary, danger, disabled }: {
-    label: string; onClick: () => void;
+    label: ReactNode; onClick: () => void;
     primary?: boolean; danger?: boolean; disabled?: boolean;
 }) {
     const bg = primary ? (disabled ? '#333' : '#D6FE51') : 'transparent';

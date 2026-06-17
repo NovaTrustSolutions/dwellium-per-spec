@@ -48,7 +48,7 @@ export function buildDreamCorpus(): DreamCorpus {
     const runs = hermesLearningStore.getSnapshot().slice(0, 8);
     counts.conversations = runs.length;
     if (runs.length > 0) {
-        parts.push(`## Recent agent exchanges\n${runs.map(r => `- (${r.taskType}${r.rating !== undefined ? `, rated ${r.rating > 0 ? '' : ''}` : ''}) ${cap(r.prompt, 140)}${r.summary ? ` → ${cap(r.summary, 120)}` : ''}`).join('\n')}`);
+        parts.push(`## Recent agent exchanges\n${runs.map(r => `- (${r.taskType}${r.rating !== undefined ? `, rated ${r.rating > 0 ? 'positive' : 'negative'}` : ''}) ${cap(r.prompt, 140)}${r.summary ? ` → ${cap(r.summary, 120)}` : ''}`).join('\n')}`);
     }
 
     const goals = goalsStore.getSnapshot().filter(g => g.status !== 'done').slice(0, 6);

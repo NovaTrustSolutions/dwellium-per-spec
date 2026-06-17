@@ -4,6 +4,7 @@
  * Houses 5 tabs: Dashboard, Workspace, Channels, Intelligence, Observability.
  */
 import { useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { API_BASE } from '../../config';
 import {
     LayoutDashboard, Wrench, MessageSquare,
@@ -14,6 +15,7 @@ import {
     ChevronUp, ChevronDown, ChevronLeft, X, Plus, Settings2,
     Shield, Scale, ExternalLink, Truck, KeyRound,
     Landmark, ShieldAlert, Users, Sparkles, Search, Settings,
+    Mail, FileText, Trash2, Check, Zap,
 } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
@@ -284,8 +286,12 @@ function ComplianceCalendar({ events, loading, error }: PanelProps & { events: D
 
 function AIAgentLog({ entries, loading, error }: PanelProps & { entries: AgentLogEntry[] }) {
     const ready = !loading && !error && entries.length > 0;
-    const typeIcons: Record<string, string> = {
-        alert: '', route: '', create: '', filter: '', check: '',
+    const typeIcons: Record<string, ReactNode> = {
+        alert: <AlertTriangle size={14} aria-hidden />,
+        route: <Mail size={14} aria-hidden />,
+        create: <FileText size={14} aria-hidden />,
+        filter: <Trash2 size={14} aria-hidden />,
+        check: <Check size={14} aria-hidden />,
     };
     return (
         <div className="a-panel a-agent-log">
@@ -299,7 +305,7 @@ function AIAgentLog({ entries, loading, error }: PanelProps & { entries: AgentLo
                 <div className="a-agent-feed">
                     {entries.map((entry, i) => (
                         <div key={i} className="a-agent-entry">
-                            <span className="a-agent-icon">{typeIcons[entry.type] || '•'}</span>
+                            <span className="a-agent-icon">{typeIcons[entry.type] ?? '•'}</span>
                             <div className="a-agent-body">
                                 <span className="a-agent-action">{entry.action}</span>
                                 <span className="a-agent-meta">
@@ -1027,7 +1033,7 @@ const ARB_COLORS: Record<string, string> = {
 function QuickArbitrage() {
     return (
         <div className="a-panel a-panel--glass">
-            <h3 className="a-panel__title">90-Day Quick Arbitrage <MockBadge /></h3>
+            <h3 className="a-panel__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={16} aria-hidden /> 90-Day Quick Arbitrage <MockBadge /></h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {ARBITRAGE_OPPORTUNITIES.map(opp => (
                     <div key={opp.id} style={{
@@ -1072,7 +1078,7 @@ const DOMAIN_VIEWS: { id: string; name: string; module: string; filters: Record<
 function DomainViews() {
     return (
         <div className="a-panel a-panel--glass">
-            <h3 className="a-panel__title">Saved Domain Views <MockBadge /></h3>
+            <h3 className="a-panel__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Search size={16} aria-hidden /> Saved Domain Views <MockBadge /></h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 {DOMAIN_VIEWS.map(view => (
                     <div key={view.id} style={{

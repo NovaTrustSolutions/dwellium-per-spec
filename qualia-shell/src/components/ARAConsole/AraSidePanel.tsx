@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Brain, Zap, Wrench, Settings, type LucideIcon } from 'lucide-react';
 import HonchoHermesPanel from '../HonchoHermesPanel/HonchoHermesPanel';
 import { STELLA_TOOL_CATALOG, CATEGORY_ORDER, type StellaTool } from '../StellaAgent/stellaToolCatalog';
 import { openWidget } from '../../lib/dwelliumCommands';
@@ -15,11 +15,11 @@ import { ARA_SKIP_INTRO_KEY } from './AraIntroVideo';
  */
 export type AraSidePanelView = 'honcho' | 'hermes' | 'tools' | 'settings';
 
-const VIEW_TABS: { id: AraSidePanelView; label: string; icon: string }[] = [
-    { id: 'honcho', label: 'Honcho', icon: '' },
-    { id: 'hermes', label: 'Hermes', icon: '' },
-    { id: 'tools', label: 'Tools', icon: '' },
-    { id: 'settings', label: 'Settings', icon: '' },
+const VIEW_TABS: { id: AraSidePanelView; label: string; Icon: LucideIcon }[] = [
+    { id: 'honcho', label: 'Honcho', Icon: Brain },
+    { id: 'hermes', label: 'Hermes', Icon: Zap },
+    { id: 'tools', label: 'Tools', Icon: Wrench },
+    { id: 'settings', label: 'Settings', Icon: Settings },
 ];
 
 export default function AraSidePanel({
@@ -43,7 +43,7 @@ export default function AraSidePanel({
                         className={`ara-side__tab ${view === t.id ? 'ara-side__tab--active' : ''}`}
                         onClick={() => onSelectView(t.id)}
                     >
-                        <span aria-hidden>{t.icon}</span> {t.label}
+                        <t.Icon size={14} aria-hidden /> {t.label}
                     </button>
                 ))}
                 <button type="button" className="ara-side__close" onClick={onClose} aria-label="Close panel"><X size={16} /></button>
@@ -79,21 +79,24 @@ function AraToolsView({ onPrefill, onClose }: { onPrefill: (t: string) => void; 
             {groups.map(group => (
                 <div key={group.cat} className="ara-tools__group">
                     <div className="ara-tools__cat">{group.cat}</div>
-                    {group.tools.map(tool => (
-                        <button
-                            key={tool.id}
-                            type="button"
-                            className="ara-tools__tool"
-                            onClick={() => runTool(tool)}
-                            title={tool.description}
-                        >
-                            <span className="ara-tools__icon" aria-hidden>{tool.icon}</span>
-                            <span className="ara-tools__meta">
-                                <span className="ara-tools__name">{tool.name}</span>
-                                <span className="ara-tools__desc">{tool.description}</span>
-                            </span>
-                        </button>
-                    ))}
+                    {group.tools.map(tool => {
+                        const ToolIcon = tool.icon;
+                        return (
+                            <button
+                                key={tool.id}
+                                type="button"
+                                className="ara-tools__tool"
+                                onClick={() => runTool(tool)}
+                                title={tool.description}
+                            >
+                                <span className="ara-tools__icon" aria-hidden><ToolIcon size={16} /></span>
+                                <span className="ara-tools__meta">
+                                    <span className="ara-tools__name">{tool.name}</span>
+                                    <span className="ara-tools__desc">{tool.description}</span>
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             ))}
         </div>

@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
-import { Check, ClipboardList, Download, Inbox, Mail, X } from 'lucide-react';
+import {
+    ArrowDown, ArrowRight, ArrowUp, Bot, Brain, Building2, Check, ClipboardList, Clock, Cloud,
+    Download, FileSpreadsheet, FileText, Film, Folder, FolderOpen, FolderTree, Hourglass, Image,
+    Inbox, LayoutDashboard, LayoutGrid, Link, ListChecks, Lock, Mail, MailOpen, Mic, Music, Package,
+    Palette, Paperclip, PartyPopper, RefreshCw, Reply, Ruler, Save, Scale, Search, Settings,
+    ShieldCheck, Sparkles, Square, SquareCheck, Tag, Target, Terminal, Trash2, TriangleAlert, Type,
+    Undo2, Workflow, X, Zap,
+} from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme, FONT_PAIRINGS } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
@@ -37,7 +44,7 @@ import {
 /** Suspense fallback used for all lazy tabs */
 const TabLoader = () => (
     <div className="iz-loading" style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 24, marginBottom: 8 }}></div>
+        <div style={{ fontSize: 24, marginBottom: 8 }}><Hourglass size={24} aria-hidden /></div>
         Loading module…
     </div>
 );
@@ -617,7 +624,7 @@ export default function InboxZero() {
                                         });
                                         setUndoStack(prev => prev.slice(1));
                                         invalidateInbox();
-                                        window.dispatchEvent(new CustomEvent('qualia-toast', { detail: '↩️ Action undone and item recovered' }));
+                                        window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'Action undone and item recovered' }));
                                     } catch (err) {
                                         console.error(err);
                                     }
@@ -630,7 +637,7 @@ export default function InboxZero() {
                                     boxShadow: '0 4px 12px rgba(225, 29, 72, 0.3)'
                                 }}
                             >
-                                ↩️ UNDO LAST ACTION
+                                <Undo2 size={14} aria-hidden /> UNDO LAST ACTION
                             </button>
                         )}
                     </div>
@@ -741,7 +748,7 @@ export default function InboxZero() {
                         </div>
                         {debouncedSearch.trim() && !loading && (
                             <div className="iz-toolbar__result-count">
-                                <strong>{pendingItems.length}</strong> email{pendingItems.length !== 1 ? 's' : ''} found
+                                <Search size={13} aria-hidden /> <strong>{pendingItems.length}</strong> email{pendingItems.length !== 1 ? 's' : ''} found
                                 {debouncedSearch.trim() && (
                                     <span className="iz-toolbar__result-query"> for "{debouncedSearch.trim()}"</span>
                                 )}
@@ -754,7 +761,14 @@ export default function InboxZero() {
                                     className={`iz-filter ${triageFilter === f ? 'iz-filter--active' : ''}`}
                                     onClick={() => setTriageFilter(f)}
                                 >
-                                    {f === 'all' ? 'All' : SIGNAL_CONFIG[f]?.icon + ' ' + SIGNAL_CONFIG[f]?.label}
+                                    {f === 'all' ? 'All' : (() => {
+                                        const SignalIcon = SIGNAL_CONFIG[f]?.icon;
+                                        return (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                {SignalIcon && <SignalIcon size={14} aria-hidden />} {SIGNAL_CONFIG[f]?.label}
+                                            </span>
+                                        );
+                                    })()}
                                 </button>
                             ))}
                         </div>
@@ -791,7 +805,7 @@ export default function InboxZero() {
                                         transition: 'all 0.12s ease',
                                     }}
                                 >
-                                    {s.label} {sortField === s.id ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                                    {s.label} {sortField === s.id ? (sortDir === 'asc' ? <ArrowUp size={12} aria-hidden style={{ verticalAlign: 'middle' }} /> : <ArrowDown size={12} aria-hidden style={{ verticalAlign: 'middle' }} />) : ''}
                                 </button>
                             ))}
                         </div>
@@ -805,7 +819,7 @@ export default function InboxZero() {
                             </button>
                             <span className="iz-batch__count">{selectedIds.size} selected</span>
                             <button className="iz-batch__btn iz-batch__btn--archive" onClick={handleBulkArchive}>
-                                Archive
+                                <Download size={14} aria-hidden /> Archive
                             </button>
                             {/* Bulk AI Classify */}
                             <button
@@ -835,7 +849,7 @@ export default function InboxZero() {
                                     }
                                 }}
                             >
-                                {bulkClassifying ? 'Classifying…' : 'AI Classify'}
+                                {bulkClassifying ? 'Classifying…' : <><Bot size={14} aria-hidden /> AI Classify</>}
                             </button>
                             {/* Add Label */}
                             <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -844,7 +858,7 @@ export default function InboxZero() {
                                     style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
                                     onClick={() => setShowLabelPicker(!showLabelPicker)}
                                 >
-                                    Add Label
+                                    <Tag size={14} aria-hidden /> Add Label
                                 </button>
                                 {showLabelPicker && (
                                     <div style={{
@@ -885,7 +899,7 @@ export default function InboxZero() {
                                     setActiveTab('actions');
                                 }}
                             >
-                                Batch Route →
+                                Batch Route <ArrowRight size={14} aria-hidden />
                             </button>
                         </div>
                     )}
@@ -916,7 +930,7 @@ export default function InboxZero() {
                                 <span style={{ fontSize: 24, fontWeight: 700, color: '#22c55e' }}>
                                     {pendingItems.filter(i => i.signalClass === 'noise').length}
                                 </span>
-                                <span style={{ fontSize: 14, color: '#f59e0b' }}>Today</span>
+                                <span style={{ fontSize: 14, color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 4 }}><TriangleAlert size={14} aria-hidden /> Today</span>
                             </div>
                         </div>
                         <div style={{
@@ -937,7 +951,7 @@ export default function InboxZero() {
 
                         {!loading && itemsError && (
                             <div className="iz-empty" role="alert">
-                                <div className="iz-empty__icon"></div>
+                                <div className="iz-empty__icon"><TriangleAlert size={32} aria-hidden /></div>
                                 <div className="iz-empty__title">Couldn’t load inbox</div>
                                 <div className="iz-empty__sub">{itemsErrorMessage}</div>
                                 <button
@@ -953,7 +967,7 @@ export default function InboxZero() {
 
                         {!loading && !itemsError && pendingItems.length === 0 && (
                             <div className="iz-empty">
-                                <div className="iz-empty__icon"></div>
+                                <div className="iz-empty__icon"><PartyPopper size={32} aria-hidden /></div>
                                 <div className="iz-empty__title">Inbox Zero!</div>
                                 <div className="iz-empty__sub">All caught up — nice work.</div>
                             </div>
@@ -1025,14 +1039,15 @@ export default function InboxZero() {
                                                             border: '1px solid color-mix(in srgb, var(--accent, #6366f1) 35%, transparent)',
                                                             display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 200,
                                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                                        }}>{item.sourceAccount}</span>
+                                                        }}><Mail size={11} aria-hidden /> {item.sourceAccount}</span>
                                                     )}
                                                     {item.urgency === 'high' && (
                                                         <span style={{
                                                             fontSize: 10, fontWeight: 700, padding: '2px 8px',
                                                             borderRadius: 4, background: 'rgba(239,68,68,0.15)',
                                                             color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)',
-                                                        }}>High Priority</span>
+                                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                        }}><Zap size={11} aria-hidden /> High Priority</span>
                                                     )}
                                                     {item.signalClass === 'signal' && (
                                                         <span style={{
@@ -1077,7 +1092,7 @@ export default function InboxZero() {
                                                 style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
                                                 onClick={e => { e.stopPropagation(); handleMarkRead(item.id); }}
                                             >
-                                                <span style={{ fontSize: 13 }}>{item.isRead ? '' : ''}</span> {item.isRead ? 'Mark Unread' : 'Mark Read'}
+                                                <span style={{ fontSize: 13, display: 'inline-flex' }}>{item.isRead ? <Mail size={14} aria-hidden /> : <MailOpen size={14} aria-hidden />}</span> {item.isRead ? 'Mark Unread' : 'Mark Read'}
                                             </button>
                                             <button
                                                 style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', padding: '3px 0' }}
@@ -1099,7 +1114,7 @@ export default function InboxZero() {
                                                         .finally(() => setViewerLoading(false));
                                                 }}
                                             >
-                                                <span style={{ fontSize: 13 }}>↩️</span> Smart Reply
+                                                <Reply size={13} aria-hidden /> Smart Reply
                                             </button>
                                         </div>
                                     </div>
@@ -1107,7 +1122,7 @@ export default function InboxZero() {
                                     {isExpanded && (
                                         <div className="iz-card__actions" onClick={e => e.stopPropagation()}>
                                             {item.routingReasoning && (
-                                                <p className="iz-card__reasoning">{item.routingReasoning}</p>
+                                                <p className="iz-card__reasoning"><Bot size={13} aria-hidden /> {item.routingReasoning}</p>
                                             )}
 
                                     {/* GAP-09: Full email body expandable section */}
@@ -1155,10 +1170,10 @@ export default function InboxZero() {
                                                         }
                                                     }}
                                                 >
-                                                    {item.routedToProject ? 'Approve & Route' : 'Approve'}
+                                                    <Check size={14} aria-hidden /> {item.routedToProject ? 'Approve & Route' : 'Approve'}
                                                 </button>
                                                 <button className="iz-action iz-action--archive" onClick={() => handleArchive(item.id)}>
-                                                    Archive
+                                                    <Download size={14} aria-hidden /> Archive
                                                 </button>
                                                 {/* View Full Email — SECURITY: fetches body on-demand */}
                                                 <button
@@ -1181,10 +1196,10 @@ export default function InboxZero() {
                                                             .finally(() => setViewerLoading(false));
                                                     }}
                                                 >
-                                                    View Full Email
+                                                    <Mail size={14} aria-hidden /> View Full Email
                                                 </button>
                                                 <button className="iz-action iz-action--delete" onClick={() => handleDelete(item.id)}>
-                                                    Delete
+                                                    <Trash2 size={14} aria-hidden /> Delete
                                                 </button>
 
                                                 {/* GAP-10: Snooze button */}
@@ -1203,7 +1218,7 @@ export default function InboxZero() {
                                                         } catch { /* offline */ }
                                                     }}
                                                 >
-                                                    Snooze 2d
+                                                    <Clock size={14} aria-hidden /> Snooze 2d
                                                 </button>
 
                                                 {/* Retry button (Phase 0.1.3) — appears when Gmail archival failed */}
@@ -1223,7 +1238,7 @@ export default function InboxZero() {
                                                             }
                                                         }}
                                                     >
-                                                        Retry Gmail
+                                                        <RefreshCw size={14} aria-hidden /> Retry Gmail
                                                     </button>
                                                 )}
 
@@ -1236,7 +1251,7 @@ export default function InboxZero() {
                                                         setLinkForm({ linkType: 'workitem', targetId: '', targetName: '' });
                                                     }}
                                                 >
-                                                    Link to Strata
+                                                    <Link size={14} aria-hidden /> Link to Strata
                                                 </button>
                                             </div>
 
@@ -1246,7 +1261,7 @@ export default function InboxZero() {
                                                     marginTop: 10, padding: 16, borderRadius: 10,
                                                     background: 'color-mix(in srgb, var(--accent) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                                                 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', marginBottom: 10 }}>Link to Strata</div>
+                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><Link size={14} aria-hidden /> Link to Strata</div>
 
                                                     {/* Row 1: Category selector */}
                                                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -1335,7 +1350,7 @@ export default function InboxZero() {
                                                                 }
                                                             }}
                                                         >
-                                                            Link
+                                                            <Link size={14} aria-hidden /> Link
                                                         </button>
                                                         <button
                                                             style={{ padding: '6px 12px', borderRadius: 6, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', fontSize: '0.82rem' }}
@@ -1368,7 +1383,7 @@ export default function InboxZero() {
                                             {/* ── Audit Trail (Phase 0.1.7) ── */}
                                             {auditCache[item.id] && auditCache[item.id].length > 0 && (
                                                 <div className="iz-card__audit" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px' }}>AUDIT TRAIL</p>
+                                                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 4 }}><ClipboardList size={12} aria-hidden /> AUDIT TRAIL</p>
                                                     {auditCache[item.id].slice(0, 8).map((entry: any, idx: number) => (
                                                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '4px 0', borderBottom: idx < auditCache[item.id].length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                                                             <span style={{ fontSize: '10px', opacity: 0.4, whiteSpace: 'nowrap', minWidth: '70px' }}>
@@ -1389,7 +1404,7 @@ export default function InboxZero() {
                                             {/* ── Thread Links (Phase 0.1.7) ── */}
                                             {linksCache[item.id] && linksCache[item.id].length > 0 && (
                                                 <div className="iz-card__links" style={{ marginTop: '8px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px' }}>LINKED ITEMS</p>
+                                                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.6, marginBottom: '6px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 4 }}><Link size={12} aria-hidden /> LINKED ITEMS</p>
                                                     {linksCache[item.id].map((link: any, idx: number) => (
                                                         <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '3px 0' }}>
                                                             <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
@@ -1451,15 +1466,15 @@ export default function InboxZero() {
 
                                     {/* Badges */}
                                     <div className="iz-viewer__badges">
-                                        <span className="iz-viewer__badge" style={{ background: SIGNAL_CONFIG[viewerEmail.signalClass]?.color + '20', color: SIGNAL_CONFIG[viewerEmail.signalClass]?.color, border: `1px solid ${SIGNAL_CONFIG[viewerEmail.signalClass]?.color}40` }}>
-                                            {SIGNAL_CONFIG[viewerEmail.signalClass]?.icon} {SIGNAL_CONFIG[viewerEmail.signalClass]?.label}
+                                        <span className="iz-viewer__badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: SIGNAL_CONFIG[viewerEmail.signalClass]?.color + '20', color: SIGNAL_CONFIG[viewerEmail.signalClass]?.color, border: `1px solid ${SIGNAL_CONFIG[viewerEmail.signalClass]?.color}40` }}>
+                                            {(() => { const SignalIcon = SIGNAL_CONFIG[viewerEmail.signalClass]?.icon; return SignalIcon ? <SignalIcon size={14} aria-hidden /> : null; })()} {SIGNAL_CONFIG[viewerEmail.signalClass]?.label}
                                         </span>
                                         <span className="iz-viewer__badge" style={{ background: URGENCY_COLORS[viewerEmail.urgency] + '20', color: URGENCY_COLORS[viewerEmail.urgency], border: `1px solid ${URGENCY_COLORS[viewerEmail.urgency]}40` }}>
                                             {viewerEmail.urgency.toUpperCase()} urgency
                                         </span>
                                         {viewerEmail.hasAttachments && (
-                                            <span className="iz-viewer__badge" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
-                                                {viewerEmail.attachments?.length || ''} Attachment{(viewerEmail.attachments?.length || 0) !== 1 ? 's' : ''}
+                                            <span className="iz-viewer__badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}>
+                                                <Paperclip size={13} aria-hidden /> {viewerEmail.attachments?.length || ''} Attachment{(viewerEmail.attachments?.length || 0) !== 1 ? 's' : ''}
                                             </span>
                                         )}
                                         {viewerEmail.routedToProject && (
@@ -1473,7 +1488,7 @@ export default function InboxZero() {
                                     {/* AI Summary */}
                                     {viewerEmail.summary && (
                                         <div className="iz-viewer__summary">
-                                            <span className="iz-viewer__summary-label">AI Summary</span>
+                                            <span className="iz-viewer__summary-label"><Bot size={14} aria-hidden /> AI Summary</span>
                                             <p>{viewerEmail.summary}</p>
                                         </div>
                                     )}
@@ -1481,18 +1496,18 @@ export default function InboxZero() {
                                     {/* Attachments */}
                                     {viewerEmail.attachments && viewerEmail.attachments.length > 0 && (
                                         <div className="iz-viewer__attachments">
-                                            <span className="iz-viewer__attachments-label">Attachments</span>
+                                            <span className="iz-viewer__attachments-label"><Paperclip size={14} aria-hidden /> Attachments</span>
                                             <div className="iz-viewer__attachments-grid">
                                                 {viewerEmail.attachments.map((att, i) => {
                                                     const ext = att.filename.split('.').pop()?.toLowerCase() || '';
-                                                    const icon = ['pdf'].includes(ext) ? ''
-                                                        : ['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext) ? ''
-                                                        : ['doc','docx'].includes(ext) ? ''
-                                                        : ['xls','xlsx','csv'].includes(ext) ? ''
-                                                        : ['zip','rar','7z','gz','tar'].includes(ext) ? ''
-                                                        : ['mp3','wav','m4a','ogg'].includes(ext) ? ''
-                                                        : ['mp4','mov','avi','mkv','webm'].includes(ext) ? ''
-                                                        : '';
+                                                    const AttIcon = ['pdf'].includes(ext) ? FileText
+                                                        : ['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext) ? Image
+                                                        : ['doc','docx'].includes(ext) ? FileText
+                                                        : ['xls','xlsx','csv'].includes(ext) ? FileSpreadsheet
+                                                        : ['zip','rar','7z','gz','tar'].includes(ext) ? Package
+                                                        : ['mp3','wav','m4a','ogg'].includes(ext) ? Music
+                                                        : ['mp4','mov','avi','mkv','webm'].includes(ext) ? Film
+                                                        : Paperclip;
                                                     const sizeStr = att.size < 1024 ? `${att.size} B`
                                                         : att.size < 1048576 ? `${(att.size / 1024).toFixed(1)} KB`
                                                         : `${(att.size / 1048576).toFixed(1)} MB`;
@@ -1506,7 +1521,7 @@ export default function InboxZero() {
                                                             download={att.filename}
                                                             title={`Download: ${att.filename} (${sizeStr})`}
                                                         >
-                                                            <span className="iz-viewer__attachment-icon">{icon}</span>
+                                                            <span className="iz-viewer__attachment-icon"><AttIcon size={16} aria-hidden /></span>
                                                             <div className="iz-viewer__attachment-info">
                                                                 <span className="iz-viewer__attachment-name">{att.filename}</span>
                                                                 <span className="iz-viewer__attachment-size">{sizeStr}</span>
@@ -1544,7 +1559,7 @@ export default function InboxZero() {
                                     {/* Routing Reasoning */}
                                     {viewerEmail.routingReasoning && (
                                         <div className="iz-viewer__reasoning">
-                                            <span className="iz-viewer__reasoning-label">Routing Reasoning</span>
+                                            <span className="iz-viewer__reasoning-label"><Brain size={14} aria-hidden /> Routing Reasoning</span>
                                             <p>{viewerEmail.routingReasoning}</p>
                                         </div>
                                     )}
@@ -1563,13 +1578,13 @@ export default function InboxZero() {
                                                 setViewerEmail(null);
                                             }}
                                         >
-                                            {viewerEmail.routedToProject ? 'Approve & Route' : 'Approve'}
+                                            <Check size={14} aria-hidden /> {viewerEmail.routedToProject ? 'Approve & Route' : 'Approve'}
                                         </button>
                                         <button className="iz-action iz-action--archive" onClick={() => { handleArchive(viewerEmail.id); setViewerEmail(null); }}>
-                                            Archive
+                                            <Download size={14} aria-hidden /> Archive
                                         </button>
                                         <button className="iz-action iz-action--delete" onClick={() => { handleDelete(viewerEmail.id); setViewerEmail(null); }}>
-                                            Delete
+                                            <Trash2 size={14} aria-hidden /> Delete
                                         </button>
                                     </div>
                                 </>
@@ -1679,19 +1694,19 @@ export default function InboxZero() {
                                     onClick={saveSettings}
                                     disabled={settingsSaving || !settingsDirty}
                                 >
-                                    {settingsSaving ? 'Saving…' : 'Save Settings'}
+                                    {settingsSaving ? 'Saving…' : <><Save size={14} aria-hidden /> Save Settings</>}
                                 </button>
                             </div>
 
                             {settingsMsg && (
                                 <div className={`iz-settings__msg iz-settings__msg--${settingsMsg.type}`}>
-                                    {settingsMsg.type === 'success' ? '' : ''} {settingsMsg.text}
+                                    {settingsMsg.type === 'success' ? <Check size={14} aria-hidden /> : <X size={14} aria-hidden />} {settingsMsg.text}
                                 </div>
                             )}
 
                             {/* Inbox Zero Capabilities */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Inbox Zero Capabilities</h3>
+                                <h3 className="iz-settings__section-title"><Target size={16} aria-hidden /> Inbox Zero Capabilities</h3>
                                 <p className="iz-settings__section-desc">Enable or disable capability modules. Disabled modules will be marked inactive in the Capabilities tab.</p>
                                 <div className="iz-cap-settings">
                                     {CAPABILITIES_DATA.map(cat => (
@@ -1717,7 +1732,7 @@ export default function InboxZero() {
 
                             {/* Legal Shield Status */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Legal Shield — Georgia Code</h3>
+                                <h3 className="iz-settings__section-title"><Scale size={16} aria-hidden /> Legal Shield — Georgia Code</h3>
                                 <p className="iz-settings__section-desc">
                                     Real-time compliance scanner powered by LanceDB vector search across the full Georgia Code (O.C.G.A.).
                                 </p>
@@ -1730,7 +1745,7 @@ export default function InboxZero() {
                                                 border: `1px solid ${legalShieldHealth.healthy ? 'rgba(52,211,153,0.3)' : 'rgba(239,68,68,0.3)'}`,
                                                 borderRadius: '8px',
                                             }}>
-                                                <span style={{ fontSize: '20px' }}>{legalShieldHealth.healthy ? '' : ''}</span>
+                                                <span style={{ fontSize: '20px', display: 'inline-flex' }}>{legalShieldHealth.healthy ? <Check size={20} aria-hidden /> : <TriangleAlert size={20} aria-hidden />}</span>
                                                 <div style={{ flex: 1 }}>
                                                     <div style={{ fontWeight: 600, color: legalShieldHealth.healthy ? '#22c55e' : '#ef4444' }}>
                                                         {legalShieldHealth.healthy ? 'HEALTHY' : 'DEGRADED'}
@@ -1745,7 +1760,7 @@ export default function InboxZero() {
                                                     onClick={() => { legalShieldLoadedRef.current = false; fetchLegalShieldHealth(); }}
                                                     disabled={legalShieldLoading}
                                                 >
-                                                    {legalShieldLoading ? 'Checking…' : 'Run Health Check'}
+                                                    {legalShieldLoading ? 'Checking…' : <><RefreshCw size={12} aria-hidden /> Run Health Check</>}
                                                 </button>
                                             </div>
                                             <div style={{
@@ -1770,7 +1785,7 @@ export default function InboxZero() {
                                                         display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px',
                                                         padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px',
                                                     }}>
-                                                        <span>{c.status === 'pass' ? '' : c.status === 'warn' ? '' : ''}</span>
+                                                        <span style={{ display: 'inline-flex' }}>{c.status === 'pass' ? <Check size={13} aria-hidden /> : c.status === 'warn' ? <TriangleAlert size={13} aria-hidden /> : <X size={13} aria-hidden />}</span>
                                                         <span style={{ fontFamily: 'monospace', minWidth: '160px' }}>{c.name}</span>
                                                         <span style={{ opacity: 0.7 }}>{c.detail}</span>
                                                     </div>
@@ -1787,7 +1802,7 @@ export default function InboxZero() {
 
                             {/* Themes */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Themes</h3>
+                                <h3 className="iz-settings__section-title"><Palette size={16} aria-hidden /> Themes</h3>
                                 <p className="iz-settings__section-desc">Choose a color palette — applies universally to every widget and section.</p>
                                 <div className="iz-themes">
                                     {THEME_PALETTES.map(tp => (
@@ -1813,7 +1828,7 @@ export default function InboxZero() {
 
                             {/* Typography */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Typography</h3>
+                                <h3 className="iz-settings__section-title"><Type size={16} aria-hidden /> Typography</h3>
                                 <p className="iz-settings__section-desc">Choose a font pairing — applies to all headings, body text, and monospace across Qualia.</p>
                                 <div className="iz-fonts">
                                     {FONT_PAIRINGS.map(fp => (
@@ -1840,7 +1855,7 @@ export default function InboxZero() {
 
                             {/* Animations & Interactions */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Animations & Interactions</h3>
+                                <h3 className="iz-settings__section-title"><Sparkles size={16} aria-hidden /> Animations & Interactions</h3>
                                 <p className="iz-settings__section-desc">Pro Max micro-interactions, scroll reveals, skeleton loaders, glassmorphism, and border beams. Disable to reduce motion.</p>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
@@ -1862,7 +1877,7 @@ export default function InboxZero() {
                             {/* Permissions (god only) */}
                             {isGod && (
                                 <div className="iz-settings__section">
-                                    <h3 className="iz-settings__section-title">Permissions</h3>
+                                    <h3 className="iz-settings__section-title"><Lock size={16} aria-hidden /> Permissions</h3>
                                     <p className="iz-settings__section-desc">Assign widget and section visibility per user. Only you (Andy) can manage these.</p>
 
                                     {/* User Selector */}
@@ -1910,63 +1925,69 @@ export default function InboxZero() {
                                                         setPermMap(toggled);
                                                     }}
                                                 >
-                                                    {Object.values(permMap).every(v => v) ? 'Deselect All' : 'Select All'}
+                                                    {Object.values(permMap).every(v => v) ? <><Square size={13} aria-hidden /> Deselect All</> : <><SquareCheck size={13} aria-hidden /> Select All</>}
                                                 </button>
                                             </div>
 
                                             {/* Widget Permissions */}
                                             <div className="iz-perms__category">
-                                                <h4 className="iz-perms__category-title">⊞ Widgets</h4>
+                                                <h4 className="iz-perms__category-title"><LayoutGrid size={14} aria-hidden /> Widgets</h4>
                                                 <div className="iz-perms__grid">
                                                     {[
-                                                        { key: 'widget:astra-dashboard', icon: '◈', label: 'Astra' },
-                                                        { key: 'widget:strata-dashboard', icon: '', label: 'Strata' },
-                                                        { key: 'widget:thought-weaver', icon: '', label: 'Thought Weaver' },
-                                                        { key: 'widget:inbox-zero', icon: '', label: 'Inbox Zero' },
-                                                        { key: 'widget:inbox', icon: '', label: 'Inbox' },
-                                                        { key: 'widget:tasks', icon: '', label: 'Tasks' },
-                                                        { key: 'widget:ara-console', icon: '', label: 'ARA' },
-                                                        { key: 'widget:transcription', icon: '', label: 'Transcribe' },
-                                                        { key: 'widget:fact-check-log', icon: '', label: 'Fact Check' },
-                                                        { key: 'widget:hierarchy-browser', icon: '', label: 'Explorer' },
-                                                        { key: 'widget:file-manager', icon: '', label: 'Files' },
-                                                        { key: 'widget:notepad', icon: '', label: 'Notepad' },
-                                                        { key: 'widget:doc-viewer', icon: '', label: 'Docs' },
-                                                        { key: 'widget:terminal', icon: '', label: 'Terminal' },
-                                                        { key: 'widget:trello-board', icon: '', label: 'Trello' },
-                                                        { key: 'widget:control-panel', icon: '', label: 'Settings' },
-                                                    ].map(w => (
+                                                        { key: 'widget:astra-dashboard', icon: LayoutDashboard, label: 'Astra' },
+                                                        { key: 'widget:strata-dashboard', icon: Building2, label: 'Strata' },
+                                                        { key: 'widget:thought-weaver', icon: Workflow, label: 'Thought Weaver' },
+                                                        { key: 'widget:inbox-zero', icon: Inbox, label: 'Inbox Zero' },
+                                                        { key: 'widget:inbox', icon: Mail, label: 'Inbox' },
+                                                        { key: 'widget:tasks', icon: ListChecks, label: 'Tasks' },
+                                                        { key: 'widget:ara-console', icon: Brain, label: 'ARA' },
+                                                        { key: 'widget:transcription', icon: Mic, label: 'Transcribe' },
+                                                        { key: 'widget:fact-check-log', icon: Search, label: 'Fact Check' },
+                                                        { key: 'widget:hierarchy-browser', icon: FolderTree, label: 'Explorer' },
+                                                        { key: 'widget:file-manager', icon: Folder, label: 'Files' },
+                                                        { key: 'widget:notepad', icon: FileText, label: 'Notepad' },
+                                                        { key: 'widget:doc-viewer', icon: FileText, label: 'Docs' },
+                                                        { key: 'widget:terminal', icon: Terminal, label: 'Terminal' },
+                                                        { key: 'widget:trello-board', icon: ClipboardList, label: 'Trello' },
+                                                        { key: 'widget:control-panel', icon: Settings, label: 'Settings' },
+                                                    ].map(w => {
+                                                        const WidgetIcon = w.icon;
+                                                        return (
                                                         <label key={w.key} className={`iz-perms__item ${permMap[w.key] ? 'iz-perms__item--on' : ''}`}>
                                                             <input
                                                                 type="checkbox"
                                                                 checked={!!permMap[w.key]}
                                                                 onChange={(e) => setPermMap(prev => ({ ...prev, [w.key]: e.target.checked }))}
                                                             />
-                                                            <span className="iz-perms__item-icon">{w.icon}</span>
+                                                            <span className="iz-perms__item-icon"><WidgetIcon size={16} aria-hidden /></span>
                                                             <span className="iz-perms__item-label">{w.label}</span>
                                                         </label>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
 
                                             {/* Section Permissions */}
                                             <div className="iz-perms__category">
-                                                <h4 className="iz-perms__category-title">Sections</h4>
+                                                <h4 className="iz-perms__category-title"><Ruler size={14} aria-hidden /> Sections</h4>
                                                 <div className="iz-perms__grid iz-perms__grid--sections">
                                                     {[
-                                                        { key: 'section:domains', icon: '', label: 'Domain Tree' },
-                                                        { key: 'section:settings-admin', icon: '', label: 'Admin Settings' },
-                                                    ].map(s => (
+                                                        { key: 'section:domains', icon: FolderOpen, label: 'Domain Tree' },
+                                                        { key: 'section:settings-admin', icon: ShieldCheck, label: 'Admin Settings' },
+                                                    ].map(s => {
+                                                        const SectionIcon = s.icon;
+                                                        return (
                                                         <label key={s.key} className={`iz-perms__item ${permMap[s.key] ? 'iz-perms__item--on' : ''}`}>
                                                             <input
                                                                 type="checkbox"
                                                                 checked={!!permMap[s.key]}
                                                                 onChange={(e) => setPermMap(prev => ({ ...prev, [s.key]: e.target.checked }))}
                                                             />
-                                                            <span className="iz-perms__item-icon">{s.icon}</span>
+                                                            <span className="iz-perms__item-icon"><SectionIcon size={16} aria-hidden /></span>
                                                             <span className="iz-perms__item-label">{s.label}</span>
                                                         </label>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
 
@@ -2000,7 +2021,7 @@ export default function InboxZero() {
                                                         setTimeout(() => setPermSaveMsg(''), 4000);
                                                     }}
                                                 >
-                                                    {permSaving ? 'Saving…' : 'Save Permissions'}
+                                                    {permSaving ? 'Saving…' : <><Save size={14} aria-hidden /> Save Permissions</>}
                                                 </button>
                                                 {permSaveMsg && <span className="iz-perms__save-msg">{permSaveMsg}</span>}
                                             </div>
@@ -2015,7 +2036,7 @@ export default function InboxZero() {
 
                             {/* AI & Routing */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">AI & Routing</h3>
+                                <h3 className="iz-settings__section-title"><Bot size={16} aria-hidden /> AI & Routing</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label">
                                         <span className="iz-settings__name">OpenAI API Key</span>
@@ -2079,7 +2100,7 @@ export default function InboxZero() {
 
                             {/* Gmail */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Gmail Integration</h3>
+                                <h3 className="iz-settings__section-title"><Mail size={16} aria-hidden /> Gmail Integration</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
                                         <div>
@@ -2121,7 +2142,7 @@ export default function InboxZero() {
 
                             {/* Trello */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Trello Integration</h3>
+                                <h3 className="iz-settings__section-title"><ClipboardList size={16} aria-hidden /> Trello Integration</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
                                         <div>
@@ -2179,7 +2200,7 @@ export default function InboxZero() {
 
                             {/* Google Drive & Sharing */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Google Drive & Sharing</h3>
+                                <h3 className="iz-settings__section-title"><Cloud size={16} aria-hidden /> Google Drive & Sharing</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
                                         <div>
@@ -2209,7 +2230,7 @@ export default function InboxZero() {
 
                             {/* Security */}
                             <div className="iz-settings__section">
-                                <h3 className="iz-settings__section-title">Security & Guard</h3>
+                                <h3 className="iz-settings__section-title"><ShieldCheck size={16} aria-hidden /> Security & Guard</h3>
                                 <div className="iz-settings__group">
                                     <label className="iz-settings__label iz-settings__label--toggle">
                                         <div>
@@ -2283,7 +2304,7 @@ export default function InboxZero() {
                                                     onClick={fetchLlmSafetyAudit}
                                                     disabled={llmSafetyLoading}
                                                 >
-                                                    {llmSafetyLoading ? 'Loading…' : '↻ Refresh'}
+                                                    {llmSafetyLoading ? 'Loading…' : <><RefreshCw size={14} aria-hidden /> Refresh</>}
                                                 </button>
                                             </div>
                                         </div>
@@ -2336,7 +2357,7 @@ export default function InboxZero() {
                                         )}
 
                                         {llmSafetyError && (
-                                            <div className="iz-safety__error">{llmSafetyError}</div>
+                                            <div className="iz-safety__error" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><X size={14} aria-hidden /> {llmSafetyError}</div>
                                         )}
 
                                         <div className="iz-safety__events">
@@ -2397,7 +2418,7 @@ export default function InboxZero() {
             {/* ========== UNDO TOAST ========== */}
             {undoStack.length > 0 && (
                 <div className="iz-undo">
-                    <span>{undoStack.length} item{undoStack.length > 1 ? 's' : ''} archived — </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Download size={14} aria-hidden /> {undoStack.length} item{undoStack.length > 1 ? 's' : ''} archived — </span>
                     <button className="iz-undo__btn" onClick={async () => {
                         try {
                             await Promise.all(undoStack.map(entry =>

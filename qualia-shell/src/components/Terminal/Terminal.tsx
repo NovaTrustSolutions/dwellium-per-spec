@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { TriangleAlert } from 'lucide-react';
 import PaperclipPanel from './PaperclipPanel';
 import LangFlowPanel from './LangFlowPanel';
 import CrewAIPanel from './CrewAIPanel';
@@ -143,7 +144,7 @@ export default function Terminal() {
     // Keep the live keystroke handler current without recreating the xterm instance.
     onDataRef.current = (d: string) => { void sendRawInput(d); };
 
-    // Run a CLI command on demand (e.g. Halocron OS "Codex"/"Claude" tiles). If a
+    // Run a CLI command on demand (e.g. Holocron OS "Codex"/"Claude" tiles). If a
     // live session is already up, send it now; otherwise createSession will run
     // the queued `dwellium-terminal-initial-cmd` when it connects.
     useEffect(() => {
@@ -299,7 +300,7 @@ export default function Terminal() {
             writeToTerm(initialOutput);
             setSaveMsg('Live session connected');
             setTimeout(() => setSaveMsg(null), 2500);
-            // One-shot: a caller (e.g. "Run Codex" in Halocron OS) can queue a
+            // One-shot: a caller (e.g. "Run Codex" in Holocron OS) can queue a
             // command to run as soon as the live shell is ready.
             try {
                 const initialCmd = sessionStorage.getItem('dwellium-terminal-initial-cmd');
@@ -518,9 +519,10 @@ export default function Terminal() {
                 <div
                     className="qualia-terminal__offline"
                     role="status"
-                    style={{ padding: '6px 12px', background: 'rgba(249,115,22,0.12)', borderTop: '1px solid rgba(249,115,22,0.4)', borderBottom: '1px solid rgba(249,115,22,0.4)', color: '#fdba74', fontSize: 12 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(249,115,22,0.12)', borderTop: '1px solid rgba(249,115,22,0.4)', borderBottom: '1px solid rgba(249,115,22,0.4)', color: '#fdba74', fontSize: 12 }}
                 >
-                    Backend terminal unavailable — running a limited <strong>offline shell</strong>. Type <code>help</code>; connect the backend for a full PTY shell.
+                    <TriangleAlert size={14} aria-hidden style={{ flexShrink: 0 }} />
+                    <span>Backend terminal unavailable — running a limited <strong>offline shell</strong>. Type <code>help</code>; connect the backend for a full PTY shell.</span>
                 </div>
             )}
             <div

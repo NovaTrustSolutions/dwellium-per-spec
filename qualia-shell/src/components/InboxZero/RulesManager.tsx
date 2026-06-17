@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { BarChart3, Bot, Brain, Check, Circle, ClipboardList, Eye, Hourglass, Lightbulb, Pencil, Plus, Save, Square, Trash2, Wand2, X } from 'lucide-react';
 import { API_BASE as API_ROOT } from '../../config';
 
 const API = `${API_ROOT}/api/v1/inbox/rules`;
@@ -319,8 +319,8 @@ export default function RulesManager() {
 
     // ── Urgency Badge ──
     const urgencyBadge = (u: string) => {
-        const map: Record<string, string> = { high: '', medium: '', low: '' };
-        return map[u] || '';
+        const color = u === 'high' ? '#ef4444' : u === 'medium' ? '#eab308' : u === 'low' ? '#22c55e' : '#9ca3af';
+        return <Circle size={12} aria-hidden fill={color} color={color} style={{ verticalAlign: 'middle' }} />;
     };
 
     // ── Render ──
@@ -347,12 +347,14 @@ export default function RulesManager() {
             {/* Sub-navigation */}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 {([
-                    { id: 'list' as RulesView, label: 'Rules', count: rules.length },
-                    { id: 'add' as RulesView, label: editingRule ? 'Edit' : 'Add' },
-                    { id: 'stats' as RulesView, label: 'Analytics' },
-                    { id: 'knowledge' as RulesView, label: 'Knowledge' },
-                    { id: 'ai-settings' as RulesView, label: 'AI' },
-                ]).map(tab => (
+                    { id: 'list' as RulesView, label: 'Rules', icon: ClipboardList, count: rules.length },
+                    { id: 'add' as RulesView, label: editingRule ? 'Edit' : 'Add', icon: editingRule ? Pencil : Plus },
+                    { id: 'stats' as RulesView, label: 'Analytics', icon: BarChart3 },
+                    { id: 'knowledge' as RulesView, label: 'Knowledge', icon: Brain },
+                    { id: 'ai-settings' as RulesView, label: 'AI', icon: Bot },
+                ]).map(tab => {
+                    const TabIcon = tab.icon;
+                    return (
                     <button
                         key={tab.id}
                         onClick={() => { if (tab.id === 'add' && view !== 'add') resetForm(); setView(tab.id); }}
@@ -366,19 +368,22 @@ export default function RulesManager() {
                             fontSize: '0.85rem',
                             fontWeight: view === tab.id ? 600 : 400,
                             transition: 'all 0.2s ease',
+                            display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
                         }}
                     >
+                        <TabIcon size={14} aria-hidden />
                         {tab.label}
                         {tab.count !== undefined && <span style={{ marginLeft: '0.35rem', opacity: 0.7 }}>({tab.count})</span>}
                     </button>
-                ))}
+                    );
+                })}
             </div>
 
             {/* ════════════════════════════════════ */}
             {/* PROMPT-TO-RULE ENGINE (always visible) */}
             {/* ════════════════════════════════════ */}
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>Describe a rule in plain English</h4>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Wand2 size={15} aria-hidden /> Describe a rule in plain English</h4>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <textarea
                         value={promptText}
@@ -400,7 +405,7 @@ export default function RulesManager() {
                                 fontSize: '0.8rem', opacity: promptLoading ? 0.5 : 1,
                             }}
                         >
-                            {promptLoading ? '' : ''} Preview
+                            {promptLoading ? <Hourglass size={13} aria-hidden /> : <Eye size={13} aria-hidden />} Preview
                         </button>
                         <button
                             onClick={handlePromptSave}
@@ -411,7 +416,7 @@ export default function RulesManager() {
                                 fontSize: '0.8rem', fontWeight: 600, opacity: promptLoading ? 0.5 : 1,
                             }}
                         >
-                            {promptLoading ? '' : ''} Save
+                            {promptLoading ? <Hourglass size={13} aria-hidden /> : <Save size={13} aria-hidden />} Save
                         </button>
                     </div>
                 </div>
@@ -478,8 +483,8 @@ export default function RulesManager() {
                                     <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
                                         <button onClick={() => handleToggleRule(rule.id)} title={rule.enabled ? 'Disable' : 'Enable'}
                                             aria-label={rule.enabled ? 'Disable rule' : 'Enable rule'} aria-pressed={rule.enabled}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem' }}>
-                                            {rule.enabled ? '' : ''}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', display: 'inline-flex' }}>
+                                            {rule.enabled ? <Check size={16} aria-hidden /> : <Square size={16} aria-hidden />}
                                         </button>
                                         <button onClick={() => startEdit(rule)} title="Edit" aria-label="Edit rule"
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}><Pencil size={16} /></button>
@@ -545,7 +550,7 @@ export default function RulesManager() {
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                         <button onClick={editingRule ? handleUpdateRule : handleCreateRule}
                             style={{ padding: '0.6rem 1.5rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>
-                            {editingRule ? 'Save Changes' : 'Create Rule'}
+                            {editingRule ? <><Save size={14} aria-hidden /> Save Changes</> : <><Plus size={14} aria-hidden /> Create Rule</>}
                         </button>
                         <button onClick={() => { resetForm(); setView('list'); }}
                             style={{ padding: '0.6rem 1rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>
@@ -560,7 +565,7 @@ export default function RulesManager() {
             {/* ════════════════════════════════════ */}
             {view === 'stats' && (
                 <div>
-                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>Rule Execution Analytics</h4>
+                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}><BarChart3 size={16} aria-hidden /> Rule Execution Analytics</h4>
                     {stats.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No execution data yet. Rules will log stats as emails are processed.</div>
                     ) : (
@@ -599,7 +604,7 @@ export default function RulesManager() {
             {/* ════════════════════════════════════ */}
             {view === 'knowledge' && (
                 <div>
-                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>Knowledge Base</h4>
+                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Brain size={16} aria-hidden /> Knowledge Base</h4>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                         Add organizational context that helps the AI make smarter routing decisions.
                     </p>
@@ -611,8 +616,8 @@ export default function RulesManager() {
                         <textarea value={knowledgeContent} onChange={e => setKnowledgeContent(e.target.value)} placeholder="Content that helps AI route emails better..."
                             style={{ width: '100%', minHeight: '4rem', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--input-bg, var(--surface-bg))', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.85rem' }} />
                         <button onClick={handleAddKnowledge} disabled={!knowledgeTitle || !knowledgeContent}
-                            style={{ marginTop: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600, opacity: (!knowledgeTitle || !knowledgeContent) ? 0.5 : 1 }}>
-                            Add Entry
+                            style={{ marginTop: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', background: 'var(--accent)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600, opacity: (!knowledgeTitle || !knowledgeContent) ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <Plus size={14} aria-hidden /> Add Entry
                         </button>
                     </div>
 
@@ -643,7 +648,7 @@ export default function RulesManager() {
             {/* ════════════════════════════════════ */}
             {view === 'ai-settings' && (
                 <div>
-                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)' }}>AI Provider Configuration</h4>
+                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Bot size={16} aria-hidden /> AI Provider Configuration</h4>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
                         <div style={{ padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '10px' }}>
@@ -663,7 +668,7 @@ export default function RulesManager() {
                                 padding: '0.75rem 1rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '8px',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '1.1rem' }}>{p.configured ? '' : ''}</span>
+                                    <span style={{ fontSize: '1.1rem', display: 'inline-flex' }}>{p.configured ? <Check size={16} aria-hidden color="#22c55e" /> : <X size={16} aria-hidden color="#ef4444" />}</span>
                                     <span style={{ fontWeight: 600, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{p.name}</span>
                                     {p.model && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--surface-bg)', padding: '1px 6px', borderRadius: '4px' }}>{p.model}</span>}
                                 </div>
@@ -685,8 +690,8 @@ export default function RulesManager() {
                         )}
                     </div>
 
-                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(59,130,246,0.08)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.15)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        Set <code style={{ background: 'rgba(0,0,0,0.1)', padding: '0 4px', borderRadius: '3px' }}>AI_PROVIDER</code> and <code style={{ background: 'rgba(0,0,0,0.1)', padding: '0 4px', borderRadius: '3px' }}>AI_FALLBACK_CHAIN</code> in your <code>.env</code> to configure.
+                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(59,130,246,0.08)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.15)', fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                        <Lightbulb size={14} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} /> <span>Set <code style={{ background: 'rgba(0,0,0,0.1)', padding: '0 4px', borderRadius: '3px' }}>AI_PROVIDER</code> and <code style={{ background: 'rgba(0,0,0,0.1)', padding: '0 4px', borderRadius: '3px' }}>AI_FALLBACK_CHAIN</code> in your <code>.env</code> to configure.</span>
                     </div>
                 </div>
             )}

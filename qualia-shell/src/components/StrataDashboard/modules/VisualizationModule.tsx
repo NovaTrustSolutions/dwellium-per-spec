@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Network, Clock, GitBranch, RefreshCw, Search, Building2,
     Truck, Users, FolderKanban, Wrench, FileText, Scale,
-    ZoomIn, ZoomOut, Maximize2, ChevronDown,
+    ZoomIn, ZoomOut, Maximize2, ChevronDown, Home,
 } from 'lucide-react';
 import { strataGet } from '../strataApi';
 import type { Workitem, Property, EntityProfile } from '../strataTypes';
@@ -328,8 +328,8 @@ export default function VisualizationModule() {
                                                 {wi.domain && <span>• {wi.domain}</span>}
                                                 {wi.type && <span>• {wi.type}</span>}
                                                 {wi.propertyId && (
-                                                    <button className="s-property-link" style={{ fontSize: 'inherit', color: 'var(--accent)' }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
-                                                        {properties.find(p => p.id === wi.propertyId)?.name || 'Unknown'}
+                                                    <button className="s-property-link" style={{ fontSize: 'inherit', color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 3 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>
+                                                        <Home size={12} aria-hidden /> {properties.find(p => p.id === wi.propertyId)?.name || 'Unknown'}
                                                     </button>
                                                 )}
                                             </div>

@@ -153,8 +153,9 @@ export default function StatusCheckModule() {
                     padding: '12px 16px', borderRadius: 10, marginBottom: '1rem',
                     background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
                     color: '#ef4444', fontSize: 13,
+                    display: 'flex', alignItems: 'center', gap: 6,
                 }}>
-                    Failed to check status: {error}
+                    <AlertTriangle size={14} aria-hidden /> Failed to check status: {error}
                 </div>
             )}
 

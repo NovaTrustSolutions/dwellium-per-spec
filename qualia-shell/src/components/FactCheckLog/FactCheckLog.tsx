@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search } from 'lucide-react';
+import { Check, CircleHelp, Hourglass, Search, TriangleAlert, X, type LucideIcon } from 'lucide-react';
 import './FactCheckLog.css';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -34,11 +34,11 @@ type VerdictFilter = 'all' | 'verified' | 'disputed' | 'unverifiable' | 'partial
 
 const API_FACT_CHECK = `${API_BASE}/api/transcribe/fact-check`;
 
-const VERDICT_CONFIG: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-    verified: { label: 'Verified', icon: '', color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
-    disputed: { label: 'Disputed', icon: '', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' },
-    unverifiable: { label: 'Unverifiable', icon: '', color: '#f59e0b', bg: 'rgba(251, 191, 36, 0.12)' },
-    partially_true: { label: 'Partial', icon: '', color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.12)' },
+const VERDICT_CONFIG: Record<string, { label: string; Icon: LucideIcon; color: string; bg: string }> = {
+    verified: { label: 'Verified', Icon: Check, color: '#22c55e', bg: 'rgba(16, 185, 129, 0.12)' },
+    disputed: { label: 'Disputed', Icon: X, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' },
+    unverifiable: { label: 'Unverifiable', Icon: CircleHelp, color: '#f59e0b', bg: 'rgba(251, 191, 36, 0.12)' },
+    partially_true: { label: 'Partial', Icon: TriangleAlert, color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.12)' },
 };
 
 // ============================================
@@ -288,7 +288,7 @@ export default function FactCheckLog() {
                     onClick={submitManualCheck}
                     disabled={checking || !manualClaim.trim()}
                 >
-                    {checking ? '' : ''} Check
+                    {checking ? <Hourglass size={14} aria-hidden /> : <Search size={14} aria-hidden />} Check
                 </button>
             </div>
 
@@ -302,7 +302,7 @@ export default function FactCheckLog() {
                             onClick={() => setFilter(v)}
                             style={filter === v && v !== 'all' ? { color: VERDICT_CONFIG[v]?.color, borderColor: VERDICT_CONFIG[v]?.color } : {}}
                         >
-                            {v === 'all' ? 'All' : VERDICT_CONFIG[v].icon + ' ' + VERDICT_CONFIG[v].label}
+                            {v === 'all' ? 'All' : (() => { const VI = VERDICT_CONFIG[v].Icon; return <>{<VI size={12} aria-hidden />} {VERDICT_CONFIG[v].label}</>; })()}
                         </button>
                     ))}
                 </div>
@@ -318,7 +318,7 @@ export default function FactCheckLog() {
             <div className="fcl-entries">
                 {filtered.length === 0 ? (
                     <div className="fcl-empty">
-                        <div className="fcl-empty__icon"></div>
+                        <div className="fcl-empty__icon"><Search size={32} aria-hidden /></div>
                         <div className="fcl-empty__title">
                             {entries.length === 0 ? 'No claims checked yet' : 'No matching claims'}
                         </div>
@@ -343,7 +343,7 @@ export default function FactCheckLog() {
                                 <div className="fcl-entry__main">
                                     <div className="fcl-entry__verdict-col">
                                         <span className="fcl-entry__verdict-icon" style={{ color: vc.color }}>
-                                            {vc.icon}
+                                            <vc.Icon size={16} aria-hidden />
                                         </span>
                                         <span
                                             className="fcl-entry__verdict-label"

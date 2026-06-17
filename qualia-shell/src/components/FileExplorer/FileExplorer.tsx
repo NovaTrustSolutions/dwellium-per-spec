@@ -17,7 +17,7 @@
  * See Scripts/autorun/FILE_EXPLORER_PORTING_PLAN.md for full breakdown.
  */
 import { useEffect, useState, useCallback, useRef, useContext } from 'react';
-import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus, FolderRoot } from 'lucide-react';
+import { Lock, Unlock, List, ListTree, RefreshCw, FilePlus, FolderPlus, FolderRoot, Folder, FileText } from 'lucide-react';
 import { FileExplorerCell, resetVisiblePaths, type FileEntry } from './FileExplorerCell';
 import { useFileExplorer } from './useFileExplorer';
 import { fetchTree, mkdir, touch, move as apiMove } from './fileExplorerApi';
@@ -485,7 +485,7 @@ export default function FileExplorer() {
                         padding: '24px 16px', textAlign: 'center',
                         color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.6,
                     }}>
-                        <div style={{ fontSize: 22, marginBottom: 8, opacity: 0.4 }}></div>
+                        <div style={{ marginBottom: 8, opacity: 0.4 }}><Folder size={22} aria-hidden /></div>
                         <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>No files yet</div>
                         <div style={{ fontSize: 10 }}>
                             Drop a file from Finder here, or create a domain folder
@@ -503,7 +503,7 @@ export default function FileExplorer() {
                                 borderLeft: '2px solid var(--accent)',
                             }}>
                                 <span style={{ width: 12 }} />
-                                <span style={{ fontSize: 11, color: 'var(--accent)', opacity: 0.6 }}>{newEntry.type === 'folder' ? '' : ''}</span>
+                                <span style={{ fontSize: 11, color: 'var(--accent)', opacity: 0.6, display: 'inline-flex' }}>{newEntry.type === 'folder' ? <Folder size={14} aria-hidden /> : <FileText size={14} aria-hidden />}</span>
                                 <input
                                     ref={newInputRef}
                                     value={newName}
@@ -570,7 +570,7 @@ export default function FileExplorer() {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
                 <span>{viewMode === 'tree' ? 'Tree view' : 'Flat view'}</span>
-                <span>{locked ? 'Locked · ' : ''}{fileCount} file{fileCount === 1 ? '' : 's'}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{locked ? <><Lock size={12} aria-hidden /> Locked · </> : ''}{fileCount} file{fileCount === 1 ? '' : 's'}</span>
             </div>
             <style>{`@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } } @keyframes feToastFade { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }`}</style>
         </div>

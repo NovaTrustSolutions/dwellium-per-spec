@@ -1,5 +1,5 @@
 /**
- * HalocronOS — the alternate interface layout for Dwellium (2026-06-12).
+ * HalocronOS — the Holocron OS alternate interface layout for Dwellium (2026-06-12).
  *
  * A full-screen launcher shell in the Old Republic holocron-archive aesthetic,
  * modeled on the "Claude OS" layout: a left navigation rail (Home, Memory,
@@ -16,11 +16,11 @@
  * desktop; the Settings panel flips it. Nothing is lost either way — same
  * windows, widgets, spaces, memory underneath.
  */
-import { Suspense, useEffect, useMemo, useState, useSyncExternalStore, createElement } from 'react';
-import { X } from 'lucide-react';
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, createElement, type ReactNode } from 'react';
+import { Brain, ChevronLeft, ChevronRight, Columns2, Columns3, Grid2X2, Maximize2, Moon, PanelLeftClose, PanelLeftOpen, Pin, Settings, Sparkles, Square, Star, X } from 'lucide-react';
 import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
-import { halocronOsStore } from '../../lib/halocronOsStore';
+import { halocronOsStore, type HalocronOsState } from '../../lib/halocronOsStore';
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
 import HalocronKnowledgeGraph, { KG_AGENTS } from './HalocronKnowledgeGraph';
 import HalocronWorkspaces from './HalocronWorkspaces';
@@ -29,22 +29,22 @@ import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
 import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore } from '../../lib/subscriptionsStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
-import { UserContext } from '../../context/UserContext';
+import { UserContext, type DwelliumUser } from '../../context/UserContext';
 import { integrationsUserIdHolder } from '../../utils/integrationsStore';
 import './HalocronOS.css';
 
 type NavId = 'home' | 'memory' | 'kg' | 'workspace' | 'apps' | 'skills' | 'dream' | 'insights' | 'settings';
 
-const NAV: { id: NavId; label: string; glyph: string }[] = [
+const NAV: { id: NavId; label: string; glyph: ReactNode }[] = [
     { id: 'home', label: 'Home', glyph: '◈' },
     { id: 'kg', label: 'Knowledge Graph', glyph: '⊹' },
-    { id: 'memory', label: 'Memory', glyph: '' },
+    { id: 'memory', label: 'Memory', glyph: <Brain size={16} /> },
     { id: 'workspace', label: 'Workspace', glyph: '◳' },
     { id: 'apps', label: 'Apps', glyph: '▦' },
-    { id: 'skills', label: 'Skills', glyph: '' },
-    { id: 'dream', label: 'Dream', glyph: '' },
+    { id: 'skills', label: 'Skills', glyph: <Sparkles size={16} /> },
+    { id: 'dream', label: 'Dream', glyph: <Moon size={16} /> },
     { id: 'insights', label: 'Insights', glyph: '▤' },
-    { id: 'settings', label: 'Settings', glyph: '' },
+    { id: 'settings', label: 'Settings', glyph: <Settings size={16} /> },
 ];
 
 const SPACES: { id: string; name: string; widgets: string[] }[] = [
@@ -64,14 +64,39 @@ type RangeId = 'today' | '7' | '28';
 
 // External AI tools launchable from the Home screen — "access them all from
 // one place." Opens the real product in a new tab.
-const LAUNCH_TOOLS: { id: string; name: string; sub: string; url: string; color: string; glyph: string }[] = [
-    { id: 'claude', name: 'Claude', sub: 'Anthropic · Max 20x', url: 'https://claude.ai', color: '#d97757', glyph: '' },
+const LAUNCH_TOOLS: { id: string; name: string; sub: string; url: string; color: string; glyph: ReactNode }[] = [
+    { id: 'claude', name: 'Claude', sub: 'Anthropic · Max 20x', url: 'https://claude.ai', color: '#d97757', glyph: <Sparkles size={18} /> },
     { id: 'antigravity', name: 'AntiGravity', sub: 'Google', url: 'https://antigravity.google', color: '#4d8aff', glyph: '◇' },
     { id: 'chatgpt', name: 'ChatGPT', sub: 'OpenAI · Plus', url: 'https://chatgpt.com', color: '#19c37d', glyph: '◉' },
     { id: 'codex', name: 'Codex', sub: 'OpenAI · CLI agent', url: 'https://chatgpt.com/codex', color: '#c9a44c', glyph: '⌘' },
 ];
 
-interface HosTab { key: string; kind: 'widget' | 'web'; id?: string; label: string; url?: string; color?: string; }
+interface HosTab {
+    key: string;
+    kind: 'widget' | 'web';
+    id?: string;
+    label: string;
+    url?: string;
+    color?: string;
+    pinned?: boolean;
+    essential?: boolean;
+    lastActiveAt: number;
+}
+
+type SplitLayout = HalocronOsState['splitLayout'];
+
+const SPLIT_LIMIT: Record<SplitLayout, number> = {
+    single: 1,
+    two: 2,
+    three: 3,
+    quad: 4,
+};
+
+const splitRank = (a: HosTab, b: HosTab) =>
+    Number(Boolean(b.essential)) - Number(Boolean(a.essential))
+    || Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
+    || b.lastActiveAt - a.lastActiveAt
+    || a.label.localeCompare(b.label);
 
 // AI tools that are CLI agents → run them in the in-OS Terminal instead of an
 // (un-embeddable) web tab. Maps launchpad id → terminal command + tab label.
@@ -115,6 +140,28 @@ const AGENT_WIDGET: Record<string, string> = {
 const RANGE_DAYS: Record<RangeId, number> = { today: 1, '7': 7, '28': 28 };
 const RANGE_LABEL: Record<RangeId, string> = { today: 'today', '7': 'last 7 days', '28': 'last 28 days' };
 
+const KNOWN_GREETING_NAMES: Record<string, string> = {
+    'andy@dwellium.com': 'Andy',
+    'lisa@dwellium.com': 'Lisa',
+    'lisa@zpgroup.io': 'Lisa',
+    'architect@dwellium.com': 'Ilya',
+    'iklipinitser@gmail.com': 'Ilya',
+};
+
+function accountGreetingName(user: DwelliumUser | null | undefined): string {
+    const email = user?.email?.trim().toLowerCase() ?? '';
+    const known = KNOWN_GREETING_NAMES[email];
+    if (known) return known;
+
+    const rawName = user?.name?.trim() ?? '';
+    if (/^(archi|architect)$/i.test(rawName)) return 'Ilya';
+    const firstName = rawName.split(/\s+/).filter(Boolean)[0];
+    if (firstName) return firstName;
+
+    const emailName = email.split('@')[0]?.split(/[._+-]/).filter(Boolean)[0];
+    return emailName ? emailName.charAt(0).toUpperCase() + emailName.slice(1) : 'there';
+}
+
 export default function HalocronOS() {
     const state = useSyncExternalStore(halocronOsStore.subscribe, halocronOsStore.getSnapshot, halocronOsStore.getServerSnapshot);
     const [nav, setNav] = useState<NavId>('home');
@@ -126,6 +173,32 @@ export default function HalocronOS() {
     // mounted (hidden when inactive) so you keep your place when switching.
     const [tabs, setTabs] = useState<HosTab[]>([]);
     const [activeKey, setActiveKey] = useState<string | null>(null);
+    const tabTouchSeq = useRef(0);
+    const touch = () => Date.now() * 1000 + (++tabTouchSeq.current);
+
+    const markActive = (key: string) => {
+        const lastActiveAt = touch();
+        setActiveKey(key);
+        setTabs((t) => t.map((x) => (x.key === key ? { ...x, lastActiveAt } : x)));
+    };
+
+    const orderedTabs = useMemo(() => [...tabs].sort(splitRank), [tabs]);
+    const stageTabs = useMemo(() => {
+        if (!activeKey) return [];
+        const active = tabs.find((t) => t.key === activeKey);
+        if (!active) return [];
+        const limit = SPLIT_LIMIT[state.splitLayout] ?? 1;
+        const companions = tabs.filter((t) => t.key !== activeKey).sort(splitRank);
+        return [active, ...companions].slice(0, limit);
+    }, [activeKey, tabs, state.splitLayout]);
+
+    const cycleTab = (delta: 1 | -1) => {
+        const recent = [...tabs].sort((a, b) => b.lastActiveAt - a.lastActiveAt);
+        if (recent.length < 2) return;
+        const cur = recent.findIndex((t) => t.key === activeKey);
+        const idx = cur < 0 ? 0 : cur;
+        markActive(recent[(idx + delta + recent.length) % recent.length].key);
+    };
 
     const grouped = useMemo(() => {
         const out: Record<string, { id: string; label: string; icon: string }[]> = {};
@@ -149,6 +222,7 @@ export default function HalocronOS() {
     // reference THIS account's data — never a stale or anonymous namespace.
     const userCtx = useContext(UserContext);
     integrationsUserIdHolder.current = userCtx?.user?.id ?? null;
+    const greetingName = accountGreetingName(userCtx?.user);
     const { integrations } = useIntegrations();
     const usage = useLlmUsage();
     const subs = useSubscriptions();
@@ -179,13 +253,28 @@ export default function HalocronOS() {
             if (!id || !WINDOW_COMPONENTS[id]) return;
             if (!halocronOsStore.getSnapshot().enabled) return;
             const key = `w:${id}`;
-            setTabs((t) => (t.some((x) => x.key === key) ? t : [...t, { key, kind: 'widget', id, label: WIDGET_REGISTRY[id]?.label ?? id }]));
+            const lastActiveAt = touch();
+            setTabs((t) => (t.some((x) => x.key === key)
+                ? t.map((x) => (x.key === key ? { ...x, lastActiveAt } : x))
+                : [...t, { key, kind: 'widget', id, label: WIDGET_REGISTRY[id]?.label ?? id, lastActiveAt }]));
             setActiveKey(key);
             halocronOsStore.setOpen(true);
         };
         window.addEventListener('dwellium:open-widget', onOpen);
         return () => window.removeEventListener('dwellium:open-widget', onOpen);
     }, []);
+
+    useEffect(() => {
+        if (!state.enabled || !state.open) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (!(e.ctrlKey || e.metaKey) || e.key !== 'Tab') return;
+            if (tabs.length < 2) return;
+            e.preventDefault();
+            cycleTab(e.shiftKey ? -1 : 1);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [state.enabled, state.open, tabs, activeKey]);
 
     if (!state.enabled || !state.open) return null;
 
@@ -194,15 +283,21 @@ export default function HalocronOS() {
     const openWidget = (id: string, label: string) => {
         if (!WINDOW_COMPONENTS[id]) return;
         const key = `w:${id}`;
+        const lastActiveAt = touch();
         // Relabel on reopen (e.g. the shared Terminal tab → "Codex CLI"/"Claude Code").
-        setTabs((t) => (t.some((x) => x.key === key) ? t.map((x) => (x.key === key ? { ...x, label } : x)) : [...t, { key, kind: 'widget', id, label }]));
+        setTabs((t) => (t.some((x) => x.key === key)
+            ? t.map((x) => (x.key === key ? { ...x, label, lastActiveAt } : x))
+            : [...t, { key, kind: 'widget', id, label, lastActiveAt }]));
         setActiveKey(key);
     };
     // Open an external AI tool (Claude/AntiGravity/Codex/ChatGPT) as a web tab
     // inside the OS instead of a separate browser tab.
     const openWeb = (tool: { id: string; name: string; url: string; color: string }) => {
         const key = `web:${tool.id}`;
-        setTabs((t) => (t.some((x) => x.key === key) ? t : [...t, { key, kind: 'web', label: tool.name, url: tool.url, color: tool.color }]));
+        const lastActiveAt = touch();
+        setTabs((t) => (t.some((x) => x.key === key)
+            ? t.map((x) => (x.key === key ? { ...x, lastActiveAt } : x))
+            : [...t, { key, kind: 'web', label: tool.name, url: tool.url, color: tool.color, lastActiveAt }]));
         setActiveKey(key);
     };
     // Codex and Claude are CLI agents — run them inside the OS via the Terminal
@@ -223,7 +318,7 @@ export default function HalocronOS() {
             const popupKey = `dwellium-popup-terminal`;
             localStorage.setItem(popupKey, JSON.stringify({
                 title: label,
-                icon: '',
+                icon: 'terminal',
             }));
             sessionStorage.setItem('dwellium-terminal-initial-tab', 'terminal');
             sessionStorage.setItem('dwellium-terminal-initial-cmd', cmd);
@@ -241,18 +336,21 @@ export default function HalocronOS() {
     const closeTab = (key: string) => {
         setTabs((t) => {
             const next = t.filter((x) => x.key !== key);
-            setActiveKey((cur) => (cur === key ? (next.length ? next[next.length - 1].key : null) : cur));
+            setActiveKey((cur) => (cur === key ? ([...next].sort((a, b) => b.lastActiveAt - a.lastActiveAt)[0]?.key ?? null) : cur));
             return next;
         });
+    };
+    const toggleTabFlag = (key: string, flag: 'pinned' | 'essential') => {
+        setTabs((t) => t.map((x) => (x.key === key ? { ...x, [flag]: !x[flag] } : x)));
     };
 
     const q = query.trim().toLowerCase();
     const filterCard = (label: string) => !q || label.toLowerCase().includes(q);
 
     return (
-        <div className="hos" role="dialog" aria-label="Halocron OS">
+        <div className={`hos ${state.compactChrome ? 'hos--compact' : ''}`} role="dialog" aria-label="Holocron OS">
             <nav className="hos-rail">
-                <div className="hos-brand"><span className="hos-brand__rune">◈</span><span>Halocron</span></div>
+                <div className="hos-brand"><span className="hos-brand__rune">◈</span><span>Holocron</span></div>
                 {NAV.map((n) => (
                     <button key={n.id} type="button"
                         className={`hos-nav ${nav === n.id ? 'on' : ''}`}
@@ -283,47 +381,103 @@ export default function HalocronOS() {
                 {/* ── Tab strip (classic-OS browser-tab logic) ── */}
                 {tabs.length > 0 && (
                     <div className="hos-tabs">
-                        {tabs.map((t) => (
-                            <div key={t.key} className={`hos-tab ${activeKey === t.key ? 'on' : ''}`} onClick={() => setActiveKey(t.key)}>
+                        {orderedTabs.map((t) => (
+                            <div key={t.key} className={`hos-tab ${activeKey === t.key ? 'on' : ''} ${t.pinned ? 'is-pinned' : ''} ${t.essential ? 'is-essential' : ''}`} onClick={() => markActive(t.key)}>
                                 {t.kind === 'web' && <span className="hos-tab__dot" style={{ background: t.color }} />}
                                 <span className="hos-tab__label">{t.label}</span>
+                                <button
+                                    className="hos-tab__mark"
+                                    onClick={(e) => { e.stopPropagation(); toggleTabFlag(t.key, 'essential'); }}
+                                    aria-label={t.essential ? `Unmark ${t.label} essential` : `Mark ${t.label} essential`}
+                                    title={t.essential ? 'Unmark essential' : 'Mark essential'}
+                                >
+                                    <Star size={12} fill={t.essential ? 'currentColor' : 'none'} />
+                                </button>
+                                <button
+                                    className="hos-tab__mark"
+                                    onClick={(e) => { e.stopPropagation(); toggleTabFlag(t.key, 'pinned'); }}
+                                    aria-label={t.pinned ? `Unpin ${t.label}` : `Pin ${t.label}`}
+                                    title={t.pinned ? 'Unpin tab' : 'Pin tab'}
+                                >
+                                    <Pin size={12} fill={t.pinned ? 'currentColor' : 'none'} />
+                                </button>
                                 <button className="hos-tab__x" onClick={(e) => { e.stopPropagation(); closeTab(t.key); }} aria-label={`Close ${t.label}`}><X size={12} /></button>
                             </div>
                         ))}
-                        <button className="hos-tab__home" onClick={() => setActiveKey(null)} title="Show Halocron home">＋</button>
+                        <button className="hos-tab__home" onClick={() => setActiveKey(null)} title="Show Holocron home">＋</button>
+                        <div className="hos-smartbar" role="toolbar" aria-label="Smart tab options">
+                            <button type="button" aria-label="Cycle previous tab" title="Previous recent tab" onClick={() => cycleTab(-1)}><ChevronLeft size={14} /></button>
+                            <button type="button" aria-label="Cycle next tab" title="Next recent tab" onClick={() => cycleTab(1)}><ChevronRight size={14} /></button>
+                            <span className="hos-smartbar__sep" />
+                            <button type="button" aria-label="Single view" aria-pressed={state.splitLayout === 'single'} className={state.splitLayout === 'single' ? 'on' : ''} onClick={() => halocronOsStore.setSplitLayout('single')}><Square size={13} /></button>
+                            <button type="button" aria-label="Two-up split" aria-pressed={state.splitLayout === 'two'} className={state.splitLayout === 'two' ? 'on' : ''} onClick={() => halocronOsStore.setSplitLayout('two')}><Columns2 size={14} /></button>
+                            <button type="button" aria-label="Three-up split" aria-pressed={state.splitLayout === 'three'} className={state.splitLayout === 'three' ? 'on' : ''} onClick={() => halocronOsStore.setSplitLayout('three')}><Columns3 size={14} /></button>
+                            <button type="button" aria-label="Four-up split" aria-pressed={state.splitLayout === 'quad'} className={state.splitLayout === 'quad' ? 'on' : ''} onClick={() => halocronOsStore.setSplitLayout('quad')}><Grid2X2 size={14} /></button>
+                            <span className="hos-smartbar__sep" />
+                            <button type="button" aria-label="Compact chrome" aria-pressed={state.compactChrome} className={state.compactChrome ? 'on' : ''} onClick={() => halocronOsStore.setCompactChrome(!state.compactChrome)}>
+                                {state.compactChrome ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+                            </button>
+                            <button type="button" aria-label="Focus canvas" aria-pressed={state.focusCanvas} className={state.focusCanvas ? 'on' : ''} onClick={() => halocronOsStore.setFocusCanvas(!state.focusCanvas)}><Maximize2 size={14} /></button>
+                        </div>
                     </div>
                 )}
                 {/* Stage sits BELOW the tab strip; hosted panels (absolute) cover
                     only this region so they never overlap the tabs. */}
-                <div className="hos-stage-wrap">
-                {/* All tabs stay mounted; only the active one is visible (keeps state). */}
-                {activeKey && tabs.map((t) => (
-                    <div key={t.key} className="hos-hosted" style={{ display: activeKey === t.key ? 'flex' : 'none' }}>
-                        <div className="hos-hosted__bar">
-                            <button type="button" className="hos-hosted__back" onClick={() => setActiveKey(null)}>← Archive</button>
-                            <span className="hos-hosted__title">{t.label}</span>
-                            {t.kind === 'web' && t.url && <a className="hos-hosted__ext" href={t.url} target="_blank" rel="noopener noreferrer">Open in browser ↗</a>}
-                            <span className="hos-layoutpill">HALOCRON OS</span>
+                <div
+                    className={`hos-stage-wrap ${state.focusCanvas ? 'hos-stage-wrap--focus' : ''}`}
+                    data-testid="halocron-stage-wrap"
+                >
+                {/* All tabs stay mounted; the stage chooses which recent tabs are visible. */}
+                {activeKey && (
+                    <div className={`hos-hosted hos-hosted--${state.splitLayout}`} data-testid="halocron-stage" data-split={state.splitLayout}>
+                        <div className="hos-split-grid">
+                            {tabs.map((t) => {
+                                const slot = stageTabs.findIndex((x) => x.key === t.key);
+                                const isVisible = slot >= 0;
+                                const C = t.id ? WINDOW_COMPONENTS[t.id] : null;
+                                return (
+                                    <div
+                                        key={t.key}
+                                        className={`hos-split-pane ${activeKey === t.key ? 'is-active' : ''}`}
+                                        style={{ display: isVisible ? 'flex' : 'none', order: slot }}
+                                    >
+                                        {!state.focusCanvas && (
+                                            <div className="hos-hosted__bar" data-testid="halocron-hosted-header">
+                                                <button type="button" className="hos-hosted__back" onClick={() => setActiveKey(null)}>← Archive</button>
+                                                <button type="button" className="hos-hosted__title hos-hosted__title--btn" onClick={() => markActive(t.key)}>{t.label}</button>
+                                                {t.kind === 'web' && t.url && <a className="hos-hosted__ext" href={t.url} target="_blank" rel="noopener noreferrer">Open in browser ↗</a>}
+                                                <span className="hos-layoutpill">{state.splitLayout === 'single' ? 'SINGLE' : `${stageTabs.length}-UP`}</span>
+                                            </div>
+                                        )}
+                                        {t.kind === 'web' ? (
+                                            <div className="hos-hosted__body hos-web">
+                                                <WebFrame url={t.url!} title={t.label} color={t.color} />
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className="hos-hosted__body hos-hosted__body--widget window__content"
+                                                data-testid={isVisible ? 'halocron-widget-scroll' : undefined}
+                                                data-widget-id={t.id}
+                                            >
+                                                <WidgetErrorBoundary widgetLabel={t.label} enabled surfaceErrors>
+                                                    <Suspense fallback={<div className="hos-hosted__loading">Igniting {t.label}…</div>}>
+                                                        {C ? <C /> : null}
+                                                    </Suspense>
+                                                </WidgetErrorBoundary>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
-                        {t.kind === 'web' ? (
-                            <div className="hos-hosted__body hos-web">
-                                <WebFrame url={t.url!} title={t.label} color={t.color} />
-                            </div>
-                        ) : (
-                            <div className="hos-hosted__body hos-hosted__body--widget window__content" data-widget-id={t.id}>
-                                <WidgetErrorBoundary widgetLabel={t.label} enabled surfaceErrors>
-                                    <Suspense fallback={<div className="hos-hosted__loading">Igniting {t.label}…</div>}>
-                                        {(() => { const C = t.id ? WINDOW_COMPONENTS[t.id] : null; return C ? <C /> : null; })()}
-                                    </Suspense>
-                                </WidgetErrorBoundary>
-                            </div>
-                        )}
                     </div>
-                ))}
-                <header className="hos-head">
-                    <span className="hos-crumb">archive / {nav}</span>
-                    <span className="hos-layoutpill">HALOCRON OS</span>
-                </header>
+                )}
+                {!state.focusCanvas && (
+                    <header className="hos-head" data-testid="halocron-nav-header">
+                        <span className="hos-crumb">archive / {nav}</span>
+                        <span className="hos-layoutpill">HOLOCRON OS</span>
+                    </header>
+                )}
 
                 {nav === 'kg' ? (
                     <div className="hos-panel hos-panel--kg">
@@ -353,7 +507,7 @@ export default function HalocronOS() {
                         <>
                             <div className="hos-home__top">
                                 <div>
-                                    <h1 className="hos-h hos-home__greet">{greeting}, Ilya. <span className="hos-home__glance">Today at a glance.</span></h1>
+                                    <h1 className="hos-h hos-home__greet">{greeting}, {greetingName}. <span className="hos-home__glance">Today at a glance.</span></h1>
                                     <p className="hos-sub">Currently in your archive · {totalWidgets} holocrons · {SPACES.length} spaces</p>
                                 </div>
                                 <div className="hos-seg hos-home__range">
@@ -399,7 +553,7 @@ export default function HalocronOS() {
                                     };
                                     return (
                                         <div key={t.id} className="hos-launch__card" onClick={handleLaunch}
-                                            title={cli ? `Run ${cli.label} in a terminal` : `Open ${t.name} in Halocron`}>
+                                            title={cli ? `Run ${cli.label} in a terminal` : `Open ${t.name} in Holocron`}>
                                             <span className="hos-launch__glyph" style={{ color: t.color, borderColor: t.color }}>{t.glyph}</span>
                                             <span className="hos-launch__body">
                                                 <span className="hos-launch__name">{t.name}</span>
@@ -495,9 +649,21 @@ export default function HalocronOS() {
                                 <div className="hos-card__cap">INTERFACE LAYOUT</div>
                                 <div className="hos-seg">
                                     <button type="button" onClick={() => halocronOsStore.setEnabled(false)}>Classic desktop</button>
-                                    <button type="button" className="on">Halocron OS</button>
+                                    <button type="button" className="on">Holocron OS</button>
                                 </div>
                                 <p className="hos-note">Same windows, widgets, spaces and memory — reskinned and re-navigated. Toggle anytime; nothing is lost.</p>
+                            </div>
+                            <div className="hos-card hos-layout-toggle">
+                                <div className="hos-card__cap">SMART CHROME</div>
+                                <div className="hos-seg">
+                                    <button type="button" className={!state.compactChrome ? 'on' : ''} onClick={() => halocronOsStore.setCompactChrome(false)}>Rail</button>
+                                    <button type="button" className={state.compactChrome ? 'on' : ''} onClick={() => halocronOsStore.setCompactChrome(true)}>Compact</button>
+                                </div>
+                                <div className="hos-seg hos-seg--spaced">
+                                    <button type="button" className={!state.focusCanvas ? 'on' : ''} onClick={() => halocronOsStore.setFocusCanvas(false)}>Headers</button>
+                                    <button type="button" className={state.focusCanvas ? 'on' : ''} onClick={() => halocronOsStore.setFocusCanvas(true)}>Focus canvas</button>
+                                </div>
+                                <p className="hos-note">Compact hides rail labels. Focus canvas removes hosted header bands when you want maximum widget space.</p>
                             </div>
                             <div className="hos-quick">
                                 <button className="hos-step" onClick={() => openWidget('control-panel', 'Control Panel')}>Open full Control Panel →</button>

@@ -21,6 +21,7 @@ import {
     CalendarDays,
     AlertTriangle,
     Package,
+    Hand,
 } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import './TenantPortal.css';
@@ -143,7 +144,7 @@ export default function TenantPortal() {
         return (
             <div className="tp-animate">
                 <div className="tp-header">
-                    <h1>Welcome, {dashboard?.tenant?.name || user?.name || 'Tenant'}</h1>
+                    <h1 style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>Welcome, {dashboard?.tenant?.name || user?.name || 'Tenant'} <Hand size={22} aria-hidden /></h1>
                     <p>
                         {dashboard?.property?.name
                             ? `${dashboard.property.name} — Unit ${dashboard.unit?.unitNumber || ''}`
@@ -586,7 +587,7 @@ export default function TenantPortal() {
         <div className="tenant-portal">
             <nav className="tp-sidebar">
                 <div className="tp-sidebar-brand">
-                    <div className="tp-sidebar-brand-icon"></div>
+                    <div className="tp-sidebar-brand-icon"><Home size={20} aria-hidden /></div>
                     <div>
                         <h2>Dwellium</h2>
                         <span>Tenant Portal</span>

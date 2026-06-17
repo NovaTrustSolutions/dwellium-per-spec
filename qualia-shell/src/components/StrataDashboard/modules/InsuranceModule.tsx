@@ -253,9 +253,9 @@ export default function InsuranceModule({ propertyId }: Props) {
                         {rollup.score}%
                     </span>
                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', flex: 1 }}>Property Compliance</span>
-                    <span style={{ fontSize: 10, color: '#22c55e' }}>{rollup.valid}</span>
-                    <span style={{ fontSize: 10, color: '#f59e0b' }}>{rollup.warning}</span>
-                    <span style={{ fontSize: 10, color: '#ef4444' }}>{rollup.expired}</span>
+                    <span style={{ fontSize: 10, color: '#22c55e', display: 'inline-flex', alignItems: 'center', gap: 2 }}>{rollup.valid}<CheckCircle size={10} aria-hidden /></span>
+                    <span style={{ fontSize: 10, color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 2 }}>{rollup.warning}<AlertTriangle size={10} aria-hidden /></span>
+                    <span style={{ fontSize: 10, color: '#ef4444', display: 'inline-flex', alignItems: 'center', gap: 2 }}>{rollup.expired}<X size={10} aria-hidden /></span>
                     <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{rollup.missing}—</span>
                 </div>
             )}

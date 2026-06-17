@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { Sparkles, X, Save, RefreshCw, Undo2 } from 'lucide-react';
 import { useTheme, THEMES, CUSTOM_TOKENS_KEY, applyAccentReset } from '../../context/ThemeContext';
 import { halocronOsStore } from '../../lib/halocronOsStore';
 import { useWindows } from '../../context/WindowContext';
@@ -237,7 +238,7 @@ export default function ControlPanel() {
                 <h3 className="cp-section__title">Appearance</h3>
 
                 <div className="cp-field">
-                    <label className="cp-label">Interface Layout — {hosState.enabled ? 'Halocron OS' : 'Classic desktop'}</label>
+                    <label className="cp-label">Interface Layout — {hosState.enabled ? 'Holocron OS' : 'Classic desktop'}</label>
                     <div style={{ display: 'inline-flex', border: '1px solid var(--border-default, rgba(255,255,255,0.12))', borderRadius: 9, overflow: 'hidden' }}>
                         <button
                             type="button"
@@ -248,7 +249,7 @@ export default function ControlPanel() {
                             type="button"
                             onClick={() => halocronOsStore.setEnabled(true)}
                             style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: hosState.enabled ? 600 : 400, background: hosState.enabled ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent', color: hosState.enabled ? 'var(--text-primary, #fff)' : 'var(--text-secondary)', border: 'none' }}
-                        >Halocron OS</button>
+                        >Holocron OS</button>
                     </div>
                     <div style={{ fontSize: 11, opacity: 0.6, marginTop: 6 }}>Same widgets, spaces and memory — two layouts. The OS shell launches every widget from one archive.</div>
                 </div>
@@ -379,7 +380,7 @@ export default function ControlPanel() {
                         className={`cp-toggle cp-toggle--snap ${layoutSettings.snapEnabled ? '' : 'cp-toggle--off'}`}
                         onClick={() => updateSettings({ snapEnabled: !layoutSettings.snapEnabled })}
                     >
-                        <span className={`cp-toggle__option ${layoutSettings.snapEnabled ? 'cp-toggle__option--active' : ''}`}>On</span>
+                        <span className={`cp-toggle__option ${layoutSettings.snapEnabled ? 'cp-toggle__option--active' : ''}`}><Sparkles size={14} aria-hidden /> On</span>
                         <span className={`cp-toggle__option ${!layoutSettings.snapEnabled ? 'cp-toggle__option--active' : ''}`}>Off</span>
                     </button>
                 </div>
@@ -535,26 +536,26 @@ export default function ControlPanel() {
                 <div className="cp-field">
                     <label className="cp-label">Window Actions</label>
                     <div className="cp-actions">
-                        <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === false && minimizeWindow(w.id))}>Desktop</button>
-                        <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === true && restoreWindow(w.id))}>↩️ Restore</button>
-                        <button className="cp-btn cp-btn--danger" onClick={() => windows.forEach(w => closeWindow(w.id))}>Close All</button>
+                        <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === false && minimizeWindow(w.id))}><Sparkles size={14} aria-hidden /> Desktop</button>
+                        <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === true && restoreWindow(w.id))}><Undo2 size={14} aria-hidden /> Restore</button>
+                        <button className="cp-btn cp-btn--danger" onClick={() => windows.forEach(w => closeWindow(w.id))}><X size={14} aria-hidden /> Close All</button>
                     </div>
                 </div>
 
                 <div className="cp-actions" style={{ marginTop: 8 }}>
                     <button className="cp-btn" onClick={saveLayout}>
-                        Save Layout
+                        <Save size={14} aria-hidden /> Save Layout
                     </button>
                     <button className="cp-btn cp-btn--danger" onClick={() => {
                         if (window.confirm('Are you sure you want to reset the layout to default?')) {
                             resetLayout();
                         }
                     }}>
-                        Reset Layout
+                        <RefreshCw size={14} aria-hidden /> Reset Layout
                     </button>
                 </div>
                 <button className="cp-btn cp-btn--subtle" onClick={resetSettings} style={{ marginTop: 4 }}>
-                    ↩ Reset Layout Settings
+                    <Undo2 size={14} aria-hidden /> Reset Layout Settings
                 </button>
             </section>
 

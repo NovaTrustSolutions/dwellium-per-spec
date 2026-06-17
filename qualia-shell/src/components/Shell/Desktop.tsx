@@ -1,5 +1,5 @@
 import { useWindows, COMPONENT_DEFAULT_SIZES } from '../../context/WindowContext';
-import { AlertTriangle, Eye } from 'lucide-react';
+import { AlertTriangle, Archive, Braces, Code, Columns2, Columns3, Download, Eye, File, FileAudio, FileImage, FileSpreadsheet, FileText, FileVideo, Globe, Grid2X2, Palette, Presentation, Square, type LucideIcon } from 'lucide-react';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
 import type { RegionLayout } from '../../data/types';
@@ -112,17 +112,24 @@ type InlinePreviewData =
     | { kind: 'image'; url: string }
     | { kind: 'unsupported'; message: string };
 
-const EXPLORER_FILE_ICONS: Record<string, string> = {
-    pdf: '', md: '', txt: '', html: '', css: '', js: '',
-    ts: '', tsx: '', jsx: '', json: '{ }', csv: '', xml: '',
-    doc: '', docx: '', xls: '', xlsx: '', ppt: '', pptx: '',
-    rtf: '', png: '', jpg: '', jpeg: '', gif: '', webp: '',
-    svg: '', mp3: '', mp4: '', wav: '', mov: '', avi: '',
-    zip: '', tar: '', gz: '', rar: '', mmd: '', unknown: '',
+// Lucide icon per file extension (replaces the former emoji map). Rendered via
+// <FileIcon type={...} /> at every explorer/preview row.
+const EXPLORER_FILE_ICONS: Record<string, LucideIcon> = {
+    pdf: FileText, md: FileText, txt: FileText, html: Globe, css: Palette, js: Code,
+    ts: Code, tsx: Code, jsx: Code, json: Braces, csv: FileSpreadsheet, xml: Code,
+    doc: FileText, docx: FileText, xls: FileSpreadsheet, xlsx: FileSpreadsheet, ppt: Presentation, pptx: Presentation,
+    rtf: FileText, png: FileImage, jpg: FileImage, jpeg: FileImage, gif: FileImage, webp: FileImage,
+    svg: FileImage, mp3: FileAudio, mp4: FileVideo, wav: FileAudio, mov: FileVideo, avi: FileVideo,
+    zip: Archive, tar: Archive, gz: Archive, rar: Archive, mmd: File, unknown: File,
 };
 
-function getExplorerFileIcon(type: string): string {
+function getExplorerFileIconComponent(type: string): LucideIcon {
     return EXPLORER_FILE_ICONS[type?.toLowerCase()] || EXPLORER_FILE_ICONS.unknown;
+}
+
+function FileIcon({ type, size = 14 }: { type: string; size?: number }) {
+    const Icon = getExplorerFileIconComponent(type);
+    return <Icon size={size} aria-hidden />;
 }
 
 function formatExplorerFileSize(bytes: number): string {
@@ -161,7 +168,7 @@ function HierarchyBrowser() {
     const openFileInWindow = useCallback((file: ExplorerFile) => {
         const detail = { fileId: file.id, name: file.name };
         (window as any).__qualiaDocViewerPendingFile = detail;
-        openWindow('doc-viewer', file.name, '');
+        openWindow('doc-viewer', file.name, 'file-text');
         const dispatch = (attempt: number) => {
             if (attempt > 5) return;
             window.dispatchEvent(new CustomEvent('qualia-docviewer-open-file', { detail }));
@@ -394,15 +401,16 @@ function HierarchyBrowser() {
                                 onClick={() => setFocusedFileIdx(idx)}
                                 onDoubleClick={() => openFileInWindow(file)}
                             >
-                                <span className="detail-child-row__icon">{getExplorerFileIcon(file.type)}</span>
+                                <span className="detail-child-row__icon"><FileIcon type={file.type} /></span>
                                 <span className="detail-child-row__label">{file.name}</span>
                                 <span className="detail-child-row__meta">{formatExplorerFileSize(file.size)}</span>
                                 <button
                                     className="detail-child-row__action detail-child-row__action--preview"
                                     onClick={(e) => { e.stopPropagation(); setFocusedFileIdx(idx); setQuickLookFile(file); }}
                                     title="Quick Look (Space)"
+                                    aria-label="Quick Look"
                                 >
-                                   
+                                    <Eye size={14} aria-hidden />
                                 </button>
                                 <button
                                     className="detail-child-row__action detail-child-row__action--open"
@@ -415,8 +423,9 @@ function HierarchyBrowser() {
                                     className="detail-child-row__action"
                                     onClick={(e) => { e.stopPropagation(); void materializeFile(file); }}
                                     title="Download locally"
+                                    aria-label="Download locally"
                                 >
-                                   
+                                    <Download size={14} aria-hidden />
                                 </button>
                             </div>
                         ))}
@@ -440,7 +449,7 @@ function HierarchyBrowser() {
                             {inlinePreview.kind === 'text' && focusedFile && (
                                 <div className="explorer-preview-text">
                                     <div className="explorer-preview-header">
-                                        <span className="explorer-preview-header__icon">{getExplorerFileIcon(focusedFile.type)}</span>
+                                        <span className="explorer-preview-header__icon"><FileIcon type={focusedFile.type} /></span>
                                         <div>
                                             <div className="explorer-preview-header__name">{focusedFile.name}</div>
                                             <div className="explorer-preview-header__meta">{focusedTypeLabel} · {formatExplorerFileSize(focusedFile.size)}</div>
@@ -456,7 +465,7 @@ function HierarchyBrowser() {
                             {inlinePreview.kind === 'pdf' && focusedFile && (
                                 <div className="explorer-preview-media">
                                     <div className="explorer-preview-header">
-                                        <span className="explorer-preview-header__icon">{getExplorerFileIcon(focusedFile.type)}</span>
+                                        <span className="explorer-preview-header__icon"><FileIcon type={focusedFile.type} /></span>
                                         <div>
                                             <div className="explorer-preview-header__name">{focusedFile.name}</div>
                                             <div className="explorer-preview-header__meta">{focusedTypeLabel} · {formatExplorerFileSize(focusedFile.size)}</div>
@@ -469,7 +478,7 @@ function HierarchyBrowser() {
                             {inlinePreview.kind === 'image' && focusedFile && (
                                 <div className="explorer-preview-media">
                                     <div className="explorer-preview-header">
-                                        <span className="explorer-preview-header__icon">{getExplorerFileIcon(focusedFile.type)}</span>
+                                        <span className="explorer-preview-header__icon"><FileIcon type={focusedFile.type} /></span>
                                         <div>
                                             <div className="explorer-preview-header__name">{focusedFile.name}</div>
                                             <div className="explorer-preview-header__meta">{focusedTypeLabel} · {formatExplorerFileSize(focusedFile.size)}</div>
@@ -481,7 +490,7 @@ function HierarchyBrowser() {
                             )}
                             {inlinePreview.kind === 'unsupported' && focusedFile && (
                                 <div className="explorer-preview-empty">
-                                    <span className="explorer-preview-empty__icon">{getExplorerFileIcon(focusedFile.type)}</span>
+                                    <span className="explorer-preview-empty__icon"><FileIcon type={focusedFile.type} /></span>
                                     <div className="explorer-preview-header__name">{focusedFile.name}</div>
                                     <div className="explorer-preview-header__meta">{focusedTypeLabel} · {formatExplorerFileSize(focusedFile.size)}</div>
                                     <p style={{ marginTop: 8, opacity: 0.5 }}>{inlinePreview.message}</p>
@@ -1146,7 +1155,7 @@ export default function Desktop() {
             {/* Halocron theme: one-shot ignite overlay (no-op for other themes
                 + already-played sessions). Mounted here, clear of the auth flow. */}
             <HalocronBoot />
-            {/* Halocron OS — alternate interface layout (overlay + launcher rune).
+            {/* Holocron OS — alternate interface layout (overlay + launcher rune).
                 Both render null unless the OS layout is enabled, so Classic is
                 untouched. Opening a widget collapses the shell to reveal the
                 real window beneath; the launcher reopens it. */}
@@ -1183,11 +1192,11 @@ export default function Desktop() {
                     width: isLayoutMenuOpen ? 'auto' : '0px', overflow: 'hidden', opacity: isLayoutMenuOpen ? 1 : 0, transition: 'all 0.3s ease',
                 }}>
                     {([
-                        { layout: 'none', label: '', tip: 'No Regions' },
-                        { layout: 'halves-h', label: '', tip: 'Split (2 cols)' },
-                        { layout: 'thirds-h', label: '', tip: 'Thirds' },
-                        { layout: 'quadrants', label: '⊞', tip: 'Fourths (2×2)' },
-                    ] as { layout: string; label: string; tip: string }[]).map(p => (
+                        { layout: 'none', label: <Square size={14} aria-hidden />, tip: 'No Regions' },
+                        { layout: 'halves-h', label: <Columns2 size={14} aria-hidden />, tip: 'Split (2 cols)' },
+                        { layout: 'thirds-h', label: <Columns3 size={14} aria-hidden />, tip: 'Thirds' },
+                        { layout: 'quadrants', label: <Grid2X2 size={14} aria-hidden />, tip: 'Fourths (2×2)' },
+                    ] as { layout: string; label: React.ReactNode; tip: string }[]).map(p => (
                         <button key={p.layout} title={p.tip} onClick={() => {
                             updateSettings({ regionLayout: p.layout as any, regionsEnabled: p.layout !== 'none' });
                         }} style={{

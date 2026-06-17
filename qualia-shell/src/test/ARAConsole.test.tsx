@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi, describe, it, beforeEach, expect } from 'vitest';
+import { vi, describe, it, beforeEach, afterEach, expect } from 'vitest';
 
 const authFetch = vi.fn();
 
@@ -171,6 +171,10 @@ describe('ARAConsole', () => {
         });
     });
 
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('shows context sources and diagnostics for ARA replies', async () => {
         const user = userEvent.setup();
         render(<ARAConsole />);
@@ -306,5 +310,75 @@ describe('ARAConsole', () => {
         expect(screen.getByRole('button', { name: 'Voice settings' })).toBeInTheDocument();
         // TTS seeded off in beforeEach → "Enable auto-read replies".
         expect(screen.getByRole('button', { name: 'Enable auto-read replies' })).toBeInTheDocument();
+    });
+
+    it('retries the lens catalog after a transient modes fetch failure', async () => {
+        vi.useFakeTimers();
+        let modeCalls = 0;
+
+        authFetch.mockImplementation(async (url: string) => {
+            if (url.endsWith('/voice/clones')) {
+                return jsonResponse({ success: true, data: [{ id: 'default', path: null }] });
+            }
+            if (url.endsWith('/voice/status')) {
+                return jsonResponse({ success: true, data: { tts: { provider: 'openai-tts', available: true }, stt: { provider: 'whisper', available: true } } });
+            }
+            if (url.endsWith('/modes')) {
+                modeCalls += 1;
+                if (modeCalls === 1) throw new Error('Tunnel unavailable');
+                return jsonResponse({
+                    success: true,
+                    data: [
+                        {
+                            id: 'executive-assistant',
+                            name: 'Executive Assistant',
+                            icon: 'clipboard-list',
+                            shortDescription: 'Default lens',
+                            lens: 'The coordination lens',
+                            logic: 'Coordinate',
+                            voice: 'Warm',
+                            forbiddenBehavior: 'None',
+                            bestFor: 'Operations',
+                            entityGuardianRequired: false,
+                        },
+                        {
+                            id: 'lead-counsel',
+                            name: 'Lead Counsel',
+                            icon: 'scale',
+                            shortDescription: 'Legal lens',
+                            lens: 'The liability lens',
+                            logic: 'Analyze liability',
+                            voice: 'Precise',
+                            forbiddenBehavior: 'None',
+                            bestFor: 'Legal review',
+                            entityGuardianRequired: true,
+                        },
+                    ],
+                });
+            }
+            if (url.endsWith('/observability')) {
+                return jsonResponse({ success: true, data: {} });
+            }
+            throw new Error(`Unhandled authFetch URL: ${url}`);
+        });
+
+        render(<ARAConsole />);
+
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(screen.getByPlaceholderText('Message ARA (Executive Assistant)')).toBeInTheDocument();
+        expect(modeCalls).toBe(1);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(5000);
+        });
+
+        expect(modeCalls).toBeGreaterThanOrEqual(2);
+        fireEvent.click(screen.getByRole('button', { name: 'Personas' }));
+        expect(screen.getByText('2 lenses')).toBeInTheDocument();
+        expect(screen.getByText('Lead Counsel')).toBeInTheDocument();
     });
 });

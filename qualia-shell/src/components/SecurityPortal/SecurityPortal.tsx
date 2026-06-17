@@ -7,21 +7,24 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Shield } from 'lucide-react';
+import {
+    Ban, Car, Check, ClipboardList, Cross, Droplet, Flame, Lock, Palette, Shield, ShieldCheck, Volume2, X,
+    type LucideIcon,
+} from 'lucide-react';
 import { API_BASE } from '../../config';
 import './SecurityPortal.css';
 
-const CATEGORIES = [
-    { id: 'vehicle', label: 'Vehicle Incident', emoji: '' },
-    { id: 'fire', label: 'Fire', emoji: '' },
-    { id: 'flood', label: 'Flood / Water Damage', emoji: '' },
-    { id: 'security', label: 'Security Breach', emoji: '' },
-    { id: 'trespass', label: 'Trespassing', emoji: '' },
-    { id: 'vandalism', label: 'Vandalism', emoji: '' },
-    { id: 'injury', label: 'Personal Injury', emoji: '' },
-    { id: 'noise', label: 'Noise Complaint', emoji: '' },
-    { id: 'theft', label: 'Theft', emoji: '' },
-    { id: 'other', label: 'Other', emoji: '' },
+const CATEGORIES: { id: string; label: string; Icon: LucideIcon }[] = [
+    { id: 'vehicle', label: 'Vehicle Incident', Icon: Car },
+    { id: 'fire', label: 'Fire', Icon: Flame },
+    { id: 'flood', label: 'Flood / Water Damage', Icon: Droplet },
+    { id: 'security', label: 'Security Breach', Icon: Lock },
+    { id: 'trespass', label: 'Trespassing', Icon: Ban },
+    { id: 'vandalism', label: 'Vandalism', Icon: Palette },
+    { id: 'injury', label: 'Personal Injury', Icon: Cross },
+    { id: 'noise', label: 'Noise Complaint', Icon: Volume2 },
+    { id: 'theft', label: 'Theft', Icon: ShieldCheck },
+    { id: 'other', label: 'Other', Icon: ClipboardList },
 ];
 
 interface PropertyOption {
@@ -128,7 +131,7 @@ export default function SecurityPortal() {
         return (
             <div className="sp-container">
                 <div className="sp-auth-card">
-                    <div className="sp-logo"></div>
+                    <div className="sp-logo"><ShieldCheck size={40} aria-hidden /></div>
                     <h1 className="sp-title">Security Portal</h1>
                     <p className="sp-subtitle">Dwellium Incident Reporting</p>
                     <div className="sp-auth-form">
@@ -156,7 +159,7 @@ export default function SecurityPortal() {
         return (
             <div className="sp-container">
                 <div className="sp-auth-card">
-                    <div className="sp-logo sp-logo-success"></div>
+                    <div className="sp-logo sp-logo-success"><Check size={40} aria-hidden /></div>
                     <h1 className="sp-title">Incident Reported</h1>
                     <p className="sp-subtitle">Your report has been submitted and management has been notified.</p>
                     <button onClick={resetForm} className="sp-btn sp-btn-primary" style={{ marginTop: 20 }}>
@@ -202,7 +205,7 @@ export default function SecurityPortal() {
                                     className={`sp-category-btn ${category === cat.id ? 'sp-category-btn--active' : ''}`}
                                     onClick={() => setCategory(cat.id)}
                                 >
-                                    <span className="sp-category-emoji">{cat.emoji}</span>
+                                    <span className="sp-category-emoji"><cat.Icon size={20} aria-hidden /></span>
                                     <span className="sp-category-label">{cat.label}</span>
                                 </button>
                             ))}
@@ -262,14 +265,14 @@ export default function SecurityPortal() {
                     </div>
 
                     {submitError && (
-                        <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                            {submitError}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                            <X size={14} aria-hidden /> {submitError}
                         </div>
                     )}
 
                     {/* Submit */}
                     <button type="submit" className="sp-btn sp-btn-primary sp-btn-submit" disabled={submitting || !propertyId || !title.trim()}>
-                        {submitting ? 'Submitting…' : 'Submit Incident Report'}
+                        {submitting ? 'Submitting…' : <><ShieldCheck size={16} aria-hidden /> Submit Incident Report</>}
                     </button>
                 </form>
             </div>

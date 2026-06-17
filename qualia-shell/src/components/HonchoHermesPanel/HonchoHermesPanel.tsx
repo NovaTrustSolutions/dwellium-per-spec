@@ -1,5 +1,31 @@
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
-import { ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
+import {
+    BookOpen,
+    Bot,
+    Brain,
+    Check,
+    ClipboardList,
+    Cog,
+    Eye,
+    FileText,
+    Hammer,
+    Heart,
+    Hourglass,
+    Lightbulb,
+    MessageCircle,
+    Moon,
+    Network,
+    PenLine,
+    Star,
+    Target,
+    ThumbsDown,
+    ThumbsUp,
+    Trash2,
+    Wrench,
+    Zap,
+    ZapOff,
+    type LucideIcon,
+} from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import { useIngestion } from '../Scribe/ingestion/useIngestion';
 import {
@@ -72,8 +98,8 @@ interface MemoryStats {
 }
 
 /* ─── Constants ─── */
-const TYPE_ICONS: Record<string, string> = {
-    fact: '', preference: '', decision: '', observation: '', insight: '', manual: '',
+const TYPE_ICONS: Record<string, LucideIcon> = {
+    fact: ClipboardList, preference: Star, decision: Hammer, observation: Eye, insight: Lightbulb, manual: PenLine,
 };
 const TYPE_COLORS: Record<string, string> = {
     fact: '#3b82f6', preference: '#f59e0b', decision: '#ef4444',
@@ -406,7 +432,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
             {/* Header */}
             <div className="hhp__header">
                 <div className="hhp__header-left">
-                    <span className="hhp__header-icon"></span>
+                    <span className="hhp__header-icon"><Brain size={16} aria-hidden /><Zap size={16} aria-hidden /></span>
                     <div>
                         <h2 className="hhp__title">Honcho + Hermes</h2>
                         <p className="hhp__subtitle">
@@ -421,21 +447,21 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
             {/* Tabs */}
             <div className="hhp__tabs">
                 {([
-                    ['memory', 'Memory'],
-                    ['dreams', 'Dreams'],
-                    ['hermes', 'Hermes'],
-                    ['wiki', 'LLM Wiki'],
-                    ['agents', 'Agents'],
-                    ['graph', 'Graph'],
-                    ['files', 'Files'],
-                ] as [TabId, string][]).map(([id, label]) => (
+                    ['memory', 'Memory', Brain],
+                    ['dreams', 'Dreams', Moon],
+                    ['hermes', 'Hermes', Zap],
+                    ['wiki', 'LLM Wiki', BookOpen],
+                    ['agents', 'Agents', Bot],
+                    ['graph', 'Graph', Network],
+                    ['files', 'Files', FileText],
+                ] as [TabId, string, LucideIcon][]).map(([id, label, TabIcon]) => (
                     <button key={id} className={`hhp__tab ${activeTab === id ? 'active' : ''}`}
                         onClick={() => {
                             setActiveTab(id);
                             if (id === 'agents') fetchAgentHeartbeats();
                             if (id === 'graph') fetchMemoryGraph();
                         }}>
-                        {label}
+                        <TabIcon size={14} aria-hidden /> {label}
                     </button>
                 ))}
             </div>
@@ -502,16 +528,18 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     <div className="hhp__memory-list">
                         {filteredMemories.length === 0 ? (
                             <div className="hhp__empty">
-                                <span></span>
+                                <span><Brain size={24} aria-hidden /></span>
                                 <p>No memories yet. ARA will learn from your conversations.</p>
                             </div>
                         ) : (
-                            filteredMemories.map(m => (
+                            filteredMemories.map(m => {
+                                const MemIcon = TYPE_ICONS[m.memoryType] || ClipboardList;
+                                return (
                                 <div key={m.id} className="hhp__memory-card"
                                     style={{ '--accent': TYPE_COLORS[m.memoryType] || '#D6FE51' } as React.CSSProperties}>
                                     <div className="hhp__memory-top">
                                         <span className="hhp__memory-type">
-                                            {TYPE_ICONS[m.memoryType] || ''} {m.memoryType}
+                                            <MemIcon size={14} aria-hidden /> {m.memoryType}
                                         </span>
                                         <div className="hhp__memory-badges">
                                             <span className={`hhp__importance-badge imp-${getImportanceLabel(m.importance).toLowerCase()}`}>
@@ -526,7 +554,8 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                                         <button className="hhp__memory-delete" onClick={() => deleteMemory(m.id)} aria-label="Delete memory" title="Delete"><Trash2 size={14} /></button>
                                     </div>
                                 </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
@@ -535,7 +564,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
             {/* ═══ DREAMS TAB ═══ */}
             {!loading && activeTab === 'dreams' && (
                 <div className="hhp__panel">
-                    <h3 className="hhp__section-title">Dreams</h3>
+                    <h3 className="hhp__section-title"><Moon size={16} aria-hidden /> Dreams</h3>
                     <p className="hhp__hint">
                         Short reflections Honcho synthesizes over your memories — patterns,
                         connections, and unsurfaced to-dos. Stored locally, per user.
@@ -603,7 +632,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     <div className="hhp__memory-list">
                         {dreams.length === 0 ? (
                             <div className="hhp__empty">
-                                <span></span>
+                                <span><Moon size={24} aria-hidden /></span>
                                 <p>No dreams yet. Honcho will surface reflections as it learns — or add one manually.</p>
                             </div>
                         ) : (
@@ -611,7 +640,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                                 <div key={d.id} className="hhp__memory-card"
                                     style={{ '--accent': '#8b5cf6' } as React.CSSProperties}>
                                     <div className="hhp__memory-top">
-                                        <span className="hhp__memory-type">{d.title}</span>
+                                        <span className="hhp__memory-type"><Moon size={14} aria-hidden /> {d.title}</span>
                                         {d.sources.length > 0 && (
                                             <div className="hhp__memory-badges">
                                                 <span className="hhp__memory-source">{d.sources.length} sources</span>
@@ -626,7 +655,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                                             aria-label={`Delete dream ${d.title}`}
                                             title="Delete"
                                             onClick={() => deleteDream(d.id)}
-                                        ></button>
+                                        ><Trash2 size={14} /></button>
                                     </div>
                                 </div>
                             ))
@@ -640,7 +669,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                 <div className="hhp__panel">
                     {/* Status */}
                     <div className={`hhp__hermes-status ${hermesOnline ? 'online' : 'offline'}`}>
-                        <span className="hhp__hermes-status-icon">{hermesOnline ? '' : ''}</span>
+                        <span className="hhp__hermes-status-icon">{hermesOnline ? <Zap size={16} aria-hidden /> : <ZapOff size={16} aria-hidden />}</span>
                         <div>
                             <strong>
                                 {hermesVia === 'backend' ? 'Hermes Online'
@@ -664,12 +693,12 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     {/* Tool Registry — backend tools when up, browser-side skills otherwise */}
                     <div className="hhp__tools-section">
                         <h3 className="hhp__section-title">
-                            {hermesTools.length > 0 ? `Registered Tools (${hermesTools.length})` : `Browser-side Skills (${AGENT_SKILLS.length})`}
+                            <Wrench size={16} aria-hidden /> {hermesTools.length > 0 ? `Registered Tools (${hermesTools.length})` : `Browser-side Skills (${AGENT_SKILLS.length})`}
                         </h3>
                         <div className="hhp__tools-grid">
                             {(hermesTools.length > 0
                                 ? hermesTools
-                                : AGENT_SKILLS.map(s => ({ name: `${s.icon} ${s.name}`, description: s.description }))
+                                : AGENT_SKILLS.map(s => ({ name: s.name, description: s.description }))
                             ).map(t => (
                                 <div key={t.name} className="hhp__tool-card">
                                     <span className="hhp__tool-name">{t.name}</span>
@@ -681,7 +710,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
 
                     {/* Task Delegation */}
                     <div className="hhp__delegate-section">
-                        <h3 className="hhp__section-title">Delegate Task</h3>
+                        <h3 className="hhp__section-title"><Target size={16} aria-hidden /> Delegate Task</h3>
                         <div className="hhp__delegate-row">
                             <input className="hhp__delegate-input"
                                 placeholder={hermesOnline ? 'Ask Hermes to investigate, search, or analyze...' : 'Ask Hermes anyway — offline runs still record for learning...'}
@@ -705,22 +734,25 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                         {/* ReAct Steps Trace */}
                         {hermesSteps.length > 0 && (
                             <div className="hhp__steps-trace">
-                                {hermesSteps.map((step, i) => (
+                                {hermesSteps.map((step, i) => {
+                                    const StepIcon = {
+                                        thought: MessageCircle,
+                                        action: Cog,
+                                        observation: Eye,
+                                        final_answer: Check,
+                                    }[step.type] || MessageCircle;
+                                    return (
                                     <div key={i} className={`hhp__step hhp__step--${step.type}`}>
                                         <span className="hhp__step-icon">
-                                            {{
-                                                thought: '',
-                                                action: '',
-                                                observation: '',
-                                                final_answer: '',
-                                            }[step.type]}
+                                            <StepIcon size={14} aria-hidden />
                                         </span>
                                         <div className="hhp__step-body">
                                             <span className="hhp__step-label">{step.type.replace('_', ' ').toUpperCase()}</span>
                                             <p>{step.content}</p>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                                 <div ref={stepsEndRef} />
                             </div>
                         )}
@@ -728,7 +760,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                         {/* Final Result */}
                         {hermesResult && !hermesRunning && (
                             <div className="hhp__result">
-                                <h4>Result</h4>
+                                <h4><ClipboardList size={16} aria-hidden /> Result</h4>
                                 <pre className="hhp__result-content">{hermesResult}</pre>
                                 {/* Rating control (Cycle 17): feedback re-weights few-shot recall */}
                                 {lastRunId && (
@@ -770,14 +802,14 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                     <div className="hhp__agents-header">
                         <h3 className="hhp__section-title">Runtime Heartbeat Monitor</h3>
                         <button className="hhp__heartbeat-btn" onClick={fetchAgentHeartbeats} disabled={heartbeatRunning}>
-                            {heartbeatRunning ? 'Pinging...' : 'Check All'}
+                            {heartbeatRunning ? <><Hourglass size={14} aria-hidden /> Pinging...</> : <><Heart size={14} aria-hidden /> Check All</>}
                         </button>
                     </div>
 
                     <div className="hhp__agents-grid">
                         {agentStatuses.length === 0 ? (
                             <div className="hhp__empty">
-                                <span></span>
+                                <span><Bot size={24} aria-hidden /></span>
                                 <p>Click "Check All" to ping all agents</p>
                             </div>
                         ) : (
@@ -803,10 +835,10 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
             {/* ═══ GRAPH TAB ═══ */}
             {!loading && activeTab === 'graph' && (
                 <div className="hhp__panel">
-                    <h3 className="hhp__section-title">Memory Graph</h3>
+                    <h3 className="hhp__section-title"><Network size={16} aria-hidden /> Memory Graph</h3>
                     {!graphData || (graphData.nodes.length === 0) ? (
                         <div className="hhp__empty">
-                            <span></span>
+                            <span><Network size={24} aria-hidden /></span>
                             <p>No memory graph data available yet. Memories will appear here as they accumulate.</p>
                         </div>
                     ) : (
@@ -822,6 +854,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                                     const radius = 120 + (i % 3) * 40;
                                     const x = 50 + Math.cos(angle) * (radius / 4);
                                     const y = 50 + Math.sin(angle) * (radius / 4);
+                                    const NodeIcon = TYPE_ICONS[node.type] || ClipboardList;
                                     return (
                                         <div key={node.id || i} className={`hhp__graph-node hhp__graph-node--${node.type || 'fact'}`}
                                             style={{
@@ -830,7 +863,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                                                 '--size': `${8 + (node.importance || 0.5) * 16}px`,
                                             } as React.CSSProperties}
                                             title={`${node.type}: ${(node.content || node.label || '').substring(0, 80)}`}>
-                                            {TYPE_ICONS[node.type] || ''}
+                                            <NodeIcon size={14} aria-hidden />
                                         </div>
                                     );
                                 })}
@@ -861,7 +894,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
             {/* ═══ FILES TAB — Markdown arrange/filter view ═══ */}
             {!loading && activeTab === 'files' && (
                 <div className="hhp__panel">
-                    <h3 className="hhp__section-title">Converted Markdown</h3>
+                    <h3 className="hhp__section-title"><FileText size={16} aria-hidden /> Converted Markdown</h3>
 
                     {/* Arrange / filter toolbar */}
                     <div className="hhp__toolbar">
@@ -894,7 +927,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
 
                     {arrangedFiles.length === 0 ? (
                         <div className="hhp__empty">
-                            <span></span>
+                            <span><FileText size={24} aria-hidden /></span>
                             <p>
                                 {ingestion.converted.length === 0
                                     ? 'No converted Markdown files yet. Use Scribe → Choose folders → Convert now to populate this view.'
@@ -909,9 +942,9 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                                         className="hhp__file-open"
                                         aria-label={`Open ${displayName(f)} in Scribe`}
                                         title="Open in Scribe"
-                                        onClick={() => dispatchOpenWidget('scribe', 'Scribe', '')}
+                                        onClick={() => dispatchOpenWidget('scribe', 'Scribe', 'file-edit')}
                                     >
-                                        <span className="hhp__file-name">{displayName(f)}</span>
+                                        <span className="hhp__file-name"><FileText size={14} aria-hidden /> {displayName(f)}</span>
                                         <span className="hhp__file-meta">
                                             <span className="hhp__file-size">{formatBytes(f.bytes)}</span>
                                             {f.convertedAt && (

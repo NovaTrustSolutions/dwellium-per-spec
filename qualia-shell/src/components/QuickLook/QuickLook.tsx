@@ -4,7 +4,7 @@
  * Supports PDF, images, text, and generic file previews.
  */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, ExternalLink, FileJson, FileSpreadsheet, FileText, Globe, Image, Paperclip, X, type LucideIcon } from 'lucide-react';
 import { API_BASE } from '../../config';
 import './QuickLook.css';
 
@@ -120,6 +120,7 @@ export default function QuickLook({ file, onClose, onOpenInWindow }: QuickLookPr
     if (!file) return null;
 
     const typeLabel = FILE_TYPE_LABELS[file.type?.toLowerCase()] || file.type?.toUpperCase() || 'File';
+    const HeaderIcon = getQuickLookIcon(file.type);
 
     return (
         <div className="ql-overlay" ref={overlayRef} onClick={handleOverlayClick}>
@@ -127,7 +128,7 @@ export default function QuickLook({ file, onClose, onOpenInWindow }: QuickLookPr
                 {/* Header */}
                 <div className="ql-header">
                     <div className="ql-header__info">
-                        <span className="ql-header__icon">{getQuickLookIcon(file.type)}</span>
+                        <span className="ql-header__icon"><HeaderIcon size={28} aria-hidden /></span>
                         <div className="ql-header__text">
                             <div className="ql-header__name">{file.name}</div>
                             <div className="ql-header__meta">
@@ -142,11 +143,11 @@ export default function QuickLook({ file, onClose, onOpenInWindow }: QuickLookPr
                                 onClick={() => { onOpenInWindow(file); onClose(); }}
                                 title="Open in Doc Viewer window"
                             >
-                                ↗ Open
+                                <ExternalLink size={14} aria-hidden /> Open
                             </button>
                         )}
-                        <button className="ql-btn ql-btn--close" onClick={onClose} title="Close (Space / Esc)">
-                           
+                        <button className="ql-btn ql-btn--close" onClick={onClose} title="Close (Space / Esc)" aria-label="Close">
+                            <X size={16} aria-hidden />
                         </button>
                     </div>
                 </div>
@@ -199,7 +200,7 @@ export default function QuickLook({ file, onClose, onOpenInWindow }: QuickLookPr
                                     className="ql-btn ql-btn--open ql-btn--large"
                                     onClick={() => { onOpenInWindow(file); onClose(); }}
                                 >
-                                    ↗ Open in Doc Viewer
+                                    <ExternalLink size={14} aria-hidden /> Open in Doc Viewer
                                 </button>
                             )}
                         </div>
@@ -217,20 +218,20 @@ export default function QuickLook({ file, onClose, onOpenInWindow }: QuickLookPr
     );
 }
 
-function getQuickLookIcon(type: string): string {
-    const icons: Record<string, string> = {
-        pdf: '',
-        png: '',
-        jpg: '',
-        jpeg: '',
-        gif: '',
-        txt: '',
-        md: '',
-        csv: '',
-        json: '{ }',
-        html: '',
-        doc: '',
-        docx: '',
+function getQuickLookIcon(type: string): LucideIcon {
+    const icons: Record<string, LucideIcon> = {
+        pdf: FileText,
+        png: Image,
+        jpg: Image,
+        jpeg: Image,
+        gif: Image,
+        txt: FileText,
+        md: FileText,
+        csv: FileSpreadsheet,
+        json: FileJson,
+        html: Globe,
+        doc: FileText,
+        docx: FileText,
     };
-    return icons[type?.toLowerCase()] || '';
+    return icons[type?.toLowerCase()] || Paperclip;
 }

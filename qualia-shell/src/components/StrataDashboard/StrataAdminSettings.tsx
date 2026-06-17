@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../../context/UserContext';
-import { AlertCircle, Check, ChevronDown, ChevronRight, RefreshCw, Save, Search, Shield, Star, ToggleLeft, ToggleRight, Users as UsersIcon } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, ChevronRight, ClipboardList, Circle, Puzzle, RefreshCw, Save, Search, Settings, Shield, Star, ToggleLeft, ToggleRight, Users as UsersIcon } from 'lucide-react';
 import './StrataDashboard.css';
 
 interface User {
@@ -16,6 +16,7 @@ type PermissionsMap = Record<string, boolean>;
 interface PermGroup {
     label: string;
     keys: string[];
+    icon?: React.ReactNode;
 }
 
 function groupByModule(keys: string[]): PermGroup[] {
@@ -38,24 +39,24 @@ function groupByModule(keys: string[]): PermGroup[] {
 
     // Top-level modules
     if (moduleKeys.length > 0) {
-        groups.push({ label: 'Strata Modules (Top-Level Navigation)', keys: moduleKeys });
+        groups.push({ label: 'Strata Modules (Top-Level Navigation)', keys: moduleKeys, icon: <ClipboardList size={15} aria-hidden style={{ flexShrink: 0 }} /> });
     }
 
     // Sub-permissions grouped by module
     const sortedModules = [...subMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
     for (const [mod, modKeys] of sortedModules) {
         const label = mod.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        groups.push({ label: `${label}`, keys: modKeys.sort() });
+        groups.push({ label: `${label}`, keys: modKeys.sort(), icon: <Circle size={9} aria-hidden style={{ flexShrink: 0, fill: 'currentColor', color: 'var(--accent)' }} /> });
     }
 
     // Widgets
     if (widgetKeys.length > 0) {
-        groups.push({ label: 'Widgets & Apps', keys: widgetKeys });
+        groups.push({ label: 'Widgets & Apps', keys: widgetKeys, icon: <Puzzle size={15} aria-hidden style={{ flexShrink: 0 }} /> });
     }
 
     // Sections
     if (sectionKeys.length > 0) {
-        groups.push({ label: 'System Sections', keys: sectionKeys });
+        groups.push({ label: 'System Sections', keys: sectionKeys, icon: <Settings size={15} aria-hidden style={{ flexShrink: 0 }} /> });
     }
 
     return groups;
@@ -425,6 +426,7 @@ export default function StrataAdminSettings() {
                                                 ? <ChevronDown size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                                                 : <ChevronRight size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                                             }
+                                            {group.icon}
                                             <span style={{ flex: 1 }}>{group.label}</span>
                                             <span style={{
                                                 fontSize: '11px',

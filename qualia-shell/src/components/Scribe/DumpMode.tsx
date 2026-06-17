@@ -22,7 +22,7 @@
 import { useState, useEffect, useRef, useContext, useSyncExternalStore } from 'react';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
-import { Brain } from 'lucide-react';
+import { Brain, TriangleAlert } from 'lucide-react';
 import { getMarkdownExtensions, registerEditorView } from './markdownConfig';
 import { useScribeStore } from './scribeStore';
 import {
@@ -234,8 +234,8 @@ export default function DumpMode() {
                         </button>
                     </div>
                     {reportError && (
-                        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#ff6b6b', fontFamily: 'monospace' }}>
-                            {reportError}
+                        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#ff6b6b', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <TriangleAlert size={12} aria-hidden /> {reportError}
                         </p>
                     )}
                 </div>
@@ -250,7 +250,7 @@ export default function DumpMode() {
                     {dumpText.length} chars
                 </span>
                 {error && (
-                    <span style={{ fontSize: 11, color: '#ff6b6b', fontFamily: 'monospace' }}>{error}</span>
+                    <span style={{ fontSize: 11, color: '#ff6b6b', fontFamily: 'monospace', display: 'inline-flex', alignItems: 'center', gap: 4 }}><TriangleAlert size={12} aria-hidden /> {error}</span>
                 )}
                 {!llmReady && (
                     <span style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }}>

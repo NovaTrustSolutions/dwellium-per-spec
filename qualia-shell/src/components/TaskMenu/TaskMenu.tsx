@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Brain, Check } from 'lucide-react';
+import {
+    BarChart3, Brain, Check, Circle, DollarSign, Hand, Hexagon, Inbox, List, Lock, Package,
+    Palette, Scroll, Settings, type LucideIcon,
+} from 'lucide-react';
 import './TaskMenu.css';
 
 // The Kanban subview reuses the existing Task Board. Lazy at sub-component
@@ -22,10 +25,10 @@ interface Task {
     aiRank?: number;
 }
 
-const URGENCY_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
-    high: { icon: '', label: 'High', color: '#ef4444' },
-    medium: { icon: '', label: 'Medium', color: '#eab308' },
-    low: { icon: '', label: 'Low', color: '#22c55e' },
+const URGENCY_CONFIG: Record<string, { Icon: LucideIcon; label: string; color: string }> = {
+    high: { Icon: Circle, label: 'High', color: '#ef4444' },
+    medium: { Icon: Circle, label: 'Medium', color: '#eab308' },
+    low: { Icon: Circle, label: 'Low', color: '#22c55e' },
 };
 
 const PROJECT_NAMES: Record<string, string> = {
@@ -39,6 +42,19 @@ const PROJECT_NAMES: Record<string, string> = {
     'proj-hive': 'The Hive',
     'proj-dashboard': 'AI-Dashboard369',
     'unrouted': 'Unrouted',
+};
+
+const PROJECT_ICONS: Record<string, LucideIcon> = {
+    'proj-invoicing': DollarSign,
+    'proj-msa': Scroll,
+    'proj-onboarding': Hand,
+    'proj-gdpr': Lock,
+    'proj-inventory': Package,
+    'proj-brand-guidelines': Palette,
+    'proj-reports': BarChart3,
+    'proj-hive': Hexagon,
+    'proj-dashboard': Settings,
+    'unrouted': Inbox,
 };
 
 function normalizeAiViewTasks(tasks: Task[], urgencyFilter: string): Task[] {
@@ -334,7 +350,7 @@ export default function TaskMenu() {
                 <p className="task-desc">{task.description}</p>
                 {/* AI Reason */}
                 {sortBy === 'ai' && task.aiReason && (
-                    <p className="ai-reason">{task.aiReason}</p>
+                    <p className="ai-reason"><Brain size={12} aria-hidden /> {task.aiReason}</p>
                 )}
             </div>
 
@@ -347,7 +363,7 @@ export default function TaskMenu() {
                     }}
                     title="Click to reassign project"
                 >
-                    {PROJECT_NAMES[task.projectId] || task.projectId}
+                    {(() => { const PI = PROJECT_ICONS[task.projectId]; return PI ? <PI size={12} aria-hidden /> : null; })()} {PROJECT_NAMES[task.projectId] || task.projectId}
                 </span>
 
                 <div className="task-status-btns">
@@ -368,15 +384,18 @@ export default function TaskMenu() {
                 <div className="reassign-picker" onClick={e => e.stopPropagation()}>
                     <p className="picker-header">Reassign to:</p>
                     <div className="picker-list">
-                        {Object.entries(PROJECT_NAMES).filter(([k]) => k !== task.projectId && k !== 'unrouted').map(([id, name]) => (
+                        {Object.entries(PROJECT_NAMES).filter(([k]) => k !== task.projectId && k !== 'unrouted').map(([id, name]) => {
+                            const PI = PROJECT_ICONS[id];
+                            return (
                             <button
                                 key={id}
                                 className="picker-item"
                                 onClick={() => handleReassign(task.id, id)}
                             >
-                                {name}
+                                {PI ? <PI size={12} aria-hidden /> : null} {name}
                             </button>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -389,7 +408,7 @@ export default function TaskMenu() {
         <div className="task-menu">
             {/* View toggle: List ⇄ Board (Kanban subview, reuses Task Board) */}
             <div className="task-viewtoggle" role="tablist" aria-label="Task view">
-                <button role="tab" aria-selected={view === 'list'} className={`task-viewtoggle__btn ${view === 'list' ? 'is-active' : ''}`} onClick={() => chooseView('list')}>List</button>
+                <button role="tab" aria-selected={view === 'list'} className={`task-viewtoggle__btn ${view === 'list' ? 'is-active' : ''}`} onClick={() => chooseView('list')}><List size={14} aria-hidden /> List</button>
                 <button role="tab" aria-selected={view === 'board'} className={`task-viewtoggle__btn ${view === 'board' ? 'is-active' : ''}`} onClick={() => chooseView('board')}>▤ Board</button>
             </div>
 
@@ -475,7 +494,7 @@ export default function TaskMenu() {
                             className={`urgency-filter ${filterUrgency === u ? 'active' : ''}`}
                             onClick={() => setFilterUrgency(u)}
                         >
-                            {u === 'all' ? 'All' : `${URGENCY_CONFIG[u].icon} ${URGENCY_CONFIG[u].label}`}
+                            {u === 'all' ? 'All' : <><Circle size={10} aria-hidden fill={URGENCY_CONFIG[u].color} color={URGENCY_CONFIG[u].color} /> {URGENCY_CONFIG[u].label}</>}
                         </button>
                     ))}
                 </div>
@@ -498,19 +517,19 @@ export default function TaskMenu() {
                     <>
                         {highTasks.length > 0 && (
                             <div className="urgency-group">
-                                <h4 className="group-header high">High Priority ({highTasks.length})</h4>
+                                <h4 className="group-header high"><Circle size={12} aria-hidden fill={URGENCY_CONFIG.high.color} color={URGENCY_CONFIG.high.color} /> High Priority ({highTasks.length})</h4>
                                 {highTasks.map(renderTaskCard)}
                             </div>
                         )}
                         {mediumTasks.length > 0 && (
                             <div className="urgency-group">
-                                <h4 className="group-header medium">Medium Priority ({mediumTasks.length})</h4>
+                                <h4 className="group-header medium"><Circle size={12} aria-hidden fill={URGENCY_CONFIG.medium.color} color={URGENCY_CONFIG.medium.color} /> Medium Priority ({mediumTasks.length})</h4>
                                 {mediumTasks.map(renderTaskCard)}
                             </div>
                         )}
                         {lowTasks.length > 0 && (
                             <div className="urgency-group">
-                                <h4 className="group-header low">Low Priority ({lowTasks.length})</h4>
+                                <h4 className="group-header low"><Circle size={12} aria-hidden fill={URGENCY_CONFIG.low.color} color={URGENCY_CONFIG.low.color} /> Low Priority ({lowTasks.length})</h4>
                                 {lowTasks.map(renderTaskCard)}
                             </div>
                         )}

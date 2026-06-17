@@ -53,8 +53,16 @@ export interface ConvertOptions {
 export interface ConvertResult {
     /** Per-file outcomes, in enumeration order. */
     entries: ConvertedFileEntry[];
+    /** Markdown documents produced in-browser and ready to import into Scribe. */
+    documents: ConvertedMarkdownDocument[];
     /** ISO timestamp to stamp as `lastSyncAt` (the run's completion time). */
     syncedAt: string;
+}
+
+export interface ConvertedMarkdownDocument {
+    sourceName: string;
+    destName: string;
+    content: string;
 }
 
 /** Write a Markdown string to `<backup>/<name>`, overwriting any existing file. */
@@ -71,7 +79,7 @@ async function convertFile(
     backup: FsDirectoryHandle,
     now: () => string,
     htmlToMarkdown: (html: string) => string,
-): Promise<ConvertedFileEntry> {
+): Promise<{ entry: ConvertedFileEntry; document: ConvertedMarkdownDocument | null }> {
     const sourceName = fileHandle.name;
     const ext = fileExt(sourceName);
     const at = now();
@@ -79,12 +87,15 @@ async function convertFile(
     // Binary / rich formats the browser can't convert — defer to the backend route.
     if (!HTML_EXTS.includes(ext) && !PASSTHROUGH_EXTS.includes(ext) && !TEXT_EXTS.includes(ext)) {
         return {
-            sourceName,
-            destName: null,
-            status: 'queued-backend' satisfies IngestFileStatus,
-            bytes: 0,
-            convertedAt: at,
-            note: 'Needs backend conversion (/api/ingest/convert) — not browser-convertible.',
+            entry: {
+                sourceName,
+                destName: null,
+                status: 'queued-backend' satisfies IngestFileStatus,
+                bytes: 0,
+                convertedAt: at,
+                note: 'Needs backend conversion (/api/ingest/convert) — not browser-convertible.',
+            },
+            document: null,
         };
     }
 
@@ -110,15 +121,21 @@ async function convertFile(
         const destName = PASSTHROUGH_EXTS.includes(ext) ? sourceName : toMarkdownName(sourceName);
         await writeMarkdown(backup, destName, body);
 
-        return { sourceName, destName, status, bytes, convertedAt: at };
+        return {
+            entry: { sourceName, destName, status, bytes, convertedAt: at },
+            document: { sourceName, destName, content: body },
+        };
     } catch (err) {
         return {
-            sourceName,
-            destName: null,
-            status: 'error' satisfies IngestFileStatus,
-            bytes: 0,
-            convertedAt: at,
-            note: err instanceof Error ? err.message : 'Conversion failed.',
+            entry: {
+                sourceName,
+                destName: null,
+                status: 'error' satisfies IngestFileStatus,
+                bytes: 0,
+                convertedAt: at,
+                note: err instanceof Error ? err.message : 'Conversion failed.',
+            },
+            document: null,
         };
     }
 }
@@ -134,11 +151,14 @@ export async function convertFolder(opts: ConvertOptions): Promise<ConvertResult
     const { source, backup, now } = opts;
     const htmlToMarkdown = opts.htmlToMarkdown ?? defaultHtmlToMarkdown;
     const entries: ConvertedFileEntry[] = [];
+    const documents: ConvertedMarkdownDocument[] = [];
 
     for await (const entry of source.values() as AsyncIterableIterator<FsHandle>) {
         if (entry.kind !== 'file') continue; // skip sub-directories (flat pass)
-        entries.push(await convertFile(entry, backup, now, htmlToMarkdown));
+        const result = await convertFile(entry, backup, now, htmlToMarkdown);
+        entries.push(result.entry);
+        if (result.document) documents.push(result.document);
     }
 
-    return { entries, syncedAt: now() };
+    return { entries, documents, syncedAt: now() };
 }

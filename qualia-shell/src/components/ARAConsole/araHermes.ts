@@ -7,9 +7,9 @@
  * panel still sees everything, but lab runs never bleed into chat hints and
  * vice versa.
  *
- * Voting: 👍 (+1) boosts a run's rank (rankPastRuns ratingBoost); 👎 (−1)
- * EXCLUDES the run from future ARA few-shot entirely — the strongest "don't
- * do that again" signal available without model training.
+ * Voting: thumbs-up (+1) boosts a run's rank (rankPastRuns ratingBoost);
+ * thumbs-down (−1) EXCLUDES the run from future ARA few-shot entirely — the
+ * strongest "don't do that again" signal available without model training.
  */
 import {
     hermesLearningStore,
@@ -34,7 +34,7 @@ export function araChatRuns(): HermesRunRecord[] {
 }
 
 /**
- * Top-K past ARA answers relevant to `prompt` (successes only, 👎 excluded).
+ * Top-K past ARA answers relevant to `prompt` (successes only, downvoted excluded).
  * Stricter than the store's rankPastRuns: requires POSITIVE token similarity,
  * because rankPastRuns' taskType boost alone (0.15) would otherwise inject
  * completely unrelated exchanges that merely share a coarse task type —
@@ -67,7 +67,7 @@ export function araFewShot(prompt: string): string {
 /**
  * Record a successful ARA chat exchange into the per-user Hermes log.
  * Caller must set `hermesLearningUserIdHolder.current` first (ARAConsole does).
- * Returns the record so the message can carry its id for 👍/👎 voting.
+ * Returns the record so the message can carry its id for thumbs-up/down voting.
  */
 export function recordAraChat(prompt: string, answer: string): HermesRunRecord {
     return recordRun({

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Code, Sparkles, X } from 'lucide-react';
+import { Code, Sparkles, X, Bot, Check, TriangleAlert, Clock, Settings, Hourglass, Trash2, Plus, RefreshCw } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import './HydraAI.css';
 import { API_BASE } from '../../config';
@@ -116,8 +116,12 @@ function renderMarkdown(text: string, panelColor: string) {
     });
 }
 
-/* ── Emoji palette for quick picking ── */
-const EMOJI_PALETTE = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+/* ── Icon palette for quick picking ──
+   NOTE: HydraHead.icon is a plain string persisted + sent to the backend, so it
+   can't hold a Lucide component. The original emoji palette was stripped; the
+   per-head icon now falls back to a Lucide <Bot/> at every render site. Empty
+   here so the picker grid shows nothing rather than blank buttons. */
+const EMOJI_PALETTE: string[] = [];
 
 /* ── Component ── */
 
@@ -419,12 +423,12 @@ export default function HydraAI() {
                 } as React.CSSProperties}
             >
                 <div className="hydra-panel-header">
-                    <span className="hydra-panel-icon">{head?.icon || ''}</span>
+                    <span className="hydra-panel-icon">{head?.icon || <Bot size={16} aria-hidden />}</span>
                     <span className="hydra-panel-name" style={{ color }}>{head?.name || headId}</span>
                     {resp && resp !== 'loading' && (
                         <div className="hydra-panel-badges">
                             <span className={`hydra-badge ${resp.status}`}>
-                                {resp.status === 'success' ? '' : resp.status === 'error' ? '' : ''}
+                                {resp.status === 'success' ? <Check size={12} aria-hidden /> : resp.status === 'error' ? <TriangleAlert size={12} aria-hidden /> : <Clock size={12} aria-hidden />}
                             </span>
                             <span className="hydra-badge">
                                 {(resp.latencyMs / 1000).toFixed(1)}s
@@ -451,7 +455,7 @@ export default function HydraAI() {
                 ) : resp ? (
                     <div className="hydra-panel-error">
                         <div className="hydra-panel-error-icon">
-                            {resp.status === 'timeout' ? '' : ''}
+                            {resp.status === 'timeout' ? <Clock size={20} aria-hidden /> : <TriangleAlert size={20} aria-hidden />}
                         </div>
                         <div>{resp.status === 'timeout' ? 'Request timed out' : 'Error'}</div>
                         {resp.error && (
@@ -491,16 +495,17 @@ export default function HydraAI() {
                                 title={`${head.description}${!head.enabled ? ' (not configured)' : ''}`}
                                 disabled={!head.enabled && !selectedHeads.includes(head.id)}
                             >
-                                <span className="hydra-head-pill-icon">{head.icon}</span>
+                                <span className="hydra-head-pill-icon">{head.icon || <Bot size={13} aria-hidden />}</span>
                                 {head.name}
                             </button>
                             <button
                                 className="hydra-head-gear"
                                 onClick={(e) => { e.stopPropagation(); openRegrowModal(head); }}
                                 title={`Regrow ${head.name} — change LLM, provider, or endpoint`}
+                                aria-label={`Regrow ${head.name}`}
                                 style={{ '--head-color': head.color } as React.CSSProperties}
                             >
-                               
+                                <Settings size={14} aria-hidden />
                             </button>
                         </div>
                     ))}
@@ -548,7 +553,7 @@ export default function HydraAI() {
                         onClick={() => setSynthesize(!synthesize)}
                         title="Compare and synthesize responses"
                     >
-                        Synth {synthesize ? 'ON' : 'OFF'}
+                        <Sparkles size={14} aria-hidden /> Synth {synthesize ? 'ON' : 'OFF'}
                     </button>
 
                     <button
@@ -556,15 +561,16 @@ export default function HydraAI() {
                         onClick={resetAllHeads}
                         title="Reset heads to defaults"
                     >
-                        ↺ Reset
+                        <RefreshCw size={14} aria-hidden /> Reset
                     </button>
 
                     <button
                         className="hydra-clear-btn"
                         onClick={clearSession}
                         title="Clear conversation"
+                        aria-label="Clear conversation"
                     >
-                        ⟳
+                        <RefreshCw size={14} aria-hidden />
                     </button>
                 </div>
             </div>
@@ -586,7 +592,7 @@ export default function HydraAI() {
                     onClick={sendQuery}
                     disabled={!input.trim() || isLoading || selectedHeads.length < 2}
                 >
-                    {isLoading ? 'Querying…' : `Ask ${selectedHeads.length} Heads`}
+                    {isLoading ? <><Hourglass size={14} aria-hidden /> Querying…</> : `Ask ${selectedHeads.length} Heads`}
                 </button>
             </div>
 
@@ -594,7 +600,7 @@ export default function HydraAI() {
             <div className="hydra-content" ref={contentRef}>
                 {backendUnavailable ? (
                     <div className="hydra-empty-state">
-                        <div className="hydra-empty-icon"></div>
+                        <div className="hydra-empty-icon"><TriangleAlert size={28} aria-hidden /></div>
                         <div className="hydra-empty-title">Hydra multi-model is not configured</div>
                         <div className="hydra-empty-desc">
                             Requires a Hydra service mounted at <code>/api/hydra</code>
@@ -604,7 +610,7 @@ export default function HydraAI() {
                     </div>
                 ) : queries.length === 0 && !isLoading ? (
                     <div className="hydra-empty-state">
-                        <div className="hydra-empty-icon"></div>
+                        <div className="hydra-empty-icon"><Code size={28} aria-hidden /></div>
                         <div className="hydra-empty-title">Hydra-AI Reasoning</div>
                         <div className="hydra-empty-desc">
                             Select 2–5 AI model heads above, then ask a question.
@@ -648,7 +654,7 @@ export default function HydraAI() {
                                                 {q.synthesis.agreements.length > 0 && (
                                                     <div className="hydra-synth-section">
                                                         <div className="hydra-synth-section-title agree">
-                                                            All Models Agree
+                                                            <Check size={14} aria-hidden /> All Models Agree
                                                         </div>
                                                         <ul className="hydra-synth-list">
                                                             {q.synthesis.agreements.map((a, i) => (
@@ -661,7 +667,7 @@ export default function HydraAI() {
                                                 {q.synthesis.disagreements.length > 0 && (
                                                     <div className="hydra-synth-section">
                                                         <div className="hydra-synth-section-title disagree">
-                                                            Points of Disagreement
+                                                            <TriangleAlert size={14} aria-hidden /> Points of Disagreement
                                                         </div>
                                                         <ul className="hydra-synth-list">
                                                             {q.synthesis.disagreements.map((d, i) => (
@@ -673,7 +679,7 @@ export default function HydraAI() {
 
                                                 <div className="hydra-synth-section">
                                                     <div className="hydra-synth-section-title best">
-                                                        Best Combined Answer
+                                                        <Sparkles size={14} aria-hidden /> Best Combined Answer
                                                     </div>
                                                     <div className="hydra-synth-best">
                                                         {q.synthesis.bestAnswer}
@@ -712,7 +718,7 @@ export default function HydraAI() {
                         <div className="hydra-modal-header">
                             <div className="hydra-modal-title-row">
                                 <span className="hydra-modal-icon">
-                                    {modalMode === 'edit' ? '' : ''}
+                                    {modalMode === 'edit' ? <RefreshCw size={16} aria-hidden /> : <Plus size={16} aria-hidden />}
                                 </span>
                                 <h3>{modalMode === 'edit' ? 'Regrow Head' : 'Add New Head'}</h3>
                             </div>
@@ -867,7 +873,7 @@ export default function HydraAI() {
 
                             {/* Error */}
                             {modalError && (
-                                <div className="hydra-modal-error">{modalError}</div>
+                                <div className="hydra-modal-error"><TriangleAlert size={14} aria-hidden /> {modalError}</div>
                             )}
                         </div>
 
@@ -878,7 +884,7 @@ export default function HydraAI() {
                                     onClick={deleteHead}
                                     disabled={modalSaving}
                                 >
-                                    Remove Head
+                                    <Trash2 size={14} aria-hidden /> Remove Head
                                 </button>
                             )}
                             <div style={{ flex: 1 }} />
@@ -893,8 +899,8 @@ export default function HydraAI() {
                                 {modalSaving
                                     ? 'Saving…'
                                     : modalMode === 'edit'
-                                        ? 'Regrow'
-                                        : 'Add Head'}
+                                        ? <><RefreshCw size={14} aria-hidden /> Regrow</>
+                                        : <><Plus size={14} aria-hidden /> Add Head</>}
                             </button>
                         </div>
                     </div>

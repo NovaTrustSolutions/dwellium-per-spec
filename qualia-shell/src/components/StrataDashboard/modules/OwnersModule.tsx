@@ -1,6 +1,6 @@
 import { getAuthToken } from '../../../context/UserContext';
 import { useState, useEffect, useCallback } from 'react';
-import { Landmark, RefreshCw, Building2, DollarSign, Mail, Phone, FileText, Car, Plus, X } from 'lucide-react';
+import { Landmark, RefreshCw, Building2, DollarSign, Mail, Phone, FileText, Car, Plus, X, MapPin } from 'lucide-react';
 import { strataGet, strataPost } from '../strataApi';
 import type { EntityProfile, Property, Report } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
@@ -255,8 +255,8 @@ export default function OwnersModule({ searchNavTarget, onNavComplete }: OwnersM
                                                                 </div>
                                                             )}
                                                             {v.location && (
-                                                                <div className="s-owner-prop-meta" style={{ fontSize: '0.7rem', opacity: 0.6, marginTop: '0.15rem' }}>
-                                                                    {v.location}
+                                                                <div className="s-owner-prop-meta" style={{ fontSize: '0.7rem', opacity: 0.6, marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                                    <MapPin size={11} aria-hidden /> {v.location}
                                                                 </div>
                                                             )}
                                                         </div>

@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Brain, Lock, MessageSquare, Monitor, Package, Pencil, Pin, Scroll, Trash2, User, X } from 'lucide-react';
+import type { ComponentType, CSSProperties } from 'react';
+import {
+    Ban, Brain, Check, Circle, Eye, FileText, Flame, Heart, Lightbulb, Link as LinkIcon,
+    Lock, MessageSquare, Monitor, MoveHorizontal, Package, Pencil, Pin, Plus, RefreshCw,
+    Scroll, Tag, Target, ThumbsUp, Trash2, User, X,
+} from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import './TwoBrains.css';
 
@@ -45,14 +50,22 @@ interface AuditEntry {
 }
 
 /* ─── Constants ─── */
-const TYPE_ICONS: Record<string, string> = { note: '', task: '', link: '', file: '', idea: '' };
-const STATUS_LABELS: Record<string, { label: string; icon: string; cls: string }> = {
-    open: { label: 'Open', icon: '', cls: 'status-open' },
-    'in-progress': { label: 'In Progress', icon: '', cls: 'status-progress' },
-    done: { label: 'Done', icon: '', cls: 'status-done' },
-    blocked: { label: 'Blocked', icon: '', cls: 'status-blocked' },
+type IconCmp = ComponentType<{ size?: number | string; className?: string; 'aria-hidden'?: boolean; 'aria-label'?: string; style?: CSSProperties }>;
+
+// note → 📝, task → ✅, link → 🔗, file → 📄, idea → 💡
+const TYPE_ICONS: Record<string, IconCmp> = { note: FileText, task: Check, link: LinkIcon, file: FileText, idea: Lightbulb };
+const STATUS_LABELS: Record<string, { label: string; icon: IconCmp; cls: string }> = {
+    open: { label: 'Open', icon: Circle, cls: 'status-open' },          // ⭕
+    'in-progress': { label: 'In Progress', icon: RefreshCw, cls: 'status-progress' }, // 🔄
+    done: { label: 'Done', icon: Check, cls: 'status-done' },           // ✅
+    blocked: { label: 'Blocked', icon: Ban, cls: 'status-blocked' },    // 🚫
 };
-const QUICK_REACTIONS = ['', '', '', '', ''];
+// Quick chat reactions — stable tokens (round-tripped to backend) mapped to icons.
+// Originally: 👍 ❤️ 🔥 👀 🎯
+const QUICK_REACTIONS = ['thumbsup', 'heart', 'fire', 'eye', 'target'] as const;
+const REACTION_ICONS: Record<string, IconCmp> = {
+    thumbsup: ThumbsUp, heart: Heart, fire: Flame, eye: Eye, target: Target,
+};
 // SECURITY: Email allowlist moved to server-side. See twoBrainsStore.ts + twoBrainsRoutes.ts.
 
 export default function TwoBrains() {
@@ -422,8 +435,15 @@ export default function TwoBrains() {
     };
 
     const getActionIcon = (a: string) => {
-        const icons: Record<string, string> = { added: '', edited: '', removed: '', moved: '↔️', pinned: '', unpinned: '', tagged: '', assigned: '', 'status-changed': '', message: '', dropped: '' };
-        return icons[a] || '•';
+        // added ➕ · edited ✏️ · removed 🗑️ · moved ↔️ · pinned/unpinned 📌 ·
+        // tagged 🏷️ · assigned 👤 · status-changed 🔄 · message 💬 · dropped 📦
+        const icons: Record<string, IconCmp> = {
+            added: Plus, edited: Pencil, removed: Trash2, moved: MoveHorizontal,
+            pinned: Pin, unpinned: Pin, tagged: Tag, assigned: User,
+            'status-changed': RefreshCw, message: MessageSquare, dropped: Package,
+        };
+        const Icon = icons[a];
+        return Icon ? <Icon size={14} aria-hidden /> : <span aria-hidden>•</span>;
     };
 
     const taskItems = items.filter(i => i.type === 'task');
@@ -482,11 +502,22 @@ export default function TwoBrains() {
 
             {/* ── Navigation ── */}
             <div className="two-brains__tabs">
-                {(['split', 'board', 'chat', 'tasks', 'audit', 'screen'] as const).map(v => (
-                    <button key={v} className={`tab-btn ${activeView === v ? 'active' : ''} ${v === 'screen' && (isScreenSharing || remoteScreen) ? 'tab-btn--live' : ''}`} onClick={() => setActiveView(v)}>
-                        {{ split: '◧ Split', board: 'Board', chat: 'Chat', tasks: 'Tasks', audit: 'Log', screen: `Screen${isScreenSharing || remoteScreen ? '' : ''}` }[v]}
-                    </button>
-                ))}
+                {(['split', 'board', 'chat', 'tasks', 'audit', 'screen'] as const).map(v => {
+                    const screenLive = isScreenSharing || remoteScreen;
+                    return (
+                        <button key={v} className={`tab-btn ${activeView === v ? 'active' : ''} ${v === 'screen' && screenLive ? 'tab-btn--live' : ''}`} onClick={() => setActiveView(v)}>
+                            {v === 'screen' ? (
+                                <>
+                                    Screen
+                                    {/* 🔴 live indicator */}
+                                    {screenLive && <Circle size={8} aria-label="Live" style={{ fill: 'var(--danger)', color: 'var(--danger)', marginLeft: 4, verticalAlign: 'middle' }} />}
+                                </>
+                            ) : (
+                                ({ split: '◧ Split', board: 'Board', chat: 'Chat', tasks: 'Tasks', audit: 'Log' } as Record<string, string>)[v]
+                            )}
+                        </button>
+                    );
+                })}
                 <div className="tab-spacer" />
                 {(activeView === 'split' || activeView === 'board') && (
                     <button className="add-item-btn" onClick={() => setShowAddForm(!showAddForm)}>
@@ -545,7 +576,8 @@ export default function TwoBrains() {
                             <div className="two-brains__board">
                                 {items.length === 0 ? (
                                     <div className="board-empty">
-                                        <span className="empty-icon"></span>
+                                        {/* 🧠🤝🧠 */}
+                                        <span className="empty-icon"><Brain size={40} aria-hidden /></span>
                                         <p>Drop something to start collaborating!</p>
                                         <p className="empty-hint">Drag files, emails, or tasks here — or use + New above</p>
                                     </div>
@@ -571,11 +603,13 @@ export default function TwoBrains() {
                                             ) : (
                                                 <>
                                                     <div className="card-top">
-                                                        <span className="card-type">{TYPE_ICONS[item.type]} {item.type}</span>
+                                                        <span className="card-type">
+                                                            {(() => { const TI = TYPE_ICONS[item.type]; return TI ? <TI size={12} aria-hidden /> : null; })()} {item.type}
+                                                        </span>
                                                         {item.type === 'task' && (
                                                             <button className={`status-chip ${STATUS_LABELS[item.status]?.cls}`} onClick={() => cycleStatus(item)}
                                                                 title="Click to change status">
-                                                                {STATUS_LABELS[item.status]?.icon} {STATUS_LABELS[item.status]?.label}
+                                                                {(() => { const SI = STATUS_LABELS[item.status]?.icon; return SI ? <SI size={12} aria-hidden /> : null; })()} {STATUS_LABELS[item.status]?.label}
                                                             </button>
                                                         )}
                                                         <div className="card-actions">
@@ -583,8 +617,10 @@ export default function TwoBrains() {
                                                             <button onClick={() => { setEditingId(item.id); setEditData({ title: item.title, description: item.description }); }} title="Edit"><Pencil size={16} /></button>
                                                             {item.assignee ? (
                                                                 <button onClick={() => assignItem(item.id, null)} title={`Assigned: ${item.assignee}`}
+                                                                    aria-label={`Assigned to ${item.assignee}`}
                                                                     className={`assign-btn ${item.assignee === 'Andy' ? 'assign-andy' : 'assign-lisa'}`}>
-                                                                    {item.assignee === 'Andy' ? '' : ''}
+                                                                    {/* 🅰️ Andy / 🅻 Lisa */}
+                                                                    <User size={16} aria-hidden />
                                                                 </button>
                                                             ) : (
                                                                 <button onClick={() => assignItem(item.id, myName === 'Andy' ? 'Lisa' : 'Andy')} title="Assign"><User size={16} /></button>
@@ -613,7 +649,8 @@ export default function TwoBrains() {
                                                     </div>
                                                     <div className="card-meta">
                                                         <span className={`card-author ${item.addedByName === 'Andy' ? 'author-andy' : 'author-lisa'}`}>
-                                                            {item.addedByName === 'Andy' ? '' : ''} {item.addedByName}
+                                                            {/* 🅰️ Andy / 🅻 Lisa */}
+                                                            <User size={10} aria-hidden style={{ verticalAlign: 'middle' }} /> {item.addedByName}
                                                         </span>
                                                         {item.dragSource && <span className="card-source" title={`From: ${item.dragSource}`}><Package size={14} /></span>}
                                                         <span className="card-time">{formatTime(item.createdAt)}</span>
@@ -664,16 +701,25 @@ export default function TwoBrains() {
                                                         ) : msg.body}
                                                     </div>
                                                     <div className="chat-msg__reactions">
-                                                        {msg.reactions.map((r, i) => (
-                                                            <span key={i} className={`reaction-chip ${r.by === myName ? 'reaction-mine' : ''}`}
-                                                                onClick={() => toggleReaction(msg.id, r.emoji)}>
-                                                                {r.emoji}
-                                                            </span>
-                                                        ))}
+                                                        {/* reaction tokens 👍 ❤️ 🔥 👀 🎯 → Lucide icons */}
+                                                        {msg.reactions.map((r, i) => {
+                                                            const RI = REACTION_ICONS[r.emoji];
+                                                            return (
+                                                                <span key={i} className={`reaction-chip ${r.by === myName ? 'reaction-mine' : ''}`}
+                                                                    onClick={() => toggleReaction(msg.id, r.emoji)}>
+                                                                    {RI ? <RI size={12} aria-hidden /> : r.emoji}
+                                                                </span>
+                                                            );
+                                                        })}
                                                         <div className="reaction-picker">
-                                                            {QUICK_REACTIONS.map(e => (
-                                                                <button key={e} className="reaction-btn" onClick={() => toggleReaction(msg.id, e)}>{e}</button>
-                                                            ))}
+                                                            {QUICK_REACTIONS.map(e => {
+                                                                const RI = REACTION_ICONS[e];
+                                                                return (
+                                                                    <button key={e} className="reaction-btn" aria-label={`React ${e}`} onClick={() => toggleReaction(msg.id, e)}>
+                                                                        {RI ? <RI size={12} aria-hidden /> : e}
+                                                                    </button>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -720,7 +766,9 @@ export default function TwoBrains() {
                                 {(['open', 'in-progress', 'done', 'blocked'] as const).map(status => (
                                     <div key={status} className={`task-column ${STATUS_LABELS[status].cls}`}>
                                         <div className="task-column__header">
-                                            <span>{STATUS_LABELS[status].icon} {STATUS_LABELS[status].label}</span>
+                                            <span>
+                                                {(() => { const SI = STATUS_LABELS[status].icon; return <SI size={12} aria-hidden />; })()} {STATUS_LABELS[status].label}
+                                            </span>
                                             <span className="task-column__count">{taskItems.filter(t => t.status === status).length}</span>
                                         </div>
                                         {taskItems.filter(t => t.status === status).map(task => (

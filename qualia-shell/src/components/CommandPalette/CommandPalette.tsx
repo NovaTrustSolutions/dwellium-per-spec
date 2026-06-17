@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DockItem } from '../../data/types';
 import { useWindows } from '../../context/WindowContext';
 import { rankWidgetSearchResults } from '../Sidebar/widgetSearch';
 import { API_BASE } from '../../config';
 import { getIcon } from '../Sidebar/iconMap';
+import { Brain, Circle } from 'lucide-react';
 import { parseCommand, recallMemory, type ParsedCommand } from '../../lib/dwelliumCommands';
 import { requestAraPrompt } from '../../lib/llmRouter';
 import { searchTranscriptions, type TranscriptHit } from '../../lib/transcriptSearch';
@@ -231,7 +232,7 @@ function buildTaskResults(tasks: TaskItem[], query: string): CommandResult[] {
                 id: `task:${task.id}`,
                 kind: 'task' as const,
                 score,
-                icon: task.urgency === 'high' ? '' : task.urgency === 'medium' ? '' : '',
+                icon: task.urgency === 'high' ? 'dot-red' : task.urgency === 'medium' ? 'dot-amber' : 'dot-green',
                 title: task.title,
                 subtitle: clamp(task.description || '', 90),
                 meta: `${projectName} · ${task.status.replace('_', ' ')} · ${task.source}`,
@@ -325,7 +326,7 @@ function buildInboxResults(items: InboxMessageItem[], query: string): CommandRes
             if (item.urgency === 'high') score += 4;
             if (score <= 0) return null;
 
-            const urgencyIcon = item.urgency === 'high' ? '' : item.urgency === 'medium' ? '' : '';
+            const urgencyIcon = item.urgency === 'high' ? 'dot-red' : item.urgency === 'medium' ? 'dot-amber' : 'dot-green';
             const signalLabel = item.signalClass.replace('_', ' ');
 
             return {
@@ -403,7 +404,7 @@ function buildWindowResults(
                 id: `window:${win.id}`,
                 kind: 'window' as const,
                 score,
-                icon: win.icon || dock?.icon || '',
+                icon: win.icon || dock?.icon || 'layout-grid',
                 title,
                 subtitle: dock?.group || 'Open window',
                 meta: `${win.minimized ? 'Minimized' : 'Visible'} · z${win.zIndex}`,
@@ -477,7 +478,7 @@ function buildFileResults(
                 id: `file:${file.id}`,
                 kind: 'file' as const,
                 score,
-                icon: file.type === 'pdf' ? '' : '',
+                icon: file.type === 'pdf' ? 'file-stack' : 'file-text',
                 title: file.name,
                 subtitle: file.projectName || file.projectId || 'Document file',
                 meta: [typeLabel, ...(file.tags && file.tags.length ? [file.tags.slice(0, 2).join(', ')] : [])].join(' · '),
@@ -537,7 +538,7 @@ function buildNoteResults(notes: NoteItem[], query: string): CommandResult[] {
                 id: `note:${note.id}`,
                 kind: 'note' as const,
                 score,
-                icon: '',
+                icon: 'file-edit',
                 title: note.title || 'Untitled Note',
                 subtitle: clamp(note.content || '', 90),
                 meta: 'Notepad',
@@ -570,6 +571,22 @@ function parseSemanticHits(raw: unknown): Map<string, { boost: number; snippet?:
     }
 
     return map;
+}
+
+// Urgency dots (replace former 🔴/🟡/🟢): a colored Lucide Circle keyed by
+// sentinel strings stored in CommandResult.icon. Everything else routes through
+// the sidebar iconMap; unknown keys fall back to the raw string.
+const URGENCY_DOT: Record<string, string> = {
+    'dot-red': '#ef4444',
+    'dot-amber': '#f59e0b',
+    'dot-green': '#22c55e',
+};
+
+function renderResultIcon(icon: string): ReactNode {
+    const dot = URGENCY_DOT[icon];
+    if (dot) return <Circle size={12} fill={dot} color={dot} aria-hidden />;
+    const Icon = getIcon(icon);
+    return Icon ? <Icon size={18} strokeWidth={1.75} /> : icon;
 }
 
 export default function CommandPalette() {
@@ -1023,7 +1040,7 @@ export default function CommandPalette() {
                 <div className="command-palette__results" role="listbox" aria-label="Search results">
                     {orderedResults.length === 0 ? (
                         <div className="command-palette__empty">
-                            <div className="command-palette__empty-icon"></div>
+                            <div className="command-palette__empty-icon"><Brain size={32} aria-hidden /></div>
                             <div className="command-palette__empty-title">No matches found</div>
                             <div className="command-palette__empty-subtitle">Try broader keywords or a workflow intent phrase.</div>
                         </div>
@@ -1046,7 +1063,7 @@ export default function CommandPalette() {
                                             role="option"
                                             aria-selected={index === selectedIndex}
                                         >
-                                            <span className="command-palette__result-icon">{(() => { const Icon = getIcon(result.icon); return Icon ? <Icon size={18} strokeWidth={1.75} /> : result.icon; })()}</span>
+                                            <span className="command-palette__result-icon">{renderResultIcon(result.icon)}</span>
                                             <span className="command-palette__result-main">
                                                 <span className="command-palette__result-title-row">
                                                     <span className="command-palette__result-title">{result.title}</span>

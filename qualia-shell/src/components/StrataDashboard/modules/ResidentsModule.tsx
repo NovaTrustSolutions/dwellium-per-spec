@@ -12,6 +12,7 @@ import {
     Globe, DollarSign, Clock, AlertTriangle, ChevronDown, ChevronUp,
     Plus, Trash2, X, CheckSquare, Square, Send, MessageSquare,
     ArrowRight, History, Link2, Check, AlertCircle, XCircle, Settings2, Tag,
+    Hand, ClipboardList, Package, Wrench,
 } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { API_BASE } from '../../../config';
@@ -48,13 +49,13 @@ const TRANSITIONS: Record<string, string[]> = {
     former: ['onboarding', 'active'], inactive: ['onboarding', 'active'],
     pending: ['onboarding', 'active'], archived: ['onboarding', 'active'],
 };
-const TEMPLATES: { key: CommunicationTemplate; label: string; icon: string }[] = [
-    { key: 'welcome', label: 'Welcome', icon: '' },
-    { key: 'lease_renewal', label: 'Lease Renewal', icon: '' },
-    { key: 'rent_reminder', label: 'Rent Reminder', icon: '' },
-    { key: 'notice_to_vacate', label: 'Notice to Vacate', icon: '' },
-    { key: 'maintenance_scheduled', label: 'Maintenance Scheduled', icon: '' },
-    { key: 'general', label: 'General Notice', icon: '' },
+const TEMPLATES: { key: CommunicationTemplate; label: string; icon: React.ReactNode }[] = [
+    { key: 'welcome', label: 'Welcome', icon: <Hand size={12} aria-hidden /> },
+    { key: 'lease_renewal', label: 'Lease Renewal', icon: <ClipboardList size={12} aria-hidden /> },
+    { key: 'rent_reminder', label: 'Rent Reminder', icon: <DollarSign size={12} aria-hidden /> },
+    { key: 'notice_to_vacate', label: 'Notice to Vacate', icon: <Package size={12} aria-hidden /> },
+    { key: 'maintenance_scheduled', label: 'Maintenance Scheduled', icon: <Wrench size={12} aria-hidden /> },
+    { key: 'general', label: 'General Notice', icon: <FileText size={12} aria-hidden /> },
 ];
 
 // ─── Task 3.1: Tenant detail v1 L164 expansion (parallel-batch FINAL survivor) ───
@@ -424,6 +425,7 @@ function CommTab({ tenantId, tenantName }: { tenantId: string; tenantName: strin
                         background: selectedTemplate === t.key ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                         color: selectedTemplate === t.key ? '#D6FE51' : '#64748b',
                         fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
                     }}>{t.icon} {t.label}</button>
                 ))}
             </div>
@@ -448,7 +450,7 @@ function CommTab({ tenantId, tenantName }: { tenantId: string; tenantName: strin
                 background: 'linear-gradient(135deg, #6366f1, #818cf8)', color: 'var(--text-primary)',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1,
             }}><Send size={12} /> {sending ? 'Sending…' : `Send to ${tenantName}`}</button>
-            {sent && <div style={{ fontSize: 11, color: sentOk ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{sent}</div>}
+            {sent && <div style={{ fontSize: 11, color: sentOk ? '#22c55e' : '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>{sentOk ? <Check size={12} aria-hidden /> : <XCircle size={12} aria-hidden />}{sent}</div>}
         </div>
     );
 }

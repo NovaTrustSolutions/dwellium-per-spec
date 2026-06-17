@@ -11,6 +11,7 @@
  * the user's own LLM keys (skipped entirely for Private).
  */
 import { useState } from 'react';
+import { Lock, Folder, FolderOpen, Link } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useKb, saveKbFolder, linkByConcepts, type KbEntry, type KbFolder } from './kbStore';
@@ -80,7 +81,7 @@ function FolderSection({ folder }: { folder: KbFolder }) {
     const accent = folder.isPrivate ? '#ef6a6a' : 'var(--accent)';
     return (
         <section className="cp-section" style={folder.isPrivate ? { borderLeft: '3px solid #ef6a6a', paddingLeft: 12 } : undefined}>
-            <h3 className="cp-section__title">{folder.isPrivate ? '' : ''}{folder.name}{folder.isPrivate && <span style={{ marginLeft: 8, fontSize: 10, color: '#ef6a6a', border: '1px solid #ef6a6a', borderRadius: 6, padding: '1px 6px' }}>PRIVATE · NO AGENT ACCESS</span>}</h3>
+            <h3 className="cp-section__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{folder.isPrivate ? <Lock size={14} aria-hidden /> : <Folder size={14} aria-hidden />}{folder.name}{folder.isPrivate && <span style={{ marginLeft: 8, fontSize: 10, color: '#ef6a6a', border: '1px solid #ef6a6a', borderRadius: 6, padding: '1px 6px' }}>PRIVATE · NO AGENT ACCESS</span>}</h3>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary, #808080)', lineHeight: 1.5, margin: '0 0 12px' }}>
                 {folder.isPrivate
                     ? 'A local folder kept entirely private. Files are listed for you to browse, but their contents are NEVER sent to any LLM and never exposed to Honcho, Hermes, Stella, or ARA.'
@@ -93,6 +94,7 @@ function FolderSection({ folder }: { folder: KbFolder }) {
                     type="button"
                     onClick={() => void chooseFolder()}
                     title="Select folder"
+                    aria-label="Select folder"
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -109,7 +111,7 @@ function FolderSection({ folder }: { folder: KbFolder }) {
                     onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default, #333)'; }}
                 >
-                   
+                    <FolderOpen size={16} aria-hidden />
                 </button>
                 <button onClick={() => void index()} disabled={busy || !path.trim()}
                     style={{ fontSize: 13, padding: '8px 16px', borderRadius: 8, cursor: busy || !path.trim() ? 'not-allowed' : 'pointer', background: !busy && path.trim() ? accent : '#222', color: !busy && path.trim() ? (folder.isPrivate ? '#fff' : 'var(--accent-text, #000)') : '#777', border: 'none', whiteSpace: 'nowrap' }}>
@@ -124,7 +126,7 @@ function FolderSection({ folder }: { folder: KbFolder }) {
                         <div key={e.rel + i} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,.06))' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                                 <strong style={{ fontSize: 13, color: 'var(--text-primary, #eee)' }}>{e.title}</strong>
-                                {!folder.isPrivate && <span style={{ fontSize: 11, color: 'var(--accent-text, var(--accent))' }}>{folder.links.filter(([a, b]) => a === i || b === i).length}</span>}
+                                {!folder.isPrivate && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--accent-text, var(--accent))' }}><Link size={11} aria-hidden /> {folder.links.filter(([a, b]) => a === i || b === i).length}</span>}
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary, #aaa)', margin: '3px 0', lineHeight: 1.4 }}>{e.summary}</div>
                             {e.concepts.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{e.concepts.map((c) => <span key={c} style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 10, background: 'color-mix(in srgb, var(--accent) 14%, transparent)', color: 'var(--accent-text, var(--accent))' }}>{c}</span>)}</div>}

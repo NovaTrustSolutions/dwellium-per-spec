@@ -9,6 +9,7 @@
  * new window" fallback. The instance URL is configurable and persisted per browser.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { Book, Check, ExternalLink, Play } from 'lucide-react';
 import { launchService } from '../../lib/serviceLaunch';
 import './OpenNotebookPanel.css';
 
@@ -110,10 +111,10 @@ export default function OpenNotebookPanel() {
                 ) : (
                     <>
                         <span className="onb-url" title={url}>{url}</span>
-                        <button className="onb-btn onb-btn--primary" onClick={() => launchService('open-notebook')} title="Run the Open Notebook Docker command in the Terminal">Launch ▸</button>
+                        <button className="onb-btn onb-btn--primary" onClick={() => launchService('open-notebook')} title="Run the Open Notebook Docker command in the Terminal">Launch <Play size={12} aria-hidden style={{ verticalAlign: 'middle' }} /></button>
                         <button className="onb-btn" onClick={() => { setDraft(url); setEditing(true); }}>Change</button>
                         <button className="onb-btn" onClick={() => setIframeKey(k => k + 1)} title="Reload the embedded app">Reload</button>
-                        <button className="onb-btn" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} title="Open in a new window">Open ↗</button>
+                        <button className="onb-btn" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} title="Open in a new window">Open <ExternalLink size={12} aria-hidden style={{ verticalAlign: 'middle' }} /></button>
                         <button className={`onb-btn ${showSetup ? 'onb-btn--primary' : ''}`} onClick={() => setShowSetup(s => !s)}>Setup</button>
                     </>
                 )}
@@ -133,12 +134,12 @@ export default function OpenNotebookPanel() {
                     </ol>
                     <div className="onb-snippet-head">
                         <span>docker-compose.yml</span>
-                        <button className="onb-btn onb-btn--primary" onClick={copySnippet}>{copied ? 'Copied' : 'Copy'}</button>
+                        <button className="onb-btn onb-btn--primary" onClick={copySnippet}>{copied ? <><Check size={12} aria-hidden style={{ verticalAlign: 'middle' }} /> Copied</> : 'Copy'}</button>
                     </div>
                     <pre className="onb-snippet">{DOCKER_SNIPPET}</pre>
                     <p className="onb-setup-note">
                         Note: if the frame stays blank even when reachable, your instance blocks embedding —
-                        use <strong>Open ↗</strong> to launch it in a new window (full app, same data).
+                        use <strong>Open <ExternalLink size={11} aria-hidden style={{ verticalAlign: 'middle' }} /></strong> to launch it in a new window (full app, same data).
                     </p>
                 </div>
             )}
@@ -147,14 +148,14 @@ export default function OpenNotebookPanel() {
             <div className="onb-frame-wrap">
                 {reach === 'down' ? (
                     <div className="onb-empty">
-                        <div className="onb-empty-icon"></div>
+                        <div className="onb-empty-icon"><Book size={32} aria-hidden /></div>
                         <p className="onb-empty-title">Open Notebook isn’t reachable at {url}</p>
                         <p className="onb-empty-sub">Start it with Docker, then Reload. Click <strong>Setup</strong> above for the exact commands.</p>
                         <div className="onb-empty-actions">
-                            <button className="onb-btn onb-btn--primary" onClick={() => launchService('open-notebook')} title="Run the Docker command in the Terminal">Launch ▸</button>
+                            <button className="onb-btn onb-btn--primary" onClick={() => launchService('open-notebook')} title="Run the Docker command in the Terminal">Launch <Play size={12} aria-hidden style={{ verticalAlign: 'middle' }} /></button>
                             <button className="onb-btn" onClick={() => setShowSetup(true)}>Show setup</button>
                             <button className="onb-btn" onClick={() => checkReach(url)}>Re-check</button>
-                            <button className="onb-btn" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>Open ↗</button>
+                            <button className="onb-btn" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}>Open <ExternalLink size={12} aria-hidden style={{ verticalAlign: 'middle' }} /></button>
                         </div>
                     </div>
                 ) : (

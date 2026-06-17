@@ -1,6 +1,6 @@
 /**
  * HalocronKnowledgeGraph — the Graphify-style Knowledge Graph OS screen, shown
- * inside Halocron OS when "Knowledge Graph" is selected (2026-06-14).
+ * inside Holocron OS when "Knowledge Graph" is selected (2026-06-14).
  *
  * Modeled 1:1 on the reference (Claude Code OS + Graphify):
  *   • top:    project "file-base" tabs + "Add a project" (graph a repo)
@@ -14,6 +14,7 @@
  * (clearly an illustrative graph, not a claim of a live repo scan).
  */
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { MessageSquare, Sparkles, Star } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
@@ -436,7 +437,7 @@ export default function HalocronKnowledgeGraph() {
                     </div>
                     <div className="kg-canvaswrap" ref={wrapRef}>
                         <canvas ref={canvasRef} className="kg-canvas" onClick={onCanvasClick} onWheel={onWheel} />
-                        <div className="kg-legend">size = importance · = agent · colour = cluster</div>
+                        <div className="kg-legend">size = importance · <Star size={11} aria-hidden style={{ verticalAlign: 'middle' }} /> = agent · colour = cluster</div>
                     </div>
                 </div>
 
@@ -450,7 +451,7 @@ export default function HalocronKnowledgeGraph() {
                     </section>
 
                     <section className="kg-card">
-                        <div className="kg-card__cap">MOST IMPORTANT FILES</div>
+                        <div className="kg-card__cap"><Sparkles size={12} aria-hidden /> MOST IMPORTANT FILES</div>
                         <p className="kg-card__note">The files everything else relies on — by how many other files import them.</p>
                         {(gdata?.importantFiles ?? IMPORTANT_FILES).map((f, i) => (
                             <div key={f.name + i} className="kg-imp">
@@ -484,7 +485,7 @@ export default function HalocronKnowledgeGraph() {
             {/* ── "Ask the map" — full-width bottom dock, same width as the graph ── */}
             <section className="kg-chatdock">
                 <div className="kg-chatdock__hdr">
-                    <span className="kg-card__cap">ASK THE MAP</span>
+                    <span className="kg-card__cap"><MessageSquare size={12} aria-hidden /> ASK THE MAP</span>
                     <div className="kg-chat__agent">
                         <span>Agent</span>
                         <select value={agentId} onChange={(e) => setAgentId(e.target.value)}>

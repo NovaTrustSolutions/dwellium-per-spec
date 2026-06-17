@@ -6,7 +6,7 @@
  * Runs client-side via `callLlm`; captured syntheses persist per-user.
  */
 import { useState, useContext, useSyncExternalStore, useCallback } from 'react';
-import { Sparkles, RefreshCw, Save, Layers, Trash2 } from 'lucide-react';
+import { Sparkles, RefreshCw, Save, Layers, Trash2, TriangleAlert } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -115,7 +115,7 @@ export default function Synthesis() {
                         {!llmReady && <span style={{ fontSize: 11, color: '#666' }}>· add an LLM in Settings to enable</span>}
                     </div>
 
-                    {err && <div style={{ padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}>{err}</div>}
+                    {err && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}><TriangleAlert size={14} aria-hidden style={{ flexShrink: 0 }} /><span>{err}</span></div>}
 
                     {result && (
                         <div style={{ border: '1px solid #222', borderRadius: 8, background: '#070707', display: 'flex', flexDirection: 'column', minHeight: 0 }}>

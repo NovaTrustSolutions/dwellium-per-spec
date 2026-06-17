@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Volume2 } from 'lucide-react';
 
 /**
  * ARA startup intro — plays a short video ONCE PER LOGIN SESSION (the first time
@@ -101,7 +102,7 @@ export default function AraIntroVideo() {
             <div className="ara-intro__controls">
                 {needsUnmute && (
                     <button type="button" className="ara-intro__btn" onClick={unmute}>
-                        Tap for sound
+                        <Volume2 size={14} aria-hidden /> Tap for sound
                     </button>
                 )}
                 <button

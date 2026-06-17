@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Mic, Square, Volume2, VolumeX, Sparkles, UserRound, SlidersHorizontal, X, ChevronUp, ChevronDown, Shield, Loader2, ThumbsUp, ThumbsDown, Send, Trash2, Paperclip, Globe, Laptop, AlertTriangle, Lock, Mars, Venus, Network } from 'lucide-react';
+import { Mic, Square, Volume2, VolumeX, Sparkles, UserRound, SlidersHorizontal, X, ChevronUp, ChevronDown, Shield, Loader2, ThumbsUp, ThumbsDown, Send, Trash2, Paperclip, Globe, Laptop, AlertTriangle, Lock, Mars, Venus, Network, Brain, Zap, Wrench, Settings, RefreshCw, type LucideIcon } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -63,6 +63,7 @@ const TTS_VOICE_CATALOG: TtsVoiceOption[] = [
 const OPENAI_TTS_ENDPOINT = 'https://api.openai.com/v1/audio/speech';
 
 const API_ARA = `${API_BASE}/api/ara`;
+const ARA_MODE_RETRY_DELAY_MS = 5000;
 const TRANSCRIBE_API = `${API_BASE}/api/transcribe`;
 
 interface ARAMode {
@@ -109,7 +110,7 @@ interface ChatMessage {
     timestamp: number;
     contextSources?: ContextSource[];
     observability?: MessageObservability;
-    /** Phase-10 A2: Hermes run id backing this answer — enables 👍/👎 voting. */
+    /** Phase-10 A2: Hermes run id backing this answer — enables thumbs-up/down voting. */
     hermesRunId?: string;
 }
 
@@ -325,6 +326,7 @@ export default function ARAConsole() {
             ?? '';
     }, [integrations]);
     const [modes, setModes] = useState<ARAMode[]>([]);
+    const [modeCatalogRetryTick, setModeCatalogRetryTick] = useState(0);
     // Executive Assistant is ARA's default lens (the general-purpose persona).
     const [activeMode, setActiveMode] = useState<string>('executive-assistant');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -735,7 +737,7 @@ export default function ARAConsole() {
                         setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null;
                     };
                     await audio.play();
-                    console.log(`[ARA TTS] ▶️ OpenAI ${option.openaiVoice} playing (${blob.size} bytes)`);
+                    console.log(`[ARA TTS] OpenAI ${option.openaiVoice} playing (${blob.size} bytes)`);
                     return;
                 }
                 const errText = await res.text().catch(() => '');
@@ -867,12 +869,16 @@ export default function ARAConsole() {
     // Fetch available modes (only when authenticated)
     useEffect(() => {
         if (!isAuthenticated) return;
+        let cancelled = false;
+        let retryTimer: number | null = null;
+
         authFetch(`${API_ARA}/modes`)
             .then(r => {
                 if (!r.ok) throw new Error(`Modes fetch failed: ${r.status}`);
                 return r.json();
             })
             .then(data => {
+                if (cancelled) return;
                 if (data.success) {
                     // Always surface Executive Assistant first (use the backend's
                     // version if it ships one, else the client-side fallback).
@@ -884,11 +890,20 @@ export default function ARAConsole() {
                 }
             })
             .catch(err => {
+                if (cancelled) return;
                 console.error('[ARA] Failed to fetch modes:', err);
                 // Even if the backend is unreachable, keep ARA usable with the default lens.
                 setModes(prev => (prev.length ? prev : [EXECUTIVE_ASSISTANT_MODE]));
+                retryTimer = window.setTimeout(() => {
+                    setModeCatalogRetryTick(tick => tick + 1);
+                }, ARA_MODE_RETRY_DELAY_MS);
             });
-    }, [authFetch, isAuthenticated]);
+
+        return () => {
+            cancelled = true;
+            if (retryTimer) window.clearTimeout(retryTimer);
+        };
+    }, [authFetch, isAuthenticated, modeCatalogRetryTick]);
 
     // Auto-scroll to bottom on new messages
     useEffect(() => {
@@ -1038,7 +1053,7 @@ export default function ARAConsole() {
 
         // ── Phase-10 A2: Hermes quick-chat hints ──────────────────────────
         // Inject the top-K (3) similar PAST ARA exchanges the user kept
-        // (👎-voted runs are excluded at the araHermes layer). Backend path:
+        // (downvoted runs are excluded at the araHermes layer). Backend path:
         // appended to the outgoing message as a bracketed context block (the
         // humanize-prefix precedent — this chat route has no system-prompt
         // field). LLM-fallback path: appended to the systemPrompt instead.
@@ -1077,7 +1092,7 @@ export default function ARAConsole() {
 
             // Phase-10 A2: record the exchange into the per-user Hermes log
             // (ara-chat tag) so future similar questions get it as few-shot;
-            // the run id rides on the message to power 👍/👎.
+            // the run id rides on the message to power thumbs-up/down.
             const hermesRec = recordAraChat(text, data.data.content);
             // P12-3: substantial replies auto-land in the Artifact Gallery.
             if (isSubstantialOutput(data.data.content)) recordArtifact({ content: data.data.content, source: 'ara' });
@@ -1270,8 +1285,8 @@ export default function ARAConsole() {
         return () => window.removeEventListener(ARA_SPAWN_EVENT, handler);
     }, [runSpawn]);
 
-    // ── Phase-10 A2: 👍/👎 on ARA answers trains Hermes ───────────────────
-    // 👍 (+1) boosts the run in future few-shot ranking; 👎 (−1) excludes it
+    // ── Phase-10 A2: thumbs-up/down on ARA answers trains Hermes ──────────
+    // up (+1) boosts the run in future few-shot ranking; down (−1) excludes it
     // from ARA hints entirely (filtered at the araHermes layer).
     // P11-1 (2026-06-12): voted-state derives from the Hermes STORE rating
     // instead of session-local useState — chips no longer reset visually
@@ -2000,11 +2015,11 @@ export default function ARAConsole() {
 
                 <div className="ara-mode-views">
                     {([
-                        { id: 'honcho', icon: '', label: 'Honcho' },
-                        { id: 'hermes', icon: '', label: 'Hermes' },
-                        { id: 'tools', icon: '', label: 'Tools' },
-                        { id: 'settings', icon: '', label: 'Settings' },
-                    ] as { id: AraSidePanelView; icon: string; label: string }[]).map(v => (
+                        { id: 'honcho', Icon: Brain, label: 'Honcho' },
+                        { id: 'hermes', Icon: Zap, label: 'Hermes' },
+                        { id: 'tools', Icon: Wrench, label: 'Tools' },
+                        { id: 'settings', Icon: Settings, label: 'Settings' },
+                    ] as { id: AraSidePanelView; Icon: LucideIcon; label: string }[]).map(v => (
                         <button
                             key={v.id}
                             type="button"
@@ -2014,7 +2029,7 @@ export default function ARAConsole() {
                             aria-label={v.label}
                             aria-pressed={sidePanel === v.id}
                         >
-                            <span aria-hidden>{v.icon}</span>
+                            <v.Icon size={14} aria-hidden />
                             <span className="ara-view-btn__label">{v.label}</span>
                         </button>
                     ))}
@@ -2073,7 +2088,7 @@ export default function ARAConsole() {
                         </span>
                     )}
                     <button className="ara-clear-btn" onClick={clearChat} title="Clear conversation" aria-label="Clear conversation">
-                        ⟳
+                        <RefreshCw size={15} aria-hidden />
                     </button>
                 </div>
             </div>

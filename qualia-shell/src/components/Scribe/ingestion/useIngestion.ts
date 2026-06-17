@@ -39,6 +39,7 @@ import {
 } from './fsAccess';
 import { saveIngestionHandle, loadIngestionHandle } from './ingestionHandleStore';
 import { convertFolder } from './ingestionConvert';
+import { useScribeStore } from '../scribeStore';
 
 export interface UseIngestion extends IngestionState {
     /** Browser exposes the File System Access API. */
@@ -169,12 +170,19 @@ export function useIngestion(): UseIngestion {
         setConvertError(null);
         setConverting(true);
         try {
-            const { entries, syncedAt } = await convertFolder({
+            const { entries, documents, syncedAt } = await convertFolder({
                 source,
                 backup,
                 now: () => new Date().toISOString(),
             });
             setConvertedIndex(entries, syncedAt);
+            const importedPaths = documents.map((doc) => `Ingested/${doc.destName}`);
+            for (let i = 0; i < documents.length; i += 1) {
+                await useScribeStore.getState().createFile(importedPaths[i], documents[i].content, { open: false });
+            }
+            if (importedPaths.length > 0) {
+                await useScribeStore.getState().openFile(importedPaths[0]);
+            }
         } catch (err) {
             setConvertError(err instanceof Error ? err.message : 'Conversion failed.');
         } finally {

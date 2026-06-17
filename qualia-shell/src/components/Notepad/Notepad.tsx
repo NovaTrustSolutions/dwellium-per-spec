@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, Pencil } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, type ComponentType } from 'react';
+import { Link, Pencil, Eye, FileText, ClipboardList, FolderOpen, Check, type LucideProps } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { TagInput } from '../Tags/TagInput';
@@ -24,7 +24,8 @@ interface MentionItem {
     id: string;
     name: string;
     type: 'task' | 'project' | 'file';
-    icon: string;
+    /** Lucide icon component rendered in the mention dropdown. */
+    icon: ComponentType<LucideProps>;
 }
 
 const API_FILES = `${API_BASE}/api/files`;
@@ -58,9 +59,9 @@ export default function Notepad() {
         const flatten = (nodes: any[]) => {
             for (const n of nodes) {
                 if (n.type === 'project') {
-                    items.push({ id: n.id, name: n.name, type: 'project', icon: '' });
+                    items.push({ id: n.id, name: n.name, type: 'project', icon: ClipboardList });
                 } else if (n.type === 'domain') {
-                    items.push({ id: n.id, name: n.name, type: 'project', icon: '' });
+                    items.push({ id: n.id, name: n.name, type: 'project', icon: FolderOpen });
                 }
                 if (n.children) flatten(n.children);
             }
@@ -77,7 +78,7 @@ export default function Notepad() {
                 const json = await filesRes.value.json();
                 if (json.success && Array.isArray(json.data)) {
                     for (const f of json.data.slice(0, 10)) {
-                        items.push({ id: f.id, name: f.name, type: 'file', icon: '' });
+                        items.push({ id: f.id, name: f.name, type: 'file', icon: FileText });
                     }
                 }
             }
@@ -85,7 +86,7 @@ export default function Notepad() {
                 const json = await tasksRes.value.json();
                 if (json.success && Array.isArray(json.data)) {
                     for (const t of json.data.slice(0, 10)) {
-                        items.push({ id: t.id, name: t.title || t.name, type: 'task', icon: '' });
+                        items.push({ id: t.id, name: t.title || t.name, type: 'task', icon: Check });
                     }
                 }
             }
@@ -325,7 +326,7 @@ export default function Notepad() {
             {/* Sidebar */}
             <div className="np-sidebar">
                 <div className="np-sidebar__header">
-                    <span className="np-sidebar__title">Notes</span>
+                    <span className="np-sidebar__title" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FileText size={14} aria-hidden /> Notes</span>
                     <button className="np-sidebar__new-btn" onClick={createNote} title="New Note">+</button>
                 </div>
                 <input className="np-sidebar__search" type="text" placeholder="Search notes..."
@@ -360,9 +361,10 @@ export default function Notepad() {
                         <button className="np-editor__toolbar-btn" title="Link" onClick={() => insertMarkdown('[', '](url)')}><Link size={16} /></button>
                         <div className="np-editor__toolbar-divider" />
                         <button className="np-editor__toolbar-btn" title="Toggle Preview"
+                            aria-label="Toggle Preview"
                             onClick={() => setShowPreview(!showPreview)}
                             style={{ color: showPreview ? '#D6FE51' : undefined }}>
-                           
+                            <Eye size={16} aria-hidden />
                         </button>
                     </div>
 
@@ -398,7 +400,7 @@ export default function Notepad() {
                         <div className="np-mention" style={{ top: mentionPos.top, left: mentionPos.left }}>
                             {filteredMentions.map(item => (
                                 <div key={item.id} className="np-mention__item" onClick={() => insertMention(item)}>
-                                    <span className="np-mention__item-icon">{item.icon}</span>
+                                    <span className="np-mention__item-icon"><item.icon size={14} aria-hidden /></span>
                                     <span className="np-mention__item-name">{item.name}</span>
                                     <span className="np-mention__item-type">{item.type}</span>
                                 </div>

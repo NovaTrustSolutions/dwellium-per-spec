@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Bot, Calendar, Check, ClipboardList, Clock, FileText, Hourglass, Mail, MapPin, Package, Pencil, Plus, Rocket, Save, Shuffle, Sparkles, Timer, Trash2, User, Wrench, X, Zap } from 'lucide-react';
 import { API_BASE as API_ROOT } from '../../config';
 import { getDraftHandoffs, openWidgetHandoff } from './inboxLinkage';
 
@@ -352,15 +352,18 @@ export default function SmartActions() {
             {/* Sub-view tabs */}
             <div style={styles.header}>
                 {([
-                    { id: 'templates' as SubView, label: 'Templates', count: templates.length },
-                    { id: 'quick' as SubView, label: 'Quick Actions' },
-                    { id: 'batch' as SubView, label: 'Batch Ops' },
-                ]).map(tab => (
+                    { id: 'templates' as SubView, label: 'Templates', icon: ClipboardList, count: templates.length },
+                    { id: 'quick' as SubView, label: 'Quick Actions', icon: Zap },
+                    { id: 'batch' as SubView, label: 'Batch Ops', icon: Package },
+                ]).map(tab => {
+                    const TabIcon = tab.icon;
+                    return (
                     <button
                         key={tab.id}
-                        style={{ ...styles.tabBtn, ...(subView === tab.id ? styles.tabBtnActive : {}) }}
+                        style={{ ...styles.tabBtn, ...(subView === tab.id ? styles.tabBtnActive : {}), display: 'inline-flex', alignItems: 'center', gap: 6 }}
                         onClick={() => setSubView(tab.id)}
                     >
+                        <TabIcon size={14} aria-hidden />
                         {tab.label}
                         {tab.count !== undefined && tab.count > 0 && (
                             <span style={{ ...styles.badge, background: 'rgba(0,136,204,0.2)', color: 'var(--accent)' }}>
@@ -368,13 +371,14 @@ export default function SmartActions() {
                             </span>
                         )}
                     </button>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Status message */}
             {status && (
-                <div style={{ ...styles.statusMsg, ...(status.type === 'success' ? styles.success : styles.error) }}>
-                    {status.type === 'success' ? '' : ''} {status.msg}
+                <div style={{ ...styles.statusMsg, ...(status.type === 'success' ? styles.success : styles.error), display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {status.type === 'success' ? <Check size={14} aria-hidden /> : <X size={14} aria-hidden />} {status.msg}
                 </div>
             )}
 
@@ -387,7 +391,7 @@ export default function SmartActions() {
                             style={{ ...styles.btn, ...styles.btnPrimary }}
                             onClick={() => { resetForm(); setShowForm(!showForm); }}
                         >
-                            {showForm ? 'Cancel' : '+ New Template'}
+                            {showForm ? <><X size={14} aria-hidden /> Cancel</> : <><Plus size={14} aria-hidden /> New Template</>}
                         </button>
                     </div>
 
@@ -401,7 +405,7 @@ export default function SmartActions() {
                             <input style={styles.input} placeholder="Project ID (optional)" value={formProject} onChange={e => setFormProject(e.target.value)} />
                             <div style={styles.row}>
                                 <button style={{ ...styles.btn, ...styles.btnPrimary }} onClick={handleSaveTemplate} disabled={loading}>
-                                    {loading ? 'Saving...' : editingId ? 'Update' : 'Create'}
+                                    {loading ? <><Hourglass size={14} aria-hidden /> Saving...</> : editingId ? <><Save size={14} aria-hidden /> Update</> : <><Check size={14} aria-hidden /> Create</>}
                                 </button>
                                 {editingId && (
                                     <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={resetForm}>Cancel</button>
@@ -413,7 +417,7 @@ export default function SmartActions() {
                     {/* Template List */}
                     {templates.length === 0 ? (
                         <div style={styles.empty}>
-                            <div style={{ fontSize: '32px', marginBottom: '8px' }}></div>
+                            <div style={{ fontSize: '32px', marginBottom: '8px' }}><ClipboardList size={32} aria-hidden /></div>
                             <div>No reply templates yet. Create one to speed up your workflow.</div>
                         </div>
                     ) : (
@@ -427,7 +431,7 @@ export default function SmartActions() {
                                         </span>
                                     </div>
                                     {t.subjectTemplate && (
-                                        <div style={styles.cardSubtext}>{t.subjectTemplate}</div>
+                                        <div style={{ ...styles.cardSubtext, display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13} aria-hidden /> {t.subjectTemplate}</div>
                                     )}
                                     <div style={{ ...styles.cardSubtext, whiteSpace: 'pre-wrap', maxHeight: '60px', overflow: 'hidden' }}>
                                         {t.bodyTemplate}
@@ -442,7 +446,7 @@ export default function SmartActions() {
                                         </div>
                                     )}
                                     <div style={{ ...styles.row, marginTop: '10px' }}>
-                                        <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={() => editTemplate(t)}>Edit</button>
+                                        <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={() => editTemplate(t)}><Pencil size={14} aria-hidden /> Edit</button>
                                         <button aria-label="Delete template" style={{ ...styles.btn, ...styles.btnDanger }} onClick={() => handleDeleteTemplate(t.id)}><Trash2 size={16} /></button>
                                     </div>
                                 </div>
@@ -469,7 +473,7 @@ export default function SmartActions() {
                     {/* AI Draft */}
                     <div style={styles.section}>
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>AI Auto-Draft</div>
+                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Bot size={14} aria-hidden /> AI Auto-Draft</div>
                             <div style={styles.cardSubtext}>Generate a professional reply draft using AI</div>
                             <input
                                 style={{ ...styles.input, marginTop: '8px' }}
@@ -482,7 +486,7 @@ export default function SmartActions() {
                                 onClick={generateDraft}
                                 disabled={loading || !quickItemId.trim()}
                             >
-                                {loading ? 'Generating...' : 'Generate Draft'}
+                                {loading ? <><Hourglass size={14} aria-hidden /> Generating...</> : <><Sparkles size={14} aria-hidden /> Generate Draft</>}
                             </button>
 
                             {draftResult && (
@@ -521,14 +525,14 @@ export default function SmartActions() {
                     {/* Calendar Extraction */}
                     <div style={styles.section}>
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>Calendar Event Extraction</div>
+                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Calendar size={14} aria-hidden /> Calendar Event Extraction</div>
                             <div style={styles.cardSubtext}>Extract dates, meetings, and scheduling info from email</div>
                             <button
                                 style={{ ...styles.btn, ...styles.btnPrimary, marginTop: '8px' }}
                                 onClick={extractEvents}
                                 disabled={loading || !quickItemId.trim()}
                             >
-                                {loading ? 'Extracting...' : 'Extract Events'}
+                                {loading ? <><Hourglass size={14} aria-hidden /> Extracting...</> : <><Calendar size={14} aria-hidden /> Extract Events</>}
                             </button>
 
                             {events.length > 0 && (
@@ -541,12 +545,14 @@ export default function SmartActions() {
                                                     {Math.round(e.confidence * 100)}%
                                                 </span>
                                             </div>
-                                            <div style={styles.cardSubtext}>
-                                                {e.date || 'TBD'} {e.time ? `${e.time}` : ''} {e.duration ? `${e.duration}` : ''}
+                                            <div style={{ ...styles.cardSubtext, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                                                <Calendar size={13} aria-hidden /> {e.date || 'TBD'}
+                                                {e.time ? <><Clock size={13} aria-hidden /> {e.time}</> : ''}
+                                                {e.duration ? <><Timer size={13} aria-hidden /> {e.duration}</> : ''}
                                             </div>
-                                            {e.location && <div style={styles.cardSubtext}>{e.location}</div>}
+                                            {e.location && <div style={{ ...styles.cardSubtext, display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} aria-hidden /> {e.location}</div>}
                                             {e.attendees.length > 0 && (
-                                                <div style={styles.cardSubtext}>{e.attendees.join(', ')}</div>
+                                                <div style={{ ...styles.cardSubtext, display: 'flex', alignItems: 'center', gap: 4 }}><User size={13} aria-hidden /> {e.attendees.join(', ')}</div>
                                             )}
                                         </div>
                                     ))}
@@ -558,14 +564,14 @@ export default function SmartActions() {
                     {/* Workflow Triggers */}
                     <div style={styles.section}>
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>Workflow Triggers</div>
+                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Wrench size={14} aria-hidden /> Workflow Triggers</div>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
                                 <button
                                     style={{ ...styles.btn, ...styles.btnPrimary }}
                                     onClick={createWorkitem}
                                     disabled={loading || !quickItemId.trim()}
                                 >
-                                    Create Workitem
+                                    <FileText size={14} aria-hidden /> Create Workitem
                                 </button>
                             </div>
                         </div>
@@ -578,7 +584,7 @@ export default function SmartActions() {
                 <div>
                     <h3 style={styles.sectionTitle}>Batch Operations</h3>
                     <div style={styles.card}>
-                        <div style={styles.cardTitle}>Item IDs</div>
+                        <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><ClipboardList size={14} aria-hidden /> Item IDs</div>
                         <div style={styles.cardSubtext}>Enter IDs separated by commas or newlines</div>
                         <textarea
                             style={styles.textarea}
@@ -591,7 +597,7 @@ export default function SmartActions() {
                     <div style={styles.grid}>
                         {/* Bulk Route */}
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>Bulk Route</div>
+                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Shuffle size={14} aria-hidden /> Bulk Route</div>
                             <div style={styles.cardSubtext}>Route multiple items to a project</div>
                             <input
                                 style={{ ...styles.input, marginTop: '8px' }}
@@ -604,13 +610,13 @@ export default function SmartActions() {
                                 onClick={performBatchRoute}
                                 disabled={loading || !batchIds.trim() || !batchProject.trim()}
                             >
-                                {loading ? '...' : 'Route All'}
+                                {loading ? <><Hourglass size={14} aria-hidden /> ...</> : <><Rocket size={14} aria-hidden /> Route All</>}
                             </button>
                         </div>
 
                         {/* Bulk Assign */}
                         <div style={styles.card}>
-                            <div style={styles.cardTitle}>Bulk Assign</div>
+                            <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><User size={14} aria-hidden /> Bulk Assign</div>
                             <div style={styles.cardSubtext}>Assign multiple items to a team member</div>
                             <input
                                 style={{ ...styles.input, marginTop: '8px' }}
@@ -623,7 +629,7 @@ export default function SmartActions() {
                                 onClick={performBatchAssign}
                                 disabled={loading || !batchIds.trim() || !batchAssignee.trim()}
                             >
-                                {loading ? '...' : 'Assign All'}
+                                {loading ? <><Hourglass size={14} aria-hidden /> ...</> : <><User size={14} aria-hidden /> Assign All</>}
                             </button>
                         </div>
                     </div>

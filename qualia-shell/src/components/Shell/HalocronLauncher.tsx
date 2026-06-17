@@ -1,7 +1,7 @@
 /**
- * HalocronLauncher — the rune that opens the Halocron OS shell (2026-06-12).
+ * HalocronLauncher — the rune that opens the Holocron OS shell (2026-06-12).
  *
- * Visible only when the Halocron OS layout is enabled AND the shell is
+ * Visible only when the Holocron OS layout is enabled AND the shell is
  * currently collapsed (a widget is in use). Clicking it reopens the OS.
  * Renders nothing in Classic layout, so it's zero-footprint there.
  */
@@ -14,7 +14,7 @@ export default function HalocronLauncher() {
     if (!state.enabled || state.open) return null;
     return (
         <button type="button" className="hos-launcher" onClick={() => halocronOsStore.setOpen(true)}
-            aria-label="Open Halocron OS" title="Halocron OS">
+            aria-label="Open Holocron OS" title="Holocron OS">
             ◈
         </button>
     );

@@ -9,7 +9,7 @@
  * via `wikiStore`. Defaults to the globally-active thread when one is set.
  */
 import { useState, useEffect, useContext, useSyncExternalStore, useCallback } from 'react';
-import { Globe, FolderTree, MessageSquare, Folder, BookOpen, RefreshCw, FileText } from 'lucide-react';
+import { Globe, FolderTree, MessageSquare, Folder, BookOpen, RefreshCw, FileText, TriangleAlert } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -171,7 +171,7 @@ export default function Wiki() {
                         </div>
 
                         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
-                            {err && <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}>{err}</div>}
+                            {err && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 12 }}><TriangleAlert size={14} aria-hidden style={{ flexShrink: 0 }} /><span>{err}</span></div>}
                             {!llmReady && (
                                 <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid #222', color: 'var(--text-tertiary)', fontSize: 11 }}>
                                     No LLM configured — “Compile” builds a structure-only page (sources). Add a provider in Settings → API Keys for full synthesis (overview, concepts, open questions).

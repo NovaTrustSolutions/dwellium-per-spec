@@ -1,5 +1,33 @@
 import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
-import { Brain, Check, Clock, Package, Pencil, Trash2, TrendingUp, X } from 'lucide-react';
+import {
+    BarChart3,
+    Brain,
+    Calendar,
+    Check,
+    ClipboardList,
+    Clock,
+    Download,
+    FileText,
+    Flame,
+    Folder,
+    Hourglass,
+    Lightbulb,
+    MessageCircle,
+    Package,
+    Pencil,
+    Pin,
+    Save,
+    Satellite,
+    Sparkles,
+    Sprout,
+    Trash2,
+    TrendingUp,
+    TriangleAlert,
+    User,
+    X,
+    Zap,
+    type LucideIcon,
+} from 'lucide-react';
 import { API_BASE } from '../../config';
 import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -131,26 +159,26 @@ interface BucketItem {
 
 // ── Constants ────────────────────────────────────────────────────────
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
-    { id: 'capture', label: 'Capture', icon: '' },
-    { id: 'today', label: 'Today', icon: '' },
-    { id: 'reports', label: 'Reports', icon: '' },
-    { id: 'dashboard', label: 'Dashboard', icon: '' },
-    { id: 'timeline', label: 'Timeline', icon: '' },
+const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
+    { id: 'capture', label: 'Capture', icon: FileText },
+    { id: 'today', label: 'Today', icon: Check },
+    { id: 'reports', label: 'Reports', icon: TrendingUp },
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'timeline', label: 'Timeline', icon: Clock },
 ];
 
-const BUCKETS: { id: BucketId; label: string; icon: string; color: string }[] = [
-    { id: 'people', label: 'People', icon: '', color: 'var(--accent)' },
-    { id: 'projects', label: 'Projects', icon: '', color: '#60a5fa' },
-    { id: 'ideas', label: 'Ideas', icon: '', color: '#f59e0b' },
-    { id: 'admin', label: 'Tasks', icon: '', color: '#22c55e' },
+const BUCKETS: { id: BucketId; label: string; icon: LucideIcon; color: string }[] = [
+    { id: 'people', label: 'People', icon: User, color: 'var(--accent)' },
+    { id: 'projects', label: 'Projects', icon: Folder, color: '#60a5fa' },
+    { id: 'ideas', label: 'Ideas', icon: Lightbulb, color: '#f59e0b' },
+    { id: 'admin', label: 'Tasks', icon: ClipboardList, color: '#22c55e' },
 ];
 
-const TEMPLATES = [
-    { icon: '', label: 'Person', template: 'Met [name] — context: [where/how]. Follow up: [action].' },
-    { icon: '', label: 'Project', template: 'Project: [name]. Next action: [step]. Notes: [details].' },
-    { icon: '', label: 'Idea', template: 'Idea: [one-liner]. Details: [expand]. Could be useful for: [context].' },
-    { icon: '', label: 'Task', template: 'Need to: [action]. Due: [date/timeframe]. Notes: [context].' },
+const TEMPLATES: { icon: LucideIcon; label: string; template: string }[] = [
+    { icon: User, label: 'Person', template: 'Met [name] — context: [where/how]. Follow up: [action].' },
+    { icon: Folder, label: 'Project', template: 'Project: [name]. Next action: [step]. Notes: [details].' },
+    { icon: Lightbulb, label: 'Idea', template: 'Idea: [one-liner]. Details: [expand]. Could be useful for: [context].' },
+    { icon: ClipboardList, label: 'Task', template: 'Need to: [action]. Due: [date/timeframe]. Notes: [context].' },
 ];
 
 const API = `${API_BASE}/api/thought-weaver`;
@@ -191,9 +219,15 @@ function bucketColor(bucket: string): string {
     return found ? found.color : 'var(--text-tertiary)';
 }
 
-function bucketIcon(bucket: string): string {
+function bucketIcon(bucket: string): LucideIcon {
     const found = BUCKETS.find(b => b.id === bucket);
-    return found ? found.icon : '';
+    return found ? found.icon : Pin;
+}
+
+/** Render the Lucide icon for a bucket (decorative). */
+function BucketIcon({ bucket, size = 14 }: { bucket: string; size?: number }) {
+    const Ic = bucketIcon(bucket);
+    return <Ic size={size} aria-hidden />;
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -652,22 +686,25 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
             {/* Header */}
             <div className="tw-header">
                 <div className="tw-header__top">
-                    <h2 className="tw-title">Thought Weaver</h2>
+                    <h2 className="tw-title"><Brain size={16} aria-hidden /> Thought Weaver</h2>
                     {effectiveStats && (
                         <div className="tw-stats-mini">
-                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent)' }}>{effectiveStats.activePeople}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}>{effectiveStats.activeProjects}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#f59e0b' }}>{effectiveStats.totalIdeas}</span>
-                            <span className="tw-stats-mini__item" style={{ color: '#22c55e' }}>{effectiveStats.tasksDue}</span>
+                            <span className="tw-stats-mini__item" style={{ color: 'var(--accent)' }}><User size={13} aria-hidden /> {effectiveStats.activePeople}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#60a5fa' }}><Folder size={13} aria-hidden /> {effectiveStats.activeProjects}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#f59e0b' }}><Lightbulb size={13} aria-hidden /> {effectiveStats.totalIdeas}</span>
+                            <span className="tw-stats-mini__item" style={{ color: '#22c55e' }}><ClipboardList size={13} aria-hidden /> {effectiveStats.tasksDue}</span>
                         </div>
                     )}
                 </div>
                 <div className="tw-tabs">
-                    {TABS.map(tab => (
+                    {TABS.map(tab => {
+                        const TabIcon = tab.icon;
+                        return (
                         <button key={tab.id} className={`tw-tab ${activeTab === tab.id ? 'tw-tab--active' : ''}`} onClick={() => setActiveTab(tab.id)}>
-                            {tab.icon} {tab.label}
+                            <TabIcon size={14} aria-hidden /> {tab.label}
                         </button>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -685,7 +722,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                         color: '#fdba74', fontSize: 12.5, lineHeight: 1.4,
                     }}
                 >
-                    <strong>Backend offline</strong> — the Dwellium server isn’t reachable, so you’re seeing the thoughts stored on this device. Nothing is lost; your captures stay saved here.
+                    <TriangleAlert size={14} aria-hidden /> <strong>Backend offline</strong> — the Dwellium server isn’t reachable, so you’re seeing the thoughts stored on this device. Nothing is lost; your captures stay saved here.
                 </div>
             )}
 
@@ -703,11 +740,14 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                         />
                         <div className="tw-capture__toolbar">
                             <div className="tw-templates">
-                                {TEMPLATES.map(t => (
-                                    <button key={t.label} className="tw-template-chip" onClick={() => applyTemplate(t.template)} title={t.label}>
-                                        {t.icon}
+                                {TEMPLATES.map(t => {
+                                    const TmplIcon = t.icon;
+                                    return (
+                                    <button key={t.label} className="tw-template-chip" onClick={() => applyTemplate(t.template)} title={t.label} aria-label={t.label}>
+                                        <TmplIcon size={16} aria-hidden />
                                     </button>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <button className="tw-capture__btn" onClick={handleCapture} disabled={!text.trim() || loading}>
                                 {loading ? 'Classifying...' : 'Capture'}
@@ -718,7 +758,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {/* Classification result toast */}
                     {lastResult && (
                         <div className="tw-result" style={{ borderLeftColor: bucketColor(lastResult.filed_to) }}>
-                            <span className="tw-result__icon">{bucketIcon(lastResult.filed_to)}</span>
+                            <span className="tw-result__icon"><BucketIcon bucket={lastResult.filed_to} size={16} /></span>
                             <div className="tw-result__text">
                                 <strong>{lastResult.filed_to === 'needs_review' ? 'Needs Review' : `Filed → ${lastResult.destination_name}`}</strong>
                                 <span className={`tw-confidence tw-confidence--${confidenceLabel(lastResult.confidence).toLowerCase()}`}>
@@ -726,9 +766,9 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 </span>
                                 {captureSource && (
                                     <span className="tw-source-badge" title="How this thought was sorted">
-                                        {captureSource === 'llm' ? 'via your LLM'
-                                            : captureSource === 'backend' ? 'via backend'
-                                            : 'sorted locally · offline'}
+                                        {captureSource === 'llm' ? <><Sparkles size={12} aria-hidden /> via your LLM</>
+                                            : captureSource === 'backend' ? <><Satellite size={12} aria-hidden /> via backend</>
+                                            : <><Save size={12} aria-hidden /> sorted locally · offline</>}
                                     </span>
                                 )}
                             </div>
@@ -738,7 +778,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
 
                     {/* Seed button */}
                     {captures.length === 0 && !seeded && (
-                        <button className="tw-seed-btn" onClick={handleSeed}>Seed demo thoughts</button>
+                        <button className="tw-seed-btn" onClick={handleSeed}><Sprout size={14} aria-hidden /> Seed demo thoughts</button>
                     )}
 
                     {/* Recent captures (merged: local + backend) */}
@@ -751,7 +791,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                     onClick={handleClearAllLocal}
                                     title={`Delete YOUR ${localCaptures.length} local captures`}
                                 >
-                                    Clear my captures ({localCaptures.length})
+                                    <Trash2 size={14} aria-hidden /> Clear my captures ({localCaptures.length})
                                 </button>
                             )}
                         </div>
@@ -767,36 +807,42 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                         <p className="tw-capture-card__text">{c.original_text}</p>
                                         <div className="tw-capture-card__meta">
                                             <span className="tw-badge" style={{ background: bucketColor(c.filed_to) + '22', color: bucketColor(c.filed_to) }}>
-                                                {bucketIcon(c.filed_to)} {c.filed_to === 'needs_review' ? 'Review' : c.filed_to}
+                                                <BucketIcon bucket={c.filed_to} /> {c.filed_to === 'needs_review' ? 'Review' : c.filed_to}
                                             </span>
                                             <span className="tw-confidence-mini">{Math.round(c.confidence * 100)}%</span>
                                             {c.source === 'local' && (
-                                                <span className="tw-local-badge" title="Stored in this browser — only you can delete it">local</span>
+                                                <span className="tw-local-badge" title="Stored in this browser — only you can delete it"><Save size={12} aria-hidden /> local</span>
                                             )}
                                             {/* User override of the AI's category — you always have the final say. */}
                                             {c.source === 'local' && (
                                                 refileId === c.id ? (
                                                     <div className="tw-resolve-picker">
-                                                        {BUCKETS.map(b => (
-                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleRefile(c.id, b.id)} title={`File under ${b.label}`}>
-                                                                {b.icon}
+                                                        {BUCKETS.map(b => {
+                                                            const BIcon = b.icon;
+                                                            return (
+                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleRefile(c.id, b.id)} title={`File under ${b.label}`} aria-label={`File under ${b.label}`}>
+                                                                <BIcon size={14} aria-hidden />
                                                             </button>
-                                                        ))}
-                                                        <button className="tw-resolve-cancel" onClick={() => setRefileId(null)}><X size={16} /></button>
+                                                            );
+                                                        })}
+                                                        <button className="tw-resolve-cancel" onClick={() => setRefileId(null)} aria-label="Cancel re-file"><X size={16} /></button>
                                                     </div>
                                                 ) : (
-                                                    <button className="tw-categorize-btn" onClick={() => setRefileId(c.id)} title="Re-file — you decide the category; the AI never has the final say on your stored thought">Re-file</button>
+                                                    <button className="tw-categorize-btn" onClick={() => setRefileId(c.id)} title="Re-file — you decide the category; the AI never has the final say on your stored thought"><Pencil size={14} aria-hidden /> Re-file</button>
                                                 )
                                             )}
                                             {c.status === 'needs_review' && c.source !== 'local' && (
                                                 resolveId === c.id ? (
                                                     <div className="tw-resolve-picker">
-                                                        {BUCKETS.map(b => (
-                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleResolve(c.id, b.id)} title={b.label}>
-                                                                {b.icon}
+                                                        {BUCKETS.map(b => {
+                                                            const BIcon = b.icon;
+                                                            return (
+                                                            <button key={b.id} className="tw-resolve-btn" style={{ color: b.color }} onClick={() => handleResolve(c.id, b.id)} title={b.label} aria-label={`File under ${b.label}`}>
+                                                                <BIcon size={14} aria-hidden />
                                                             </button>
-                                                        ))}
-                                                        <button className="tw-resolve-cancel" onClick={() => setResolveId(null)}><X size={16} /></button>
+                                                            );
+                                                        })}
+                                                        <button className="tw-resolve-cancel" onClick={() => setResolveId(null)} aria-label="Cancel categorize"><X size={16} /></button>
                                                     </div>
                                                 ) : (
                                                     <button className="tw-categorize-btn" onClick={() => setResolveId(c.id)}>Categorize</button>
@@ -808,8 +854,9 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                     className="tw-delete-btn"
                                                     onClick={() => handleLocalDelete(c.id)}
                                                     title="Delete this capture (local only — backend records can't be removed from here)"
+                                                    aria-label="Delete capture"
                                                 >
-                                                   
+                                                    <Trash2 size={14} aria-hidden />
                                                 </button>
                                             )}
                                         </div>
@@ -891,7 +938,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             return (
                                 <div key={pri} className={`tw-today__group tw-today__group--${pri}`}>
                                     <h4 className="tw-today__group-title">
-                                        {pri === 'high' ? '' : pri === 'medium' ? '' : ''} {pri.toUpperCase()}
+                                        {pri === 'high' ? <Flame size={14} aria-hidden /> : pri === 'medium' ? <Zap size={14} aria-hidden /> : <MessageCircle size={14} aria-hidden />} {pri.toUpperCase()}
                                         <span className="tw-today__group-count">{bucket.filter(t => !t.done).length}/{bucket.length}</span>
                                     </h4>
                                     {bucket.map(t => (
@@ -910,8 +957,9 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                 className="tw-delete-btn"
                                                 onClick={() => deleteTodo(t.id)}
                                                 title="Delete to-do"
+                                                aria-label="Delete to-do"
                                             >
-                                               
+                                                <Trash2 size={14} aria-hidden />
                                             </button>
                                         </div>
                                     ))}
@@ -935,7 +983,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                 aria-busy={generating}
                                 title="Draft today's report, refresh to-dos, roll up the week, and surface insights"
                             >
-                                {generating ? 'Generating…' : 'Generate now'}
+                                {generating ? <><Hourglass size={14} aria-hidden /> Generating…</> : <><Sparkles size={14} aria-hidden /> Generate now</>}
                             </button>
                             <button
                                 className="tw-reports__handoff-btn"
@@ -980,7 +1028,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             {/* Non-obvious insights */}
                             {reports.insights.length > 0 && (
                                 <section className="tw-reports__section" aria-label="Insights">
-                                    <h4 className="tw-reports__section-title">Insights</h4>
+                                    <h4 className="tw-reports__section-title"><Lightbulb size={14} aria-hidden /> Insights</h4>
                                     {reports.insights.map(i => (
                                         <div key={i.id} className={`tw-insight tw-insight--${i.kind}`}>
                                             <span className="tw-insight__kind">{i.kind}</span>
@@ -1000,7 +1048,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                                     title="Save this insight to Honcho memory"
                                                     aria-label="Save insight to Honcho memory"
                                                 >
-                                                    Honcho
+                                                    <Brain size={12} aria-hidden /> Honcho
                                                 </button>
                                             </div>
                                         </div>
@@ -1011,7 +1059,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             {/* Daily reports */}
                             {reports.dailyReports.length > 0 && (
                                 <section className="tw-reports__section" aria-label="Daily reports">
-                                    <h4 className="tw-reports__section-title">Daily Reports</h4>
+                                    <h4 className="tw-reports__section-title"><Calendar size={14} aria-hidden /> Daily Reports</h4>
                                     {reports.dailyReports.map(r => (
                                         <article key={r.id} className="tw-report-card">
                                             <header className="tw-report-card__head">
@@ -1027,7 +1075,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             {/* Weekly summaries */}
                             {reports.weeklySummaries.length > 0 && (
                                 <section className="tw-reports__section" aria-label="Weekly summaries">
-                                    <h4 className="tw-reports__section-title">Weekly Summaries</h4>
+                                    <h4 className="tw-reports__section-title"><Calendar size={14} aria-hidden /> Weekly Summaries</h4>
                                     {reports.weeklySummaries.map(w => (
                                         <article key={w.id} className="tw-report-card">
                                             <header className="tw-report-card__head">
@@ -1050,20 +1098,23 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                     {/* Stats bar */}
                     {effectiveStats && (
                         <div className="tw-stats-bar">
-                            {[
-                                { icon: '', label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent)' },
-                                { icon: '', label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
-                                { icon: '', label: 'People', value: effectiveStats.activePeople, color: 'var(--accent)' },
-                                { icon: '', label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
-                                { icon: '', label: 'Ideas', value: effectiveStats.totalIdeas, color: '#f59e0b' },
-                                { icon: '', label: 'Due', value: effectiveStats.tasksDue, color: '#22c55e', highlight: effectiveStats.tasksDue > 0 },
-                            ].map(s => (
+                            {([
+                                { icon: Brain, label: 'Captures', value: effectiveStats.totalCaptures, color: 'var(--accent)' },
+                                { icon: Download, label: 'To Review', value: effectiveStats.pendingReviews, color: '#f97316', highlight: effectiveStats.pendingReviews > 0 },
+                                { icon: User, label: 'People', value: effectiveStats.activePeople, color: 'var(--accent)' },
+                                { icon: Folder, label: 'Active', value: effectiveStats.activeProjects, color: '#60a5fa' },
+                                { icon: Lightbulb, label: 'Ideas', value: effectiveStats.totalIdeas, color: '#f59e0b' },
+                                { icon: ClipboardList, label: 'Due', value: effectiveStats.tasksDue, color: '#22c55e', highlight: effectiveStats.tasksDue > 0 },
+                            ] as { icon: LucideIcon; label: string; value: number; color: string; highlight?: boolean }[]).map(s => {
+                                const StatIcon = s.icon;
+                                return (
                                 <div key={s.label} className={`tw-stat-card ${s.highlight ? 'tw-stat-card--highlight' : ''}`}>
-                                    <span className="tw-stat-card__icon">{s.icon}</span>
+                                    <span className="tw-stat-card__icon"><StatIcon size={16} aria-hidden /></span>
                                     <span className="tw-stat-card__value" style={{ color: s.color }}>{s.value}</span>
                                     <span className="tw-stat-card__label">{s.label}</span>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
 
@@ -1072,14 +1123,17 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                         <button className={`tw-bucket-pill ${activeBucket === 'all' ? 'tw-bucket-pill--active' : ''}`} onClick={() => setActiveBucket('all')}>
                             All
                         </button>
-                        {BUCKETS.map(b => (
+                        {BUCKETS.map(b => {
+                            const BIcon = b.icon;
+                            return (
                             <button key={b.id} className={`tw-bucket-pill ${activeBucket === b.id ? 'tw-bucket-pill--active' : ''}`}
                                 style={activeBucket === b.id ? { background: b.color + '22', color: b.color, borderColor: b.color } : {}}
                                 onClick={() => setActiveBucket(b.id)}>
-                                {b.icon} {b.label}
+                                <BIcon size={14} aria-hidden /> {b.label}
                                 <span className="tw-bucket-pill__count">{effectiveBuckets[b.id].length}</span>
                             </button>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* Items list */}
@@ -1090,7 +1144,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                             allBucketItems.map(item => (
                                 <div key={item.id} className="tw-item-card" style={{ borderLeftColor: bucketColor(item.type || '') }}>
                                     <div className="tw-item-card__header">
-                                        <span className="tw-item-card__icon">{bucketIcon(item.type || '')}</span>
+                                        <span className="tw-item-card__icon"><BucketIcon bucket={item.type || ''} /></span>
                                         <span className="tw-item-card__name">{item.name}</span>
                                         {item.status && <span className="tw-item-card__status">{item.status}</span>}
                                     </div>
@@ -1120,13 +1174,16 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                         <button className={`tw-bucket-pill ${timelineFilter === 'all' ? 'tw-bucket-pill--active' : ''}`} onClick={() => setTimelineFilter('all')}>
                             All
                         </button>
-                        {BUCKETS.map(b => (
+                        {BUCKETS.map(b => {
+                            const BIcon = b.icon;
+                            return (
                             <button key={b.id} className={`tw-bucket-pill ${timelineFilter === b.id ? 'tw-bucket-pill--active' : ''}`}
                                 style={timelineFilter === b.id ? { background: b.color + '22', color: b.color, borderColor: b.color } : {}}
                                 onClick={() => setTimelineFilter(b.id)}>
-                                {b.icon} {b.label}
+                                <BIcon size={14} aria-hidden /> {b.label}
                             </button>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {Object.keys(groupedTimeline).length === 0 ? (
@@ -1142,7 +1199,7 @@ Schema: { "filed_to": "people"|"projects"|"ideas"|"admin"|"needs_review", "confi
                                             <div className="tw-timeline-content">
                                                 <div className="tw-timeline-entry__header">
                                                     <span className="tw-badge" style={{ background: bucketColor(item.type || '') + '22', color: bucketColor(item.type || '') }}>
-                                                        {bucketIcon(item.type || '')} {item.type}
+                                                        <BucketIcon bucket={item.type || ''} /> {item.type}
                                                     </span>
                                                     <span className="tw-time">{timeAgo(item.createdAt)}</span>
                                                 </div>

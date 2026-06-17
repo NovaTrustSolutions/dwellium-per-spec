@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, DragEvent, ChangeEvent } from 'react';
-import { FolderOpen, Home, Inbox, Menu } from 'lucide-react';
+import { ChevronDown, ChevronRight, File as FileIcon, FileArchive, FileCode, FileJson, FileSpreadsheet, FileText, Folder, FolderOpen, Hourglass, Home, Image, Inbox, LayoutGrid, Mail, Menu, MessageSquare, Music, Share2, Upload, Video, type LucideIcon } from 'lucide-react';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useWindows } from '../../context/WindowContext';
 import './FileManager.css';
@@ -26,13 +26,13 @@ interface FolderNode {
 
 const API_FILES = `${API_BASE}/api/files`;
 
-const FILE_ICONS: Record<string, string> = {
-    pdf: '', doc: '', docx: '', txt: '', md: '',
-    jpg: '', jpeg: '', png: '', gif: '', svg: '',
-    mp3: '', wav: '', mp4: '', mov: '',
-    zip: '', rar: '', csv: '', json: '',
-    ts: '', js: '', html: '', css: '',
-    unknown: ''
+const FILE_ICONS: Record<string, LucideIcon> = {
+    pdf: FileText, doc: FileText, docx: FileText, txt: FileText, md: FileText,
+    jpg: Image, jpeg: Image, png: Image, gif: Image, svg: Image,
+    mp3: Music, wav: Music, mp4: Video, mov: Video,
+    zip: FileArchive, rar: FileArchive, csv: FileSpreadsheet, json: FileJson,
+    ts: FileCode, js: FileCode, html: FileCode, css: FileCode,
+    unknown: FileIcon
 };
 
 // ============================================
@@ -148,7 +148,7 @@ export default function FileManager() {
     }, [selectedId]);
 
     // ---- HELPERS ----
-    const getIcon = (type: string) => FILE_ICONS[type] || FILE_ICONS.unknown;
+    const getIcon = (type: string): LucideIcon => FILE_ICONS[type] || FILE_ICONS.unknown;
 
     const formatSize = (bytes: number) => {
         if (bytes < 1024) return `${bytes} B`;
@@ -216,25 +216,25 @@ export default function FileManager() {
                         <div key={domain.id}>
                             <div className={`fm-tree-item fm-tree-item--domain ${selectedId === domain.id ? 'fm-tree-item--active' : ''}`}
                                 onClick={() => { selectItem(domain.id); toggleExpand(domain.id); }}>
-                                <span className="fm-tree-item__icon">{domain.icon || ''}</span>
+                                <span className="fm-tree-item__icon">{domain.icon || <FolderOpen size={14} aria-hidden />}</span>
                                 <span className="fm-tree-item__name">{domain.name}</span>
-                                <span className="fm-tree-item__count">{expandedIds.has(domain.id) ? '▾' : '▸'}</span>
+                                <span className="fm-tree-item__count">{expandedIds.has(domain.id) ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}</span>
                             </div>
                             {expandedIds.has(domain.id) && domain.children?.map(node => (
                                 <div key={node.id}>
                                     <div className={`fm-tree-item fm-tree-item--node ${selectedId === node.id ? 'fm-tree-item--active' : ''}`}
                                         onClick={() => { selectItem(node.id); toggleExpand(node.id); }}
                                         style={{ paddingLeft: 24 }}>
-                                        <span className="fm-tree-item__icon">{node.icon || ''}</span>
+                                        <span className="fm-tree-item__icon">{node.icon || <Folder size={14} aria-hidden />}</span>
                                         <span className="fm-tree-item__name">{node.name}</span>
-                                        <span className="fm-tree-item__count">{node.children ? (expandedIds.has(node.id) ? '▾' : '▸') : ''}</span>
+                                        <span className="fm-tree-item__count">{node.children ? (expandedIds.has(node.id) ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />) : ''}</span>
                                     </div>
                                     {expandedIds.has(node.id) && node.children?.map(project => (
                                         <div key={project.id}
                                             className={`fm-tree-item fm-tree-item--project ${selectedId === project.id ? 'fm-tree-item--active' : ''}`}
                                             onClick={() => selectItem(project.id)}
                                             style={{ paddingLeft: 44 }}>
-                                            <span className="fm-tree-item__icon">{project.icon || ''}</span>
+                                            <span className="fm-tree-item__icon">{project.icon || <Folder size={14} aria-hidden />}</span>
                                             <span className="fm-tree-item__name">{project.name}</span>
                                         </div>
                                     ))}
@@ -253,12 +253,12 @@ export default function FileManager() {
                         value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                     <button className="fm-toolbar__btn fm-toolbar__btn--upload"
                         onClick={handleUploadClick} title="Upload Files" disabled={isUploading}>
-                        {isUploading ? '' : ''} Upload
+                        {isUploading ? <Hourglass size={14} aria-hidden /> : <Upload size={14} aria-hidden />} Upload
                     </button>
                     <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }}
                         onChange={handleFileInputChange} />
                     <button className={`fm-toolbar__btn ${viewMode === 'grid' ? 'fm-toolbar__btn--active' : ''}`}
-                        onClick={() => setViewMode('grid')} title="Grid View">⊞</button>
+                        onClick={() => setViewMode('grid')} title="Grid View" aria-label="Grid View"><LayoutGrid size={16} aria-hidden /></button>
                     <button className={`fm-toolbar__btn ${viewMode === 'list' ? 'fm-toolbar__btn--active' : ''}`}
                         onClick={() => setViewMode('list')} title="List View"><Menu size={16} /></button>
                 </div>
@@ -266,25 +266,29 @@ export default function FileManager() {
                 {/* Files Grid/List */}
                 {visibleFiles.length > 0 ? (
                     <div className={`fm-grid ${viewMode === 'list' ? 'fm-grid--list' : ''}`}>
-                        {visibleFiles.map(file => (
+                        {visibleFiles.map(file => {
+                            const FileIcon = getIcon(file.type);
+                            return (
                             <div key={file.id}
                                 className={`fm-file ${selectedFile === file.id ? 'fm-file--selected' : ''}`}
                                 onClick={() => setSelectedFile(file.id === selectedFile ? null : file.id)}
                                 onDoubleClick={() => handleOpenFile(file)}>
-                                <span className="fm-file__icon">{getIcon(file.type)}</span>
+                                <span className="fm-file__icon"><FileIcon size={28} aria-hidden /></span>
                                 <span className="fm-file__name">{file.name}</span>
                                 <span className="fm-file__meta">{formatSize(file.size)}</span>
                                 <div className="fm-file__share-bar" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         className="fm-share-btn fm-share-btn--open"
                                         title="Open in Doc Viewer"
+                                        aria-label="Open in Doc Viewer"
                                         onClick={() => handleOpenFile(file)}
                                     >
-                                       
+                                        <FileText size={14} aria-hidden />
                                     </button>
                                     <button
                                         className="fm-share-btn fm-share-btn--airdrop"
                                         title="Share via AirDrop / System Share"
+                                        aria-label="Share via AirDrop / System Share"
                                         onClick={async () => {
                                             try {
                                                 const res = await fetch(`${API_FILES}/${file.id}`);
@@ -304,11 +308,12 @@ export default function FileManager() {
                                             }
                                         }}
                                     >
-                                       
+                                        <Share2 size={14} aria-hidden />
                                     </button>
                                     <button
                                         className="fm-share-btn fm-share-btn--email"
                                         title="Send via Email"
+                                        aria-label="Send via Email"
                                         onClick={() => {
                                             const subject = encodeURIComponent(`File: ${file.name}`);
                                             const body = encodeURIComponent(
@@ -318,11 +323,12 @@ export default function FileManager() {
                                             window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
                                         }}
                                     >
-                                       
+                                        <Mail size={14} aria-hidden />
                                     </button>
                                     <button
                                         className="fm-share-btn fm-share-btn--sms"
                                         title="Send via Text Message"
+                                        aria-label="Send via Text Message"
                                         onClick={() => {
                                             const body = encodeURIComponent(
                                                 `File: ${file.name} — ${window.location.origin}/api/files/${file.id}`
@@ -330,11 +336,12 @@ export default function FileManager() {
                                             window.open(`sms:?&body=${body}`, '_blank');
                                         }}
                                     >
-                                       
+                                        <MessageSquare size={14} aria-hidden />
                                     </button>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="fm-empty">

@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Pencil, ZoomIn, ZoomOut, Send, Clock, CheckCircle2,
     AlertTriangle, RefreshCw, Building2, Layers,
+    Home, Map, Hammer,
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
 import type { PropertySummary } from '../strataTypes';
@@ -32,11 +33,11 @@ type Property = PropertySummary;
 
 type DesignType = 'floor_plan' | 'site_plan' | 'elevation' | 'renovation';
 
-const DESIGN_TYPES: { id: DesignType; label: string; icon: string }[] = [
-    { id: 'floor_plan', label: 'Floor Plan', icon: '' },
-    { id: 'site_plan', label: 'Site Plan', icon: '' },
-    { id: 'elevation', label: 'Elevation', icon: '' },
-    { id: 'renovation', label: 'Renovation', icon: '' },
+const DESIGN_TYPES: { id: DesignType; label: string; icon: React.ReactNode }[] = [
+    { id: 'floor_plan', label: 'Floor Plan', icon: <Home size={14} aria-hidden /> },
+    { id: 'site_plan', label: 'Site Plan', icon: <Map size={14} aria-hidden /> },
+    { id: 'elevation', label: 'Elevation', icon: <Building2 size={14} aria-hidden /> },
+    { id: 'renovation', label: 'Renovation', icon: <Hammer size={14} aria-hidden /> },
 ];
 
 export default function DesignStudio() {
@@ -132,7 +133,7 @@ export default function DesignStudio() {
                                         color: designType === dt.id ? '#D6FE51' : '#94a3b8',
                                         fontSize: 11, fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
                                     }}>
-                                    <span>{dt.icon}</span> {dt.label}
+                                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>{dt.icon}</span> {dt.label}
                                 </button>
                             ))}
                         </div>

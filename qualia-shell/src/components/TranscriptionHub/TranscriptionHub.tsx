@@ -1,5 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useContext, useSyncExternalStore, ChangeEvent } from 'react';
-import { Check, X } from 'lucide-react';
+import {
+    ArrowRight, BarChart3, BookOpen, Bot, Brain, Check, CircleDot, CircleHelp,
+    ClipboardList, Cloud, Download, Eye, FileText, Flag, Folder, FolderOpen,
+    Hourglass, Lightbulb, Mail, MessageSquare, Mic, Moon, OctagonAlert, Pause,
+    Pencil, Save, Scale, ScrollText, Search, Siren, Swords, Target, Trash2,
+    TriangleAlert, Upload, User, X,
+} from 'lucide-react';
 import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
 import { UserContext } from '../../context/UserContext';
 import { embedAudio, audioBufferToMono16k, trimSilence, shouldEmbed } from './speakerEmbedder';
@@ -105,10 +111,10 @@ interface ContradictionSegmentAlert {
     alerts: DiscrepancyAlert[];
 }
 
-const LEGAL_ALERT_CONFIG: Record<string, { icon: string; label: string; color: string; bg: string; border: string }> = {
-    violation: { icon: '', label: 'VIOLATION', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.5)' },
-    legal_risk: { icon: '', label: 'DO NOT ANSWER', color: '#f97316', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.5)' },
-    caution: { icon: '', label: 'Caution', color: '#eab308', bg: 'rgba(234, 179, 8, 0.10)', border: 'rgba(234, 179, 8, 0.35)' },
+const LEGAL_ALERT_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string; bg: string; border: string }> = {
+    violation: { icon: <Scale size={14} aria-hidden />, label: 'VIOLATION', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.5)' },
+    legal_risk: { icon: <OctagonAlert size={14} aria-hidden />, label: 'DO NOT ANSWER', color: '#f97316', bg: 'rgba(249, 115, 22, 0.12)', border: 'rgba(249, 115, 22, 0.5)' },
+    caution: { icon: <TriangleAlert size={14} aria-hidden />, label: 'Caution', color: '#eab308', bg: 'rgba(234, 179, 8, 0.10)', border: 'rgba(234, 179, 8, 0.35)' },
 };
 
 interface SavedTranscription {
@@ -144,11 +150,11 @@ function getSpeakerColor(speaker: string) {
     return SPEAKER_COLORS[speaker] || SPEAKER_COLORS['Unknown'];
 }
 
-const VERDICT_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
-    verified: { icon: '', label: 'Verified', color: '#34d399' },
-    disputed: { icon: '', label: 'Disputed', color: '#ef4444' },
-    unverifiable: { icon: '', label: 'Unverifiable', color: '#fbbf24' },
-    partially_true: { icon: '', label: 'Partially True', color: '#fb923c' },
+const VERDICT_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
+    verified: { icon: <Check size={14} aria-hidden />, label: 'Verified', color: '#34d399' },
+    disputed: { icon: <X size={14} aria-hidden />, label: 'Disputed', color: '#ef4444' },
+    unverifiable: { icon: <TriangleAlert size={14} aria-hidden />, label: 'Unverifiable', color: '#fbbf24' },
+    partially_true: { icon: <CircleDot size={14} aria-hidden />, label: 'Partially True', color: '#fb923c' },
 };
 
 const SUMMARY_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -255,7 +261,7 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
     return (
         <div className="th-speaker-library">
             <button className="th-speaker-library__header" onClick={() => setExpanded(p => !p)}>
-                <span className="th-speaker-library__icon"></span>
+                <span className="th-speaker-library__icon"><Mic size={14} aria-hidden /></span>
                 <span className="th-speaker-library__title">Speaker Library</span>
                 <span className="th-speaker-library__count">{speakers.length}</span>
                 <span className="th-speaker-library__chevron">{expanded ? '▾' : '▸'}</span>
@@ -272,7 +278,7 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
                             {speakers.map(sp => (
                                 <div key={sp.id} className={`th-speaker-card ${sp.metadata?.role === 'primary_user' ? 'th-speaker-card--primary' : ''}`}>
                                     <div className="th-speaker-card__avatar">
-                                        {sp.metadata?.role === 'primary_user' ? '' : ''}
+                                        {sp.metadata?.role === 'primary_user' ? <User size={16} aria-hidden /> : <Mic size={16} aria-hidden />}
                                     </div>
                                     <div className="th-speaker-card__info">
                                         {editingId === sp.id ? (
@@ -305,7 +311,8 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
                                         className="th-speaker-card__delete"
                                         onClick={() => removeSpeaker(sp.id)}
                                         title="Remove speaker"
-                                    ></button>
+                                        aria-label="Remove speaker"
+                                    ><Trash2 size={14} aria-hidden /></button>
                                 </div>
                             ))}
                         </div>
@@ -2304,7 +2311,7 @@ export default function TranscriptionHub() {
                                     <button className={`th-controls__btn th-controls__btn--record ${state === 'recording' ? 'active' : ''}`}
                                         onClick={state === 'recording' ? pauseRecording : resumeRecording}
                                         title={state === 'recording' ? 'Pause' : 'Resume'}>
-                                        <span className="th-controls__btn-icon">{state === 'recording' ? '' : '▶'}</span>
+                                        <span className="th-controls__btn-icon">{state === 'recording' ? <Pause size={16} aria-hidden /> : '▶'}</span>
                                     </button>
                                     <button className="th-controls__btn th-controls__btn--stop" onClick={stopRecording} title="Stop">
                                         <span className="th-controls__btn-icon">■</span>
@@ -2338,7 +2345,7 @@ export default function TranscriptionHub() {
                                     }}
                                     title={isLiveEnabled ? 'Disable live captions' : 'Enable live captions'}
                                 >
-                                    {isLiveEnabled ? 'Live ON' : 'Live OFF'}
+                                    <MessageSquare size={14} aria-hidden /> {isLiveEnabled ? 'Live ON' : 'Live OFF'}
                                 </button>
                             )}
                             <button
@@ -2346,19 +2353,19 @@ export default function TranscriptionHub() {
                                 onClick={() => setFactCheckEnabled(prev => !prev)}
                                 title={factCheckEnabled ? 'Disable live fact-check' : 'Enable live fact-check'}
                             >
-                                {factCheckEnabled ? 'Fact Check ON' : 'Fact Check OFF'}
+                                <Search size={14} aria-hidden /> {factCheckEnabled ? 'Fact Check ON' : 'Fact Check OFF'}
                             </button>
                             <button
                                 className={`th-legal-toggle ${legalShieldEnabled ? 'th-legal-toggle--on' : ''}`}
                                 onClick={() => setLegalShieldEnabled(prev => !prev)}
                                 title={legalShieldEnabled ? 'Disable Legal Shield (Georgia Law)' : 'Enable Legal Shield (Georgia Law)'}
                             >
-                                {legalShieldEnabled ? 'Legal Shield ON' : 'Legal Shield OFF'}
+                                <Scale size={14} aria-hidden /> {legalShieldEnabled ? 'Legal Shield ON' : 'Legal Shield OFF'}
                                 {legalScanRunning && <span className="th-legal-spinner">⟳</span>}
                             </button>
                             {legalShieldEnabled && !hasActiveLlm(integrations.llm) && (
                                 <span className="th-legal-hint" role="status">
-                                    Add an LLM key in Settings → API Keys to enable statute matching.
+                                    <Scale size={14} aria-hidden /> Add an LLM key in Settings → API Keys to enable statute matching.
                                 </span>
                             )}
                             <button
@@ -2373,14 +2380,14 @@ export default function TranscriptionHub() {
                                     ? `Open ${googleEmail}'s NotebookLM with this transcript queued (copied to clipboard)`
                                     : 'Open NotebookLM (configure Google Calendar email in Settings to auto-route to your account)'}
                             >
-                                Consult NotebookLM
+                                <BookOpen size={14} aria-hidden /> Consult NotebookLM
                             </button>
                             <button
                                 className={`th-live-toggle ${cloudSTTEnabled ? 'th-live-toggle--on' : ''}`}
                                 onClick={() => setCloudSTTEnabled(prev => !prev)}
                                 title={cloudSTTEnabled ? 'Using Cloud STT (Leon)' : 'Using Browser STT'}
                             >
-                                {cloudSTTEnabled ? 'Cloud STT' : 'Browser STT'}
+                                <Cloud size={14} aria-hidden /> {cloudSTTEnabled ? 'Cloud STT' : 'Browser STT'}
                             </button>
                             <button
                                 className={`th-live-toggle th-moonshine-toggle ${moonshineEnabled ? 'th-live-toggle--on' : ''}`}
@@ -2394,7 +2401,7 @@ export default function TranscriptionHub() {
                                 }}
                                 title={moonshineEnabled ? 'Moonshine AI active (local STT + speaker ID)' : 'Enable Moonshine AI'}
                             >
-                                {moonshineLoading ? '' : ''} {moonshineEnabled ? (moonshineLoading ? 'Loading…' : 'Moonshine') : 'Moonshine'}
+                                {moonshineLoading ? <Hourglass size={14} aria-hidden /> : <Moon size={14} aria-hidden />} {moonshineEnabled ? (moonshineLoading ? 'Loading…' : 'Moonshine') : 'Moonshine'}
                             </button>
                         </div>
 
@@ -2419,7 +2426,7 @@ export default function TranscriptionHub() {
                     {/* Error Banner */}
                     {error && (
                         <div className="th-error-banner">
-                            <span className="th-error-banner__icon"></span>
+                            <span className="th-error-banner__icon"><TriangleAlert size={14} aria-hidden /></span>
                             <span>{error}</span>
                             <button className="th-error-banner__dismiss" onClick={() => setError(null)}><X size={14} /></button>
                         </div>
@@ -2431,7 +2438,7 @@ export default function TranscriptionHub() {
                             <canvas ref={canvasRef} />
                         ) : (
                             <div className="th-waveform__idle">
-                                <span className="th-waveform__idle-icon"></span>
+                                <span className="th-waveform__idle-icon"><Mic size={32} aria-hidden /></span>
                                 <span>Click record to start capturing audio</span>
                             </div>
                         )}
@@ -2492,7 +2499,7 @@ export default function TranscriptionHub() {
                         <div className="th-transcript">
                             {segments.length === 0 ? (
                                 <div className="th-transcript__empty">
-                                    <div className="th-transcript__empty-icon"></div>
+                                    <div className="th-transcript__empty-icon"><FileText size={32} aria-hidden /></div>
                                     <div className="th-transcript__empty-title">Transcript</div>
                                     <div className="th-transcript__empty-sub">
                                         Segments will appear here as you speak…
@@ -2587,7 +2594,7 @@ export default function TranscriptionHub() {
                                                         className={`th-segment__contradiction-badge th-segment__contradiction-badge--${ca.severity}`}
                                                         title={`${ca.discrepancy}\n\nOriginal: "${ca.originalStatement}" (${new Date(ca.originalTimestamp).toLocaleDateString()})`}
                                                     >
-                                                        CONTRADICTION: {ca.discrepancy}
+                                                        <TriangleAlert size={14} aria-hidden /> CONTRADICTION: {ca.discrepancy}
                                                     </span>
                                                 ))}
 
@@ -2615,7 +2622,7 @@ export default function TranscriptionHub() {
                                     <button className="th-factpanel__toggle" onClick={() => setFactCheckPanelOpen(prev => !prev)}>
                                         {factCheckPanelOpen ? '▶' : '◀'}
                                     </button>
-                                    <span className="th-factpanel__title">Fact Check Agent</span>
+                                    <span className="th-factpanel__title"><Search size={14} aria-hidden /> Fact Check Agent</span>
                                     {factCheckRunning && <span className="th-factpanel__spinner">⟳</span>}
                                 </div>
 
@@ -2675,21 +2682,21 @@ export default function TranscriptionHub() {
                         <div className="th-export">
                             <div className="th-export__group">
                                 <button className="th-export__btn" onClick={() => exportTranscript('text')}>
-                                    Copy
+                                    <ClipboardList size={14} aria-hidden /> Copy
                                 </button>
                                 <button className="th-export__btn" onClick={saveAsNote}>
-                                    Save Note
+                                    <FileText size={14} aria-hidden /> Save Note
                                 </button>
                                 <button className="th-export__btn" onClick={() => saveTranscription()}>
-                                    Save to Log
+                                    <Save size={14} aria-hidden /> Save to Log
                                 </button>
                                 {audioChunksRef.current.length > 0 && (
                                     <button className="th-export__btn" onClick={downloadRecording}>
-                                        Save Audio
+                                        <Save size={14} aria-hidden /> Save Audio
                                     </button>
                                 )}
                                 <button className="th-export__btn" onClick={saveToFileManager}>
-                                    Save to Files
+                                    <Folder size={14} aria-hidden /> Save to Files
                                 </button>
                                 <div className="th-export__dropdown-wrap">
                                     <button className="th-export__btn th-export__btn--dropdown" onClick={() => setExportMenuOpen(!exportMenuOpen)}>
@@ -2718,13 +2725,13 @@ export default function TranscriptionHub() {
             {activeTab === 'log' && (
                 <div className="th-log-tab">
                     <div className="th-log__header">
-                        <h3 className="th-log__title">Transcription History</h3>
+                        <h3 className="th-log__title"><ClipboardList size={16} aria-hidden /> Transcription History</h3>
                         <span className="th-log__count">{savedTranscriptions.length} saved</span>
                     </div>
 
                     {savedTranscriptions.length === 0 ? (
                         <div className="th-log__empty">
-                            <div className="th-log__empty-icon"></div>
+                            <div className="th-log__empty-icon"><FolderOpen size={32} aria-hidden /></div>
                             <p>No saved transcriptions yet</p>
                             <p className="th-log__empty-sub">Recordings are auto-saved when you stop them</p>
                         </div>
@@ -2781,35 +2788,36 @@ export default function TranscriptionHub() {
                                             onClick={() => void exportLogToNote(entry.id)}
                                             title="Save transcript as a note"
                                         >
-                                            Note
+                                            <FileText size={14} aria-hidden /> Note
                                         </button>
                                         <button
                                             className="th-log__action-btn"
                                             onClick={() => void exportLogToWorkitem(entry.id)}
                                             title="Create a workitem from this transcript"
                                         >
-                                            Workitem
+                                            <Check size={14} aria-hidden /> Workitem
                                         </button>
                                         <button
                                             className="th-log__action-btn"
                                             onClick={() => void setTranscriptReviewStatus(entry.id, 'approved')}
                                             title="Approve transcript summary"
                                         >
-                                            Approve
+                                            <Check size={14} aria-hidden /> Approve
                                         </button>
                                         <button
                                             className="th-log__action-btn th-log__action-btn--ai"
                                             onClick={() => openPostMeetingPanel(entry.id)}
                                             title="AI Post-Meeting Actions"
                                         >
-                                            AI Actions
+                                            <Brain size={14} aria-hidden /> AI Actions
                                         </button>
                                         <button
                                             className="th-log__action-btn th-log__action-btn--delete"
                                             onClick={() => deleteTranscription(entry.id)}
                                             title="Delete"
+                                            aria-label="Delete"
                                         >
-                                           
+                                            <Trash2 size={14} aria-hidden />
                                         </button>
                                     </div>
                                 </div>
@@ -2821,7 +2829,7 @@ export default function TranscriptionHub() {
                     {postMeetingLogId && (
                         <div className="th-post-meeting">
                             <div className="th-post-meeting__header">
-                                <h3>AI Post-Meeting Actions</h3>
+                                <h3><Brain size={16} aria-hidden /> AI Post-Meeting Actions</h3>
                                 <span className="th-post-meeting__subtitle">
                                     {savedTranscriptions.find(t => t.id === postMeetingLogId)?.title || 'Selected Log'}
                                 </span>
@@ -2830,34 +2838,34 @@ export default function TranscriptionHub() {
 
                             <div className="th-post-meeting__actions">
                                 <button className="th-pm-btn" onClick={() => fetchAiSummary(postMeetingLogId)} disabled={aiSummaryLoading}>
-                                    {aiSummaryLoading ? '' : ''} Summary
+                                    {aiSummaryLoading ? <Hourglass size={14} aria-hidden /> : <FileText size={14} aria-hidden />} Summary
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiActionItems(postMeetingLogId)} disabled={aiActionItemsLoading}>
-                                    {aiActionItemsLoading ? '' : ''} Action Items
+                                    {aiActionItemsLoading ? <Hourglass size={14} aria-hidden /> : <Check size={14} aria-hidden />} Action Items
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiDecisions(postMeetingLogId)} disabled={aiDecisionsLoading}>
-                                    {aiDecisionsLoading ? '' : ''} Decisions
+                                    {aiDecisionsLoading ? <Hourglass size={14} aria-hidden /> : <Scale size={14} aria-hidden />} Decisions
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiRecapEmail(postMeetingLogId)} disabled={aiRecapEmailLoading}>
-                                    {aiRecapEmailLoading ? '' : ''} Recap Email
+                                    {aiRecapEmailLoading ? <Hourglass size={14} aria-hidden /> : <Mail size={14} aria-hidden />} Recap Email
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiRewrite(postMeetingLogId, 'executive')} disabled={aiRewriteLoading}>
-                                    {aiRewriteLoading ? '' : ''} Executive Rewrite
+                                    {aiRewriteLoading ? <Hourglass size={14} aria-hidden /> : <Pencil size={14} aria-hidden />} Executive Rewrite
                                 </button>
                                 <button className="th-pm-btn" onClick={() => fetchAiDraft(postMeetingLogId, 'memo')} disabled={aiDraftLoading}>
-                                    {aiDraftLoading ? '' : ''} Draft Memo
+                                    {aiDraftLoading ? <Hourglass size={14} aria-hidden /> : <FileText size={14} aria-hidden />} Draft Memo
                                 </button>
                                 <button className="th-pm-btn" onClick={() => void exportLogToNote(postMeetingLogId)}>
-                                    Save Note
+                                    <FileText size={14} aria-hidden /> Save Note
                                 </button>
                                 <button className="th-pm-btn" onClick={() => void exportLogToWorkitem(postMeetingLogId)}>
-                                    Workitem
+                                    <Check size={14} aria-hidden /> Workitem
                                 </button>
                                 <button className="th-pm-btn" onClick={() => void setTranscriptReviewStatus(postMeetingLogId, 'pending_review')}>
-                                    Pending Review
+                                    <Eye size={14} aria-hidden /> Pending Review
                                 </button>
                                 <button className="th-pm-btn" onClick={() => void setTranscriptReviewStatus(postMeetingLogId, 'approved')}>
-                                    Approve
+                                    <Check size={14} aria-hidden /> Approve
                                 </button>
                             </div>
 
@@ -2865,15 +2873,15 @@ export default function TranscriptionHub() {
                             <div className="th-post-meeting__results">
                                 {aiSummary && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">AI Summary</div>
+                                        <div className="th-pm-result__header"><FileText size={14} aria-hidden /> AI Summary</div>
                                         <div className="th-pm-result__body th-pm-result__body--pre">{aiSummary}</div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiSummary); }}>Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiSummary); }}><ClipboardList size={14} aria-hidden /> Copy</button>
                                     </div>
                                 )}
 
                                 {aiActionItems.length > 0 && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">Action Items ({aiActionItems.length})</div>
+                                        <div className="th-pm-result__header"><Check size={14} aria-hidden /> Action Items ({aiActionItems.length})</div>
                                         <div className="th-pm-result__body">
                                             {aiActionItems.map((item, i) => (
                                                 <div key={i} className="th-pm-action-item">
@@ -2883,13 +2891,13 @@ export default function TranscriptionHub() {
                                                 </div>
                                             ))}
                                         </div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiActionItems.map(i => `[${i.priority}] ${i.description}${i.assignee ? ` → ${i.assignee}` : ''}`).join('\n')); }}>Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiActionItems.map(i => `[${i.priority}] ${i.description}${i.assignee ? ` → ${i.assignee}` : ''}`).join('\n')); }}><ClipboardList size={14} aria-hidden /> Copy</button>
                                     </div>
                                 )}
 
                                 {aiDecisions.length > 0 && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">Decisions ({aiDecisions.length})</div>
+                                        <div className="th-pm-result__header"><Scale size={14} aria-hidden /> Decisions ({aiDecisions.length})</div>
                                         <div className="th-pm-result__body">
                                             {aiDecisions.map((d, i) => (
                                                 <div key={i} className="th-pm-decision">
@@ -2899,32 +2907,32 @@ export default function TranscriptionHub() {
                                                 </div>
                                             ))}
                                         </div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDecisions.map(d => `${d.decision}${d.madeBy ? ` (${d.madeBy})` : ''}: ${d.context}`).join('\n')); }}>Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDecisions.map(d => `${d.decision}${d.madeBy ? ` (${d.madeBy})` : ''}: ${d.context}`).join('\n')); }}><ClipboardList size={14} aria-hidden /> Copy</button>
                                     </div>
                                 )}
 
                                 {aiRecapEmail && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">Recap Email</div>
+                                        <div className="th-pm-result__header"><Mail size={14} aria-hidden /> Recap Email</div>
                                         <div className="th-pm-result__subheader">Subject: {aiRecapEmail.subject}</div>
                                         <div className="th-pm-result__body th-pm-result__body--pre">{aiRecapEmail.body}</div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(`Subject: ${aiRecapEmail.subject}\n\n${aiRecapEmail.body}`); }}>Copy Email</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(`Subject: ${aiRecapEmail.subject}\n\n${aiRecapEmail.body}`); }}><ClipboardList size={14} aria-hidden /> Copy Email</button>
                                     </div>
                                 )}
 
                                 {aiRewrite && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">Executive Rewrite</div>
+                                        <div className="th-pm-result__header"><Pencil size={14} aria-hidden /> Executive Rewrite</div>
                                         <div className="th-pm-result__body th-pm-result__body--pre">{aiRewrite}</div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiRewrite); }}>Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiRewrite); }}><ClipboardList size={14} aria-hidden /> Copy</button>
                                     </div>
                                 )}
 
                                 {aiDraft && (
                                     <div className="th-pm-result">
-                                        <div className="th-pm-result__header">{aiDraft.title}</div>
+                                        <div className="th-pm-result__header"><FileText size={14} aria-hidden /> {aiDraft.title}</div>
                                         <div className="th-pm-result__body th-pm-result__body--pre">{aiDraft.content}</div>
-                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDraft.content); }}>Copy</button>
+                                        <button className="th-pm-copy" onClick={() => { navigator.clipboard.writeText(aiDraft.content); }}><ClipboardList size={14} aria-hidden /> Copy</button>
                                     </div>
                                 )}
                             </div>
@@ -2961,7 +2969,7 @@ export default function TranscriptionHub() {
                             if (file) processUploadedFile(file);
                         }}
                     >
-                        <div className="th-upload-icon">{uploadDragOver ? '' : ''}</div>
+                        <div className="th-upload-icon">{uploadDragOver ? <Download size={32} aria-hidden /> : <Folder size={32} aria-hidden />}</div>
                         <h3>{uploadDragOver ? 'Drop file here' : 'Drag & drop audio file here'}</h3>
                         <p>Supports MP3, WAV, M4A, FLAC, TXT (Max 500MB)</p>
                         <button
@@ -2979,7 +2987,7 @@ export default function TranscriptionHub() {
                         <div className="th-upload-progress-card">
                             <div className="th-upload-progress-header">
                                 <span className="th-upload-progress-filename">
-                                    {uploadStatus === 'uploading' ? '' : uploadStatus === 'transcribing' ? '' : uploadStatus === 'done' ? '' : ''}
+                                    {uploadStatus === 'uploading' ? <Upload size={14} aria-hidden /> : uploadStatus === 'transcribing' ? <Brain size={14} aria-hidden /> : uploadStatus === 'done' ? <Check size={14} aria-hidden /> : <X size={14} aria-hidden />}
                                     {' '}{uploadFileName}
                                 </span>
                                 <span className="th-upload-progress-size">{formatFileSize(uploadFileSize)}</span>
@@ -2994,8 +3002,8 @@ export default function TranscriptionHub() {
 
                             <div className="th-upload-progress-status">
                                 {uploadStatus === 'uploading' && `Uploading… ${uploadProgress}%`}
-                                {uploadStatus === 'transcribing' && 'Processing with Whisper AI — this may take a moment…'}
-                                {uploadStatus === 'done' && `Transcription complete — ${uploadTranscript.length} segments`}
+                                {uploadStatus === 'transcribing' && <><Brain size={14} aria-hidden /> Processing with Whisper AI — this may take a moment…</>}
+                                {uploadStatus === 'done' && <><Check size={14} aria-hidden /> Transcription complete — {uploadTranscript.length} segments</>}
                                 {uploadStatus === 'error' && (
                                     <span className="th-upload-error-text">{uploadError}</span>
                                 )}
@@ -3043,7 +3051,7 @@ export default function TranscriptionHub() {
                     {/* ── Paste Text Directly ── */}
                     <div className="th-paste-section">
                         <div className="th-paste-section__header">
-                            <span className="th-paste-section__icon"></span>
+                            <span className="th-paste-section__icon"><ClipboardList size={14} aria-hidden /></span>
                             <span className="th-paste-section__title">Paste text directly</span>
                             {uploadText.trim() && (
                                 <span className="th-paste-section__count">
@@ -3066,7 +3074,7 @@ export default function TranscriptionHub() {
                             onClick={runUploadFactCheck}
                             disabled={!uploadText.trim() || uploadChecking}
                         >
-                            {uploadChecking ? 'Checking…' : 'Run Fact Check'}
+                            {uploadChecking ? <><Hourglass size={14} aria-hidden /> Checking…</> : <><Search size={14} aria-hidden /> Run Fact Check</>}
                         </button>
                     </div>
 
@@ -3077,9 +3085,9 @@ export default function TranscriptionHub() {
                                 {actionStatus.type === 'loading' && (
                                     <span className="th-action-status__spinner">⟳</span>
                                 )}
-                                {actionStatus.type === 'success' && <span></span>}
-                                {actionStatus.type === 'error' && <span></span>}
-                                {actionStatus.type === 'info' && <span></span>}
+                                {actionStatus.type === 'success' && <span><Check size={14} aria-hidden /></span>}
+                                {actionStatus.type === 'error' && <span><X size={14} aria-hidden /></span>}
+                                {actionStatus.type === 'info' && <span><Lightbulb size={14} aria-hidden /></span>}
                                 <span className="th-action-status__msg">{actionStatus.message}</span>
                                 {actionStatus.detail && (
                                     <span className="th-action-status__detail">{actionStatus.detail}</span>
@@ -3124,7 +3132,7 @@ export default function TranscriptionHub() {
                                 className="th-upload__save-btn"
                                 onClick={() => void saveUploadDocumentToFiles()}
                             >
-                                Save to Files
+                                <Folder size={14} aria-hidden /> Save to Files
                             </button>
                         </div>
                     )}
@@ -3144,20 +3152,20 @@ export default function TranscriptionHub() {
             {activeTab === 'meeting_manager' && (
                 <div className="th-meeting-manager">
                     <div className="mm-header">
-                        <h3>Meeting Intelligence Hub</h3>
+                        <h3><Target size={16} aria-hidden /> Meeting Intelligence Hub</h3>
                         <div className={`mm-status-badge ${coachingStatus || 'idle'}`}>
-                            {coachingStatus === 'on_track' && 'On Track'}
-                            {coachingStatus === 'needs_pivot' && 'Pivot Needed'}
-                            {coachingStatus === 'danger' && 'Danger Zone'}
+                            {coachingStatus === 'on_track' && <><Check size={14} aria-hidden /> On Track</>}
+                            {coachingStatus === 'needs_pivot' && <><TriangleAlert size={14} aria-hidden /> Pivot Needed</>}
+                            {coachingStatus === 'danger' && <><Siren size={14} aria-hidden /> Danger Zone</>}
                             {!coachingStatus && state === 'recording' && 'Analyzing...'}
-                            {!coachingStatus && state !== 'recording' && 'Start Recording to Begin'}
+                            {!coachingStatus && state !== 'recording' && <><Mic size={14} aria-hidden /> Start Recording to Begin</>}
                         </div>
                     </div>
 
                     {/* Dynamic Script Editor */}
                     <div className="mm-script-editor">
                         <div className="mm-script-editor__header">
-                            <h4>Meeting Script / Talking Points</h4>
+                            <h4><ScrollText size={14} aria-hidden /> Meeting Script / Talking Points</h4>
                             <span className="mm-script-editor__hint">
                                 {meetingScript.trim() ? `${meetingScript.trim().split('\n').length} lines` : 'Paste your script below'}
                             </span>
@@ -3173,16 +3181,16 @@ export default function TranscriptionHub() {
 
                     {/* Live Coaching Panel */}
                     <div className={`mm-coaching-box mm-coaching-box--${coachingStatus || 'idle'}`}>
-                        <h4>ARA's Live Coaching</h4>
+                        <h4><Bot size={14} aria-hidden /> ARA's Live Coaching</h4>
                         <p className="mm-feedback-text">{coachingFeedback}</p>
                     </div>
 
                     {coachingFlags && coachingFlags.length > 0 && (
                         <div className="mm-flags-box">
-                            <h4>Flags</h4>
+                            <h4><Flag size={14} aria-hidden /> Flags</h4>
                             <ul>
                                 {coachingFlags.map((flag, idx) => (
-                                    <li key={`flag-${idx}`}>{flag}</li>
+                                    <li key={`flag-${idx}`}><X size={14} aria-hidden /> {flag}</li>
                                 ))}
                             </ul>
                         </div>
@@ -3191,20 +3199,20 @@ export default function TranscriptionHub() {
                     {/* Intelligence Action Buttons */}
                     <div className="mm-intel-actions">
                         <button className="mm-intel-btn" onClick={fetchTalkingPoints} disabled={talkingPointsLoading || !meetingScript.trim()}>
-                            {talkingPointsLoading ? '' : ''} Suggest Talking Points
+                            {talkingPointsLoading ? <Hourglass size={14} aria-hidden /> : <Lightbulb size={14} aria-hidden />} Suggest Talking Points
                         </button>
                         <button className="mm-intel-btn" onClick={fetchRebuttals} disabled={rebuttalsLoading || !meetingScript.trim()}>
-                            {rebuttalsLoading ? '' : ''} Generate Rebuttals
+                            {rebuttalsLoading ? <Hourglass size={14} aria-hidden /> : <Swords size={14} aria-hidden />} Generate Rebuttals
                         </button>
                         <button className="mm-intel-btn" onClick={fetchOnDemandSummary} disabled={onDemandSummaryLoading || segments.length === 0}>
-                            {onDemandSummaryLoading ? '' : ''} Summarize Now
+                            {onDemandSummaryLoading ? <Hourglass size={14} aria-hidden /> : <BarChart3 size={14} aria-hidden />} Summarize Now
                         </button>
                     </div>
 
                     {/* Talking Points Results */}
                     {talkingPoints.length > 0 && (
                         <div className="mm-intel-result">
-                            <h4>Suggested Talking Points</h4>
+                            <h4><Lightbulb size={14} aria-hidden /> Suggested Talking Points</h4>
                             <div className="mm-intel-result__list">
                                 {talkingPoints.map((tp, i) => (
                                     <div key={i} className={`mm-tp-card mm-tp-card--${tp.priority}`}>
@@ -3220,7 +3228,7 @@ export default function TranscriptionHub() {
                     {/* Rebuttals Results */}
                     {rebuttals.length > 0 && (
                         <div className="mm-intel-result">
-                            <h4>Rebuttal Suggestions</h4>
+                            <h4><Swords size={14} aria-hidden /> Rebuttal Suggestions</h4>
                             <div className="mm-intel-result__list">
                                 {rebuttals.map((rb, i) => (
                                     <div key={i} className={`mm-rebuttal-card mm-rebuttal-card--${rb.strength}`}>
@@ -3236,7 +3244,7 @@ export default function TranscriptionHub() {
                     {/* On-Demand Summary */}
                     {onDemandSummary && (
                         <div className="mm-intel-result">
-                            <h4>Live Summary</h4>
+                            <h4><BarChart3 size={14} aria-hidden /> Live Summary</h4>
                             <p className="mm-summary-text">{onDemandSummary.summary}</p>
                             {onDemandSummary.keyPoints.length > 0 && (
                                 <div className="mm-summary-section">
@@ -3246,13 +3254,13 @@ export default function TranscriptionHub() {
                             )}
                             {onDemandSummary.unansweredQuestions.length > 0 && (
                                 <div className="mm-summary-section">
-                                    <strong>Unanswered:</strong>
+                                    <strong><CircleHelp size={14} aria-hidden /> Unanswered:</strong>
                                     <ul>{onDemandSummary.unansweredQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
                                 </div>
                             )}
                             {onDemandSummary.suggestedNextTopics.length > 0 && (
                                 <div className="mm-summary-section">
-                                    <strong>Discuss Next:</strong>
+                                    <strong><ArrowRight size={14} aria-hidden /> Discuss Next:</strong>
                                     <ul>{onDemandSummary.suggestedNextTopics.map((t, i) => <li key={i}>{t}</li>)}</ul>
                                 </div>
                             )}

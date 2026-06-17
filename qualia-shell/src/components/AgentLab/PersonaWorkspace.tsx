@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { type Persona } from '../../lib/agents/personas';
 import {
     usePersonaWork, addTask, completeTask, deleteTask, addMemory, updateMemory, deleteMemory, formatDuration,
@@ -41,25 +41,31 @@ function ToolsView({ persona, onPersonaChange }: { persona: Persona; onPersonaCh
         <div className="pw">
             <div className="pw-head">Equipped tools ({equipped.size})</div>
             <div className="pw-chips">
-                {STELLA_TOOL_CATALOG.filter(t => equipped.has(t.id)).map(t => (
-                    <button key={t.id} type="button" className="pw-chip pw-chip--on" onClick={() => toggle(t.id)} title="Remove from persona">{t.icon} {t.name}</button>
-                ))}
+                {STELLA_TOOL_CATALOG.filter(t => equipped.has(t.id)).map(t => {
+                    const ToolIcon = t.icon;
+                    return (
+                        <button key={t.id} type="button" className="pw-chip pw-chip--on" onClick={() => toggle(t.id)} title="Remove from persona"><ToolIcon size={12} aria-hidden /> {t.name} <X size={12} aria-hidden /></button>
+                    );
+                })}
                 {equipped.size === 0 && <span className="pw-empty">No tools yet — add from the library below.</span>}
             </div>
             <div className="pw-head">Tool library</div>
             {groups.map(g => (
                 <div key={g.cat} className="pw-group">
                     <div className="pw-cat">{g.cat}</div>
-                    {g.tools.map(t => (
-                        <button key={t.id} type="button" className={`pw-tool ${equipped.has(t.id) ? 'pw-tool--on' : ''}`} onClick={() => toggle(t.id)} title={t.description}>
-                            <span className="pw-tool-ico">{t.icon}</span>
-                            <span className="pw-tool-meta">
-                                <span className="pw-tool-name">{t.name}</span>
-                                <span className="pw-tool-desc">{t.description}</span>
-                            </span>
-                            <span className="pw-tool-add">{equipped.has(t.id) ? '' : '+'}</span>
-                        </button>
-                    ))}
+                    {g.tools.map(t => {
+                        const ToolIcon = t.icon;
+                        return (
+                            <button key={t.id} type="button" className={`pw-tool ${equipped.has(t.id) ? 'pw-tool--on' : ''}`} onClick={() => toggle(t.id)} title={t.description}>
+                                <span className="pw-tool-ico"><ToolIcon size={16} aria-hidden /></span>
+                                <span className="pw-tool-meta">
+                                    <span className="pw-tool-name">{t.name}</span>
+                                    <span className="pw-tool-desc">{t.description}</span>
+                                </span>
+                                <span className="pw-tool-add">{equipped.has(t.id) ? <Check size={14} aria-hidden /> : '+'}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             ))}
         </div>

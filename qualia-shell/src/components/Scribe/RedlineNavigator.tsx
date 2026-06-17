@@ -6,7 +6,8 @@
  * editorMode gate (single-mode in Dwellium), comment auto-resolve
  * (Cycle 7), Electron IPC.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
+import { Check, X } from 'lucide-react';
 import { EditorView } from '@codemirror/view';
 import { useScribeStore, type Redline } from './scribeStore';
 
@@ -106,15 +107,15 @@ export function RedlineNavigator({ getView }: { getView: () => EditorView | null
             </div>
             <span style={{ color: 'rgba(0,0,0,0.2)', fontSize: 14 }}>│</span>
             <div style={{ display: 'flex', gap: 6 }}>
-                <NavBtn label="Accept All" title="Accept all" onClick={acceptAll} accept />
-                <NavBtn label="Reject All" title="Reject all" onClick={rejectAll} reject />
+                <NavBtn label={<><Check size={13} aria-hidden /> Accept All</>} title="Accept all" onClick={acceptAll} accept />
+                <NavBtn label={<><X size={13} aria-hidden /> Reject All</>} title="Reject all" onClick={rejectAll} reject />
             </div>
         </div>
     );
 }
 
 function NavBtn({ label, title, onClick, disabled, accept, reject }: {
-    label: string; title: string; onClick: () => void;
+    label: ReactNode; title: string; onClick: () => void;
     disabled?: boolean; accept?: boolean; reject?: boolean;
 }) {
     const isChip = accept || reject;
@@ -127,6 +128,9 @@ function NavBtn({ label, title, onClick, disabled, accept, reject }: {
             disabled={disabled}
             title={title}
             style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
                 background: baseBg,
                 border: 'none',
                 color: baseColor,

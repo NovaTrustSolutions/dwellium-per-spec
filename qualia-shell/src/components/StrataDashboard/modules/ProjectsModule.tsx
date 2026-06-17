@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ArrowRightLeft, Building2, CheckCircle2, ChevronDown, ChevronUp, Clock, FolderKanban, GitBranch, Home, Layers, LayoutGrid, List, Plus, RefreshCw, Search, Tag, Truck, Users, XCircle } from 'lucide-react';
+import { ArrowRightLeft, Building2, CheckCircle2, ChevronDown, ChevronUp, Clock, FolderKanban, GitBranch, Home, Layers, LayoutGrid, List, Plus, RefreshCw, Search, StickyNote, Tag, Truck, Users, XCircle } from 'lucide-react';
 import { strataGet, strataPost, strataPut, isStaticMode } from '../strataApi';
 import type { Workitem, Property } from '../strataTypes';
 import { useStrataNav } from '../StrataNavContext';
@@ -264,7 +264,7 @@ function ProjectsModuleInner() {
                             {wi.type && <span>Type: {wi.type}</span>}
                             {md.boardName && <span>Board: {md.boardName}</span>}
                             {md.listName && <span>List: {md.listName}</span>}
-                            {wi.propertyId && <span><button className="s-property-link" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>{propMap.get(wi.propertyId)?.name || wi.propertyId.slice(0, 8)}</button><Home size={14} /></span>}
+                            {wi.propertyId && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Home size={14} aria-hidden /><button className="s-property-link" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); navigateToProperty(wi.propertyId!); }}>{propMap.get(wi.propertyId)?.name || wi.propertyId.slice(0, 8)}</button></span>}
                         </div>
                         <button
                             onClick={(e) => { e.stopPropagation(); toggleStatus(wi.id, wi.status); }}
@@ -390,7 +390,10 @@ function ProjectsModuleInner() {
                     marginBottom: 12,
                     fontSize: 12,
                     color: '#ef4444',
-                }}>{statusFeedback}</div>
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                }}><StickyNote size={14} aria-hidden />{statusFeedback}</div>
             )}
 
             {/* Search */}

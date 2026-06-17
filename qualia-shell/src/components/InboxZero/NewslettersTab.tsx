@@ -5,6 +5,7 @@
  * Extracted from InboxZero.tsx monolith (Phase 2.1).
  */
 
+import { Bell, BellOff, Newspaper } from 'lucide-react';
 import type { NewsletterSender } from './InboxZeroTypes';
 
 interface Props {
@@ -19,7 +20,7 @@ export default function NewslettersTab({ newsletters, authFetch, inboxApiBase, o
         <div className="iz-newsletters">
             {newsletters.length === 0 ? (
                 <div className="iz-empty">
-                    <div className="iz-empty__icon"></div>
+                    <div className="iz-empty__icon"><Newspaper size={32} aria-hidden /></div>
                     <div className="iz-empty__title">No newsletters detected</div>
                     <div className="iz-empty__sub">Sender stats will appear as emails are processed.</div>
                 </div>
@@ -62,7 +63,7 @@ export default function NewslettersTab({ newsletters, authFetch, inboxApiBase, o
                             }}
                             title={nl.unsubscribed ? 'Click to re-subscribe' : 'Click to unsubscribe'}
                         >
-                            {nl.unsubscribed ? 'Unsubscribed' : 'Click to Unsubscribe'}
+                            {nl.unsubscribed ? <><BellOff size={13} aria-hidden /> Unsubscribed</> : <><Bell size={13} aria-hidden /> Click to Unsubscribe</>}
                         </button>
                     </div>
                 ))

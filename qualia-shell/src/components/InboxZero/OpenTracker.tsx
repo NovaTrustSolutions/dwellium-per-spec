@@ -3,7 +3,7 @@
  * Create tracking pixels, embed in outbound emails, see who opened.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Eye, Loader2 } from 'lucide-react';
+import { BarChart3, Calendar, Check, ClipboardList, Eye, Globe, Loader2, Mail, Monitor, Plus, Trash2 } from 'lucide-react';
 
 interface Tracker {
     id: string;
@@ -109,7 +109,7 @@ export default function OpenTracker() {
     return (
         <div style={s.wrap}>
             <div style={s.title}>
-                Email Open Tracker
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Eye size={16} aria-hidden /> Email Open Tracker</span>
                 <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
                     Track if recipients opened your emails
                 </span>
@@ -134,7 +134,7 @@ export default function OpenTracker() {
                     disabled={creating || !subject.trim() || !recipient.trim()}
                     onClick={createTracker}
                 >
-                    {creating ? 'Creating…' : 'Create Tracker'}
+                    {creating ? <><Loader2 size={14} aria-hidden /> Creating…</> : <><Plus size={14} aria-hidden /> Create Tracker</>}
                 </button>
             </div>
 
@@ -143,7 +143,7 @@ export default function OpenTracker() {
 
             {!loading && trackers.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-tertiary)' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}></div>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}><Mail size={32} aria-hidden /></div>
                     <div style={{ fontSize: 13 }}>No trackers yet. Create one above to start tracking email opens.</div>
                 </div>
             )}
@@ -169,8 +169,9 @@ export default function OpenTracker() {
                                 onClick={() => deleteTracker(t.id)}
                                 style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12 }}
                                 title="Delete tracker"
+                                aria-label="Delete tracker"
                             >
-                               
+                                <Trash2 size={14} aria-hidden />
                             </button>
                         </div>
                     </div>
@@ -184,7 +185,7 @@ export default function OpenTracker() {
                     {expandedId === t.id && (
                         <div style={{ marginTop: 10 }}>
                             {/* Pixel HTML snippet */}
-                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Pixel HTML (paste in email body):</div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}><ClipboardList size={12} aria-hidden /> Pixel HTML (paste in email body):</div>
                             <div style={s.snippet}>
                                 <code>{`<img src="${window.location.origin}/api/inbox/tracker/${t.id}/pixel.gif" width="1" height="1" style="display:none" />`}</code>
                                 <button
@@ -194,21 +195,21 @@ export default function OpenTracker() {
                                         t.id
                                     )}
                                 >
-                                    {copiedId === t.id ? 'Copied!' : 'Copy'}
+                                    {copiedId === t.id ? <><Check size={13} aria-hidden /> Copied!</> : <><ClipboardList size={13} aria-hidden /> Copy</>}
                                 </button>
                             </div>
 
                             {/* Opens log */}
                             {t.opens && t.opens.length > 0 && (
                                 <div style={{ marginTop: 10 }}>
-                                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Open History:</div>
+                                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}><BarChart3 size={12} aria-hidden /> Open History:</div>
                                     <div style={{ maxHeight: 150, overflowY: 'auto' }}>
                                         {t.opens.map((open, i) => (
                                             <div key={i} style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-tertiary)', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                                <span>{new Date(open.timestamp).toLocaleString()}</span>
-                                                <span>{open.ip}</span>
-                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
-                                                    {open.ua}
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Calendar size={11} aria-hidden /> {new Date(open.timestamp).toLocaleString()}</span>
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Globe size={11} aria-hidden /> {open.ip}</span>
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                                    <Monitor size={11} aria-hidden /> {open.ua}
                                                 </span>
                                             </div>
                                         ))}

@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useState } from 'react';
+import { AppWindow, Hourglass } from 'lucide-react';
 import { WINDOW_COMPONENTS } from '../Shell/Desktop';
 import { LayoutProvider } from '../../context/LayoutContext';
 import { HierarchyProvider } from '../../context/HierarchyContext';
@@ -91,7 +92,7 @@ export function PopupShell({ component }: { component: string }) {
                 borderBottom: '1px solid #222222',
                 userSelect: 'none',
             }}>
-                <span style={{ fontSize: 16 }}>{meta.icon}</span>
+                <span style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center' }}>{meta.icon ? meta.icon : <AppWindow size={16} aria-hidden />}</span>
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #ffffff)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {meta.title}
                 </span>
@@ -131,7 +132,7 @@ export function PopupShell({ component }: { component: string }) {
                         }
                     }}
                 >
-                    {docking ? 'Docking…' : '⇤ Dock Back'}
+                    {docking ? <><Hourglass size={13} aria-hidden /> Docking…</> : '⇤ Dock Back'}
                 </button>
             </div>
 

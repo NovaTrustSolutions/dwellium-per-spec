@@ -8,6 +8,7 @@
  * progress and stops polling when state ∈ { done, error }.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Search, Download, Hourglass } from 'lucide-react';
 import { API_BASE } from '../../config';
 import { getAuthToken } from '../../context/UserContext';
 
@@ -195,7 +196,7 @@ export default function SystemUpdateSection() {
                         onClick={() => void handleCheck()}
                         disabled={busy}
                     >
-                        Check for updates
+                        <Search size={14} aria-hidden /> Check for updates
                     </button>
                     <button
                         className="cp-btn cp-btn--primary"
@@ -203,7 +204,9 @@ export default function SystemUpdateSection() {
                         disabled={busy || upToDate || state === 'fetching' || state === 'pulling' || state === 'installing' || state === 'building' || state === 'restarting'}
                         title={upToDate ? 'Nothing to update' : 'Pull, rebuild, restart'}
                     >
-                        {busy && state !== 'idle' && state !== 'done' && state !== 'error' ? 'Updating…' : 'Update now'}
+                        {busy && state !== 'idle' && state !== 'done' && state !== 'error'
+                            ? <><Hourglass size={14} aria-hidden /> Updating…</>
+                            : <><Download size={14} aria-hidden /> Update now</>}
                     </button>
                 </div>
 

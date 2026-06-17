@@ -10,7 +10,7 @@ import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import SpacesSwitcher from './SpacesSwitcher';
 import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce, hideTerminalOnce } from '../../lib/hiddenWidgetsStore';
 import { useGridLock } from '../../hooks/useGridLock';
-import { FolderOpen, Lock, Settings, Unlock, X } from 'lucide-react';
+import { Check, CloudFog, CloudRain, CloudSnow, CloudSun, FolderOpen, Lock, Search, Settings, Sun, Unlock, X, Zap, type LucideIcon } from 'lucide-react';
 import './Sidebar.css';
 import React from 'react';
 
@@ -503,6 +503,7 @@ export default function Sidebar() {
     };
 
     const [temperature, setTemperature] = useState<string | null>(null);
+    const [weatherIcon, setWeatherIcon] = useState<LucideIcon | null>(null);
 
     useEffect(() => {
         // Use browser geolocation for accurate weather, fallback to Atlanta, GA (ZP Group HQ area)
@@ -515,19 +516,21 @@ export default function Sidebar() {
                 if (data?.current?.temperature_2m != null) {
                     const temp = Math.round(data.current.temperature_2m);
                     const code = data.current.weather_code ?? 0;
-                    // Weather icon from WMO code
-                    const icon = code === 0 ? ''
-                        : code <= 3 ? ''
-                        : code <= 48 ? ''
-                        : code <= 67 ? ''
-                        : code <= 77 ? ''
-                        : code <= 82 ? ''
-                        : code <= 86 ? ''
-                        : '';
-                    setTemperature(`${icon} ${temp}°F`);
+                    // Weather icon (Lucide) from WMO code
+                    const icon: LucideIcon = code === 0 ? Sun
+                        : code <= 3 ? CloudSun
+                        : code <= 48 ? CloudFog
+                        : code <= 67 ? CloudRain
+                        : code <= 77 ? CloudSnow
+                        : code <= 82 ? CloudRain
+                        : code <= 86 ? CloudSnow
+                        : Zap;
+                    setWeatherIcon(() => icon);
+                    setTemperature(`${temp}°F`);
                 }
             } catch {
                 setTemperature(null);
+                setWeatherIcon(null);
             }
         };
 
@@ -596,6 +599,7 @@ export default function Sidebar() {
                         <span className="sidebar__greeting-hello">{timeGreeting}, <strong>{userName}</strong></span>
                         {temperature && (
                             <span className="sidebar__greeting-temp">
+                                {weatherIcon && (() => { const WIcon = weatherIcon; return <WIcon size={13} aria-hidden style={{ verticalAlign: 'middle', marginRight: 3 }} />; })()}
                                 {temperature}
                             </span>
                         )}
@@ -685,7 +689,7 @@ export default function Sidebar() {
                                     <div className="sidebar__tree">
                                         {hierarchy.length === 0 && !isAddingDomain && (
                                             <div className="sidebar__empty">
-                                                <span className="sidebar__empty-icon"><FolderOpen size={14} /><FolderOpen size={14} /></span>
+                                                <span className="sidebar__empty-icon"><FolderOpen size={14} /></span>
                                                 <p>No domains yet</p>
                                                 <button
                                                     className="sidebar__add-domain-btn"
@@ -702,7 +706,7 @@ export default function Sidebar() {
 
                                         {isAddingDomain && (
                                             <div className="sidebar__add-domain-row">
-                                                <span className="sidebar__add-domain-icon"><FolderOpen size={14} /><FolderOpen size={14} /></span>
+                                                <span className="sidebar__add-domain-icon"><FolderOpen size={14} /></span>
                                                 <input
                                                     ref={domainInputRef}
                                                     className="tree-node__inline-input"
@@ -731,7 +735,7 @@ export default function Sidebar() {
                             </>
                         ) : (
                             <div className="sidebar__empty">
-                                <span className="sidebar__empty-icon"><Lock size={14} /><Lock size={14} /></span>
+                                <span className="sidebar__empty-icon"><Lock size={14} /></span>
                                 <p>Domains restricted</p>
                             </div>
                         )}
@@ -964,7 +968,7 @@ export default function Sidebar() {
 
                                         {availableItems.length === 0 && searchQuery && (
                                             <div className="sidebar__empty-search">
-                                                <div className="sidebar__empty-search-icon"></div>
+                                                <div className="sidebar__empty-search-icon"><Search size={20} aria-hidden /></div>
                                                 No widgets found for "{searchQuery}"
                                             </div>
                                         )}
@@ -1008,7 +1012,7 @@ export default function Sidebar() {
                             className="sidebar__options-item sidebar__options-item--danger"
                             onClick={() => { windows.forEach(w => closeWindow(w.id)); setShowOptions(false); }}
                         >
-                            Close All
+                            <X size={14} aria-hidden /> Close All
                         </button>
 
                         {canSaveLayout && (
@@ -1039,7 +1043,7 @@ export default function Sidebar() {
                                         setShowSavePopover(false);
                                     }}
                                 >
-                                    Load Layout
+                                    <FolderOpen size={14} aria-hidden /> Load Layout
                                 </button>
                             </>
                         )}
@@ -1065,6 +1069,7 @@ export default function Sidebar() {
                                 />
                                 <button
                                     className="sidebar__popover-submit"
+                                    aria-label="Save layout"
                                     onClick={() => {
                                         if (saveName.trim()) {
                                             saveNamedLayout(saveName.trim());
@@ -1073,7 +1078,7 @@ export default function Sidebar() {
                                         }
                                     }}
                                 >
-                                   
+                                    <Check size={14} aria-hidden />
                                 </button>
                             </div>
                         )}

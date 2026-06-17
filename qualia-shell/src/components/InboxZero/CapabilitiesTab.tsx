@@ -7,7 +7,22 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { Mail, Bot, BarChart3, Zap, Plug, Users, Server, LayoutGrid, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react';
 import { CAPABILITIES_DATA, CAPABILITIES_STORAGE_KEY } from './InboxZeroTypes';
+
+// NOTE: CAPABILITIES_DATA[].icon (in InboxZeroTypes.ts — out of edit scope) is a
+// string field, now blank after the emoji strip. We map the category id → a
+// Lucide icon LOCALLY here so the header renders a real glyph. A future cleanup
+// could move this onto the data type as a LucideIcon field.
+const CAP_ICONS: Record<string, LucideIcon> = {
+    'email-triage': Mail,
+    'ai-agents': Bot,
+    'analytics': BarChart3,
+    'automation': Zap,
+    'integrations': Plug,
+    'organization': Users,
+    'platform-infra': Server,
+};
 
 export default function CapabilitiesTab() {
     const [expandedCaps, setExpandedCaps] = useState<Set<string>>(new Set());
@@ -68,7 +83,7 @@ export default function CapabilitiesTab() {
                             style={{ '--cap-color': cat.color } as React.CSSProperties}
                         >
                             <div className="iz-cap__header" onClick={() => toggleCapExpand(cat.id)}>
-                                <span className="iz-cap__icon">{cat.icon}</span>
+                                <span className="iz-cap__icon">{(() => { const CapIcon = CAP_ICONS[cat.id] || LayoutGrid; return <CapIcon size={16} aria-hidden />; })()}</span>
                                 <div className="iz-cap__title-area">
                                     <span className="iz-cap__title">{cat.title}</span>
                                     <span className="iz-cap__desc">{cat.description}</span>
@@ -85,7 +100,7 @@ export default function CapabilitiesTab() {
                                         {liveCount}/{cat.features.length}
                                     </span>
                                     {!isEnabled && <span className="iz-cap__disabled-badge">OFF</span>}
-                                    <span className="iz-cap__chevron">{isExpanded ? '▾' : '▸'}</span>
+                                    <span className="iz-cap__chevron">{isExpanded ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}</span>
                                 </div>
                             </div>
 

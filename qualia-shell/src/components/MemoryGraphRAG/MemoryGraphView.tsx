@@ -12,6 +12,7 @@
  * (layeredLayout.ts, unit-tested); honors reduced-motion and pauses when hidden.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Scale } from 'lucide-react';
 import {
     buildLayeredGraph, nodeWorld, project3D, layerWorldCenter, propagateWave, ambientField,
     sparkSeries, telemetryBase, DEFAULT_CAMERA,
@@ -325,7 +326,7 @@ function NodeInspector({ id, graph, input, onClose }: { id: string; graph: Layer
         <div className="mgv-inspector" role="dialog" aria-label="Node detail">
             <button className="mgv-inspector__x" onClick={onClose} aria-label="Close">×</button>
             <div className="mgv-inspector__title" style={{ color: n.highlighted ? '#D6FE51' : (n.layer === 'ontology' ? '#22d3ee' : n.layer === 'fact' ? '#a78bfa' : '#6366f1') }}>{n.label}</div>
-            <div className="mgv-inspector__meta">{layerName} layer · {n.kind}{n.score > 0 ? ` · PageRank ${n.score.toFixed(3)}` : ''}{n.conflict ? ' · adjudicated' : ''}</div>
+            <div className="mgv-inspector__meta">{layerName} layer · {n.kind}{n.score > 0 ? ` · PageRank ${n.score.toFixed(3)}` : ''}{n.conflict ? <> · <Scale size={11} aria-hidden /> adjudicated</> : ''}</div>
             {detail && <div className="mgv-inspector__detail">{detail}</div>}
             {neighborLabels.length > 0 && <div className="mgv-inspector__nbrs"><span>{neighbors.length} link{neighbors.length === 1 ? '' : 's'}:</span> {neighborLabels.join(' · ')}</div>}
         </div>

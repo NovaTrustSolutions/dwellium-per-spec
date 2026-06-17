@@ -185,7 +185,7 @@ Generated: ${new Date().toLocaleString()}
                     </h2>
                     <p className="s-module-subtitle">
                         {stats.open} open, {stats.investigating} investigating, {stats.resolved} resolved — {stats.total} total
-                        {stats.highSeverity > 0 && <span style={{ color: '#ef4444', fontWeight: 700 }}> {stats.highSeverity} high severity</span>}
+                        {stats.highSeverity > 0 && <span style={{ color: '#ef4444', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 4 }}><AlertTriangle size={12} aria-hidden /> {stats.highSeverity} high severity</span>}
                     </p>
                 </div>
                 <div className="s-module-actions">

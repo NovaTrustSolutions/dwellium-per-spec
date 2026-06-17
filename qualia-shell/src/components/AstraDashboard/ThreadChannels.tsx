@@ -6,7 +6,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { API_BASE } from '../../config';
 import {
     Building, Users, UserCircle, Layers,
-    Send, Clock, ChevronRight, RefreshCw, MessageSquare
+    Send, Clock, ChevronRight, RefreshCw, MessageSquare,
+    ArrowDownLeft, ArrowUpRight
 } from 'lucide-react';
 
 
@@ -158,7 +159,7 @@ export default function ThreadChannels() {
                             <div className="tc-detail-header">
                                 <h3 className="tc-detail-subject">{selectedComm.subject}</h3>
                                 <div className="tc-detail-meta">
-                                    <span className="tc-detail-dir">{selectedComm.direction === 'inbound' ? 'Inbound' : 'Outbound'}</span>
+                                    <span className="tc-detail-dir">{selectedComm.direction === 'inbound' ? <><ArrowDownLeft size={12} aria-hidden /> Inbound</> : <><ArrowUpRight size={12} aria-hidden /> Outbound</>}</span>
                                     <span className="tc-detail-channel">{selectedComm.channel}</span>
                                     <span className="tc-detail-time"><Clock size={12} /> {new Date(selectedComm.createdAt).toLocaleString()}</span>
                                 </div>

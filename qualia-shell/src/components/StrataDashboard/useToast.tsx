@@ -7,6 +7,7 @@
  *   // render <ToastContainer /> at end of component JSX
  */
 import { useState, useCallback, useRef } from 'react';
+import { Check, X, Info } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -16,10 +17,10 @@ interface Toast {
     type: ToastType;
 }
 
-const TOAST_COLORS: Record<ToastType, { bg: string; border: string; text: string; icon: string }> = {
-    success: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', text: '#22c55e', icon: '' },
-    error: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)', text: '#ef4444', icon: '' },
-    info:    { bg: 'color-mix(in srgb, var(--accent) 12%, transparent)',  border: 'color-mix(in srgb, var(--accent) 30%, transparent)', text: '#D6FE51', icon: 'ℹ' },
+const TOAST_COLORS: Record<ToastType, { bg: string; border: string; text: string; icon: React.ReactNode }> = {
+    success: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', text: '#22c55e', icon: <Check size={16} aria-hidden /> },
+    error: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)', text: '#ef4444', icon: <X size={16} aria-hidden /> },
+    info:    { bg: 'color-mix(in srgb, var(--accent) 12%, transparent)',  border: 'color-mix(in srgb, var(--accent) 30%, transparent)', text: '#D6FE51', icon: <Info size={16} aria-hidden /> },
 };
 
 export function useToast(autoHideMs = 3500) {
@@ -55,7 +56,7 @@ export function useToast(autoHideMs = 3500) {
                             animation: 'toast-in 0.25s ease-out',
                             pointerEvents: 'auto', maxWidth: 380,
                         }}>
-                            <span style={{ fontSize: 16, lineHeight: 1 }}>{c.icon}</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1, flexShrink: 0 }}>{c.icon}</span>
                             {t.message}
                         </div>
                     );

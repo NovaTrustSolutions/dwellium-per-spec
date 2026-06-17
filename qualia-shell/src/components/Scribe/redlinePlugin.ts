@@ -43,16 +43,22 @@ class RedlineWidget extends WidgetType {
         const actions = document.createElement('div');
         actions.className = 'cm-redline-actions';
 
+        // Lucide icons inlined as SVG markup (this is a raw-DOM widget, not JSX,
+        // so a Lucide React component can't be used — the SVG strings mirror
+        // lucide-react's <Check> and <X> glyphs at size 14).
+        const CHECK_SVG = '<svg class="cm-redline-glyph" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+        const X_SVG = '<svg class="cm-redline-glyph" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+
         const accept = document.createElement('button');
         accept.className = 'cm-redline-btn cm-redline-accept';
         accept.title = 'Accept replacement';
-        accept.innerHTML = '<span class="cm-redline-glyph"></span><span class="cm-redline-label">Accept</span>';
+        accept.innerHTML = CHECK_SVG + '<span class="cm-redline-label">Accept</span>';
         accept.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); acceptRedline(view, this.redline); };
 
         const reject = document.createElement('button');
         reject.className = 'cm-redline-btn cm-redline-reject';
         reject.title = 'Reject replacement';
-        reject.innerHTML = '<span class="cm-redline-glyph"></span><span class="cm-redline-label">Reject</span>';
+        reject.innerHTML = X_SVG + '<span class="cm-redline-label">Reject</span>';
         reject.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); rejectRedline(this.redline); };
 
         actions.appendChild(accept);

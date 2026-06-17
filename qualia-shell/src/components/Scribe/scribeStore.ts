@@ -109,7 +109,7 @@ interface ScribeState {
     setActiveFile: (filepath: string) => void;
     updateContent: (filepath: string, content: string) => void;
     saveFile: (filepath: string) => Promise<void>;
-    createFile: (filepath: string, content?: string) => Promise<void>;
+    createFile: (filepath: string, content?: string, options?: { open?: boolean }) => Promise<void>;
     deleteFile: (filepath: string) => Promise<void>;
     listFiles: () => Promise<FileEntry[]>;
     setScrollTop: (filepath: string, scrollTop: number) => void;
@@ -123,6 +123,100 @@ async function apiFetch(path: string, opts: RequestInit = {}): Promise<any> {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
     return data;
+}
+
+interface LocalScribeFile {
+    content: string;
+    modified: string;
+    dirty: boolean;
+}
+
+const LOCAL_FILES_KEY_PREFIX = 'scribe-local-files:';
+
+function activeLocalUserId(): string {
+    try {
+        const raw = localStorage.getItem('dwellium-user');
+        if (!raw) return '_anonymous';
+        const parsed = JSON.parse(raw) as { id?: unknown };
+        return typeof parsed.id === 'string' && parsed.id.trim() ? parsed.id : '_anonymous';
+    } catch {
+        return '_anonymous';
+    }
+}
+
+function localFilesKey(): string {
+    return `${LOCAL_FILES_KEY_PREFIX}${activeLocalUserId()}`;
+}
+
+function readLocalFiles(): Record<string, LocalScribeFile> {
+    try {
+        const raw = localStorage.getItem(localFilesKey());
+        if (!raw) return {};
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        if (!parsed || typeof parsed !== 'object') return {};
+        const out: Record<string, LocalScribeFile> = {};
+        for (const [filepath, value] of Object.entries(parsed)) {
+            if (!filepath || !value || typeof value !== 'object') continue;
+            const item = value as Record<string, unknown>;
+            out[filepath] = {
+                content: typeof item.content === 'string' ? item.content : '',
+                modified: typeof item.modified === 'string' ? item.modified : new Date(0).toISOString(),
+                dirty: item.dirty === true,
+            };
+        }
+        return out;
+    } catch {
+        return {};
+    }
+}
+
+function writeLocalFiles(files: Record<string, LocalScribeFile>): void {
+    try {
+        localStorage.setItem(localFilesKey(), JSON.stringify(files));
+    } catch {
+        /* local cache unavailable */
+    }
+}
+
+function byteSize(value: string): number {
+    try {
+        return new Blob([value]).size;
+    } catch {
+        return value.length;
+    }
+}
+
+function cacheLocalFile(filepath: string, content: string, dirty: boolean): FileEntry {
+    const modified = new Date().toISOString();
+    const files = readLocalFiles();
+    files[filepath] = { content, modified, dirty };
+    writeLocalFiles(files);
+    return { filepath, size: byteSize(content), modified };
+}
+
+function getLocalFile(filepath: string): LocalScribeFile | null {
+    return readLocalFiles()[filepath] ?? null;
+}
+
+function removeLocalFile(filepath: string): void {
+    const files = readLocalFiles();
+    delete files[filepath];
+    writeLocalFiles(files);
+}
+
+function localFileEntries(): FileEntry[] {
+    return Object.entries(readLocalFiles()).map(([filepath, file]) => ({
+        filepath,
+        size: byteSize(file.content),
+        modified: file.modified,
+    }));
+}
+
+function mergeFileEntries(remote: FileEntry[], local: FileEntry[]): FileEntry[] {
+    const byPath = new Map<string, FileEntry>();
+    for (const entry of remote) byPath.set(entry.filepath, entry);
+    for (const entry of local) byPath.set(entry.filepath, entry);
+    return [...byPath.values()].sort((a, b) => a.filepath.localeCompare(b.filepath));
 }
 
 export const useScribeStore = create<ScribeState>((set, get) => ({
@@ -272,13 +366,25 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
         set({ loading: true, error: null });
         try {
             const data = await apiFetch(`/api/scribe/files/${filepath}`);
+            const content = typeof data.content === 'string' ? data.content : '';
+            cacheLocalFile(filepath, content, false);
             set((s) => ({
-                openFiles: [...s.openFiles, { filepath, content: data.content, dirty: false, scrollTop: 0 }],
+                openFiles: [...s.openFiles, { filepath, content, dirty: false, scrollTop: 0 }],
                 activeFilepath: filepath,
                 loading: false,
             }));
             void get().loadComments(filepath);
         } catch (err: any) {
+            const local = getLocalFile(filepath);
+            if (local) {
+                set((s) => ({
+                    openFiles: [...s.openFiles, { filepath, content: local.content, dirty: local.dirty, scrollTop: 0 }],
+                    activeFilepath: filepath,
+                    loading: false,
+                    error: `Backend offline — opened local copy. ${err.message}`,
+                }));
+                return;
+            }
             set({ loading: false, error: err.message });
         }
     },
@@ -312,11 +418,13 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     saveFile: async (filepath) => {
         const file = get().openFiles.find((f) => f.filepath === filepath);
         if (!file) return;
+        cacheLocalFile(filepath, file.content, true);
         try {
             await apiFetch(`/api/scribe/files/${filepath}`, {
                 method: 'PUT',
                 body: JSON.stringify({ content: file.content }),
             });
+            cacheLocalFile(filepath, file.content, false);
             set((s) => ({
                 openFiles: s.openFiles.map((f) =>
                     f.filepath === filepath ? { ...f, dirty: false } : f
@@ -327,26 +435,48 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
         }
     },
 
-    createFile: async (filepath, content) => {
+    createFile: async (filepath, content, options) => {
+        const body = content ?? '';
+        const shouldOpen = options?.open !== false;
         set({ loading: true, error: null });
         try {
             await apiFetch('/api/scribe/files', {
                 method: 'POST',
-                body: JSON.stringify({ filepath, content: content ?? '' }),
+                body: JSON.stringify({ filepath, content: body }),
             });
-            set((s) => ({
-                openFiles: [...s.openFiles, { filepath, content: content ?? '', dirty: false, scrollTop: 0 }],
-                activeFilepath: filepath,
-                loading: false,
-            }));
+            cacheLocalFile(filepath, body, false);
+            set((s) => shouldOpen
+                ? {
+                    openFiles: [
+                        ...s.openFiles.filter((f) => f.filepath !== filepath),
+                        { filepath, content: body, dirty: false, scrollTop: 0 },
+                    ],
+                    activeFilepath: filepath,
+                    editorMode: 'document' as EditorMode,
+                    loading: false,
+                }
+                : { loading: false });
         } catch (err: any) {
-            set({ loading: false, error: err.message });
+            cacheLocalFile(filepath, body, true);
+            set((s) => shouldOpen
+                ? {
+                    openFiles: [
+                        ...s.openFiles.filter((f) => f.filepath !== filepath),
+                        { filepath, content: body, dirty: true, scrollTop: 0 },
+                    ],
+                    activeFilepath: filepath,
+                    editorMode: 'document' as EditorMode,
+                    loading: false,
+                    error: err.message,
+                }
+                : { loading: false, error: err.message });
         }
     },
 
     deleteFile: async (filepath) => {
         try {
             await apiFetch(`/api/scribe/files/${filepath}`, { method: 'DELETE' });
+            removeLocalFile(filepath);
             set((s) => {
                 const next = s.openFiles.filter((f) => f.filepath !== filepath);
                 let nextActive = s.activeFilepath;
@@ -361,8 +491,14 @@ export const useScribeStore = create<ScribeState>((set, get) => ({
     },
 
     listFiles: async () => {
-        const data = await apiFetch('/api/scribe/files');
-        return data.files as FileEntry[];
+        const local = localFileEntries();
+        try {
+            const data = await apiFetch('/api/scribe/files');
+            return mergeFileEntries((data.files || []) as FileEntry[], local);
+        } catch (err: any) {
+            set({ error: err.message });
+            return local;
+        }
     },
 
     setScrollTop: (filepath, scrollTop) => {

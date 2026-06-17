@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { X } from 'lucide-react';
+import { EyeOff, X } from 'lucide-react';
 import {
     type PersonaDossier, type DossierKV, type DossierChannel, type DossierNote,
     type PersonaAvatar, NEURAL_VIDEOS,
@@ -86,7 +86,7 @@ export default function AvatarDossier({ dossier, onChange, avatar, onAvatarChang
     const isHidden = (k: string) => hidden.has(k);
     const toggleHide = (k: string) => patch({ hidden: hidden.has(k) ? [...hidden].filter(x => x !== k) : [...hidden, k] });
     const HideBtn = ({ k }: { k: string }) => (
-        <button type="button" className="avd-hide" title="Hide field" aria-label="Hide field" onClick={() => toggleHide(k)}>⊘</button>
+        <button type="button" className="avd-hide" title="Hide field" aria-label="Hide field" onClick={() => toggleHide(k)}><EyeOff size={14} aria-hidden /></button>
     );
 
     const setChannel = (i: number, p: Partial<DossierChannel>) => patch({ channels: dossier.channels.map((c, j) => (j === i ? { ...c, ...p } : c)) });

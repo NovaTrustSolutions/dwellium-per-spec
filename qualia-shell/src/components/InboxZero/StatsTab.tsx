@@ -5,6 +5,7 @@
  * Extracted from InboxZero.tsx monolith (Phase 2.1).
  */
 
+import { BarChart3 } from 'lucide-react';
 import type { InboxStats } from './InboxZeroTypes';
 
 interface OperatorMetrics {
@@ -108,7 +109,7 @@ export default function StatsTab({ stats, metrics, zeroProgress }: Props) {
             {/* GAP-21: Operator Metrics */}
             {metrics && (
                 <div style={{ marginTop: '16px', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.5, marginBottom: '12px', letterSpacing: '0.5px' }}>OPERATOR METRICS</p>
+                    <p style={{ fontSize: '11px', fontWeight: 700, opacity: 0.5, marginBottom: '12px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 5 }}><BarChart3 size={12} aria-hidden /> OPERATOR METRICS</p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                         {[
                             { label: 'Throughput Today', value: metrics.throughputToday },

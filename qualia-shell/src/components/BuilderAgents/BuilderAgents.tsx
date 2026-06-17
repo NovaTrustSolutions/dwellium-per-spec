@@ -5,7 +5,7 @@
  * or opened in Scribe. Honest offline state when no LLM is configured.
  */
 import { useState, useCallback, useContext } from 'react';
-import { Bot, Play, Copy, FileUp, RefreshCw } from 'lucide-react';
+import { Bot, Play, Copy, FileUp, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useScribeStore } from '../Scribe/scribeStore';
@@ -102,7 +102,7 @@ export default function BuilderAgents() {
                         {busy ? <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Play size={13} />}
                         {busy ? 'Running…' : `Run ${def.label}`}
                     </button>
-                    {err && <div style={{ padding: '8px 10px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 11 }}>{err}</div>}
+                    {err && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 11 }}><TriangleAlert size={14} aria-hidden style={{ flexShrink: 0 }} /><span>{err}</span></div>}
                 </div>
 
                 {/* Output */}

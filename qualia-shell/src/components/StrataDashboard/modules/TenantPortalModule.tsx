@@ -746,7 +746,7 @@ function TenantPortalModuleInner() {
                                     <tr key={i}>
                                         <td>
                                             <span className={`tp-urgency tp-urgency-${a.urgency}`}>
-                                                <span style={{ fontSize: 8 }}>{a.urgency === 'high' ? <Circle size={14} /> : a.urgency === 'medium' ? <Circle size={14} /> : <Circle size={14} />}</span>
+                                                <span style={{ fontSize: 8 }}>{a.urgency === 'high' ? <Circle size={14} aria-hidden style={{ color: '#ef4444', fill: '#ef4444' }} /> : a.urgency === 'medium' ? <Circle size={14} aria-hidden style={{ color: '#f59e0b', fill: '#f59e0b' }} /> : <Circle size={14} aria-hidden style={{ color: '#22c55e', fill: '#22c55e' }} />}</span>
                                                 {a.urgency}
                                             </span>
                                         </td>

@@ -1,5 +1,5 @@
 /**
- * workspacesStore — user-created, persistent Halocron OS workspaces (2026-06-14).
+ * workspacesStore — user-created, persistent Holocron OS workspaces (2026-06-14).
  *
  * Each workspace remembers its apps, its split layout (screen breaks), the
  * active pane, and a scratch note — per user, synced. Switch away and back and
@@ -21,7 +21,7 @@ export interface Workspace {
     id: string;
     name: string;
     appIds: string[];      // widget ids hosted in this workspace
-    split: 1 | 2 | 3;      // screen breaks (columns) — used in grid layout
+    split: 1 | 2 | 3 | 4;  // screen breaks (columns) — used in grid layout
     layout: 'grid' | 'custom';  // grid = split columns; custom = free move/resize
     frames: Record<string, Frame>; // per-app position+size (custom layout), % units
     activeAppId?: string;  // last-focused pane (single-split view)
@@ -43,7 +43,7 @@ function deserialize(raw: string | null): Workspace[] {
             id: String(w.id),
             name: String(w.name ?? 'Workspace'),
             appIds: Array.isArray(w.appIds) ? w.appIds.map(String) : [],
-            split: ([1, 2, 3].includes(w.split) ? w.split : 1) as 1 | 2 | 3,
+            split: ([1, 2, 3, 4].includes(w.split) ? w.split : 1) as 1 | 2 | 3 | 4,
             layout: (w.layout === 'custom' ? 'custom' : 'grid') as 'grid' | 'custom',
             frames: (w.frames && typeof w.frames === 'object') ? w.frames : {},
             activeAppId: w.activeAppId ? String(w.activeAppId) : undefined,

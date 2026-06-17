@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle, Archive, ArchiveRestore, BarChart3, BookOpen, Building2, Calendar, CalendarDays, Camera, Car, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, Clock, Coins, CreditCard, Dog, DollarSign, FileText, Globe, History, Home, Image as ImageIcon, Landmark, LayoutGrid, Link2, List, ListChecks, Mail, MapPin, Megaphone, Paperclip, Phone, PieChart, Plus, Power, RefreshCw, Scale, Search, Send, Settings2, Shield, StickyNote, Table2, Trash2, TrendingUp, Upload, User, Wrench, X } from 'lucide-react';
+import { AlertTriangle, Archive, ArchiveRestore, BarChart3, BookOpen, Building2, Calendar, CalendarDays, Camera, Car, ChevronDown, ChevronRight, ChevronUp, ClipboardCheck, Clock, Coins, CreditCard, Dog, DollarSign, FileText, Globe, History, Home, Image as ImageIcon, Landmark, LayoutGrid, Link2, List, ListChecks, Mail, MapPin, Megaphone, Paperclip, Phone, PieChart, Plus, Power, RefreshCw, Scale, Search, Send, Settings2, Shield, ShieldCheck, StickyNote, Table2, Trash2, TrendingUp, Upload, User, Users, Wrench, X, Zap } from 'lucide-react';
 import { useUser } from '../../../context/UserContext';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
 import { useProperties, useUnits, useEntities, useLinkedData, useModuleConfig, useStrataInvalidate, strataKeys } from '../useStrataQueries';
@@ -36,7 +36,7 @@ const CORE_TABS: WorkspaceTab[] = ['overview', 'info', 'units', 'work', 'documen
 interface ModuleRegistryEntry {
     key: string;
     label: string;
-    icon: string;
+    icon: React.ReactNode;
     defaultEnabled: boolean;
     component: React.ComponentType<{ propertyId: string }>;
 }
@@ -44,21 +44,21 @@ interface ModuleRegistryEntry {
 /* Lightweight placeholder modules for optional tabs that don't have dedicated components yet */
 function ResidentsPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}></div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}><Users size={32} aria-hidden style={{ display: 'inline-block' }} /></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Residents</div>
         <div style={{ fontSize: 12 }}>View and manage residents for this property in the Residents module.</div>
     </div>;
 }
 function LegalPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}></div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}><Scale size={32} aria-hidden style={{ display: 'inline-block' }} /></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Legal Issues</div>
         <div style={{ fontSize: 12 }}>Legal workitems for this property appear in the Work tab under the Legal domain filter.</div>
     </div>;
 }
 function IncidentsPlaceholder({ propertyId }: { propertyId: string }) {
     return <div className="s-glass-card" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}></div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}><AlertTriangle size={32} aria-hidden style={{ display: 'inline-block' }} /></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Incidents</div>
         <div style={{ fontSize: 12 }}>Incident logs linked to this property.</div>
     </div>;
@@ -99,12 +99,12 @@ export function ShowingSettingsPlaceholder({ propertyId }: { propertyId: string 
 }
 
 const MODULE_REGISTRY: ModuleRegistryEntry[] = [
-    { key: 'vehicles', label: 'Vehicles', icon: '', defaultEnabled: false, component: VehiclesPanel as any },
-    { key: 'utilities', label: 'Utilities', icon: '', defaultEnabled: false, component: UtilitiesModule },
-    { key: 'insurance', label: 'Insurance', icon: '', defaultEnabled: false, component: InsuranceModule },
-    { key: 'residents', label: 'Residents', icon: '', defaultEnabled: false, component: ResidentsPlaceholder },
-    { key: 'legal', label: 'Legal', icon: '', defaultEnabled: false, component: LegalPlaceholder },
-    { key: 'incidents', label: 'Incidents', icon: '', defaultEnabled: false, component: IncidentsPlaceholder },
+    { key: 'vehicles', label: 'Vehicles', icon: <Car size={14} aria-hidden />, defaultEnabled: false, component: VehiclesPanel as any },
+    { key: 'utilities', label: 'Utilities', icon: <Zap size={14} aria-hidden />, defaultEnabled: false, component: UtilitiesModule },
+    { key: 'insurance', label: 'Insurance', icon: <ShieldCheck size={14} aria-hidden />, defaultEnabled: false, component: InsuranceModule },
+    { key: 'residents', label: 'Residents', icon: <Users size={14} aria-hidden />, defaultEnabled: false, component: ResidentsPlaceholder },
+    { key: 'legal', label: 'Legal', icon: <Scale size={14} aria-hidden />, defaultEnabled: false, component: LegalPlaceholder },
+    { key: 'incidents', label: 'Incidents', icon: <AlertTriangle size={14} aria-hidden />, defaultEnabled: false, component: IncidentsPlaceholder },
 ];
 
 const fmtType = (t: string) => t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -980,7 +980,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         setActiveTab(tab);
                                     }}
                                 >
-                                    {modEntry ? `${modEntry.icon} ${modEntry.label}` : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                    {modEntry ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>{modEntry.icon} {modEntry.label}</span> : tab.charAt(0).toUpperCase() + tab.slice(1)}
                                 </button>
                             );
                         })}
@@ -1008,7 +1008,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                         padding: '6px 8px', borderRadius: 6, marginBottom: 4,
                                         background: moduleConfig[mod.key] ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent',
                                     }}>
-                                        <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{mod.icon} {mod.label}</span>
+                                        <span style={{ fontSize: 12, color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>{mod.icon} {mod.label}</span>
                                         <button
                                             onClick={() => handleToggleModule(mod.key)}
                                             style={{

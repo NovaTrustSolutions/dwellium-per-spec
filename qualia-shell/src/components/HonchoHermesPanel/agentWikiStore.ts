@@ -16,17 +16,18 @@
  *
  * Storage key:  agent:wiki:<userId>
  */
+import { BookOpen, Calendar, Download, FileText, Puzzle, type LucideIcon } from 'lucide-react';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import { withSync } from '../../lib/oneSaveStore';
 
 export type WikiFolder = 'raw' | 'wiki' | 'meetings' | 'docs' | 'facts';
 
-export const WIKI_FOLDERS: { id: WikiFolder; label: string; icon: string; blurb: string }[] = [
-    { id: 'raw', label: 'raw', icon: '', blurb: 'Unprocessed inbox — everything lands here first' },
-    { id: 'wiki', label: 'wiki', icon: '', blurb: 'Curated, linked knowledge pages' },
-    { id: 'meetings', label: 'meetings', icon: '', blurb: 'Granola / call transcripts & summaries' },
-    { id: 'docs', label: 'docs', icon: '', blurb: 'Long-form source documents' },
-    { id: 'facts', label: 'facts', icon: '', blurb: 'Atomic, deduped claims distilled from sources' },
+export const WIKI_FOLDERS: { id: WikiFolder; label: string; icon: LucideIcon; blurb: string }[] = [
+    { id: 'raw', label: 'raw', icon: Download, blurb: 'Unprocessed inbox — everything lands here first' },
+    { id: 'wiki', label: 'wiki', icon: BookOpen, blurb: 'Curated, linked knowledge pages' },
+    { id: 'meetings', label: 'meetings', icon: Calendar, blurb: 'Granola / call transcripts & summaries' },
+    { id: 'docs', label: 'docs', icon: FileText, blurb: 'Long-form source documents' },
+    { id: 'facts', label: 'facts', icon: Puzzle, blurb: 'Atomic, deduped claims distilled from sources' },
 ];
 
 export interface WikiPage {

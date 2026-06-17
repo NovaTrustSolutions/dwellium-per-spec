@@ -27,7 +27,9 @@ class CommentIndicatorWidget extends WidgetType {
             ? 'cm-comment-indicator cm-comment-resolved'
             : 'cm-comment-indicator';
         span.title = this.comment.body || 'Open comment';
-        span.textContent = '';
+        // Lucide <MessageSquare> inlined as SVG markup (raw-DOM widget, not JSX,
+        // so a Lucide React component can't be used here).
+        span.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
         span.onmousedown = (e) => {
             e.preventDefault();
             e.stopPropagation();

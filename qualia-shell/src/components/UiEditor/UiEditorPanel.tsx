@@ -8,7 +8,8 @@
  * fallback (constrained JSON, sanitized) → honest "couldn't parse" message.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Crosshair, RotateCcw, Trash2, Undo2, Wand2 } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Check, Crosshair, RotateCcw, Trash2, Undo2, Wand2 } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useUiEdits } from '../../lib/uiEditStore';
 import { parseUiEdit, parseUiEditWithLlm, pickedElementHolder, NAMED_TARGETS } from '../../lib/uiEditParser';
@@ -36,7 +37,7 @@ export function UiEditorPanel() {
     const { edits, addUiEdit, toggleUiEdit, removeUiEdit, undoLastUiEdit, clearUiEdits } = useUiEdits();
     const { integrations } = useIntegrations();
     const [input, setInput] = useState('');
-    const [status, setStatus] = useState<string | null>(null);
+    const [status, setStatus] = useState<ReactNode>(null);
     const [busy, setBusy] = useState(false);
     const [picking, setPicking] = useState(false);
     const [picked, setPicked] = useState<{ selector: string; label: string } | null>(pickedElementHolder.current);
@@ -104,7 +105,7 @@ export function UiEditorPanel() {
             return;
         }
         const added = addUiEdit({ selector: op.selector, label: op.label, css: op.css, instruction: text });
-        setStatus(added ? `${op.summary}` : 'That change was blocked by the safety filter.');
+        setStatus(added ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Check size={14} aria-hidden /> {op.summary}</span> : 'That change was blocked by the safety filter.');
         if (added) setInput('');
     }, [input, busy, integrations.llm, addUiEdit]);
 

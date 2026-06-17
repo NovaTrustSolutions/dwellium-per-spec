@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef, KeyboardEvent } from 'react';
 import { API_BASE } from '../../config';
-import { Search, BookOpen, Scale, ChevronDown, ChevronUp, Bookmark, Copy, ExternalLink, Database, Loader } from 'lucide-react';
+import { Search, BookOpen, Scale, Scroll, ChevronDown, ChevronUp, Bookmark, Copy, ExternalLink, Database, Loader, TriangleAlert } from 'lucide-react';
 import './GeorgiaCode.css';
 
 // ============================================
@@ -217,6 +217,7 @@ export default function GeorgiaCode() {
                         lineHeight: 1.5,
                     }}
                 >
+                    <TriangleAlert size={14} aria-hidden style={{ verticalAlign: '-2px', marginRight: 6 }} />
                     Georgia Code index is not loaded — requires the
                     georgia-code service mounted at <code>/api/georgia-code</code>
                     (OCGA vector index + embeddings backend). Search is disabled
@@ -336,7 +337,7 @@ export default function GeorgiaCode() {
                 </div>
             ) : hasSearched ? (
                 <div className="gc-empty-state">
-                    <div className="gc-empty-icon"></div>
+                    <div className="gc-empty-icon"><Scroll size={40} aria-hidden /></div>
                     <div className="gc-empty-title">No matching sections found</div>
                     <div className="gc-empty-text">
                         Try rephrasing your query or use different keywords.
@@ -345,7 +346,7 @@ export default function GeorgiaCode() {
                 </div>
             ) : (
                 <div className="gc-empty-state">
-                    <div className="gc-empty-icon"></div>
+                    <div className="gc-empty-icon"><Scale size={40} aria-hidden /></div>
                     <div className="gc-empty-title">Georgia Legal Research</div>
                     <div className="gc-empty-text">
                         Search across the entire Official Code of Georgia Annotated using

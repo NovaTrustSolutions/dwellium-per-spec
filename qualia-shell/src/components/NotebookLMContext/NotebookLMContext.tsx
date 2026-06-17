@@ -1,5 +1,5 @@
 import { getAuthToken } from '../../context/UserContext';
-import { Book, X } from 'lucide-react';
+import { Book, BookOpen, Check, ExternalLink, Info, Library, TriangleAlert, X } from 'lucide-react';
 /**
  * NotebookLMContext.tsx
  *
@@ -312,7 +312,7 @@ export default function NotebookLMContext() {
                         <button onClick={() => openNotebookLM()} title="Open notebooklm.google.com in a new tab" style={{
                             padding: '4px 10px', background: 'var(--accent)', color: 'var(--text-inverse)',
                             border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: 11,
-                        }}>Open NotebookLM ↗</button>
+                        }}>Open NotebookLM <ExternalLink size={12} aria-hidden style={{ verticalAlign: 'middle' }} /></button>
                     </>
                 )}
             </div>
@@ -337,7 +337,7 @@ export default function NotebookLMContext() {
 
             {/* Info bar */}
             <div className="nlm-info">
-                <span className="nlm-info-icon">ℹ️</span>
+                <span className="nlm-info-icon"><Info size={14} aria-hidden /></span>
                 <p>
                     Enabled notebooks are automatically queried on every ARA / Honcho conversation and the
                     relevant answers injected into the AI&rsquo;s context — without you having to ask.
@@ -348,8 +348,8 @@ export default function NotebookLMContext() {
             {saveStatus && <div className="nlm-toast nlm-toast--success">{saveStatus}</div>}
             {error && (
                 <div className="nlm-toast nlm-toast--error">
-                    {error}{' '}
-                    <button className="nlm-toast-close" onClick={() => setError('')}><X size={16} /></button>
+                    <TriangleAlert size={14} aria-hidden /> {error}{' '}
+                    <button className="nlm-toast-close" onClick={() => setError('')} aria-label="Dismiss error"><X size={16} aria-hidden /></button>
                 </div>
             )}
 
@@ -362,7 +362,7 @@ export default function NotebookLMContext() {
                     </div>
                 ) : notebooks.length === 0 ? (
                     <div className="nlm-empty">
-                        <div className="nlm-empty-icon"></div>
+                        <div className="nlm-empty-icon"><Library size={32} aria-hidden /></div>
                         <p className="nlm-empty-title">No notebooks added yet</p>
                         <p className="nlm-empty-sub">Add a notebook below to use it as an ARA knowledge source.</p>
                     </div>
@@ -370,7 +370,7 @@ export default function NotebookLMContext() {
                     notebooks.map((nb) => (
                         <div key={nb.id} className={`nlm-item ${nb.enabled ? 'nlm-item--enabled' : ''}`}>
                             <div className="nlm-item-body">
-                                <div className="nlm-item-icon">{nb.enabled ? '' : ''}</div>
+                                <div className="nlm-item-icon">{nb.enabled ? <BookOpen size={18} aria-hidden /> : <Book size={18} aria-hidden />}</div>
                                 <div className="nlm-item-info">
                                     <div className="nlm-item-title">{nb.title}</div>
                                     {nb.description && (
@@ -397,7 +397,7 @@ export default function NotebookLMContext() {
                                         border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)', borderRadius: 4,
                                         cursor: 'pointer',
                                     }}
-                                >Open ↗</button>
+                                >Open <ExternalLink size={11} aria-hidden style={{ verticalAlign: 'middle' }} /></button>
                                 {/* Toggle switch */}
                                 <button
                                     className={`nlm-toggle ${nb.enabled ? 'nlm-toggle--on' : ''}`}
@@ -411,8 +411,9 @@ export default function NotebookLMContext() {
                                     className="nlm-remove"
                                     onClick={() => removeNotebook(nb.id)}
                                     title="Remove from Dwellium"
+                                    aria-label="Remove from Dwellium"
                                 >
-                                   
+                                    <X size={16} aria-hidden />
                                 </button>
                             </div>
                         </div>
@@ -466,7 +467,7 @@ export default function NotebookLMContext() {
                         </div>
 
                         <div className="nlm-form-actions">
-                            <button type="submit" className="nlm-form-save">Add &amp; Enable</button>
+                            <button type="submit" className="nlm-form-save"><Check size={14} aria-hidden /> Add &amp; Enable</button>
                             <button type="button" className="nlm-form-cancel" onClick={() => setAdding(false)}>
                                 Cancel
                             </button>

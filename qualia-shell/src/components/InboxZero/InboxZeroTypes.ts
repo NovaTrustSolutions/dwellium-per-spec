@@ -7,6 +7,9 @@
  * Single source of truth — no duplicate interface definitions.
  */
 
+import type { LucideIcon } from 'lucide-react';
+import { Zap, VolumeX, Pause } from 'lucide-react';
+
 // ─── Tab ID ────────────────────────────────────────────
 export type TabId =
     | 'triage'
@@ -298,10 +301,10 @@ export const URGENCY_COLORS: Record<string, string> = {
     low: '#34d399',
 };
 
-export const SIGNAL_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-    signal: { label: 'Signal', color: '#22c55e', icon: '' },
-    noise: { label: 'Noise', color: '#6b7280', icon: '' },
-    low_priority: { label: 'Low', color: '#eab308', icon: '' },
+export const SIGNAL_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
+    signal: { label: 'Signal', color: '#22c55e', icon: Zap },
+    noise: { label: 'Noise', color: '#6b7280', icon: VolumeX },
+    low_priority: { label: 'Low', color: '#eab308', icon: Pause },
 };
 
 export const PROJECT_NAMES: Record<string, string> = {

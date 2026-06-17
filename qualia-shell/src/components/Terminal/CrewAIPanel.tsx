@@ -9,6 +9,7 @@
  * or a self-hosted UI if you point the URL at one. URL is persisted per browser.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { Check } from 'lucide-react';
 import './CrewAIPanel.css';
 
 const LS_URL = 'dwellium-crewai-url';
@@ -86,7 +87,7 @@ export default function CrewAIPanel() {
                     <div key={s.tag} className="cr-step">
                         <div className="cr-step-head">
                             <span>{s.label}</span>
-                            <button className="cr-btn cr-btn--primary" onClick={() => copy(s.cmd, s.tag)}>{copied === s.tag ? 'Copied' : 'Copy'}</button>
+                            <button className="cr-btn cr-btn--primary" onClick={() => copy(s.cmd, s.tag)}>{copied === s.tag ? <><Check size={14} aria-hidden /> Copied</> : 'Copy'}</button>
                         </div>
                         <pre className="cr-snippet">{s.cmd}</pre>
                     </div>

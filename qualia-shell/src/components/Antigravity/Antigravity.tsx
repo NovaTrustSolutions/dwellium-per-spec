@@ -17,7 +17,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FolderOpen, Globe, Monitor, Sparkles, Trash2, User } from 'lucide-react';
+import { Check, FolderOpen, Globe, Hourglass, Monitor, Rocket, Save, Send, Sparkles, Trash2, User, X } from 'lucide-react';
 import { API_BASE } from '../../config';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import { getAuthToken } from '../../context/UserContext';
@@ -436,7 +436,7 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                             onClick={(e) => { e.stopPropagation(); setShowLaunchMenu(v => !v); }}
                             title="Open Full Antigravity IDE"
                         >
-                            Full AG
+                            <Rocket size={14} aria-hidden /> Full AG
                         </button>
                         {showLaunchMenu && (
                             <div className="ag-launch-menu" onClick={(e) => e.stopPropagation()}>
@@ -471,15 +471,16 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                         disabled={savingDoc || messages.length <= 1}
                         title="Save conversation as document"
                     >
-                        {savingDoc ? '' : docSaved ? '' : ''}
+                        {savingDoc ? <Hourglass size={16} aria-hidden /> : docSaved ? <Check size={16} aria-hidden /> : <Save size={16} aria-hidden />}
                     </button>
                     <button className="ag-action-btn" onClick={(e) => { e.stopPropagation(); clearChat(); }} title="Clear conversation"><Trash2 size={16} /></button>
                     <button
                         className="ag-close-btn"
                         onClick={(e) => { e.stopPropagation(); setIsOpen(false); onClose?.(); }}
                         title="Close (⌘G)"
+                        aria-label="Close"
                     >
-                       
+                        <X size={16} aria-hidden />
                     </button>
                 </div>
             </div>
@@ -490,7 +491,7 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                     <div key={msg.id} className={`ag-message ag-message--${msg.role}`}>
                         {msg.role !== 'user' && (
                             <span className="ag-avatar">
-                                {msg.role === 'system' ? '' : ''}
+                                <Sparkles size={14} aria-hidden />
                             </span>
                         )}
                         <div className="ag-bubble">
@@ -552,8 +553,9 @@ If the app doesn't open, make sure Antigravity is installed: [antigravity.google
                     onClick={sendMessage}
                     disabled={!input.trim() || isLoading}
                     title="Send"
+                    aria-label="Send"
                 >
-                    {isLoading ? <span className="ag-send-spinner" /> : ''}
+                    {isLoading ? <span className="ag-send-spinner" /> : <Send size={16} aria-hidden />}
                 </button>
             </div>
 

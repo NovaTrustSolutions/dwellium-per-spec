@@ -11,6 +11,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { ArrowRight, BarChart3, Bot, CircleHelp, Flame, Hourglass, Lightbulb, RefreshCw, Ruler, Scale, Target, TrendingDown, TrendingUp, TriangleAlert } from 'lucide-react';
 
 const API_BASE = '/api/v1/inbox/analytics';
 
@@ -170,39 +172,43 @@ const AnalyticsDashboard: React.FC = () => {
 
     const switchView = (v: SubView) => { setView(v); };
 
-    const tabs: { key: SubView; label: string }[] = [
-        { key: 'overview', label: 'Overview' },
-        { key: 'confidence', label: 'Confidence' },
-        { key: 'heatmap', label: 'Heatmap' },
-        { key: 'trends', label: 'Trends' },
-        { key: 'methods', label: 'Methods' },
-        { key: 'fallback', label: 'Fallback' },
+    const tabs: { key: SubView; label: string; icon: LucideIcon }[] = [
+        { key: 'overview', label: 'Overview', icon: BarChart3 },
+        { key: 'confidence', label: 'Confidence', icon: Target },
+        { key: 'heatmap', label: 'Heatmap', icon: Flame },
+        { key: 'trends', label: 'Trends', icon: TrendingUp },
+        { key: 'methods', label: 'Methods', icon: Scale },
+        { key: 'fallback', label: 'Fallback', icon: RefreshCw },
     ];
 
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <span style={styles.title}>Analytics Dashboard</span>
+                <span style={{ ...styles.title, display: 'inline-flex', alignItems: 'center', gap: 6 }}><BarChart3 size={16} aria-hidden /> Analytics Dashboard</span>
                 <button style={styles.refreshBtn} onClick={() => fetchData(view)}>
-                    {loading ? 'Loading...' : 'Refresh'}
+                    {loading ? <><Hourglass size={14} aria-hidden /> Loading...</> : <><RefreshCw size={14} aria-hidden /> Refresh</>}
                 </button>
             </div>
 
             <div style={styles.tabs}>
-                {tabs.map(t => (
+                {tabs.map(t => {
+                    const TabIcon = t.icon;
+                    return (
                     <button
                         key={t.key}
-                        style={{ ...styles.tab, ...(view === t.key ? styles.tabActive : {}) }}
+                        style={{ ...styles.tab, ...(view === t.key ? styles.tabActive : {}), display: 'inline-flex', alignItems: 'center', gap: 5 }}
                         onClick={() => switchView(t.key)}
                     >
+                        <TabIcon size={14} aria-hidden />
                         {t.label}
                     </button>
-                ))}
+                    );
+                })}
             </div>
 
             {error && (
                 <div style={{ ...styles.card, borderColor: 'rgba(239,68,68,0.3)', marginBottom: '16px' }}>
-                    <span style={{ color: '#ef4444' }}>{error}</span>
+                    <span style={{ color: '#ef4444', display: 'inline-flex', alignItems: 'center', gap: 4 }}><TriangleAlert size={14} aria-hidden /> {error}</span>
                 </div>
             )}
 
@@ -213,7 +219,7 @@ const AnalyticsDashboard: React.FC = () => {
             {view === 'methods' && methods && <MethodsView data={methods} />}
             {view === 'fallback' && fallback && <FallbackView data={fallback} />}
 
-            {loading && !error && <div style={styles.emptyState}>Loading analytics data...</div>}
+            {loading && !error && <div style={{ ...styles.emptyState, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Hourglass size={14} aria-hidden /> Loading analytics data...</div>}
         </div>
     );
 };
@@ -580,8 +586,8 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                             <td style={{ ...styles.td, textAlign: 'right' }}>{(rule.avgConfidence * 100).toFixed(1)}%</td>
                             <td style={{ ...styles.td, textAlign: 'right' }}>{(llm.avgConfidence * 100).toFixed(1)}%</td>
                             <td style={styles.td}>
-                                <span style={{ ...styles.pill, background: rule.avgConfidence >= llm.avgConfidence ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(6,182,212,0.2)', color: rule.avgConfidence >= llm.avgConfidence ? '#D6FE51' : '#22d3ee' }}>
-                                    {rule.avgConfidence >= llm.avgConfidence ? 'Rule' : 'LLM'}
+                                <span style={{ ...styles.pill, display: 'inline-flex', alignItems: 'center', gap: 4, background: rule.avgConfidence >= llm.avgConfidence ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(6,182,212,0.2)', color: rule.avgConfidence >= llm.avgConfidence ? '#D6FE51' : '#22d3ee' }}>
+                                    {rule.avgConfidence >= llm.avgConfidence ? <><Ruler size={12} aria-hidden /> Rule</> : <><Bot size={12} aria-hidden /> LLM</>}
                                 </span>
                             </td>
                         </tr>
@@ -590,8 +596,8 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
                             <td style={{ ...styles.td, textAlign: 'right' }}>{rule.avgTimeMs}ms</td>
                             <td style={{ ...styles.td, textAlign: 'right' }}>{llm.avgTimeMs}ms</td>
                             <td style={styles.td}>
-                                <span style={{ ...styles.pill, background: rule.avgTimeMs <= llm.avgTimeMs ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(6,182,212,0.2)', color: rule.avgTimeMs <= llm.avgTimeMs ? '#D6FE51' : '#22d3ee' }}>
-                                    {rule.avgTimeMs <= llm.avgTimeMs ? 'Rule' : 'LLM'}
+                                <span style={{ ...styles.pill, display: 'inline-flex', alignItems: 'center', gap: 4, background: rule.avgTimeMs <= llm.avgTimeMs ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'rgba(6,182,212,0.2)', color: rule.avgTimeMs <= llm.avgTimeMs ? '#D6FE51' : '#22d3ee' }}>
+                                    {rule.avgTimeMs <= llm.avgTimeMs ? <><Ruler size={12} aria-hidden /> Rule</> : <><Bot size={12} aria-hidden /> LLM</>}
                                 </span>
                             </td>
                         </tr>
@@ -608,7 +614,7 @@ const MethodsView: React.FC<{ data: MethodData }> = ({ data }) => {
             </div>
 
             <div style={{ ...styles.card, marginTop: '12px', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}>
-                <div style={styles.cardTitle}>Recommendation</div>
+                <div style={{ ...styles.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Lightbulb size={14} aria-hidden /> Recommendation</div>
                 <div style={{ fontSize: '14px', color: '#d0d0da', lineHeight: 1.6 }}>{recommendation}</div>
             </div>
         </>
@@ -630,8 +636,8 @@ const FallbackView: React.FC<{ data: FallbackData }> = ({ data }) => {
                 <div style={styles.card}>
                     <div style={styles.cardTitle}>Trend</div>
                     <div style={{ marginTop: '6px' }}>
-                        <span style={trendPill(trend)}>
-                            {trend === 'improving' ? 'Improving' : trend === 'worsening' ? 'Worsening' : trend === 'stable' ? 'Stable' : 'Unknown'}
+                        <span style={{ ...trendPill(trend), display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            {trend === 'improving' ? <><TrendingUp size={13} aria-hidden /> Improving</> : trend === 'worsening' ? <><TrendingDown size={13} aria-hidden /> Worsening</> : trend === 'stable' ? <><ArrowRight size={13} aria-hidden /> Stable</> : <><CircleHelp size={13} aria-hidden /> Unknown</>}
                         </span>
                     </div>
                 </div>

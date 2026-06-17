@@ -11,7 +11,8 @@
  * column drives the real app via the same events the sidebar / ⌘K use.
  */
 import { useEffect, useState } from 'react';
-import { FolderTree, FileText, Tag, Files, HardDrive, Send } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { FolderTree, FileText, Tag, Files, HardDrive, Send, Check } from 'lucide-react';
 import { useWindows } from '../../../context/WindowContext';
 import { openWidget, parseCommand } from '../../../lib/dwelliumCommands';
 
@@ -105,12 +106,12 @@ const EXAMPLE_CMDS = ['switch to research', 'open scribe', 'dark mode', 'group s
 
 export function OrchestratorHome() {
     const [cmd, setCmd] = useState('');
-    const [last, setLast] = useState('');
+    const [last, setLast] = useState<ReactNode>('');
     const run = (raw?: string) => {
         const input = (raw ?? cmd).trim();
         if (!input) return;
         const parsed = parseCommand(input);
-        if (parsed) { parsed.run(); setLast(`${parsed.label}`); setCmd(''); }
+        if (parsed) { parsed.run(); setLast(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Check size={14} aria-hidden /> {parsed.label}</span>); setCmd(''); }
         else { setLast(`Didn't understand "${input}". Try "open strata" or "switch to research".`); }
     };
     return (

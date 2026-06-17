@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BarChart3, Inbox, Settings, Timer, TrendingUp } from 'lucide-react';
+import { ArrowRight, BarChart3, Bot, Check, Circle, Download, Inbox, Link, Pause, RefreshCw, Settings, Timer, Trash2, TrendingUp, TriangleAlert } from 'lucide-react';
 import './InboxWidget.css';
 
 interface InboxItem {
@@ -52,10 +52,10 @@ const SIGNAL_BADGES: Record<string, { label: string; color: string }> = {
     low_priority: { label: 'Low Priority', color: '#eab308' },
 };
 
-const URGENCY_ICONS: Record<string, string> = {
-    high: '',
-    medium: '',
-    low: '',
+const URGENCY_COLORS: Record<string, string> = {
+    high: '#ef4444',
+    medium: '#eab308',
+    low: '#22c55e',
 };
 
 export default function InboxWidget() {
@@ -216,9 +216,9 @@ export default function InboxWidget() {
             {/* Error/Retry Banner */}
             {error && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', marginBottom: 8, fontSize: 12 }}>
-                    <span style={{ color: '#ef4444', flex: 1 }}>{error.message}</span>
+                    <span style={{ color: '#ef4444', flex: 1, display: 'inline-flex', alignItems: 'center', gap: 4 }}><TriangleAlert size={13} aria-hidden /> {error.message}</span>
                     {error.retryable && (
-                        <button onClick={() => handleRetry(error.itemId)} style={{ padding: '3px 10px', borderRadius: 4, border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Retry</button>
+                        <button onClick={() => handleRetry(error.itemId)} style={{ padding: '3px 10px', borderRadius: 4, border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RefreshCw size={12} aria-hidden /> Retry</button>
                     )}
                     <button onClick={() => setError(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 14 }}>×</button>
                 </div>
@@ -258,7 +258,7 @@ export default function InboxWidget() {
             {/* Settings Panel */}
             {showSettings && (
                 <div style={{ padding: 10, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 8, fontSize: 11 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)' }}>Inbox Settings</div>
+                    <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5 }}><Settings size={13} aria-hidden /> Inbox Settings</div>
                     {Object.entries(settings).map(([key, value]) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                             <span style={{ color: 'var(--text-tertiary)', flex: 1, fontSize: 10 }}>{key}:</span>
@@ -278,7 +278,7 @@ export default function InboxWidget() {
                         className={`filter-btn ${filter === f ? 'active' : ''}`}
                         onClick={() => setFilter(f)}
                     >
-                        {f === 'all' ? 'All' : f === 'signal' ? 'Signal' : f === 'noise' ? 'Noise' : 'Low Priority'}
+                        {f === 'all' ? <><Download size={12} aria-hidden /> All</> : f === 'signal' ? <><Check size={12} aria-hidden /> Signal</> : f === 'noise' ? <><Trash2 size={12} aria-hidden /> Noise</> : <><Pause size={12} aria-hidden /> Low Priority</>}
                     </button>
                 ))}
             </div>
@@ -290,7 +290,7 @@ export default function InboxWidget() {
             {approvalDialog && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} onClick={() => setApprovalDialog(null)}>
                     <div style={{ background: '#1e1e2e', border: '1px solid #334155', borderRadius: 8, padding: 20, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
-                        <h4 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14 }}>Approve & Route</h4>
+                        <h4 style={{ margin: '0 0 12px', color: 'var(--text-primary)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}><Check size={15} aria-hidden /> Approve & Route</h4>
                         <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 12 }}>Provide a reason for this approval (required per B.L.A.S.T. Rule 1):</p>
                         <textarea
                             value={approvalReason}
@@ -317,7 +317,7 @@ export default function InboxWidget() {
                     >
                         <div className="card-header">
                             <div className="card-left">
-                                <span className="urgency-icon">{URGENCY_ICONS[item.urgency]}</span>
+                                <span className="urgency-icon"><Circle size={10} aria-hidden fill={URGENCY_COLORS[item.urgency] || '#9ca3af'} color={URGENCY_COLORS[item.urgency] || '#9ca3af'} /></span>
                                 <div className="card-title-block">
                                     <span className="card-subject">{item.subject}</span>
                                     <span className="card-sender">{item.sender}</span>
@@ -337,8 +337,8 @@ export default function InboxWidget() {
                         <p className="card-summary">{item.summary || item.snippet}</p>
 
                         {item.routedToProject && (
-                            <div className="card-routing">
-                                {PROJECT_NAMES[item.routedToProject] || item.routedToProject}
+                            <div className="card-routing" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <ArrowRight size={13} aria-hidden /> {PROJECT_NAMES[item.routedToProject] || item.routedToProject}
                                 {item.routingConfidence && (
                                     <span className="confidence">
                                         {Math.round(item.routingConfidence * 100)}% confident
@@ -351,8 +351,8 @@ export default function InboxWidget() {
                         {item.links && item.links.length > 0 && (
                             <div style={{ display: 'flex', gap: 4, padding: '4px 0', flexWrap: 'wrap' }}>
                                 {item.links.map((link: any) => (
-                                    <span key={link.id} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)' }}>
-                                        {link.target_type}: {link.target_name || link.target_id.slice(0, 8)}
+                                    <span key={link.id} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                        <Link size={10} aria-hidden /> {link.target_type}: {link.target_name || link.target_id.slice(0, 8)}
                                     </span>
                                 ))}
                             </div>
@@ -395,7 +395,7 @@ export default function InboxWidget() {
                                 )}
 
                                 {item.routingReasoning && (
-                                    <p className="routing-reason">{item.routingReasoning}</p>
+                                    <p className="routing-reason"><Bot size={13} aria-hidden /> {item.routingReasoning}</p>
                                 )}
 
                                 {/* Audit Trail (if loaded) */}
@@ -419,13 +419,13 @@ export default function InboxWidget() {
                                             }
                                         }}
                                     >
-                                        {item.routedToProject ? 'Approve & Route' : 'Approve'}
+                                        <Check size={13} aria-hidden /> {item.routedToProject ? 'Approve & Route' : 'Approve'}
                                     </button>
                                     <button className="action-btn archive" onClick={() => handleArchive(item.id)}>
-                                        Archive
+                                        <Download size={13} aria-hidden /> Archive
                                     </button>
                                     <button className="action-btn delete" onClick={() => handleDelete(item.id)}>
-                                        Delete
+                                        <Trash2 size={13} aria-hidden /> Delete
                                     </button>
                                 </div>
 

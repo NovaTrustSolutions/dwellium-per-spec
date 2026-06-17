@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowUp, Bookmark, Eraser, FileText, Highlighter, Image, Paperclip, PenTool, Pencil, Trash2, X } from 'lucide-react';
+import { ArrowRight, ArrowUp, Bookmark, ChevronLeft, ChevronRight, Circle, Download, Eraser, ExternalLink, FileText, Highlighter, Image, Minus, Paperclip, PenTool, Pencil, Plus, Redo2, RotateCw, Save, Square, Trash2, Undo2, X } from 'lucide-react';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import './DocViewer.css';
 import { API_BASE } from '../../config';
@@ -1336,12 +1336,12 @@ export default function DocViewer() {
                             {previewMode === 'pdf' && (
                                 <>
                                     <div className="dv-toolbar__page">
-                                        <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>◀</button>
+                                        <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Previous page"><ChevronLeft size={14} aria-hidden /></button>
                                         <input className="dv-toolbar__page-input" type="number" value={currentPage}
                                             onChange={e => goToPage(parseInt(e.target.value) || 1)}
                                             min={1} max={totalPages} />
                                         <span>/ {totalPages}</span>
-                                        <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages}>▶</button>
+                                        <button className="dv-toolbar__btn" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages} aria-label="Next page"><ChevronRight size={14} aria-hidden /></button>
                                     </div>
 
                                     <div className="dv-zoom">
@@ -1353,18 +1353,18 @@ export default function DocViewer() {
                             )}
 
                             <button className="dv-toolbar__btn dv-toolbar__btn--download" onClick={downloadCurrentDocument} title="Export current document">
-                                Export
+                                <Download size={14} aria-hidden /> Export
                             </button>
                             {canSaveBack && (
                                 <button className="dv-toolbar__btn" onClick={() => void saveDocumentToQualia()} disabled={isSaving || (previewMode === 'text' && !isTextDirty)}>
-                                    {isSaving ? 'Saving…' : 'Save Back'}
+                                    {isSaving ? 'Saving…' : <><Save size={14} aria-hidden /> Save Back</>}
                                 </button>
                             )}
                             <button className="dv-toolbar__btn" onClick={() => void materializeLocalCopy()} title="Materialize local copy and copy path">
-                                Cache Local
+                                <Download size={14} aria-hidden /> Cache Local
                             </button>
                             <button className="dv-toolbar__btn" onClick={openOriginalFile} title="Open original file route">
-                                ↗ Open Original
+                                <ExternalLink size={14} aria-hidden /> Open Original
                             </button>
                         </>
                     )}
@@ -1407,7 +1407,7 @@ export default function DocViewer() {
                             </button>
                             <button className={`dv-edit-btn ${activeTool === 'shape' ? 'dv-edit-btn--active' : ''}`}
                                 onClick={() => setActiveTool('shape')} title="Shapes">
-                                <span className="dv-edit-btn__icon">▭</span>
+                                <span className="dv-edit-btn__icon"><Square size={14} aria-hidden /></span>
                                 <span className="dv-edit-btn__label">Shapes</span>
                             </button>
                         </div>
@@ -1434,7 +1434,7 @@ export default function DocViewer() {
 
                         <div className="dv-edit-toolbar__group">
                             <button className="dv-edit-btn" onClick={insertPage} title="Insert Blank Page">
-                                <span className="dv-edit-btn__icon">+</span>
+                                <span className="dv-edit-btn__icon"><Plus size={14} aria-hidden /></span>
                                 <span className="dv-edit-btn__label">Insert</span>
                             </button>
                             <button className="dv-edit-btn" onClick={deletePage} title="Delete Current Page">
@@ -1442,7 +1442,7 @@ export default function DocViewer() {
                                 <span className="dv-edit-btn__label">Delete</span>
                             </button>
                             <button className="dv-edit-btn" onClick={() => rotatePage('cw')} title="Rotate CW">
-                                <span className="dv-edit-btn__icon">↻</span>
+                                <span className="dv-edit-btn__icon"><RotateCw size={14} aria-hidden /></span>
                                 <span className="dv-edit-btn__label">Rotate</span>
                             </button>
                         </div>
@@ -1451,11 +1451,11 @@ export default function DocViewer() {
 
                         <div className="dv-edit-toolbar__group">
                             <button className="dv-edit-btn" onClick={undo} title="Undo (Ctrl+Z)" disabled={undoStack.length === 0}>
-                                <span className="dv-edit-btn__icon">↩</span>
+                                <span className="dv-edit-btn__icon"><Undo2 size={14} aria-hidden /></span>
                                 <span className="dv-edit-btn__label">Undo</span>
                             </button>
                             <button className="dv-edit-btn" onClick={redo} title="Redo (Ctrl+Shift+Z)" disabled={redoStack.length === 0}>
-                                <span className="dv-edit-btn__icon">↪</span>
+                                <span className="dv-edit-btn__icon"><Redo2 size={14} aria-hidden /></span>
                                 <span className="dv-edit-btn__label">Redo</span>
                             </button>
                             <button className="dv-edit-btn" onClick={clearAnnotations} title="Clear Annotations">
@@ -1514,7 +1514,7 @@ export default function DocViewer() {
                                         className={`dv-edit-btn dv-edit-btn--small ${selectedShape === s ? 'dv-edit-btn--active' : ''}`}
                                         onClick={() => setSelectedShape(s)} title={s}>
                                         <span className="dv-edit-btn__icon">
-                                            {s === 'rectangle' ? '▭' : s === 'circle' ? '○' : s === 'line' ? '╱' : '→'}
+                                            {s === 'rectangle' ? <Square size={14} aria-hidden /> : s === 'circle' ? <Circle size={14} aria-hidden /> : s === 'line' ? <Minus size={14} aria-hidden /> : <ArrowRight size={14} aria-hidden />}
                                         </span>
                                     </button>
                                 ))}

@@ -3,12 +3,13 @@
  * Actions: Approve & Send, Save as Document, Promote to Strata.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { API_BASE } from '../../config';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
 import {
     Send, FileText, ArrowUpRight, ArrowDownLeft, ChevronRight,
     Clock, AlertTriangle, CheckCircle2, Loader2,
-    Mic, MicOff, RefreshCw, History
+    Mic, MicOff, RefreshCw, History, Check, X, Rocket, Mail, Pencil
 } from 'lucide-react';
 import type { Workitem } from '../StrataDashboard/strataTypes';
 
@@ -42,7 +43,7 @@ export default function AstraWorkspace() {
     const [sendTo, setSendTo] = useState('');
     const [sendSubject, setSendSubject] = useState('');
     const [sendBody, setSendBody] = useState('');
-    const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+    const [actionFeedback, setActionFeedback] = useState<ReactNode>(null);
     const [draftHistory, setDraftHistory] = useState<DraftVersion[]>([]);
     const [showDraftHistory, setShowDraftHistory] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
@@ -130,7 +131,7 @@ export default function AstraWorkspace() {
 
     // ── ACTIONS ──
 
-    const showFeedback = (msg: string) => {
+    const showFeedback = (msg: ReactNode) => {
         setActionFeedback(msg);
         setTimeout(() => setActionFeedback(null), 3000);
     };
@@ -176,9 +177,9 @@ export default function AstraWorkspace() {
 
             pushDraft(sendBody, 'sent');
             setShowSendModal(false);
-            showFeedback('Email sent & logged');
+            showFeedback(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Check size={14} aria-hidden /> Email sent &amp; logged</span>);
         } catch {
-            showFeedback('Failed to send email');
+            showFeedback(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><X size={14} aria-hidden /> Failed to send email</span>);
         }
     };
 
@@ -201,9 +202,9 @@ export default function AstraWorkspace() {
                 method: 'POST',
                 body: formData,
             });
-            showFeedback('Saved as document');
+            showFeedback(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FileText size={14} aria-hidden /> Saved as document</span>);
         } catch {
-            showFeedback('Failed to save document');
+            showFeedback(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><X size={14} aria-hidden /> Failed to save document</span>);
         }
     };
 
@@ -215,11 +216,11 @@ export default function AstraWorkspace() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             });
-            showFeedback('Promoted to Strata');
+            showFeedback(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Rocket size={14} aria-hidden /> Promoted to Strata</span>);
             setWorkitems(prev => prev.filter(w => w.id !== selectedItem.id));
             setSelectedItem(null);
         } catch {
-            showFeedback('Failed to promote');
+            showFeedback(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><X size={14} aria-hidden /> Failed to promote</span>);
         }
     };
 
@@ -237,7 +238,7 @@ export default function AstraWorkspace() {
                 fetchWorkitems();
             }
         } catch {
-            showFeedback('Failed to un-promote');
+            showFeedback(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><X size={14} aria-hidden /> Failed to un-promote</span>);
         }
     };
 
@@ -421,8 +422,8 @@ export default function AstraWorkspace() {
                             {[...draftHistory].reverse().map(draft => (
                                 <div key={draft.id} className="aw-draft-item">
                                     <div className="aw-draft-header">
-                                        <span className={`aw-draft-badge aw-draft-${draft.action}`}>
-                                            {draft.action === 'ara_response' ? '◈ ARA Draft' : draft.action === 'sent' ? 'Sent' : 'Edited'}
+                                        <span className={`aw-draft-badge aw-draft-${draft.action}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                            {draft.action === 'ara_response' ? '◈ ARA Draft' : draft.action === 'sent' ? <><Mail size={12} aria-hidden /> Sent</> : <><Pencil size={12} aria-hidden /> Edited</>}
                                         </span>
                                         <span className="aw-draft-time">{new Date(draft.timestamp).toLocaleTimeString()}</span>
                                     </div>

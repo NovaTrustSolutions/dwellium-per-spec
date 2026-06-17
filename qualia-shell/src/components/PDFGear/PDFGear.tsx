@@ -22,7 +22,7 @@
  * Docs/PDF_BACKEND_CONTRACT.md.
  */
 import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { ArrowLeft, BookOpen, Calendar, Check, ChevronLeft, ChevronRight, Combine, Copy, Crop, Droplet, Eraser, EyeOff, FileCheck2, FileCode, FileCog, FilePlus, FileSearch, FileText, FileType2, FolderOpen, FormInput, GitCompare, Hash, Highlighter, Image, Image as ImageIcon, ImageDown, ImagePlus, Info, LayoutGrid, ListOrdered, Lock, Maximize2, MessageSquare, Minimize2, Minus, PenTool, Printer, Redo2, RotateCw, Save, Scaling, ScanText, Scissors, Search, ShieldCheck, ShieldOff, Square, Stamp, Trash2, Type, Undo2, X, ZoomIn, ZoomOut, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, ChevronLeft, ChevronRight, Combine, Copy, Crop, Download, Droplet, Eraser, EyeOff, FileCheck2, FileCode, FileCog, FilePlus, FileSearch, FileText, FileType2, FolderOpen, FormInput, GitCompare, Hash, Highlighter, Image, Image as ImageIcon, ImageDown, ImagePlus, Info, LayoutGrid, ListOrdered, Lock, Maximize2, MessageSquare, Minimize2, Minus, PenTool, Printer, Redo2, RotateCw, Save, Scaling, ScanText, Scissors, Search, ShieldCheck, ShieldOff, Square, Stamp, Trash2, Type, Undo2, X, ZoomIn, ZoomOut, type LucideIcon } from 'lucide-react';
 import './PDFGear.css';
 import { API_BASE } from '../../config';
 import { loadPdfjs, getInfo, renderAllPagesToPng, removeBlankPages, redactAndFlatten, comparePdfs, extractEmbeddedImages } from './pdfRaster';
@@ -76,7 +76,7 @@ type ModalState =
 interface PDFTool {
     id: string;
     label: string;
-    icon: string;
+    icon: LucideIcon;
     iconBg: string;
     category: ToolCategory[];
     description: string;
@@ -1026,22 +1026,22 @@ export default function PDFGear() {
 
     // ---- Tool grid (landing) ----
     const tools: PDFTool[] = [
-        { id: 'pdf-to-word', label: 'PDF to Word', icon: 'W', iconBg: '#2b579a', category: ['hot', 'convert', 'all'], description: 'Convert PDF to editable Word (backend)', action: () => triggerConvert('docx') },
-        { id: 'pdf-to-png', label: 'PDF to PNG', icon: '', iconBg: '#6c5ce7', category: ['hot', 'convert', 'images', 'all'], description: 'Render PDF pages as PNG', action: () => triggerConvert('png') },
-        { id: 'pdf-to-txt', label: 'PDF to TXT', icon: 'T', iconBg: '#fdcb6e', category: ['hot', 'convert', 'all'], description: 'Extract plain text', action: () => triggerConvert('txt') },
-        { id: 'images-to-pdf', label: 'Images to PDF', icon: '', iconBg: '#00b894', category: ['hot', 'images', 'all'], description: 'Combine images into a PDF', action: () => imageInputRef.current?.click() },
-        { id: 'merge-pdf', label: 'Merge PDFs', icon: '⊕', iconBg: '#6c5ce7', category: ['hot', 'organize', 'all'], description: 'Combine multiple PDFs', action: () => mergeInputRef.current?.click() },
-        { id: 'split-pdf', label: 'Split PDF', icon: '', iconBg: '#00cec9', category: ['hot', 'organize', 'all'], description: 'Split by page count', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askSplitCount(); } },
-        { id: 'nup-pdf', label: 'N-up', icon: '▦', iconBg: '#0984e3', category: ['organize', 'all'], description: 'Multiple pages per sheet', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askNUp(); } },
-        { id: 'reorder-pdf', label: 'Reorder', icon: '↕', iconBg: '#e17055', category: ['organize', 'all'], description: 'Rearrange page order', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askReorder(); } },
-        { id: 'rotate-pages', label: 'Rotate', icon: '↻', iconBg: '#0984e3', category: ['hot', 'organize', 'all'], description: 'Rotate pages', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askRotate(); } },
-        { id: 'delete-pages', label: 'Delete Pages', icon: '', iconBg: '#d63031', category: ['organize', 'all'], description: 'Remove pages', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askDelete(); } },
-        { id: 'remove-blanks', label: 'Remove Blanks', icon: '␣', iconBg: '#636e72', category: ['organize', 'all'], description: 'Drop blank pages', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else doRemoveBlanks(); } },
-        { id: 'watermark', label: 'Watermark', icon: '⌘', iconBg: '#fdcb6e', category: ['hot', 'edit', 'all'], description: 'Add a watermark', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askWatermark(); } },
-        { id: 'compress', label: 'Compress', icon: '⇪', iconBg: '#00cec9', category: ['hot', 'edit', 'all'], description: 'Reduce file size', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else doCompressReal(); } },
-        { id: 'redact', label: 'Redact', icon: '▮', iconBg: '#2d3436', category: ['secure', 'all'], description: 'True redaction (flatten)', action: () => beginPlacement({ tool: 'redact', mode: 'rect', hint: 'Drag over the area to redact.' }) },
-        { id: 'ocr', label: 'OCR', icon: '', iconBg: '#a29bfe', category: ['hot', 'all'], description: 'Recognise text in scans', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else doOcrText(); } },
-        { id: 'get-info', label: 'Get Info', icon: 'ℹ', iconBg: '#0984e3', category: ['secure', 'all'], description: 'Document properties', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else doGetInfo(); } },
+        { id: 'pdf-to-word', label: 'PDF to Word', icon: FileType2, iconBg: '#2b579a', category: ['hot', 'convert', 'all'], description: 'Convert PDF to editable Word (backend)', action: () => triggerConvert('docx') },
+        { id: 'pdf-to-png', label: 'PDF to PNG', icon: Image, iconBg: '#6c5ce7', category: ['hot', 'convert', 'images', 'all'], description: 'Render PDF pages as PNG', action: () => triggerConvert('png') },
+        { id: 'pdf-to-txt', label: 'PDF to TXT', icon: FileText, iconBg: '#fdcb6e', category: ['hot', 'convert', 'all'], description: 'Extract plain text', action: () => triggerConvert('txt') },
+        { id: 'images-to-pdf', label: 'Images to PDF', icon: ImagePlus, iconBg: '#00b894', category: ['hot', 'images', 'all'], description: 'Combine images into a PDF', action: () => imageInputRef.current?.click() },
+        { id: 'merge-pdf', label: 'Merge PDFs', icon: Combine, iconBg: '#6c5ce7', category: ['hot', 'organize', 'all'], description: 'Combine multiple PDFs', action: () => mergeInputRef.current?.click() },
+        { id: 'split-pdf', label: 'Split PDF', icon: Scissors, iconBg: '#00cec9', category: ['hot', 'organize', 'all'], description: 'Split by page count', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askSplitCount(); } },
+        { id: 'nup-pdf', label: 'N-up', icon: LayoutGrid, iconBg: '#0984e3', category: ['organize', 'all'], description: 'Multiple pages per sheet', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askNUp(); } },
+        { id: 'reorder-pdf', label: 'Reorder', icon: ListOrdered, iconBg: '#e17055', category: ['organize', 'all'], description: 'Rearrange page order', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askReorder(); } },
+        { id: 'rotate-pages', label: 'Rotate', icon: RotateCw, iconBg: '#0984e3', category: ['hot', 'organize', 'all'], description: 'Rotate pages', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askRotate(); } },
+        { id: 'delete-pages', label: 'Delete Pages', icon: Trash2, iconBg: '#d63031', category: ['organize', 'all'], description: 'Remove pages', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askDelete(); } },
+        { id: 'remove-blanks', label: 'Remove Blanks', icon: Eraser, iconBg: '#636e72', category: ['organize', 'all'], description: 'Drop blank pages', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else doRemoveBlanks(); } },
+        { id: 'watermark', label: 'Watermark', icon: Droplet, iconBg: '#fdcb6e', category: ['hot', 'edit', 'all'], description: 'Add a watermark', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else askWatermark(); } },
+        { id: 'compress', label: 'Compress', icon: Minimize2, iconBg: '#00cec9', category: ['hot', 'edit', 'all'], description: 'Reduce file size', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else doCompressReal(); } },
+        { id: 'redact', label: 'Redact', icon: EyeOff, iconBg: '#2d3436', category: ['secure', 'all'], description: 'True redaction (flatten)', action: () => beginPlacement({ tool: 'redact', mode: 'rect', hint: 'Drag over the area to redact.' }) },
+        { id: 'ocr', label: 'OCR', icon: ScanText, iconBg: '#a29bfe', category: ['hot', 'all'], description: 'Recognise text in scans', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else doOcrText(); } },
+        { id: 'get-info', label: 'Get Info', icon: Info, iconBg: '#0984e3', category: ['secure', 'all'], description: 'Document properties', action: () => { if (!workingBytes()) fileInputRef.current?.click(); else doGetInfo(); } },
     ];
     const filteredTools = activeCategory === 'all' ? tools : tools.filter(t => t.category.includes(activeCategory));
 
@@ -1201,7 +1201,7 @@ export default function PDFGear() {
                 <button className="pdfg-sidebar__open-btn" onClick={() => fileInputRef.current?.click()}>
                     <span className="pdfg-sidebar__open-icon"><FolderOpen size={14} /></span> Open File
                 </button>
-                <button className="pdfg-sidebar__action" onClick={createBlankPdf}><span>⊕</span> Create Blank PDF</button>
+                <button className="pdfg-sidebar__action" onClick={createBlankPdf}><span><FilePlus size={14} /></span> Create Blank PDF</button>
                 <button className="pdfg-sidebar__action" onClick={() => imageInputRef.current?.click()}><span><Image size={14} /></span> Images → PDF</button>
                 <button className="pdfg-sidebar__action" onClick={() => setViewMode('toolset')}><span><BookOpen size={14} /></span> All Tools</button>
 
@@ -1216,7 +1216,7 @@ export default function PDFGear() {
                         ))}
                         <button className="pdfg-sidebar__merge-add" onClick={() => mergeInputRef.current?.click()}>+ Add More</button>
                         <button className="pdfg-sidebar__open-btn pdfg-sidebar__merge-go" onClick={() => void mergePdfsAction()} disabled={isLoading}>
-                            {isLoading ? 'Merging…' : '⊕ Merge All'}
+                            {isLoading ? 'Merging…' : <><Combine size={14} aria-hidden /> Merge All</>}
                         </button>
                     </div>
                 )}
@@ -1233,12 +1233,15 @@ export default function PDFGear() {
                             ))}
                         </div>
                         <div className="pdfg-toolset__grid">
-                            {filteredTools.map(tool => (
-                                <button key={tool.id} className="pdfg-tool" onClick={tool.action} title={tool.description}>
-                                    <div className="pdfg-tool__icon" style={{ backgroundColor: tool.iconBg }}><span>{tool.icon}</span></div>
-                                    <span className="pdfg-tool__label">{tool.label}</span>
-                                </button>
-                            ))}
+                            {filteredTools.map(tool => {
+                                const ToolIcon = tool.icon;
+                                return (
+                                    <button key={tool.id} className="pdfg-tool" onClick={tool.action} title={tool.description}>
+                                        <div className="pdfg-tool__icon" style={{ backgroundColor: tool.iconBg }}><span><ToolIcon size={18} aria-hidden /></span></div>
+                                        <span className="pdfg-tool__label">{tool.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                         <div className="pdfg-recent">
                             <div className="pdfg-recent__header">
@@ -1332,7 +1335,7 @@ export default function PDFGear() {
                 {viewMode === 'converting' && (
                     <div className="pdfg-convert">
                         <div className="pdfg-convert__header">
-                            <button className="pdfg-viewer__back" onClick={() => setViewMode('toolset')}>← Back to Tools</button>
+                            <button className="pdfg-viewer__back" onClick={() => setViewMode('toolset')}><ArrowLeft size={14} aria-hidden /> Back to Tools</button>
                             <h2>Conversions</h2>
                         </div>
                         <div className="pdfg-convert__list">
@@ -1340,14 +1343,14 @@ export default function PDFGear() {
                                 <div key={job.id} className={`pdfg-convert__job pdfg-convert__job--${job.status}`}>
                                     <div className="pdfg-convert__job-info">
                                         <span className="pdfg-convert__job-name">{job.sourceFile}</span>
-                                        <span className="pdfg-convert__job-arrow">→</span>
+                                        <span className="pdfg-convert__job-arrow"><ArrowRight size={14} aria-hidden /></span>
                                         <span className="pdfg-convert__job-target">{job.targetFormat.toUpperCase()}</span>
                                     </div>
                                     <div className="pdfg-convert__job-progress"><div className="pdfg-convert__job-bar" style={{ width: `${job.progress}%` }} /></div>
                                     <div className="pdfg-convert__job-status">
-                                        {job.status === 'done' && <button className="pdfg-convert__download" onClick={() => downloadResult(job)}>Download</button>}
+                                        {job.status === 'done' && <button className="pdfg-convert__download" onClick={() => downloadResult(job)}><Download size={14} aria-hidden /> Download</button>}
                                         {job.status === 'processing' && <span className="pdfg-convert__processing">{job.progress}%</span>}
-                                        {job.status === 'error' && <span className="pdfg-convert__error">{job.error}</span>}
+                                        {job.status === 'error' && <span className="pdfg-convert__error"><X size={14} aria-hidden /> {job.error}</span>}
                                     </div>
                                 </div>
                             ))}

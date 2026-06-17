@@ -11,6 +11,7 @@
  * in a ref; counts/views read from its store and re-render on a version bump.
  */
 import { useCallback, useContext, useRef, useState } from 'react';
+import { Globe, List, Scale, Sparkles } from 'lucide-react';
 import { UserContext } from '../../context/UserContext';
 import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -230,12 +231,12 @@ export default function MemoryGraphRAG() {
             <input ref={fileRef} type="file" accept=".txt,.md,.json,.csv" multiple hidden onChange={onFile} />
 
             <div className="mgr__head">
-                <div className="mgr__title">Cognitive M Network</div>
+                <div className="mgr__title"><Globe size={16} aria-hidden /> Cognitive M Network</div>
                 <span className={`mgr__llm ${llmReady ? 'is-on' : ''}`}>{llmReady ? `LLM: ${integrations.llm.active}` : 'Offline (heuristic) mode'}</span>
                 <div className="mgr__spacer" />
                 <div className="mgr__viewtoggle" role="tablist" aria-label="View">
                     <button className={`mgr__seg ${view === 'graph' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'graph'} onClick={() => setView('graph')}>◈ Network</button>
-                    <button className={`mgr__seg ${view === 'panels' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'panels'} onClick={() => setView('panels')}>Panels</button>
+                    <button className={`mgr__seg ${view === 'panels' ? 'is-active' : ''}`} role="tab" aria-selected={view === 'panels'} onClick={() => setView('panels')}><List size={14} aria-hidden /> Panels</button>
                 </div>
                 <span className="mgr__counts">{counts.entities} ent · {counts.facts} facts · {counts.passages} psg · {counts.types} types</span>
                 <button className="mgr__btn" onClick={reset}>Reset</button>
@@ -271,7 +272,7 @@ export default function MemoryGraphRAG() {
                 <input className="mgr__inp" placeholder="Title (optional)" value={pasteTitle} onChange={(e) => setPasteTitle(e.target.value)} />
                 <textarea className="mgr__ta" placeholder="Paste text to ingest into the three-layer memory…" value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={3} />
                 <div className="mgr__row">
-                    <button className="mgr__btn mgr__btn--primary" onClick={loadDemo} disabled={!!busy} title="Import a few sample files so you can ask questions right away">Load demo</button>
+                    <button className="mgr__btn mgr__btn--primary" onClick={loadDemo} disabled={!!busy} title="Import a few sample files so you can ask questions right away"><Globe size={14} aria-hidden /> Load demo</button>
                     <button className="mgr__btn" onClick={ingestPaste} disabled={!!busy}>Ingest text</button>
                     <button className="mgr__btn" onClick={() => fileRef.current?.click()} disabled={!!busy}>Upload files</button>
                     <button className="mgr__btn" onClick={pullTags} disabled={!!busy}>Pull Tag File</button>
@@ -331,7 +332,7 @@ export default function MemoryGraphRAG() {
             )}
 
             {resolutions.length > 0 && (
-                <div className="mgr__conflicts">Resolved {resolutions.length} conflict(s): {resolutions.map((r) => r.reason).join(' · ')}</div>
+                <div className="mgr__conflicts"><Scale size={14} aria-hidden /> Resolved {resolutions.length} conflict(s): {resolutions.map((r) => r.reason).join(' · ')}</div>
             )}
 
             {/* Query */}
@@ -343,7 +344,7 @@ export default function MemoryGraphRAG() {
 
             {answer && (
                 <div className="mgr__answer">
-                    <div className="mgr__answer-head">{answer.generatedByLlm ? 'Answer' : 'Top passages (offline)'}</div>
+                    <div className="mgr__answer-head"><Sparkles size={14} aria-hidden /> {answer.generatedByLlm ? 'Answer' : 'Top passages (offline)'}</div>
                     <div className="mgr__answer-body">{answer.answer}</div>
                     {answer.rankedPassages.length > 0 && (
                         <div className="mgr__evidence">

@@ -52,3 +52,9 @@ electron/staging/
 
 # Local Netlify folder
 .netlify
+
+# Local scratch / debug + verify helpers (session-local; kept on disk, not committed)
+qualia-shell/scratch/
+qualia-shell/click_picker.mjs
+qualia-shell/screenshot_*.mjs
+qualia-shell/verify_google_max.mjs

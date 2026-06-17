@@ -15,9 +15,8 @@
 
 [build.environment]
   NODE_VERSION = "22"
-  # Seed/demo data ON for a frontend-only deploy. Flip to "false" once /api points
-  # at the real backend.
-  VITE_APPFOLIO_SEEDS = "true"
+  # Real backend is hosted on Cloud Run; keep demo seeds off for production.
+  VITE_APPFOLIO_SEEDS = "false"
 
 [dev]
   command = "react-router dev"

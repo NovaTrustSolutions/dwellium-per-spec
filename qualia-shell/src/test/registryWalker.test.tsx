@@ -4,7 +4,7 @@
  * repo's own FUCKUPS.md documents 'green gate ≠ working'").
  *
  * This walks the SINGLE source of truth (WIDGET_REGISTRY) and asserts, for
- * every one of the 48 registered widgets:
+ * every registered widget:
  *   1. the entry is structurally well-formed (id matches key, label, icon,
  *      lazy component, sane min-size);
  *   2. its lazy component is a real React.lazy exotic (so Desktop/Sidebar/
@@ -13,7 +13,7 @@
  *      renders inside ISOLATES a crash — one widget throwing cannot blank the
  *      desktop or strand its neighbours.
  *
- * A full live mount of all 48 under every provider is deliberately NOT done
+ * A full live mount of every widget under every provider is deliberately NOT done
  * here — it's flaky and would test the providers, not the registry. The
  * end-to-end "does the widget actually work when clicked" check lives in the
  * Playwright journey specs (e2e/journey-*.spec.ts), which run on the Mac
@@ -27,15 +27,16 @@ import WidgetShell from '../components/Window/WidgetShell';
 
 const ids = Object.keys(WIDGET_REGISTRY);
 
-describe('WIDGET_REGISTRY integrity (all 48 widgets)', () => {
+describe('WIDGET_REGISTRY integrity', () => {
     it('has the expected widget count (guards accidental drops)', () => {
-        // Running total on feat/assessment-sweep = 54:
+        // Running total = 55:
         //   48 baseline + time-travel (upgrade #7) + holocron-library (2026-06-12)
         //   + 2 feat/assessment-sweep widgets (e.g. cognitive-harness) not
         //     previously recorded in this guard
         //   + api-keys (per-user API-key widget below Inbox Zero, 2026-06-15)
-        //   + meeting (ARA Meeting Notetaker — visible/background note-taker, 2026-06-15).
-        expect(ids.length).toBe(54);
+        //   + meeting (ARA Meeting Notetaker — visible/background note-taker, 2026-06-15)
+        //   + cloud-browser (server-rendered browsing inside Holocron, 2026-06-18).
+        expect(ids.length).toBe(55);
     });
 
     it.each(ids)('"%s" entry is well-formed', (id) => {

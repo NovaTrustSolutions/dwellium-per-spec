@@ -488,11 +488,33 @@ export default function HalocronOS() {
                         <div className="hos-memory-layout">
                             <div className="hos-memory-main">
                                 <h1 className="hos-h">Memory</h1>
-                                <p className="hos-sub">Your stored knowledge and connections.</p>
-                                <div className="hos-quick">
-                                    <button type="button" className="hos-step" onClick={() => setNav('kg')}>Open the Knowledge Graph →</button>
-                                    <button type="button" className="hos-step" onClick={() => openWidget('connections', 'Connections & Memory')}>Open Connections →</button>
-                                    <button type="button" className="hos-step" onClick={() => openWidget('honcho', 'Honcho Memory')}>Open Honcho →</button>
+                                <p className="hos-sub">Every memory system in Dwellium — open any one:</p>
+                                <div className="hos-mem-cards">
+                                    {([
+                                        ['__kg__', 'Knowledge Graph', 'Interactive import-graph of your repos — most-important files, clusters, and an "ask the map" chat.'],
+                                        ['memory-graph-rag', 'Cognitive M Network', 'Retrieval-augmented memory graph that stores and recalls knowledge as linked nodes.'],
+                                        ['cognitive-harness', 'Cognitive Harness', 'Tune the cognitive parameters that shape how agents weight, retain, and recall context.'],
+                                        ['honcho', 'Honcho', 'Durable per-user memory the agents read and write — plus background "dreams" that consolidate it.'],
+                                        ['thought-weaver', 'Thought Weaver', 'Capture fleeting thoughts and notes; they are auto-categorized and woven into your memory.'],
+                                        ['two-brains', 'Two Brains', 'A shared second brain — notes, tasks, and reactions you and the team build together.'],
+                                        ['connections', 'Connections & Memory', 'The web of links between people, projects, and notes across your memory.'],
+                                        ['wiki', 'Wiki', 'Your structured knowledge base — linked wiki pages the agents can cite.'],
+                                        ['holocron-library', 'Holocron Library', 'A library of saved holocrons — long-form knowledge artifacts and references.'],
+                                        ['notebooklm-context', 'NotebookLM', 'Bridge to NotebookLM — ground answers in your notebooks and source documents.'],
+                                        ['synthesis', 'Synthesis Lab', 'Synthesizes captured notes and research into structured insights and summaries.'],
+                                    ] as [string, string, string][]).map(([wid, wlabel, wdesc]) => (
+                                        <button
+                                            key={wid}
+                                            type="button"
+                                            className="hos-mem-card"
+                                            onClick={() => (wid === '__kg__' ? setNav('kg') : openWidget(wid, wlabel))}
+                                            aria-label={`Open ${wlabel}`}
+                                        >
+                                            <span className="hos-mem-card__name">{wlabel}</span>
+                                            <span className="hos-mem-card__desc">{wdesc}</span>
+                                            <span className="hos-mem-card__open">Open →</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                             <div className="hos-memory-sidebar">

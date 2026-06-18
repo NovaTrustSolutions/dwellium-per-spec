@@ -75,6 +75,9 @@ export default function AraIntroVideo() {
         return () => {
             v.onended = null;
             v.onerror = null;
+            // Stop the intro's audio when it's dismissed/unmounted (Skip, end, or
+            // ARA closing) — detaching a <video> alone doesn't reliably stop sound.
+            try { v.pause(); v.muted = true; } catch { /* ignore */ }
         };
     }, []);
 
@@ -108,7 +111,11 @@ export default function AraIntroVideo() {
                 <button
                     type="button"
                     className="ara-intro__btn ara-intro__skip"
-                    onClick={() => setShow(false)}
+                    onClick={() => {
+                        const v = videoRef.current;
+                        if (v) { try { v.pause(); v.muted = true; } catch { /* ignore */ } }
+                        setShow(false);
+                    }}
                 >
                     Skip ▶
                 </button>

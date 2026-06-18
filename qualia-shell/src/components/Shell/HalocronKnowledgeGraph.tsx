@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { MessageSquare, Sparkles, Star } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
+import { API_BASE } from '../../config';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import AgentEta from '../common/AgentEta';
 import './HalocronKnowledgeGraph.css';
@@ -61,6 +62,35 @@ const DEFAULT_PROJECTS: KgProject[] = [
     { id: 'chatgpt', name: 'ChatGPT', lang: 'TYPESCRIPT', files: 39, clusters: 3, blurb: 'lencx/ChatGPT — graphed from the repo.' },
     { id: 'codex', name: 'Codex', lang: 'RUST', files: 2931, clusters: 6, blurb: 'openai/codex — graphed from the repo.' },
 ];
+
+const KG_PROJECTS_KEY = 'dwellium:kg-projects';
+const KG_ACTIVE_KEY = 'dwellium:kg-active-project';
+
+/** User-added projects persist in localStorage so they survive remounts —
+ *  e.g. switching Halocron OS tabs. DEFAULT_PROJECTS always show; saved extras
+ *  (graphed repos) are merged in after them. SSR-guarded (returns defaults on
+ *  the server). */
+function loadKgProjects(): KgProject[] {
+    if (typeof window === 'undefined') return DEFAULT_PROJECTS;
+    try {
+        const raw = window.localStorage.getItem(KG_PROJECTS_KEY);
+        const saved: KgProject[] = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(saved)) return DEFAULT_PROJECTS;
+        const defaultIds = new Set(DEFAULT_PROJECTS.map((p) => p.id));
+        const extras = saved.filter((p) => p && typeof p.id === 'string' && !defaultIds.has(p.id));
+        return [...DEFAULT_PROJECTS, ...extras];
+    } catch {
+        return DEFAULT_PROJECTS;
+    }
+}
+function loadKgActive(): string {
+    if (typeof window === 'undefined') return DEFAULT_PROJECTS[0].id;
+    try {
+        return window.localStorage.getItem(KG_ACTIVE_KEY) || DEFAULT_PROJECTS[0].id;
+    } catch {
+        return DEFAULT_PROJECTS[0].id;
+    }
+}
 
 interface KgGraphData {
     files: number; edges: number; clusters: number; tokens: number; usdPerSession: number;
@@ -197,8 +227,8 @@ function buildGraph(project: KgProject, w: number, h: number, data: KgGraphData 
 }
 
 export default function HalocronKnowledgeGraph() {
-    const [projects, setProjects] = useState<KgProject[]>(DEFAULT_PROJECTS);
-    const [activeId, setActiveId] = useState<string>(DEFAULT_PROJECTS[0].id);
+    const [projects, setProjects] = useState<KgProject[]>(loadKgProjects);
+    const [activeId, setActiveId] = useState<string>(loadKgActive);
     const [selected, setSelected] = useState<Node | null>(null);
     const [paused, setPaused] = useState(false);
     const [gdata, setGdata] = useState<KgGraphData | null>(null);
@@ -212,6 +242,21 @@ export default function HalocronKnowledgeGraph() {
 
     const project = useMemo(() => projects.find((p) => p.id === activeId) ?? projects[0], [projects, activeId]);
     const graphed = !!gdata;
+
+    // Persist user-added projects + the active tab so they survive remounts
+    // (switching Halocron OS tabs unmounts/remounts this panel).
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const defaultIds = new Set(DEFAULT_PROJECTS.map((p) => p.id));
+            const extras = projects.filter((p) => !defaultIds.has(p.id));
+            window.localStorage.setItem(KG_PROJECTS_KEY, JSON.stringify(extras));
+        } catch { /* ignore */ }
+    }, [projects]);
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try { window.localStorage.setItem(KG_ACTIVE_KEY, activeId); } catch { /* ignore */ }
+    }, [activeId]);
 
     // Load the REAL per-repo graph JSON (public/data/kg/<id>.json) on selection.
     useEffect(() => {
@@ -382,13 +427,25 @@ export default function HalocronKnowledgeGraph() {
         if (!url) return;
         setAdding(true);
         try {
-            const r = await fetch('/__kg/graph-repo', {
+            // Dev: the Vite middleware at /__kg/graph-repo clones + graphs the repo.
+            // Prod (static deploy): no such middleware exists, so call the backend
+            // proxy at /api/kg/graph-repo (Cloud Run). Parse defensively so a missing
+            // endpoint surfaces a clear message instead of an "Unexpected token <" /
+            // "<!DOCTYPE … is not valid JSON" crash when the SPA shell is returned.
+            const endpoint = import.meta.env.DEV ? '/__kg/graph-repo' : `${API_BASE}/api/kg/graph-repo`;
+            const r = await fetch(endpoint, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: url.trim() }),
             });
-            const j = await r.json();
-            if (!j?.success) throw new Error(j?.error || 'Graphing failed');
-            const c = j.project as { id: string; name: string; lang: string; files: number; clusters: number; blurb: string };
+            const raw = await r.text();
+            let j: { success?: boolean; error?: string; project?: { id: string; name: string; lang: string; files: number; clusters: number; blurb: string } };
+            try {
+                j = JSON.parse(raw);
+            } catch {
+                throw new Error('Graphing a repo needs the dev server (or a /api/kg/graph-repo backend) — it is not available on this deployment yet. Your existing projects still work.');
+            }
+            if (!r.ok || !j?.success || !j.project) throw new Error(j?.error || `Graphing failed (HTTP ${r.status})`);
+            const c = j.project;
             setProjects((ps) => ps.some((p) => p.id === c.id) ? ps : [...ps, { id: c.id, name: c.name, lang: c.lang, files: c.files, clusters: c.clusters, blurb: c.blurb }]);
             setActiveId(c.id);
         } catch (e) {

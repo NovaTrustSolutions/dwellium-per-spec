@@ -132,14 +132,22 @@ function WebPane({ url, title }: { url: string; title: string }) {
     if (IS_ELECTRON) {
         return createElement('webview', { src: url, class: 'wsx-web', style: 'width:100%;height:100%;border:none;', allowpopups: 'true' });
     }
+    // Web build: embed via <iframe>. Many big sites send X-Frame-Options/CSP that
+    // forbid framing — those render blank, so we always overlay a non-destructive
+    // "Open ↗" so the page is never a dead end. (Embeddable sites show inline.)
     return (
-        <iframe
-            className="wsx-web"
-            src={url}
-            title={title}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-            referrerPolicy="no-referrer"
-        />
+        <div className="wsx-webwrap">
+            <iframe
+                className="wsx-web"
+                src={url}
+                title={title}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                referrerPolicy="no-referrer"
+            />
+            <a className="wsx-web-open" href={url} target="_blank" rel="noopener noreferrer" title={`Open ${title} in a new browser tab`}>
+                Open ↗
+            </a>
+        </div>
     );
 }
 

@@ -24,6 +24,7 @@ import { halocronOsStore, type HalocronOsState } from '../../lib/halocronOsStore
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
 import HalocronKnowledgeGraph, { KG_AGENTS } from './HalocronKnowledgeGraph';
 import HalocronWorkspaces from './HalocronWorkspaces';
+import ClaudePlaybook from './ClaudePlaybook';
 import CognitiveHarness from '../CognitiveHarness/CognitiveHarness';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
 import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore } from '../../lib/subscriptionsStore';
@@ -173,6 +174,7 @@ export default function HalocronOS() {
     // mounted (hidden when inactive) so you keep your place when switching.
     const [tabs, setTabs] = useState<HosTab[]>([]);
     const [activeKey, setActiveKey] = useState<string | null>(null);
+    const [claudePlaybookOpen, setClaudePlaybookOpen] = useState(false);
     const tabTouchSeq = useRef(0);
     const touch = () => Date.now() * 1000 + (++tabTouchSeq.current);
 
@@ -599,8 +601,22 @@ export default function HalocronOS() {
                                 <button className="hos-step" onClick={() => setNav('apps')}>Open the Apps archive →</button>
                                 <button className="hos-step" onClick={() => setNav('workspace')}>Ignite a Space →</button>
                             </div>
+
+                            <button
+                                type="button"
+                                className="hos-claude-btn"
+                                onClick={() => setClaudePlaybookOpen(true)}
+                                aria-haspopup="dialog"
+                                aria-expanded={claudePlaybookOpen}
+                                title="Open the Claude playbook mini map"
+                            >
+                                <Sparkles size={18} aria-hidden="true" />
+                                <span>Ask Claude — playbook</span>
+                            </button>
                         </>
                     )}
+
+                    {claudePlaybookOpen && <ClaudePlaybook onClose={() => setClaudePlaybookOpen(false)} />}
 
                     {nav === 'apps' && (
                         <>

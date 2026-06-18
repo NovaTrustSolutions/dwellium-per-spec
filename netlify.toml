@@ -10,13 +10,19 @@
 
 [build]
   base = "qualia-shell"
-  command = "react-router build && node scripts/write-netlify-redirects.mjs"
+  # `git fetch --unshallow` first so the commit-count app version is accurate on
+  # Netlify's shallow clone (no-ops on a complete clone).
+  command = "git fetch --unshallow 2>/dev/null || true; react-router build && node scripts/write-netlify-redirects.mjs"
   publish = "build/client"
 
 [build.environment]
   NODE_VERSION = "22"
   # Real backend is hosted on Cloud Run; keep demo seeds off for production.
   VITE_APPFOLIO_SEEDS = "false"
+  # One Save sync (encrypted per-account API keys, workspaces, etc.) so they
+  # persist across devices. Requires NETLIFY_API_PROXY_TARGET (set in the Netlify
+  # site env) to point /api/* at the Cloud Run backend; otherwise sync is inert.
+  VITE_ONE_SAVE = "true"
 
 [dev]
   command = "react-router dev"

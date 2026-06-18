@@ -4,6 +4,7 @@ import { cloneAndAnalyze } from './scripts/kgAnalyze.mjs';
 import { scanFolder } from './scripts/kbScan.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 /**
  * kgGraphRepoPlugin — dev-server route that REALLY clones + graphs a repo for
@@ -158,8 +159,25 @@ function eyeContactPlugin() {
     };
 }
 
+/** App version derived from the commit count: ⌊n/100⌋.(n mod 100).
+ *  100→"1.0", 213→"2.13", 305→"3.5". Baked at build time, so it refreshes on
+ *  every deploy. Falls back to "0.0" if git isn't available. */
+function appCommitVersion(): string {
+    try {
+        const n = parseInt(execSync('git rev-list --count HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(), 10);
+        if (!Number.isFinite(n) || n <= 0) return '0.0';
+        return `${Math.floor(n / 100)}.${n % 100}`;
+    } catch {
+        return '0.0';
+    }
+}
+
 export default defineConfig({
     plugins: [reactRouter(), kgGraphRepoPlugin(), kbScanPlugin(), eyeContactPlugin()],
+    define: {
+        // App version from commit count — see appCommitVersion() above.
+        __APP_VERSION__: JSON.stringify(appCommitVersion()),
+    },
     // 2026-06-12 live-sweep fix: pre-bundle the heavy deps that widgets pull
     // in via dynamic import (terminal → @xterm, doc-viewer/pdf-gear →
     // pdf-lib/pdfjs/tesseract/mammoth/docx, scribe → codemirror family).

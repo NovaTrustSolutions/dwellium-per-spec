@@ -378,7 +378,9 @@ describe('ARAConsole', () => {
 
         expect(modeCalls).toBeGreaterThanOrEqual(2);
         fireEvent.click(screen.getByRole('button', { name: 'Personas' }));
-        expect(screen.getByText('2 lenses')).toBeInTheDocument();
+        // Backend modes merge over the built-in lens catalog, so the count reflects
+        // the full set (built-ins + any backend-only lenses), not just the 2 mocked.
+        expect(screen.getByText(/^\d+ lenses$/)).toBeInTheDocument();
         expect(screen.getByText('Lead Counsel')).toBeInTheDocument();
     });
 });

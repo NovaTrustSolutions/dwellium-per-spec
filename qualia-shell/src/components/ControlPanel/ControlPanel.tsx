@@ -5,6 +5,7 @@ import { halocronOsStore } from '../../lib/halocronOsStore';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
+import { APP_VERSION } from '../../appVersion';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
 import AccountsSection from './AccountsSection';
 import ActivationCenter from './ActivationCenter';
@@ -564,7 +565,7 @@ export default function ControlPanel() {
                 <div className="cp-info">
                     <div className="cp-info__row">
                         <span className="cp-info__label">Version</span>
-                        <span className="cp-info__value">1.0.0-alpha</span>
+                        <span className="cp-info__value">{APP_VERSION}</span>
                     </div>
                     <div className="cp-info__row">
                         <span className="cp-info__label">Project</span>

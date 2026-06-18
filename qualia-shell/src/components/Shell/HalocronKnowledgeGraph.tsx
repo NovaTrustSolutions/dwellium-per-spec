@@ -17,7 +17,6 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { MessageSquare, Sparkles, Star } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
-import { API_BASE } from '../../config';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import AgentEta from '../common/AgentEta';
 import './HalocronKnowledgeGraph.css';
@@ -102,6 +101,94 @@ interface KgGraphData {
 
 // Cluster palette (colour = cluster, as the reference legend says).
 const CLUSTER_COLORS = ['#4d8aff', '#34d399', '#e7c879', '#ff5a8a', '#a855f7', '#22d3ee', '#f97316', '#e01e2b'];
+
+// User-graphed repos cache their built graph here (per project id), so the graph
+// renders on selection + survives reloads — no backend required.
+const KG_GDATA_PREFIX = 'dwellium:kg-gdata:';
+const KG_CODE_EXT = /\.(ts|tsx|js|jsx|py|rs|go|java|rb|c|h|hpp|cpp|cc|cs|php|swift|kt|scala|vue|svelte|mjs|cjs|sql)$/i;
+
+/**
+ * Graph a public GitHub repo entirely client-side via the GitHub REST API — two
+ * calls (repo metadata + recursive file tree). Builds a structure graph (files +
+ * directory clusters + size-weighted importance + synthesized intra-cluster
+ * links). It is NOT a deep import graph (the browser can't fetch every file's
+ * contents within rate limits), but it graphs any public repo with no backend.
+ */
+async function graphGithubRepo(rawUrl: string): Promise<{ project: KgProject; gdata: KgGraphData }> {
+    const cleaned = rawUrl.trim().replace(/\.git$/i, '');
+    const m = cleaned.match(/github\.com[/:]([^/\s]+)\/([^/?#\s]+)/i) || cleaned.match(/^([\w.-]+)\/([\w.-]+)$/);
+    if (!m) throw new Error('Paste a GitHub URL like https://github.com/owner/repo');
+    const owner = m[1];
+    const repo = m[2];
+    const api = 'https://api.github.com';
+    const headers = { Accept: 'application/vnd.github+json' };
+
+    const repoRes = await fetch(`${api}/repos/${owner}/${repo}`, { headers });
+    if (repoRes.status === 404) throw new Error(`Repo not found: ${owner}/${repo} — check the URL and that it's public.`);
+    if (repoRes.status === 403) throw new Error('GitHub API rate limit reached — wait a few minutes and try again.');
+    if (!repoRes.ok) throw new Error(`GitHub error ${repoRes.status} fetching the repo.`);
+    const repoJson = await repoRes.json();
+    const branch: string = repoJson.default_branch || 'main';
+    const lang: string = String(repoJson.language || 'CODE').toUpperCase();
+
+    const treeRes = await fetch(`${api}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`, { headers });
+    if (!treeRes.ok) throw new Error(`Couldn't read the file tree (HTTP ${treeRes.status}).`);
+    const treeJson = await treeRes.json();
+    const blobs: { path: string; size: number }[] = Array.isArray(treeJson.tree)
+        ? treeJson.tree
+            .filter((t: { type?: string }) => t.type === 'blob')
+            .map((t: { path: string; size?: number }) => ({ path: t.path, size: t.size || 0 }))
+        : [];
+    if (!blobs.length) throw new Error('No files found in that repo.');
+
+    const dirOf = (p: string) => { const i = p.indexOf('/'); return i < 0 ? '(root)' : p.slice(0, i); };
+    const source = blobs.filter((b) => KG_CODE_EXT.test(b.path));
+    const pool = source.length ? source : blobs;
+    const dirs = Array.from(new Set(pool.map((b) => dirOf(b.path))));
+    const clusterOf = new Map(dirs.map((d, i) => [d, i % CLUSTER_COLORS.length] as const));
+
+    const capped = pool.slice().sort((a, b) => b.size - a.size).slice(0, 120);
+    const maxSize = Math.max(1, ...capped.map((b) => b.size));
+    const nodes = capped.map((b) => ({
+        label: b.path,
+        cluster: clusterOf.get(dirOf(b.path)) ?? 0,
+        importance: Math.max(1, Math.round((b.size / maxSize) * 30)),
+        deg: 0,
+    }));
+    // Synthesize intra-cluster hub links so the force layout + clusters render.
+    const hub = new Map<number, number>();
+    nodes.forEach((n, i) => { const h = hub.get(n.cluster); if (h === undefined || nodes[h].importance < n.importance) hub.set(n.cluster, i); });
+    const links: [number, number][] = [];
+    nodes.forEach((n, i) => { const h = hub.get(n.cluster); if (h !== undefined && h !== i) { links.push([i, h]); nodes[i].deg++; nodes[h].deg++; } });
+
+    const top = nodes.slice().sort((a, b) => b.importance - a.importance).slice(0, 7);
+    const maxScore = Math.max(1, ...top.map((n) => n.importance));
+    const importantFiles = top.map((n) => ({ name: n.label.split('/').pop() || n.label, score: n.importance, pct: Math.round((n.importance / maxScore) * 100) }));
+
+    const totalBytes = blobs.reduce((s, b) => s + b.size, 0);
+    const tokens = Math.round(totalBytes / 4);
+    const gdata: KgGraphData = {
+        files: blobs.length,
+        edges: links.length,
+        clusters: dirs.length,
+        tokens,
+        usdPerSession: +((tokens / 1_000_000) * 3).toFixed(2),
+        importantFiles,
+        nodes,
+        links,
+        builtAt: new Date().toISOString(),
+    };
+    const id = `gh-${owner}-${repo}`.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-');
+    const project: KgProject = {
+        id,
+        name: repo,
+        lang,
+        files: blobs.length,
+        clusters: Math.min(dirs.length, CLUSTER_COLORS.length),
+        blurb: `${owner}/${repo} — graphed from the GitHub file tree.`,
+    };
+    return { project, gdata };
+}
 
 interface Node {
     x: number; y: number; hx: number; hy: number; vx: number; vy: number;
@@ -262,10 +349,17 @@ export default function HalocronKnowledgeGraph() {
     useEffect(() => {
         let cancelled = false;
         setGdata(null);
-        fetch(`/data/kg/${activeId}.json`)
-            .then((r) => (r.ok ? r.json() : null))
-            .then((j) => { if (!cancelled && j) setGdata(j as KgGraphData); })
-            .catch(() => { /* no graph file for this project — fall back to representative */ });
+        // User-graphed repos live in localStorage; default projects ship a static JSON.
+        let cached: string | null = null;
+        try { cached = typeof window !== 'undefined' ? window.localStorage.getItem(KG_GDATA_PREFIX + activeId) : null; } catch { cached = null; }
+        if (cached) {
+            try { setGdata(JSON.parse(cached) as KgGraphData); } catch { /* corrupt cache — ignore */ }
+        } else {
+            fetch(`/data/kg/${activeId}.json`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((j) => { if (!cancelled && j) setGdata(j as KgGraphData); })
+                .catch(() => { /* no graph file for this project — fall back to representative */ });
+        }
         return () => { cancelled = true; };
     }, [activeId]);
 
@@ -427,27 +521,13 @@ export default function HalocronKnowledgeGraph() {
         if (!url) return;
         setAdding(true);
         try {
-            // Dev: the Vite middleware at /__kg/graph-repo clones + graphs the repo.
-            // Prod (static deploy): no such middleware exists, so call the backend
-            // proxy at /api/kg/graph-repo (Cloud Run). Parse defensively so a missing
-            // endpoint surfaces a clear message instead of an "Unexpected token <" /
-            // "<!DOCTYPE … is not valid JSON" crash when the SPA shell is returned.
-            const endpoint = import.meta.env.DEV ? '/__kg/graph-repo' : `${API_BASE}/api/kg/graph-repo`;
-            const r = await fetch(endpoint, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url.trim() }),
-            });
-            const raw = await r.text();
-            let j: { success?: boolean; error?: string; project?: { id: string; name: string; lang: string; files: number; clusters: number; blurb: string } };
-            try {
-                j = JSON.parse(raw);
-            } catch {
-                throw new Error('Graphing a repo needs the dev server (or a /api/kg/graph-repo backend) — it is not available on this deployment yet. Your existing projects still work.');
-            }
-            if (!r.ok || !j?.success || !j.project) throw new Error(j?.error || `Graphing failed (HTTP ${r.status})`);
-            const c = j.project;
-            setProjects((ps) => ps.some((p) => p.id === c.id) ? ps : [...ps, { id: c.id, name: c.name, lang: c.lang, files: c.files, clusters: c.clusters, blurb: c.blurb }]);
-            setActiveId(c.id);
+            // Graph the repo CLIENT-SIDE via the GitHub API (no backend needed) — two
+            // calls (repo + recursive file tree). Cache the result so it renders on
+            // selection and survives reloads.
+            const { project, gdata } = await graphGithubRepo(url);
+            try { window.localStorage.setItem(KG_GDATA_PREFIX + project.id, JSON.stringify(gdata)); } catch { /* quota — still renders this session */ }
+            setProjects((ps) => ps.some((p) => p.id === project.id) ? ps : [...ps, project]);
+            setActiveId(project.id);
         } catch (e) {
             window.alert(`Could not graph that repo:\n${(e as Error).message}`);
         } finally {

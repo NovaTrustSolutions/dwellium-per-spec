@@ -815,27 +815,23 @@ export default function TranscriptionHub() {
 
 
     // ---- UTILITY FUNCTIONS ----
-    const formatTime = (s: number) => {
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        const sec = s % 60;
-        if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-        return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    // hms: one timecode formatter; the three named forms below are thin presets.
+    // formatTime = auto hours, unfloored seconds (matches prior behavior); formatTimestamp
+    // = mm:ss; formatSrtTimestamp = zero-padded hours + ,milliseconds.
+    const hms = (total: number, opts: { hours?: 'auto' | 'always' | 'never'; ms?: boolean; floorSec?: boolean } = {}) => {
+        const { hours = 'auto', ms = false, floorSec = true } = opts;
+        const pad = (n: number, w = 2) => n.toString().padStart(w, '0');
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const sec = floorSec ? Math.floor(total % 60) : total % 60;
+        const showH = hours === 'always' || (hours === 'auto' && h > 0);
+        let out = showH ? `${hours === 'always' ? pad(h) : h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+        if (ms) out += `,${pad(Math.floor((total % 1) * 1000), 3)}`;
+        return out;
     };
-
-    const formatTimestamp = (seconds: number) => {
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    };
-
-    const formatSrtTimestamp = (seconds: number) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
-        const ms = Math.floor((seconds % 1) * 1000);
-        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
-    };
+    const formatTime = (s: number) => hms(s, { floorSec: false });
+    const formatTimestamp = (seconds: number) => hms(seconds, { hours: 'never' });
+    const formatSrtTimestamp = (seconds: number) => hms(seconds, { hours: 'always', ms: true });
 
     const getSpeakerDisplayName = (speaker: string) => speakerNames[speaker] || speaker;
 
@@ -2083,144 +2079,115 @@ export default function TranscriptionHub() {
             .join('\n');
     }, [segments, elapsed]);
 
-    const fetchTalkingPoints = useCallback(async () => {
-        if (!meetingScript.trim()) return;
-        setTalkingPointsLoading(true);
+    // postAi: one POST -> json.success -> set pipeline. The named fetchers below are thin
+    // presets; each preserves its own reset value, request body, and which json.data field
+    // to read via the `reset`, `body`, and `onSuccess` options.
+    const postAi = useCallback(async (opts: {
+        path: string;
+        label: string;
+        setLoading: (v: boolean) => void;
+        onSuccess: (data: any) => void;
+        body?: unknown;
+        reset?: () => void;
+    }) => {
+        opts.setLoading(true);
+        opts.reset?.();
         try {
-            const transcript = getRecentTranscriptStr();
-            const res = await fetch(`${API_TRANSCRIBE}/meeting/talking-points`, {
+            const res = await fetch(`${API_TRANSCRIBE}/${opts.path}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ transcript, scriptContent: meetingScript })
+                ...(opts.body !== undefined ? { body: JSON.stringify(opts.body) } : {}),
             });
             const json = await res.json();
-            if (json.success) setTalkingPoints(json.data);
-        } catch (err) { console.error('[TalkingPoints]', err); }
-        setTalkingPointsLoading(false);
-    }, [meetingScript, getRecentTranscriptStr]);
+            if (json.success) opts.onSuccess(json.data);
+        } catch (err) { console.error(opts.label, err); }
+        opts.setLoading(false);
+    }, []);
+
+    const fetchTalkingPoints = useCallback(async () => {
+        if (!meetingScript.trim()) return;
+        await postAi({
+            path: 'meeting/talking-points', label: '[TalkingPoints]',
+            setLoading: setTalkingPointsLoading,
+            body: { transcript: getRecentTranscriptStr(), scriptContent: meetingScript },
+            onSuccess: (d) => setTalkingPoints(d),
+        });
+    }, [meetingScript, getRecentTranscriptStr, postAi]);
 
     const fetchRebuttals = useCallback(async () => {
         if (!meetingScript.trim()) return;
-        setRebuttalsLoading(true);
-        try {
-            const transcript = getRecentTranscriptStr();
-            const res = await fetch(`${API_TRANSCRIBE}/meeting/rebuttals`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ transcript, scriptContent: meetingScript })
-            });
-            const json = await res.json();
-            if (json.success) setRebuttals(json.data);
-        } catch (err) { console.error('[Rebuttals]', err); }
-        setRebuttalsLoading(false);
-    }, [meetingScript, getRecentTranscriptStr]);
+        await postAi({
+            path: 'meeting/rebuttals', label: '[Rebuttals]',
+            setLoading: setRebuttalsLoading,
+            body: { transcript: getRecentTranscriptStr(), scriptContent: meetingScript },
+            onSuccess: (d) => setRebuttals(d),
+        });
+    }, [meetingScript, getRecentTranscriptStr, postAi]);
 
     const fetchOnDemandSummary = useCallback(async () => {
-        setOnDemandSummaryLoading(true);
-        try {
-            const transcript = getRecentTranscriptStr();
-            const res = await fetch(`${API_TRANSCRIBE}/meeting/summarize`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ transcript })
-            });
-            const json = await res.json();
-            if (json.success) setOnDemandSummary(json.data);
-        } catch (err) { console.error('[OnDemandSummary]', err); }
-        setOnDemandSummaryLoading(false);
-    }, [getRecentTranscriptStr]);
+        await postAi({
+            path: 'meeting/summarize', label: '[OnDemandSummary]',
+            setLoading: setOnDemandSummaryLoading,
+            body: { transcript: getRecentTranscriptStr() },
+            onSuccess: (d) => setOnDemandSummary(d),
+        });
+    }, [getRecentTranscriptStr, postAi]);
 
     // ============================================
     // POST-MEETING ACTION FUNCTIONS
     // ============================================
 
     const fetchAiSummary = useCallback(async (logId: string) => {
-        setAiSummaryLoading(true);
-        setAiSummary(null);
-        try {
-            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/summarize`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'detailed' })
-            });
-            const json = await res.json();
-            if (json.success) setAiSummary(json.data.summary);
-        } catch (err) { console.error('[AiSummary]', err); }
-        setAiSummaryLoading(false);
-    }, []);
+        await postAi({
+            path: `logs/${logId}/summarize`, label: '[AiSummary]',
+            setLoading: setAiSummaryLoading, reset: () => setAiSummary(null),
+            body: { mode: 'detailed' },
+            onSuccess: (d) => setAiSummary(d.summary),
+        });
+    }, [postAi]);
 
     const fetchAiActionItems = useCallback(async (logId: string) => {
-        setAiActionItemsLoading(true);
-        setAiActionItems([]);
-        try {
-            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/action-items`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const json = await res.json();
-            if (json.success) setAiActionItems(json.data);
-        } catch (err) { console.error('[AiActionItems]', err); }
-        setAiActionItemsLoading(false);
-    }, []);
+        await postAi({
+            path: `logs/${logId}/action-items`, label: '[AiActionItems]',
+            setLoading: setAiActionItemsLoading, reset: () => setAiActionItems([]),
+            onSuccess: (d) => setAiActionItems(d),
+        });
+    }, [postAi]);
 
     const fetchAiDecisions = useCallback(async (logId: string) => {
-        setAiDecisionsLoading(true);
-        setAiDecisions([]);
-        try {
-            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/decisions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const json = await res.json();
-            if (json.success) setAiDecisions(json.data);
-        } catch (err) { console.error('[AiDecisions]', err); }
-        setAiDecisionsLoading(false);
-    }, []);
+        await postAi({
+            path: `logs/${logId}/decisions`, label: '[AiDecisions]',
+            setLoading: setAiDecisionsLoading, reset: () => setAiDecisions([]),
+            onSuccess: (d) => setAiDecisions(d),
+        });
+    }, [postAi]);
 
     const fetchAiRecapEmail = useCallback(async (logId: string) => {
-        setAiRecapEmailLoading(true);
-        setAiRecapEmail(null);
-        try {
-            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/recap-email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ meetingTitle: savedTranscriptions.find(t => t.id === logId)?.title || 'Meeting' })
-            });
-            const json = await res.json();
-            if (json.success) setAiRecapEmail(json.data);
-        } catch (err) { console.error('[RecapEmail]', err); }
-        setAiRecapEmailLoading(false);
-    }, [savedTranscriptions]);
+        await postAi({
+            path: `logs/${logId}/recap-email`, label: '[RecapEmail]',
+            setLoading: setAiRecapEmailLoading, reset: () => setAiRecapEmail(null),
+            body: { meetingTitle: savedTranscriptions.find(t => t.id === logId)?.title || 'Meeting' },
+            onSuccess: (d) => setAiRecapEmail(d),
+        });
+    }, [savedTranscriptions, postAi]);
 
     const fetchAiRewrite = useCallback(async (logId: string, tone: string) => {
-        setAiRewriteLoading(true);
-        setAiRewrite(null);
-        try {
-            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/rewrite`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tone })
-            });
-            const json = await res.json();
-            if (json.success) setAiRewrite(json.data.content);
-        } catch (err) { console.error('[AiRewrite]', err); }
-        setAiRewriteLoading(false);
-    }, []);
+        await postAi({
+            path: `logs/${logId}/rewrite`, label: '[AiRewrite]',
+            setLoading: setAiRewriteLoading, reset: () => setAiRewrite(null),
+            body: { tone },
+            onSuccess: (d) => setAiRewrite(d.content),
+        });
+    }, [postAi]);
 
     const fetchAiDraft = useCallback(async (logId: string, documentType: string) => {
-        setAiDraftLoading(true);
-        setAiDraft(null);
-        try {
-            const res = await fetch(`${API_TRANSCRIBE}/logs/${logId}/draft`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ documentType })
-            });
-            const json = await res.json();
-            if (json.success) setAiDraft({ content: json.data.content, title: json.data.title });
-        } catch (err) { console.error('[AiDraft]', err); }
-        setAiDraftLoading(false);
-    }, []);
+        await postAi({
+            path: `logs/${logId}/draft`, label: '[AiDraft]',
+            setLoading: setAiDraftLoading, reset: () => setAiDraft(null),
+            body: { documentType },
+            onSuccess: (d) => setAiDraft({ content: d.content, title: d.title }),
+        });
+    }, [postAi]);
 
     const openPostMeetingPanel = useCallback((logId: string) => {
         setPostMeetingLogId(logId);

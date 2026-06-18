@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { integrationsUserIdHolder } from '../utils/integrationsStore';
 import { saveWorkspaces, workspacesStore, wsTabs, type Workspace } from '../lib/workspacesStore';
 
@@ -55,6 +55,21 @@ function openWorkspace() {
 
 const ws = () => workspacesStore.getSnapshot()[0];
 
+// Canonical layout is the split-tree; flatten the root level to keys/sizes for assertions.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const layoutTree = () => (ws() as any).splitTree;
+function rootKeys(): string[] {
+    const t = layoutTree();
+    if (!t) return [];
+    return t.t === 'split' ? t.children.map((c: any) => (c.t === 'leaf' ? c.key : '(split)')) : [t.key];
+}
+function rootSizes(): number[] {
+    const t = layoutTree();
+    if (!t) return [];
+    return t.t === 'split' ? t.sizes : [100];
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 describe('Holocron workspaces — Zen runner', () => {
     it('creates a new workspace (grid model) and opens it full screen', () => {
         vi.spyOn(window, 'prompt').mockReturnValue('Fresh Space');
@@ -88,7 +103,7 @@ describe('Holocron workspaces — Zen runner', () => {
 
         expect(screen.getByTestId('workspace-pane-beta')).toBeInTheDocument();
         expect(screen.queryByTestId('workspace-pane-alpha')).not.toBeInTheDocument();
-        expect(ws().splitKeys).toEqual(['beta']);
+        expect(rootKeys()).toEqual(['beta']);
     });
 
     it('adds a tab to the split, tiling two panes with a draggable divider', () => {
@@ -100,8 +115,8 @@ describe('Holocron workspaces — Zen runner', () => {
         expect(screen.getByTestId('workspace-pane-alpha')).toBeInTheDocument();
         expect(screen.getByTestId('workspace-pane-beta')).toBeInTheDocument();
         expect(screen.getByTestId('workspace-divider-1')).toBeInTheDocument();
-        expect(ws().splitKeys).toEqual(['alpha', 'beta']);
-        expect(ws().splitSizes).toEqual([50, 50]);
+        expect(rootKeys()).toEqual(['alpha', 'beta']);
+        expect(rootSizes()).toEqual([50, 50]);
     });
 
     it('dragging a divider resizes the panes and persists the new sizes', () => {
@@ -114,7 +129,7 @@ describe('Holocron workspaces — Zen runner', () => {
         fireEvent.pointerMove(window, { clientX: 300, pointerId: 1 });
         fireEvent.pointerUp(window, { clientX: 300, pointerId: 1 });
 
-        const sizes = ws().splitSizes ?? [];
+        const sizes = rootSizes();
         expect(sizes).toHaveLength(2);
         // Dragging the divider rightward grows the left pane past the right one.
         expect(sizes[0]).toBeGreaterThan(sizes[1]);
@@ -155,5 +170,90 @@ describe('Holocron workspaces — Zen runner', () => {
         expect(screen.queryByTestId('workspace-fullscreen')).not.toBeInTheDocument();
         // Back on the list (the card is shown again).
         expect(screen.getByText('“Zen Space”')).toBeInTheDocument();
+    });
+
+    it('lays out three columns via the layout preset, with empty panes to fill', () => {
+        seedWorkspace();
+        openWorkspace();
+
+        fireEvent.click(screen.getByRole('button', { name: '3 columns' }));
+
+        expect(rootKeys()).toHaveLength(3);
+        // first pane keeps existing content; the other two are empty slots awaiting content
+        expect(screen.getByTestId('workspace-pane-alpha')).toBeInTheDocument();
+        expect(screen.getAllByTestId('workspace-empty-pane')).toHaveLength(2);
+        expect(screen.getByTestId('workspace-divider-1')).toBeInTheDocument();
+        expect(screen.getByTestId('workspace-divider-2')).toBeInTheDocument();
+    });
+
+    it('fills an empty pane with any widget', () => {
+        seedWorkspace();
+        openWorkspace();
+        fireEvent.click(screen.getByRole('button', { name: '2 columns' }));
+
+        const empty = screen.getByTestId('workspace-empty-pane');
+        fireEvent.change(within(empty).getByRole('combobox'), { target: { value: 'beta' } });
+
+        expect(screen.getByTestId('workspace-pane-beta')).toBeInTheDocument();
+        expect(screen.queryByTestId('workspace-empty-pane')).not.toBeInTheDocument();
+        expect(rootKeys()).toEqual(['alpha', 'beta']);
+    });
+
+    it('fills an empty pane with any website', () => {
+        seedWorkspace();
+        vi.spyOn(window, 'prompt').mockReturnValue('example.com');
+        openWorkspace();
+        fireEvent.click(screen.getByRole('button', { name: '2 columns' }));
+
+        const empty = screen.getByTestId('workspace-empty-pane');
+        fireEvent.click(within(empty).getByRole('button', { name: /Add a website/ }));
+
+        const webTab = wsTabs(ws()).find((t) => t.kind === 'web');
+        expect(webTab?.ref).toBe('https://example.com');
+        expect(rootKeys()).toContain(webTab?.key);
+    });
+
+    it('splits a pane into rows (2D nesting)', () => {
+        seedWorkspace();
+        openWorkspace();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Split Alpha into rows' }));
+
+        const t = layoutTree();
+        expect(t?.t).toBe('split');
+        expect(t?.dir).toBe('col');                 // 'col' = stacked rows
+        expect(t?.children).toHaveLength(2);
+        expect(screen.getByTestId('workspace-pane-alpha')).toBeInTheDocument();
+        expect(screen.getByTestId('workspace-empty-pane')).toBeInTheDocument();
+        expect(screen.getByTestId('workspace-divider-1')).toBeInTheDocument();
+    });
+
+    it('nests a row-split inside a column (true 2D tree)', () => {
+        seedWorkspace();
+        openWorkspace();
+        fireEvent.click(screen.getByRole('button', { name: '2 columns' }));   // root row [alpha, slot]
+
+        fireEvent.click(screen.getByRole('button', { name: 'Split Alpha into rows' }));
+
+        const t = layoutTree();
+        expect(t?.dir).toBe('row');                 // outer = columns
+        expect(t?.children[0]?.t).toBe('split');    // first column is now a nested split
+        expect(t?.children[0]?.dir).toBe('col');    // …of rows → 2D nesting
+        expect(screen.getByTestId('workspace-divider-0-1')).toBeInTheDocument();
+    });
+
+    it('pops a pane out to detach it (app → Dwellium window event)', () => {
+        seedWorkspace();
+        const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+        openWorkspace();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Pop Alpha out to a window' }));
+
+        const ev = dispatchSpy.mock.calls
+            .map(([a]) => a)
+            .find((a) => a instanceof CustomEvent && a.type === 'dwellium:open-widget') as CustomEvent | undefined;
+        expect(ev?.detail).toMatchObject({ widgetId: 'alpha' });
+        // detaching removes the tab from the workspace (it now lives in a window)
+        expect(wsTabs(ws()).some((t) => t.ref === 'alpha')).toBe(false);
     });
 });

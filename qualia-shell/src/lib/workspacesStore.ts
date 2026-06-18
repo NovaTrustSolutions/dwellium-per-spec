@@ -26,6 +26,28 @@ export interface WsTab {
     title?: string;     // display label (host for web tabs)
 }
 
+/** A nestable split layout: a leaf hosts one tab (or empty `slot:` placeholder);
+ *  a split arranges children as a row (columns) or col (rows), each sized by a
+ *  flex weight. Enables arbitrary 2D nesting. */
+export type WsNode =
+    | { t: 'leaf'; key: string }
+    | { t: 'split'; dir: 'row' | 'col'; sizes: number[]; children: WsNode[] };
+
+function parseNode(x: unknown): WsNode | undefined {
+    if (!x || typeof x !== 'object') return undefined;
+    const n = x as { t?: unknown; key?: unknown; dir?: unknown; sizes?: unknown; children?: unknown };
+    if (n.t === 'leaf' && typeof n.key === 'string') return { t: 'leaf', key: n.key };
+    if (n.t === 'split' && (n.dir === 'row' || n.dir === 'col') && Array.isArray(n.children)) {
+        const children = n.children.map(parseNode).filter((c): c is WsNode => !!c);
+        if (children.length === 0) return undefined;
+        const sizes = Array.isArray(n.sizes) && n.sizes.length === children.length
+            ? n.sizes.map((s) => Number(s) || 0)
+            : children.map(() => 100 / children.length);
+        return { t: 'split', dir: n.dir, sizes, children };
+    }
+    return undefined;
+}
+
 export interface Workspace {
     id: string;
     name: string;
@@ -40,6 +62,7 @@ export interface Workspace {
     tabs?: WsTab[];          // apps + web pages as ordered tabs
     splitKeys?: string[];    // tab keys currently tiled in the content (length 1 = single view)
     splitSizes?: number[];   // flex weights per split pane (parallel to splitKeys)
+    splitTree?: WsNode;      // nestable 2D layout (supersedes splitKeys/splitSizes when present)
 }
 
 function resolveKey(): string {
@@ -77,6 +100,7 @@ function deserialize(raw: string | null): Workspace[] {
                 : undefined,
             splitKeys: Array.isArray(w.splitKeys) ? w.splitKeys.map(String) : undefined,
             splitSizes: Array.isArray(w.splitSizes) ? w.splitSizes.map((n: unknown) => Number(n) || 0) : undefined,
+            splitTree: parseNode((w as { splitTree?: unknown }).splitTree),
         }));
     } catch { return []; }
 }

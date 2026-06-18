@@ -1,0 +1,184 @@
+.cloud-browser {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.cloud-browser__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+.cloud-browser__url-label {
+    flex: 1;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+    background: var(--bg-desktop);
+    border-radius: 6px;
+}
+
+.cloud-browser__url-label span {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.cloud-browser__url {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    color: var(--text-primary);
+    background: transparent;
+    font: 500 13px var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+.cloud-browser__button,
+.cloud-browser__icon-button {
+    height: 34px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.05));
+    color: var(--text-primary);
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.cloud-browser__button {
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cloud-browser__icon-button {
+    width: 34px;
+    text-decoration: none;
+}
+
+.cloud-browser__button--primary {
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+    color: var(--accent);
+}
+
+.cloud-browser__button:disabled,
+.cloud-browser__icon-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.cloud-browser__meta {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    flex-shrink: 0;
+}
+
+.cloud-browser__status {
+    min-width: 58px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.cloud-browser__status.is-busy {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.13);
+}
+
+.cloud-browser__title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.cloud-browser__hint {
+    margin-left: auto;
+    display: inline-flex;
+    gap: 5px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.cloud-browser__error {
+    padding: 7px 10px;
+    color: #fecaca;
+    background: rgba(239, 68, 68, 0.13);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.cloud-browser__viewport {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: grid;
+    place-items: center;
+    background:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.025) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.025) 25%, transparent 25%),
+        var(--bg-desktop);
+    background-size: 18px 18px;
+}
+
+.cloud-browser__viewport:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 58%, transparent);
+    outline-offset: -2px;
+}
+
+.cloud-browser__frame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: crosshair;
+    user-select: none;
+}
+
+.cloud-browser__empty {
+    color: var(--text-tertiary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .cloud-browser__toolbar {
+        gap: 6px;
+        padding: 8px;
+    }
+
+    .cloud-browser__button span,
+    .cloud-browser__url-label span {
+        display: none;
+    }
+}

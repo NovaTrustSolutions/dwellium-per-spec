@@ -65,6 +65,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-tag-file', label: 'Tag File', icon: 'tag', component: 'tag-file', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-file-explorer', label: 'File Explorer', icon: 'folder-tree', component: 'file-explorer', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-workspace', label: 'Workspace', icon: 'layers', component: 'workspace', pinned: true, group: 'Filing Cabinet' },
+   { id: 'dock-cloud-browser', label: 'Cloud Browser', icon: 'globe', component: 'cloud-browser', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-docs', label: 'Docs', icon: 'file-text', component: 'doc-viewer', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-pdf-gear', label: 'PDF Gear', icon: 'file-stack', component: 'pdf-gear', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-terminal', label: 'Terminal', icon: 'terminal', component: 'terminal', pinned: true, group: 'Filing Cabinet' },

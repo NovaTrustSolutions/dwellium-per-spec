@@ -543,6 +543,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         component: lazyWithReload(() => import('../components/Terminal/Terminal')),
         category: 'tools',
     },
+    'cloud-browser': {
+        id: 'cloud-browser',
+        label: 'Cloud Browser',
+        icon: 'globe',
+        component: lazyWithReload(() => import('../components/CloudBrowser/CloudBrowser')),
+        category: 'tools',
+        minWidth: 520,
+        minHeight: 420,
+    },
     'control-panel': {
         id: 'control-panel',
         label: 'Control Panel',

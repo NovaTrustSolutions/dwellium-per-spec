@@ -80,6 +80,14 @@ describe('CloudBrowser', () => {
         expect(screen.getByText('Example')).toBeInTheDocument();
     });
 
+    it('accepts bare domains without native URL validation blocking submit', () => {
+        render(<CloudBrowser />);
+        const input = screen.getByLabelText(/URL/i) as HTMLInputElement;
+
+        expect(input.type).toBe('text');
+        expect(input.inputMode).toBe('url');
+    });
+
     it('sends scaled click coordinates to the active cloud session', async () => {
         render(<CloudBrowser />);
         await userEvent.click(screen.getByRole('button', { name: /Go/i }));

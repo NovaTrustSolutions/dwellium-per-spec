@@ -202,7 +202,7 @@ export default function CloudBrowser() {
                         value={url}
                         onChange={(event) => setUrl(event.target.value)}
                         className="cloud-browser__url"
-                        type="url"
+                        type="text"
                         inputMode="url"
                         autoCapitalize="off"
                         autoCorrect="off"

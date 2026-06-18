@@ -17,7 +17,7 @@
 |--:|-----|-------------|-------------|---------|------|
 | 1 | `delete:` | ~10 stale root process docs (gap-analyses, handoffs, status, verification, "why green isn't working") | move to `Docs/archive/` or drop | `MANUAL_DWELLIUM_GAP_ANALYSIS.md`, `WHY_GREEN_IS_NOT_WORKING.md`, `*HANDOFF*.md`, `*STATUS*.md`, `*VERIFICATION*.md`, `ASTRA_AUDIT.md`, `DOCS_VS_SCRIBE_GAP.md` | ~7,528 lines |
 | 2 | `delete:` | 8 superseded shell launchers | replaced by `Scripts/gate.sh` + scheduled tasks | `launch_*_autorun.sh` (6), `autobuild-dwellium.sh`, `launch-autobuild.sh` | ~1,048 lines |
-| 3 | `delete:` | dead code, **0 callers** anywhere | nothing | `qualia-shell/src/lib/secretsAdapter.ts` (89), `qualia-shell/src/components/UniversalShell/adapterRegistry.ts` (48) | 137 lines |
+| 3 | ~~`delete:`~~ **RETRACTED — false positive** | ~~dead code, 0 callers~~ → both files are **live** and must stay: `secretsAdapter.ts` ← `ActivationCenter.tsx` + `activation.test.tsx` (`secretsPostureLabel`, `secretBackend`); `adapterRegistry.ts` ← `UniversalShell/index.ts` + `UniversalShell.tsx` (`adaptersForSurface`). Root cause: the 0-caller grep left the `.ts` suffix on the basename, so it searched `"adapterRegistry.ts"` and never matched the extensionless imports (`from './adapterRegistry'`). Caught at implementation, before deletion. | keep | keep | 0 |
 | 4 | `delete:` | untracked local cruft — a 1.2 MB build log + throwaway push script | add to `.gitignore` | `autobuild-20260604-024151.log` (1.2 MB), `workspace_zen_gate_push.sh` | — |
 | 5 | `yagni:` | `zustand` pulled in for just **2** stores while the repo already has `createLocalStorageStore` (59×) + react-query (64×) | fold both into the house store, drop the dep | `Workspace/workspaceStore.ts`, `Scribe/scribeStore.ts` | −1 dep |
 | 6 | `delete:` | unused dependency `@lmstudio/sdk` — **0 imports** repo-wide (only the package.json line) | drop from `package.json` | `qualia-shell/package.json` | −1 dep |
@@ -26,7 +26,7 @@
 | 9 | `stdlib:` | hand-rolled deepClone via `JSON.parse(JSON.stringify(...))` | `structuredClone()` (present in runtime) | `context/HierarchyContext.tsx:48`, `utils/integrationsCrypto.ts:159` | ~−2 lines |
 | 10 | `stdlib:` | id generation via `Math.random().toString(36)` (~33 sites) while `crypto.randomUUID()` is already used in ~33 others | standardize on `crypto.randomUUID()` | repo-wide | consistency |
 
-**net: −1,200 lines code/scripts, −7,500 lines stale docs, −1 dep firm (`@lmstudio/sdk`), −1 dep possible (`zustand`).**
+**net (corrected): ~−1,050 lines scripts, ~−7,500 lines stale docs, −1 dep firm (`@lmstudio/sdk`), −1 dep possible (`zustand`). Finding #3 (−137 lines) retracted on verification — the two files are live, not dead.**
 
 ---
 
@@ -45,7 +45,7 @@
 
 - `@lmstudio/sdk`: `grep -rl "@lmstudio"` repo-wide (excl `node_modules/.git/build/dist/electron`) → only `qualia-shell/package.json`. Confirmed unused.
 - `isbot`: used in `qualia-shell/app/entry.server.tsx` → **kept**.
-- `adapterRegistry.ts` / `secretsAdapter.ts`: caller count 0 (grep of basename across `src`, excl self + tests).
+- ~~`adapterRegistry.ts` / `secretsAdapter.ts`: caller count 0~~ — **WRONG, retracted** (see finding #3). Re-checked with extensionless import grep: both are imported and live. Lesson: strip the real extension (`basename x.ts .ts`) or grep the import specifier, not the filename.
 - `zustand`: `from 'zustand'` in exactly 2 source files; `react-query` hooks in 64 sites; `createLocalStorageStore` in 59 files.
 - `VITE_API_BASE` vs `VITE_API_URL`: both present; `VITE_API_BASE` only in the 2 Strata modules listed (each `|| 'http://localhost:3000'`), bypassing `config.ts`.
 - dead scripts / scratch docs: `git ls-files` confirmed tracked; `wc -l` totals 1,048 and 7,528 respectively.

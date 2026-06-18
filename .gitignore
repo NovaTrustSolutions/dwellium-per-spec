@@ -41,6 +41,7 @@ Docs/preview-screenshots-backend/
 .create-pr.sh
 .pr-body.md
 .fuse_hidden*
+workspace_zen_gate_push.sh
 
 # CodeGraph index (local code-intelligence DB; never committed)
 .codegraph/

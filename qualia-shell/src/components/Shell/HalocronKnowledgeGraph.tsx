@@ -319,6 +319,12 @@ export default function HalocronKnowledgeGraph() {
     const [selected, setSelected] = useState<Node | null>(null);
     const [paused, setPaused] = useState(false);
     const [gdata, setGdata] = useState<KgGraphData | null>(null);
+    // The graph "owns" wheel zoom only while focused (clicked) or hovered, so the
+    // gesture never bubbles up and scrolls the page. Refs mirror the state so the
+    // native (non-passive) wheel listener reads the latest value without re-binding.
+    const [focused, setFocused] = useState(false);
+    const focusedRef = useRef(false);
+    const hoverRef = useRef(false);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const wrapRef = useRef<HTMLDivElement | null>(null);
     const nodesRef = useRef<Node[]>([]);
@@ -460,19 +466,53 @@ export default function HalocronKnowledgeGraph() {
         setSelected(best);
     };
 
-    // Scroll-wheel zoom toward the cursor (with pan preserved).
-    const onWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-        e.preventDefault();
-        const rect = e.currentTarget.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const zoomCanvasAt = useCallback((clientX: number, clientY: number, deltaY: number) => {
+        const canvas = canvasRef.current;
+        if (!canvas || deltaY === 0) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = clientX - rect.left, my = clientY - rect.top;
         const v = viewRef.current;
-        const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+        const factor = deltaY < 0 ? 1.12 : 1 / 1.12;
         const nz = Math.max(0.35, Math.min(6, v.zoom * factor));
         // keep the point under the cursor fixed
         v.ox = mx - ((mx - v.ox) / v.zoom) * nz;
         v.oy = my - ((my - v.oy) / v.zoom) * nz;
         v.zoom = nz;
-    };
+    }, []);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        // React's onWheel is registered passively, so preventDefault() there is
+        // ignored ("Unable to preventDefault inside passive event listener"). A
+        // NATIVE non-passive listener ON THE CANVAS lets the graph own the wheel
+        // gesture: scrolling over the canvas zooms the graph and the page never
+        // scrolls (preventDefault + stopPropagation). Clicking still toggles the
+        // focus ring below as a visual "this is selected" affordance.
+        const handleWheel = (event: WheelEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            zoomCanvasAt(event.clientX, event.clientY, event.deltaY);
+        };
+
+        canvas.addEventListener('wheel', handleWheel, { passive: false });
+        return () => canvas.removeEventListener('wheel', handleWheel);
+    }, [zoomCanvasAt]);
+
+    // Click inside the graph focuses it (gates wheel zoom); clicking elsewhere
+    // blurs it so the page scrolls normally again. Hover also enables zoom so the
+    // gesture feels immediate without an extra click.
+    useEffect(() => {
+        const onDocPointerDown = (e: PointerEvent) => {
+            const wrap = wrapRef.current;
+            const next = !!wrap && e.target instanceof globalThis.Node && wrap.contains(e.target);
+            focusedRef.current = next;
+            setFocused(next);
+        };
+        document.addEventListener('pointerdown', onDocPointerDown);
+        return () => document.removeEventListener('pointerdown', onDocPointerDown);
+    }, []);
 
     // ── "A map you talk to": chat about the active project, seeded with its
     // real graph structure, through any agent (routed via the user's LLM keys).
@@ -572,9 +612,14 @@ export default function HalocronKnowledgeGraph() {
                             <button onClick={() => setPaused((p) => !p)}>{paused ? 'Play' : 'Pause'}</button>
                         </div>
                     </div>
-                    <div className="kg-canvaswrap" ref={wrapRef}>
-                        <canvas ref={canvasRef} className="kg-canvas" onClick={onCanvasClick} onWheel={onWheel} />
-                        <div className="kg-legend">size = importance · <Star size={11} aria-hidden style={{ verticalAlign: 'middle' }} /> = agent · colour = cluster</div>
+                    <div
+                        className={`kg-canvaswrap ${focused ? 'is-focused' : ''}`}
+                        ref={wrapRef}
+                        onMouseEnter={() => { hoverRef.current = true; }}
+                        onMouseLeave={() => { hoverRef.current = false; }}
+                    >
+                        <canvas ref={canvasRef} className="kg-canvas" onClick={onCanvasClick} />
+                        <div className="kg-legend">size = importance · <Star size={11} aria-hidden style={{ verticalAlign: 'middle' }} /> = agent · colour = cluster · scroll to zoom</div>
                     </div>
                 </div>
 

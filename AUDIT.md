@@ -16,17 +16,17 @@
 | # | Tag | What to cut | Replacement | Path(s) | Size |
 |--:|-----|-------------|-------------|---------|------|
 | 1 | `delete:` | ~10 stale root process docs (gap-analyses, handoffs, status, verification, "why green isn't working") | move to `Docs/archive/` or drop | `MANUAL_DWELLIUM_GAP_ANALYSIS.md`, `WHY_GREEN_IS_NOT_WORKING.md`, `*HANDOFF*.md`, `*STATUS*.md`, `*VERIFICATION*.md`, `ASTRA_AUDIT.md`, `DOCS_VS_SCRIBE_GAP.md` | ~7,528 lines |
-| 2 | `delete:` | 8 superseded shell launchers | replaced by `Scripts/gate.sh` + scheduled tasks | `launch_*_autorun.sh` (6), `autobuild-dwellium.sh`, `launch-autobuild.sh` | ~1,048 lines |
-| 3 | `delete:` | dead code, **0 callers** anywhere | nothing | `qualia-shell/src/lib/secretsAdapter.ts` (89), `qualia-shell/src/components/UniversalShell/adapterRegistry.ts` (48) | 137 lines |
+| 2 | ~~`delete:`~~ **RETRACTED — false positive** | ~~8 "superseded" launchers~~ → **live autorun infrastructure**: `Scripts/autorun/logs/` is actively written, the scripts chain together + `install.sh` wires them, and the invoking launchd `.plist`s live in `~/Library/LaunchAgents` (outside the repo, unverifiable here). Verify via `launchctl list` before touching. Do not delete. | keep | keep | 0 |
+| 3 | ~~`delete:`~~ **RETRACTED — false positive** | ~~dead code, 0 callers~~ → both files are **live**: `secretsAdapter.ts` ← `ActivationCenter.tsx` + `activation.test.tsx`; `adapterRegistry.ts` ← `UniversalShell/index.ts` + `UniversalShell.tsx`. Cause: the 0-caller grep kept the `.ts` suffix on the basename, so it never matched extensionless imports. Caught before deletion. | keep | keep | 0 |
 | 4 | `delete:` | untracked local cruft — a 1.2 MB build log + throwaway push script | add to `.gitignore` | `autobuild-20260604-024151.log` (1.2 MB), `workspace_zen_gate_push.sh` | — |
 | 5 | `yagni:` | `zustand` pulled in for just **2** stores while the repo already has `createLocalStorageStore` (59×) + react-query (64×) | fold both into the house store, drop the dep | `Workspace/workspaceStore.ts`, `Scribe/scribeStore.ts` | −1 dep |
 | 6 | `delete:` | unused dependency `@lmstudio/sdk` — **0 imports** repo-wide (only the package.json line) | drop from `package.json` | `qualia-shell/package.json` | −1 dep |
 | 7 | `yagni:` | a second API-base env var `VITE_API_BASE` duplicating `VITE_API_URL`, inlined past the central config helper | import `config.ts` / `config/api.ts` instead | `StrataDashboard/modules/TrelloCardModal.tsx`, `StrataDashboard/modules/StatusCheckModule.tsx` | −1 env var |
 | 8 | `shrink:` | 3 copies of numeric `clamp(n, min, max)` | one shared util in `lib/` | `Shell/HalocronWorkspaces.tsx:25`, `Scribe/scribeLayoutStore.ts:63`, `ARAConsole/voiceVisualizerThemes.ts:39` | ~−8 lines |
 | 9 | `stdlib:` | hand-rolled deepClone via `JSON.parse(JSON.stringify(...))` | `structuredClone()` (present in runtime) | `context/HierarchyContext.tsx:48`, `utils/integrationsCrypto.ts:159` | ~−2 lines |
-| 10 | `stdlib:` | id generation via `Math.random().toString(36)` (~33 sites) while `crypto.randomUUID()` is already used in ~33 others | standardize on `crypto.randomUUID()` | repo-wide | consistency |
+| 10 | ~~`stdlib:`~~ **RETRACTED — not a safe win** | ~~standardize ids on `crypto.randomUUID()`~~ → the 33 sites are deliberately short, prefixed ids (`win-…`, `fdy-…`, `photo_…`). `randomUUID()` is a different 36-char shape; swapping changes id formats and risks breaking persisted localStorage keys. Behavior change, not an optimization — leave it. | keep | keep | 0 |
 
-**net: −1,200 lines code/scripts, −7,500 lines stale docs, −1 dep firm (`@lmstudio/sdk`), −1 dep possible (`zustand`).**
+**net (verified 2026-06-18): docs #1 partial (~2 truly orphaned), −1 dep firm (`@lmstudio/sdk`), −1 dep possible (`zustand`), + minor #8/#9. RETRACTED on verification: #2 (live autorun infra), #3 (files live), #10 (intentional id format) — ~30% of the original findings were false positives. Escalated: #7 `VITE_API_BASE` is likely a real prod bug (localhost fallback), not just complexity.**
 
 ---
 

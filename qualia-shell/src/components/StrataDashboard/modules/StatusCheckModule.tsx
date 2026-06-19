@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAuthToken } from '../../../context/UserContext';
 import { RefreshCw, Wifi, WifiOff, AlertTriangle, Clock, Server, Database, Brain, MessageSquare, Mail, Calendar, HardDrive, FileSearch, Mic, Shield } from 'lucide-react';
+import { API_BASE } from '../../../config';
 
 interface ServiceStatus {
     name: string;
@@ -40,8 +41,6 @@ const STATUS_CONFIG = {
     offline: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.2)', label: 'Offline', icon: <WifiOff size={14} /> },
     degraded: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)', label: 'Degraded', icon: <AlertTriangle size={14} /> },
 };
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 export default function StatusCheckModule() {
     const [data, setData] = useState<StatusData | null>(null);

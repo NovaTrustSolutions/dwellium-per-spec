@@ -10,8 +10,7 @@ import { getAuthToken } from '../../../context/UserContext';
 import { X, ExternalLink, Paperclip, Calendar, Tag, CheckSquare, Square, Loader, Clock, MessageSquare, Image as ImageIcon } from 'lucide-react';
 
 import type { Workitem } from '../strataTypes';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
+import { API_BASE } from '../../../config';
 
 interface TrelloAttachment {
     id: string;

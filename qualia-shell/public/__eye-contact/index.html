@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Eye-Contact Correction — Dwellium</title>
+<style>
+  :root {
+    --bg: #0a0a0a; --panel: #141414; --line: #262626; --fg: #f5f5f5;
+    --muted: #9aa0a6; --accent: #d6fe51; --accent-fg: #0a0a0a; --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px; background: var(--bg); color: var(--fg);
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+  h1 .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+  h1 .dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+  .status { font-size: 12.5px; padding: 10px 12px; border-radius: 8px; margin: 0 0 18px;
+    border: 1px solid var(--line); background: var(--panel); }
+  .status b { color: var(--accent); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .label { font-size: 14px; }
+  .row .label small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  input[type="range"] { width: 180px; accent-color: var(--accent); }
+  select { background: #0e0e0e; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; min-width: 220px; }
+  .switch { position: relative; width: 46px; height: 26px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: #333; border-radius: 999px; cursor: pointer; transition: .15s; }
+  .slider::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
+  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+  video { width: 100%; max-height: 260px; background: #000; border-radius: 10px; border: 1px solid var(--line); display: none; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  button { font: inherit; font-size: 13px; padding: 10px 16px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); background: #1c1c1c; color: var(--fg); }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+  button.ghost { background: transparent; }
+  .strength-val { display: inline-block; min-width: 38px; text-align: right; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .saved { color: var(--accent); font-size: 13px; opacity: 0; transition: opacity .2s; }
+  .saved.show { opacity: 1; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="dot" id="engineDot"></span> Eye-Contact Correction</h1>
+  <p class="sub">Look at the camera even when you're reading your notes. Applies to video calls (Zoom, Meet, Teams) run through Dwellium.</p>
+
+  <div class="status" id="status">Checking for the desktop correction engine…</div>
+
+  <div class="card">
+    <div class="row">
+      <div class="label">Enable eye-contact correction
+        <small>Master switch for gaze redirection on your outgoing video.</small>
+      </div>
+      <label class="switch"><input type="checkbox" id="enabled" /><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div class="label">Correction strength
+        <small>Subtle keeps natural movement; strong locks gaze to the lens.</small>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="range" id="strength" min="0" max="100" step="5" />
+        <span class="strength-val" id="strengthVal">60%</span>
+      </div>
+    </div>
+    <div class="row">
+      <div class="label">Only correct during active calls
+        <small>Leaves your camera untouched when you're not in a meeting.</small>
+      </div>
+      <label class="switch"><input type="checkbox" id="onlyDuringCalls" /><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div class="label">Camera
+        <small>The device the correction is applied to.</small>
+      </div>
+      <select id="camera"><option value="">Default camera</option></select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="btns">
+      <button class="ghost" id="previewBtn" type="button">Start camera preview</button>
+      <span class="hint" id="previewHint" style="margin:0;align-self:center">Preview shows your raw feed; correction is applied by the engine.</span>
+    </div>
+    <video id="preview" playsinline muted></video>
+  </div>
+
+  <div class="btns">
+    <button class="primary" id="saveBtn" type="button">Save settings</button>
+    <button class="ghost" id="closeBtn" type="button">Close</button>
+    <span class="saved" id="saved">Saved ✓</span>
+  </div>
+  <p class="hint">Settings are stored on this device under <code>dwellium:eye-contact:config</code> and picked up the next time you start a call from Dwellium.</p>
+</div>
+
+<script>
+(function () {
+  var KEY = 'dwellium:eye-contact:config';
+  var DEFAULTS = { enabled: false, strength: 60, onlyDuringCalls: true, cameraId: '' };
+  var $ = function (id) { return document.getElementById(id); };
+  var stream = null;
+
+  function getEngine() {
+    try {
+      var api = (window.opener && window.opener.electronAPI) || window.electronAPI;
+      return (api && typeof api.setEyeContactConfig === 'function') ? api : null;
+    } catch (e) { return null; }
+  }
+
+  function load() {
+    try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); }
+    catch (e) { return Object.assign({}, DEFAULTS); }
+  }
+
+  function render(cfg) {
+    $('enabled').checked = !!cfg.enabled;
+    $('strength').value = cfg.strength;
+    $('strengthVal').textContent = cfg.strength + '%';
+    $('onlyDuringCalls').checked = !!cfg.onlyDuringCalls;
+    $('engineDot').classList.toggle('on', !!cfg.enabled);
+  }
+
+  function collect() {
+    return {
+      enabled: $('enabled').checked,
+      strength: parseInt($('strength').value, 10),
+      onlyDuringCalls: $('onlyDuringCalls').checked,
+      cameraId: $('camera').value || ''
+    };
+  }
+
+  function save() {
+    var cfg = collect();
+    try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {}
+    try { if (window.opener) window.opener.postMessage({ type: 'dwellium:eye-contact:config', config: cfg }, '*'); } catch (e) {}
+    var engine = getEngine();
+    if (engine) { try { engine.setEyeContactConfig(cfg); } catch (e) {} }
+    $('engineDot').classList.toggle('on', cfg.enabled);
+    var s = $('saved'); s.classList.add('show'); setTimeout(function () { s.classList.remove('show'); }, 1600);
+  }
+
+  function showStatus() {
+    var el = $('status');
+    if (getEngine()) {
+      el.innerHTML = '<b>Desktop engine detected.</b> Your settings are applied live to outgoing video.';
+    } else {
+      el.innerHTML = 'Running in the browser — the correction engine ships with the <b>Dwellium desktop app</b>. Settings here are saved and applied when you join calls from the desktop app.';
+    }
+  }
+
+  function listCameras() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices().then(function (devices) {
+      var sel = $('camera');
+      var current = sel.value;
+      sel.innerHTML = '<option value="">Default camera</option>';
+      devices.filter(function (d) { return d.kind === 'videoinput'; }).forEach(function (d, i) {
+        var o = document.createElement('option');
+        o.value = d.deviceId;
+        o.textContent = d.label || ('Camera ' + (i + 1));
+        sel.appendChild(o);
+      });
+      var saved = load().cameraId;
+      sel.value = current || saved || '';
+    }).catch(function () {});
+  }
+
+  function togglePreview() {
+    var v = $('preview');
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null; v.style.display = 'none'; $('previewBtn').textContent = 'Start camera preview';
+      return;
+    }
+    var camId = $('camera').value;
+    var constraints = { video: camId ? { deviceId: { exact: camId } } : true, audio: false };
+    navigator.mediaDevices.getUserMedia(constraints).then(function (s) {
+      stream = s; v.srcObject = s; v.style.display = 'block'; v.play();
+      $('previewBtn').textContent = 'Stop preview';
+      listCameras(); // labels become available once permission is granted
+    }).catch(function (err) {
+      $('previewHint').textContent = 'Camera access denied or unavailable: ' + (err && err.name ? err.name : 'error');
+    });
+  }
+
+  // wire up
+  var cfg = load();
+  render(cfg);
+  showStatus();
+  listCameras();
+  $('strength').addEventListener('input', function () { $('strengthVal').textContent = $('strength').value + '%'; });
+  $('enabled').addEventListener('change', function () { $('engineDot').classList.toggle('on', $('enabled').checked); });
+  $('previewBtn').addEventListener('click', togglePreview);
+  $('saveBtn').addEventListener('click', save);
+  $('closeBtn').addEventListener('click', function () {
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    window.close();
+  });
+  window.addEventListener('beforeunload', function () { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); });
+})();
+</script>
+</body>
+</html>

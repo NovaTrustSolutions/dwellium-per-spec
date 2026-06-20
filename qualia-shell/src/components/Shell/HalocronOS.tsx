@@ -24,6 +24,7 @@ import { halocronOsStore, type HalocronOsState } from '../../lib/halocronOsStore
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
 import HalocronKnowledgeGraph, { KG_AGENTS } from './HalocronKnowledgeGraph';
 import HalocronWorkspaces from './HalocronWorkspaces';
+import CloudBrowser from '../CloudBrowser/CloudBrowser';
 import ClaudePlaybook from './ClaudePlaybook';
 import CognitiveHarness from '../CognitiveHarness/CognitiveHarness';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
@@ -107,28 +108,18 @@ const CLI_TOOLS: Record<string, { cmd: string; label: string }> = {
     antigravity: { cmd: 'antigravity', label: 'AntiGravity' },
 };
 
-// In the Electron desktop build a <webview> fully embeds external sites
-// (bypasses X-Frame-Options); the web build falls back to an <iframe>, which
-// providers like Claude/ChatGPT block — hence the "Open in browser" affordance.
+// In Electron, <webview> can embed external sites directly. In the web app,
+// blocked providers render through the backend Cloud Browser instead of an
+// iframe/launch-card fallback so Google/YouTube-style pages stay inside OS tabs.
 // NOTE: the Electron main process must set webPreferences.webviewTag = true.
 const IS_ELECTRON = typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent || '');
-function WebFrame({ url, title, color }: { url: string; title: string; color?: string }) {
-    // Electron embeds the real site (bypasses X-Frame-Options); web cannot —
-    // claude.ai/chatgpt.com/etc send X-Frame-Options: DENY, so an iframe just
-    // shows "refused to connect". On web we show a clean launch card instead.
+function WebFrame({ url, title }: { url: string; title: string }) {
     if (IS_ELECTRON) {
         return createElement('webview', { src: url, class: 'hos-web__frame', style: 'width:100%;height:100%;border:none;', allowpopups: 'true' });
     }
-    const host = (() => { try { return new URL(url).host; } catch { return url; } })();
     return (
-        <div className="hos-weblaunch">
-            <div className="hos-weblaunch__glyph" style={{ color: color || 'var(--accent)', borderColor: color || 'var(--accent)' }}>↗</div>
-            <div className="hos-weblaunch__title">{title}</div>
-            <div className="hos-weblaunch__host">{host}</div>
-            <button className="hos-weblaunch__btn" onClick={() => { try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { /* blocked */ } }}>
-                Open {title} ↗
-            </button>
-            <div className="hos-weblaunch__note">{title} blocks in-browser embedding for security, so it opens in a new tab. (The Dwellium desktop app embeds it inline.)</div>
+        <div className="hos-web__cloud" aria-label={`${title} cloud browser`}>
+            <CloudBrowser initialUrl={url} />
         </div>
     );
 }
@@ -453,7 +444,7 @@ export default function HalocronOS() {
                                         )}
                                         {t.kind === 'web' ? (
                                             <div className="hos-hosted__body hos-web">
-                                                <WebFrame url={t.url!} title={t.label} color={t.color} />
+                                                <WebFrame url={t.url!} title={t.label} />
                                             </div>
                                         ) : (
                                             <div

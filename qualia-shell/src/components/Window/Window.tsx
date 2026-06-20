@@ -9,11 +9,43 @@ import WidgetShell, { useWidgetEnhancementFlags, enhancementClasses } from './Wi
 import { useGridLock } from '../../hooks/useGridLock';
 import './Window.css';
 
+export const CLASSIC_FOCUS_FRAME_MAX_WIDTH = 1440;
+
 export interface WindowProps {
     state: WindowState;
     children: ReactNode;
     regionRect?: RegionRect;
     containerStyle?: CSSProperties;
+}
+
+type FocusWindowState = Pick<WindowState, 'id' | 'zIndex' | 'minimized' | 'maximized'>;
+
+function visibleWindowsForFocus(windows: FocusWindowState[], state: FocusWindowState): FocusWindowState[] {
+    const visible = windows.filter((w) => !w.minimized);
+    return visible.some((w) => w.id === state.id) ? visible : [state, ...visible];
+}
+
+export function isPersistentFocusWindow(windows: FocusWindowState[], state: FocusWindowState): boolean {
+    return !visibleWindowsForFocus(windows, state).some(
+        (w) => w.id !== state.id && w.zIndex > state.zIndex,
+    );
+}
+
+export function classicFocusFrameStyle(
+    windows: FocusWindowState[],
+    state: FocusWindowState,
+    options: { isRegionSnapped: boolean; isFocused: boolean },
+): CSSProperties | null {
+    const visible = visibleWindowsForFocus(windows, state);
+    if (!state.maximized || options.isRegionSnapped || !options.isFocused || visible.length !== 1) {
+        return null;
+    }
+    return {
+        left: `max(0px, calc((100% - ${CLASSIC_FOCUS_FRAME_MAX_WIDTH}px) / 2))`,
+        top: 12,
+        width: `min(100%, ${CLASSIC_FOCUS_FRAME_MAX_WIDTH}px)`,
+        height: 'calc(100% - 24px)',
+    };
 }
 
 export default function Window({ state, children, regionRect, containerStyle }: WindowProps) {
@@ -242,15 +274,16 @@ export default function Window({ state, children, regionRect, containerStyle }: 
 
     // Focused = highest zIndex among visible windows (the shell's opt-in
     // escape-to-close only fires for the focused window).
-    const isTopWindow = !windows.some(
-        (w) => !w.minimized && w.id !== state.id && w.zIndex > state.zIndex,
-    );
+    const isTopWindow = isPersistentFocusWindow(windows, state);
 
     // If region-snapped, override position/size from region rect
     const isRegionSnapped = !!regionRect;
     const baseZ = state.zIndex * 10;
     const finalZ = state.maximized ? 100000 + baseZ : baseZ;
-    const style = state.maximized
+    const classicFocusedFrame = classicFocusFrameStyle(windows, state, { isRegionSnapped, isFocused: isTopWindow });
+    const style = classicFocusedFrame
+        ? { ...classicFocusedFrame, zIndex: finalZ }
+        : state.maximized
         ? { left: 0, top: 0, width: '100%', height: '100%', zIndex: finalZ }
         : isRegionSnapped
             ? { left: regionRect.x, top: regionRect.y, width: regionRect.w, height: regionRect.h, zIndex: finalZ }
@@ -261,7 +294,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
     return (
         <div
             ref={windowRef}
-            className={`window ${state.maximized ? 'window--maximized' : ''} ${tearoffActive ? 'window--tearoff' : ''} ${locked ? 'window--locked' : ''}`}
+            className={`window ${state.maximized ? 'window--maximized' : ''} ${classicFocusedFrame ? 'window--classic-focus-frame' : ''} ${isTopWindow ? 'window--focused' : ''} ${tearoffActive ? 'window--tearoff' : ''} ${locked ? 'window--locked' : ''}`}
             style={{ ...style, ...containerStyle }}
             onMouseDown={() => focusWindow(state.id)}
         >

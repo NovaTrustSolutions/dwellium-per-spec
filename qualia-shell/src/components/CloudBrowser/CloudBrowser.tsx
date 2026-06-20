@@ -36,6 +36,16 @@ const API = `${API_BASE}/api/cloud-browser`;
 const DEFAULT_URL = 'https://example.com';
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 };
 
+interface CloudBrowserProps {
+    initialUrl?: string;
+}
+
+function normalizeBrowserUrl(raw: string): string {
+    const trimmed = raw.trim();
+    if (!trimmed) return DEFAULT_URL;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 function responseParts(json: CloudBrowserResponse): { session?: CloudBrowserSession; frame?: CloudBrowserFrame } {
     return {
         session: json.session ?? json.data?.session,
@@ -52,9 +62,10 @@ function keyToBrowserKey(event: React.KeyboardEvent): string | null {
     return null;
 }
 
-export default function CloudBrowser() {
+export default function CloudBrowser({ initialUrl = DEFAULT_URL }: CloudBrowserProps = {}) {
     const { authFetch } = useUser();
-    const [url, setUrl] = useState(DEFAULT_URL);
+    const initialBrowserUrl = useMemo(() => normalizeBrowserUrl(initialUrl), [initialUrl]);
+    const [url, setUrl] = useState(initialBrowserUrl);
     const [session, setSession] = useState<CloudBrowserSession | null>(null);
     const [frame, setFrame] = useState<CloudBrowserFrame | null>(null);
     const [status, setStatus] = useState('Idle');
@@ -134,14 +145,15 @@ export default function CloudBrowser() {
     }, [requestFrame]);
 
     useEffect(() => {
-        void start(DEFAULT_URL);
+        setUrl(initialBrowserUrl);
+        void start(initialBrowserUrl);
         return () => {
             const id = sessionIdRef.current;
             if (!id) return;
             void authFetch(`${API}/sessions/${id}`, { method: 'DELETE' }).catch(() => undefined);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [initialBrowserUrl]);
 
     useEffect(() => {
         if (!session?.id) return;

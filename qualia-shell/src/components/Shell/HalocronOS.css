@@ -239,9 +239,10 @@
 }
 
 /* ── in-OS web view (Claude/AntiGravity/Codex/ChatGPT) ── */
-.hos-web { padding: 0; position: relative; }
+.hos-web { padding: 0; position: relative; display: flex; min-height: 0; overflow: hidden; }
 .hos-web__frame { width: 100%; height: 100%; border: none; background: #fff; }
 .hos-web__note { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 11px; padding: 4px; color: var(--text-tertiary, #6f6244); background: color-mix(in srgb, var(--bg-desktop) 80%, transparent); pointer-events: none; }
+.hos-web__cloud { flex: 1; min-width: 0; min-height: 0; display: flex; }
 
 /* web launch card (shown on web where the site blocks iframe embedding) */
 .hos-weblaunch { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; max-width: 420px; padding: 40px; }
@@ -692,6 +693,7 @@ button.hos-glance__card:hover { border-color: color-mix(in srgb, var(--accent) 5
 .wsx-pane__tools button { display: grid; place-items: center; width: 24px; height: 24px; border: none; background: none; border-radius: 6px; cursor: pointer; color: var(--text-tertiary, #6f6244); }
 .wsx-pane__tools button:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .wsx-pane__body { flex: 1; min-height: 0; position: relative; overflow: auto; }
+.wsx-cloud-browser { width: 100%; height: 100%; min-height: 0; }
 .wsx-webwrap { position: relative; width: 100%; height: 100%; }
 .wsx-web { width: 100%; height: 100%; border: none; background: #fff; }
 .wsx-web-open {

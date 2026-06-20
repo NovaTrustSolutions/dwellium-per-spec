@@ -88,6 +88,16 @@ describe('CloudBrowser', () => {
         expect(input.inputMode).toBe('url');
     });
 
+    it('starts the hosted browser at a supplied initial URL', async () => {
+        render(<CloudBrowser initialUrl="https://google.com" />);
+
+        await waitFor(() => {
+            const sessionCall = mockAuthFetch.mock.calls.find((call) => String(call[0]).endsWith('/api/cloud-browser/sessions'));
+            expect(sessionCall).toBeTruthy();
+            expect(JSON.parse(String(sessionCall![1]?.body))).toMatchObject({ url: 'https://google.com' });
+        });
+    });
+
     it('sends scaled click coordinates to the active cloud session', async () => {
         render(<CloudBrowser />);
         await userEvent.click(screen.getByRole('button', { name: /Go/i }));

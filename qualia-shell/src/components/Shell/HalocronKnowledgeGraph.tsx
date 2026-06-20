@@ -17,18 +17,17 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { MessageSquare, Sparkles, Star } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm } from '../../lib/llmClient';
+import {
+    DEFAULT_KG_PROJECTS,
+    setKgActiveProject,
+    upsertKgProject,
+    useHalocronKnowledgeGraphState,
+    type KgGraphData,
+    type KgProject,
+} from '../../lib/halocronKnowledgeGraphStore';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import AgentEta from '../common/AgentEta';
 import './HalocronKnowledgeGraph.css';
-
-export interface KgProject {
-    id: string;
-    name: string;
-    lang: string;
-    files: number;
-    clusters: number;
-    blurb: string;
-}
 
 export interface KgAgent {
     id: string;
@@ -47,64 +46,9 @@ export const KG_AGENTS: KgAgent[] = [
     { id: 'honcho', name: 'Honcho', god: 'Mnemosyne', color: '#34d399', online: false },
 ];
 
-// files/clusters below are REAL counts from the static import-graph build
-// (Scripts/kg_analyze → public/data/kg/<id>.json). Hermes is the LIVE graphify
-// backend corpus. The others load their real graph JSON on selection.
-// files/clusters are REAL counts from the static import-graph build
-// (Scripts/kg_analyze → public/data/kg/<id>.json). Each project loads its real
-// graph JSON (nodes/edges/important files/savings) on selection.
-const DEFAULT_PROJECTS: KgProject[] = [
-    { id: 'hermes', name: 'Hermes Agent', lang: 'PYTHON', files: 3278, clusters: 18, blurb: 'NousResearch/hermes-agent — graphed from the repo.' },
-    { id: 'stella', name: 'Stella', lang: 'PYTHON', files: 179, clusters: 4, blurb: 'ultraworkers/claw-code — graphed from the repo.' },
-    { id: 'claude', name: 'Claude Code', lang: 'TYPESCRIPT', files: 99, clusters: 3, blurb: 'anthropics/claude-code-action — graphed from the repo.' },
-    { id: 'antigravity', name: 'AntiGravity', lang: 'PYTHON', files: 68, clusters: 2, blurb: 'google-antigravity/antigravity-sdk-python — graphed from the repo.' },
-    { id: 'chatgpt', name: 'ChatGPT', lang: 'TYPESCRIPT', files: 39, clusters: 3, blurb: 'lencx/ChatGPT — graphed from the repo.' },
-    { id: 'codex', name: 'Codex', lang: 'RUST', files: 2931, clusters: 6, blurb: 'openai/codex — graphed from the repo.' },
-];
-
-const KG_PROJECTS_KEY = 'dwellium:kg-projects';
-const KG_ACTIVE_KEY = 'dwellium:kg-active-project';
-
-/** User-added projects persist in localStorage so they survive remounts —
- *  e.g. switching Halocron OS tabs. DEFAULT_PROJECTS always show; saved extras
- *  (graphed repos) are merged in after them. SSR-guarded (returns defaults on
- *  the server). */
-function loadKgProjects(): KgProject[] {
-    if (typeof window === 'undefined') return DEFAULT_PROJECTS;
-    try {
-        const raw = window.localStorage.getItem(KG_PROJECTS_KEY);
-        const saved: KgProject[] = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(saved)) return DEFAULT_PROJECTS;
-        const defaultIds = new Set(DEFAULT_PROJECTS.map((p) => p.id));
-        const extras = saved.filter((p) => p && typeof p.id === 'string' && !defaultIds.has(p.id));
-        return [...DEFAULT_PROJECTS, ...extras];
-    } catch {
-        return DEFAULT_PROJECTS;
-    }
-}
-function loadKgActive(): string {
-    if (typeof window === 'undefined') return DEFAULT_PROJECTS[0].id;
-    try {
-        return window.localStorage.getItem(KG_ACTIVE_KEY) || DEFAULT_PROJECTS[0].id;
-    } catch {
-        return DEFAULT_PROJECTS[0].id;
-    }
-}
-
-interface KgGraphData {
-    files: number; edges: number; clusters: number; tokens: number; usdPerSession: number;
-    importantFiles: { name: string; score: number; pct: number }[];
-    nodes: { label: string; cluster: number; importance: number; deg: number }[];
-    links: [number, number][];
-    builtAt: string;
-}
-
 // Cluster palette (colour = cluster, as the reference legend says).
 const CLUSTER_COLORS = ['#4d8aff', '#34d399', '#e7c879', '#ff5a8a', '#a855f7', '#22d3ee', '#f97316', '#e01e2b'];
 
-// User-graphed repos cache their built graph here (per project id), so the graph
-// renders on selection + survives reloads — no backend required.
-const KG_GDATA_PREFIX = 'dwellium:kg-gdata:';
 const KG_CODE_EXT = /\.(ts|tsx|js|jsx|py|rs|go|java|rb|c|h|hpp|cpp|cc|cs|php|swift|kt|scala|vue|svelte|mjs|cjs|sql)$/i;
 
 /**
@@ -314,8 +258,7 @@ function buildGraph(project: KgProject, w: number, h: number, data: KgGraphData 
 }
 
 export default function HalocronKnowledgeGraph() {
-    const [projects, setProjects] = useState<KgProject[]>(loadKgProjects);
-    const [activeId, setActiveId] = useState<string>(loadKgActive);
+    const kgState = useHalocronKnowledgeGraphState();
     const [selected, setSelected] = useState<Node | null>(null);
     const [paused, setPaused] = useState(false);
     const [gdata, setGdata] = useState<KgGraphData | null>(null);
@@ -336,33 +279,24 @@ export default function HalocronKnowledgeGraph() {
     const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; moved: boolean } | null>(null);
     const suppressNextClickRef = useRef(false);
 
+    const projects = useMemo(() => {
+        const defaultIds = new Set(DEFAULT_KG_PROJECTS.map((p) => p.id));
+        const extras = kgState.extras.filter((p) => !defaultIds.has(p.id));
+        return [...DEFAULT_KG_PROJECTS, ...extras];
+    }, [kgState.extras]);
+    const activeId = projects.some((p) => p.id === kgState.activeId)
+        ? kgState.activeId
+        : DEFAULT_KG_PROJECTS[0].id;
     const project = useMemo(() => projects.find((p) => p.id === activeId) ?? projects[0], [projects, activeId]);
     const graphed = !!gdata;
-
-    // Persist user-added projects + the active tab so they survive remounts
-    // (switching Halocron OS tabs unmounts/remounts this panel).
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        try {
-            const defaultIds = new Set(DEFAULT_PROJECTS.map((p) => p.id));
-            const extras = projects.filter((p) => !defaultIds.has(p.id));
-            window.localStorage.setItem(KG_PROJECTS_KEY, JSON.stringify(extras));
-        } catch { /* ignore */ }
-    }, [projects]);
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        try { window.localStorage.setItem(KG_ACTIVE_KEY, activeId); } catch { /* ignore */ }
-    }, [activeId]);
 
     // Load the REAL per-repo graph JSON (public/data/kg/<id>.json) on selection.
     useEffect(() => {
         let cancelled = false;
         setGdata(null);
-        // User-graphed repos live in localStorage; default projects ship a static JSON.
-        let cached: string | null = null;
-        try { cached = typeof window !== 'undefined' ? window.localStorage.getItem(KG_GDATA_PREFIX + activeId) : null; } catch { cached = null; }
+        const cached = kgState.graphs[activeId];
         if (cached) {
-            try { setGdata(JSON.parse(cached) as KgGraphData); } catch { /* corrupt cache — ignore */ }
+            setGdata(cached);
         } else {
             fetch(`/data/kg/${activeId}.json`)
                 .then((r) => (r.ok ? r.json() : null))
@@ -370,7 +304,7 @@ export default function HalocronKnowledgeGraph() {
                 .catch(() => { /* no graph file for this project — fall back to representative */ });
         }
         return () => { cancelled = true; };
-    }, [activeId]);
+    }, [activeId, kgState.graphs]);
 
     // (Re)build the render graph when the project, data, or canvas size changes.
     const rebuild = useCallback(() => {
@@ -644,12 +578,10 @@ export default function HalocronKnowledgeGraph() {
         setAdding(true);
         try {
             // Graph the repo CLIENT-SIDE via the GitHub API (no backend needed) — two
-            // calls (repo + recursive file tree). Cache the result so it renders on
-            // selection and survives reloads.
+            // calls (repo + recursive file tree). Save the result to the account
+            // resume store so it renders on every machine after login.
             const { project, gdata } = await graphGithubRepo(url);
-            try { window.localStorage.setItem(KG_GDATA_PREFIX + project.id, JSON.stringify(gdata)); } catch { /* quota — still renders this session */ }
-            setProjects((ps) => ps.some((p) => p.id === project.id) ? ps : [...ps, project]);
-            setActiveId(project.id);
+            upsertKgProject(project, gdata);
         } catch (e) {
             window.alert(`Could not graph that repo:\n${(e as Error).message}`);
         } finally {
@@ -664,7 +596,7 @@ export default function HalocronKnowledgeGraph() {
                 {projects.map((p) => (
                     <button key={p.id} type="button"
                         className={`kg-tab ${p.id === activeId ? 'on' : ''}`}
-                        onClick={() => setActiveId(p.id)}>
+                        onClick={() => setKgActiveProject(p.id)}>
                         <div className="kg-tab__top"><span className="kg-tab__name">{p.name}</span><span className="kg-tab__lang">{p.lang}</span></div>
                         <div className="kg-tab__blurb">{p.blurb}</div>
                         <div className="kg-tab__meta">{p.files.toLocaleString()} files · {p.clusters} clusters</div>

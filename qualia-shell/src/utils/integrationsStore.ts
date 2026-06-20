@@ -37,6 +37,10 @@ function remoteObjectId(userId: string): string {
 /** Persist only the encrypted bundle through One Save. */
 async function syncEncryptedBundle(bundle: IntegrationsBundle, userId: string | null): Promise<void> {
     if (!userId || bundleHasPlaintextSecret(bundle)) return;
+    // Encryption is async. If the user switches accounts while a save is still
+    // pending, do not send the old user's encrypted bundle under the new
+    // session token.
+    if (integrationsUserIdHolder.current !== userId) return;
     const { oneSaveClient } = await import('../lib/oneSaveClient');
     await oneSaveClient.put({
         id: remoteObjectId(userId),

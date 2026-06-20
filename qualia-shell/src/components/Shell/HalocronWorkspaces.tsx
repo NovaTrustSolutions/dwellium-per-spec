@@ -17,6 +17,7 @@ import { ArrowLeft, Plus, X, Globe, AppWindow, Columns2, Rows2, ExternalLink, St
 import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
+import CloudBrowser from '../CloudBrowser/CloudBrowser';
 import {
     useWorkspaces, saveWorkspaces, workspacesStore, newWorkspaceId, newTabKey, wsTabs,
     type Workspace, type WsTab, type WsTabKind, type WsNode,
@@ -127,26 +128,17 @@ function AppPane({ id }: { id: string }) {
 }
 
 function WebPane({ url, title }: { url: string; title: string }) {
-    // Electron embeds the real site (bypasses X-Frame-Options); on web an <iframe>
-    // is best-effort — some providers refuse embedding, so panes carry a pop-out.
+    // Electron embeds the real site directly; the web build uses Cloud Browser
+    // below because cross-origin iframe embeds are often blocked by providers.
     if (IS_ELECTRON) {
         return createElement('webview', { src: url, class: 'wsx-web', style: 'width:100%;height:100%;border:none;', allowpopups: 'true' });
     }
-    // Web build: embed via <iframe>. Many big sites send X-Frame-Options/CSP that
-    // forbid framing — those render blank, so we always overlay a non-destructive
-    // "Open ↗" so the page is never a dead end. (Embeddable sites show inline.)
+    // Web build: use the backend Cloud Browser rather than an iframe. Google,
+    // YouTube, and other major sites reject iframe embedding; Cloud Browser
+    // drives a hosted browser and streams the viewport back into the workspace.
     return (
-        <div className="wsx-webwrap">
-            <iframe
-                className="wsx-web"
-                src={url}
-                title={title}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-                referrerPolicy="no-referrer"
-            />
-            <a className="wsx-web-open" href={url} target="_blank" rel="noopener noreferrer" title={`Open ${title} in a new browser tab`}>
-                Open ↗
-            </a>
+        <div className="wsx-cloud-browser" aria-label={`${title} cloud browser`}>
+            <CloudBrowser initialUrl={url} />
         </div>
     );
 }

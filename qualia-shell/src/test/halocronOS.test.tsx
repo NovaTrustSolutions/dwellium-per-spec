@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { halocronOsStore } from '../lib/halocronOsStore';
 import { UserContext, type DwelliumUser } from '../context/UserContext';
 
@@ -42,6 +42,14 @@ vi.mock('../components/Shell/HalocronKnowledgeGraph', () => ({
 
 vi.mock('../components/Shell/HalocronWorkspaces', () => ({
     default: () => <div>Workspaces panel</div>,
+}));
+
+vi.mock('../components/CloudBrowser/CloudBrowser', () => ({
+    default: ({ initialUrl }: { initialUrl?: string }) => (
+        <div data-testid="halocron-cloud-browser" data-initial-url={initialUrl}>
+            Cloud Browser
+        </div>
+    ),
 }));
 
 vi.mock('../components/CognitiveHarness/CognitiveHarness', () => ({
@@ -172,5 +180,17 @@ describe('Holocron OS smart tab shell', () => {
         renderHalocronForUser(makeUser({ id: 'lisa', email: 'lisa@dwellium.com', name: '' }));
 
         expect(screen.getByText(/Good (morning|afternoon|evening), Lisa\./)).toBeInTheDocument();
+    });
+
+    it('renders hosted web tabs through Cloud Browser instead of a blocked embed launch card', () => {
+        openHalocron();
+
+        const chatgptCard = screen.getByText('ChatGPT').closest('.hos-launch__card');
+        expect(chatgptCard).toBeTruthy();
+        fireEvent.click(within(chatgptCard as HTMLElement).getByRole('button', { name: 'Open' }));
+
+        expect(screen.getByTestId('halocron-cloud-browser')).toHaveAttribute('data-initial-url', 'https://chatgpt.com');
+        expect(screen.queryByText(/blocks in-browser embedding/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/desktop app embeds/i)).not.toBeInTheDocument();
     });
 });

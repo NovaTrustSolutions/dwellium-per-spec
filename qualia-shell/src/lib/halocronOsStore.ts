@@ -9,6 +9,8 @@
  * convention (sister to widgetEnhancementsStore). getServerSnapshot returns a
  * stable default so SSR/first-paint never throws.
  */
+import { createLocalStorageStore } from '../utils/createLocalStorageStore';
+import { withSyncStatic } from './oneSaveStore';
 
 export interface HalocronOsState {
     /** Holocron OS is the chosen interface layout (vs. Classic desktop). */
@@ -25,7 +27,7 @@ export interface HalocronOsState {
     splitLayout: 'single' | 'two' | 'three' | 'quad';
 }
 
-const DEFAULT: HalocronOsState = {
+export const DEFAULT_HOLOCRON_OS_STATE: HalocronOsState = {
     enabled: false,
     open: false,
     compactChrome: false,
@@ -34,58 +36,75 @@ const DEFAULT: HalocronOsState = {
 };
 const KEY = 'dwellium-halocron-os';
 
-function read(): HalocronOsState {
+function normalize(raw: unknown): HalocronOsState {
+    if (!raw || typeof raw !== 'object') return { ...DEFAULT_HOLOCRON_OS_STATE };
+    const parsed = raw as Partial<HalocronOsState>;
+    return {
+        ...DEFAULT_HOLOCRON_OS_STATE,
+        ...parsed,
+        splitLayout: ['single', 'two', 'three', 'quad'].includes(parsed.splitLayout ?? '')
+            ? parsed.splitLayout!
+            : DEFAULT_HOLOCRON_OS_STATE.splitLayout,
+    };
+}
+
+function deserialize(raw: string | null): HalocronOsState {
     try {
-        const raw = localStorage.getItem(KEY);
-        if (!raw) return DEFAULT;
-        return { ...DEFAULT, ...(JSON.parse(raw) as Partial<HalocronOsState>) };
+        if (!raw) return { ...DEFAULT_HOLOCRON_OS_STATE };
+        return normalize(JSON.parse(raw));
     } catch {
-        return DEFAULT;
+        return { ...DEFAULT_HOLOCRON_OS_STATE };
     }
 }
 
-let current: HalocronOsState = read();
-const listeners = new Set<() => void>();
+const syncedStore = withSyncStatic(
+    createLocalStorageStore<HalocronOsState>({
+        key: KEY,
+        deserializer: deserialize,
+        defaultValue: { ...DEFAULT_HOLOCRON_OS_STATE },
+    }),
+    { objectType: 'halocron-os', storageKey: KEY },
+);
 
 function commit(next: HalocronOsState): void {
-    current = next;
-    try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* sandboxed */ }
-    listeners.forEach((l) => l());
+    syncedStore.set(normalize(next), () => {
+        try { localStorage.setItem(KEY, JSON.stringify(normalize(next))); } catch { /* sandboxed */ }
+    });
 }
 
 export const halocronOsStore = {
     subscribe(listener: () => void): () => void {
-        listeners.add(listener);
-        return () => { listeners.delete(listener); };
+        return syncedStore.subscribe(listener);
     },
     getSnapshot(): HalocronOsState {
-        return current;
+        return syncedStore.getSnapshot();
     },
     getServerSnapshot(): HalocronOsState {
-        return DEFAULT;
+        return { ...DEFAULT_HOLOCRON_OS_STATE };
     },
     /** Switch interface layout. Entering Holocron OS shows the shell. */
     setEnabled(enabled: boolean): void {
-        commit({ ...current, enabled, open: enabled });
+        commit({ ...syncedStore.getSnapshot(), enabled, open: enabled });
     },
     /** Show/hide the OS overlay (launcher rune ↔ open widget). */
     setOpen(open: boolean): void {
-        commit({ ...current, open });
+        commit({ ...syncedStore.getSnapshot(), open });
     },
     setCompactChrome(compactChrome: boolean): void {
-        commit({ ...current, compactChrome });
+        commit({ ...syncedStore.getSnapshot(), compactChrome });
     },
     setFocusCanvas(focusCanvas: boolean): void {
-        commit({ ...current, focusCanvas });
+        commit({ ...syncedStore.getSnapshot(), focusCanvas });
     },
     setSplitLayout(splitLayout: HalocronOsState['splitLayout']): void {
-        commit({ ...current, splitLayout });
+        commit({ ...syncedStore.getSnapshot(), splitLayout });
     },
     toggleOpen(): void {
+        const current = syncedStore.getSnapshot();
         commit({ ...current, open: !current.open });
     },
     /** Standing convention: reset to defaults. */
     reset(): void {
-        commit({ ...DEFAULT });
+        commit({ ...DEFAULT_HOLOCRON_OS_STATE });
     },
 };

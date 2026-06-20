@@ -20,6 +20,19 @@ class MockResizeObserver {
     disconnect = vi.fn();
 }
 
+const makePointerEvent = (
+    type: string,
+    init: MouseEventInit & { pointerId?: number } = {},
+) => {
+    const event = new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        ...init,
+    }) as PointerEvent;
+    Object.defineProperty(event, 'pointerId', { value: init.pointerId ?? 1 });
+    return event;
+};
+
 describe('HalocronKnowledgeGraph zoom handling', () => {
     beforeEach(() => {
         localStorage.clear();
@@ -72,5 +85,66 @@ describe('HalocronKnowledgeGraph zoom handling', () => {
         expect(wheel.defaultPrevented).toBe(true);
         expect(dispatched).toBe(false);
         expect(bodyWheel).not.toHaveBeenCalled();
+    });
+
+    it('pans the graph with a left-button pointer drag instead of scrolling the graph container', () => {
+        const addEventListenerSpy = vi.spyOn(HTMLCanvasElement.prototype, 'addEventListener');
+        const { container } = render(<HalocronKnowledgeGraph />);
+        const canvas = container.querySelector<HTMLCanvasElement>('.kg-canvas');
+        const body = container.querySelector<HTMLElement>('.kg-body');
+        expect(canvas).not.toBeNull();
+        expect(body).not.toBeNull();
+
+        Object.defineProperty(canvas, 'getBoundingClientRect', {
+            value: () => ({
+                left: 0,
+                top: 0,
+                right: 800,
+                bottom: 520,
+                width: 800,
+                height: 520,
+                x: 0,
+                y: 0,
+                toJSON: () => ({}),
+            }),
+        });
+
+        const pointerDownRegistration = addEventListenerSpy.mock.calls.find(([eventName]) => eventName === 'pointerdown');
+        expect(pointerDownRegistration).toBeTruthy();
+
+        const bodyPointerMove = vi.fn();
+        body!.addEventListener('pointermove', bodyPointerMove);
+
+        const pointerDown = makePointerEvent('pointerdown', {
+            button: 0,
+            buttons: 1,
+            clientX: 100,
+            clientY: 100,
+            pointerId: 7,
+        });
+        const downDispatched = canvas!.dispatchEvent(pointerDown);
+
+        const pointerMove = makePointerEvent('pointermove', {
+            button: 0,
+            buttons: 1,
+            clientX: 160,
+            clientY: 135,
+            pointerId: 7,
+        });
+        const moveDispatched = canvas!.dispatchEvent(pointerMove);
+
+        canvas!.dispatchEvent(makePointerEvent('pointerup', {
+            button: 0,
+            buttons: 0,
+            clientX: 160,
+            clientY: 135,
+            pointerId: 7,
+        }));
+
+        expect(pointerDown.defaultPrevented).toBe(true);
+        expect(downDispatched).toBe(false);
+        expect(pointerMove.defaultPrevented).toBe(true);
+        expect(moveDispatched).toBe(false);
+        expect(bodyPointerMove).not.toHaveBeenCalled();
     });
 });

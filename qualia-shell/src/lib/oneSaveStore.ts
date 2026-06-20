@@ -176,8 +176,8 @@ export const oneSaveSync = {
      */
     async bootstrap(userId: string | null): Promise<void> {
         currentUserId = userId;
-        if (!ONE_SAVE_ENABLED || !userId) return;
         for (const e of registry) e.setOwner(userId);
+        if (!ONE_SAVE_ENABLED || !userId) return;
         for (const e of registry) await e.hydrate();
         for (const e of registry) await e.migrate();
     },

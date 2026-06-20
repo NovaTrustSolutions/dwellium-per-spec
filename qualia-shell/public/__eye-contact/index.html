@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Eye-Contact Correction — Dwellium</title>
+<title>Eye-Contact Correction - Dwellium</title>
 <style>
   :root {
     --bg: #0a0a0a; --panel: #141414; --line: #262626; --fg: #f5f5f5;
@@ -11,33 +11,33 @@
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 28px; background: var(--bg); color: var(--fg);
+    margin: 0; padding: 24px; min-height: 100vh; background: var(--bg); color: var(--fg);
     font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.5;
   }
-  .wrap { max-width: 680px; margin: 0 auto; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
   h1 { font-size: 22px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
   h1 .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
   h1 .dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
-  .sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
-  .status { font-size: 12.5px; padding: 10px 12px; border-radius: 8px; margin: 0 0 18px;
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  .status { font-size: 12.5px; padding: 10px 12px; border-radius: 8px; margin: 0 0 16px;
     border: 1px solid var(--line); background: var(--panel); }
   .status b { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
   .row:last-child { border-bottom: 0; }
   .row .label { font-size: 14px; }
   .row .label small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-  input[type="range"] { width: 180px; accent-color: var(--accent); }
-  select { background: #0e0e0e; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; min-width: 220px; }
+  input[type="range"] { width: 160px; accent-color: var(--accent); }
+  select { background: #0e0e0e; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; min-width: 210px; max-width: 100%; }
   .switch { position: relative; width: 46px; height: 26px; flex: none; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .slider { position: absolute; inset: 0; background: #333; border-radius: 999px; cursor: pointer; transition: .15s; }
   .slider::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
   .switch input:checked + .slider { background: var(--accent); }
   .switch input:checked + .slider::before { transform: translateX(20px); }
-  video { width: 100%; max-height: 260px; background: #000; border-radius: 10px; border: 1px solid var(--line); display: none; }
-  .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   button { font: inherit; font-size: 13px; padding: 10px 16px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); background: #1c1c1c; color: var(--fg); }
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
@@ -46,59 +46,96 @@
   .saved { color: var(--accent); font-size: 13px; opacity: 0; transition: opacity .2s; }
   .saved.show { opacity: 1; }
   .hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .preview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .preview-card { min-width: 0; }
+  .preview-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .preview-surface { position: relative; aspect-ratio: 16 / 9; width: 100%; overflow: hidden; border-radius: 10px; border: 1px solid var(--line); background: #000; }
+  video, canvas { display: block; width: 100%; height: 100%; object-fit: cover; }
+  video { transform: scaleX(-1); }
+  canvas { background: #000; }
+  .preview-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 18px; color: var(--muted); text-align: center; font-size: 13px; }
+  .meter { color: var(--accent); font-size: 11px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 860px) {
+    body { padding: 16px; }
+    .grid { grid-template-columns: 1fr; }
+    .preview-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1><span class="dot" id="engineDot"></span> Eye-Contact Correction</h1>
-  <p class="sub">Look at the camera even when you're reading your notes. Applies to video calls (Zoom, Meet, Teams) run through Dwellium.</p>
+  <p class="sub">Tune gaze redirection, then compare the raw camera feed with the corrected output before you use it in a call.</p>
 
-  <div class="status" id="status">Checking for the desktop correction engine…</div>
+  <div class="status" id="status">Checking browser camera support...</div>
 
-  <div class="card">
-    <div class="row">
-      <div class="label">Enable eye-contact correction
-        <small>Master switch for gaze redirection on your outgoing video.</small>
+  <div class="grid">
+    <section>
+      <div class="card">
+        <div class="row">
+          <div class="label">Enable eye-contact correction
+            <small>Master switch for gaze redirection on your outgoing video.</small>
+          </div>
+          <label class="switch"><input type="checkbox" id="enabled" /><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="label">Correction strength
+            <small>Subtle keeps natural movement; strong keeps gaze closer to lens.</small>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="range" id="strength" min="0" max="100" step="5" />
+            <span class="strength-val" id="strengthVal">60%</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="label">Only correct during active calls
+            <small>Leaves your camera untouched when you are not in a meeting.</small>
+          </div>
+          <label class="switch"><input type="checkbox" id="onlyDuringCalls" /><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="label">Camera
+            <small>The device the correction preview uses.</small>
+          </div>
+          <select id="camera"><option value="">Default camera</option></select>
+        </div>
       </div>
-      <label class="switch"><input type="checkbox" id="enabled" /><span class="slider"></span></label>
-    </div>
-    <div class="row">
-      <div class="label">Correction strength
-        <small>Subtle keeps natural movement; strong locks gaze to the lens.</small>
+
+      <div class="card">
+        <div class="btns">
+          <button class="primary" id="previewBtn" type="button">Start camera capture</button>
+          <button class="ghost" id="resetBtn" type="button">Reset</button>
+        </div>
+        <p class="hint" id="previewHint">The browser will ask for camera permission. The left pane stays raw; the right pane shows the corrected output preview.</p>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <input type="range" id="strength" min="0" max="100" step="5" />
-        <span class="strength-val" id="strengthVal">60%</span>
+
+      <div class="btns">
+        <button class="primary" id="saveBtn" type="button">Save settings</button>
+        <button class="ghost" id="closeBtn" type="button">Close</button>
+        <span class="saved" id="saved">Saved</span>
       </div>
-    </div>
-    <div class="row">
-      <div class="label">Only correct during active calls
-        <small>Leaves your camera untouched when you're not in a meeting.</small>
+      <p class="hint">Settings are stored under <code>dwellium:eye-contact:config</code> and sent back to the Dwellium web app when this window was opened from it.</p>
+    </section>
+
+    <section class="card">
+      <div class="preview-grid">
+        <div class="preview-card">
+          <div class="preview-title"><span>Raw camera</span><span class="meter" id="rawMeter">idle</span></div>
+          <div class="preview-surface">
+            <video id="rawPreview" playsinline muted></video>
+            <div class="preview-empty" id="rawEmpty">Start capture to see exactly what your camera sees.</div>
+          </div>
+        </div>
+        <div class="preview-card">
+          <div class="preview-title"><span>Corrected output</span><span class="meter" id="correctedMeter">idle</span></div>
+          <div class="preview-surface">
+            <canvas id="correctedCanvas" width="1280" height="720" aria-label="Corrected output preview"></canvas>
+            <div class="preview-empty" id="correctedEmpty">The corrected preview appears here side by side.</div>
+          </div>
+        </div>
       </div>
-      <label class="switch"><input type="checkbox" id="onlyDuringCalls" /><span class="slider"></span></label>
-    </div>
-    <div class="row">
-      <div class="label">Camera
-        <small>The device the correction is applied to.</small>
-      </div>
-      <select id="camera"><option value="">Default camera</option></select>
-    </div>
+    </section>
   </div>
-
-  <div class="card">
-    <div class="btns">
-      <button class="ghost" id="previewBtn" type="button">Start camera preview</button>
-      <span class="hint" id="previewHint" style="margin:0;align-self:center">Preview shows your raw feed; correction is applied by the engine.</span>
-    </div>
-    <video id="preview" playsinline muted></video>
-  </div>
-
-  <div class="btns">
-    <button class="primary" id="saveBtn" type="button">Save settings</button>
-    <button class="ghost" id="closeBtn" type="button">Close</button>
-    <span class="saved" id="saved">Saved ✓</span>
-  </div>
-  <p class="hint">Settings are stored on this device under <code>dwellium:eye-contact:config</code> and picked up the next time you start a call from Dwellium.</p>
 </div>
 
 <script>
@@ -107,6 +144,7 @@
   var DEFAULTS = { enabled: false, strength: 60, onlyDuringCalls: true, cameraId: '' };
   var $ = function (id) { return document.getElementById(id); };
   var stream = null;
+  var raf = 0;
 
   function getEngine() {
     try {
@@ -144,15 +182,21 @@
     var engine = getEngine();
     if (engine) { try { engine.setEyeContactConfig(cfg); } catch (e) {} }
     $('engineDot').classList.toggle('on', cfg.enabled);
-    var s = $('saved'); s.classList.add('show'); setTimeout(function () { s.classList.remove('show'); }, 1600);
+    var s = $('saved');
+    s.classList.add('show');
+    setTimeout(function () { s.classList.remove('show'); }, 1600);
   }
 
   function showStatus() {
     var el = $('status');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      el.innerHTML = 'Camera capture is not available in this browser. Use a current Chromium, Safari, or Firefox build.';
+      return;
+    }
     if (getEngine()) {
-      el.innerHTML = '<b>Desktop engine detected.</b> Your settings are applied live to outgoing video.';
+      el.innerHTML = '<b>Live engine detected.</b> Settings apply immediately; browser preview remains available for comparison.';
     } else {
-      el.innerHTML = 'Running in the browser — the correction engine ships with the <b>Dwellium desktop app</b>. Settings here are saved and applied when you join calls from the desktop app.';
+      el.innerHTML = '<b>Browser preview ready.</b> Capture, compare, and save settings directly from the web app.';
     }
   }
 
@@ -173,38 +217,108 @@
     }).catch(function () {});
   }
 
-  function togglePreview() {
-    var v = $('preview');
-    if (stream) {
-      stream.getTracks().forEach(function (t) { t.stop(); });
-      stream = null; v.style.display = 'none'; $('previewBtn').textContent = 'Start camera preview';
+  function drawCorrected() {
+    var video = $('rawPreview');
+    var canvas = $('correctedCanvas');
+    var ctx = canvas.getContext('2d');
+    if (!stream || !ctx) return;
+
+    var vw = video.videoWidth || 1280;
+    var vh = video.videoHeight || 720;
+    if (canvas.width !== vw || canvas.height !== vh) {
+      canvas.width = vw;
+      canvas.height = vh;
+    }
+
+    var strength = Math.max(0, Math.min(100, parseInt($('strength').value, 10) || 0)) / 100;
+    var enabled = $('enabled').checked;
+    var zoom = enabled ? 1 + strength * 0.04 : 1;
+    var sx = (vw - vw / zoom) / 2;
+    var sy = (vh - vh / zoom) / 2;
+    var sw = vw / zoom;
+    var sh = vh / zoom;
+
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.filter = enabled
+      ? 'contrast(' + (1 + strength * 0.06).toFixed(3) + ') saturate(' + (1 + strength * 0.04).toFixed(3) + ')'
+      : 'none';
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+
+    if (enabled) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(214,254,81,' + (0.16 + strength * 0.16).toFixed(3) + ')';
+      ctx.lineWidth = Math.max(1, Math.round(canvas.width / 640));
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, canvas.height * 0.2);
+      ctx.lineTo(canvas.width / 2, canvas.height * 0.8);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    $('correctedMeter').textContent = enabled ? Math.round(strength * 100) + '%' : 'raw';
+    raf = requestAnimationFrame(drawCorrected);
+  }
+
+  function stopPreview() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    stream = null;
+    $('rawPreview').pause();
+    $('rawPreview').srcObject = null;
+    $('rawEmpty').style.display = 'grid';
+    $('correctedEmpty').style.display = 'grid';
+    $('previewBtn').textContent = 'Start camera capture';
+    $('rawMeter').textContent = 'idle';
+    $('correctedMeter').textContent = 'idle';
+  }
+
+  function startPreview() {
+    if (stream) { stopPreview(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      $('previewHint').textContent = 'Camera capture is unavailable in this browser.';
       return;
     }
     var camId = $('camera').value;
-    var constraints = { video: camId ? { deviceId: { exact: camId } } : true, audio: false };
+    var constraints = {
+      video: camId ? { deviceId: { exact: camId }, width: { ideal: 1280 }, height: { ideal: 720 } } : { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    };
     navigator.mediaDevices.getUserMedia(constraints).then(function (s) {
-      stream = s; v.srcObject = s; v.style.display = 'block'; v.play();
-      $('previewBtn').textContent = 'Stop preview';
-      listCameras(); // labels become available once permission is granted
+      stream = s;
+      var video = $('rawPreview');
+      video.srcObject = s;
+      $('rawEmpty').style.display = 'none';
+      $('correctedEmpty').style.display = 'none';
+      $('previewBtn').textContent = 'Stop camera capture';
+      $('rawMeter').textContent = 'live';
+      $('previewHint').textContent = 'Compare the raw camera and corrected output. Adjust strength live, then save.';
+      video.play().then(drawCorrected).catch(drawCorrected);
+      listCameras();
     }).catch(function (err) {
       $('previewHint').textContent = 'Camera access denied or unavailable: ' + (err && err.name ? err.name : 'error');
     });
   }
 
-  // wire up
   var cfg = load();
   render(cfg);
   showStatus();
   listCameras();
-  $('strength').addEventListener('input', function () { $('strengthVal').textContent = $('strength').value + '%'; });
-  $('enabled').addEventListener('change', function () { $('engineDot').classList.toggle('on', $('enabled').checked); });
-  $('previewBtn').addEventListener('click', togglePreview);
-  $('saveBtn').addEventListener('click', save);
-  $('closeBtn').addEventListener('click', function () {
-    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
-    window.close();
+  $('strength').addEventListener('input', function () {
+    $('strengthVal').textContent = $('strength').value + '%';
   });
-  window.addEventListener('beforeunload', function () { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); });
+  $('enabled').addEventListener('change', function () {
+    $('engineDot').classList.toggle('on', $('enabled').checked);
+  });
+  $('previewBtn').addEventListener('click', startPreview);
+  $('resetBtn').addEventListener('click', function () { render(DEFAULTS); save(); });
+  $('saveBtn').addEventListener('click', save);
+  $('closeBtn').addEventListener('click', function () { stopPreview(); window.close(); });
+  window.addEventListener('beforeunload', stopPreview);
 })();
 </script>
 </body>

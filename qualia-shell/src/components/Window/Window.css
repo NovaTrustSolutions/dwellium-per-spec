@@ -39,6 +39,7 @@
 /* focused: white border glow (fey.com pattern)
    UIX-8: focused window pops — layered shadow + soft accent halo gives a
    clear depth hierarchy so the user always knows which window is live. */
+.window--focused,
 .window:focus-within,
 .window:active {
     border-color: rgba(255, 255, 255, 0.4);
@@ -51,6 +52,7 @@
 
 /* UIX-9: accent gradient underline on the focused window's title bar —
    an instant "this one is active" cue */
+.window--focused .window__titlebar,
 .window:focus-within .window__titlebar {
     border-bottom-color: transparent;
     background-image: linear-gradient(180deg, var(--window-titlebar), rgba(0, 0, 0, 0.08)),
@@ -61,15 +63,15 @@
 }
 
 /* UIX-10: traffic lights desaturate on unfocused windows (macOS cue) */
-.window:not(:focus-within) .window__btn--close,
-.window:not(:focus-within) .window__btn--minimize,
-.window:not(:focus-within) .window__btn--maximize {
+.window:not(.window--focused) .window__btn--close,
+.window:not(.window--focused) .window__btn--minimize,
+.window:not(.window--focused) .window__btn--maximize {
     background: rgba(255, 255, 255, 0.16);
 }
 
-.window:not(:focus-within):hover .window__btn--close { background: #ff5f56; }
-.window:not(:focus-within):hover .window__btn--minimize { background: #ffbd2e; }
-.window:not(:focus-within):hover .window__btn--maximize { background: #27c93f; }
+.window:not(.window--focused):hover .window__btn--close { background: #ff5f56; }
+.window:not(.window--focused):hover .window__btn--minimize { background: #ffbd2e; }
+.window:not(.window--focused):hover .window__btn--maximize { background: #27c93f; }
 
 @keyframes windowOpen {
     from {
@@ -89,6 +91,15 @@
     border-radius: 0;
     border: none;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.window--classic-focus-frame.window--maximized {
+    border: 1px solid var(--window-border);
+    border-radius: 10px;
+    box-shadow:
+        0 18px 60px rgba(0, 0, 0, 0.45),
+        0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent),
+        var(--shadow-glow-accent, 0 0 20px rgba(214, 254, 81, 0.12));
 }
 
 /* --- Title Bar (14-15) --- */

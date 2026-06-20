@@ -9,13 +9,13 @@
  *
  * The panel uses useUser().authFetch, so unlike the ApiKeysWidget suite it
  * renders inside a real <UserProvider> (no logged-in user needed — nothing is
- * fetched until Start). Background mode is unavailable in jsdom (no
- * window.electronAPI), so the desktop-app note is asserted. The integrations
- * store holder + localStorage are reset between tests per the
+ * fetched until Start). Background mode can run through browser display capture
+ * when the Electron bridge is absent. The integrations store holder +
+ * localStorage are reset between tests per the
  * createLocalStorageStore `.reset()` convention.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import AraMeetingPanel from '../components/AraMeeting/AraMeetingPanel';
 import { UserProvider, tokenStore } from '../context/UserContext';
@@ -28,8 +28,17 @@ beforeEach(() => {
     integrationsUserIdHolder.current = null;
     integrationsStore.reset();
     tokenStore.reset();
-    // No window.electronAPI in jsdom → background mode stays unavailable.
+    // No window.electronAPI in jsdom; browser capture support decides whether
+    // background mode remains available in the web app.
     delete (window as unknown as { electronAPI?: unknown }).electronAPI;
+    Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+            getDisplayMedia: vi.fn(async () => ({ getTracks: () => [] })),
+            getUserMedia: vi.fn(),
+            enumerateDevices: vi.fn(async () => []),
+        },
+    });
     // Stub fetch so an accidental network call can't reach out in CI. Nothing
     // should fetch on a fresh render (Start hasn't been pressed).
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('ECONNREFUSED 127.0.0.1:3000'))));
@@ -68,20 +77,21 @@ describe('AraMeetingPanel mode toggle', () => {
         expect(screen.getByLabelText(/Meeting link/i)).toBeTruthy();
     });
 
-    it('without the desktop bridge, Background is disabled, stays unselected, and shows the desktop-app note', () => {
+    it('without the desktop bridge, browser capture keeps Background available in the web app', () => {
         wrap(<AraMeetingPanel />);
         const background = screen.getByRole('radio', { name: /Background \(private\)/i }) as HTMLButtonElement;
-        // Web build (no window.electronAPI) → Background cannot be selected.
-        expect(background.disabled).toBe(true);
-        fireEvent.click(background); // disabled → no-op
-        expect(background.getAttribute('aria-checked')).toBe('false'); // mode stays Visible
-        // The note explains why Background is unavailable in a web build.
-        expect(screen.getByText(/requires the Dwellium desktop app/i)).toBeTruthy();
-        // Mode stays Visible → the meeting-URL field remains.
-        expect(screen.getByLabelText(/Meeting link/i)).toBeTruthy();
+        expect(background.disabled).toBe(false);
+        fireEvent.click(background);
+        expect(background.getAttribute('aria-checked')).toBe('true');
+        expect(screen.queryByText(/requires the Dwellium desktop app/i)).toBeNull();
+        expect(screen.queryByLabelText(/Meeting link/i)).toBeNull();
     });
 
-    it('Background mode option is disabled without the desktop bridge', () => {
+    it('Background mode option is disabled only when neither desktop nor browser capture is available', () => {
+        Object.defineProperty(navigator, 'mediaDevices', {
+            configurable: true,
+            value: {},
+        });
         wrap(<AraMeetingPanel />);
         const background = screen.getByRole('radio', { name: /Background \(private\)/i }) as HTMLButtonElement;
         expect(background.disabled).toBe(true);
@@ -102,5 +112,19 @@ describe('AraMeetingPanel consent gate', () => {
         });
         const startBtn = screen.getByRole('button', { name: /Start meeting assist/i }) as HTMLButtonElement;
         expect(startBtn.disabled).toBe(false);
+    });
+
+    it('starts web background capture through getDisplayMedia when selected', async () => {
+        wrap(<AraMeetingPanel />);
+        fireEvent.click(screen.getByRole('checkbox', { name: /participant consent/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Got it/i }));
+        fireEvent.click(screen.getByRole('radio', { name: /Background \(private\)/i }));
+
+        fireEvent.click(screen.getByRole('button', { name: /Start meeting assist/i }));
+
+        await waitFor(() => {
+            expect((navigator.mediaDevices.getDisplayMedia as unknown as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith({ video: true, audio: true });
+        });
+        expect(await screen.findByText(/Browser capture live/i)).toBeTruthy();
     });
 });

@@ -9,7 +9,10 @@
  */
 import { render, screen, cleanup } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Window from '../components/Window/Window';
+import Window, {
+    classicFocusFrameStyle,
+    isPersistentFocusWindow,
+} from '../components/Window/Window';
 import { UserProvider } from '../context/UserContext';
 import { LayoutProvider } from '../context/LayoutContext';
 import { WindowProvider, dockItemsStore, savedLayoutsStore } from '../context/WindowContext';
@@ -82,5 +85,34 @@ describe('Window chrome — no persistent pop-out banner', () => {
     it('hides the tear-off handle entirely when the window is maximized', () => {
         const { container } = renderWindow({ ...baseState, maximized: true });
         expect(container.querySelector('.window__tearoff-handle')).toBeNull();
+    });
+
+    it('keeps classic focus persistent on the top window even when DOM focus moves away', () => {
+        const windows = [
+            { ...baseState, id: 'behind', zIndex: 1 },
+            { ...baseState, id: 'front', zIndex: 9 },
+        ];
+
+        expect(isPersistentFocusWindow(windows, windows[1])).toBe(true);
+        expect(isPersistentFocusWindow(windows, windows[0])).toBe(false);
+    });
+
+    it('uses a readable focus frame for a single maximized classic window', () => {
+        const singleMaximized = { ...baseState, maximized: true, zIndex: 4 };
+        const style = classicFocusFrameStyle([singleMaximized], singleMaximized, {
+            isRegionSnapped: false,
+            isFocused: true,
+        });
+
+        expect(style).toMatchObject({
+            left: 'max(0px, calc((100% - 1440px) / 2))',
+            width: 'min(100%, 1440px)',
+            height: 'calc(100% - 24px)',
+        });
+        expect(classicFocusFrameStyle(
+            [singleMaximized, { ...baseState, id: 'second', zIndex: 5 }],
+            singleMaximized,
+            { isRegionSnapped: false, isFocused: true },
+        )).toBeNull();
     });
 });

@@ -10,11 +10,10 @@
  *      back { sessionId, botId }. Everyone in the call can see the bot, which is
  *      the consent-friendly default.
  *
- *   ② Background (private) — the Dwellium DESKTOP app captures call audio
- *      locally with no visible bot. This needs Electron — window.electronAPI
- *      .startBackgroundMeeting({ sessionId, apiBase }). In a web build the
- *      bridge is absent, so this mode is disabled with a "needs the desktop app"
- *      note.
+ *   ② Background (private) — captures call audio/screen context without adding
+ *      a visible bot. Electron can use window.electronAPI.startBackgroundMeeting;
+ *      the web app falls back to browser display/audio capture when the browser
+ *      exposes navigator.mediaDevices.getDisplayMedia.
  *
  * Once a session is live we poll GET /api/ara/meeting/session/:sessionId every
  * ~3s and render { transcript, utterances, coaching, status }. Stop ends the
@@ -110,6 +109,7 @@ export default function AraMeetingPanel(): React.JSX.Element {
     // Electron availability — resolved in an effect so the first server/SSR pass
     // never touches window. Background mode stays disabled until this is true.
     const [isElectron, setIsElectron] = useState(false);
+    const [browserCaptureSupported, setBrowserCaptureSupported] = useState(false);
 
     // Live session state.
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -121,6 +121,7 @@ export default function AraMeetingPanel(): React.JSX.Element {
     const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
 
     const transcriptEndRef = useRef<HTMLDivElement>(null);
+    const browserCaptureStreamRef = useRef<MediaStream | null>(null);
 
     // ── Mount-time, SSR-safe reads ────────────────────────────────────────
     useEffect(() => {
@@ -129,6 +130,12 @@ export default function AraMeetingPanel(): React.JSX.Element {
         } catch { /* sandboxed */ }
         const api = getElectronApi();
         setIsElectron(!!api?.isElectron && typeof api?.startBackgroundMeeting === 'function');
+        setBrowserCaptureSupported(typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getDisplayMedia === 'function');
+    }, []);
+
+    useEffect(() => () => {
+        browserCaptureStreamRef.current?.getTracks().forEach((track) => track.stop());
+        browserCaptureStreamRef.current = null;
     }, []);
 
     const acceptConsent = useCallback(() => {
@@ -212,22 +219,39 @@ export default function AraMeetingPanel(): React.JSX.Element {
             return;
         }
 
-        // ── Background (private) — desktop only ──
+        // ── Background (private) — Electron bridge or browser-native capture ──
         const api = getElectronApi();
-        if (!api?.isElectron || typeof api.startBackgroundMeeting !== 'function') {
-            setError('Background mode requires the Dwellium desktop app.');
-            return;
-        }
         setStarting(true);
         try {
-            // Background capture mints its own session id client-side; the desktop
-            // agent streams audio to the backend under it (apiBase tells the main
-            // process where to POST).
             const localSessionId = `bg-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-            await api.startBackgroundMeeting({ sessionId: localSessionId, apiBase: API_BASE });
+            if (api?.isElectron && typeof api.startBackgroundMeeting === 'function') {
+                await api.startBackgroundMeeting({ sessionId: localSessionId, apiBase: API_BASE });
+            } else {
+                const getDisplayMedia = navigator.mediaDevices?.getDisplayMedia;
+                if (typeof getDisplayMedia !== 'function') {
+                    throw new Error('This browser does not expose screen/audio capture.');
+                }
+                const stream = await getDisplayMedia.call(navigator.mediaDevices, { video: true, audio: true });
+                browserCaptureStreamRef.current?.getTracks().forEach((track) => track.stop());
+                browserCaptureStreamRef.current = stream;
+                stream.getTracks().forEach((track) => {
+                    track.addEventListener('ended', () => {
+                        setActive(false);
+                        browserCaptureStreamRef.current = null;
+                    }, { once: true });
+                });
+            }
             setSessionId(localSessionId);
             setBotId(null);
-            setSnapshot(null);
+            setSnapshot({
+                status: api?.isElectron ? 'desktop-capture' : 'browser-capture',
+                coaching: {
+                    status: api?.isElectron ? 'Background capture live' : 'Browser capture live',
+                    feedback: api?.isElectron
+                        ? 'ARA is listening through the local background bridge.'
+                        : 'Your browser capture permission is active. Keep the meeting tab or window selected for the cleanest notes.',
+                },
+            });
             setActive(true);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to start background capture.');
@@ -244,6 +268,8 @@ export default function AraMeetingPanel(): React.JSX.Element {
             if (mode === 'background') {
                 const api = getElectronApi();
                 try { await api?.stopBackgroundMeeting?.(); } catch { /* best-effort */ }
+                browserCaptureStreamRef.current?.getTracks().forEach((track) => track.stop());
+                browserCaptureStreamRef.current = null;
             } else if (botId) {
                 await authFetch(`${API_MEETING}/bot/stop`, {
                     method: 'POST',
@@ -260,15 +286,15 @@ export default function AraMeetingPanel(): React.JSX.Element {
     const utterances = snapshot?.utterances ?? [];
     const coaching = snapshot?.coaching;
     const hasTranscript = utterances.length > 0 || !!snapshot?.transcript;
+    const backgroundAvailable = isElectron || browserCaptureSupported;
 
     const backgroundDisabledNote = useMemo(
-        // Show whenever the desktop bridge is absent, so a web user sees WHY the
-        // Background option is greyed out — not only after selecting it (a web
-        // build can't, since the option is disabled). Matches the header doc.
-        () => (!isElectron
-            ? 'Background mode requires the Dwellium desktop app.'
+        () => (!backgroundAvailable
+            ? 'Background capture needs a browser that exposes screen/audio capture.'
+            : !isElectron
+                ? 'Browser capture is available. Pick the meeting tab or window when prompted.'
             : null),
-        [isElectron],
+        [backgroundAvailable, isElectron],
     );
 
     return (
@@ -438,8 +464,12 @@ export default function AraMeetingPanel(): React.JSX.Element {
                             selected={mode === 'background'}
                             onSelect={() => { setMode('background'); setError(null); }}
                             title="② Background (private)"
-                            desc="The desktop app captures audio quietly — no bot in the call."
-                            disabled={!isElectron}
+                            desc={isElectron
+                                ? 'Local capture runs quietly — no bot in the call.'
+                                : browserCaptureSupported
+                                    ? 'Browser capture runs inside Dwellium — no bot in the call.'
+                                    : 'Needs browser screen/audio capture support.'}
+                            disabled={!backgroundAvailable}
                         />
                     </div>
 
@@ -480,7 +510,7 @@ export default function AraMeetingPanel(): React.JSX.Element {
                         disabled={
                             starting ||
                             !consentAcked ||
-                            (mode === 'background' && !isElectron) ||
+                            (mode === 'background' && !backgroundAvailable) ||
                             (mode === 'visible' && meetingUrl.trim().length === 0)
                         }
                     >

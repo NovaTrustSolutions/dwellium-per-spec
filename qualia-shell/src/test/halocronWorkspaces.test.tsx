@@ -25,6 +25,14 @@ vi.mock('../components/Sidebar/iconMap', () => ({
     getIcon: () => null,
 }));
 
+vi.mock('../components/CloudBrowser/CloudBrowser', () => ({
+    default: ({ initialUrl }: { initialUrl?: string }) => (
+        <div data-testid="workspace-cloud-browser" data-initial-url={initialUrl}>
+            Cloud Browser
+        </div>
+    ),
+}));
+
 import HalocronWorkspaces from '../components/Shell/HalocronWorkspaces';
 
 beforeEach(() => {
@@ -147,6 +155,19 @@ describe('Holocron workspaces — Zen runner', () => {
         const tabs = wsTabs(ws());
         expect(tabs.some((t) => t.kind === 'web' && t.ref === 'https://example.com')).toBe(true);
         expect(screen.getByRole('tab', { name: 'example.com tab' })).toBeInTheDocument();
+    });
+
+    it('renders workspace web tabs through Cloud Browser so Google-style pages are not iframed', () => {
+        seedWorkspace();
+        vi.spyOn(window, 'prompt').mockReturnValue('google.com');
+        openWorkspace();
+
+        fireEvent.click(screen.getByRole('button', { name: /New tab/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Web page/ }));
+
+        const cloudBrowser = screen.getByTestId('workspace-cloud-browser');
+        expect(cloudBrowser).toHaveAttribute('data-initial-url', 'https://google.com');
+        expect(document.querySelector('.wsx-web')).not.toBeInTheDocument();
     });
 
     it('closes a tab and removes it from the workspace', () => {

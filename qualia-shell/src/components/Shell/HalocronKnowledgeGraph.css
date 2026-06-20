@@ -7,12 +7,24 @@
 .kg-tabs {
     display: flex; flex-wrap: nowrap; gap: 12px; flex: none;
     overflow-x: scroll; overflow-y: hidden; padding-bottom: 10px;
-    scrollbar-width: thin; scrollbar-color: var(--accent) color-mix(in srgb, var(--text-secondary) 14%, transparent);
+    /* Do NOT set scrollbar-width / scrollbar-color on this element. When either
+       standard scrollbar prop is present, Chrome 121+ IGNORES ::-webkit-scrollbar
+       and renders a 0-reserve OVERLAY bar (invisible on macOS until you actively
+       scroll). Verified live on Chrome 148: standard prop => 0px reserved,
+       ::-webkit-scrollbar alone => 10px reserved. Firefox knobs live in the
+       @supports block below so they never suppress the WebKit bar. */
 }
+/* Chrome/Safari: a real, always-visible, space-reserving horizontal bar. */
 .kg-tabs::-webkit-scrollbar { height: 10px; -webkit-appearance: none; }
 .kg-tabs::-webkit-scrollbar-track { background: color-mix(in srgb, var(--text-secondary) 12%, transparent); border-radius: 6px; }
 .kg-tabs::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 6px; }
 .kg-tabs::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 80%, transparent); }
+/* Firefox only: Chrome reports `-moz-appearance: none` as unsupported, so these
+   standard scrollbar props apply ONLY in Firefox and never suppress the WebKit
+   bar above (which is what reserves space / stays visible in Chrome + Safari). */
+@supports (-moz-appearance: none) {
+    .kg-tabs { scrollbar-width: thin; scrollbar-color: var(--accent) color-mix(in srgb, var(--text-secondary) 14%, transparent); }
+}
 .kg-tab {
     flex: 0 0 230px; text-align: left; cursor: pointer;
     background: var(--bg-surface, rgba(20,16,11,.55));

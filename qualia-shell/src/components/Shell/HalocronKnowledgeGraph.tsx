@@ -323,6 +323,7 @@ export default function HalocronKnowledgeGraph() {
     // gesture never bubbles up and scrolls the page. Refs mirror the state so the
     // native (non-passive) wheel listener reads the latest value without re-binding.
     const [focused, setFocused] = useState(false);
+    const [panning, setPanning] = useState(false);
     const focusedRef = useRef(false);
     const hoverRef = useRef(false);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -332,6 +333,8 @@ export default function HalocronKnowledgeGraph() {
     const rafRef = useRef<number>(0);
     const sizeRef = useRef({ w: 800, h: 520 });
     const viewRef = useRef({ zoom: 1, ox: 0, oy: 0 });   // scroll-wheel zoom + pan
+    const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; moved: boolean } | null>(null);
+    const suppressNextClickRef = useRef(false);
 
     const project = useMemo(() => projects.find((p) => p.id === activeId) ?? projects[0], [projects, activeId]);
     const graphed = !!gdata;
@@ -453,6 +456,12 @@ export default function HalocronKnowledgeGraph() {
     }, [selected, paused]);
 
     const onCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (suppressNextClickRef.current) {
+            suppressNextClickRef.current = false;
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         const rect = e.currentTarget.getBoundingClientRect();
         const v = viewRef.current;
         // invert the zoom/pan transform to get world coords
@@ -484,20 +493,93 @@ export default function HalocronKnowledgeGraph() {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        // React's onWheel is registered passively, so preventDefault() there is
-        // ignored ("Unable to preventDefault inside passive event listener"). A
-        // NATIVE non-passive listener ON THE CANVAS lets the graph own the wheel
-        // gesture: scrolling over the canvas zooms the graph and the page never
-        // scrolls (preventDefault + stopPropagation). Clicking still toggles the
-        // focus ring below as a visual "this is selected" affordance.
+        const finishDrag = (event: PointerEvent) => {
+            const drag = dragRef.current;
+            if (!drag || event.pointerId !== drag.pointerId) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            if (drag.moved) suppressNextClickRef.current = true;
+            dragRef.current = null;
+            setPanning(false);
+            try {
+                if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+            } catch { /* pointer capture is best-effort in tests and older engines */ }
+        };
+
+        const handlePointerDown = (event: PointerEvent) => {
+            if (event.button !== 0) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            focusedRef.current = true;
+            setFocused(true);
+            dragRef.current = {
+                pointerId: event.pointerId,
+                lastX: event.clientX,
+                lastY: event.clientY,
+                moved: false,
+            };
+            setPanning(true);
+            try { canvas.setPointerCapture(event.pointerId); } catch { /* pointer capture is best-effort */ }
+        };
+
+        const handlePointerMove = (event: PointerEvent) => {
+            const drag = dragRef.current;
+            if (!drag || event.pointerId !== drag.pointerId) return;
+
+            if ((event.buttons & 1) !== 1) {
+                finishDrag(event);
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            const dx = event.clientX - drag.lastX;
+            const dy = event.clientY - drag.lastY;
+            if (dx === 0 && dy === 0) return;
+
+            const view = viewRef.current;
+            view.ox += dx;
+            view.oy += dy;
+            drag.lastX = event.clientX;
+            drag.lastY = event.clientY;
+            drag.moved = true;
+        };
+
+        canvas.addEventListener('pointerdown', handlePointerDown);
+        canvas.addEventListener('pointermove', handlePointerMove);
+        canvas.addEventListener('pointerup', finishDrag);
+        canvas.addEventListener('pointercancel', finishDrag);
+        return () => {
+            canvas.removeEventListener('pointerdown', handlePointerDown);
+            canvas.removeEventListener('pointermove', handlePointerMove);
+            canvas.removeEventListener('pointerup', finishDrag);
+            canvas.removeEventListener('pointercancel', finishDrag);
+            dragRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const wrap = wrapRef.current;
+
+        // Native non-passive wheel listener on the canvas AND its wrapper, so
+        // wheeling anywhere over the graph card zooms the graph and the page never
+        // scrolls (preventDefault + stopPropagation). The canvas fires first and
+        // stops propagation, so the wrapper listener never double-zooms.
         const handleWheel = (event: WheelEvent) => {
             event.preventDefault();
             event.stopPropagation();
             zoomCanvasAt(event.clientX, event.clientY, event.deltaY);
         };
 
-        canvas.addEventListener('wheel', handleWheel, { passive: false });
-        return () => canvas.removeEventListener('wheel', handleWheel);
+        canvas?.addEventListener('wheel', handleWheel, { passive: false });
+        wrap?.addEventListener('wheel', handleWheel, { passive: false });
+        return () => {
+            canvas?.removeEventListener('wheel', handleWheel);
+            wrap?.removeEventListener('wheel', handleWheel);
+        };
     }, [zoomCanvasAt]);
 
     // Click inside the graph focuses it (gates wheel zoom); clicking elsewhere
@@ -613,7 +695,7 @@ export default function HalocronKnowledgeGraph() {
                         </div>
                     </div>
                     <div
-                        className={`kg-canvaswrap ${focused ? 'is-focused' : ''}`}
+                        className={`kg-canvaswrap ${focused ? 'is-focused' : ''} ${panning ? 'is-panning' : ''}`}
                         ref={wrapRef}
                         onMouseEnter={() => { hoverRef.current = true; }}
                         onMouseLeave={() => { hoverRef.current = false; }}

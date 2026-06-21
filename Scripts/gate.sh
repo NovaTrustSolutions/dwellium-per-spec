@@ -31,6 +31,10 @@ echo "  (ETA ~4–7 min)"
 (
   cd qualia-shell
   npx tsc -b
+  # Lint is advisory only — NON-BLOCKING by design. A non-zero eslint exit (warnings,
+  # or eslint not yet installed) must NOT abort the gate, so swallow it with `|| echo`.
+  # We are already inside `cd qualia-shell` (above), so run the script directly.
+  npm run lint || echo "[gate] lint reported issues (non-blocking)"
   npx vitest run
   npx react-router build
   VITE_APPFOLIO_SEEDS=false npx react-router build

@@ -9,7 +9,7 @@
  * Dwellium window, websites into a browser tab. Layout + sizes persist per-user.
  */
 import {
-    Fragment, Suspense, createElement, useEffect, useMemo, useRef, useState,
+    Fragment, Suspense, lazy, createElement, useEffect, useMemo, useRef, useState,
     type PointerEvent as ReactPointerEvent, type DragEvent as ReactDragEvent, type ReactElement,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -17,7 +17,10 @@ import { ArrowLeft, Plus, X, Globe, AppWindow, Columns2, Rows2, ExternalLink, St
 import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
-import CloudBrowser from '../CloudBrowser/CloudBrowser';
+// CloudBrowser is lazy so it splits into its own chunk (plan 008) — a static
+// import here would re-pull it into whatever chunk hosts this module, undoing
+// the KG/Workspaces lazy split. Only loads when a web pane is actually shown.
+const CloudBrowser = lazy(() => import('../CloudBrowser/CloudBrowser'));
 import {
     useWorkspaces, saveWorkspaces, workspacesStore, newWorkspaceId, newTabKey, wsTabs,
     type Workspace, type WsTab, type WsTabKind, type WsNode,
@@ -138,7 +141,9 @@ function WebPane({ url, title }: { url: string; title: string }) {
     // drives a hosted browser and streams the viewport back into the workspace.
     return (
         <div className="wsx-cloud-browser" aria-label={`${title} cloud browser`}>
-            <CloudBrowser initialUrl={url} />
+            <Suspense fallback={<div className="hos-hosted__loading">Igniting {title}…</div>}>
+                <CloudBrowser initialUrl={url} />
+            </Suspense>
         </div>
     );
 }

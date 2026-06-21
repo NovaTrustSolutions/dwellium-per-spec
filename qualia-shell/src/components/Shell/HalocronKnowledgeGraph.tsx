@@ -27,24 +27,14 @@ import {
 } from '../../lib/halocronKnowledgeGraphStore';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
 import AgentEta from '../common/AgentEta';
+import { KG_AGENTS, type KgAgent } from './HalocronKnowledgeGraph.agents';
 import './HalocronKnowledgeGraph.css';
 
-export interface KgAgent {
-    id: string;
-    name: string;
-    god: string;
-    color: string;
-    online: boolean;
-}
-
-// The user's agents, represented as gods (matches the reference's AGENTS rail).
-export const KG_AGENTS: KgAgent[] = [
-    { id: 'hermes', name: 'Hermes', god: 'Messenger', color: '#e7c879', online: true },
-    { id: 'ara', name: 'ARA', god: 'Athena', color: '#4d8aff', online: true },
-    { id: 'stella', name: 'Stella', god: 'Hestia', color: '#ff5a8a', online: true },
-    { id: 'hydra', name: 'Hydra', god: 'Hydra', color: '#a855f7', online: false },
-    { id: 'honcho', name: 'Honcho', god: 'Mnemosyne', color: '#34d399', online: false },
-];
+// KG_AGENTS + KgAgent are now hoisted to the data-only
+// `HalocronKnowledgeGraph.agents` module so HalocronOS can import the constant
+// without statically pulling this heavy component (plan 008). Re-exported here
+// for backward compatibility with existing importers of this file.
+export { KG_AGENTS, type KgAgent };
 
 // Cluster palette (colour = cluster, as the reference legend says).
 const CLUSTER_COLORS = ['#4d8aff', '#34d399', '#e7c879', '#ff5a8a', '#a855f7', '#22d3ee', '#f97316', '#e01e2b'];

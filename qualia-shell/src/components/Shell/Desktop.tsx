@@ -18,7 +18,14 @@ import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAu
 import { DEFAULT_STACK_KEY, DEFAULT_STACK_DONE, DEFAULT_STARTUP_STACK, shouldOpenDefaultStack } from './defaultStack';
 import { applySpaceBus, type ApplySpacePayload } from '../../lib/busChannels';
 import HalocronBoot from './HalocronBoot';
-import HalocronOS from './HalocronOS';
+import { lazyWithReload } from '../../utils/lazyWithReload';
+import AppSuspenseFallback from './AppSuspenseFallback';
+// HalocronOS is the always-mounted Holocron OS shell. It statically pulled
+// HalocronKnowledgeGraph / CloudBrowser / CognitiveHarness / Workspaces into
+// the Desktop chunk for every user on first paint. Lazy-loading it here (plan
+// 008) defers that whole block off the critical path — it renders null unless
+// the OS layout is enabled, so the chunk only loads when actually needed.
+const HalocronOS = lazyWithReload(() => import('./HalocronOS'));
 import HalocronLauncher from './HalocronLauncher';
 import HalocronOsIntro from './HalocronOsIntro';
 
@@ -1159,7 +1166,9 @@ export default function Desktop() {
                 Both render null unless the OS layout is enabled, so Classic is
                 untouched. Opening a widget collapses the shell to reveal the
                 real window beneath; the launcher reopens it. */}
-            <HalocronOS />
+            <Suspense fallback={<AppSuspenseFallback variant="viewport" />}>
+                <HalocronOS />
+            </Suspense>
             <HalocronLauncher />
             {/* Cinematic entry: cube video → fly into center → OS emerges.
                 Plays once per session when entering the OS layout. */}

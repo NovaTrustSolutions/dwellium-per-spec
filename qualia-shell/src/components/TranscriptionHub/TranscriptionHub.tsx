@@ -6,7 +6,7 @@ import {
     Pencil, Save, Scale, ScrollText, Search, Siren, Swords, Target, Trash2,
     TriangleAlert, Upload, User, X,
 } from 'lucide-react';
-import { MicrophoneTranscriber } from '@moonshine-ai/moonshine-js';
+import type { MicrophoneTranscriber as MicrophoneTranscriberType } from '@moonshine-ai/moonshine-js';
 import { UserContext } from '../../context/UserContext';
 import { embedAudio, audioBufferToMono16k, trimSilence, shouldEmbed } from './speakerEmbedder';
 import { identifyWithConfidence, type EnrolledSpeaker } from './speakerLibrary';
@@ -433,7 +433,7 @@ export default function TranscriptionHub() {
     const [moonshineEnabled, setMoonshineEnabled] = useState(true);
     const [moonshineLoading, setMoonshineLoading] = useState(false);
     const [moonshineReady, setMoonshineReady] = useState(false);
-    const moonshineRef = useRef<MicrophoneTranscriber | null>(null);
+    const moonshineRef = useRef<MicrophoneTranscriberType | null>(null);
     const moonshineSegCountRef = useRef(0);
     const moonshineStartTimeRef = useRef(0);
 
@@ -1310,6 +1310,13 @@ export default function TranscriptionHub() {
             speakerProfilesRef.current = new Map();
             currentSpeakerRef.current = 'User';
             speakerCountRef.current = 1;
+
+            // Lazy-load the moonshine STT engine (~2.37 MB: model glue + ONNX
+            // bindings) only when the user actually starts live transcription,
+            // mirroring speakerEmbedder.ts (await import('@huggingface/transformers'))
+            // and ocr.ts (await import('tesseract.js')). setMoonshineLoading(true)
+            // above already gates the UI while this resolves.
+            const { MicrophoneTranscriber } = await import('@moonshine-ai/moonshine-js');
 
             const transcriber = new MicrophoneTranscriber(
                 'model/tiny',

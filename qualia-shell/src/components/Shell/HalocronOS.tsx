@@ -16,17 +16,23 @@
  * desktop; the Settings panel flips it. Nothing is lost either way — same
  * windows, widgets, spaces, memory underneath.
  */
-import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, createElement, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, createElement, type ReactNode } from 'react';
 import { Brain, ChevronLeft, ChevronRight, Columns2, Columns3, Grid2X2, Maximize2, Moon, PanelLeftClose, PanelLeftOpen, Pin, Settings, Sparkles, Square, Star, X } from 'lucide-react';
 import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import { halocronOsStore, type HalocronOsState } from '../../lib/halocronOsStore';
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
-import HalocronKnowledgeGraph, { KG_AGENTS } from './HalocronKnowledgeGraph';
-import HalocronWorkspaces from './HalocronWorkspaces';
-import CloudBrowser from '../CloudBrowser/CloudBrowser';
+// KG_AGENTS is a plain data array, imported statically from its own tiny module
+// so the heavy KG component can be lazy below (a default-only React.lazy can't
+// also bind a named export). KnowledgeGraph / CloudBrowser / CognitiveHarness /
+// Workspaces are React.lazy'd (sub-component altitude, plan 008) so they split
+// out of the Desktop chunk and only load when their tab/panel is shown.
+import { KG_AGENTS } from './HalocronKnowledgeGraph.agents';
+const HalocronKnowledgeGraph = lazy(() => import('./HalocronKnowledgeGraph'));
+const HalocronWorkspaces = lazy(() => import('./HalocronWorkspaces'));
+const CloudBrowser = lazy(() => import('../CloudBrowser/CloudBrowser'));
 import ClaudePlaybook from './ClaudePlaybook';
-import CognitiveHarness from '../CognitiveHarness/CognitiveHarness';
+const CognitiveHarness = lazy(() => import('../CognitiveHarness/CognitiveHarness'));
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
 import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore } from '../../lib/subscriptionsStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -119,7 +125,9 @@ function WebFrame({ url, title }: { url: string; title: string }) {
     }
     return (
         <div className="hos-web__cloud" aria-label={`${title} cloud browser`}>
-            <CloudBrowser initialUrl={url} />
+            <Suspense fallback={<div className="hos-hosted__loading">Igniting {title}…</div>}>
+                <CloudBrowser initialUrl={url} />
+            </Suspense>
         </div>
     );
 }
@@ -474,7 +482,9 @@ export default function HalocronOS() {
 
                 {nav === 'kg' ? (
                     <div className="hos-panel hos-panel--kg">
-                        <HalocronKnowledgeGraph />
+                        <Suspense fallback={<div className="hos-hosted__loading">Igniting Knowledge Graph…</div>}>
+                            <HalocronKnowledgeGraph />
+                        </Suspense>
                     </div>
                 ) : nav === 'memory' ? (
                     <div className="hos-panel hos-panel--memory">
@@ -512,7 +522,9 @@ export default function HalocronOS() {
                             </div>
                             <div className="hos-memory-sidebar">
                                 <div className="hos-memory-sidebar-h">Cognitive Parameter Harness</div>
-                                <CognitiveHarness />
+                                <Suspense fallback={<div className="hos-hosted__loading">Igniting Cognitive Harness…</div>}>
+                                    <CognitiveHarness />
+                                </Suspense>
                             </div>
                         </div>
                     </div>
@@ -635,7 +647,11 @@ export default function HalocronOS() {
                         </>
                     )}
 
-                    {nav === 'workspace' && <HalocronWorkspaces />}
+                    {nav === 'workspace' && (
+                        <Suspense fallback={<div className="hos-hosted__loading">Igniting Workspaces…</div>}>
+                            <HalocronWorkspaces />
+                        </Suspense>
+                    )}
 
                     {nav === 'skills' && (
                         <>

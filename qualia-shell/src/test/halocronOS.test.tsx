@@ -40,6 +40,12 @@ vi.mock('../components/Shell/HalocronKnowledgeGraph', () => ({
     KG_AGENTS: [],
 }));
 
+// KG_AGENTS was hoisted to a data-only module (plan 008); HalocronOS imports the
+// constant from here, so mock it to keep the agent rail empty as before.
+vi.mock('../components/Shell/HalocronKnowledgeGraph.agents', () => ({
+    KG_AGENTS: [],
+}));
+
 vi.mock('../components/Shell/HalocronWorkspaces', () => ({
     default: () => <div>Workspaces panel</div>,
 }));
@@ -182,14 +188,15 @@ describe('Holocron OS smart tab shell', () => {
         expect(screen.getByText(/Good (morning|afternoon|evening), Lisa\./)).toBeInTheDocument();
     });
 
-    it('renders hosted web tabs through Cloud Browser instead of a blocked embed launch card', () => {
+    it('renders hosted web tabs through Cloud Browser instead of a blocked embed launch card', async () => {
         openHalocron();
 
         const chatgptCard = screen.getByText('ChatGPT').closest('.hos-launch__card');
         expect(chatgptCard).toBeTruthy();
         fireEvent.click(within(chatgptCard as HTMLElement).getByRole('button', { name: 'Open' }));
 
-        expect(screen.getByTestId('halocron-cloud-browser')).toHaveAttribute('data-initial-url', 'https://chatgpt.com');
+        // CloudBrowser is React.lazy now (plan 008) → await the Suspense boundary.
+        expect(await screen.findByTestId('halocron-cloud-browser')).toHaveAttribute('data-initial-url', 'https://chatgpt.com');
         expect(screen.queryByText(/blocks in-browser embedding/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/desktop app embeds/i)).not.toBeInTheDocument();
     });

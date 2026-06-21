@@ -100,7 +100,16 @@ export const oneSaveClient = {
         return r ?? [];
     },
 
-    /** Upsert an object (write-through). Appends an event server-side. */
+    /**
+     * Upsert an object (write-through). Appends an event server-side.
+     *
+     * SUCCESS/FAILURE CONTRACT: resolves to the persisted `DwelliumObject` on
+     * success, or `null` on failure (disabled flag / offline / non-OK / parse
+     * error — see `call`). `null` DISTINCTLY means "not persisted"; callers
+     * (e.g. `oneSaveStore.scheduleWriteThrough`) test the result to decide
+     * whether to retry. Never throws into React (the no-throw safety contract
+     * above is intentional).
+     */
     async put<T = unknown>(obj: DwelliumObjectInput<T>): Promise<DwelliumObject<T> | null> {
         return call<DwelliumObject<T>>('PUT', `/${encodeURIComponent(obj.id)}`, {
             type: obj.type,

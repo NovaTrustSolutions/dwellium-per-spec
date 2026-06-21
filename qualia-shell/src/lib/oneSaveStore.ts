@@ -30,6 +30,11 @@
 
 import type { LocalStorageStore } from '../utils/createLocalStorageStore';
 import { oneSaveClient, ONE_SAVE_ENABLED } from './oneSaveClient';
+import { backendStatusStore } from './backendStatusStore';
+
+/** Write-through retry policy: total attempts and per-attempt backoff base (ms). */
+const WRITE_THROUGH_MAX_ATTEMPTS = 3;
+const WRITE_THROUGH_BACKOFF_MS = 500;
 
 export interface SyncOptions<T> {
     /** Object type bucket, e.g. 'wiki' | 'foundry' | 'saved-layouts'. */
@@ -91,17 +96,35 @@ function makeSynced<T>(
         if (timer) clearTimeout(timer);
         const scheduledOwnerId = ownerId();
         const scheduledObjectId = objectId();
-        timer = setTimeout(() => {
+        timer = setTimeout(async () => {
             timer = null;
             // Never let an account switch redirect a pending private write into
             // the next user's namespace.
             if (ownerId() !== scheduledOwnerId) return;
-            void oneSaveClient.put({
-                id: scheduledObjectId,
-                type: objectType,
-                ownerId: scheduledOwnerId,
-                payload: value,
-            });
+            // Retry on transient failure with bounded backoff. `put` resolves to
+            // the saved object on success, `null` on failure (no throw); a
+            // dropped write is no longer silently lost.
+            for (let attempt = 0; attempt < WRITE_THROUGH_MAX_ATTEMPTS; attempt++) {
+                const saved = await oneSaveClient.put({
+                    id: scheduledObjectId,
+                    type: objectType,
+                    ownerId: scheduledOwnerId,
+                    payload: value,
+                });
+                if (saved) return; // persisted — done
+                // Re-check the account-switch guard before each retry so a retry
+                // never leaks into the next user's namespace.
+                if (ownerId() !== scheduledOwnerId) return;
+                // Last attempt failed → don't sleep, fall through to surface it.
+                if (attempt < WRITE_THROUGH_MAX_ATTEMPTS - 1) {
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, WRITE_THROUGH_BACKOFF_MS * (attempt + 1)),
+                    );
+                }
+            }
+            // All attempts failed: surface persistent failure via the global
+            // banner instead of silently dropping the durable write.
+            backendStatusStore.markOffline('One Save write failed');
         }, debounceMs);
     }
 
@@ -178,8 +201,12 @@ export const oneSaveSync = {
         currentUserId = userId;
         for (const e of registry) e.setOwner(userId);
         if (!ONE_SAVE_ENABLED || !userId) return;
-        for (const e of registry) await e.hydrate();
-        for (const e of registry) await e.migrate();
+        // Isolate per-store failures: one store's hydrate/migrate rejecting must
+        // not skip every store registered after it (allSettled also parallelizes
+        // the N round-trips, speeding login). hydrate and migrate stay in two
+        // ordered phases so no store is backfilled before all are hydrated.
+        await Promise.allSettled(registry.map((e) => e.hydrate()));
+        await Promise.allSettled(registry.map((e) => e.migrate()));
     },
 
     /** Test/diagnostic: how many stores are wrapped. */

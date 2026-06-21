@@ -105,6 +105,10 @@ function makeSynced<T>(
             // the saved object on success, `null` on failure (no throw); a
             // dropped write is no longer silently lost.
             for (let attempt = 0; attempt < WRITE_THROUGH_MAX_ATTEMPTS; attempt++) {
+                // Guard before EVERY attempt: if the account switched during the
+                // prior backoff, drop the retry — never re-issue the prior user's
+                // write after a switch.
+                if (ownerId() !== scheduledOwnerId) return;
                 const saved = await oneSaveClient.put({
                     id: scheduledObjectId,
                     type: objectType,
@@ -112,9 +116,6 @@ function makeSynced<T>(
                     payload: value,
                 });
                 if (saved) return; // persisted — done
-                // Re-check the account-switch guard before each retry so a retry
-                // never leaks into the next user's namespace.
-                if (ownerId() !== scheduledOwnerId) return;
                 // Last attempt failed → don't sleep, fall through to surface it.
                 if (attempt < WRITE_THROUGH_MAX_ATTEMPTS - 1) {
                     await new Promise((resolve) =>

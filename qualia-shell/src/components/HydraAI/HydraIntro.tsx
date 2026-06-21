@@ -53,7 +53,7 @@ export default function HydraIntro() {
 
     return (
         <div className="hydra-intro" role="dialog" aria-label="Hydra intro">
-            <video ref={videoRef} className="hydra-intro__video" autoPlay playsInline preload="auto">
+            <video ref={videoRef} className="hydra-intro__video" autoPlay playsInline preload="none">
                 <source src="/assets/hydra-intro.mp4" type="video/mp4" />
             </video>
             <div className="hydra-intro__controls">

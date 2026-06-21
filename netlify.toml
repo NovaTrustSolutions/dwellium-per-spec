@@ -37,3 +37,23 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Security headers (plan 011). The CSP ships in REPORT-ONLY mode first so it
+# reports violations without blocking anything — review reports on real usage,
+# then flip `Content-Security-Policy-Report-Only` -> `Content-Security-Policy`
+# to enforce, and later tighten `style-src` (drop 'unsafe-inline').
+#
+# connect-src is the enumerated set of outbound origins the app actually calls
+# (LLM providers + search + weather + Supabase), derived from
+# `grep -rhoE "https://..." qualia-shell/src/lib qualia-shell/src/config.ts`,
+# plus 'self' (the /api/* + /health proxy is same-origin, so the Cloud Run
+# backend origin is NOT needed here). 'unsafe-inline' on style-src reflects the
+# app's widespread inline styles; tightening it is a deliberate later step.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://api.tavily.com https://api.search.brave.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"

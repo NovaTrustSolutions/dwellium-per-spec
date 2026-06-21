@@ -31,8 +31,12 @@ export function initSentry(): void {
         integrations: [
             Sentry.browserTracingIntegration(),
             Sentry.replayIntegration({
-                maskAllText: false,
-                blockAllMedia: false,
+                // Mask all text + inputs and block media so session replays can
+                // never capture typed/pasted secrets (e.g. the API Keys panel)
+                // or user content. See plan 012.
+                maskAllText: true,
+                maskAllInputs: true,
+                blockAllMedia: true,
             }),
         ],
         // Performance sampling
@@ -84,7 +88,9 @@ export function captureError(
 export function setSentryUser(user: { id: string; email?: string; role?: string } | null): void {
     if (!initialized) return;
     if (user) {
-        Sentry.setUser({ id: user.id, email: user.email, username: user.role });
+        // Send only non-PII identifiers: `id` is a stable UUID and `role` is
+        // non-PII. `email` is deliberately omitted (plan 012).
+        Sentry.setUser({ id: user.id, username: user.role });
     } else {
         Sentry.setUser(null);
     }

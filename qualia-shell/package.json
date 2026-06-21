@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22 <23",
     "npm": ">=10.0.0"
   },
   "scripts": {
@@ -23,6 +23,7 @@
     "@codemirror/language": "6.12.3",
     "@codemirror/state": "6.6.0",
     "@codemirror/view": "6.43.0",
+    "@huggingface/transformers": "3.8.1",
     "@lezer/highlight": "1.2.3",
     "@moonshine-ai/moonshine-js": "0.1.29",
     "@react-router/node": "7.15.1",

@@ -26,6 +26,22 @@ describe('LoginScreen local multi-step login', () => {
         auth.loginWithGoogle.mockReset();
     });
 
+    it('does not request the 71MB nebula video until the user clicks; poster shows first', () => {
+        const { container } = render(<LoginScreen />);
+
+        // Before interaction: poster is set and NO <source> for nebula is rendered,
+        // so the browser never fetches nebula-bg.mp4 on first paint.
+        const video = container.querySelector('video.login-video-bg') as HTMLVideoElement | null;
+        expect(video).not.toBeNull();
+        expect(video!.getAttribute('poster')).toBe('/assets/hero-bg.png');
+        expect(video!.getAttribute('preload')).toBe('none');
+        expect(container.querySelector('source[src*="nebula"]')).toBeNull();
+
+        // Clicking the "Click to Login" overlay opts in → the <source> mounts.
+        fireEvent.click(screen.getByText('Click to Login'));
+        expect(container.querySelector('source[src*="nebula"]')).not.toBeNull();
+    });
+
     it('gates on the access password before showing the roster, with Google hidden by default', () => {
         render(<LoginScreen />);
 

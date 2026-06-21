@@ -26,11 +26,13 @@ const PURIFY_CONFIG = {
   ],
   ALLOWED_ATTR: [
     'href', 'target', 'rel', 'title', 'alt', 'src',
-    'class', 'className', 'id', 'style',
+    'class', 'className', 'id',
     'width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width',
     'd', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2',
     'points', 'stroke-linecap', 'stroke-linejoin',
-    'onclick',
+    // Inert data attribute used by the code-block copy button (handled by a
+    // single delegated click listener registered in main.tsx — no inline JS).
+    'data-copy',
     'colspan', 'rowspan',
     'open',
   ],
@@ -62,7 +64,7 @@ export function renderSafeMarkdown(text: string): string {
   // Fenced code blocks with language + copy support
   html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (_match, lang, code) => {
     const langLabel = lang ? `<span class="code-lang">${lang}</span>` : '';
-    return `<div class="code-block">${langLabel}<button class="code-copy-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(code.trim())}'))">Copy</button><pre><code>${code.trim()}</code></pre></div>`;
+    return `<div class="code-block">${langLabel}<button class="code-copy-btn" type="button" data-copy="${encodeURIComponent(code.trim())}">Copy</button><pre><code>${code.trim()}</code></pre></div>`;
   });
 
   // Inline code

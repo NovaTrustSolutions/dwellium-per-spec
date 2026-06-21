@@ -92,8 +92,17 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
 
     return (
         <>
-            <video className="login-video-bg" autoPlay muted loop playsInline>
-                <source src="/assets/nebula-bg.mp4" type="video/mp4" />
+            <video
+                className="login-video-bg"
+                poster="/assets/hero-bg.png"
+                muted
+                loop
+                playsInline
+                preload="none"
+                autoPlay={hasClicked}
+                key={hasClicked ? 'play' : 'idle'}
+            >
+                {hasClicked && <source src="/assets/nebula-bg.mp4" type="video/mp4" />}
             </video>
 
             <div

@@ -660,6 +660,12 @@ export default function OpenJarvisWidget() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Release the mic if the panel unmounts mid-recording.
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }, []);
+
   const handleScroll = () => {
     if (!listRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = listRef.current;

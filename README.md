@@ -39,15 +39,17 @@ Dwellium -Per Spec/
 ## Quick start (build + preview)
 
 Prerequisites:
-- Node ≥ 25.5.0 (see `.nvmrc`)
-- npm ≥ 11.8.0
+- Node 22 (see `.nvmrc`)
+- npm ≥ 10
 
 ```bash
 cd qualia-shell
 npm install
-npx vite build        # produces dist/
-npx vite preview      # serves built app on http://localhost:4173
+npm run build         # tsc -b && react-router build → output in build/client/
+npm run preview       # serves the built app on http://localhost:4173
 ```
+
+This is a React Router 7 framework-mode app — `npx vite build` is a silent no-op; always use `npm run build`.
 
 For the dev server with hot reload:
 ```bash
@@ -56,8 +58,8 @@ npm run dev           # Vite dev on http://localhost:5173
 
 Default login:
 - Click splash overlay ("Click to Access Terminal")
-- Pick an avatar (Andy / Lisa / Wendy / Lee)
-- Passphrase: **`Comet2878!`**
+- Pick a dev avatar (Andy / Lisa / Archi)
+- Production sign-in uses Google Identity Services
 
 Detailed build steps, troubleshooting, and parity verification are in `qualia-shell/BUILD.md` (if present) or the build walkthrough inside `Docs/Handoff_Parity_Checklist.md`.
 

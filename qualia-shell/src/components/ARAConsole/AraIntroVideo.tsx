@@ -98,7 +98,7 @@ export default function AraIntroVideo() {
                 className="ara-intro__video"
                 autoPlay
                 playsInline
-                preload="auto"
+                preload="none"
             >
                 <source src="/assets/ara-intro.mp4" type="video/mp4" />
             </video>

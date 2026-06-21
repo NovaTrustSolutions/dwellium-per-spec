@@ -2209,6 +2209,14 @@ export default function TranscriptionHub() {
     // ---- CLEANUP ----
     useEffect(() => {
         return () => {
+            // Stop the self-perpetuating rotating chunk-recorder loop so
+            // rec.onstop won't restart the MediaRecorder on an unmounted component.
+            chunkLoopActiveRef.current = false;
+            // Clear chunk-recorder timers (mirrors stopRecording/pauseRecording teardown).
+            if (chunkRotateTimerRef.current) { clearTimeout(chunkRotateTimerRef.current); chunkRotateTimerRef.current = null; }
+            if (chunkLevelSamplerRef.current) { clearInterval(chunkLevelSamplerRef.current); chunkLevelSamplerRef.current = null; }
+            if (segmentFlushTimerRef.current) { clearInterval(segmentFlushTimerRef.current); segmentFlushTimerRef.current = null; }
+            if (liveRestartTimerRef.current) { clearTimeout(liveRestartTimerRef.current); liveRestartTimerRef.current = null; }
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(t => t.stop());
             }

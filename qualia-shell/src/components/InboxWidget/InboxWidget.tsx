@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowRight, BarChart3, Bot, Check, Circle, Download, Inbox, Link, Pause, RefreshCw, Settings, Timer, Trash2, TrendingUp, TriangleAlert } from 'lucide-react';
+import { sanitizeHtml } from '../../utils/safeMarkdown';
 import './InboxWidget.css';
 
 interface InboxItem {
@@ -374,7 +375,7 @@ export default function InboxWidget() {
                                                         a { color: #2563eb; }
                                                     </style>
                                                 </head>
-                                                <body>${item.body}</body>
+                                                <body>${sanitizeHtml(item.body)}</body>
                                             </html>
                                         `}
                                         style={{
@@ -386,7 +387,7 @@ export default function InboxWidget() {
                                             marginBottom: '16px',
                                             boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
                                         }}
-                                        sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                                        sandbox="allow-popups"
                                     />
                                 ) : (
                                     <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 8, marginBottom: 16, color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: 13 }}>

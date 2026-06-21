@@ -1462,7 +1462,10 @@ export default function ARAConsole() {
             return true;
         }
         // Tier 2 — chain (A3): multi-step command+skill sequences.
-        const chain = parseChain(text);
+        // origin 'user' — dispatchTiers only ever runs on the human composer's
+        // utterance (or its deterministic llmRouter normalization of that same
+        // utterance), never on injected LLM/web/file content.
+        const chain = parseChain(text, 'user');
         if (chain) {
             const progress = createChatMessage({ role: 'assistant', content: `Running ${chain.steps.length} steps…` });
             setMessages(prev => [...prev, createChatMessage({ role: 'user', content: echoText }), progress]);
@@ -1495,8 +1498,8 @@ export default function ARAConsole() {
             if (ttsEnabled) void speakText(ack);
             return true;
         }
-        // Tier 4 — browser-side skills.
-        const skillHit = matchSkill(text);
+        // Tier 4 — browser-side skills. origin 'user' (see Tier 2 note).
+        const skillHit = matchSkill(text, undefined, 'user');
         if (skillHit) {
             setMessages(prev => [...prev, createChatMessage({ role: 'user', content: echoText })]);
             setInput('');

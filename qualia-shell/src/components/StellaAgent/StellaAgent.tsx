@@ -653,7 +653,13 @@ export default function StellaAgent() {
                 // P11-6: merged registry + offline chain (skill → ReAct → LLM)
                 toolNames: mergedToolNames(hermesTools.map((t: any) => t.name)),
                 skillFallbackFn: async (t) => {
-                    const hit = await runSkillForInput(t, { llm: integrations.llm, search: integrations.search });
+                    // PROVENANCE GATE: `t` is chosen by the Hermes ReAct/tool loop
+                    // (model/tool-derived), NOT typed by the human — origin 'model'
+                    // (4th arg; `undefined` keeps the default catalog) so an injected
+                    // payload in the loop can't fire an executable skill (esp. the
+                    // code runner). runSkillForInput returns null for any non-user
+                    // origin, leaving Hermes to fall through to its ReAct/LLM legs.
+                    const hit = await runSkillForInput(t, { llm: integrations.llm, search: integrations.search }, undefined, 'model');
                     return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
                 },
                 reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,
@@ -679,7 +685,8 @@ export default function StellaAgent() {
         // (calculator / web search / weather / code / memory) run before any
         // LLM round-trip. Stella's Skills tab showed them; now her chat path
         // actually executes them.
-        const skillHit = matchSkill(text);
+        // origin 'user' — this is the human composer's typed message.
+        const skillHit = matchSkill(text, undefined, 'user');
         if (skillHit) {
             setMessages(prev => [...prev, {
                 id: `user-${Date.now()}`, role: 'user', content: text, timestamp: Date.now(),

@@ -20,7 +20,7 @@
  * React-free; ARA hosts execution (skills need the per-user LLM bundle).
  */
 import { parseCommand, stripPoliteness, type ParsedCommand } from './dwelliumCommands';
-import { matchSkill, type AgentSkill, type SkillContext } from './agents/skills';
+import { matchSkill, type AgentSkill, type SkillContext, type SkillOrigin } from './agents/skills';
 import { parseSpawn, type SpawnRequest } from './agents/spawn';
 
 export interface ChainStep {
@@ -61,6 +61,19 @@ const CONNECTOR_SPLIT = /\s*(?:,\s*then\s+|;\s*|\s+then\s+|\s+and\s+|,)\s*/i;
 /** "the result" / "the answer" / "that result" → previous skill output. */
 const RESULT_REF = /\b(?:the\s+result|that\s+result|the\s+answer)\b/gi;
 
+/**
+ * Skills that must NEVER receive a PIPED result as their argument. A piped
+ * `lastResult` can be web/LLM/spawn-derived (a prior web-search or spawn
+ * step), so it is UNTRUSTED — substituting it into the code runner would let
+ * model/web text become arbitrary executed JS (`new Function`). The code
+ * runner can still be triggered DIRECTLY by a user clause (that path is
+ * unchanged); it just can't be fed a cross-step result. The whitelist-only
+ * calculator is intentionally NOT here — its `evaluateMath` rejects every
+ * identifier, so piping a number into "calculate the result + 10" stays the
+ * documented, safe chaining feature.
+ */
+const NO_PIPE_SKILL_IDS: ReadonlySet<string> = new Set(['skill-code-runner']);
+
 /** Strip markdown emphasis/code + collapse whitespace for piping into a next-step arg. */
 export function cleanResultForPiping(text: string): string {
     return text
@@ -86,7 +99,7 @@ export function extractPipeValue(text: string): string {
  *  args containing "and" survive when the user chains with "then"). */
 const THEN_SPLIT = /\s*(?:,\s*then\s+|;\s*|\s+then\s+)\s*/i;
 
-function resolveClause(clause: string): ChainStep | null {
+function resolveClause(clause: string, origin: SkillOrigin): ChainStep | null {
     const c = clause.trim();
     if (!c) return null;
     // P11-3: spawn FIRST — parseCommand's own spawn rule would otherwise turn
@@ -95,16 +108,17 @@ function resolveClause(clause: string): ChainStep | null {
     if (spawn) return { kind: 'spawn', clause: c, label: `Spawn ${spawn.name} → ${spawn.goal.slice(0, 32)}`, spawn };
     const cmd = parseCommand(c); // command verbs win, matching ARA's send order
     if (cmd) return { kind: 'command', clause: c, label: cmd.label, command: cmd };
-    const hit = matchSkill(c);
+    // PROVENANCE GATE: skill clauses only resolve for human-composer input.
+    const hit = matchSkill(c, undefined, origin);
     if (hit) return { kind: 'skill', clause: c, label: `${hit.skill.name}: ${hit.arg.slice(0, 40)}`, skill: hit };
     return null;
 }
 
-function buildChain(parts: string[]): CommandChain | null {
+function buildChain(parts: string[], origin: SkillOrigin): CommandChain | null {
     if (parts.length < 2) return null;
     const steps: ChainStep[] = [];
     for (const part of parts) {
-        const step = resolveClause(part);
+        const step = resolveClause(part, origin);
         if (!step) return null; // unresolved clause → whole input goes to chat
         steps.push(step);
     }
@@ -119,19 +133,19 @@ function buildChain(parts: string[]): CommandChain | null {
  * chat. "then"-split is tried FIRST so chained spawn goals keep their "and"s
  * ("spawn build team on caching and bundles THEN remember the result").
  */
-export function parseChain(input: string): CommandChain | null {
+export function parseChain(input: string, origin: SkillOrigin = 'user'): CommandChain | null {
     const s = input.trim();
     if (!s) return null;
     const l = stripPoliteness(s);
     if (!l || NO_SPLIT.test(l)) return null;
 
     // P11-3 pass 0 — "then"-only split (and-preserving; allows spawn steps).
-    const thenChain = buildChain(l.split(THEN_SPLIT).map(p => p.trim()).filter(Boolean));
+    const thenChain = buildChain(l.split(THEN_SPLIT).map(p => p.trim()).filter(Boolean), origin);
     if (thenChain) return thenChain;
 
     if (parseSpawn(l)) return null; // whole-input spawn owns and-in-goal
 
-    return buildChain(l.split(CONNECTOR_SPLIT).map(p => p.trim()).filter(Boolean));
+    return buildChain(l.split(CONNECTOR_SPLIT).map(p => p.trim()).filter(Boolean), origin);
 }
 
 /**
@@ -172,7 +186,11 @@ export async function executeChain(
                 outcome = { step, ok: false, text: err instanceof Error ? err.message : String(err) };
             }
         } else if (step.kind === 'skill' && step.skill) {
-            const arg = lastResult ? step.skill.arg.replace(RESULT_REF, lastResult) : step.skill.arg;
+            // Result piping carries (possibly web/LLM/spawn-derived) text from a
+            // prior step. Never let that untrusted value reach an arbitrary-exec
+            // skill (the code runner) — those run their literal clause instead.
+            const allowPipe = lastResult && !NO_PIPE_SKILL_IDS.has(step.skill.skill.id);
+            const arg = allowPipe ? step.skill.arg.replace(RESULT_REF, lastResult) : step.skill.arg;
             try {
                 const r = await step.skill.skill.run(arg, ctx);
                 outcome = { step, ok: r.ok, text: r.text };

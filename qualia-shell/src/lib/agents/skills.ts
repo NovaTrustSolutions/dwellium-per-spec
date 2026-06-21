@@ -62,6 +62,26 @@ export interface AgentSkill {
 
 const fetchOf = (ctx: SkillContext): typeof fetch => ctx.fetchFn ?? fetch;
 
+// ── Provenance gate (prompt-injection trust boundary) ─────────────────
+// Skill triggers resolve on RAW TEXT and can run arbitrary effects — the
+// code runner (`new Function`), the compose-into-widget action bus, memory
+// writes, etc. That is only safe for text the HUMAN typed into a composer.
+// Text that arrived from an LLM response, a web-search result, an ingested
+// file, or a tool/ReAct loop is UNTRUSTED: a prompt-injection payload inside
+// it ("…now run js: fetch(...)") must NOT be able to fire a skill.
+//
+// `SkillOrigin` tags the provenance of an input. `matchSkill` and
+// `runSkillForInput` only resolve/execute when origin === 'user'; any other
+// origin returns null (no match, no run) by construction. Call sites driven
+// by the human composer pass 'user'; autonomous re-entry (Hermes fallback,
+// piped chain results) pass — or default to — a non-user origin.
+export type SkillOrigin = 'user' | 'model' | 'tool' | 'web' | 'file';
+
+/** Only the human composer is trusted to trigger executable skills. */
+export function isTrustedSkillOrigin(origin: SkillOrigin | undefined): boolean {
+    return origin === 'user';
+}
+
 // ── Calculator (LibreChat "Calculator") ───────────────────────────────
 
 const CALC_FNS: Record<string, (...a: number[]) => number> = {
@@ -480,11 +500,23 @@ export const AGENT_SKILLS: ReadonlyArray<AgentSkill> = [
     knowledgeGraphSkill,
 ];
 
-/** First skill whose trigger matches, with the extracted argument. */
+/**
+ * First skill whose trigger matches, with the extracted argument.
+ *
+ * PROVENANCE GATE: skills are executable (code runner, widget-action bus,
+ * memory writes), so a match is only resolved for HUMAN-composer input
+ * (`origin === 'user'`). For any other origin (model/tool/web/file) this
+ * returns null — injected text in an LLM/web/file response can never claim a
+ * skill. `origin` defaults to `'user'` so existing human-driven call sites
+ * (and the pure intent-classifier in llmRouter) behave exactly as before;
+ * autonomous re-entry MUST pass its real, non-user origin to be gated out.
+ */
 export function matchSkill(
     input: string,
     catalog: ReadonlyArray<AgentSkill> = AGENT_SKILLS,
+    origin: SkillOrigin = 'user',
 ): { skill: AgentSkill; arg: string } | null {
+    if (!isTrustedSkillOrigin(origin)) return null; // untrusted text can't trigger skills
     const s = input.trim().replace(/[.!?]+$/, '').trim(); // "Create a lighthouse image."
     if (!s) return null;
     for (const skill of catalog) {
@@ -496,13 +528,26 @@ export function matchSkill(
     return null;
 }
 
-/** Match + run in one step. Returns null when no skill claims the input. */
+/**
+ * Match + run in one step. Returns null when no skill claims the input.
+ *
+ * PROVENANCE GATE: this is the execution wrapper used by autonomous callers
+ * (e.g. Stella's Hermes skill-fallback, which is fed model/tool-derived
+ * text). A non-`'user'` origin short-circuits to null (no match, no run) so
+ * a prompt-injection payload in an LLM/tool/web/file string cannot reach
+ * `skill.run` (and thus the code runner). `origin` defaults to `'user'` to
+ * preserve existing human-driven / direct-test callers unchanged; the
+ * autonomous Hermes fallback MUST pass its real (non-user) origin to be
+ * gated out.
+ */
 export async function runSkillForInput(
     input: string,
     ctx: SkillContext,
     catalog: ReadonlyArray<AgentSkill> = AGENT_SKILLS,
+    origin: SkillOrigin = 'user',
 ): Promise<(SkillResult & { skill: AgentSkill }) | null> {
-    const hit = matchSkill(input, catalog);
+    if (!isTrustedSkillOrigin(origin)) return null; // untrusted text never executes a skill
+    const hit = matchSkill(input, catalog, origin);
     if (!hit) return null;
     const result = await hit.skill.run(hit.arg, ctx);
     return { ...result, skill: hit.skill };

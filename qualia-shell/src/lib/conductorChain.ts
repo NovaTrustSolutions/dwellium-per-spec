@@ -134,6 +134,12 @@ function buildChain(parts: string[], origin: SkillOrigin): CommandChain | null {
  * ("spawn build team on caching and bundles THEN remember the result").
  */
 export function parseChain(input: string, origin: SkillOrigin = 'user'): CommandChain | null {
+    // PROVENANCE GATE: the command+skill chain executes COMMANDS (open / move /
+    // dock / send …) and pipes results, so it is a HUMAN-composer surface only.
+    // The Option-B allowlist lets autonomous agents run a SAFE skill DIRECTLY
+    // (runSkillForInput / runSkill), but untrusted model/web/tool/file text must
+    // never drive a multi-step chain — keep the whole parser user-origin-only.
+    if (origin !== 'user') return null;
     const s = input.trim();
     if (!s) return null;
     const l = stripPoliteness(s);

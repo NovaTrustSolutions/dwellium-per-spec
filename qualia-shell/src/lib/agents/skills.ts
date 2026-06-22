@@ -57,6 +57,14 @@ export interface AgentSkill {
     requires: 'none' | 'llm' | 'openai-key' | 'anthropic-key';
     /** Natural-language triggers; first capture group = the skill argument. */
     triggers: RegExp[];
+    /**
+     * Option B trust boundary: may this skill run for a NON-'user' (autonomous)
+     * origin? Only read-only/no-side-effect skills set this true. Dangerous
+     * skills (code runner, widget-mutating, memory-write, paid/side-effecting)
+     * leave it undefined → autonomous origins can never run them. Cross-checked
+     * against `SAFE_AUTONOMOUS_SKILL_IDS` in `isSafeForAutonomous`.
+     */
+    safeForAutonomous?: boolean;
     run: (input: string, ctx: SkillContext) => Promise<SkillResult>;
 }
 
@@ -71,15 +79,56 @@ const fetchOf = (ctx: SkillContext): typeof fetch => ctx.fetchFn ?? fetch;
 // it ("…now run js: fetch(...)") must NOT be able to fire a skill.
 //
 // `SkillOrigin` tags the provenance of an input. `matchSkill` and
-// `runSkillForInput` only resolve/execute when origin === 'user'; any other
-// origin returns null (no match, no run) by construction. Call sites driven
-// by the human composer pass 'user'; autonomous re-entry (Hermes fallback,
-// piped chain results) pass — or default to — a non-user origin.
+// `runSkillForInput` resolve/execute when origin === 'user' OR the matched
+// skill is on the autonomous-safe allowlist (Option B); any other case
+// returns null (no match, no run) by construction. Call sites driven by the
+// human composer pass 'user'; autonomous re-entry (Hermes fallback, team /
+// orchestrator member tasks, piped chain results) pass a non-user origin and
+// are restricted to the read-only/no-side-effect subset below.
 export type SkillOrigin = 'user' | 'model' | 'tool' | 'web' | 'file';
 
-/** Only the human composer is trusted to trigger executable skills. */
+/** Only the human composer is FULLY trusted (can run every skill, incl. effects). */
 export function isTrustedSkillOrigin(origin: SkillOrigin | undefined): boolean {
     return origin === 'user';
+}
+
+// ── Autonomous-safe allowlist (Option B) ──────────────────────────────
+// Autonomous (non-'user') origins — Hermes ReAct/tool loops, Agent Lab team
+// & orchestrator member tasks, piped chain results — legitimately need a
+// SMALL read-only subset of skills (look up the weather, do arithmetic,
+// search the web, recall a fact). They must NEVER reach the dangerous ones:
+//   - skill-code-runner   → executes arbitrary JS via `new Function`
+//   - skill-compose-widget → mutates a widget via the widget-action bus
+//   - skill-memory-remember → WRITES to persistent memory
+//   - skill-image-gen / skill-knowledge-graph → paid/side-effecting calls
+// An injected payload in an LLM/web/tool/file string therefore can do at most
+// a read-only fetch, never a side-effecting action.
+//
+// SECURITY INVARIANT: the code runner (and every other mutating/effecting
+// skill) is reachable ONLY for origin === 'user'. Adding an id here is a
+// trust-boundary decision — it must be read-only with no side effects beyond
+// fetching, or it does NOT belong in this set.
+export const SAFE_AUTONOMOUS_SKILL_IDS: ReadonlySet<string> = new Set([
+    'skill-web-search',
+    'skill-weather',
+    'skill-calculator',
+    'skill-memory-recall',
+]);
+
+/** True if `skill` may run for a non-'user' (autonomous) origin. */
+export function isSafeForAutonomous(skill: Pick<AgentSkill, 'id' | 'safeForAutonomous'>): boolean {
+    return skill.safeForAutonomous === true && SAFE_AUTONOMOUS_SKILL_IDS.has(skill.id);
+}
+
+/**
+ * Whether an input of the given `origin` is allowed to run `skill`.
+ * Human composer ('user') → any skill. Autonomous origins → allowlist only.
+ */
+export function isSkillAllowedForOrigin(
+    skill: Pick<AgentSkill, 'id' | 'safeForAutonomous'>,
+    origin: SkillOrigin | undefined,
+): boolean {
+    return isTrustedSkillOrigin(origin) || isSafeForAutonomous(skill);
 }
 
 // ── Calculator (LibreChat "Calculator") ───────────────────────────────
@@ -121,6 +170,7 @@ const calculatorSkill: AgentSkill = {
     description: 'Exact arithmetic — percentages, powers, roots, trig. Runs instantly in-app, no key needed.',
     derivedFrom: 'LibreChat: Calculator',
     requires: 'none',
+    safeForAutonomous: true, // pure JS, no side effects → safe for agent runs
     triggers: [
         /^(?:calc(?:ulate)?|compute|evaluate)\s+(.+)$/i,
         /^(?:what\s+is|what's)\s+([\d(][\d\s+\-*/().^%,x×÷]*[\d)%])\??$/i,
@@ -173,6 +223,7 @@ const webSearchSkill: AgentSkill = {
     description: 'Search the live web — Anthropic web-search tool, or your Tavily/Brave key (P11-9).',
     derivedFrom: 'LibreChat: Google / Tavily Search',
     requires: 'llm',
+    safeForAutonomous: true, // read-only fetch → safe for agent runs
     triggers: [
         /^(?:search(?:\s+the)?\s+web(?:\s+for)?|web\s+search(?:\s+for)?|google|search\s+online(?:\s+for)?|look\s+up\s+online)\s+(.+)$/i,
     ],
@@ -351,6 +402,7 @@ const weatherSkill: AgentSkill = {
     description: 'Current conditions + today\'s range for any city — keyless (open-meteo), so it always works.',
     derivedFrom: 'LibreChat: OpenWeather',
     requires: 'none',
+    safeForAutonomous: true, // read-only fetch → safe for agent runs
     triggers: [
         /^(?:weather|forecast)\s+(?:in|for|at)\s+(.+)$/i,
         /^(?:what(?:'s| is)\s+the\s+)?(?:weather|temperature|forecast)\s+(?:like\s+)?(?:in|for|at)\s+(.+?)(?:\s+(?:today|right now|now))?$/i,
@@ -385,6 +437,7 @@ const memoryRecallSkill: AgentSkill = {
     description: 'Search everything you\'ve asked Dwellium to remember.',
     derivedFrom: 'LibreChat: Memory',
     requires: 'none',
+    safeForAutonomous: true, // read-only recall(), no write → safe for agent runs
     triggers: [
         /^(?:recall|what\s+do\s+you\s+remember\s+about|what\s+did\s+i\s+(?:say|tell\s+you)\s+about)\s+(.+)$/i,
     ],
@@ -503,23 +556,29 @@ export const AGENT_SKILLS: ReadonlyArray<AgentSkill> = [
 /**
  * First skill whose trigger matches, with the extracted argument.
  *
- * PROVENANCE GATE: skills are executable (code runner, widget-action bus,
- * memory writes), so a match is only resolved for HUMAN-composer input
- * (`origin === 'user'`). For any other origin (model/tool/web/file) this
- * returns null — injected text in an LLM/web/file response can never claim a
- * skill. `origin` defaults to `'user'` so existing human-driven call sites
- * (and the pure intent-classifier in llmRouter) behave exactly as before;
- * autonomous re-entry MUST pass its real, non-user origin to be gated out.
+ * PROVENANCE GATE (Option B allowlist): skills are executable (code runner,
+ * widget-action bus, memory writes), so for HUMAN-composer input
+ * (`origin === 'user'`) any skill may match. For an autonomous origin
+ * (model/tool/web/file) ONLY allowlisted read-only skills
+ * (`SAFE_AUTONOMOUS_SKILL_IDS` — web-search/weather/calculator/memory-recall)
+ * may match; a dangerous trigger (e.g. the code runner) is SKIPPED, so an
+ * injected payload in an LLM/web/file response can never claim it. `origin`
+ * defaults to `'user'` so existing human-driven call sites (and the pure
+ * intent-classifier in llmRouter) behave exactly as before; autonomous
+ * re-entry MUST pass its real, non-user origin to be allowlist-gated.
  */
 export function matchSkill(
     input: string,
     catalog: ReadonlyArray<AgentSkill> = AGENT_SKILLS,
     origin: SkillOrigin = 'user',
 ): { skill: AgentSkill; arg: string } | null {
-    if (!isTrustedSkillOrigin(origin)) return null; // untrusted text can't trigger skills
     const s = input.trim().replace(/[.!?]+$/, '').trim(); // "Create a lighthouse image."
     if (!s) return null;
     for (const skill of catalog) {
+        // Autonomous origins may only match allowlisted-safe skills; a dangerous
+        // skill is skipped (not matched-then-refused) so an unsafe trigger can't
+        // shadow a later safe one for the same text.
+        if (!isSkillAllowedForOrigin(skill, origin)) continue;
         for (const re of skill.triggers) {
             const m = s.match(re);
             if (m) return { skill, arg: (m[1] ?? s).trim() };
@@ -531,14 +590,16 @@ export function matchSkill(
 /**
  * Match + run in one step. Returns null when no skill claims the input.
  *
- * PROVENANCE GATE: this is the execution wrapper used by autonomous callers
- * (e.g. Stella's Hermes skill-fallback, which is fed model/tool-derived
- * text). A non-`'user'` origin short-circuits to null (no match, no run) so
- * a prompt-injection payload in an LLM/tool/web/file string cannot reach
- * `skill.run` (and thus the code runner). `origin` defaults to `'user'` to
- * preserve existing human-driven / direct-test callers unchanged; the
- * autonomous Hermes fallback MUST pass its real (non-user) origin to be
- * gated out.
+ * PROVENANCE GATE (Option B allowlist): this is the execution wrapper used by
+ * autonomous callers (Stella's Hermes skill-fallback, Agent Lab team /
+ * orchestrator member tasks, the autonomous runner) — all fed model/tool-
+ * derived text. For a non-`'user'` origin only an allowlisted-safe skill can
+ * run; a dangerous one (code runner, widget-mutating, memory-write,
+ * paid/side-effecting) is refused (null) so a prompt-injection payload in an
+ * LLM/tool/web/file string can never reach its `skill.run`. `origin` defaults
+ * to `'user'` to preserve existing human-driven / direct-test callers
+ * unchanged; autonomous callers MUST pass their real (non-user) origin to be
+ * allowlist-gated.
  */
 export async function runSkillForInput(
     input: string,
@@ -546,9 +607,11 @@ export async function runSkillForInput(
     catalog: ReadonlyArray<AgentSkill> = AGENT_SKILLS,
     origin: SkillOrigin = 'user',
 ): Promise<(SkillResult & { skill: AgentSkill }) | null> {
-    if (!isTrustedSkillOrigin(origin)) return null; // untrusted text never executes a skill
     const hit = matchSkill(input, catalog, origin);
     if (!hit) return null;
+    // Defense in depth: matchSkill already filtered by origin, but re-assert the
+    // allowlist here so no future caller can run an unsafe skill autonomously.
+    if (!isSkillAllowedForOrigin(hit.skill, origin)) return null;
     const result = await hit.skill.run(hit.arg, ctx);
     return { ...result, skill: hit.skill };
 }

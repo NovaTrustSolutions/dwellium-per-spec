@@ -75,7 +75,10 @@ export default function AgentLab() {
         // web-searches) — output feeds the member prompt as evidence.
         runSkill: async (input, skillIds) => {
             const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
-            const r = await runSkillForInput(input, { llm: integrations.llm, search: integrations.search }, catalog);
+            // PROVENANCE GATE: member-task skill input is orchestrator/model-derived,
+            // not human-typed — origin 'model' so only the autonomous-safe allowlist
+            // runs (code runner / widget-mutating / memory-write are refused).
+            const r = await runSkillForInput(input, { llm: integrations.llm, search: integrations.search }, catalog, 'model');
             return r && r.ok ? { name: r.skill.name, text: r.text } : null;
         },
     }), [integrations.llm]);

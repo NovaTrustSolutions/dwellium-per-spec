@@ -327,7 +327,10 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
             // multi-step ReAct loop (reason→act→observe on the user's key) →
             // single-shot LLM.
             skillFallbackFn: async (t) => {
-                const hit = await runSkillForInput(t, { llm: integrations.llm, search: integrations.search });
+                // PROVENANCE GATE: `t` is chosen by the Hermes ReAct/tool loop
+                // (model-derived), NOT human-typed — origin 'model' so only the
+                // autonomous-safe allowlist runs (dangerous skills refused).
+                const hit = await runSkillForInput(t, { llm: integrations.llm, search: integrations.search }, undefined, 'model');
                 return hit ? { ok: hit.ok, text: hit.text, skillName: hit.skill.name } : null;
             },
             reactLoopFn: hasActiveLlm(integrations.llm) ? buildReactLoopFn(integrations.llm) : undefined,

@@ -159,10 +159,13 @@ export function useHermesAutonomousRunner(): void {
             record: input => { recordHermesRun(input); },
             runSkill: async (input, skillIds) => {
                 const catalog = AGENT_SKILLS.filter(skill => skillIds.includes(skill.id));
+                // PROVENANCE GATE: autonomous-task skill input is orchestrator/model-
+                // derived, not human-typed — origin 'model' so only the autonomous-safe
+                // allowlist runs (code runner / widget-mutating / memory-write refused).
                 const result = await runSkillForInput(input, {
                     llm: integrations.llm,
                     search: integrations.search,
-                }, catalog);
+                }, catalog, 'model');
                 return result?.ok ? { name: result.skill.name, text: result.text } : null;
             },
         };

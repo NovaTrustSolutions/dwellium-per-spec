@@ -1329,9 +1329,12 @@ export default function ARAConsole() {
             recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
             record: (rec) => { recordRun(rec); },
             // P11-5: equipped skills execute during member tasks.
+            // PROVENANCE GATE: member-task skill input is orchestrator/model-derived,
+            // not human-typed — origin 'model' so only the autonomous-safe allowlist
+            // runs (code runner / widget-mutating / memory-write are refused).
             runSkill: async (skillInput, skillIds) => {
                 const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
-                const r = await runSkillForInput(skillInput, { llm: integrations.llm, search: integrations.search }, catalog);
+                const r = await runSkillForInput(skillInput, { llm: integrations.llm, search: integrations.search }, catalog, 'model');
                 return r && r.ok ? { name: r.skill.name, text: r.text } : null;
             },
         };
@@ -1420,9 +1423,12 @@ export default function ARAConsole() {
             recall: (prompt) => formatFewShot(relevantPastRuns(prompt, 3)),
             record: (rec) => { recordRun(rec); },
             // P11-5: equipped skills execute during member tasks.
+            // PROVENANCE GATE: member-task skill input is orchestrator/model-derived,
+            // not human-typed — origin 'model' so only the autonomous-safe allowlist
+            // runs (code runner / widget-mutating / memory-write are refused).
             runSkill: async (skillInput, skillIds) => {
                 const catalog = AGENT_SKILLS.filter(s => skillIds.includes(s.id));
-                const r = await runSkillForInput(skillInput, { llm: integrations.llm, search: integrations.search }, catalog);
+                const r = await runSkillForInput(skillInput, { llm: integrations.llm, search: integrations.search }, catalog, 'model');
                 return r && r.ok ? { name: r.skill.name, text: r.text } : null;
             },
         };

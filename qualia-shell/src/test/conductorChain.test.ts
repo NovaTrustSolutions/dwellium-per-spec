@@ -6,7 +6,14 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { parseChain, executeChain, cleanResultForPiping } from '../lib/conductorChain';
-import { evaluateMath, matchSkill, runSkillForInput } from '../lib/agents/skills';
+import {
+    evaluateMath,
+    matchSkill,
+    runSkillForInput,
+    AGENT_SKILLS,
+    SAFE_AUTONOMOUS_SKILL_IDS,
+    isSkillAllowedForOrigin,
+} from '../lib/agents/skills';
 import { agentTeamsStore, agentLabUserIdHolder } from '../lib/agents/agentTeamsStore';
 import type { IntegrationsBundle } from '../types/integrations';
 
@@ -185,8 +192,8 @@ describe('provenance gate — skill matching only on user-origin input', () => {
         // user (and default) → the chain resolves as before.
         expect(parseChain(utter, 'user')).not.toBeNull();
         expect(parseChain(utter)).not.toBeNull();
-        // injected text → the skill clause can't resolve, so buildChain bails
-        // (no command-only chains either) → null, whole input is left to chat.
+        // injected text → parseChain refuses non-user origin outright (the
+        // command+skill chain is a human-composer surface) → null, left to chat.
         expect(parseChain(utter, 'model')).toBeNull();
         expect(parseChain(utter, 'web')).toBeNull();
     });
@@ -208,5 +215,78 @@ describe('provenance gate — skill matching only on user-origin input', () => {
         const calc = parseChain('calculate 15% of 2400 and calculate the result + 10')!;
         const calcOut = await executeChain(calc, { llm: noLlm });
         expect(calcOut[1].text).toContain('370');
+    });
+});
+
+// ── Option B: autonomous-safe allowlist ───────────────────────────────
+// Autonomous (non-'user') origins — Hermes ReAct loops, Agent Lab team /
+// orchestrator member tasks, the autonomous runner — legitimately need a
+// read-only subset of skills (web-search / weather / calculator /
+// memory-recall). They must NEVER reach the dangerous ones (code runner,
+// compose-into-widget, memory-remember). The human composer ('user') still
+// runs every skill. These tests pin that exact split.
+describe('Option B — autonomous-safe skill allowlist', () => {
+    it('SAFE_AUTONOMOUS_SKILL_IDS is exactly the read-only safe set', () => {
+        expect([...SAFE_AUTONOMOUS_SKILL_IDS].sort()).toEqual(
+            ['skill-calculator', 'skill-memory-recall', 'skill-weather', 'skill-web-search'],
+        );
+        // Dangerous skills must NOT be on the allowlist (security invariant).
+        for (const id of ['skill-code-runner', 'skill-compose-widget', 'skill-memory-remember']) {
+            expect(SAFE_AUTONOMOUS_SKILL_IDS.has(id)).toBe(false);
+        }
+    });
+
+    it('isSkillAllowedForOrigin: user runs anything; autonomous only the safe set', () => {
+        const calc = AGENT_SKILLS.find(s => s.id === 'skill-calculator')!;
+        const code = AGENT_SKILLS.find(s => s.id === 'skill-code-runner')!;
+        // The catalog flags must be set correctly (and only) on the safe set.
+        expect(calc.safeForAutonomous).toBe(true);
+        expect(code.safeForAutonomous).toBeUndefined();
+        // user → both allowed.
+        expect(isSkillAllowedForOrigin(calc, 'user')).toBe(true);
+        expect(isSkillAllowedForOrigin(code, 'user')).toBe(true);
+        // model → calculator allowed, code runner refused.
+        expect(isSkillAllowedForOrigin(calc, 'model')).toBe(true);
+        expect(isSkillAllowedForOrigin(code, 'model')).toBe(false);
+    });
+
+    it('matchSkill: a non-user origin resolves a SAFE skill but refuses the code runner', () => {
+        // Safe skill (calculator) — matches for model/web/tool/file, like user.
+        expect(matchSkill('calculate 21 * 2', undefined, 'user')?.skill.id).toBe('skill-calculator');
+        for (const origin of ['model', 'web', 'tool', 'file'] as const) {
+            expect(matchSkill('calculate 21 * 2', undefined, origin)?.skill.id).toBe('skill-calculator');
+        }
+        // Dangerous skill (code runner) — only the human composer can match it.
+        expect(matchSkill('run js: 21 * 2', undefined, 'user')?.skill.id).toBe('skill-code-runner');
+        for (const origin of ['model', 'web', 'tool', 'file'] as const) {
+            expect(matchSkill('run js: 21 * 2', undefined, origin)).toBeNull();
+        }
+    });
+
+    it('runSkillForInput: model origin RUNS calculator but the code runner stays unreachable', async () => {
+        // A safe skill actually executes for an autonomous (model) origin.
+        const safe = await runSkillForInput('calculate 21 * 2', { llm: noLlm }, undefined, 'model');
+        expect(safe?.skill.id).toBe('skill-calculator');
+        expect(safe?.text).toContain('42');
+        // The code runner never runs for ANY non-user origin → `new Function`
+        // is unreachable for model/web/tool/file-derived (untrusted) text.
+        for (const origin of ['model', 'web', 'tool', 'file'] as const) {
+            expect(await runSkillForInput('run js: 21 * 2', { llm: noLlm }, undefined, origin)).toBeNull();
+        }
+        // memory-remember (a WRITE) is likewise refused autonomously…
+        expect(await runSkillForInput('remember that the gate code is 4821', { llm: noLlm }, undefined, 'model')).toBeNull();
+    });
+
+    it("'user' origin still runs everything (human-path behavior unchanged)", async () => {
+        // The code runner runs for the human composer, exactly as before.
+        const code = await runSkillForInput('run js: 21 * 2', { llm: noLlm }, undefined, 'user');
+        expect(code?.skill.id).toBe('skill-code-runner');
+        expect(code?.text).toContain('42');
+        // …and the default (no origin arg) stays user-trusted for legacy callers.
+        expect((await runSkillForInput('run js: 21 * 2', { llm: noLlm }))?.skill.id).toBe('skill-code-runner');
+        // A write skill runs for the user too.
+        const remembered = await runSkillForInput('remember that the gate code is 4821', { llm: noLlm }, undefined, 'user');
+        expect(remembered?.skill.id).toBe('skill-memory-remember');
+        expect(remembered?.ok).toBe(true);
     });
 });

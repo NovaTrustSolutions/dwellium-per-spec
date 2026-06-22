@@ -9,8 +9,9 @@
  * new window" fallback. The instance URL is configurable and persisted per browser.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Book, Check, ExternalLink, Play } from 'lucide-react';
+import { Book, Check, ExternalLink, Play, RefreshCw } from 'lucide-react';
 import { launchService } from '../../lib/serviceLaunch';
+import { listNotebooks, listSources, type OpenNotebook } from '../../lib/openNotebookClient';
 import './OpenNotebookPanel.css';
 
 const LS_URL = 'dwellium-open-notebook-url';
@@ -49,6 +50,16 @@ export default function OpenNotebookPanel() {
     const [showSetup, setShowSetup] = useState(false);
     const [copied, setCopied] = useState(false);
 
+    // Notebooks list (populated from the REST API on :5055 when reachable). This
+    // is purely ADDITIVE — the iframe path below is unchanged and still works
+    // when the API fetch fails (fail-soft: we just render nothing extra).
+    const [notebooks, setNotebooks] = useState<OpenNotebook[]>([]);
+    const [nbLoading, setNbLoading] = useState(false);
+    const [nbLoaded, setNbLoaded] = useState(false);   // a fetch has completed (drives the empty state)
+    const [nbFailed, setNbFailed] = useState(false);   // last fetch failed → hide the section entirely
+    const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
+    const [listRefresh, setListRefresh] = useState(0);
+
     // Hydrate persisted URL (effect = SSR-safe)
     useEffect(() => {
         try {
@@ -74,6 +85,45 @@ export default function OpenNotebookPanel() {
     }, []);
 
     useEffect(() => { checkReach(url); }, [url, iframeKey, checkReach]);
+
+    // Fetch the notebooks list whenever the instance is reachable (and on manual
+    // refresh / URL change). Fail-soft: any error hides the section and leaves the
+    // iframe as the sole surface. AbortController cancels an in-flight fetch on
+    // cleanup (unmount, URL change, or a newer refresh superseding this one).
+    useEffect(() => {
+        if (reach !== 'up') {
+            // Drop any stale list when the instance goes away.
+            setNotebooks([]); setNbLoaded(false); setNbFailed(false); setSourceCounts({});
+            return;
+        }
+        const ctrl = new AbortController();
+        let cancelled = false;
+        setNbLoading(true); setNbFailed(false);
+        (async () => {
+            const res = await listNotebooks(ctrl.signal);
+            if (cancelled) return;
+            if (res.ok) {
+                setNotebooks(res.notebooks);
+                setNbFailed(false);
+                // Best-effort source counts — never blocks the list, never throws.
+                const counts: Record<string, number> = {};
+                await Promise.all(
+                    res.notebooks
+                        .filter(nb => nb.id)
+                        .map(async nb => {
+                            const s = await listSources(nb.id, ctrl.signal);
+                            if (s.ok) counts[nb.id] = s.sources.length;
+                        }),
+                );
+                if (!cancelled) setSourceCounts(counts);
+            } else {
+                // Fail-soft: keep the existing iframe, surface nothing extra.
+                setNotebooks([]); setNbFailed(true);
+            }
+            if (!cancelled) { setNbLoaded(true); setNbLoading(false); }
+        })();
+        return () => { cancelled = true; ctrl.abort(); };
+    }, [reach, url, listRefresh]);
 
     const saveUrl = () => {
         const v = draft.trim().replace(/\/$/, '');
@@ -141,6 +191,61 @@ export default function OpenNotebookPanel() {
                         Note: if the frame stays blank even when reachable, your instance blocks embedding —
                         use <strong>Open <ExternalLink size={11} aria-hidden style={{ verticalAlign: 'middle' }} /></strong> to launch it in a new window (full app, same data).
                     </p>
+                </div>
+            )}
+
+            {/* Notebooks list (above the iframe) — only when reachable + the
+                last fetch succeeded. Fail-soft: on fetch failure this whole
+                block is skipped and the iframe stands alone. */}
+            {reach === 'up' && !nbFailed && (
+                <div className="onb-notebooks">
+                    <div className="onb-nb-head">
+                        <span className="onb-nb-title">Notebooks</span>
+                        {nbLoading && <span className="onb-nb-count">Loading…</span>}
+                        {!nbLoading && nbLoaded && <span className="onb-nb-count">{notebooks.length}</span>}
+                        <button
+                            className="onb-btn onb-nb-refresh"
+                            onClick={() => setListRefresh(n => n + 1)}
+                            disabled={nbLoading}
+                            title="Refresh notebooks"
+                            aria-label="Refresh notebooks"
+                        >
+                            <RefreshCw size={13} aria-hidden style={{ verticalAlign: 'middle' }} />
+                        </button>
+                    </div>
+
+                    {!nbLoading && nbLoaded && notebooks.length === 0 && (
+                        <p className="onb-nb-empty">No notebooks yet — create one in the app below.</p>
+                    )}
+
+                    {notebooks.length > 0 && (
+                        <ul className="onb-nb-list">
+                            {notebooks.map((nb, i) => {
+                                const count = sourceCounts[nb.id];
+                                return (
+                                    <li className="onb-nb-row" key={nb.id || `nb-${i}`}>
+                                        <div className="onb-nb-info">
+                                            <span className="onb-nb-name">{nb.name}</span>
+                                            {nb.description && <span className="onb-nb-desc">{nb.description}</span>}
+                                            {typeof count === 'number' && (
+                                                <span className="onb-nb-meta">{count} {count === 1 ? 'source' : 'sources'}</span>
+                                            )}
+                                        </div>
+                                        {/* Opens the instance WEB UI (the :8502 `url`) in a new tab.
+                                            ponytail: a per-notebook deep-link (e.g. `${url}/?notebook=${nb.id}`)
+                                            could replace this once the Open Notebook UI route is confirmed. */}
+                                        <button
+                                            className="onb-btn onb-btn--primary onb-nb-open"
+                                            onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                                            aria-label={`Open ${nb.name} in Open Notebook`}
+                                        >
+                                            Open <ExternalLink size={11} aria-hidden style={{ verticalAlign: 'middle' }} />
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
                 </div>
             )}
 

@@ -106,6 +106,24 @@ const splitRank = (a: HosTab, b: HosTab) =>
     || b.lastActiveAt - a.lastActiveAt
     || a.label.localeCompare(b.label);
 
+/**
+ * Browser tab-close behavior. When the ACTIVE tab is closed, the visible pane
+ * must fall through to the adjacent remaining tab (right neighbor, else left) —
+ * never blank. Closing a background tab leaves the active tab untouched.
+ * Returns the key to make active AFTER the close (null only when the closed tab
+ * was the last one). `order` is the current tab-strip order (pre-removal).
+ */
+export function nextActiveKey(
+    order: { key: string }[],
+    closingKey: string,
+    activeKey: string | null,
+): string | null {
+    if (activeKey !== closingKey) return activeKey;       // closing a background tab
+    const i = order.findIndex((t) => t.key === closingKey);
+    if (i < 0) return activeKey;
+    return (order[i + 1] ?? order[i - 1])?.key ?? null;   // next, else previous, else empty
+}
+
 // AI tools that are CLI agents → run them in the in-OS Terminal instead of an
 // (un-embeddable) web tab. Maps launchpad id → terminal command + tab label.
 const CLI_TOOLS: Record<string, { cmd: string; label: string }> = {
@@ -335,11 +353,14 @@ export default function HalocronOS() {
         );
     };
     const closeTab = (key: string) => {
-        setTabs((t) => {
-            const next = t.filter((x) => x.key !== key);
-            setActiveKey((cur) => (cur === key ? ([...next].sort((a, b) => b.lastActiveAt - a.lastActiveAt)[0]?.key ?? null) : cur));
-            return next;
-        });
+        // Browser behavior: closing the visible/active tab reveals the adjacent
+        // remaining tab (right, else left) instead of blanking the stage. The
+        // heir is resolved from the CURRENT strip order, then the two states are
+        // set independently (no fragile setActiveKey-inside-setTabs nesting,
+        // which could leave activeKey pointing at the closed tab → empty stage).
+        const heir = nextActiveKey(orderedTabs, key, activeKey);
+        setTabs((t) => t.filter((x) => x.key !== key));
+        setActiveKey(heir);
     };
     const toggleTabFlag = (key: string, flag: 'pinned' | 'essential') => {
         setTabs((t) => t.map((x) => (x.key === key ? { ...x, [flag]: !x[flag] } : x)));

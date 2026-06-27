@@ -39,6 +39,47 @@ function authHeader(): Record<string, string> {
     }
 }
 
+/**
+ * Automatic-reconnect backoff (ms). The app reconnects ON ITS OWN — the user
+ * should never have to click "Connect" (Ilya, 2026-06). First attempt is
+ * immediate; it then backs off and, once the schedule is exhausted, keeps
+ * retrying at the final interval until the backend answers. The manual button
+ * stays as an instant-retry fallback.
+ */
+export const AUTO_CONNECT_DELAYS_MS = [0, 2000, 5000, 10000, 20000] as const;
+/** Delay before auto-attempt N (0-based); null once the schedule is exhausted. */
+export function autoConnectDelay(attempt: number): number | null {
+    return attempt >= 0 && attempt < AUTO_CONNECT_DELAYS_MS.length ? AUTO_CONNECT_DELAYS_MS[attempt] : null;
+}
+
+let autoTimer: ReturnType<typeof setTimeout> | null = null;
+let autoAttempt = 0;
+let autoRunning = false;
+
+function stopAuto(): void {
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    autoAttempt = 0;
+    autoRunning = false;
+}
+
+/** Begin reconnecting automatically (bounded backoff, then steady retry).
+ *  Idempotent — no-op when already online or a loop is already running. Only
+ *  ever calls checkConnection(), so it NEVER touches auth / logs anyone out. */
+function startAuto(): void {
+    if (autoRunning || current.state === 'online') return;
+    autoRunning = true;
+    autoAttempt = 0;
+    const run = async (): Promise<void> => {
+        autoTimer = null;
+        const reachable = await backendStatusStore.checkConnection();
+        if (reachable || !autoRunning) return;   // recovered (markOnline stopped us) or cancelled
+        autoAttempt = Math.min(autoAttempt + 1, AUTO_CONNECT_DELAYS_MS.length);
+        const delay = autoConnectDelay(autoAttempt) ?? AUTO_CONNECT_DELAYS_MS[AUTO_CONNECT_DELAYS_MS.length - 1];
+        autoTimer = setTimeout(() => { void run(); }, delay);
+    };
+    autoTimer = setTimeout(() => { void run(); }, autoConnectDelay(0) ?? 0);
+}
+
 export const backendStatusStore = {
     subscribe(listener: () => void): () => void {
         listeners.add(listener);
@@ -65,6 +106,7 @@ export const backendStatusStore = {
 
     /** Mark the backend reachable again — clears the banner. */
     markOnline(): void {
+        stopAuto(); // reconnected (or forced online) → cancel any pending auto-retry
         if (current.state === 'online' && current.message === null) return;
         current = { state: 'online', message: null, lastCheckedAt: Date.now() };
         emit();
@@ -95,8 +137,22 @@ export const backendStatusStore = {
         }
     },
 
+    /**
+     * Auto-connect on launch / whenever offline — the user never has to click.
+     * Pings immediately, then backs off (autoConnectDelay) and keeps retrying at
+     * the final interval until the backend answers. Safe to call repeatedly.
+     */
+    startAutoConnect(): void {
+        startAuto();
+    },
+    /** Stop any in-flight auto-reconnect loop (e.g., on banner unmount). */
+    stopAutoConnect(): void {
+        stopAuto();
+    },
+
     /** Test escape-hatch — reset to the initial online state. */
     reset(): void {
+        stopAuto();
         current = ONLINE;
         emit();
     },

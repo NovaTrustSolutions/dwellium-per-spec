@@ -3,7 +3,7 @@
  * Requirement: a backend failure surfaces the banner; it NEVER touches auth.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { backendStatusStore } from '../lib/backendStatusStore';
+import { backendStatusStore, autoConnectDelay, AUTO_CONNECT_DELAYS_MS } from '../lib/backendStatusStore';
 
 vi.mock('../config', () => ({ API_BASE: '' }));
 
@@ -14,6 +14,7 @@ describe('backendStatusStore', () => {
         localStorage.clear();
     });
     afterEach(() => {
+        backendStatusStore.stopAutoConnect(); // kill any pending auto-reconnect timer
         vi.restoreAllMocks();
     });
 
@@ -68,5 +69,27 @@ describe('backendStatusStore', () => {
     it('getServerSnapshot is always online (SSR-safe)', () => {
         backendStatusStore.markOffline('Failed to fetch');
         expect(backendStatusStore.getServerSnapshot().state).toBe('online');
+    });
+
+    it('autoConnectDelay is an immediate-first, bounded backoff schedule', () => {
+        expect(autoConnectDelay(0)).toBe(0);                                 // first try is immediate
+        expect(autoConnectDelay(1)).toBeGreaterThan(0);                      // then it backs off
+        expect(autoConnectDelay(AUTO_CONNECT_DELAYS_MS.length)).toBeNull();  // past the end → exhausted
+    });
+
+    it('startAutoConnect is a no-op while already online (nothing to reconnect)', () => {
+        backendStatusStore.startAutoConnect();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+        expect(backendStatusStore.getSnapshot().state).toBe('online');
+    });
+
+    it('auto-connect reconnects on its own when the backend answers — no manual click', async () => {
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, status: 401 });
+        backendStatusStore.markOffline('Failed to fetch');
+        backendStatusStore.startAutoConnect(); // fires on launch/offline, without a button press
+        await vi.waitFor(() => {
+            expect(backendStatusStore.getSnapshot().state).toBe('online');
+        });
+        expect(globalThis.fetch).toHaveBeenCalled();
     });
 });

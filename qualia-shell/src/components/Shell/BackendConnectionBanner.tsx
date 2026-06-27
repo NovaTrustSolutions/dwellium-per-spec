@@ -25,6 +25,15 @@ export default function BackendConnectionBanner() {
         if (snap.state === 'offline') setDismissed(false);
     }, [snap.state, snap.lastCheckedAt]);
 
+    // Auto-connect — the user should never have to click "Connect" (Ilya, 2026-06).
+    // The instant the backend is flagged offline (on login / launch), start
+    // reconnecting automatically with a bounded backoff; the button below stays as
+    // an instant-retry fallback. checkConnection() only pings, so auth is untouched.
+    useEffect(() => {
+        if (snap.state === 'offline') backendStatusStore.startAutoConnect();
+    }, [snap.state, snap.lastCheckedAt]);
+    useEffect(() => () => backendStatusStore.stopAutoConnect(), []);
+
     if (snap.state === 'online') return null;
     if (dismissed && snap.state !== 'checking') return null;
 

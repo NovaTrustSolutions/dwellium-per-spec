@@ -19,7 +19,7 @@
 
 import { createLocalStorageStore } from './createLocalStorageStore';
 import { emptyIntegrations, IntegrationsBundle } from '../types/integrations';
-import { encryptBundle, decryptBundle, bundleHasPlaintextSecret } from './integrationsCrypto';
+import { encryptBundle, decryptBundle, bundleHasPlaintextSecret, bundleHasCiphertext } from './integrationsCrypto';
 
 /** Holder updated by UserProvider during render BEFORE useSyncExternalStore reads. */
 export const integrationsUserIdHolder: { current: string | null } = { current: null };
@@ -32,6 +32,32 @@ function resolveKey(): string {
 
 function remoteObjectId(userId: string): string {
     return `integrations_${userId}`;
+}
+
+/** A bundle "has a secret" if any secret field holds ciphertext OR plaintext. */
+function bundleHasAnySecret(bundle: IntegrationsBundle): boolean {
+    return bundleHasCiphertext(bundle) || bundleHasPlaintextSecret(bundle);
+}
+
+/**
+ * On login, decide whether the One Save REMOTE bundle should replace the LOCAL
+ * at-rest copy. Guards against the two ways a flapping/again-reachable backend
+ * could silently wipe good local keys:
+ *   - a TOMBSTONED remote (keys cleared on another device) — every other One
+ *     Save store already checks `deletedAt == null`; integrations did not.
+ *   - a SECRET-LESS remote overwriting a local copy that still holds keys
+ *     (mirrors the save-path anti-clobber guard).
+ * Remote wins only when it actually carries a secret (the cross-device source of
+ * truth); an empty remote is adopted solely when local is empty too.
+ */
+export function shouldAdoptRemoteBundle(args: {
+    remoteDeleted: boolean;
+    remoteHasSecret: boolean;
+    localHasSecret: boolean;
+}): boolean {
+    if (args.remoteDeleted) return false;
+    if (args.remoteHasSecret) return true;
+    return !args.localHasSecret;
 }
 
 /** Persist only the encrypted bundle through One Save. */
@@ -177,9 +203,21 @@ export async function unlockIntegrations(userId: string | null): Promise<void> {
             const { oneSaveClient } = await import('../lib/oneSaveClient');
             const remote = await oneSaveClient.get<IntegrationsBundle>(remoteObjectId(userId));
             if (remote?.payload) {
-                raw = JSON.stringify(remote.payload);
-                localStorage.setItem(resolveKey(), raw);
-                hydratedFromRemote = true;
+                // Anti-clobber: a flapped backend or a clear on another device
+                // must never wipe good local keys. Adopt the remote only when it
+                // is live (not tombstoned) and either carries a secret or local
+                // is empty too.
+                const localHasSecret = raw ? bundleHasAnySecret(deserialize(raw)) : false;
+                const remoteHasSecret = bundleHasAnySecret(remote.payload as IntegrationsBundle);
+                if (shouldAdoptRemoteBundle({
+                    remoteDeleted: remote.deletedAt != null,
+                    remoteHasSecret,
+                    localHasSecret,
+                })) {
+                    raw = JSON.stringify(remote.payload);
+                    localStorage.setItem(resolveKey(), raw);
+                    hydratedFromRemote = true;
+                }
             }
         } catch { /* One Save disabled/offline — keep local encrypted copy */ }
     }

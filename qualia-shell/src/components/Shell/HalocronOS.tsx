@@ -38,7 +38,7 @@ import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore }
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
 import { UserContext, type DwelliumUser } from '../../context/UserContext';
-import { integrationsUserIdHolder } from '../../utils/integrationsStore';
+import { integrationsUserIdHolder, stableIntegrationsOwnerId } from '../../utils/integrationsStore';
 import './HalocronOS.css';
 
 type NavId = 'home' | 'memory' | 'kg' | 'workspace' | 'apps' | 'skills' | 'dream' | 'insights' | 'settings';
@@ -124,6 +124,24 @@ export function nextActiveKey(
     return (order[i + 1] ?? order[i - 1])?.key ?? null;   // next, else previous, else empty
 }
 
+/**
+ * Open-to-home behavior. Bringing the Holocron OS shell back up lands on the
+ * HOME launcher by default — it must NOT auto-dive into the last hosted screen.
+ * The one exception: if the shell was minimized *while a screen was active*
+ * ("closed the window while working with that screen"), reopening resumes that
+ * screen. These two pure helpers encode the rule so it is unit-testable apart
+ * from the component wiring; the OS keeps every tab mounted either way, so a
+ * non-resumed screen is still one click away in the tab strip.
+ */
+/** At minimize time: resume on the next open only if a screen was active. */
+export function resumeIntentOnMinimize(activeKey: string | null): boolean {
+    return activeKey != null;
+}
+/** On OS open: keep the retained screen only when resume was intended, else home (null). */
+export function activeKeyOnOpen(retainedActiveKey: string | null, resumeIntent: boolean): string | null {
+    return resumeIntent ? retainedActiveKey : null;
+}
+
 // AI tools that are CLI agents → run them in the in-OS Terminal instead of an
 // (un-embeddable) web tab. Maps launchpad id → terminal command + tab label.
 const CLI_TOOLS: Record<string, { cmd: string; label: string }> = {
@@ -194,6 +212,12 @@ export default function HalocronOS() {
     const [claudePlaybookOpen, setClaudePlaybookOpen] = useState(false);
     const tabTouchSeq = useRef(0);
     const touch = () => Date.now() * 1000 + (++tabTouchSeq.current);
+    // Opening the shell lands on HOME unless it was minimized mid-work. resumeStageRef
+    // carries that one-shot intent across the close→open gap (the component stays
+    // mounted — it returns null while closed — so refs/state survive). prevOpenRef
+    // lets the open effect fire only on a real closed→open transition.
+    const resumeStageRef = useRef(false);
+    const prevOpenRef = useRef(state.open);
 
     const markActive = (key: string) => {
         const lastActiveAt = touch();
@@ -240,7 +264,8 @@ export default function HalocronOS() {
     // (same pattern as useIntegrations) so Tokens/Activity/Spend always
     // reference THIS account's data — never a stale or anonymous namespace.
     const userCtx = useContext(UserContext);
-    integrationsUserIdHolder.current = userCtx?.user?.id ?? null;
+    // Task C: stable person id (email-based), matching useIntegrations.
+    integrationsUserIdHolder.current = stableIntegrationsOwnerId(userCtx?.user ?? null);
     const greetingName = accountGreetingName(userCtx?.user);
     const { integrations } = useIntegrations();
     const usage = useLlmUsage();
@@ -277,6 +302,9 @@ export default function HalocronOS() {
                 ? t.map((x) => (x.key === key ? { ...x, lastActiveAt } : x))
                 : [...t, { key, kind: 'widget', id, label: WIDGET_REGISTRY[id]?.label ?? id, lastActiveAt }]));
             setActiveKey(key);
+            // Explicit "open this widget" intent — keep the screen through the
+            // open transition instead of resetting to home.
+            resumeStageRef.current = true;
             halocronOsStore.setOpen(true);
         };
         window.addEventListener('dwellium:open-widget', onOpen);
@@ -294,6 +322,19 @@ export default function HalocronOS() {
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [state.enabled, state.open, tabs, activeKey]);
+
+    // On a real closed→open transition, land on the HOME launcher unless the
+    // shell was minimized mid-work (resumeStageRef). Functional updater keeps the
+    // read of the retained key fresh; activeKeyOnOpen encodes the resume rule.
+    useEffect(() => {
+        const wasOpen = prevOpenRef.current;
+        prevOpenRef.current = state.open;
+        if (!wasOpen && state.open) {
+            const resume = resumeStageRef.current;
+            resumeStageRef.current = false;
+            setActiveKey((cur) => activeKeyOnOpen(cur, resume));
+        }
+    }, [state.open]);
 
     if (!state.enabled || !state.open) return null;
 
@@ -393,7 +434,7 @@ export default function HalocronOS() {
                     ))}
                 </div>
                 <div className="hos-rail__foot">
-                    <button type="button" className="hos-min" onClick={() => halocronOsStore.setOpen(false)}>
+                    <button type="button" className="hos-min" onClick={() => { resumeStageRef.current = resumeIntentOnMinimize(activeKey); halocronOsStore.setOpen(false); }}>
                         ⤓ Minimize shell
                     </button>
                 </div>

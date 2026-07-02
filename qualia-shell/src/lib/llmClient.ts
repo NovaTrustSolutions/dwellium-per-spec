@@ -171,6 +171,137 @@ export async function testProvider(
     }
 }
 
+// ── Model-list discovery (Task B) ─────────────────────────────────────
+//
+// Populate the Model dropdown from the provider's own /models endpoint, using
+// the SAME direct-browser call path the completion helpers above use (same auth
+// headers, same origins — already allow-listed in the CSP connect-src). The UI
+// merges these with the curated fallback (CURATED_MODELS) and always keeps a
+// "Custom…" escape hatch, so a fetch failure is non-fatal.
+
+export interface ModelListResult {
+    /** Chat-capable model ids for the provider (may be empty on error). */
+    models: string[];
+    /** Present iff the fetch failed / no key — the UI falls back to curated. */
+    error?: string;
+}
+
+/** Narrow an unknown JSON value to an array of records without using `any`. */
+function asRecordArray(value: unknown): Array<Record<string, unknown>> {
+    if (!Array.isArray(value)) return [];
+    return value.filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null);
+}
+
+function dedupeSorted(ids: string[]): string[] {
+    return Array.from(new Set(ids.filter(Boolean))).sort();
+}
+
+/**
+ * Fetch the chat-capable model ids for a provider. Returns `{ models: [] }` with
+ * an `error` when there's no key or the request fails — never throws.
+ */
+export async function listModels(
+    provider: LlmProvider,
+    llm: IntegrationsBundle['llm'],
+): Promise<ModelListResult> {
+    try {
+        switch (provider) {
+            case 'anthropic': {
+                const key = llm.anthropic?.apiKey;
+                if (!key) return { models: [], error: 'No Anthropic API key configured' };
+                return { models: await fetchAnthropicModels(key) };
+            }
+            case 'openai': {
+                const key = llm.openai?.apiKey;
+                if (!key) return { models: [], error: 'No OpenAI API key configured' };
+                return { models: await fetchOpenAIModels(key) };
+            }
+            case 'gemini': {
+                const key = llm.gemini?.apiKey;
+                if (!key) return { models: [], error: 'No Gemini API key configured' };
+                return { models: await fetchGeminiModels(key) };
+            }
+            case 'local': {
+                const baseUrl = llm.local?.baseUrl;
+                if (!baseUrl) return { models: [], error: 'No Local LLM base URL configured' };
+                return { models: await fetchOpenAICompatibleModels(`${baseUrl.replace(/\/$/, '')}/v1/models`) };
+            }
+            case 'custom': {
+                const cfg = llm.custom;
+                if (!cfg?.baseUrl) return { models: [], error: 'No Custom base URL configured' };
+                const trimmed = cfg.baseUrl.replace(/\/$/, '');
+                const url = trimmed.endsWith('/models') ? trimmed : `${trimmed}/models`;
+                return { models: await fetchOpenAICompatibleModels(url, cfg.apiKey) };
+            }
+        }
+    } catch (e) {
+        return { models: [], error: e instanceof Error ? e.message : String(e) };
+    }
+}
+
+async function fetchAnthropicModels(apiKey: string): Promise<string[]> {
+    const res = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
+        headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+        },
+    });
+    if (!res.ok) throw new LlmError('anthropic', res.status, (await res.text().catch(() => '')) || `HTTP ${res.status}`);
+    const json = (await res.json()) as { data?: unknown };
+    const ids = asRecordArray(json?.data)
+        .map(m => (typeof m.id === 'string' ? m.id : ''))
+        .filter(Boolean);
+    return dedupeSorted(ids);
+}
+
+async function fetchOpenAIModels(apiKey: string): Promise<string[]> {
+    const res = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) throw new LlmError('openai', res.status, (await res.text().catch(() => '')) || `HTTP ${res.status}`);
+    const json = (await res.json()) as { data?: unknown };
+    const ids = asRecordArray(json?.data)
+        .map(m => (typeof m.id === 'string' ? m.id : ''))
+        .filter(isChatCapableOpenAIId);
+    return dedupeSorted(ids);
+}
+
+/** Keep chat/completions models; drop embeddings / audio / image / moderation. */
+function isChatCapableOpenAIId(id: string): boolean {
+    if (!id) return false;
+    if (!/^(gpt-|o1|o3|o4|chatgpt-)/.test(id)) return false;
+    if (/(embedding|whisper|tts|dall-e|image|audio|realtime|moderation|transcribe|search)/.test(id)) return false;
+    return true;
+}
+
+async function fetchGeminiModels(apiKey: string): Promise<string[]> {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}&pageSize=1000`);
+    if (!res.ok) throw new LlmError('gemini', res.status, (await res.text().catch(() => '')) || `HTTP ${res.status}`);
+    const json = (await res.json()) as { models?: unknown };
+    const ids = asRecordArray(json?.models)
+        .filter(m => Array.isArray(m.supportedGenerationMethods) && (m.supportedGenerationMethods as unknown[]).includes('generateContent'))
+        .map(m => (typeof m.name === 'string' ? m.name.replace(/^models\//, '') : ''))
+        .filter(Boolean);
+    return dedupeSorted(ids);
+}
+
+/** Local (Ollama/LM Studio) + Custom expose an OpenAI-compatible /models list. */
+async function fetchOpenAICompatibleModels(url: string, apiKey?: string): Promise<string[]> {
+    const headers: Record<string, string> = {};
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = (await res.json()) as { data?: unknown; models?: unknown };
+    // OpenAI-compatible shape is { data: [{ id }] }; Ollama's native /v1/models
+    // matches it, but tolerate a bare { models: [{ id|name }] } too.
+    const source = json?.data ?? json?.models;
+    const ids = asRecordArray(source)
+        .map(m => (typeof m.id === 'string' ? m.id : typeof m.name === 'string' ? m.name : ''))
+        .filter(Boolean);
+    return dedupeSorted(ids);
+}
+
 // ── Provider implementations ──────────────────────────────────────────
 
 async function callAnthropic(req: LlmRequest, apiKey: string, model: string): Promise<LlmResponse> {

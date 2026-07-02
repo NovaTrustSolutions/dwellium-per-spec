@@ -20,8 +20,9 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { useIntegrations } from '../../hooks/useIntegrations';
-import { testProvider } from '../../lib/llmClient';
+import { testProvider, listModels } from '../../lib/llmClient';
 import { ApiKeyField } from './ApiKeyField';
+import ModelSelect from './ModelSelect';
 import type {
     IntegrationsBundle,
     LlmProvider,
@@ -32,7 +33,7 @@ import type {
     LlmCustomConfig,
     RecallConfig,
 } from '../../types/integrations';
-import { DEFAULT_MODELS, PROVIDER_LABELS } from '../../types/integrations';
+import { DEFAULT_MODELS, PROVIDER_LABELS, CURATED_MODELS } from '../../types/integrations';
 
 const PROVIDER_ORDER: LlmProvider[] = ['anthropic', 'openai', 'gemini', 'local', 'custom'];
 
@@ -46,13 +47,15 @@ interface CardProps {
 
 export default function ApiKeysPanel(): React.JSX.Element {
     const { integrations, update, removeSecret } = useIntegrations();
+    const activeId = React.useId();
 
     return (
         <div className="cp-apikeys-panel">
             {/* Active LLM picker */}
             <div className="cp-field" style={{ marginBottom: 12 }}>
-                <label className="cp-label">Active LLM Provider</label>
+                <label className="cp-label" htmlFor={activeId}>Active LLM Provider</label>
                 <select
+                    id={activeId}
                     className="cp-select"
                     value={integrations.llm.active || ''}
                     onChange={e => update(b => ({
@@ -182,16 +185,17 @@ function AnthropicCard({ bundle, update, removeSecret }: CardProps) {
                     placeholder="sk-ant-…"
                 />
             </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder={DEFAULT_MODELS.anthropic}
-                />
-            </div>
+            <ModelSelect
+                value={cfg.model}
+                curated={CURATED_MODELS.anthropic}
+                cachedModels={cfg.availableModels}
+                modelsFetchedAt={cfg.modelsFetchedAt}
+                canFetch={!!cfg.apiKey}
+                fetchModels={() => listModels('anthropic', bundle.llm)}
+                onSelect={model => setField({ model })}
+                onModelsFetched={models => setField({ availableModels: models, modelsFetchedAt: Date.now() })}
+                placeholder={DEFAULT_MODELS.anthropic}
+            />
         </ProviderCardShell>
     );
 }
@@ -224,16 +228,17 @@ function OpenAICard({ bundle, update, removeSecret }: CardProps) {
                     placeholder="sk-…"
                 />
             </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder={DEFAULT_MODELS.openai}
-                />
-            </div>
+            <ModelSelect
+                value={cfg.model}
+                curated={CURATED_MODELS.openai}
+                cachedModels={cfg.availableModels}
+                modelsFetchedAt={cfg.modelsFetchedAt}
+                canFetch={!!cfg.apiKey}
+                fetchModels={() => listModels('openai', bundle.llm)}
+                onSelect={model => setField({ model })}
+                onModelsFetched={models => setField({ availableModels: models, modelsFetchedAt: Date.now() })}
+                placeholder={DEFAULT_MODELS.openai}
+            />
         </ProviderCardShell>
     );
 }
@@ -266,16 +271,17 @@ function GeminiCard({ bundle, update, removeSecret }: CardProps) {
                     placeholder="AIza…"
                 />
             </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder={DEFAULT_MODELS.gemini}
-                />
-            </div>
+            <ModelSelect
+                value={cfg.model}
+                curated={CURATED_MODELS.gemini}
+                cachedModels={cfg.availableModels}
+                modelsFetchedAt={cfg.modelsFetchedAt}
+                canFetch={!!cfg.apiKey}
+                fetchModels={() => listModels('gemini', bundle.llm)}
+                onSelect={model => setField({ model })}
+                onModelsFetched={models => setField({ availableModels: models, modelsFetchedAt: Date.now() })}
+                placeholder={DEFAULT_MODELS.gemini}
+            />
         </ProviderCardShell>
     );
 }
@@ -284,6 +290,7 @@ function LocalCard({ bundle, update }: CardProps) {
     // Local LLM (Ollama / LM Studio) has NO API key — only a base URL + model,
     // so there's no ApiKeyField here; nothing secret to write-protect.
     const cfg: LlmLocalConfig = bundle.llm.local || { baseUrl: 'http://localhost:11434', model: DEFAULT_MODELS.local, enabled: false };
+    const baseUrlId = React.useId();
     const setField = (patch: Partial<LlmLocalConfig>) => update(b => ({
         ...b,
         llm: { ...b.llm, local: { ...cfg, ...patch } },
@@ -297,8 +304,9 @@ function LocalCard({ bundle, update }: CardProps) {
             bundle={bundle}
         >
             <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Base URL</label>
+                <label className="cp-label" htmlFor={baseUrlId}>Base URL</label>
                 <input
+                    id={baseUrlId}
                     className="cp-input"
                     type="text"
                     value={cfg.baseUrl}
@@ -306,22 +314,25 @@ function LocalCard({ bundle, update }: CardProps) {
                     placeholder="http://localhost:11434"
                 />
             </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder={DEFAULT_MODELS.local}
-                />
-            </div>
+            <ModelSelect
+                value={cfg.model}
+                curated={CURATED_MODELS.local}
+                cachedModels={cfg.availableModels}
+                modelsFetchedAt={cfg.modelsFetchedAt}
+                canFetch={!!cfg.baseUrl}
+                fetchModels={() => listModels('local', bundle.llm)}
+                onSelect={model => setField({ model })}
+                onModelsFetched={models => setField({ availableModels: models, modelsFetchedAt: Date.now() })}
+                placeholder={DEFAULT_MODELS.local}
+            />
         </ProviderCardShell>
     );
 }
 
 function CustomCard({ bundle, update, removeSecret }: CardProps) {
     const cfg: LlmCustomConfig = bundle.llm.custom || { name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', apiKey: '', model: '', enabled: false };
+    const nameId = React.useId();
+    const baseUrlId = React.useId();
     const setField = (patch: Partial<LlmCustomConfig>) => update(b => ({
         ...b,
         llm: { ...b.llm, custom: { ...cfg, ...patch } },
@@ -339,8 +350,9 @@ function CustomCard({ bundle, update, removeSecret }: CardProps) {
             bundle={bundle}
         >
             <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Provider Name</label>
+                <label className="cp-label" htmlFor={nameId}>Provider Name</label>
                 <input
+                    id={nameId}
                     className="cp-input"
                     type="text"
                     value={cfg.name}
@@ -349,8 +361,9 @@ function CustomCard({ bundle, update, removeSecret }: CardProps) {
                 />
             </div>
             <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Base URL</label>
+                <label className="cp-label" htmlFor={baseUrlId}>Base URL</label>
                 <input
+                    id={baseUrlId}
                     className="cp-input"
                     type="text"
                     value={cfg.baseUrl}
@@ -368,16 +381,17 @@ function CustomCard({ bundle, update, removeSecret }: CardProps) {
                     placeholder="sk-or-…"
                 />
             </div>
-            <div className="cp-field">
-                <label className="cp-label">Model</label>
-                <input
-                    className="cp-input"
-                    type="text"
-                    value={cfg.model}
-                    onChange={e => setField({ model: e.target.value })}
-                    placeholder="anthropic/claude-3-5-sonnet"
-                />
-            </div>
+            <ModelSelect
+                value={cfg.model}
+                curated={CURATED_MODELS.custom}
+                cachedModels={cfg.availableModels}
+                modelsFetchedAt={cfg.modelsFetchedAt}
+                canFetch={!!cfg.baseUrl}
+                fetchModels={() => listModels('custom', bundle.llm)}
+                onSelect={model => setField({ model })}
+                onModelsFetched={models => setField({ availableModels: models, modelsFetchedAt: Date.now() })}
+                placeholder="anthropic/claude-3-5-sonnet"
+            />
         </ProviderCardShell>
     );
 }

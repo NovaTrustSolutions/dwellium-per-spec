@@ -13,31 +13,44 @@ export type LlmProvider =
     | 'local'
     | 'custom';
 
-export interface LlmAnthropicConfig {
+/**
+ * Non-secret model-list cache shared by every provider config. `availableModels`
+ * is populated by a live fetch (see llmClient.listModels) so the Model dropdown
+ * isn't limited to the curated fallback; `modelsFetchedAt` lets the UI show
+ * "last refreshed" and avoid refetching on every render. Both are OPTIONAL and
+ * non-secret — they persist through the encrypted vault untouched (crypto only
+ * transforms apiKey/token fields).
+ */
+export interface LlmModelCache {
+    availableModels?: string[];
+    modelsFetchedAt?: number;           // unix ms of the last successful model-list fetch
+}
+
+export interface LlmAnthropicConfig extends LlmModelCache {
     apiKey: string;
     model: string;                      // e.g. "claude-opus-4-6", "claude-haiku-4-5-20251001"
     enabled: boolean;
 }
 
-export interface LlmOpenAIConfig {
+export interface LlmOpenAIConfig extends LlmModelCache {
     apiKey: string;
     model: string;                      // e.g. "gpt-4o-mini", "gpt-4o"
     enabled: boolean;
 }
 
-export interface LlmGeminiConfig {
+export interface LlmGeminiConfig extends LlmModelCache {
     apiKey: string;
     model: string;                      // e.g. "gemini-1.5-pro", "gemini-1.5-flash"
     enabled: boolean;
 }
 
-export interface LlmLocalConfig {
+export interface LlmLocalConfig extends LlmModelCache {
     baseUrl: string;                    // e.g. "http://localhost:11434" (Ollama default)
     model: string;                      // e.g. "llama3.2", "qwen2.5"
     enabled: boolean;
 }
 
-export interface LlmCustomConfig {
+export interface LlmCustomConfig extends LlmModelCache {
     name: string;                       // user-supplied label, e.g. "OpenRouter"
     baseUrl: string;                    // e.g. "https://openrouter.ai/api/v1"
     apiKey: string;
@@ -225,6 +238,42 @@ export const DEFAULT_MODELS: Record<LlmProvider, string> = {
     gemini: 'gemini-1.5-flash',
     local: 'llama3.2',
     custom: '',                         // user must supply for custom
+};
+
+/**
+ * Curated fallback model lists — shown in the Model dropdown when a provider has
+ * no key, is offline, or the live fetch (llmClient.listModels) fails. The live
+ * fetch is the SOURCE OF TRUTH; this is only a safety net, and the "Custom…"
+ * option always lets the user type any model id that isn't listed here.
+ *
+ * Per SPEC_google_and_models.md §B6: the only entries "observed in the app" are
+ * the DEFAULT_MODELS. The additional ids below are conservative, long-stable
+ * provider ids (Anthropic ids are the environment-authoritative current set;
+ * OpenAI/Gemini ids are the widely-documented stable ids). Anything newer is
+ * discovered via the live fetch, not hard-coded here.
+ */
+export const CURATED_MODELS: Record<LlmProvider, string[]> = {
+    anthropic: [
+        'claude-opus-4-8',
+        'claude-sonnet-4-6',
+        'claude-haiku-4-5-20251001',
+    ],
+    openai: [
+        'gpt-4o-mini',
+        'gpt-4o',
+        'gpt-4-turbo',
+        'gpt-3.5-turbo',
+    ],
+    gemini: [
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-8b',
+        'gemini-1.5-pro',
+    ],
+    local: [
+        'llama3.2',
+        'qwen2.5',
+    ],
+    custom: [],   // free-form by nature — the user supplies the id
 };
 
 export const PROVIDER_LABELS: Record<LlmProvider, string> = {

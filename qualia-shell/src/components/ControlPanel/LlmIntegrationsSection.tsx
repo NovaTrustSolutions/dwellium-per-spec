@@ -19,10 +19,16 @@
  * 2026-05-26 created.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { API_BASE } from '../../config';
+import {
+    getGoogleOAuthStatus,
+    startGoogleOAuthConnect,
+    openConsentPopup,
+    type GoogleOAuthStatus,
+} from '../../lib/googleOAuthConnect';
 import ApiKeysPanel from './ApiKeysPanel';
 import { ApiKeyField } from './ApiKeyField';
 import type {
@@ -91,33 +97,89 @@ export default function LlmIntegrationsSection() {
     );
 }
 
-// P11-14: Google OAuth connect — backend routes exist (/api/google/oauth/*);
-// the CREDENTIAL BLOCKER (by design): Ilya drops the OAuth client JSON at
-// backend credentials/oauth2-credentials.json, then Connect just works.
+// P11-14 / Task A: Google OAuth connect. The Connect button no longer does a raw
+// top-level navigation to the PROTECTED /oauth/start endpoint (that can't carry
+// the app's Authorization header → 401). It now uses the authenticated
+// fetch-then-redirect client (lib/googleOAuthConnect): an authed fetch returns
+// the public Google consent URL, which we open in a popup.
 function GoogleConnectCard() {
-    const [status, setStatus] = useState<{ configured: boolean; connected: boolean; blocker?: string } | null>(null);
+    const [status, setStatus] = useState<GoogleOAuthStatus | null>(null);
+    const [reachable, setReachable] = useState<boolean | null>(null);
+    const [connecting, setConnecting] = useState(false);
+    const [connectError, setConnectError] = useState<string | null>(null);
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const refresh = useCallback(async () => {
+        const r = await getGoogleOAuthStatus();
+        setStatus(r.status);
+        setReachable(r.reachable);
+    }, []);
+
     useEffect(() => {
         let alive = true;
-        fetch(`${API_BASE}/api/google/oauth/status`)
-            .then(r => r.json())
-            .then(j => { if (alive && j?.success) setStatus(j.data); })
-            .catch(() => { if (alive) setStatus(null); });
-        return () => { alive = false; };
+        void getGoogleOAuthStatus().then(r => {
+            if (!alive) return;
+            setStatus(r.status);
+            setReachable(r.reachable);
+        });
+        return () => {
+            alive = false;
+            if (pollRef.current) clearInterval(pollRef.current);
+        };
     }, []);
+
+    const handleConnect = useCallback(async () => {
+        setConnecting(true);
+        setConnectError(null);
+        // Open the popup synchronously on the click gesture so it isn't blocked;
+        // navigate it once the authenticated fetch returns the consent URL.
+        const popup = openConsentPopup();
+        const res = await startGoogleOAuthConnect();
+        setConnecting(false);
+        if (res.url) {
+            if (popup && !popup.closed) popup.location.href = res.url;
+            else window.location.assign(res.url); // popup blocked — fall back to same-tab
+            // Re-check status once the user finishes/cancels in the popup.
+            if (popup) {
+                if (pollRef.current) clearInterval(pollRef.current);
+                pollRef.current = setInterval(() => {
+                    if (popup.closed) {
+                        if (pollRef.current) clearInterval(pollRef.current);
+                        void refresh();
+                    }
+                }, 800);
+            }
+        } else {
+            if (popup && !popup.closed) popup.close();
+            setConnectError(res.error || 'Could not start Google connect');
+        }
+    }, [refresh]);
+
+    const statusLabel =
+        reachable === false ? 'backend offline'
+            : status?.connected ? 'Connected'
+                : status?.configured ? 'Ready to connect'
+                    : status ? 'Awaiting credentials'
+                        : '…';
+
     return (
         <div className="cp-integration-card" style={{ marginBottom: 12 }}>
             <div className="cp-integration-card__header">
                 <span className="cp-integration-card__title">Google Account</span>
                 <span style={{ fontSize: 11, color: status?.connected ? 'var(--accent)' : 'var(--text-tertiary)' }}>
-                    {status === null ? 'backend offline' : status.connected ? 'Connected' : status.configured ? 'Ready to connect' : 'Awaiting credentials'}
+                    {statusLabel}
                 </span>
             </div>
             {status?.configured && !status.connected && (
                 <button
                     className="cp-btn"
                     style={{ marginTop: 4 }}
-                    onClick={() => window.open(`${API_BASE}/api/google/oauth/start`, '_blank', 'noopener')}
-                >Connect Google…</button>
+                    onClick={handleConnect}
+                    disabled={connecting}
+                >{connecting ? 'Connecting…' : 'Connect Google…'}</button>
+            )}
+            {connectError && (
+                <div style={{ fontSize: 11, color: '#ef4444', marginTop: 6 }}>{connectError}</div>
             )}
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8 }}>
                 {status?.blocker
@@ -190,6 +252,7 @@ interface CardProps {
 
 function SupabaseCard({ bundle, update, removeSecret }: CardProps) {
     const cfg: SupabaseConfig = bundle.supabase || { url: '', anonKey: '', enabled: false };
+    const urlId = useId();
     const setField = (patch: Partial<SupabaseConfig>) => update(b => ({
         ...b,
         supabase: { ...cfg, ...patch },
@@ -212,8 +275,9 @@ function SupabaseCard({ bundle, update, removeSecret }: CardProps) {
                 </label>
             </div>
             <div className="cp-field" style={{ marginBottom: 8 }}>
-                <label className="cp-label">Project URL</label>
+                <label className="cp-label" htmlFor={urlId}>Project URL</label>
                 <input
+                    id={urlId}
                     className="cp-input"
                     type="text"
                     value={cfg.url}
@@ -266,6 +330,11 @@ function PostgresCard({ bundle, update, removeSecret }: CardProps) {
         postgres: { ...cfg, ...patch },
     }));
 
+    const hostId = useId();
+    const portId = useId();
+    const databaseId = useId();
+    const userId = useId();
+    const sslModeId = useId();
     const [mode, setMode] = useState<'string' | 'fields'>(cfg.connectionString ? 'string' : 'fields');
     const [testing, setTesting] = useState(false);
     const [testMsg, setTestMsg] = useState<string | null>(null);
@@ -280,7 +349,7 @@ function PostgresCard({ bundle, update, removeSecret }: CardProps) {
         // doesn't exist yet (404), surface that clearly so the user knows
         // the test is awaiting backend wiring.
         try {
-            const payload: any = mode === 'string'
+            const payload: Record<string, unknown> = mode === 'string'
                 ? { connectionString: cfg.connectionString }
                 : {
                     host: cfg.host,
@@ -306,8 +375,8 @@ function PostgresCard({ bundle, update, removeSecret }: CardProps) {
             } else {
                 setTestMsg(`${json?.error || `HTTP ${res.status}`}`);
             }
-        } catch (e: any) {
-            setTestMsg(`Network error: ${e?.message || 'unreachable'}`);
+        } catch (e) {
+            setTestMsg(`Network error: ${e instanceof Error ? e.message : 'unreachable'}`);
         } finally {
             setTesting(false);
         }
@@ -357,8 +426,9 @@ function PostgresCard({ bundle, update, removeSecret }: CardProps) {
                 <>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                         <div className="cp-field" style={{ flex: 2 }}>
-                            <label className="cp-label">Host</label>
+                            <label className="cp-label" htmlFor={hostId}>Host</label>
                             <input
+                                id={hostId}
                                 className="cp-input"
                                 type="text"
                                 value={cfg.host || ''}
@@ -367,8 +437,9 @@ function PostgresCard({ bundle, update, removeSecret }: CardProps) {
                             />
                         </div>
                         <div className="cp-field" style={{ flex: 1 }}>
-                            <label className="cp-label">Port</label>
+                            <label className="cp-label" htmlFor={portId}>Port</label>
                             <input
+                                id={portId}
                                 className="cp-input"
                                 type="number"
                                 value={cfg.port || 5432}
@@ -378,8 +449,9 @@ function PostgresCard({ bundle, update, removeSecret }: CardProps) {
                         </div>
                     </div>
                     <div className="cp-field" style={{ marginBottom: 8 }}>
-                        <label className="cp-label">Database</label>
+                        <label className="cp-label" htmlFor={databaseId}>Database</label>
                         <input
+                            id={databaseId}
                             className="cp-input"
                             type="text"
                             value={cfg.database || ''}
@@ -388,8 +460,9 @@ function PostgresCard({ bundle, update, removeSecret }: CardProps) {
                         />
                     </div>
                     <div className="cp-field" style={{ marginBottom: 8 }}>
-                        <label className="cp-label">User</label>
+                        <label className="cp-label" htmlFor={userId}>User</label>
                         <input
+                            id={userId}
                             className="cp-input"
                             type="text"
                             value={cfg.user || ''}
@@ -409,8 +482,9 @@ function PostgresCard({ bundle, update, removeSecret }: CardProps) {
                         />
                     </div>
                     <div className="cp-field" style={{ marginBottom: 8 }}>
-                        <label className="cp-label">SSL Mode</label>
+                        <label className="cp-label" htmlFor={sslModeId}>SSL Mode</label>
                         <select
+                            id={sslModeId}
                             className="cp-select"
                             value={cfg.sslMode || 'require'}
                             onChange={e => setField({ sslMode: e.target.value as PostgresConfig['sslMode'] })}

@@ -34,6 +34,14 @@ export interface WidgetRegistration {
     minHeight?: number;
     /** Optional category for command palette grouping */
     category?: 'core' | 'ai' | 'filing' | 'tools';
+    /**
+     * Restrict visibility to specific account emails (lowercase). Consumers
+     * that render catalogs (Holocron OS Apps, palettes) should hide entries
+     * whose list doesn't include the signed-in user's email. The component
+     * itself must ALSO hard-gate (defense in depth) — catalog filtering is
+     * cosmetic, not security.
+     */
+    restrictedToEmails?: string[];
 }
 
 /**
@@ -43,6 +51,22 @@ export interface WidgetRegistration {
  * Order here determines command palette order.
  */
 export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
+    // ═══════════════════════════════════════
+    //  RESTRICTED — Andy-only administration
+    // ═══════════════════════════════════════
+    // Server-side audit trail: who logged in/out (+ time, IP), what every
+    // account worked on. Andy's login ONLY — the component hard-gates on the
+    // signed-in email and the Apps catalog hides it for everyone else.
+    'audit-log': {
+        id: 'audit-log',
+        label: 'Audit Log',
+        icon: 'scroll-text',
+        component: lazyWithReload(() => import('../components/AuditLog/AuditLogWidget')),
+        minWidth: 720,
+        minHeight: 460,
+        category: 'tools',
+        restrictedToEmails: ['andy@dwellium.com'],
+    },
     // ═══════════════════════════════════════
     //  CORE — Property Management
     // ═══════════════════════════════════════

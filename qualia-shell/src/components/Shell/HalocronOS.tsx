@@ -243,17 +243,22 @@ export default function HalocronOS() {
         markActive(recent[(idx + delta + recent.length) % recent.length].key);
     };
 
+    // Signed-in email for catalog visibility (restricted widgets — e.g. the
+    // Andy-only Audit Log — are hidden from everyone else's Apps archive).
+    const catalogUser = useContext(UserContext)?.user;
+    const catalogEmail = catalogUser?.email?.trim().toLowerCase() ?? '';
     const grouped = useMemo(() => {
         const out: Record<string, { id: string; label: string; icon: string }[]> = {};
         Object.values(WIDGET_REGISTRY).forEach((w) => {
+            if (w.restrictedToEmails && !w.restrictedToEmails.includes(catalogEmail)) return;
             const cat = (w.category && CATEGORY_ORDER.includes(w.category)) ? w.category : 'other';
             (out[cat] ||= []).push({ id: w.id, label: w.label, icon: w.icon });
         });
         Object.values(out).forEach((arr) => arr.sort((a, b) => a.label.localeCompare(b.label)));
         return out;
-    }, []);
+    }, [catalogEmail]);
 
-    const totalWidgets = Object.keys(WIDGET_REGISTRY).length;
+    const totalWidgets = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
     const greeting = (() => {
         const h = new Date().getHours();
         return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';

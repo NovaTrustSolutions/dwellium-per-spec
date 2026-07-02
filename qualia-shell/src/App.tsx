@@ -1,7 +1,7 @@
 import { Suspense, useState, useSyncExternalStore } from 'react';
 import { BrowserRouter, Routes, Route, useSearchParams } from 'react-router';
 import { ThemeProvider } from './context/ThemeContext';
-import { UserProvider, useUser } from './context/UserContext';
+import { UserProvider, useUser, tokenStore } from './context/UserContext';
 import { PermissionsProvider } from './context/PermissionsContext';
 import QueryProvider from './providers/QueryProvider';
 import LoginScreen from './components/Auth/LoginScreen';
@@ -46,6 +46,14 @@ function AuthGate() {
         sessionHealthStore.getSnapshot,
         sessionHealthStore.getServerSnapshot,
     );
+    // F-016 second finding: quick-access (static-token) accounts are
+    // client-side ONLY — the backend rejects them by design, so NOTHING done
+    // under them persists to the person's name (keys, workspaces, knowledge
+    // graph all localStorage-only). That must be impossible to miss, with the
+    // Google sign-in one click away.
+    const rawToken = useSyncExternalStore(tokenStore.subscribe, tokenStore.getSnapshot, tokenStore.getServerSnapshot);
+    const isLocalOnlySession = !!rawToken && rawToken.startsWith('static-');
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
     if (isLoading) {
         return (
@@ -93,6 +101,44 @@ function AuthGate() {
                Fires from EITHER the context flag OR the module-level health
                store (F-016 belt-and-braces). */}
             {isAuthenticated && (sessionExpired || sessionHealth.authDead) && <SessionExpiredModal />}
+            {/* Local-only (quick-access) session: persistent warning strip —
+               nothing is saved to the account until a real Google sign-in. */}
+            {isAuthenticated && isLocalOnlySession && !sessionExpired && !sessionHealth.authDead && (
+                <>
+                    <div
+                        role="status"
+                        style={{
+                            position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 2147482000,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                            padding: '8px 14px', fontSize: 13, fontFamily: 'Inter, -apple-system, sans-serif',
+                            background: 'rgba(120, 53, 15, 0.92)', color: '#fde68a',
+                            borderTop: '1px solid rgba(251, 191, 36, 0.4)', backdropFilter: 'blur(4px)',
+                        }}
+                    >
+                        <span>
+                            Local account — your work (API keys, workspaces, knowledge graph) is
+                            <strong> not being saved to your account</strong> on this device only.
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setShowUpgradeModal(true)}
+                            style={{
+                                padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 13,
+                                background: '#fbbf24', color: '#1c1917', border: 'none', fontWeight: 600,
+                            }}
+                        >
+                            Sign in with Google to sync
+                        </button>
+                    </div>
+                    {showUpgradeModal && (
+                        <SessionExpiredModal
+                            heading="Save your work to your account"
+                            message="This quick-access account lives only in this browser — nothing you set up is saved under your name. Sign in with Google and your API keys, workspaces, and knowledge graph will sync to every device."
+                            onDismiss={() => setShowUpgradeModal(false)}
+                        />
+                    )}
+                </>
+            )}
         </>
     );
 }

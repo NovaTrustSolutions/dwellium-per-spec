@@ -47,21 +47,37 @@ const secondaryBtn: React.CSSProperties = {
     border: '1px solid rgba(148,163,184,0.22)',
 };
 
-export default function SessionExpiredModal() {
+export default function SessionExpiredModal({
+    heading,
+    message,
+    onDismiss,
+}: {
+    /** Override the "Session expired" heading (e.g. local-account upgrade flow). */
+    heading?: string;
+    /** Override the default explainer line. */
+    message?: string;
+    /** When provided, shows a dismiss button (used by the non-forced local-account flow). */
+    onDismiss?: () => void;
+}) {
     const { user, loginWithGoogle, logout } = useUser();
 
     return (
-        <div role="dialog" aria-modal="true" aria-label="Session expired" style={overlay}>
+        <div role="dialog" aria-modal="true" aria-label={heading ?? 'Session expired'} style={overlay}>
             <div style={card}>
-                <h2 style={title}>Session expired</h2>
+                <h2 style={title}>{heading ?? 'Session expired'}</h2>
                 <p style={sub}>
-                    Sign in with {user?.email || 'the same Google account'} to pick up right where you left off.
-                    Your workspace is still open behind this.
+                    {message ?? `Sign in with ${user?.email || 'the same Google account'} to pick up right where you left off. Your workspace is still open behind this.`}
                 </p>
                 <GoogleSignInButton onCredential={loginWithGoogle} />
-                <button type="button" onClick={logout} style={secondaryBtn}>
-                    Log out instead
-                </button>
+                {onDismiss ? (
+                    <button type="button" onClick={onDismiss} style={secondaryBtn}>
+                        Not now
+                    </button>
+                ) : (
+                    <button type="button" onClick={logout} style={secondaryBtn}>
+                        Log out instead
+                    </button>
+                )}
             </div>
         </div>
     );

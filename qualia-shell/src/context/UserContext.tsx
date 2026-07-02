@@ -12,7 +12,7 @@ import { API_BASE } from '../config';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import { oneSaveSync } from '../lib/oneSaveStore';
-import { unlockIntegrations } from '../utils/integrationsStore';
+import { unlockIntegrations, stableIntegrationsOwnerId } from '../utils/integrationsStore';
 
 // API_BASE imported from config
 const TOKEN_KEY = 'dwellium-auth-token';
@@ -562,8 +562,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
         void oneSaveSync.bootstrap(user?.id ?? null);
         // Decrypt at-rest API keys for this user into the in-memory snapshot so
         // every consumer reads plaintext while localStorage keeps ciphertext.
-        void unlockIntegrations(user?.id ?? null);
-    }, [user?.id]);
+        // Task C: the integrations vault is keyed by the STABLE person id
+        // (email-based), not the login-path-dependent user.id; the raw user.id
+        // is passed as a legacy id so keys stranded under it migrate in.
+        void unlockIntegrations(stableIntegrationsOwnerId(user), user ? [user.id] : []);
+    }, [user?.id, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps -- keyed by identity fields, not the object
 
     return (
         <UserContext.Provider value={{

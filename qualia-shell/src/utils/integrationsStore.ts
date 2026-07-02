@@ -24,6 +24,28 @@ import { encryptBundle, decryptBundle, bundleHasPlaintextSecret, bundleHasCipher
 /** Holder updated by UserProvider during render BEFORE useSyncExternalStore reads. */
 export const integrationsUserIdHolder: { current: string | null } = { current: null };
 
+/**
+ * Stable per-PERSON identifier for the integrations vault (Task C, 2026-07-02).
+ *
+ * `user.id` is NOT stable for the same human across login paths: backend
+ * `login()` uses the server id, the static fallback uses the `data/users.json`
+ * id, Google uses the backend id, and local/Architect logins mint their own —
+ * so keys saved under one path landed in a vault the next login couldn't see
+ * (different `integrations:<id>` namespace AND a different derived AES key).
+ *
+ * The vault is therefore keyed by the user's normalized email whenever one
+ * exists (`email:<trimmed-lowercase>`), which is identical across every login
+ * path for the same person. Accounts without an email fall back to `user.id`.
+ * ALL holder assignment sites and save calls must use this resolver.
+ */
+export function stableIntegrationsOwnerId(
+    user: { id: string; email?: string | null } | null | undefined,
+): string | null {
+    if (!user) return null;
+    const email = typeof user.email === 'string' ? user.email.trim().toLowerCase() : '';
+    return email ? `email:${email}` : user.id;
+}
+
 /** Resolve the localStorage key for the currently-active user (or null fallback). */
 function resolveKey(): string {
     const uid = integrationsUserIdHolder.current;
@@ -187,14 +209,55 @@ export async function saveIntegrationsSecure(bundle: IntegrationsBundle, userId:
 }
 
 /**
+ * Migrate keys stranded under LEGACY vault namespaces into the stable one
+ * (Task C). Legacy vaults were keyed — and their ciphertext encrypted — by the
+ * unstable `user.id` of whichever login path wrote them; the namespace suffix
+ * IS the id the bundle was encrypted with, so each candidate is decrypted with
+ * its own suffix and re-encrypted under the stable id. Conservative on purpose:
+ * runs only when the stable vault holds no secret yet, only consults the ids
+ * KNOWN to belong to this person (`legacyIds`, i.e. the current session's
+ * `user.id`) plus `_anonymous`, and never deletes the legacy copy (a failed
+ * migration must not lose the only remaining copy of a key).
+ */
+async function migrateStrandedVaults(stableId: string, legacyIds: string[]): Promise<void> {
+    let stableRaw: string | null = null;
+    try { stableRaw = localStorage.getItem(`integrations:${stableId}`); } catch { return; }
+    if (stableRaw && bundleHasAnySecret(deserialize(stableRaw))) return; // stable vault already has keys
+    const candidates = [...legacyIds.filter((id) => id && id !== stableId), '_anonymous'];
+    for (const legacy of candidates) {
+        let raw: string | null = null;
+        try { raw = localStorage.getItem(`integrations:${legacy}`); } catch { continue; }
+        if (!raw) continue;
+        const parsed = deserialize(raw);
+        if (!bundleHasAnySecret(parsed)) continue;
+        try {
+            const decrypted = await decryptBundle(parsed, legacy === '_anonymous' ? null : legacy);
+            // decryptBundle resolves wrong-key fields to '' — only adopt if a
+            // real secret survived decryption (never migrate garbage).
+            if (!bundleHasPlaintextSecret(decrypted)) continue;
+            const reEncrypted = await encryptBundle(decrypted, stableId);
+            localStorage.setItem(`integrations:${stableId}`, JSON.stringify(reEncrypted));
+            return; // first successful migration wins
+        } catch { /* try the next candidate */ }
+    }
+}
+
+/**
  * Decrypt the active user's at-rest bundle into the in-memory snapshot. Call on
  * login (UserProvider bootstrap). Idempotent + safe: legacy plaintext fields
  * pass through unchanged (transparent migration), and a wrong-key/tampered
  * value resolves to '' rather than leaking ciphertext to a provider.
+ *
+ * `userId` should be the STABLE person id from `stableIntegrationsOwnerId`.
+ * `legacyIds` (optional) are additional ids known to belong to the same person
+ * (e.g. the raw session `user.id`) whose stranded vaults get migrated in.
  */
-export async function unlockIntegrations(userId: string | null): Promise<void> {
+export async function unlockIntegrations(userId: string | null, legacyIds: string[] = []): Promise<void> {
     if (typeof window === 'undefined') return;
     integrationsUserIdHolder.current = userId; // ensure resolveKey() targets this user
+    if (userId) {
+        try { await migrateStrandedVaults(userId, legacyIds); } catch { /* migration is best-effort */ }
+    }
     let raw: string | null = null;
     try { raw = localStorage.getItem(resolveKey()); } catch { return; }
     let hydratedFromRemote = false;

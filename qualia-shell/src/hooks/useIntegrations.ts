@@ -15,6 +15,7 @@ import {
     saveIntegrationsSecure,
     saveIntegrationsForceRemoval,
     clearIntegrations,
+    stableIntegrationsOwnerId,
 } from '../utils/integrationsStore';
 import type { IntegrationsBundle } from '../types/integrations';
 
@@ -24,7 +25,10 @@ export function useIntegrations() {
     // directly lets useIntegrations degrade gracefully to the `_anonymous`
     // namespace when there's no user.
     const userCtx = useContext(UserContext);
-    const userId = userCtx?.user?.id ?? null;
+    // Task C: vault + at-rest crypto are keyed by the STABLE person id
+    // (email-based) — NOT the login-path-dependent user.id — so the same human
+    // reads/writes ONE namespace regardless of how they signed in.
+    const userId = stableIntegrationsOwnerId(userCtx?.user ?? null);
 
     // Update holder DURING render BEFORE useSyncExternalStore reads.
     // Factory cache invalidates automatically on key change → returns the

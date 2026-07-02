@@ -20,7 +20,7 @@
 
 import { useContext, useSyncExternalStore } from 'react';
 import { UserContext } from '../context/UserContext';
-import { integrationsStore, integrationsUserIdHolder } from '../utils/integrationsStore';
+import { integrationsStore, integrationsUserIdHolder, stableIntegrationsOwnerId } from '../utils/integrationsStore';
 import { hasActiveLlm } from '../lib/llmClient';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import { aiHealthStore, isRateLimited } from '../lib/aiHealthStore';
@@ -51,7 +51,8 @@ export function useAIAvailability(): AiAvailability {
     // Raw context, NOT useUser() — degrades to the _anonymous namespace in
     // tests/anonymous routes (repo convention; see useIntegrations.ts).
     const userCtx = useContext(UserContext);
-    integrationsUserIdHolder.current = userCtx?.user?.id ?? null;
+    // Task C: stable person id (email-based), matching useIntegrations.
+    integrationsUserIdHolder.current = stableIntegrationsOwnerId(userCtx?.user ?? null);
 
     const bundle = useSyncExternalStore(
         integrationsStore.subscribe,

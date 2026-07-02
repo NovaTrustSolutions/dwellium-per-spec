@@ -488,6 +488,41 @@ export function UserProvider({ children }: { children: ReactNode }) {
         clearTokens();
     }, [clearTokens]);
 
+    /* ── Google select-account redirect return (2026-07-02) ─────────────
+     * The "Use a different Google account" flow (GoogleSignInButton →
+     * accounts.google.com with prompt=select_account & response_type=id_token)
+     * redirects back to the app origin with `#id_token=…&state=…`. Verify the
+     * state + nonce we stashed before leaving, clean the URL, and complete the
+     * SAME backend login as the GIS button (loginWithGoogle → /api/auth/google
+     * verifies the token server-side). One-shot per mount. */
+    const googleRedirectHandledRef = useRef(false);
+    useEffect(() => {
+        if (typeof window === 'undefined' || googleRedirectHandledRef.current) return;
+        const hash = window.location.hash;
+        if (!hash || !hash.includes('id_token=')) return;
+        googleRedirectHandledRef.current = true;
+        const frag = new URLSearchParams(hash.slice(1));
+        const idToken = frag.get('id_token') || '';
+        const returnedState = frag.get('state') || '';
+        let expectedState = '';
+        let expectedNonce = '';
+        try {
+            expectedState = sessionStorage.getItem('dwellium-google-state') || '';
+            expectedNonce = sessionStorage.getItem('dwellium-google-nonce') || '';
+            sessionStorage.removeItem('dwellium-google-state');
+            sessionStorage.removeItem('dwellium-google-nonce');
+        } catch { /* sandboxed */ }
+        // Never leave the token in the URL/history regardless of validity.
+        try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch { /* ignore */ }
+        if (!idToken || !expectedState || returnedState !== expectedState) return;
+        try {
+            const payload = JSON.parse(atob(idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (payload?.nonce !== expectedNonce) return;
+        } catch { return; }
+        void loginWithGoogle(idToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount handler; ref-guarded
+    }, []);
+
     /* ── Auto-validate stored token on mount ──────────── */
 
     useEffect(() => {

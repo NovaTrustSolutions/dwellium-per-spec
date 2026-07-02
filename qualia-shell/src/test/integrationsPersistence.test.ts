@@ -9,6 +9,8 @@ import {
     unlockIntegrations,
 } from '../utils/integrationsStore';
 import { emptyIntegrations, type IntegrationsBundle } from '../types/integrations';
+import { encryptBundle } from '../utils/integrationsCrypto';
+import { oneSaveClient } from '../lib/oneSaveClient';
 
 vi.mock('../lib/oneSaveClient', () => ({
     ONE_SAVE_ENABLED: true,
@@ -79,6 +81,7 @@ describe('Task C regression — keys survive user.id drift across login paths', 
         localStorage.clear();
         integrationsOwnerIdHolder.current = null;
         integrationsStore.reset();
+        vi.mocked(oneSaveClient.get).mockReset().mockResolvedValue(null);
     });
 
     it('a key saved under one login path is readable after "reload" as the same person with a DIFFERENT user.id', async () => {
@@ -132,6 +135,27 @@ describe('Task C regression — keys survive user.id drift across login paths', 
 
         expect(integrationsStore.getSnapshot().llm.anthropic?.apiKey ?? '').toBe('');
         expect(localStorage.getItem(`integrations:${PERSON}`)).toBeNull();
+    });
+
+    it('adopts a REMOTE legacy vault (synced from another device pre-fix) into the stable vault', async () => {
+        const LEGACY = 'backend-uuid-1';
+        const legacyEncrypted = await encryptBundle(bundleWithKey(), LEGACY);
+        vi.mocked(oneSaveClient.get).mockImplementation(async (id: string) => (
+            id === `integrations_${LEGACY}`
+                ? {
+                    id, type: 'integrations', ownerId: LEGACY, schema: 1,
+                    createdAt: '2026-06-01T00:00:00.000Z', updatedAt: '2026-06-01T00:00:00.000Z',
+                    deletedAt: null, payload: legacyEncrypted,
+                }
+                : null
+        ));
+
+        await unlockIntegrations(PERSON, [LEGACY]);
+
+        expect(integrationsStore.getSnapshot().llm.anthropic?.apiKey).toBe('sk-ant-task-c-survives');
+        const migrated = localStorage.getItem(`integrations:${PERSON}`) ?? '';
+        expect(migrated).toContain('enc:v1:');
+        expect(migrated).not.toContain('sk-ant-task-c-survives');
     });
 
     // Regression guard for the dbcfe00 React #185 incident: 7+ other stores

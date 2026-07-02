@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useSyncExternalStore } from 'react';
 import { BrowserRouter, Routes, Route, useSearchParams } from 'react-router';
 import { ThemeProvider } from './context/ThemeContext';
 import { UserProvider, useUser } from './context/UserContext';
@@ -8,6 +8,7 @@ import LoginScreen from './components/Auth/LoginScreen';
 import SessionExpiredModal from './components/Auth/SessionExpiredModal';
 import AppSuspenseFallback from './components/Shell/AppSuspenseFallback';
 import BackendConnectionBanner from './components/Shell/BackendConnectionBanner';
+import { sessionHealthStore } from './lib/sessionHealthStore';
 import { lazyWithReload } from './utils/lazyWithReload';
 import './styles/global.css';
 import './styles/skins.css';
@@ -35,6 +36,16 @@ const OpenJarvisWidget = lazyWithReload(() => import('./components/OpenJarvis/Op
 function AuthGate() {
     const { isAuthenticated, isLoading, role, sessionExpired } = useUser();
     const [tenantMode, setTenantMode] = useState(false);
+    // F-016: module-level session health — flipped by oneSaveClient on any
+    // authenticated 401/403 (and by endDeadSession). Read here directly so the
+    // re-auth modal surfaces even if the context flag path is swallowed. A
+    // dead session previously left the shell fully interactive while every
+    // One Save write silently failed → nothing persisted under the account.
+    const sessionHealth = useSyncExternalStore(
+        sessionHealthStore.subscribe,
+        sessionHealthStore.getSnapshot,
+        sessionHealthStore.getServerSnapshot,
+    );
 
     if (isLoading) {
         return (
@@ -78,8 +89,10 @@ function AuthGate() {
                 )}
             </Suspense>
             {/* Recoverable re-auth: a definitively-dead session keeps the shell
-               mounted and overlays this modal instead of bouncing to login. */}
-            {isAuthenticated && sessionExpired && <SessionExpiredModal />}
+               mounted and overlays this modal instead of bouncing to login.
+               Fires from EITHER the context flag OR the module-level health
+               store (F-016 belt-and-braces). */}
+            {isAuthenticated && (sessionExpired || sessionHealth.authDead) && <SessionExpiredModal />}
         </>
     );
 }

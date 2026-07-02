@@ -13,6 +13,7 @@ import DataFolderSection from './DataFolderSection';
 import GoogleDriveSection from './GoogleDriveSection';
 import GoogleAccountsSection from './GoogleAccountsSection';
 import SystemUpdateSection from './SystemUpdateSection';
+import AuditLogSection from './AuditLogSection';
 import ScribeSettings from '../Scribe/ScribeSettings';
 import './ControlPanel.css';
 
@@ -601,6 +602,10 @@ export default function ControlPanel() {
 
             {/* App updates — git pull + rebuild + restart (2026-05-28) */}
             <SystemUpdateSection />
+
+            {/* Per-user server-side audit trail — every account-scoped save,
+                verifiable (F-016 follow-up, 2026-07-02) */}
+            <AuditLogSection />
 
             <section className="cp-section">
                 <h3 className="cp-section__title">Integrations (Backend)</h3>

@@ -305,6 +305,29 @@ export async function unlockIntegrations(userId: string | null, legacyIds: strin
             }
         } catch { /* One Save disabled/offline — keep local encrypted copy */ }
     }
+    // Remote LEGACY migration (Task C follow-up): keys synced from another
+    // device before the stable-id change live at `integrations_<old user.id>`
+    // remotely and are encrypted with a key derived from that legacy id.
+    // When the stable vault (local + remote) is still secret-less, adopt the
+    // first legacy remote copy that decrypts, re-encrypted under the stable
+    // id. hydratedFromRemote stays false so the normal backfill pushes the
+    // re-encrypted copy to the STABLE remote object afterwards.
+    if (userId && (!raw || !bundleHasAnySecret(deserialize(raw)))) {
+        for (const legacy of legacyIds.filter((id) => id && id !== userId)) {
+            try {
+                const { oneSaveClient } = await import('../lib/oneSaveClient');
+                const remote = await oneSaveClient.get<IntegrationsBundle>(remoteObjectId(legacy));
+                const payload = remote?.payload as IntegrationsBundle | undefined;
+                if (!payload || remote?.deletedAt != null || !bundleHasAnySecret(payload)) continue;
+                const decrypted = await decryptBundle(payload, legacy);
+                if (!bundleHasPlaintextSecret(decrypted)) continue; // wrong key → don't adopt garbage
+                const reEncrypted = await encryptBundle(decrypted, userId);
+                raw = JSON.stringify(reEncrypted);
+                localStorage.setItem(resolveKey(), raw);
+                break;
+            } catch { /* try the next legacy id */ }
+        }
+    }
     if (!raw) return;
     const parsed = deserialize(raw);
     try {

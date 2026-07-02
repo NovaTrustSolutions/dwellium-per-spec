@@ -11,6 +11,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, us
 import { API_BASE } from '../config';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { backendStatusStore } from '../lib/backendStatusStore';
+import { sessionHealthStore } from '../lib/sessionHealthStore';
 import { oneSaveSync } from '../lib/oneSaveStore';
 import { unlockIntegrations, stableIntegrationsOwnerId } from '../utils/integrationsStore';
 
@@ -115,6 +116,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         if (data.expiresAt) {
             localStorage.setItem(EXPIRES_AT_KEY, data.expiresAt);
         }
+        sessionHealthStore.markAuthOk(); // fresh credential → session alive again (F-016)
     }, []);
 
     const clearTokens = useCallback(() => {
@@ -147,6 +149,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
         if (localStorage.getItem('dwellium-user')) {
             setSessionExpired(true);
+            // Belt-and-braces (F-016): also flip the module-level health store
+            // so AuthGate surfaces the re-auth modal even if this context
+            // update is swallowed anywhere between here and the gate.
+            sessionHealthStore.markAuthRejected();
         } else {
             clearTokens();
         }
@@ -308,6 +314,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setUser(validatedUser);
             setPermissions(data.permissions || {});
             setSessionExpired(false);
+            sessionHealthStore.markAuthOk(); // /api/auth/me accepted the credential (F-016)
             try { localStorage.setItem('dwellium-user', JSON.stringify(validatedUser)); } catch { /* ignore */ }
             backendStatusStore.markOnline();
             const expiresAt = localStorage.getItem(EXPIRES_AT_KEY);

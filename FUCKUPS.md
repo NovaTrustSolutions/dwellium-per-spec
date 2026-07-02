@@ -40,6 +40,37 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-016 — A dead backend session silently disabled ALL account persistence (keys, workspaces, knowledge graph) with zero user-facing signal
+- **Problem:** Ilya reported "API keys not saved, knowledge graph not saved,
+  workspace not saved" across sessions. The deployed app showed a fully
+  interactive logged-in shell ("Good morning, Andy") while EVERY One Save
+  write returned 401 — verified live: `PUT /api/objects/hierarchy_… → 401`,
+  `GET /api/auth/me → 401`, no refresh token in localStorage.
+- **Root cause (two layers):** (1) `oneSaveClient.call()` treated ANY non-OK
+  response as "offline" (`if (!res.ok) return null`) — a definitive 401
+  auth-rejection was indistinguishable from a network blip, so the app
+  silently degraded to localStorage-only forever. (2) The SessionExpiredModal
+  path through React context never surfaced on the deployed app even though
+  `/api/auth/me` 401'd on every load/focus.
+- **Fix:** module-level `sessionHealthStore` (useSyncExternalStore, no
+  provider needed) flipped by `oneSaveClient` on any authenticated 401/403
+  (real tokens only — `static-` dev accounts are local-only by design) and by
+  `endDeadSession`; AuthGate renders SessionExpiredModal from EITHER the
+  context flag OR the store. Verified in-browser: real-shaped token + all-401
+  backend → modal fires ("Session expired — Continue with Google"), workspace
+  stays mounted behind it. Plus: per-user Audit Log section in Control Panel
+  over `GET /api/dwellium/audit` (backend middleware already recorded every
+  `/api/objects` mutation per user; route hardened so non-corporate users can
+  only read their own trail), and remote legacy-vault migration in
+  `unlockIntegrations` (keys synced under the old per-login user.id are
+  adopted into the stable email-keyed vault).
+- **Prevention:** (1) 401/403 on an authenticated call is a SESSION event,
+  not a network event — never funnel both into the same silent fallback;
+  (2) any "never log the user out on failure" policy MUST pair with a loud
+  persistent "your changes are not being saved to your account" surface;
+  (3) verify persistence claims by reading the app's own network traffic
+  (read_network_requests / DevTools), not by whether the UI looks logged in.
+
 ### F-015 — Deploy `dbcfe00` crashed prod with React #185 (infinite render loop) despite a fully green gate
 - **Problem:** Netlify deploy `dbcfe00` (Task C stable-vault-id fix + model
   dropdowns) rendered "Application Error — Minified React error #185" for any

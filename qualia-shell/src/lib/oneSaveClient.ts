@@ -19,6 +19,7 @@
 
 import { getAuthToken } from '../context/UserContext';
 import { API_BASE } from '../config';
+import { sessionHealthStore } from './sessionHealthStore';
 
 /** Master flag — the spine ships inert until this is `'true'` at build time. */
 export const ONE_SAVE_ENABLED =
@@ -74,7 +75,21 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T 
             headers,
             body: body !== undefined ? JSON.stringify(body) : undefined,
         });
-        if (!res.ok) return null;
+        if (!res.ok) {
+            // F-016: a 401/403 with a token attached is NOT "offline" — it means
+            // the session credential is dead and NOTHING is being persisted
+            // under the user's account. Surface it (AuthGate overlays the
+            // re-sign-in modal via sessionHealthStore) instead of silently
+            // degrading to localStorage-only forever.
+            // static- tokens are client-side dev accounts (Architect/local):
+            // the backend rejects them BY DESIGN, so they are not a "dead
+            // session" — don't nag those with the re-auth modal.
+            if ((res.status === 401 || res.status === 403) && token && !token.startsWith('static-')) {
+                sessionHealthStore.markAuthRejected();
+            }
+            return null;
+        }
+        sessionHealthStore.markAuthOk();
 
         const json: unknown = await res.json();
         if (isEnvelope<T>(json)) return json.data ?? null;

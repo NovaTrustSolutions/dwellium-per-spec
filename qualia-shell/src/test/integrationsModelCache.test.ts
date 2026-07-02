@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyIntegrations, type IntegrationsBundle } from '../types/integrations';
 import {
     integrationsStore,
-    integrationsUserIdHolder,
+    integrationsOwnerIdHolder,
     saveIntegrationsSecure,
     unlockIntegrations,
 } from '../utils/integrationsStore';
@@ -38,7 +38,7 @@ function bundleWithModelCache(): IntegrationsBundle {
 
 describe('model-cache persistence round-trip', () => {
     beforeEach(() => {
-        integrationsUserIdHolder.current = null;
+        integrationsOwnerIdHolder.current = null;
         integrationsStore.reset();
         localStorage.clear();
         vi.mocked(oneSaveClient.get).mockReset();
@@ -46,7 +46,7 @@ describe('model-cache persistence round-trip', () => {
     });
 
     it('keeps availableModels/modelsFetchedAt/model across encrypted save + hydrate; key stays encrypted', async () => {
-        integrationsUserIdHolder.current = USER;
+        integrationsOwnerIdHolder.current = USER;
         await saveIntegrationsSecure(bundleWithModelCache(), USER);
 
         // The at-rest + One Save copy encrypts the key but leaves model-cache plain.
@@ -59,7 +59,7 @@ describe('model-cache persistence round-trip', () => {
 
         // Fresh login: no remote → hydrate from the encrypted local copy.
         integrationsStore.reset();
-        integrationsUserIdHolder.current = USER;
+        integrationsOwnerIdHolder.current = USER;
         vi.mocked(oneSaveClient.get).mockResolvedValueOnce(null as never);
         await unlockIntegrations(USER);
 

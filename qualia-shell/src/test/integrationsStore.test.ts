@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyIntegrations, type IntegrationsBundle } from '../types/integrations';
 import {
     integrationsStore,
-    integrationsUserIdHolder,
+    integrationsOwnerIdHolder,
     saveIntegrationsSecure,
     unlockIntegrations,
 } from '../utils/integrationsStore';
@@ -39,7 +39,7 @@ function seededBundle(): IntegrationsBundle {
 
 describe('integrationsStore account-scoped key sync', () => {
     beforeEach(() => {
-        integrationsUserIdHolder.current = null;
+        integrationsOwnerIdHolder.current = null;
         integrationsStore.reset();
         vi.mocked(oneSaveClient.get).mockReset();
         vi.mocked(oneSaveClient.put).mockReset();
@@ -47,7 +47,7 @@ describe('integrationsStore account-scoped key sync', () => {
     });
 
     it('saves LLM keys as encrypted One Save payload and hydrates them on a fresh device login', async () => {
-        integrationsUserIdHolder.current = USER;
+        integrationsOwnerIdHolder.current = USER;
         await saveIntegrationsSecure(seededBundle(), USER);
 
         expect(oneSaveClient.put).toHaveBeenCalledTimes(1);
@@ -66,7 +66,7 @@ describe('integrationsStore account-scoped key sync', () => {
 
         localStorage.clear();
         integrationsStore.reset();
-        integrationsUserIdHolder.current = USER;
+        integrationsOwnerIdHolder.current = USER;
         vi.mocked(oneSaveClient.get).mockResolvedValueOnce({
             id: `integrations_${USER}`,
             type: 'integrations',
@@ -92,10 +92,10 @@ describe('integrationsStore account-scoped key sync', () => {
     });
 
     it('drops the remote write if the active account changes while encryption is pending', async () => {
-        integrationsUserIdHolder.current = USER;
+        integrationsOwnerIdHolder.current = USER;
         const pendingSave = saveIntegrationsSecure(seededBundle(), USER);
 
-        integrationsUserIdHolder.current = 'user-lisa-id';
+        integrationsOwnerIdHolder.current = 'user-lisa-id';
         await pendingSave;
 
         expect(oneSaveClient.put).not.toHaveBeenCalled();

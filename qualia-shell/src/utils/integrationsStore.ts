@@ -21,8 +21,29 @@ import { createLocalStorageStore } from './createLocalStorageStore';
 import { emptyIntegrations, IntegrationsBundle } from '../types/integrations';
 import { encryptBundle, decryptBundle, bundleHasPlaintextSecret, bundleHasCiphertext } from './integrationsCrypto';
 
-/** Holder updated by UserProvider during render BEFORE useSyncExternalStore reads. */
+/**
+ * Holder updated by UserProvider during render BEFORE useSyncExternalStore reads.
+ *
+ * ⚠️ SHARED IDENTITY: many other stores alias this exact object
+ * (llmUsageUserIdHolder / goalsUserIdHolder / morningBriefUserIdHolder /
+ * agentContextUserIdHolder / artifactsUserIdHolder / activationUserIdHolder /
+ * costKpiUserIdHolder = integrationsUserIdHolder) and their components write
+ * the RAW `user.id` into it during render. Its value MUST therefore stay the
+ * raw `user.id` — writing anything else here makes two components alternate
+ * the value within one render pass, which invalidates dynamic-key store
+ * caches on every getSnapshot and infinite-loops React (error #185; shipped
+ * once at dbcfe00, rolled back — see FUCKUPS.md).
+ */
 export const integrationsUserIdHolder: { current: string | null } = { current: null };
+
+/**
+ * PRIVATE holder for the INTEGRATIONS VAULT ONLY (Task C, decoupled after the
+ * dbcfe00 #185 incident). Carries the STABLE per-person id from
+ * `stableIntegrationsOwnerId` (email-based). Written only by useIntegrations /
+ * useAIAvailability (render) and unlockIntegrations (login effect) — never by
+ * the alias-riding stores, so its value can never alternate mid-render.
+ */
+export const integrationsOwnerIdHolder: { current: string | null } = { current: null };
 
 /**
  * Stable per-PERSON identifier for the integrations vault (Task C, 2026-07-02).
@@ -46,9 +67,9 @@ export function stableIntegrationsOwnerId(
     return email ? `email:${email}` : user.id;
 }
 
-/** Resolve the localStorage key for the currently-active user (or null fallback). */
+/** Resolve the localStorage key for the currently-active person (or null fallback). */
 function resolveKey(): string {
-    const uid = integrationsUserIdHolder.current;
+    const uid = integrationsOwnerIdHolder.current;
     return uid ? `integrations:${uid}` : 'integrations:_anonymous';
 }
 
@@ -88,7 +109,7 @@ async function syncEncryptedBundle(bundle: IntegrationsBundle, userId: string | 
     // Encryption is async. If the user switches accounts while a save is still
     // pending, do not send the old user's encrypted bundle under the new
     // session token.
-    if (integrationsUserIdHolder.current !== userId) return;
+    if (integrationsOwnerIdHolder.current !== userId) return;
     const { oneSaveClient } = await import('../lib/oneSaveClient');
     await oneSaveClient.put({
         id: remoteObjectId(userId),
@@ -254,7 +275,7 @@ async function migrateStrandedVaults(stableId: string, legacyIds: string[]): Pro
  */
 export async function unlockIntegrations(userId: string | null, legacyIds: string[] = []): Promise<void> {
     if (typeof window === 'undefined') return;
-    integrationsUserIdHolder.current = userId; // ensure resolveKey() targets this user
+    integrationsOwnerIdHolder.current = userId; // ensure resolveKey() targets this person (private vault holder)
     if (userId) {
         try { await migrateStrandedVaults(userId, legacyIds); } catch { /* migration is best-effort */ }
     }
@@ -344,7 +365,7 @@ export async function saveIntegrationsForceRemoval(
 /** Clear active user's integrations (e.g., manual reset from UI). */
 export function clearIntegrations(): void {
     if (typeof window === 'undefined') return;
-    const userId = integrationsUserIdHolder.current;
+    const userId = integrationsOwnerIdHolder.current;
     integrationsStore.set(emptyIntegrations(), () => {
         try {
             localStorage.removeItem(resolveKey());

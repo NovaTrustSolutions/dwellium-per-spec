@@ -38,7 +38,7 @@ import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore }
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
 import { UserContext, type DwelliumUser } from '../../context/UserContext';
-import { integrationsUserIdHolder, stableIntegrationsOwnerId } from '../../utils/integrationsStore';
+import { integrationsUserIdHolder } from '../../utils/integrationsStore';
 import './HalocronOS.css';
 
 type NavId = 'home' | 'memory' | 'kg' | 'workspace' | 'apps' | 'skills' | 'dream' | 'insights' | 'settings';
@@ -264,8 +264,10 @@ export default function HalocronOS() {
     // (same pattern as useIntegrations) so Tokens/Activity/Spend always
     // reference THIS account's data — never a stale or anonymous namespace.
     const userCtx = useContext(UserContext);
-    // Task C: stable person id (email-based), matching useIntegrations.
-    integrationsUserIdHolder.current = stableIntegrationsOwnerId(userCtx?.user ?? null);
+    // Shared alias holder carries the RAW user.id (llmUsage / subscriptions /
+    // etc. ride this object). The integrations VAULT uses its own private
+    // stable-id holder, set inside useIntegrations() below (#185 note).
+    integrationsUserIdHolder.current = userCtx?.user?.id ?? null;
     const greetingName = accountGreetingName(userCtx?.user);
     const { integrations } = useIntegrations();
     const usage = useLlmUsage();

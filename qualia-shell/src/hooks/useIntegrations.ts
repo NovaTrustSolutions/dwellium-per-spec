@@ -12,6 +12,7 @@ import { UserContext } from '../context/UserContext';
 import {
     integrationsStore,
     integrationsUserIdHolder,
+    integrationsOwnerIdHolder,
     saveIntegrationsSecure,
     saveIntegrationsForceRemoval,
     clearIntegrations,
@@ -25,15 +26,21 @@ export function useIntegrations() {
     // directly lets useIntegrations degrade gracefully to the `_anonymous`
     // namespace when there's no user.
     const userCtx = useContext(UserContext);
-    // Task C: vault + at-rest crypto are keyed by the STABLE person id
+    // Task C: the VAULT + at-rest crypto are keyed by the STABLE person id
     // (email-based) — NOT the login-path-dependent user.id — so the same human
-    // reads/writes ONE namespace regardless of how they signed in.
+    // reads/writes ONE namespace regardless of how they signed in. The stable
+    // id lives in the PRIVATE integrationsOwnerIdHolder; the SHARED
+    // integrationsUserIdHolder keeps the raw user.id because 7+ other stores
+    // alias that object and write user.id into it during render — mixing
+    // values there alternates dynamic-store keys mid-render and infinite-loops
+    // React (#185, the dbcfe00 incident).
     const userId = stableIntegrationsOwnerId(userCtx?.user ?? null);
 
-    // Update holder DURING render BEFORE useSyncExternalStore reads.
+    // Update holders DURING render BEFORE useSyncExternalStore reads.
     // Factory cache invalidates automatically on key change → returns the
-    // fresh per-user-id value without a separate re-init effect.
-    integrationsUserIdHolder.current = userId;
+    // fresh per-person value without a separate re-init effect.
+    integrationsOwnerIdHolder.current = userId;
+    integrationsUserIdHolder.current = userCtx?.user?.id ?? null;
 
     const bundle = useSyncExternalStore(
         integrationsStore.subscribe,

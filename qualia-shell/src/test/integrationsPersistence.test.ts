@@ -3,6 +3,7 @@ import {
     shouldAdoptRemoteBundle,
     stableIntegrationsOwnerId,
     integrationsStore,
+    integrationsOwnerIdHolder,
     integrationsUserIdHolder,
     saveIntegrationsSecure,
     unlockIntegrations,
@@ -76,20 +77,20 @@ describe('Task C regression — keys survive user.id drift across login paths', 
 
     beforeEach(() => {
         localStorage.clear();
-        integrationsUserIdHolder.current = null;
+        integrationsOwnerIdHolder.current = null;
         integrationsStore.reset();
     });
 
     it('a key saved under one login path is readable after "reload" as the same person with a DIFFERENT user.id', async () => {
         // Session 1: backend up → user.id = backend-uuid-1. Vault key = stable person id.
-        integrationsUserIdHolder.current = PERSON;
+        integrationsOwnerIdHolder.current = PERSON;
         await saveIntegrationsSecure(bundleWithKey(), PERSON);
         expect(localStorage.getItem(`integrations:${PERSON}`)).toContain('enc:v1:');
 
         // Session 2: backend down → SAME email but user.id = users-json-id-7.
         // stableIntegrationsOwnerId resolves the SAME vault, so the key is there.
         integrationsStore.reset();
-        integrationsUserIdHolder.current = null;
+        integrationsOwnerIdHolder.current = null;
         const session2Owner = stableIntegrationsOwnerId({ id: 'users-json-id-7', email: 'andy@dwellium.com' })!;
         expect(session2Owner).toBe(PERSON);
         await unlockIntegrations(session2Owner, ['users-json-id-7']);
@@ -101,7 +102,7 @@ describe('Task C regression — keys survive user.id drift across login paths', 
         // Legacy install: keys were saved under the raw user.id namespace and
         // encrypted with a key derived from that id.
         const LEGACY = 'backend-uuid-1';
-        integrationsUserIdHolder.current = LEGACY;
+        integrationsOwnerIdHolder.current = LEGACY;
         await saveIntegrationsSecure(bundleWithKey(), LEGACY);
         expect(localStorage.getItem(`integrations:${LEGACY}`)).toContain('enc:v1:');
         expect(localStorage.getItem(`integrations:${PERSON}`)).toBeNull();
@@ -109,7 +110,7 @@ describe('Task C regression — keys survive user.id drift across login paths', 
         // First login after the fix: unlock under the stable id, passing the
         // session user.id as a legacy id → stranded keys migrate in.
         integrationsStore.reset();
-        integrationsUserIdHolder.current = null;
+        integrationsOwnerIdHolder.current = null;
         await unlockIntegrations(PERSON, [LEGACY]);
 
         expect(integrationsStore.getSnapshot().llm.anthropic?.apiKey).toBe('sk-ant-task-c-survives');
@@ -122,14 +123,31 @@ describe('Task C regression — keys survive user.id drift across login paths', 
 
     it('does NOT adopt another person\'s vault (no legacy id match → no migration)', async () => {
         const OTHER = 'someone-else-id';
-        integrationsUserIdHolder.current = OTHER;
+        integrationsOwnerIdHolder.current = OTHER;
         await saveIntegrationsSecure(bundleWithKey(), OTHER);
 
         integrationsStore.reset();
-        integrationsUserIdHolder.current = null;
+        integrationsOwnerIdHolder.current = null;
         await unlockIntegrations(PERSON, ['backend-uuid-1']); // OTHER not in legacy ids
 
         expect(integrationsStore.getSnapshot().llm.anthropic?.apiKey ?? '').toBe('');
         expect(localStorage.getItem(`integrations:${PERSON}`)).toBeNull();
+    });
+
+    // Regression guard for the dbcfe00 React #185 incident: 7+ other stores
+    // alias integrationsUserIdHolder and write RAW user.id into it during
+    // render. The vault key must ride its own PRIVATE holder, so shared-holder
+    // churn must NOT invalidate the vault snapshot (same reference returned) —
+    // otherwise useSyncExternalStore sees a new snapshot every check and
+    // infinite-loops React.
+    it('vault snapshot is immune to shared-alias-holder churn (#185 loop guard)', () => {
+        integrationsOwnerIdHolder.current = PERSON;
+        const first = integrationsStore.getSnapshot();
+        integrationsUserIdHolder.current = 'raw-user-id-from-alias-store';
+        const second = integrationsStore.getSnapshot();
+        integrationsUserIdHolder.current = 'another-raw-id';
+        const third = integrationsStore.getSnapshot();
+        expect(second).toBe(first);
+        expect(third).toBe(first);
     });
 });

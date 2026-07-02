@@ -40,6 +40,41 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-015 — Deploy `dbcfe00` crashed prod with React #185 (infinite render loop) despite a fully green gate
+- **Problem:** Netlify deploy `dbcfe00` (Task C stable-vault-id fix + model
+  dropdowns) rendered "Application Error — Minified React error #185" for any
+  logged-in user. Gate was GREEN (tsc + 1613 vitest + builds + PII + SSR smoke).
+- **Root cause:** Task C changed `integrationsUserIdHolder.current` from raw
+  `user.id` to the email-based stable id at 3 render sites — but 7+ other
+  stores ALIAS that exact holder object (`llmUsageUserIdHolder /
+  morningBriefUserIdHolder / goalsUserIdHolder / agentContextUserIdHolder /
+  artifactsUserIdHolder / activationUserIdHolder / costKpiUserIdHolder =
+  integrationsUserIdHolder`) and their components keep writing raw `user.id`
+  into it during render. Two components in one tree alternated the value →
+  the dynamic-key store invalidated its cache on every `getSnapshot()` →
+  `useSyncExternalStore` saw a new snapshot each check → React #185 in
+  `<SystemHealthBanner>`. The pre-change grep only matched
+  `integrationsUserIdHolder.current =` and missed every alias assignment.
+- **Why the gate missed it:** the SSR smoke test only renders the LOGIN screen
+  (no user → no SystemHealthBanner/MorningBrief tree), and vitest never mounts
+  a tree containing BOTH an alias-writing component and a vault consumer.
+- **Fix:** rolled prod back to `99f3d44` via
+  `npx netlify api restoreSiteDeploy` within minutes; then decoupled the vault
+  onto a PRIVATE `integrationsOwnerIdHolder` (stable person id) while the
+  shared alias holder keeps raw `user.id` everywhere. Loop-guard regression
+  test added (`integrationsPersistence.test.ts` — shared-holder churn must not
+  invalidate the vault snapshot). Repro + fix verified in a real browser (dev
+  server, seeded Architect session: crash before, clean render after).
+- **Prevention:** (1) before changing the VALUE SEMANTICS of any module-level
+  holder, grep for ALIASES (`= <holderName>` / `UserIdHolder`), not just
+  direct assignments — shared-identity exports are load-bearing; (2) any store
+  whose dynamic key rides a holder written during render by MULTIPLE
+  components must have a single writer or a single value source; (3) "green
+  gate ≠ working" is literal: browser-verify logged-in state before pushing
+  anything that touches render-time holders; (4) `netlify api
+  restoreSiteDeploy --data '{"site_id":…,"deploy_id":…}'` is the instant
+  prod rollback — use it FIRST, debug second.
+
 ### F-014 — Backend launch agent stayed "running" while port 3000 was dead after native-module ABI drift
 - **Problem:** The UI showed "Backend connection failed"; launchd reported
   `com.dwellium.backend` as running, but nothing listened on port 3000.

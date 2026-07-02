@@ -4,18 +4,17 @@
  * useIntegrations: raw UserContext (degrades to _anonymous in tests), holder
  * updated DURING render so useSyncExternalStore resolves the per-user key.
  */
-import { useCallback, useContext, useSyncExternalStore } from 'react';
-import { UserContext } from '../context/UserContext';
+import { useCallback, useSyncExternalStore } from 'react';
 import {
     activationStore,
-    activationUserIdHolder,
     saveActivation,
     type ActivationConfig,
 } from '../lib/activationStore';
+import { usePerUserIdentity } from '../lib/perUserIdentity';
 
 export function useActivation() {
-    const userCtx = useContext(UserContext);
-    activationUserIdHolder.current = userCtx?.user?.id ?? null;
+    // Single writer: sets every per-user holder to the active user.id at once.
+    usePerUserIdentity();
 
     const config = useSyncExternalStore(
         activationStore.subscribe,

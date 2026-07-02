@@ -11,13 +11,13 @@ import { useCallback, useContext, useSyncExternalStore } from 'react';
 import { UserContext } from '../context/UserContext';
 import {
     integrationsStore,
-    integrationsUserIdHolder,
     integrationsOwnerIdHolder,
     saveIntegrationsSecure,
     saveIntegrationsForceRemoval,
     clearIntegrations,
     stableIntegrationsOwnerId,
 } from '../utils/integrationsStore';
+import { usePerUserIdentity } from '../lib/perUserIdentity';
 import type { IntegrationsBundle } from '../types/integrations';
 
 export function useIntegrations() {
@@ -40,7 +40,9 @@ export function useIntegrations() {
     // Factory cache invalidates automatically on key change → returns the
     // fresh per-person value without a separate re-init effect.
     integrationsOwnerIdHolder.current = userId;
-    integrationsUserIdHolder.current = userCtx?.user?.id ?? null;
+    // Every per-user store's identity holder (llmUsage / goals / workspaces /
+    // etc.) is set from ONE place here — no shared-mutable holder to churn.
+    usePerUserIdentity();
 
     const bundle = useSyncExternalStore(
         integrationsStore.subscribe,

@@ -8,18 +8,16 @@
  *
  * Per-user One Save ('agent-context'); `.reset()` standing convention.
  */
-import { useContext, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
-import { UserContext } from '../context/UserContext';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { agentContextUserIdHolder, usePerUserIdentity } from './perUserIdentity';
+export { agentContextUserIdHolder };
 
 export interface AgentContext {
     text: string;
     updatedAt: string;
 }
-
-export const agentContextUserIdHolder = integrationsUserIdHolder; // shared identity
 
 function resolveKey(): string {
     const uid = agentContextUserIdHolder.current;
@@ -74,8 +72,8 @@ export function buildAgentContextBlock(text?: string): string {
 }
 
 export function useAgentContext() {
-    const userCtx = useContext(UserContext);
-    agentContextUserIdHolder.current = userCtx?.user?.id ?? agentContextUserIdHolder.current ?? null;
+    // Single writer: sets every per-user holder to the active user.id at once.
+    usePerUserIdentity();
     const ctx = useSyncExternalStore(
         agentContextStore.subscribe,
         agentContextStore.getSnapshot,

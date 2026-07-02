@@ -8,11 +8,10 @@
  * `.reset()`. Identity rides integrationsUserIdHolder so ARA's intake tier
  * (outside React) namespaces correctly.
  */
-import { useContext, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
-import { UserContext } from '../context/UserContext';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { goalsUserIdHolder, usePerUserIdentity } from './perUserIdentity';
 
 export interface GoalAction {
     text: string;
@@ -45,7 +44,7 @@ export interface Goal {
     updatedAt: number;
 }
 
-export const goalsUserIdHolder = integrationsUserIdHolder; // shared identity
+export { goalsUserIdHolder };
 
 function resolveKey(): string {
     const uid = goalsUserIdHolder.current;
@@ -147,8 +146,8 @@ export function resetGoals(): void {
 /* ─── Hook ─── */
 
 export function useGoals() {
-    const userCtx = useContext(UserContext);
-    goalsUserIdHolder.current = userCtx?.user?.id ?? goalsUserIdHolder.current ?? null;
+    // Single writer: sets every per-user holder to the active user.id at once.
+    usePerUserIdentity();
     const goals = useSyncExternalStore(
         goalsStore.subscribe,
         goalsStore.getSnapshot,

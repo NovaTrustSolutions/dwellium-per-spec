@@ -7,7 +7,7 @@ import {
     halocronKnowledgeGraphStore,
     type HalocronKnowledgeGraphState,
 } from '../lib/halocronKnowledgeGraphStore';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { setPerUserIdentity } from '../lib/perUserIdentity';
 import { saveWorkspaces, workspacesStore, type Workspace } from '../lib/workspacesStore';
 
 vi.mock('../lib/oneSaveClient', () => ({
@@ -39,7 +39,7 @@ describe('account resume stores', () => {
     beforeEach(async () => {
         vi.useFakeTimers();
         localStorage.clear();
-        integrationsUserIdHolder.current = null;
+        setPerUserIdentity(null);
         await oneSaveSync.bootstrap(null);
         halocronOsStore.reset();
         halocronKnowledgeGraphStore.reset();
@@ -125,7 +125,7 @@ describe('account resume stores', () => {
     });
 
     it('writes workspace composition to the authenticated account object instead of only localStorage', async () => {
-        integrationsUserIdHolder.current = USER;
+        setPerUserIdentity(USER);
         saveWorkspaces([{
             id: 'ws-write-through',
             name: 'Persistent workspace',

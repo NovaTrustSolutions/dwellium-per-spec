@@ -5,7 +5,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { tagsUserIdHolder } from './perUserIdentity';
 
 export interface Tag {
     id: string;
@@ -20,7 +20,7 @@ export interface Tag {
 export const TAG_PROJECTS = ['Hermes Agent', 'Stella', 'Claude Code', 'AntiGravity', 'ChatGPT', 'Codex'];
 
 function resolveKey(): string {
-    const uid = integrationsUserIdHolder.current;
+    const uid = tagsUserIdHolder.current;
     return uid ? `tags:${uid}` : 'tags:_anonymous';
 }
 

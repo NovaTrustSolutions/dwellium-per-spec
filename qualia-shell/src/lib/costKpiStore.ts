@@ -14,13 +14,13 @@
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { costKpiUserIdHolder } from './perUserIdentity';
 
 export const DEFAULT_HOURLY_KPI = 50;
 export const MIN_HOURLY_KPI = 5;
 export const MAX_HOURLY_KPI = 500;
 
-export const costKpiUserIdHolder = integrationsUserIdHolder; // shared identity
+export { costKpiUserIdHolder };
 
 function resolveKey(): string {
     const uid = costKpiUserIdHolder.current;

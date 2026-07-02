@@ -11,12 +11,11 @@
  * posts the brief as an assistant message via the pending-slot + event bus
  * (spawn.ts sister shape — survives the open-ARA mount race).
  */
-import { useContext, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { morningBriefBus } from './busChannels';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
-import { UserContext } from '../context/UserContext';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { morningBriefUserIdHolder, usePerUserIdentity } from './perUserIdentity';
 import { dayKey } from './dailySynthesis';
 
 export interface MorningBrief {
@@ -30,7 +29,7 @@ export interface MorningBrief {
     seen: boolean;
 }
 
-export const morningBriefUserIdHolder = integrationsUserIdHolder; // shared identity
+export { morningBriefUserIdHolder };
 
 function resolveKey(): string {
     const uid = morningBriefUserIdHolder.current;
@@ -124,8 +123,8 @@ export function consumePendingBrief(): MorningBrief | null {
 
 /** Hook for the banner. */
 export function useMorningBrief() {
-    const userCtx = useContext(UserContext);
-    morningBriefUserIdHolder.current = userCtx?.user?.id ?? morningBriefUserIdHolder.current ?? null;
+    // Single writer: sets every per-user holder to the active user.id at once.
+    usePerUserIdentity();
     const briefs = useSyncExternalStore(
         morningBriefStore.subscribe,
         morningBriefStore.getSnapshot,

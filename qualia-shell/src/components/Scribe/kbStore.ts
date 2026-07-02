@@ -13,7 +13,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
-import { integrationsUserIdHolder } from '../../utils/integrationsStore';
+import { scribeKbUserIdHolder } from '../../lib/perUserIdentity';
 
 export interface KbEntry { rel: string; title: string; summary: string; concepts: string[]; }
 export type KbCategory = 'knowledge' | 'personal' | 'private';
@@ -44,7 +44,7 @@ function emptyState(): KbState {
 }
 
 function resolveKey(): string {
-    const uid = integrationsUserIdHolder.current;
+    const uid = scribeKbUserIdHolder.current;
     return uid ? `scribe-kb:${uid}` : 'scribe-kb:_anonymous';
 }
 

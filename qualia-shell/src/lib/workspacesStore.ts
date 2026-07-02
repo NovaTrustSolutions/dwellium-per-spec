@@ -12,7 +12,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { workspacesUserIdHolder } from './perUserIdentity';
 import { withSync } from './oneSaveStore';
 
 export interface Frame { x: number; y: number; w: number; h: number; }
@@ -66,7 +66,7 @@ export interface Workspace {
 }
 
 function resolveKey(): string {
-    const uid = integrationsUserIdHolder.current;
+    const uid = workspacesUserIdHolder.current;
     return uid ? `workspaces:${uid}` : 'workspaces:_anonymous';
 }
 
@@ -111,7 +111,7 @@ export const workspacesStore = withSync(
         deserializer: deserialize,
         defaultValue: [],
     }),
-    { objectType: 'workspaces', holder: integrationsUserIdHolder, resolveKey },
+    { objectType: 'workspaces', holder: workspacesUserIdHolder, resolveKey },
 );
 
 export function saveWorkspaces(list: Workspace[]): void {

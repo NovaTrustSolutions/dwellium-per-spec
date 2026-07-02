@@ -11,7 +11,7 @@
  * sister shape incl. `.reset()`. Bounded: 120 artifacts, 400k chars each
  * (images ride as data URLs; oversized content is truncated with a note).
  */
-import { useContext, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
 import { UserContext } from '../context/UserContext';
@@ -36,10 +36,10 @@ export interface Artifact {
 const MAX_ARTIFACTS = 120;
 const MAX_CONTENT = 400_000;
 
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { artifactsUserIdHolder, usePerUserIdentity } from './perUserIdentity';
 
-/** Shared identity with the integrations bundle — always set while authed. */
-export const artifactsUserIdHolder = integrationsUserIdHolder;
+/** Own per-user identity holder (owned by perUserIdentity.ts). */
+export { artifactsUserIdHolder };
 
 function resolveKey(): string {
     const uid = artifactsUserIdHolder.current;
@@ -184,8 +184,8 @@ export function isSubstantialOutput(text: string): boolean {
 /* ─── Hook ─── */
 
 export function useArtifacts() {
-    const userCtx = useContext(UserContext);
-    artifactsUserIdHolder.current = userCtx?.user?.id ?? artifactsUserIdHolder.current ?? null;
+    // Single writer: sets every per-user holder to the active user.id at once.
+    usePerUserIdentity();
     const artifacts = useSyncExternalStore(
         artifactStore.subscribe,
         artifactStore.getSnapshot,

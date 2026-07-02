@@ -12,7 +12,8 @@
  */
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { integrationsUserIdHolder, integrationsStore } from '../utils/integrationsStore';
+import { integrationsStore } from '../utils/integrationsStore';
+import { subscriptionsUserIdHolder } from './perUserIdentity';
 
 export interface Subscription {
     id: string;
@@ -22,7 +23,7 @@ export interface Subscription {
 }
 
 function resolveKey(): string {
-    const uid = integrationsUserIdHolder.current;
+    const uid = subscriptionsUserIdHolder.current;
     return uid ? `subscriptions:${uid}` : 'subscriptions:_anonymous';
 }
 

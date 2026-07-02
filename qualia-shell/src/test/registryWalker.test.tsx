@@ -29,14 +29,16 @@ const ids = Object.keys(WIDGET_REGISTRY);
 
 describe('WIDGET_REGISTRY integrity', () => {
     it('has the expected widget count (guards accidental drops)', () => {
-        // Running total = 55:
+        // Running total = 56:
         //   48 baseline + time-travel (upgrade #7) + holocron-library (2026-06-12)
         //   + 2 feat/assessment-sweep widgets (e.g. cognitive-harness) not
         //     previously recorded in this guard
         //   + api-keys (per-user API-key widget below Inbox Zero, 2026-06-15)
         //   + meeting (ARA Meeting Notetaker — visible/background note-taker, 2026-06-15)
-        //   + cloud-browser (server-rendered browsing inside Holocron, 2026-06-18).
-        expect(ids.length).toBe(55);
+        //   + cloud-browser (server-rendered browsing inside Holocron, 2026-06-18)
+        //   + audit-log (Andy-only Audit Log holocron, 730c82a — guard was not
+        //     bumped when that widget shipped; corrected here, pre-existing drift).
+        expect(ids.length).toBe(56);
     });
 
     it.each(ids)('"%s" entry is well-formed', (id) => {

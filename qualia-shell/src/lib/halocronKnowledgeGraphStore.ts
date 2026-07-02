@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { halocronKnowledgeGraphUserIdHolder } from './perUserIdentity';
 import { withSync } from './oneSaveStore';
 
 export interface KgProject {
@@ -56,7 +56,7 @@ const LEGACY_ACTIVE_KEY = 'dwellium:kg-active-project';
 const LEGACY_GDATA_PREFIX = 'dwellium:kg-gdata:';
 
 function resolveKey(): string {
-    const uid = integrationsUserIdHolder.current;
+    const uid = halocronKnowledgeGraphUserIdHolder.current;
     return uid ? `dwellium:kg:${uid}` : 'dwellium:kg:_anonymous';
 }
 
@@ -163,7 +163,7 @@ export const halocronKnowledgeGraphStore = withSync(
         deserializer: deserialize,
         defaultValue: { ...DEFAULT_KG_STATE, graphs: {} },
     }),
-    { objectType: 'halocron-knowledge-graph', holder: integrationsUserIdHolder, resolveKey },
+    { objectType: 'halocron-knowledge-graph', holder: halocronKnowledgeGraphUserIdHolder, resolveKey },
 );
 
 export function useHalocronKnowledgeGraphState(): HalocronKnowledgeGraphState {

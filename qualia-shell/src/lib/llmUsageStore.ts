@@ -18,7 +18,7 @@
 import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { llmUsageUserIdHolder } from './perUserIdentity';
 import type { LlmProvider } from '../types/integrations';
 
 export interface UsageEntry {
@@ -48,7 +48,7 @@ export interface UsageLedger {
 
 const MAX_ENTRIES = 1000;
 
-export const llmUsageUserIdHolder = integrationsUserIdHolder; // shared identity
+export { llmUsageUserIdHolder };
 
 function resolveKey(): string {
     const uid = llmUsageUserIdHolder.current;

@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { workspacesUserIdHolder } from '../lib/perUserIdentity';
 import { newWorkspaceId, saveWorkspaces, workspacesStore } from '../lib/workspacesStore';
 
 beforeEach(() => {
     localStorage.clear();
-    integrationsUserIdHolder.current = null;
+    workspacesUserIdHolder.current = null;
     workspacesStore.reset();
 });
 
 describe('workspacesStore account persistence', () => {
     it('keeps workspace composition isolated by authenticated account id', () => {
-        integrationsUserIdHolder.current = 'google-account-a';
+        workspacesUserIdHolder.current = 'google-account-a';
         saveWorkspaces([{
             id: newWorkspaceId(),
             name: 'Account A workspace',
@@ -22,10 +22,10 @@ describe('workspacesStore account persistence', () => {
             updatedAt: 1,
         }]);
 
-        integrationsUserIdHolder.current = 'google-account-b';
+        workspacesUserIdHolder.current = 'google-account-b';
         expect(workspacesStore.getSnapshot()).toEqual([]);
 
-        integrationsUserIdHolder.current = 'google-account-a';
+        workspacesUserIdHolder.current = 'google-account-a';
         expect(workspacesStore.getSnapshot()[0]).toMatchObject({
             name: 'Account A workspace',
             notes: 'private to A',
@@ -35,7 +35,7 @@ describe('workspacesStore account persistence', () => {
     });
 
     it('preserves four-up workspace splits for Zen-style multi-pane spaces', () => {
-        integrationsUserIdHolder.current = 'google-account-a';
+        workspacesUserIdHolder.current = 'google-account-a';
         saveWorkspaces([{
             id: newWorkspaceId(),
             name: 'Four panel workspace',

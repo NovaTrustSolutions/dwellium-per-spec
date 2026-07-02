@@ -22,7 +22,7 @@
  */
 
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { integrationsUserIdHolder } from '../utils/integrationsStore';
+import { activationUserIdHolder } from './perUserIdentity';
 
 export interface AppfolioSyncConfig {
     enabled: boolean;
@@ -78,7 +78,7 @@ export function emptyActivation(): ActivationConfig {
     };
 }
 
-export const activationUserIdHolder = integrationsUserIdHolder; // shared identity
+export { activationUserIdHolder };
 
 function resolveKey(): string {
     const uid = activationUserIdHolder.current;

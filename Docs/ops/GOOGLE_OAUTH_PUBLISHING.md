@@ -1,0 +1,39 @@
+# Google OAuth Testing-mode constraint — publish decision memo
+
+One page. Read this, then fill in the decision line at the bottom.
+
+## 1. Facts
+
+- **OAuth client:** `200583798886-9959....apps.googleusercontent.com` (public client ID; full ID not reproduced here — see Cloud Console).
+- **GCP project:** `skilful-gantry-465123-a7`.
+- **Current audience config:** **Testing** publishing status, **External** user type.
+- **Test users as of 2026-07-03:** `iklipinitser@gmail.com`, `andy@dwellium.com` — **2 of 100** lifetime test-user cap.
+- **Managed at:** Cloud Console → APIs & Services → **Google Auth Platform → Audience** (`console.cloud.google.com/auth/audience`).
+- **Verified live symptom (2026-07-03):** a Gmail-scope connect attempt by `andy@dwellium.com` failed with **`Error 403: access_denied`** until that account was explicitly added to the test-user list.
+
+## 2. Constraint (confirmed against current Google docs)
+
+- **Refresh-token expiry:** For a project with publishing status **Testing** and user type **External**, "Authorizations by a test user will expire seven days from the time of consent. If your OAuth client requests an `offline` access type and receives a refresh token, that token will also expire." The only exception is apps requesting *only* `openid`/`email`/`profile` (Sign-In-only) — **not our case**, since Gmail/Calendar scopes are requested. Source: [Manage App Audience — Google Cloud Platform Console Help](https://support.google.com/cloud/answer/15549945?hl=en) (accessed 2026-07-04).
+  - **Confirms the ~7-day expectation stated in the plan.** No discrepancy found.
+- **New-user 403 until listed:** Testing-status External apps cap authorization to the users explicitly listed as test users (100 lifetime); anyone else hitting the consent flow is refused before even reaching a warning screen — matches the `andy@dwellium.com` failure observed live. Same source as above.
+- **Verification for Gmail's restricted scopes:** Gmail scopes broad enough to read/manage mail are classified **restricted**. To move to "In production" while still requesting them, the app must go through Google's restricted-scope verification, which — "if the app accesses or has the capability to access Google user data from or through a server" (true here; Dwellium has a backend) — requires an **annual third-party security assessment**, standardized via the **App Defense Alliance / CASA** framework, re-done "at least every 12 months after your assessor's Letter of Assessment (LOA) approval date." Source: [Restricted scope verification — Google for Developers](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification) (accessed 2026-07-04).
+  - **Cost/timeline as currently stated by third-party trackers** (not Google's own pricing page — Google does not publish a fixed price list): CASA assessments commonly run **roughly $500–$4,500/yr** at the lighter tiers, with **$15,000–$75,000+** reported for apps that need deeper Gmail-API-restricted-scope review; brand verification alone is typically 2-3 business days, restricted-scope verification "can potentially take several weeks." Sources: [Restricted scope verification — Google for Developers](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification) (accessed 2026-07-04); [The $50K Email API Nightmare — reverseBits/Medium](https://medium.com/reversebits/the-50k-email-api-nightmare-why-your-simple-gmail-integration-just-became-a-compliance-hell-6071300b09b4) (accessed 2026-07-04); [My feelings on Google's $15,000-$75,000 OAuth verification process — GMass blog](https://www.gmass.co/blog/google-oauth-verification-security-assessment/) (accessed 2026-07-04). These are third-party-reported figures — treat as directional, not quoted Google pricing.
+- **Internal user type:** "Internal" is only selectable for a **GCP project owned by a Google Cloud Organization / Google Workspace or Cloud Identity org** — it is not available for a project tied to a personal Gmail account, and it skips verification entirely for members of that org. Source: [Manage App Audience — Google Cloud Platform Console Help](https://support.google.com/cloud/answer/15549945?hl=en) (accessed 2026-07-04); [Restricted scope verification — Google for Developers, "Internal use only" section](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification) (accessed 2026-07-04).
+  - **What's verifiable from here:** `andy@dwellium.com` is a custom-domain address, which is consistent with `dwellium.com` running on Google Workspace — but a custom domain alone does not prove a Workspace subscription exists, nor that the *specific* GCP project `skilful-gantry-465123-a7` is attached to that org's Cloud Identity resource (a project can be created under a personal account even if the org has Workspace elsewhere).
+  - **What's NOT verifiable from research alone:** whether `dwellium.com` currently has an active Workspace/Cloud Identity org, and whether this GCP project is (or can be migrated to be) owned by it. **This requires a Cloud Console check by Ilya** — Google Cloud Console → IAM & Admin → Settings would show if the project has a parent organization; if not, [Migrating projects into an organization](https://cloud.google.com/resource-manager/docs/migrating-projects-billing) is the path, but only if a Workspace/Cloud Identity org already exists for the domain.
+
+## 3. Options
+
+**(a) Stay in Testing.** Zero process. Cost: refresh tokens expire ~weekly for every connected Gmail/Calendar user — the app must re-prompt for OAuth consent roughly every 7 days or the integration silently goes dark until the user re-authorizes. New teammates need to be manually added to the test-user list (currently 2/100 used) before they can connect at all, and still see the "unverified app" warning screen each time.
+
+**(b) Publish with only sensitive (non-restricted) scopes, if feasible.** If the planned integration can work on narrower scopes that Google classifies as *sensitive* but not *restricted* (e.g., a metadata-only or send-only Gmail scope instead of full-mailbox read/modify, or a narrower Calendar scope), publishing to "In production" requires sensitive-scope verification but **not** the annual CASA security assessment. Needs a scope-by-scope audit of what Gmail/Calendar operations the plan actually requires — not yet done as part of this memo.
+
+**(c) Full verification for restricted Gmail scopes.** Publish to "In production" + complete restricted-scope verification: brand verification (~2-3 business days) + annual third-party CASA security assessment (third-party-reported range ~$500-$4,500/yr on the low end, up to the $15K-$75K range reported for heavier Gmail-restricted-scope review) + ongoing annual re-assessment. Removes the 7-day expiry and the test-user cap entirely; is the only option that scales to arbitrary users.
+
+**(d) Internal user type — only if `dwellium.com` is a Workspace/Cloud Identity org.** No verification required at all for org members, no 7-day expiry, no CASA. **Blocked on an unverified fact** (see §2) — Ilya needs to check Cloud Console for an existing org, or confirm dwellium.com's Workspace status directly.
+
+## 4. Recommendation
+
+Check option (d) first — it's free and immediate if `dwellium.com` already has a Workspace/Cloud Identity org attached (a 5-minute Cloud Console check settles it). If not available, (a) is fine to keep shipping while the Gmail/Calendar feature is still being built out — just budget the weekly re-auth UX now rather than discovering it in production. Move to (c) only once the integration is stable enough to justify the annual cost/effort, and only after (b) has been ruled out as insufficient for the feature set.
+
+DECISION (Ilya): ____

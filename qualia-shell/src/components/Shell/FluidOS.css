@@ -1,0 +1,258 @@
+/* FluidOS — third interface layout. fey.com-inspired design tokens: Hanken
+   Grotesk, pure black, acid lime accent (#D6FE51). Distinct skin from
+   Holocron's warm/gold theme-token look — Fluid OS is its own brand surface,
+   same as Holocron is its own. WCAG AA verified: acid lime #D6FE51 on pure
+   black #000 = ~15.9:1 contrast (far above the 4.5:1 AA text minimum); body
+   text uses #f2f2f2 on #000 (~19.6:1). */
+
+@keyframes fos-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.fos {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: #f2f2f2;
+    font-family: 'Hanken Grotesk', var(--font-primary, -apple-system, system-ui, sans-serif);
+    background: #000;
+    animation: fos-fade-in .3s ease;
+    touch-action: none;
+}
+
+.fos-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* ── header ── */
+.fos-head {
+    position: relative;
+    z-index: 2;
+    padding: 28px 40px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.fos-brand {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+    color: #D6FE51;
+    font-weight: 600;
+}
+.fos-brand__drop {
+    width: 9px; height: 9px; border-radius: 50% 50% 50% 0;
+    background: #D6FE51;
+    transform: rotate(45deg);
+    box-shadow: 0 0 10px -1px #D6FE51;
+}
+.fos-greet {
+    margin: 6px 0 0;
+    font-size: clamp(22px, 3vw, 34px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #f2f2f2;
+}
+.fos-sub {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: #b8b8b8; /* ~9.8:1 on #000 — AA-safe secondary text */
+}
+.fos-search-wrap { margin-top: 14px; max-width: 420px; }
+.fos-search {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 10px;
+    color: #f2f2f2;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .15s ease, background .15s ease;
+}
+.fos-search::placeholder { color: #8a8a8a; }
+.fos-search:focus { border-color: #D6FE51; background: rgba(255,255,255,0.09); }
+
+.fos-min {
+    position: absolute;
+    top: 28px; right: 40px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 999px;
+    color: #f2f2f2;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+}
+.fos-min:hover { border-color: #D6FE51; background: rgba(214,254,81,0.08); }
+
+/* ── swap-stream ── */
+.fos-stream {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 0 24px 48px;
+    min-height: 0;
+}
+.fos-stream__chip {
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #D6FE51;
+    border: 1px solid rgba(214,254,81,0.35);
+    border-radius: 999px;
+    padding: 5px 14px;
+}
+.fos-stream__track {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── cards ── */
+.fos-card {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 220px;
+    height: 260px;
+    border-radius: 28px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+    color: #f2f2f2;
+    font-family: inherit;
+    cursor: pointer;
+    /* Position/scale driven frame-by-frame by the rAF spring (useSpringValue)
+       via the --fos-offset custom property — NOT a CSS transition, so the
+       physics integrator has sole authority over motion (no double-easing). */
+    transform: translateX(calc(var(--fos-offset, 0) * 180px)) scale(calc(1 - min(abs(var(--fos-offset, 0)), 2) * 0.14));
+    opacity: calc(1 - min(abs(var(--fos-offset, 0)), 2) * 0.35);
+    z-index: calc(10 - abs(var(--fos-offset, 0)));
+    transition: opacity .12s ease, border-radius .25s ease, box-shadow .2s ease;
+}
+.fos-card--focus {
+    border-color: rgba(214,254,81,0.55);
+    box-shadow: 0 18px 60px -20px rgba(214,254,81,0.35);
+}
+.fos-card--focus:hover, .fos-card--focus:focus-visible {
+    border-radius: 40% 40% 34% 34% / 46% 46% 30% 30%;
+    outline: none;
+}
+.fos-card--side { filter: saturate(0.6); }
+.fos-card__icon {
+    width: 52px; height: 52px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 16px;
+    background: rgba(214,254,81,0.1);
+    color: #D6FE51;
+}
+.fos-card__label {
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    padding: 0 12px;
+}
+.fos-card__chip {
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #b8b8b8;
+}
+
+.fos-stream__dots {
+    display: flex;
+    gap: 8px;
+}
+.fos-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.22);
+    cursor: pointer;
+    padding: 0;
+    transition: background .15s ease, transform .15s ease;
+}
+.fos-dot.on { background: #D6FE51; transform: scale(1.3); }
+
+/* ── search-mode grid (flat, all gated-visible widgets) ── */
+.fos-search-results {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 40px 48px;
+}
+.fos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+}
+.fos-card--grid {
+    position: static;
+    width: auto;
+    height: 150px;
+    transform: none;
+    opacity: 1;
+}
+
+/* ── reduced motion: springs snap, canvas stays static (handled in JS), all
+     transitions collapse to near-instant ── */
+.fos--reduced-motion,
+.fos--reduced-motion * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    .fos, .fos * {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .fos-head { padding: 20px 20px 8px; }
+    .fos-min { top: 20px; right: 20px; }
+    .fos-card { width: 160px; height: 200px; }
+    .fos-card__icon { width: 40px; height: 40px; }
+}
+
+/* ── launcher droplet (bottom-right; Holocron's rune is bottom-left, so the
+     two never collide if both were ever visible) ── */
+.fos-launcher {
+    position: fixed; right: 18px; bottom: 18px; z-index: 100000;
+    width: 46px; height: 46px; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 40% 35%, rgba(214,254,81,0.35), #050505);
+    border: 1px solid rgba(214,254,81,0.5);
+    box-shadow: 0 0 22px -6px rgba(214,254,81,0.55);
+    transition: transform .25s ease, box-shadow .25s ease;
+}
+.fos-launcher:hover { transform: scale(1.08); box-shadow: 0 0 30px -4px rgba(214,254,81,0.75); }
+.fos-launcher__drop {
+    width: 16px; height: 16px; border-radius: 50% 50% 50% 0;
+    background: #D6FE51;
+    transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+    .fos-launcher { transition-duration: 0.001ms !important; }
+}

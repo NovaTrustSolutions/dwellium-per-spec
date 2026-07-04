@@ -28,6 +28,11 @@ import AppSuspenseFallback from './AppSuspenseFallback';
 const HalocronOS = lazyWithReload(() => import('./HalocronOS'));
 import HalocronLauncher from './HalocronLauncher';
 import HalocronOsIntro from './HalocronOsIntro';
+// FluidOS — third interface layout (plan 039), sister of HalocronOS above:
+// same lazy/Suspense/launcher mount shape, renders null unless its own
+// layout is enabled so Classic + Holocron are both untouched.
+const FluidOS = lazyWithReload(() => import('./FluidOS'));
+import FluidLauncher from './FluidLauncher';
 
 import QuickLook from '../QuickLook/QuickLook';
 import ThreadSwitcher from '../Workspace/ThreadSwitcher';
@@ -1173,6 +1178,15 @@ export default function Desktop() {
             {/* Cinematic entry: cube video → fly into center → OS emerges.
                 Plays once per session when entering the OS layout. */}
             <HalocronOsIntro />
+            {/* Fluid OS — third interface layout (overlay + launcher droplet).
+                Both render null unless the Fluid OS layout is enabled, so
+                Classic and Holocron OS are both untouched. Opening a widget
+                collapses the shell to reveal the real window beneath; the
+                launcher droplet reopens it. */}
+            <Suspense fallback={<AppSuspenseFallback variant="viewport" />}>
+                <FluidOS />
+            </Suspense>
+            <FluidLauncher />
             {/* Background grid pattern */}
             <div className="desktop__bg" />
 

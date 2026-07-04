@@ -33,6 +33,7 @@ import { UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { twSyncConfig, pushCapture, pullCaptures } from './thoughtWeaverSync';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { logActivity } from '../../lib/activityLogStore';
 import {
     thoughtWeaverStore,
     thoughtWeaverUserIdHolder,
@@ -361,6 +362,11 @@ export default function ThoughtWeaver() {
                 createdAt: new Date().toISOString(),
             };
             appendLocalCapture(entry);
+            // Universal per-login app history (plan 038): fires exactly once
+            // per successful capture regardless of which of the 3 branches
+            // (LLM / backend / local-fallback) won. Never log full thought
+            // text — first 140 chars only.
+            logActivity('thought-weaver', 'Thought Weaver', 'capture', { preview: thoughtText.slice(0, 140) });
             // P11-13: write-through to the user's Supabase (best-effort,
             // fire-and-forget — local is already the source of truth).
             const cfg = twSyncConfig(integrations);

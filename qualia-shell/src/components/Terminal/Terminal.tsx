@@ -8,6 +8,7 @@ import { useUser } from '../../context/UserContext';
 import { runLocalCommand } from './localShell';
 import { consumePendingTerminalRun } from '../../lib/terminalLaunch';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { logActivity } from '../../lib/activityLogStore';
 import type { Terminal as XTermTerminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import './Terminal.css';
@@ -396,6 +397,10 @@ export default function Terminal() {
         if (!trimmed) return;
         setCommandInput('');
         focusTerminal();
+        // Universal per-login app history (plan 038): domain event, one call
+        // site covering both the offline-local and live-session branches
+        // below. Never log secrets — first 140 chars only.
+        logActivity('terminal', 'Terminal', 'command-run', { command: trimmed.slice(0, 140) });
         // Offline (no backend session): interpret a small set of commands locally
         // so the widget is usable + honest instead of silently doing nothing.
         if (offline || !sessionIdRef.current) {

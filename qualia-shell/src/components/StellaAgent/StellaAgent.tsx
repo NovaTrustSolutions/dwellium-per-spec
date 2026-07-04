@@ -74,6 +74,7 @@ import { renderSafeMarkdown, sanitizeSvg } from '../../utils/safeMarkdown';
 import { getAuthToken, UserContext } from '../../context/UserContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { logActivity } from '../../lib/activityLogStore';
 import { TTS_VOICE_CATALOG, HUMANIZE_PREFIX, speakText } from '../../lib/ttsVoices';
 import { buildContextWarning, sumTokens } from '../../lib/contextWindow';
 import {
@@ -727,6 +728,10 @@ export default function StellaAgent() {
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsTyping(true);
+        // Universal per-login app history (plan 038): domain event for the
+        // main chat-send path. Never log full message bodies — first 140
+        // chars only.
+        logActivity('stella-agent', 'Stella Agent', 'message-sent', { preview: text.slice(0, 140) });
 
         // ── 1) Try user-configured LLM first ──
         // When a personal LLM is configured, route directly. Drops SSE streaming

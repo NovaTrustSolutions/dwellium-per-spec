@@ -107,6 +107,10 @@
           <button class="ghost" id="resetBtn" type="button">Reset</button>
         </div>
         <p class="hint" id="previewHint">The browser will ask for camera permission. The left pane stays raw; the right pane shows the corrected output preview.</p>
+        <p class="hint">
+          <label for="photoInput" style="cursor:pointer; color: var(--accent);">Test with a photo instead</label>
+          <input type="file" id="photoInput" accept="image/*" style="display:block; margin-top:6px; font-size:12px;" />
+        </p>
       </div>
 
       <div class="btns">
@@ -123,6 +127,7 @@
           <div class="preview-title"><span>Raw camera</span><span class="meter" id="rawMeter">idle</span></div>
           <div class="preview-surface">
             <video id="rawPreview" playsinline muted></video>
+            <canvas id="rawPhotoCanvas" width="1280" height="720" style="display:none" aria-label="Raw photo preview"></canvas>
             <div class="preview-empty" id="rawEmpty">Start capture to see exactly what your camera sees.</div>
           </div>
         </div>
@@ -134,17 +139,85 @@
           </div>
         </div>
       </div>
+      <p class="hint" id="engineHint">Loading gaze-correction engine...</p>
     </section>
   </div>
 </div>
 
-<script>
+<script type="module">
+// MediaPipe Tasks Vision — pinned CDN version. Do not silently bump without re-testing
+// naturalness clamps (dead zone / blink guard / pose guard / feather) against a live face.
+// CDN origins in use (note for future CSP allowlist):
+//   https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/  (JS + wasm module)
+//   https://storage.googleapis.com/mediapipe-models/face_landmarker/...  (model .task file)
+//
+// Deliberately using a dynamic import() (not a static top-level import) so a CDN failure
+// (blocked network, ad-blocker, offline) is catchable here and routes to the honest
+// "correction unavailable" meter text instead of a page-level uncaught module error.
+var TASKS_VISION_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs';
+
 (function () {
   var KEY = 'dwellium:eye-contact:config';
-  var DEFAULTS = { enabled: false, strength: 60, onlyDuringCalls: true, cameraId: '' };
+  var DEFAULTS = { enabled: false, strength: 55, onlyDuringCalls: true, cameraId: '' };
   var $ = function (id) { return document.getElementById(id); };
   var stream = null;
   var raf = 0;
+  var mode = 'idle'; // 'idle' | 'camera' | 'photo'
+
+  // ---- QA-only debug override: ?debugOffset=<px> forces a synthetic horizontal
+  // iris-offset (in source-image pixels, either sign) so the photo demo can prove
+  // re-centering even when the sample photo's gaze is already close to camera.
+  // Documented here per Plan 037 Step 3; has no effect unless the query param is present.
+  var debugOffsetPx = (function () {
+    try {
+      var v = new URLSearchParams(window.location.search).get('debugOffset');
+      var n = v == null ? null : parseFloat(v);
+      return (n != null && isFinite(n)) ? n : null;
+    } catch (e) { return null; }
+  })();
+
+  // ---------------------------------------------------------------------
+  // Landmark indices (MediaPipe FaceMesh w/ iris refinement, 478 points)
+  // ---------------------------------------------------------------------
+  var LEFT_EYE_RING = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
+  var RIGHT_EYE_RING = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398];
+  var LEFT_IRIS = [468, 469, 470, 471, 472];
+  var RIGHT_IRIS = [473, 474, 475, 476, 477];
+  var LEFT_CORNERS = [33, 133];
+  var RIGHT_CORNERS = [263, 362];
+  // Vertical lid pairs for eye-aspect-ratio (blink) estimate: [upper, lower]
+  var LEFT_LID_PAIRS = [[159, 145], [160, 144], [158, 153]];
+  var RIGHT_LID_PAIRS = [[386, 374], [385, 380], [387, 373]];
+
+  // ---------------------------------------------------------------------
+  // Naturalness clamps (plan-mandated; tune with care, one-line reason if changed)
+  // ---------------------------------------------------------------------
+  var MAX_DISPLACEMENT_FRAC = 0.30;   // of eye width — hard ceiling before strength scaling
+  var DEAD_ZONE_DEG = 5;              // gaze within this of camera-facing => no correction
+  var POSE_GUARD_DEG = 22;            // |yaw| or |pitch| beyond this => ease correction to 0
+  var BLINK_EAR_THRESHOLD = 0.16;     // eye-aspect-ratio below this => treat as closed/blinking
+  var EMA_ALPHA = 0.25;               // temporal smoothing on displacement vector
+  var ENVELOPE_MS = 150;              // ease-in/out for the global strength envelope
+  var FEATHER_FRAC = 0.18;            // feather radius as fraction of eye width
+
+  // ---------------------------------------------------------------------
+  // Engine state
+  // ---------------------------------------------------------------------
+  var landmarker = null;
+  // Separate IMAGE-mode landmarker for the photo demo pipeline. MediaPipe Tasks Vision
+  // requires the running mode configured at createFromOptions() to match the detect
+  // method called: VIDEO-mode landmarkers must use detectForVideo(); IMAGE-mode
+  // landmarkers must use detect(). Reusing the VIDEO-mode instance for stills silently
+  // returns zero faces, so the photo demo gets its own IMAGE-mode instance instead.
+  var photoLandmarker = null;
+  var engineState = 'loading'; // 'loading' | 'ready' | 'failed'
+  var emaDx = { left: 0, right: 0 };
+  var emaDy = { left: 0, right: 0 };
+  var envelope = 0;            // current eased global strength envelope (0..1)
+  var envelopeTarget = 0;
+  var lastFrameTime = 0;
+  var offEye = document.createElement('canvas');
+  var offEyeCtx = offEye.getContext('2d');
 
   function getEngine() {
     try {
@@ -190,7 +263,7 @@
   function showStatus() {
     var el = $('status');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      el.innerHTML = 'Camera capture is not available in this browser. Use a current Chromium, Safari, or Firefox build.';
+      el.innerHTML = 'Camera capture is not available in this browser. Use a current Chromium, Safari, or Firefox build. The photo test mode below still works.';
       return;
     }
     if (getEngine()) {
@@ -217,6 +290,254 @@
     }).catch(function () {});
   }
 
+  // ---------------------------------------------------------------------
+  // Engine bootstrap (honest failure path — never fake correction).
+  // Uses a dynamic import() so a CDN failure (network down, blocked, offline)
+  // is catchable here rather than surfacing as an uncaught module load error.
+  // ---------------------------------------------------------------------
+  function initEngine() {
+    $('engineHint').textContent = 'Loading gaze-correction engine...';
+
+    import(/* webpackIgnore: true */ TASKS_VISION_URL).then(function (mod) {
+      var FaceLandmarker = mod.FaceLandmarker;
+      var FilesetResolver = mod.FilesetResolver;
+      var wasmBase = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
+      var modelUrl = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task';
+
+      function createLandmarker(delegate, runningMode) {
+        return FilesetResolver.forVisionTasks(wasmBase).then(function (filesetResolver) {
+          return FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: { modelAssetPath: modelUrl, delegate: delegate },
+            outputFaceBlendshapes: false,
+            outputFacialTransformationMatrixes: true,
+            runningMode: runningMode,
+            numFaces: 1
+          });
+        });
+      }
+
+      function createBoth(delegate) {
+        // Two instances, one per running mode: the live-camera loop calls
+        // detectForVideo() (requires runningMode 'VIDEO'); the photo demo calls
+        // detect() (requires runningMode 'IMAGE'). Mixing modes on one instance
+        // is a MediaPipe API-contract violation and yields zero detected faces.
+        return Promise.all([
+          createLandmarker(delegate, 'VIDEO'),
+          createLandmarker(delegate, 'IMAGE')
+        ]);
+      }
+
+      return createBoth('GPU').catch(function () {
+        // GPU delegate failed to init — retry once on CPU before declaring failure.
+        return createBoth('CPU');
+      });
+    }).then(function (pair) {
+      landmarker = pair[0];
+      photoLandmarker = pair[1];
+      engineState = 'ready';
+      $('engineHint').textContent = 'Gaze-correction engine ready.';
+      $('correctedMeter').textContent = mode === 'idle' ? 'idle' : $('correctedMeter').textContent;
+    }).catch(function (err) {
+      landmarker = null;
+      photoLandmarker = null;
+      engineState = 'failed';
+      $('engineHint').textContent = 'correction unavailable — engine failed to load';
+      $('correctedMeter').textContent = 'correction unavailable — engine failed to load';
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Geometry helpers
+  // ---------------------------------------------------------------------
+  function centroid(points, idxs, w, h) {
+    var x = 0, y = 0;
+    for (var i = 0; i < idxs.length; i++) {
+      x += points[idxs[i]].x * w;
+      y += points[idxs[i]].y * h;
+    }
+    return { x: x / idxs.length, y: y / idxs.length };
+  }
+
+  function eyeWidth(points, corners, w, h) {
+    var a = points[corners[0]];
+    var b = points[corners[1]];
+    return Math.hypot((a.x - b.x) * w, (a.y - b.y) * h);
+  }
+
+  function ringBounds(points, ring, w, h) {
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (var i = 0; i < ring.length; i++) {
+      var p = points[ring[i]];
+      var px = p.x * w, py = p.y * h;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+    }
+    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+  }
+
+  // Extract yaw/pitch (degrees) from the 4x4 facial transformation matrix.
+  // MediaPipe returns a column-major 16-element array (row-major access via [r + c*4]).
+  function yawPitchFromMatrix(m) {
+    if (!m || m.length < 16) return { yaw: 0, pitch: 0 };
+    var d = m;
+    // Rotation sub-matrix elements (row-major logical positions), column-major storage:
+    var r20 = d[2], r21 = d[6], r22 = d[10];
+    var pitch = Math.asin(Math.max(-1, Math.min(1, -r21))) * (180 / Math.PI);
+    var yaw = Math.atan2(r20, r22) * (180 / Math.PI);
+    return { yaw: yaw, pitch: pitch };
+  }
+
+  // ---------------------------------------------------------------------
+  // Per-eye warp: shift the user's own eye pixels toward camera-facing,
+  // clipped to the eyelid aperture with a feathered (radial alpha) edge.
+  // NEVER draws synthetic iris/pupil shapes — texture displacement only.
+  // ---------------------------------------------------------------------
+  function warpEye(ctx, srcCanvas, ring, iris, corners, lidPairs, w, h, strengthFrac, poseEase) {
+    var bounds = ringBounds(srcCanvas.__landmarks, ring, w, h);
+    var width = eyeWidth(srcCanvas.__landmarks, corners, w, h);
+    if (!(width > 1)) return;
+
+    // Blink guard: ease correction to 0 as EAR drops toward/below threshold (never warp closed eyes).
+    var ear = eyeAspectRatioFor(srcCanvas.__landmarks, lidPairs, corners, w, h);
+    var blinkEase = Math.max(0, Math.min(1, (ear - BLINK_EAR_THRESHOLD) / 0.06));
+
+    var irisC = centroid(srcCanvas.__landmarks, iris, w, h);
+    var apertureC = { x: bounds.cx, y: bounds.cy };
+
+    // Raw gaze-offset estimate: iris center relative to aperture center, in px.
+    var offX = apertureC.x - irisC.x;
+    var offY = apertureC.y - irisC.y;
+
+    if (debugOffsetPx != null) {
+      // QA-only synthetic override so the demo is provable without a specific gaze.
+      offX = debugOffsetPx;
+    }
+
+    var offsetDeg = Math.abs(Math.atan2(offX, width * 2.2)) * (180 / Math.PI);
+    var deadEase = offsetDeg < DEAD_ZONE_DEG ? 0 : Math.min(1, (offsetDeg - DEAD_ZONE_DEG) / 6);
+
+    var key = (corners === LEFT_CORNERS) ? 'left' : 'right';
+    emaDx[key] = emaDx[key] + EMA_ALPHA * (offX - emaDx[key]);
+    emaDy[key] = emaDy[key] + EMA_ALPHA * (offY - emaDy[key]);
+
+    var maxDisp = width * MAX_DISPLACEMENT_FRAC;
+    var dx = Math.max(-maxDisp, Math.min(maxDisp, emaDx[key])) * strengthFrac * deadEase * blinkEase * poseEase;
+    var dy = Math.max(-maxDisp, Math.min(maxDisp, emaDy[key])) * strengthFrac * deadEase * blinkEase * poseEase;
+
+    if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05) return;
+
+    var padX = width * 0.55;
+    var padY = width * 0.55;
+    var rx = bounds.minX - padX, ry = bounds.minY - padY;
+    var rw = (bounds.maxX - bounds.minX) + padX * 2;
+    var rh = (bounds.maxY - bounds.minY) + padY * 2;
+    rx = Math.max(0, rx); ry = Math.max(0, ry);
+    rw = Math.min(rw, w - rx); rh = Math.min(rh, h - ry);
+    if (rw <= 0 || rh <= 0) return;
+
+    offEye.width = rw; offEye.height = rh;
+    offEyeCtx.clearRect(0, 0, rw, rh);
+    offEyeCtx.drawImage(srcCanvas, rx, ry, rw, rh, 0, 0, rw, rh);
+
+    var featherR = Math.max(2, width * FEATHER_FRAC);
+    var apertureRadius = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2 + featherR * 0.35;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rx, ry, rw, rh);
+    ctx.clip();
+
+    // Feathered radial mask centered on the aperture, drawn via a temp canvas
+    // so the shifted eye texture blends seamlessly with the untouched frame beneath.
+    var maskCanvas = document.createElement('canvas');
+    maskCanvas.width = rw; maskCanvas.height = rh;
+    var maskCtx = maskCanvas.getContext('2d');
+    maskCtx.drawImage(offEye, dx, dy);
+    var grad = maskCtx.createRadialGradient(
+      apertureC.x - rx, apertureC.y - ry, Math.max(0, apertureRadius - featherR),
+      apertureC.x - rx, apertureC.y - ry, apertureRadius
+    );
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    maskCtx.globalCompositeOperation = 'destination-in';
+    maskCtx.fillStyle = grad;
+    maskCtx.fillRect(0, 0, rw, rh);
+
+    ctx.drawImage(maskCanvas, rx, ry);
+    ctx.restore();
+  }
+
+  function eyeAspectRatioFor(points, lidPairs, corners, w, h) {
+    var sum = 0;
+    for (var i = 0; i < lidPairs.length; i++) {
+      var u = points[lidPairs[i][0]];
+      var l = points[lidPairs[i][1]];
+      sum += Math.hypot((u.x - l.x) * w, (u.y - l.y) * h);
+    }
+    var avgGap = sum / lidPairs.length;
+    var width = eyeWidth(points, corners, w, h);
+    return width > 0 ? avgGap / width : 0;
+  }
+
+  // ---------------------------------------------------------------------
+  // Full-frame correction pass: source canvas already contains the raw
+  // (mirrored) frame; landmarks are attached to it as __landmarks/__w/__h.
+  // Rest of the face is never touched — only the two eye regions are redrawn.
+  // ---------------------------------------------------------------------
+  function applyCorrection(destCtx, srcCanvas, strengthPct, now) {
+    var w = srcCanvas.width, h = srcCanvas.height;
+    destCtx.clearRect(0, 0, w, h);
+    destCtx.drawImage(srcCanvas, 0, 0, w, h);
+
+    var landmarks = srcCanvas.__landmarks;
+    if (!landmarks) {
+      $('correctedMeter').textContent = 'idle (no face)';
+      return;
+    }
+
+    var pose = yawPitchFromMatrix(srcCanvas.__matrix);
+    var poseOver = Math.max(Math.abs(pose.yaw), Math.abs(pose.pitch));
+    var poseEase = poseOver <= POSE_GUARD_DEG ? 1 : Math.max(0, 1 - (poseOver - POSE_GUARD_DEG) / 10);
+
+    // Global strength envelope: ease in/out over ENVELOPE_MS so engagement never pops.
+    var dtMs = lastFrameTime ? (now - lastFrameTime) : 16;
+    lastFrameTime = now;
+    var step = Math.max(0.02, Math.min(1, dtMs / ENVELOPE_MS));
+    envelopeTarget = ($('enabled').checked && strengthPct > 0) ? 1 : 0;
+    envelope = envelope + (envelopeTarget - envelope) * step;
+
+    var strengthFrac = (Math.max(0, Math.min(100, strengthPct)) / 100) * envelope;
+
+    warpEye(destCtx, srcCanvas, LEFT_EYE_RING, LEFT_IRIS, LEFT_CORNERS, LEFT_LID_PAIRS, w, h, strengthFrac, poseEase);
+    warpEye(destCtx, srcCanvas, RIGHT_EYE_RING, RIGHT_IRIS, RIGHT_CORNERS, RIGHT_LID_PAIRS, w, h, strengthFrac, poseEase);
+
+    var leftEar = eyeAspectRatioFor(landmarks, LEFT_LID_PAIRS, LEFT_CORNERS, w, h);
+    var rightEar = eyeAspectRatioFor(landmarks, RIGHT_LID_PAIRS, RIGHT_CORNERS, w, h);
+    var blinking = Math.min(leftEar, rightEar) < BLINK_EAR_THRESHOLD;
+
+    if (!$('enabled').checked || strengthPct <= 0) {
+      $('correctedMeter').textContent = 'raw';
+    } else if (blinking) {
+      $('correctedMeter').textContent = 'paused (blink)';
+    } else if (poseOver > POSE_GUARD_DEG) {
+      $('correctedMeter').textContent = 'paused (head turned)';
+    } else if (envelope > 0.05 && envelope < 0.98) {
+      $('correctedMeter').textContent = 'correcting';
+    } else if (envelope >= 0.98) {
+      $('correctedMeter').textContent = 'correcting';
+    } else {
+      $('correctedMeter').textContent = 'idle (looking at camera)';
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Live camera loop
+  // ---------------------------------------------------------------------
+  var srcCanvas = document.createElement('canvas');
+  var srcCtx = srcCanvas.getContext('2d');
+
   function drawCorrected() {
     var video = $('rawPreview');
     var canvas = $('correctedCanvas');
@@ -229,37 +550,45 @@
       canvas.width = vw;
       canvas.height = vh;
     }
-
-    var strength = Math.max(0, Math.min(100, parseInt($('strength').value, 10) || 0)) / 100;
-    var enabled = $('enabled').checked;
-    var zoom = enabled ? 1 + strength * 0.04 : 1;
-    var sx = (vw - vw / zoom) / 2;
-    var sy = (vh - vh / zoom) / 2;
-    var sw = vw / zoom;
-    var sh = vh / zoom;
-
-    ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
-    ctx.filter = enabled
-      ? 'contrast(' + (1 + strength * 0.06).toFixed(3) + ') saturate(' + (1 + strength * 0.04).toFixed(3) + ')'
-      : 'none';
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-
-    if (enabled) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(214,254,81,' + (0.16 + strength * 0.16).toFixed(3) + ')';
-      ctx.lineWidth = Math.max(1, Math.round(canvas.width / 640));
-      ctx.beginPath();
-      ctx.moveTo(canvas.width / 2, canvas.height * 0.2);
-      ctx.lineTo(canvas.width / 2, canvas.height * 0.8);
-      ctx.stroke();
-      ctx.restore();
+    if (srcCanvas.width !== vw || srcCanvas.height !== vh) {
+      srcCanvas.width = vw;
+      srcCanvas.height = vh;
     }
 
-    $('correctedMeter').textContent = enabled ? Math.round(strength * 100) + '%' : 'raw';
+    // Build the mirrored raw frame (matches the raw <video> mirror via CSS transform).
+    srcCtx.save();
+    srcCtx.translate(srcCanvas.width, 0);
+    srcCtx.scale(-1, 1);
+    srcCtx.drawImage(video, 0, 0, srcCanvas.width, srcCanvas.height);
+    srcCtx.restore();
+
+    if (engineState === 'ready' && landmarker) {
+      try {
+        var result = landmarker.detectForVideo(srcCanvas, performance.now());
+        if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
+          srcCanvas.__landmarks = result.faceLandmarks[0];
+          srcCanvas.__matrix = result.facialTransformationMatrixes && result.facialTransformationMatrixes[0]
+            ? result.facialTransformationMatrixes[0].data
+            : null;
+        } else {
+          srcCanvas.__landmarks = null;
+          srcCanvas.__matrix = null;
+        }
+      } catch (e) {
+        srcCanvas.__landmarks = null;
+        srcCanvas.__matrix = null;
+      }
+    }
+
+    var strength = parseInt($('strength').value, 10) || 0;
+    if (engineState === 'failed') {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(srcCanvas, 0, 0);
+      $('correctedMeter').textContent = 'correction unavailable — engine failed to load';
+    } else {
+      applyCorrection(ctx, srcCanvas, strength, performance.now());
+    }
+
     raf = requestAnimationFrame(drawCorrected);
   }
 
@@ -268,6 +597,7 @@
     raf = 0;
     if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
     stream = null;
+    mode = 'idle';
     $('rawPreview').pause();
     $('rawPreview').srcObject = null;
     $('rawEmpty').style.display = 'grid';
@@ -283,6 +613,8 @@
       $('previewHint').textContent = 'Camera capture is unavailable in this browser.';
       return;
     }
+    $('rawPreview').style.display = '';
+    $('rawPhotoCanvas').style.display = 'none';
     var camId = $('camera').value;
     var constraints = {
       video: camId ? { deviceId: { exact: camId }, width: { ideal: 1280 }, height: { ideal: 720 } } : { width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -290,6 +622,7 @@
     };
     navigator.mediaDevices.getUserMedia(constraints).then(function (s) {
       stream = s;
+      mode = 'camera';
       var video = $('rawPreview');
       video.srcObject = s;
       $('rawEmpty').style.display = 'none';
@@ -304,10 +637,88 @@
     });
   }
 
+  // ---------------------------------------------------------------------
+  // Photo demo mode — runs the SAME pipeline on a still image. This is the
+  // no-camera quality check for the reviewer/owner (Plan 037 Step 3).
+  // ---------------------------------------------------------------------
+  function runPhotoPipeline(img) {
+    stopPreview();
+    mode = 'photo';
+    var rawCanvas = $('rawPhotoCanvas');
+    var correctedCanvas = $('correctedCanvas');
+    var rawCtx = rawCanvas.getContext('2d');
+    var w = img.naturalWidth, h = img.naturalHeight;
+
+    rawCanvas.width = w; rawCanvas.height = h;
+    correctedCanvas.width = w; correctedCanvas.height = h;
+    srcCanvas.width = w; srcCanvas.height = h;
+
+    $('rawPreview').style.display = 'none';
+    rawCanvas.style.display = '';
+    $('rawEmpty').style.display = 'none';
+    $('correctedEmpty').style.display = 'none';
+
+    // Photos are drawn as-is (no mirror) — this is a still-image QA aid, not a call feed.
+    rawCtx.clearRect(0, 0, w, h);
+    rawCtx.drawImage(img, 0, 0, w, h);
+    srcCtx.clearRect(0, 0, w, h);
+    srcCtx.drawImage(img, 0, 0, w, h);
+    $('rawMeter').textContent = 'photo';
+
+    function detectAndDraw() {
+      var ctx = correctedCanvas.getContext('2d');
+      if (engineState === 'ready' && photoLandmarker) {
+        try {
+          var result = photoLandmarker.detect(srcCanvas);
+          if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
+            srcCanvas.__landmarks = result.faceLandmarks[0];
+            srcCanvas.__matrix = result.facialTransformationMatrixes && result.facialTransformationMatrixes[0]
+              ? result.facialTransformationMatrixes[0].data
+              : null;
+          } else {
+            srcCanvas.__landmarks = null;
+            srcCanvas.__matrix = null;
+          }
+        } catch (e) {
+          srcCanvas.__landmarks = null;
+          srcCanvas.__matrix = null;
+        }
+        // Photo mode: snap the envelope open immediately (no 150ms ease — single still frame).
+        envelope = 1;
+        var strength = parseInt($('strength').value, 10) || 0;
+        applyCorrection(ctx, srcCanvas, strength, performance.now());
+      } else {
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(srcCanvas, 0, 0);
+        $('correctedMeter').textContent = 'correction unavailable — engine failed to load';
+      }
+    }
+
+    if (engineState === 'loading') {
+      var poll = setInterval(function () {
+        if (engineState !== 'loading') {
+          clearInterval(poll);
+          detectAndDraw();
+        }
+      }, 150);
+    } else {
+      detectAndDraw();
+    }
+  }
+
+  $('photoInput').addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var img = new Image();
+    img.onload = function () { runPhotoPipeline(img); };
+    img.src = URL.createObjectURL(file);
+  });
+
   var cfg = load();
   render(cfg);
   showStatus();
   listCameras();
+  initEngine();
   $('strength').addEventListener('input', function () {
     $('strengthVal').textContent = $('strength').value + '%';
   });

@@ -1,27 +1,29 @@
 /**
  * AuditLogWidget — full audit-trail holocron (Holocron OS ▸ Apps ▸ Tools).
  *
- * RESTRICTED: renders ONLY for Andy's login (andy@dwellium.com) — enforced
- * both here (hard gate, defense in depth) and in the Holocron OS Apps catalog
- * (registry `restrictedToEmails`). Everyone else sees an honest "restricted"
- * card, never the data.
+ * RESTRICTED via capability, not a hardcoded email list: any signed-in
+ * account may attempt to load the log; the backend is the real security
+ * boundary (`AUDIT_LOG_VIEWER_EMAILS`, plan 033) and returns 403 for anyone
+ * not on its allowlist. The widget honors that 403 with an honest
+ * "restricted" card instead of duplicating the email list on the frontend
+ * (see `auditLogAccess.ts` for the SEPARATE cosmetic catalog-visibility
+ * list — that one only affects whether the tile shows up at all).
  *
  * Two views over the backend audit log (`GET /api/dwellium/audit`, written
  * automatically by the audit middleware + auth routes):
- *   · Sessions — who logged in / out, when, from which IP (LOGIN_SUCCESS /
- *     LOGIN_FAILED / LOGOUT events).
+ *   · Sessions — who logged in / out, when, from which IP/location
+ *     (LOGIN_SUCCESS / LOGIN_FAILED / LOGOUT events).
  *   · Activity — what each user worked on (every recorded mutation:
  *     action + entity + timestamp + user).
  *
  * Requires a REAL backend session (quick-access static tokens are rejected by
- * the backend); the widget says so honestly instead of showing an empty list.
+ * the backend with 401); the widget says so honestly instead of showing an
+ * empty list.
  */
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ScrollText, RefreshCw, LogIn, Activity } from 'lucide-react';
 import { UserContext, getAuthHeaders } from '../../context/UserContext';
 import { API_BASE } from '../../config';
-
-const ALLOWED_EMAILS = ['andy@dwellium.com'];
 
 interface AuditEntry {
     id: number;
@@ -33,13 +35,15 @@ interface AuditEntry {
     entityId?: string;
     details?: Record<string, unknown>;
     ipAddress?: string;
+    location?: string | null;
     createdAt: string;
 }
 
 type LoadState =
     | { kind: 'loading' }
     | { kind: 'ready'; entries: AuditEntry[] }
-    | { kind: 'error'; message: string };
+    | { kind: 'error'; message: string }
+    | { kind: 'forbidden' };
 
 const SESSION_ACTIONS = new Set(['LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGOUT']);
 
@@ -64,8 +68,8 @@ function actionColor(action: string): string {
 export default function AuditLogWidget() {
     // Raw context (repo convention) — degrades gracefully without a provider.
     const userCtx = useContext(UserContext);
-    const email = userCtx?.user?.email?.trim().toLowerCase() ?? '';
-    const allowed = ALLOWED_EMAILS.includes(email);
+    const userId = userCtx?.user?.id ?? null;
+    const signedIn = userId !== null;
 
     const [state, setState] = useState<LoadState>({ kind: 'loading' });
     const [view, setView] = useState<'sessions' | 'activity'>('sessions');
@@ -75,7 +79,11 @@ export default function AuditLogWidget() {
         setState({ kind: 'loading' });
         try {
             const res = await fetch(`${API_BASE}/api/dwellium/audit?limit=500`, { headers: getAuthHeaders() });
-            if (res.status === 401 || res.status === 403) {
+            if (res.status === 403) {
+                setState({ kind: 'forbidden' });
+                return;
+            }
+            if (res.status === 401) {
                 setState({ kind: 'error', message: 'The backend rejected this session. Sign in with a real account (Google) — quick-access logins cannot read the server-side audit log.' });
                 return;
             }
@@ -94,7 +102,7 @@ export default function AuditLogWidget() {
         }
     }, []);
 
-    useEffect(() => { if (allowed) void load(); }, [allowed, load]);
+    useEffect(() => { if (signedIn) void load(); }, [userId, signedIn, load]);
 
     const visible = useMemo(() => {
         if (state.kind !== 'ready') return [];
@@ -103,12 +111,12 @@ export default function AuditLogWidget() {
         const q = query.trim().toLowerCase();
         if (!q) return base;
         return base.filter((e) =>
-            [e.userName, e.userId, e.action, e.entityType, e.entityId, e.ipAddress]
+            [e.userName, e.userId, e.action, e.entityType, e.entityId, e.ipAddress, e.location]
                 .filter(Boolean)
                 .some((v) => String(v).toLowerCase().includes(q)));
     }, [state, view, query]);
 
-    if (!allowed) {
+    if (!signedIn) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 32, fontFamily: 'Inter, -apple-system, sans-serif' }}>
                 <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', maxWidth: 380 }}>
@@ -116,6 +124,20 @@ export default function AuditLogWidget() {
                     <h3 style={{ margin: '12px 0 6px', color: 'var(--text-secondary, #b9c0cc)', fontSize: 16 }}>Audit Log is restricted</h3>
                     <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
                         This holocron is only available on Andy&apos;s login.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (state.kind === 'forbidden') {
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 32, fontFamily: 'Inter, -apple-system, sans-serif' }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', maxWidth: 380 }}>
+                    <ScrollText size={28} style={{ opacity: 0.5 }} aria-hidden />
+                    <h3 style={{ margin: '12px 0 6px', color: 'var(--text-secondary, #b9c0cc)', fontSize: 16 }}>Audit Log is restricted</h3>
+                    <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+                        This account isn&apos;t on the audit-log viewer list (backend AUDIT_LOG_VIEWER_EMAILS).
                     </p>
                 </div>
             </div>
@@ -210,7 +232,14 @@ export default function AuditLogWidget() {
                                         </td>
                                     )}
                                     <td style={{ padding: '7px 8px', whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono','Fira Code',monospace", fontSize: 11.5, color: 'var(--text-tertiary)' }}>
-                                        {e.ipAddress || '—'}
+                                        {e.location
+                                            ? (
+                                                <>
+                                                    {e.location}
+                                                    {e.ipAddress && <span style={{ opacity: 0.6 }}> · {e.ipAddress}</span>}
+                                                </>
+                                            )
+                                            : (e.ipAddress || '—')}
                                     </td>
                                 </tr>
                             ))}

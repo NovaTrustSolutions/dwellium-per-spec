@@ -18,6 +18,7 @@ import type { ComponentType } from 'react';
 
 // Re-export the lazyWithReload utility for widget loading
 import { lazyWithReload } from '../utils/lazyWithReload';
+import { AUDIT_LOG_CATALOG_EMAILS } from '../components/AuditLog/auditLogAccess';
 
 export interface WidgetRegistration {
     /** Unique key — matches hierarchy.ts component ID and WINDOW_COMPONENTS key */
@@ -65,7 +66,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 720,
         minHeight: 460,
         category: 'tools',
-        restrictedToEmails: ['andy@dwellium.com'],
+        restrictedToEmails: [...AUDIT_LOG_CATALOG_EMAILS],
     },
     // ═══════════════════════════════════════
     //  CORE — Property Management

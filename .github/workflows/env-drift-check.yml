@@ -1,0 +1,39 @@
+name: Env Drift Check
+
+# Plan 036 — scheduled deploy-env drift check.
+#
+# Runs the plan-031 read-only verifier (Scripts/verify_deploy_env.mjs) on a
+# daily schedule so a silent env wipe on Netlify or Cloud Run turns into a
+# red workflow run instead of a production outage discovered by a user.
+# See Scripts/deploy_netlify.sh for the checked deploy sequence this
+# complements.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 13 * * *'
+
+jobs:
+  drift-check:
+    name: Verify deploy env (live site probe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify deploy env (read-only)
+        env:
+          # Optional future secret to enable check4-netlify-env-keys-optional
+          # (authenticated Netlify env-key presence check). Currently
+          # unset/absent -> that check SKIPS rather than FAILs. Uncomment
+          # once a Netlify personal access token is added as a repo secret.
+          # NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          PLACEHOLDER_NO_OP: 'true'
+        run: node Scripts/verify_deploy_env.mjs

@@ -36,4 +36,4 @@ One page. Read this, then fill in the decision line at the bottom.
 
 Check option (d) first — it's free and immediate if `dwellium.com` already has a Workspace/Cloud Identity org attached (a 5-minute Cloud Console check settles it). If not available, (a) is fine to keep shipping while the Gmail/Calendar feature is still being built out — just budget the weekly re-auth UX now rather than discovering it in production. Move to (c) only once the integration is stable enough to justify the annual cost/effort, and only after (b) has been ruled out as insufficient for the feature set.
 
-DECISION (Ilya): ____
+DECISION (Ilya): Stay in Testing mode — option (a) (decided 2026-07-04). Accepted trade-off: ~7-day refresh-token expiry for Gmail/Calendar scopes; plan 027 MUST implement graceful re-auth (detect invalid_grant → needs-reauth state → one-click Reconnect). Revisit (d)/(c) if user count outgrows the manual test-user workflow.

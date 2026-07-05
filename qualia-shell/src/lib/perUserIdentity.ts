@@ -52,6 +52,7 @@ export const morningBriefUserIdHolder: UserIdHolder = makeHolder();
 export const costKpiUserIdHolder: UserIdHolder = makeHolder();
 export const activationUserIdHolder: UserIdHolder = makeHolder();
 export const artifactsUserIdHolder: UserIdHolder = makeHolder();
+export const activityUserIdHolder: UserIdHolder = makeHolder();
 
 /* ── DIRECT-READER-store holders (read `integrationsUserIdHolder.current`) ─── */
 export const workspacesUserIdHolder: UserIdHolder = makeHolder();
@@ -69,6 +70,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     costKpiUserIdHolder,
     activationUserIdHolder,
     artifactsUserIdHolder,
+    activityUserIdHolder,
     workspacesUserIdHolder,
     tagsUserIdHolder,
     subscriptionsUserIdHolder,

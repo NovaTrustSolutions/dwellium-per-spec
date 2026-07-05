@@ -4,6 +4,7 @@ import { useUser } from './UserContext';
 import { defaultDockItems } from '../data/hierarchy';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync, withSyncStatic } from '../lib/oneSaveStore';
+import { logActivity } from '../lib/activityLogStore';
 
 const LAYOUT_STORAGE_KEY = 'dwellium-layout';
 const LEGACY_LAYOUT_STORAGE_KEY = 'qualia-layout';
@@ -323,10 +324,17 @@ export function WindowProvider({ children }: { children: ReactNode }) {
             component,
         };
         setWindows(prev => [...prev, newWindow]);
+        // Universal per-login app history (plan 038): log exactly once per NEW
+        // window creation — never on the dedupe-focus branch above (the early
+        // `return existing.id` skips this). Fire-and-forget; never blocks the
+        // shell's hot path.
+        logActivity(component, title, 'open');
         return newId;
     }, []);
 
     const closeWindow = useCallback((id: string) => {
+        const closing = windowsRef.current.find(w => w.id === id);
+        if (closing) logActivity(closing.component, closing.title, 'close');
         setWindows(prev => prev.filter(w => w.id !== id));
     }, []);
 

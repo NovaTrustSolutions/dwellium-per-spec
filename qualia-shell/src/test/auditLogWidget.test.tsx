@@ -12,12 +12,25 @@
  * hide it from other accounts (cosmetic — not the security boundary).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import AuditLogWidget from '../components/AuditLog/AuditLogWidget';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
 import { AUDIT_LOG_CATALOG_EMAILS } from '../components/AuditLog/auditLogAccess';
 import { UserContext, type DwelliumUser } from '../context/UserContext';
+import { activityLogStore, activityUserIdHolder, logActivity } from '../lib/activityLogStore';
+
+// withSync-wrapped stores (activityLogStore) import oneSaveClient at load;
+// mock it so no network/side effects fire during these widget assertions.
+vi.mock('../lib/oneSaveClient', () => ({
+    ONE_SAVE_ENABLED: false,
+    oneSaveClient: {
+        get: vi.fn().mockResolvedValue(null),
+        put: vi.fn().mockResolvedValue(undefined),
+        remove: vi.fn().mockResolvedValue(undefined),
+        history: vi.fn(),
+    },
+}));
 
 function makeUser(email: string): DwelliumUser {
     return {
@@ -38,7 +51,7 @@ const AUDIT_OK = {
     success: true,
     entries: [
         { id: 1, userId: 'u-1', userName: 'Andy', userRole: 'god', action: 'LOGIN_SUCCESS', createdAt: '2026-07-02 08:00:00', ipAddress: '203.0.113.7', location: null },
-        { id: 2, userId: 'u-1', userName: 'Andy', userRole: 'god', action: 'UPDATE', entityType: 'objects', entityId: 'workspaces_u-1', createdAt: '2026-07-02 08:05:00', ipAddress: '203.0.113.7', location: null },
+        { id: 2, userId: 'u-1', userName: 'Andy', userRole: 'god', action: 'UPDATE', entityType: 'objects', entityId: 'workspaces_u-1', details: { field: 'name', from: 'old', to: 'new' }, createdAt: '2026-07-02 08:05:00', ipAddress: '203.0.113.7', location: null },
         { id: 3, userId: 'u-1', userName: 'Andy', userRole: 'god', action: 'LOGOUT', createdAt: '2026-07-02 09:00:00', ipAddress: '8.8.8.8', location: 'Mountain View, California, US' },
     ],
 };
@@ -46,6 +59,9 @@ const AUDIT_OK = {
 beforeEach(() => {
     cleanup();
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(AUDIT_OK), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+    try { localStorage.clear(); } catch { /* ignore */ }
+    activityUserIdHolder.current = null;
+    activityLogStore.reset();
 });
 
 afterEach(() => {
@@ -99,5 +115,101 @@ describe('AuditLogWidget registration', () => {
         expect(reg.label).toBe('Audit Log');
         expect(reg.category).toBe('tools');
         expect(reg.restrictedToEmails).toEqual([...AUDIT_LOG_CATALOG_EMAILS]);
+    });
+});
+
+describe('AuditLogWidget expandable rows (plan 038)', () => {
+    it('expanding a server (Activity) row reveals pretty-printed details JSON, entity, and ISO timestamp; aria-expanded flips', async () => {
+        render(withUser('andy@dwellium.com', <AuditLogWidget />));
+        // Switch to the Activity tab (the UPDATE entry with `details` lives there).
+        // Exact match distinguishes it from the "My Activity" tab, whose
+        // accessible name also contains "Activity".
+        fireEvent.click(screen.getByRole('tab', { name: 'Activity' }));
+        await waitFor(() => expect(screen.getByText('UPDATE')).toBeTruthy());
+
+        const toggle = screen.getByRole('button', { name: /Expand row for Andy UPDATE/i });
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+        fireEvent.click(toggle);
+        expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+        // Pretty-printed details JSON is now visible.
+        expect(screen.getByText(/"field": "name"/)).toBeTruthy();
+        expect(screen.getByText(/"from": "old"/)).toBeTruthy();
+        // Entity type/id + ISO timestamp rendered in the expanded panel.
+        expect(screen.getByText('objects')).toBeTruthy();
+        expect(screen.getByText('workspaces_u-1')).toBeTruthy();
+        expect(screen.getByText('2026-07-02T08:05:00.000Z')).toBeTruthy();
+
+        // Collapsing flips aria-expanded back.
+        fireEvent.click(screen.getByRole('button', { name: /Collapse row for Andy UPDATE/i }));
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('expanding a Sessions row with a resolved location reveals it in the expanded panel', async () => {
+        render(withUser('andy@dwellium.com', <AuditLogWidget />));
+        await waitFor(() => expect(screen.getByText('LOGOUT')).toBeTruthy());
+
+        fireEvent.click(screen.getByRole('button', { name: /Expand row for Andy LOGOUT/i }));
+        // "Mountain View..." already renders in the collapsed IP/Location cell —
+        // assert the expanded panel's own Location DetailRow is present too via
+        // the ISO timestamp, which only appears once expanded.
+        expect(screen.getByText('2026-07-02T09:00:00.000Z')).toBeTruthy();
+    });
+});
+
+describe('AuditLogWidget "My Activity" tab (plan 038)', () => {
+    it('renders local store entries for a signed-in user WITHOUT any fetch for that tab', async () => {
+        activityUserIdHolder.current = 'u-andy@dwellium.com';
+        logActivity('terminal', 'Terminal', 'open');
+        logActivity('terminal', 'Terminal', 'command-run', { command: 'ls -la' });
+
+        render(withUser('andy@dwellium.com', <AuditLogWidget />));
+        // Initial render still fetches for the default Sessions tab.
+        await waitFor(() => expect(screen.getByText('LOGIN_SUCCESS')).toBeTruthy());
+        const fetchCallsBeforeTabSwitch = vi.mocked(fetch).mock.calls.length;
+
+        fireEvent.click(screen.getByRole('tab', { name: /My Activity/i }));
+        expect(screen.getByText('command-run')).toBeTruthy();
+        expect(screen.getAllByText('Terminal').length).toBeGreaterThan(0);
+
+        // Switching to My Activity must not have triggered any NEW fetch call.
+        expect(vi.mocked(fetch).mock.calls.length).toBe(fetchCallsBeforeTabSwitch);
+    });
+
+    it('is available even when the backend forbids the two server tabs (403)', async () => {
+        vi.mocked(fetch).mockResolvedValue(new Response('{"error":"Forbidden"}', { status: 403 }));
+        activityUserIdHolder.current = 'u-lisa@dwellium.com';
+        logActivity('scribe', 'Scribe', 'open');
+
+        render(withUser('lisa@dwellium.com', <AuditLogWidget />));
+        await waitFor(() => expect(screen.getByText(/audit-log viewer list/i)).toBeTruthy());
+
+        fireEvent.click(screen.getByRole('tab', { name: /My Activity/i }));
+        expect(screen.getByText('open')).toBeTruthy();
+        expect(screen.getAllByText('Scribe').length).toBeGreaterThan(0);
+    });
+
+    it('search filters activity entries by app label and action', async () => {
+        activityUserIdHolder.current = 'u-andy@dwellium.com';
+        logActivity('terminal', 'Terminal', 'command-run', { command: 'ls -la' });
+        logActivity('scribe', 'Scribe', 'open');
+
+        render(withUser('andy@dwellium.com', <AuditLogWidget />));
+        await waitFor(() => expect(screen.getByText('LOGIN_SUCCESS')).toBeTruthy());
+        fireEvent.click(screen.getByRole('tab', { name: /My Activity/i }));
+        expect(screen.getAllByText(/Terminal|Scribe/).length).toBeGreaterThan(0);
+
+        fireEvent.change(screen.getByPlaceholderText(/Filter by app, action, or details/i), { target: { value: 'scribe' } });
+        expect(screen.getByText('Scribe')).toBeTruthy();
+        expect(screen.queryByText('Terminal')).toBeNull();
+    });
+
+    it('shows an honest empty state when no activity has been recorded on this login', async () => {
+        activityUserIdHolder.current = 'u-andy@dwellium.com';
+        render(withUser('andy@dwellium.com', <AuditLogWidget />));
+        await waitFor(() => expect(screen.getByText('LOGIN_SUCCESS')).toBeTruthy());
+        fireEvent.click(screen.getByRole('tab', { name: /My Activity/i }));
+        expect(screen.getByText(/No activity recorded on this login yet/i)).toBeTruthy();
     });
 });

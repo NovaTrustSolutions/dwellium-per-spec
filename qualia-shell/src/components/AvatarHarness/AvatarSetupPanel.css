@@ -1,0 +1,104 @@
+.avatar-setup-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    margin-top: 6px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    background: var(--bg-tertiary, rgba(0, 0, 0, 0.25));
+    font-size: 12px;
+}
+
+.avatar-setup-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+}
+
+.avatar-setup-panel__close {
+    background: none;
+    border: none;
+    color: var(--text-tertiary, #808080);
+    cursor: pointer;
+}
+
+.avatar-setup-panel__section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.avatar-setup-panel__label {
+    color: var(--text-tertiary, #808080);
+}
+
+.avatar-setup-panel__preview {
+    max-width: 120px;
+    max-height: 120px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.avatar-setup-panel__consent {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.avatar-setup-panel__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    background: transparent;
+    color: var(--text-primary, #fff);
+    cursor: pointer;
+    align-self: flex-start;
+}
+
+.avatar-setup-panel__btn--primary {
+    background: var(--accent, #D6FE51);
+    color: #000;
+    border-color: transparent;
+}
+
+.avatar-setup-panel__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.avatar-setup-panel__spin {
+    animation: avatar-setup-spin 1s linear infinite;
+}
+
+@keyframes avatar-setup-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.avatar-setup-panel__error {
+    color: #ef4444;
+}
+
+.avatar-setup-panel__saved {
+    color: #22c55e;
+}
+
+.avatar-setup-panel__avatar-id {
+    color: var(--text-tertiary, #808080);
+}
+
+.avatar-setup-panel__select,
+.avatar-setup-panel__text-input,
+.avatar-setup-panel__textarea {
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    background: var(--bg-primary, #111);
+    color: var(--text-primary, #fff);
+    font-family: inherit;
+}

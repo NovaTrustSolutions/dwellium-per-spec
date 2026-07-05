@@ -161,6 +161,20 @@ export interface RecallConfig {
     enabled: boolean;
 }
 
+/**
+ * Anam Avatar Engine config (plan 041 — backendless avatar harness). The only
+ * secret is the API key; `avatarClient.ts` reads it directly from the vault
+ * and calls `api.anam.ai` browser-direct (the SAME trust model as the LLM
+ * provider keys above — the user's own key, their own browser, TLS to the
+ * provider). `enabled` is informational, mirroring RecallConfig: the harness
+ * checks `apiKey` presence (via `getConfigured()`) rather than gating on a
+ * toggle.
+ */
+export interface AnamConfig {
+    apiKey: string;
+    enabled: boolean;
+}
+
 /** Test-result metadata, attached separately so it doesn't pollute config. */
 export interface IntegrationTestResult {
     ok: boolean;
@@ -196,6 +210,12 @@ export interface IntegrationsBundle {
      * LLM key; encrypted at rest via integrationsCrypto.
      */
     recall?: RecallConfig;
+    /**
+     * Plan 041 — Anam Avatar Engine key (backendless avatar harness). Same
+     * per-user encrypted-vault treatment as `recall` above; consumed by
+     * `avatarClient.ts` for direct browser calls to api.anam.ai.
+     */
+    anam?: AnamConfig;
     /** P11-9: live web-search providers — the non-Anthropic search path. */
     search?: {
         active: 'tavily' | 'brave' | null;

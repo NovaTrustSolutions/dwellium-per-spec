@@ -32,6 +32,7 @@ import type {
     LlmLocalConfig,
     LlmCustomConfig,
     RecallConfig,
+    AnamConfig,
 } from '../../types/integrations';
 import { DEFAULT_MODELS, PROVIDER_LABELS, CURATED_MODELS } from '../../types/integrations';
 
@@ -83,6 +84,11 @@ export default function ApiKeysPanel(): React.JSX.Element {
                 LLM provider, so it has its own simple card (no Test-Connection,
                 no Active-LLM coupling). */}
             <RecallCard bundle={integrations} update={update} removeSecret={removeSecret} />
+
+            {/* Plan 041 — Anam Avatar Engine. Not an LLM provider; same simple
+                shape as RecallCard (single secret, no model, no Test-Connection —
+                testing would mean minting a real session token). */}
+            <AnamCard bundle={integrations} update={update} removeSecret={removeSecret} />
         </div>
     );
 }
@@ -436,6 +442,53 @@ function RecallCard({ bundle, update, removeSecret }: CardProps) {
                 onChange={v => setField({ apiKey: v })}
                 onRemove={removeKey}
                 placeholder="recall-…"
+            />
+        </div>
+    );
+}
+
+// ── Anam Avatar Engine (plan 041 — backendless avatar harness) ──────────
+// NOT an LLM provider — it's the live-avatar platform AvatarHarness /
+// avatarClient.ts use for browser-direct calls to api.anam.ai. Single secret
+// (the API key), no model field, no Test-Connection (testing would mean
+// minting a real session token against api.anam.ai). Key is write-only via
+// ApiKeyField and encrypted at rest exactly like every other vault secret —
+// `avatarClient.ts` reads it straight from the vault; it never leaves the
+// browser except TO Anam over TLS.
+function AnamCard({ bundle, update, removeSecret }: CardProps) {
+    const cfg: AnamConfig = bundle.anam || { apiKey: '', enabled: false };
+    const setField = (patch: Partial<AnamConfig>) => update(b => ({
+        ...b,
+        anam: { ...cfg, ...patch },
+    }));
+    const removeKey = () => removeSecret(b => ({
+        ...b,
+        anam: { ...cfg, apiKey: '' },
+    }));
+    return (
+        <div className="cp-integration-card" style={{ marginBottom: 12 }}>
+            <div className="cp-integration-card__header">
+                <span className="cp-integration-card__title">Anam Avatar Engine</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                    <input
+                        type="checkbox"
+                        checked={cfg.enabled}
+                        onChange={e => setField({ enabled: e.target.checked })}
+                    />
+                    Enabled
+                </label>
+            </div>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 11, margin: '0 0 8px' }}>
+                Powers the live interactive avatar (ARA, Stella). Calls go directly from your
+                browser to api.anam.ai using this key. Get a key at anam.ai.
+            </p>
+            <ApiKeyField
+                label="Anam API key"
+                provider="anam"
+                value={cfg.apiKey}
+                onChange={v => setField({ apiKey: v })}
+                onRemove={removeKey}
+                placeholder="anam-…"
             />
         </div>
     );

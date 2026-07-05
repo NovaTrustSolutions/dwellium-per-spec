@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Mic, Square, Volume2, VolumeX, Sparkles, UserRound, SlidersHorizontal, X, ChevronUp, ChevronDown, Shield, Loader2, ThumbsUp, ThumbsDown, Send, Trash2, Paperclip, Globe, Laptop, AlertTriangle, Lock, Mars, Venus, Network, Brain, Zap, Wrench, Settings, RefreshCw, type LucideIcon } from 'lucide-react';
+import { Mic, Square, Volume2, VolumeX, Sparkles, UserRound, SlidersHorizontal, X, ChevronUp, ChevronDown, Shield, Loader2, ThumbsUp, ThumbsDown, Send, Trash2, Paperclip, Globe, Laptop, Lock, Mars, Venus, Network, Brain, Zap, Wrench, Settings, RefreshCw, type LucideIcon } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -32,6 +32,7 @@ import VoiceVisualizer from './VoiceVisualizer';
 import AraIntroVideo from './AraIntroVideo';
 import AgentEta from '../common/AgentEta';
 import AraSidePanel, { type AraSidePanelView } from './AraSidePanel';
+import AvatarHarness, { type AvatarHarnessHandle } from '../AvatarHarness/AvatarHarness';
 
 // ── TTS voice catalog (Cycle 1 of ARA voice arc — 2026-05-28) ────────────
 // Two tiers: OpenAI TTS (high quality, 6 voices, requires the user's OpenAI
@@ -495,23 +496,22 @@ export default function ARAConsole() {
     const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
     const voiceFileRef = useRef<HTMLInputElement>(null);
 
-    // Avatar state (Anam AI)
+    // Avatar state (plan 040 — AvatarHarness, provider-agnostic).
+    // AVATAR_PASSWORD preserves the existing access-gate UX (ARAConsole's
+    // Anam block predates the harness and was password-gated; the harness
+    // itself has no such concept, so ARAConsole keeps owning this gate and
+    // only mounts <AvatarHarness> once unlocked — behavior parity with the
+    // pre-harness toggle). All Anam session/stream/reconnect logic now
+    // lives inside AvatarHarness + AnamAdapter; ARAConsole no longer touches
+    // the Anam SDK or session-token fetch directly.
     const AVATAR_PASSWORD = 'Comet2878!';
-    // Persona ID is now configured server-side via ANAM_PERSONA_ID env var
     const [avatarEnabled, setAvatarEnabled] = useState<boolean>(() => {
         try { return localStorage.getItem('dwellium-ara-avatar') === 'true'; } catch { return false; }
     });
     const [avatarPasswordModal, setAvatarPasswordModal] = useState(false);
     const [avatarPasswordInput, setAvatarPasswordInput] = useState('');
     const [avatarPasswordError, setAvatarPasswordError] = useState(false);
-    const [avatarStatus, setAvatarStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error'>('idle');
-    const [avatarError, setAvatarError] = useState<string>('');
-    const anamClientRef = useRef<any>(null);
-    const avatarVideoRef = useRef<HTMLVideoElement>(null);
-    const avatarReconnectTimerRef = useRef<number | null>(null);
-    const avatarRetryCountRef = useRef(0);
-    const [avatarRetryCount, setAvatarRetryCount] = useState(0);
-    const [avatarReconnectTick, setAvatarReconnectTick] = useState(0);
+    const avatarHarnessRef = useRef<AvatarHarnessHandle>(null);
 
     const [requestError, setRequestError] = useState<string | null>(null);
     const [lastRequest, setLastRequest] = useState<LastRequestState | null>(null);
@@ -527,54 +527,12 @@ export default function ARAConsole() {
     const [actionStatus, setActionStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
     const [actionLoading, setActionLoading] = useState<'note' | 'workitem' | null>(null);
 
-    const clearAvatarReconnectTimer = useCallback(() => {
-        if (avatarReconnectTimerRef.current !== null) {
-            window.clearTimeout(avatarReconnectTimerRef.current);
-            avatarReconnectTimerRef.current = null;
-        }
-    }, []);
-
-    const resetAvatarReconnectState = useCallback(() => {
-        avatarRetryCountRef.current = 0;
-        setAvatarRetryCount(0);
-        clearAvatarReconnectTimer();
-    }, [clearAvatarReconnectTimer]);
-
-    const scheduleAvatarReconnect = useCallback((reason: string) => {
-        clearAvatarReconnectTimer();
-        const nextAttempt = avatarRetryCountRef.current + 1;
-        if (nextAttempt > 3) {
-            setAvatarStatus('error');
-            setAvatarError(reason);
-            return;
-        }
-        avatarRetryCountRef.current = nextAttempt;
-        setAvatarRetryCount(nextAttempt);
-        setAvatarStatus('reconnecting');
-        setAvatarError(`${reason} Retrying (${nextAttempt}/3)…`);
-        avatarReconnectTimerRef.current = window.setTimeout(() => {
-            setAvatarReconnectTick(value => value + 1);
-        }, Math.min(4500, 1200 * nextAttempt));
-    }, [clearAvatarReconnectTimer]);
-
-    const manualAvatarReconnect = useCallback(() => {
-        resetAvatarReconnectState();
-        setAvatarError('');
-        setAvatarStatus('connecting');
-        setAvatarReconnectTick(value => value + 1);
-    }, [resetAvatarReconnectState]);
-
+    // Toggle + password gate only — AvatarHarness owns session/stream/
+    // reconnect lifecycle internally (incl. its own unmount teardown), so
+    // turning the avatar off is just unmounting <AvatarHarness>.
     const handleAvatarToggle = useCallback(() => {
         if (avatarEnabled) {
-            // Turning off — no password needed, cleanup SDK
-            if (anamClientRef.current) {
-                try { anamClientRef.current.stopStreaming?.(); } catch { /* ignore */ }
-                anamClientRef.current = null;
-            }
-            clearAvatarReconnectTimer();
             setAvatarEnabled(false);
-            setAvatarStatus('idle');
-            setAvatarError('');
             localStorage.setItem('dwellium-ara-avatar', 'false');
         } else {
             // Turning on — require password
@@ -582,14 +540,11 @@ export default function ARAConsole() {
             setAvatarPasswordInput('');
             setAvatarPasswordError(false);
         }
-    }, [avatarEnabled, clearAvatarReconnectTimer]);
+    }, [avatarEnabled]);
 
     const submitAvatarPassword = useCallback(() => {
         if (avatarPasswordInput === AVATAR_PASSWORD) {
-            resetAvatarReconnectState();
             setAvatarEnabled(true);
-            setAvatarStatus('connecting');
-            setAvatarError('');
             localStorage.setItem('dwellium-ara-avatar', 'true');
             setAvatarPasswordModal(false);
             setAvatarPasswordInput('');
@@ -597,120 +552,7 @@ export default function ARAConsole() {
         } else {
             setAvatarPasswordError(true);
         }
-    }, [avatarPasswordInput, resetAvatarReconnectState]);
-
-    // Anam SDK initialization — API key flow via auth-protected backend
-    useEffect(() => {
-        if (!avatarEnabled) return;
-
-        let cancelled = false;
-
-        async function initAnamSdk() {
-            setAvatarStatus(avatarRetryCountRef.current > 0 ? 'reconnecting' : 'connecting');
-            setAvatarError('');
-
-            try {
-                // Dynamically import the SDK only when avatar mode is enabled so
-                // avatar support stays out of the main app path until it is used.
-                const anamModule = await import('@anam-ai/js-sdk').catch(() => null);
-
-                if (!anamModule || cancelled) {
-                    if (!cancelled) {
-                        setAvatarStatus('error');
-                        setAvatarError('Anam SDK not installed. Run: npm install @anam-ai/js-sdk');
-                    }
-                    return;
-                }
-
-                const { createClient, AnamEvent } = anamModule;
-
-                // Get session token from backend (backend calls Anam API with persona config)
-                console.log('[ARA Avatar] Requesting session token from backend...');
-                const tokenRes = await authFetch(`${API_ARA}/avatar/session-token`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                const tokenData = await tokenRes.json();
-
-                if (!tokenData.success || !tokenData.data?.sessionToken) {
-                    if (!cancelled) {
-                        setAvatarStatus('error');
-                        setAvatarError(tokenData.error || 'Failed to get session token from backend.');
-                    }
-                    return;
-                }
-
-                if (cancelled) return;
-
-                const { sessionToken } = tokenData.data;
-                console.log('[ARA Avatar] Session token obtained, creating client...');
-
-                // Use createClient with the stateful session token from the backend.
-                // The backend calls Anam API with personaConfig included, producing a
-                // 'stateful' token. SDK v4.10.0 rejects 'legacy' tokens, so this is required.
-                const client = createClient(sessionToken);
-
-                if (cancelled) return;
-                anamClientRef.current = client;
-
-                // Listen for connection events
-                client.addListener?.(AnamEvent?.CONNECTION_ESTABLISHED || 'CONNECTION_ESTABLISHED', () => {
-                    if (!cancelled) {
-                        resetAvatarReconnectState();
-                        setAvatarStatus('connected');
-                        setAvatarError('');
-                    }
-                    console.log('[ARA Avatar] Connection established');
-                });
-
-                client.addListener?.(AnamEvent?.CONNECTION_CLOSED || 'CONNECTION_CLOSED', () => {
-                    if (!cancelled) {
-                        setAvatarStatus('disconnected');
-                        scheduleAvatarReconnect('Avatar session closed unexpectedly.');
-                    }
-                    console.log('[ARA Avatar] Connection closed');
-                });
-
-                // Stream to video element
-                if (avatarVideoRef.current) {
-                    await client.streamToVideoElement('ara-avatar-video');
-                }
-
-                if (!cancelled) {
-                    resetAvatarReconnectState();
-                    setAvatarStatus('connected');
-                }
-            } catch (err: any) {
-                if (!cancelled) {
-                    console.error('[ARA Avatar] SDK init failed:', err);
-                    const message = err.message || 'Failed to connect to Anam AI';
-                    if (
-                        avatarEnabled &&
-                        !message.includes('not installed') &&
-                        !message.includes('Failed to get session token from backend') &&
-                        !message.includes('ANAM_API_KEY')
-                    ) {
-                        scheduleAvatarReconnect(message);
-                    } else {
-                        setAvatarStatus('error');
-                        setAvatarError(message);
-                    }
-                }
-            }
-        }
-
-        initAnamSdk();
-
-        return () => {
-            cancelled = true;
-            clearAvatarReconnectTimer();
-            if (anamClientRef.current) {
-                try { anamClientRef.current.stopStreaming?.(); } catch { /* ignore */ }
-                anamClientRef.current = null;
-            }
-        };
-    }, [avatarEnabled, authFetch, avatarReconnectTick, clearAvatarReconnectTimer, resetAvatarReconnectState, scheduleAvatarReconnect]);
-
+    }, [avatarPasswordInput]);
 
     // TTS state
     const [ttsEnabled, setTtsEnabled] = useState<boolean>(() => {
@@ -1206,12 +1048,12 @@ export default function ARAConsole() {
             fetchObservability();
 
             // ── Pipe ARA's response to live avatar if connected ──
-            if (avatarEnabled && avatarStatus === 'connected' && anamClientRef.current) {
+            if (avatarEnabled && avatarHarnessRef.current?.isLive()) {
                 try {
                     const cleaned = stripMarkdown(data.data.content);
                     if (cleaned) {
                         console.log('[ARA Avatar] Sending ARA response to avatar via talk()');
-                        await anamClientRef.current.talk(cleaned);
+                        await avatarHarnessRef.current.talk(cleaned);
                     }
                 } catch (avatarErr) {
                     console.warn('[ARA Avatar] talk() failed, falling back to TTS:', avatarErr);
@@ -1283,7 +1125,6 @@ export default function ARAConsole() {
         workspaceContext,
         authFetch,
         avatarEnabled,
-        avatarStatus,
         fetchObservability,
         speakText,
         stripMarkdown,
@@ -1860,9 +1701,9 @@ export default function ARAConsole() {
         setModePickerOpen(false);
         setExpandedTooltipId(null);
         const mode = modes.find(m => m.id === modeId);
-        if (mode && avatarEnabled && avatarStatus === 'connected' && anamClientRef.current) {
+        if (mode && avatarEnabled && avatarHarnessRef.current?.isLive()) {
             const switchText = `Mode switched: ${mode.name}. ${mode.lens}`;
-            anamClientRef.current.talk(switchText).catch(() => { /* ignore */ });
+            avatarHarnessRef.current.talk(switchText).catch(() => { /* ignore */ });
         }
     };
 
@@ -2834,53 +2675,17 @@ export default function ARAConsole() {
                 </div>
             )}
 
-            {/* Avatar Panel (Anam AI SDK) */}
+            {/* Avatar Panel — plan 040 AvatarHarness (provider-agnostic; see
+                AnamAdapter.ts). All session/stream/reconnect/error UI now
+                lives inside the harness; this wrapper only keeps the
+                password-gated show/hide + a close affordance. */}
             {avatarEnabled && (
                 <div className="ara-avatar-panel">
                     <div className="ara-avatar-panel-header">
                         <h4>AI Avatar</h4>
-                        <span className="ara-avatar-badge">CARA II</span>
-                        <span className={`ara-avatar-status ara-avatar-status--${avatarStatus}`}>
-                            {avatarStatus === 'connecting' && '⟳ Connecting…'}
-                            {avatarStatus === 'reconnecting' && `⟳ Reconnecting (${avatarRetryCount}/3)…`}
-                            {avatarStatus === 'connected' && '● Live'}
-                            {avatarStatus === 'disconnected' && '○ Disconnected'}
-                            {avatarStatus === 'error' && 'Error'}
-                            {avatarStatus === 'idle' && '○ Idle'}
-                        </span>
                         <button className="ara-avatar-panel-close" onClick={handleAvatarToggle} title="Close avatar panel" aria-label="Close avatar panel"><X size={16} /></button>
                     </div>
-                    <div className="ara-avatar-video-wrap">
-                        {(avatarStatus === 'error' || avatarStatus === 'disconnected') && avatarError ? (
-                            <div className="ara-avatar-error">
-                                <span className="ara-avatar-error-icon"><AlertTriangle size={18} aria-hidden="true" /></span>
-                                <p>{avatarError}</p>
-                                {(avatarError.includes('ANAM_API_KEY') || avatarError.includes('not installed') || avatarError.includes('session token')) && (
-                                    <p className="ara-avatar-error-hint">
-                                        To set up: add <code>ANAM_API_KEY</code> and <code>ANAM_PERSONA_ID</code> to the server <code>.env</code> and run <code>npm install @anam-ai/js-sdk</code>
-                                    </p>
-                                )}
-                                <button className="ara-avatar-reconnect-btn" onClick={manualAvatarReconnect}>
-                                    Retry Avatar
-                                </button>
-                            </div>
-                        ) : (
-                            <video
-                                ref={avatarVideoRef}
-                                id="ara-avatar-video"
-                                className="ara-avatar-video"
-                                autoPlay
-                                playsInline
-                                muted={false}
-                            />
-                        )}
-                        {(avatarStatus === 'connecting' || avatarStatus === 'reconnecting') && (
-                            <div className="ara-avatar-connecting">
-                                <div className="ara-avatar-connecting-spinner" />
-                                <span>{avatarStatus === 'reconnecting' ? 'Reconnecting CARA II…' : 'Initializing CARA II…'}</span>
-                            </div>
-                        )}
-                    </div>
+                    <AvatarHarness ref={avatarHarnessRef} agentId="ara" />
                 </div>
             )}
 

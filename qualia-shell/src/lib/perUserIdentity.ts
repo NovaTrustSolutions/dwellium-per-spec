@@ -60,6 +60,8 @@ export const tagsUserIdHolder: UserIdHolder = makeHolder();
 export const subscriptionsUserIdHolder: UserIdHolder = makeHolder();
 export const halocronKnowledgeGraphUserIdHolder: UserIdHolder = makeHolder();
 export const scribeKbUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 041 — per-user avatar profiles (avatarId/voiceId/systemPrompt per agentId). */
+export const avatarProfilesUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -76,6 +78,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     subscriptionsUserIdHolder,
     halocronKnowledgeGraphUserIdHolder,
     scribeKbUserIdHolder,
+    avatarProfilesUserIdHolder,
 ];
 
 /**

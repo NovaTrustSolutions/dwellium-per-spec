@@ -2,6 +2,17 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
+// AvatarHarness calls useUser() internally, which throws without a
+// UserProvider (this suite mocks raw fetch, not UserContext). Shallow-mock
+// it here — plan 040 pins that the Stella toggle mounts the harness with
+// agentId="stella"; the harness's own connect/session/teardown behavior is
+// covered end-to-end in src/test/avatarHarness.test.tsx.
+vi.mock('../components/AvatarHarness/AvatarHarness', () => ({
+    default: (props: { agentId: string }) => (
+        <div data-testid="mock-avatar-harness" data-agent-id={props.agentId} />
+    ),
+}));
+
 import StellaAgent from '../components/StellaAgent/StellaAgent';
 
 const mockFetch = vi.fn();
@@ -261,5 +272,26 @@ describe('StellaAgent', () => {
         await waitFor(() => {
             expect(screen.getByText(/network down/)).toBeInTheDocument();
         });
+    });
+
+    it('avatar toggle mounts AvatarHarness with agentId="stella" (plan 040)', async () => {
+        const user = userEvent.setup();
+        render(<StellaAgent />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Stella Online/)).toBeInTheDocument();
+        });
+
+        // Not mounted until the toggle is clicked.
+        expect(screen.queryByTestId('mock-avatar-harness')).not.toBeInTheDocument();
+
+        await user.click(screen.getByLabelText('Show avatar'));
+
+        const harness = await screen.findByTestId('mock-avatar-harness');
+        expect(harness).toHaveAttribute('data-agent-id', 'stella');
+
+        // Toggling again unmounts it.
+        await user.click(screen.getByLabelText('Hide avatar'));
+        expect(screen.queryByTestId('mock-avatar-harness')).not.toBeInTheDocument();
     });
 });

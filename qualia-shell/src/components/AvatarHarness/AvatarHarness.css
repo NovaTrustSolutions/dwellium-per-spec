@@ -1,0 +1,129 @@
+.avatar-harness {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    background: var(--bg-secondary, rgba(0, 0, 0, 0.2));
+}
+
+.avatar-harness--compact .avatar-harness__video-wrap {
+    aspect-ratio: 4 / 3;
+    max-height: 180px;
+}
+
+.avatar-harness__cta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    font-size: 13px;
+    color: var(--text-tertiary, #808080);
+}
+
+.avatar-harness__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.avatar-harness__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    background: transparent;
+    color: var(--text-primary, #fff);
+    cursor: pointer;
+}
+
+.avatar-harness__btn--primary {
+    background: var(--accent, #D6FE51);
+    color: #000;
+    border-color: transparent;
+}
+
+.avatar-harness__btn--danger {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.avatar-harness__btn--ghost {
+    margin-left: auto;
+}
+
+.avatar-harness__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-tertiary, #808080);
+}
+
+.avatar-harness__spin {
+    animation: avatar-harness-spin 1s linear infinite;
+}
+
+@keyframes avatar-harness-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.avatar-harness__error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #f59e0b;
+}
+
+.avatar-harness__video-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: 6px;
+    overflow: hidden;
+    display: none;
+}
+
+.avatar-harness__video-wrap[data-visible="true"] {
+    display: block;
+}
+
+.avatar-harness__video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-harness__video-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary, #808080);
+}
+
+.avatar-harness__chat-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.avatar-harness__chat-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    background: var(--bg-primary, #111);
+    color: var(--text-primary, #fff);
+    font-family: inherit;
+}

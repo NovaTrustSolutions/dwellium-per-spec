@@ -1,5 +1,6 @@
 /**
- * AvatarHarness — the ONE reusable interactive-avatar component (plan 040).
+ * AvatarHarness — the ONE reusable interactive-avatar component
+ * (plan 040, reworked backendless in plan 041).
  *
  * Any agent gets a live, photo-derived avatar by mounting:
  *   <AvatarHarness agentId="ara" />
@@ -9,17 +10,27 @@
  * ARAConsole.tsx into a single provider-agnostic harness (AnamAdapter is the
  * only current AvatarProviderAdapter implementation — see AnamAdapter.ts).
  *
- * States: unconfigured (backend has no ANAM_API_KEY -> setup CTA is honest
- * about the gap) -> connecting -> live (video + mic/mute/interrupt/stop) ->
- * error. Session lifecycle ALWAYS tears down on unmount (stop streams, close
- * client) — this repo has a history of unmount-leak findings, so the cleanup
- * function is the single place disconnect() is called from.
+ * FULLY BACKENDLESS (plan 041): the harness reads the Anam key from the
+ * user's own per-user integrations vault (`useIntegrations()`, the same vault
+ * that holds Anthropic/OpenAI/etc. keys) and calls `avatarClient.ts`, which
+ * talks to `api.anam.ai` directly from the browser. There is no backend
+ * "configured" check anymore — "unconfigured" now means "no Anam key in your
+ * vault", with a CTA that opens the Control Panel's API-Keys section (the
+ * same `dwellium:open-widget` bus every other "open Settings" affordance in
+ * this app uses).
+ *
+ * States: unconfigured (no vault key -> CTA opens Settings) -> idle ->
+ * connecting -> live (video + mic/mute/interrupt/stop) -> error. Session
+ * lifecycle ALWAYS tears down on unmount (stop streams, close client) — this
+ * repo has a history of unmount-leak findings, so the cleanup function is the
+ * single place disconnect() is called from.
  */
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Video, VideoOff, Mic, MicOff, Square, Loader2, TriangleAlert, Settings } from 'lucide-react';
-import { useUser } from '../../context/UserContext';
-import { getAvatarHealth, createAvatarSessionToken } from '../../lib/avatarClient';
+import { useIntegrations } from '../../hooks/useIntegrations';
+import { getConfigured, createSessionToken, type PersonaConfigInput } from '../../lib/avatarClient';
+import { getAvatarProfile } from '../../lib/avatarProfilesStore';
 import { AnamAdapter, type AvatarConnectionState } from './AnamAdapter';
 import AvatarSetupPanel from './AvatarSetupPanel';
 import './AvatarHarness.css';
@@ -48,9 +59,14 @@ export interface AvatarHarnessHandle {
 
 type HarnessState = 'unconfigured' | 'idle' | 'connecting' | 'live' | 'error';
 
+/** Open the Control Panel's API-Keys section — same bus every other "open Settings" CTA uses. */
+function openApiKeysSettings(): void {
+    window.dispatchEvent(new CustomEvent('dwellium:open-widget', { detail: { widgetId: 'control-panel', label: 'Settings' } }));
+}
+
 function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHarnessProps, ref: React.Ref<AvatarHarnessHandle>) {
-    const { authFetch } = useUser();
-    const [state, setState] = useState<HarnessState>('idle');
+    const { integrations } = useIntegrations();
+    const [state, setState] = useState<HarnessState>(() => (getConfigured(integrations) ? 'idle' : 'unconfigured'));
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [muted, setMuted] = useState(false);
     const [setupOpen, setSetupOpen] = useState(false);
@@ -59,26 +75,14 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
     const videoElementId = `avatar-harness-video-${agentId}`;
     const cancelledRef = useRef(false);
 
-    // Check backend configuration on mount so the harness renders a reduced,
-    // honest surface when the Anam engine isn't set up server-side.
+    // Vault key presence drives the unconfigured/idle split — no network call
+    // (getConfigured only checks the in-memory bundle). Re-derive whenever the
+    // bundle changes (e.g., the user just saved a key in Settings) so the
+    // harness flips out of the unconfigured state without a remount.
     useEffect(() => {
-        cancelledRef.current = false;
-        getAvatarHealth(authFetch)
-            .then((res) => {
-                if (cancelledRef.current) return;
-                if (!res.success || !res.data?.configured) {
-                    setState('unconfigured');
-                } else {
-                    setState('idle');
-                }
-            })
-            .catch(() => {
-                if (!cancelledRef.current) setState('unconfigured');
-            });
-        return () => {
-            cancelledRef.current = true;
-        };
-    }, [authFetch]);
+        if (state === 'connecting' || state === 'live') return; // don't yank the rug mid-session
+        setState(getConfigured(integrations) ? 'idle' : 'unconfigured');
+    }, [integrations, state]);
 
     const teardown = useCallback(async () => {
         const adapter = adapterRef.current;
@@ -92,7 +96,16 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
         setErrorMessage('');
         setState('connecting');
 
-        const tokenRes = await createAvatarSessionToken(authFetch, agentId);
+        const profile = getAvatarProfile(agentId);
+        const personaConfig: PersonaConfigInput = {
+            personaId: agentId,
+            name: profile?.displayName || agentId,
+            avatarId: profile?.avatarId || '',
+            voiceId: profile?.voiceId || '',
+            systemPrompt: profile?.systemPrompt || systemPromptDefault || undefined,
+        };
+
+        const tokenRes = await createSessionToken(integrations, personaConfig);
         if (cancelledRef.current) return;
         if (!tokenRes.success || !tokenRes.data?.sessionToken) {
             setState(tokenRes.error?.includes('not configured') ? 'unconfigured' : 'error');
@@ -114,7 +127,7 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
         });
 
         await adapter.connect(tokenRes.data.sessionToken, videoElementId);
-    }, [authFetch, agentId, videoElementId]);
+    }, [integrations, agentId, systemPromptDefault, videoElementId]);
 
     const stop = useCallback(async () => {
         await teardown();
@@ -161,7 +174,13 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
             {state === 'unconfigured' && (
                 <div className="avatar-harness__cta">
                     <Video size={18} aria-hidden />
-                    <span>Avatar engine not configured on the backend. Set <code>ANAM_API_KEY</code> to enable a live avatar for this agent.</span>
+                    <span>Add your Anam Avatar Engine API key to enable a live avatar for this agent.</span>
+                    <button
+                        className="avatar-harness__btn avatar-harness__btn--primary"
+                        onClick={openApiKeysSettings}
+                    >
+                        Open Settings
+                    </button>
                 </div>
             )}
 
@@ -205,7 +224,7 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
 
                     {state === 'error' && (
                         <div className="avatar-harness__error">
-                            <TriangleAlert size={14} aria-hidden /> {errorMessage || 'Avatar engine not configured on the backend.'}
+                            <TriangleAlert size={14} aria-hidden /> {errorMessage || 'Avatar connection failed.'}
                         </div>
                     )}
 

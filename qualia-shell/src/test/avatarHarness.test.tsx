@@ -1,18 +1,29 @@
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-const mockAuthFetch = vi.fn();
+// Fake, obviously-not-real key constant — never a live secret. Tests assert
+// the REQUEST SHAPE (Authorization header + URL), not the key's cleartext
+// value beyond this test constant.
+const FAKE_ANAM_KEY = 'test-anam-key-not-real';
 
-vi.mock('../context/UserContext', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('../context/UserContext')>();
-    return {
-        ...actual,
-        useUser: () => ({ authFetch: mockAuthFetch, isAuthenticated: true }),
-    };
-});
+// avatarHarness reads the vault via useIntegrations() — mock it directly so
+// these tests don't need a UserProvider or a real localStorage vault.
+const mockIntegrations = {
+    integrations: {
+        llm: { active: null },
+        google: {},
+        search: { active: null },
+        tests: {},
+        anam: { apiKey: FAKE_ANAM_KEY, enabled: true },
+    },
+    update: vi.fn(),
+    replace: vi.fn(),
+    clear: vi.fn(),
+    removeSecret: vi.fn(),
+};
 
-vi.mock('../config', () => ({
-    API_BASE: 'http://localhost:3000',
+vi.mock('../hooks/useIntegrations', () => ({
+    useIntegrations: () => mockIntegrations,
 }));
 
 // Spy-able AnamAdapter mock — captures every instance so tests can assert
@@ -55,7 +66,15 @@ vi.mock('../components/AvatarHarness/AnamAdapter', () => {
     return { AnamAdapter: MockAnamAdapter };
 });
 
+// avatarProfilesStore is per-user localStorage — reset between tests so a
+// stale profile from one test doesn't leak into the next.
+import { avatarProfilesStore } from '../lib/avatarProfilesStore';
+import { avatarProfilesUserIdHolder } from '../lib/perUserIdentity';
+
 import AvatarHarness from '../components/AvatarHarness/AvatarHarness';
+
+const mockFetch = vi.fn();
+const origFetch = globalThis.fetch;
 
 function jsonResponse(body: unknown, status = 200): Response {
     return {
@@ -67,44 +86,65 @@ function jsonResponse(body: unknown, status = 200): Response {
     } as Response;
 }
 
-describe('AvatarHarness', () => {
+describe('AvatarHarness (plan 041 — backendless / browser-direct Anam)', () => {
     beforeEach(() => {
-        mockAuthFetch.mockReset();
+        globalThis.fetch = mockFetch;
+        mockFetch.mockReset();
         adapterInstances.length = 0;
+        localStorage.clear();
+        avatarProfilesUserIdHolder.current = null;
+        avatarProfilesStore.reset();
+        mockIntegrations.integrations.anam = { apiKey: FAKE_ANAM_KEY, enabled: true };
     });
 
     afterEach(() => {
+        globalThis.fetch = origFetch;
         cleanup();
     });
 
-    it('renders the setup CTA when the backend reports unconfigured', async () => {
-        mockAuthFetch.mockImplementation(async (url: string) => {
-            if (String(url).endsWith('/api/avatar/health')) {
-                return jsonResponse({ success: true, data: { configured: false } });
-            }
-            return jsonResponse({ success: false, error: 'unexpected' }, 500);
-        });
+    it('renders the vault CTA when no Anam key is configured (no network call)', async () => {
+        mockIntegrations.integrations.anam = { apiKey: '', enabled: false };
 
         render(<AvatarHarness agentId="ara" />);
 
         await waitFor(() => {
-            expect(screen.getByText(/not configured on the backend/i)).toBeInTheDocument();
+            expect(screen.getByText(/Add your Anam Avatar Engine API key/i)).toBeInTheDocument();
         });
+        expect(screen.getByText(/Open Settings/i)).toBeInTheDocument();
         // No "Start avatar" control should render in the unconfigured state.
         expect(screen.queryByText(/start avatar/i)).not.toBeInTheDocument();
+        // getConfigured() is a pure vault check — must not have hit the network.
+        expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('when configured, clicking Start invokes the connect flow with the given agentId', async () => {
-        mockAuthFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
-            if (String(url).endsWith('/api/avatar/health')) {
-                return jsonResponse({ success: true, data: { configured: true } });
-            }
-            if (String(url).endsWith('/api/avatar/session-token') && opts?.method === 'POST') {
+    it('the CTA button dispatches dwellium:open-widget to open the Control Panel', async () => {
+        mockIntegrations.integrations.anam = { apiKey: '', enabled: false };
+        const listener = vi.fn();
+        window.addEventListener('dwellium:open-widget', listener);
+
+        render(<AvatarHarness agentId="ara" />);
+        const cta = await screen.findByText(/Open Settings/i);
+        fireEvent.click(cta);
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        const evt = listener.mock.calls[0][0] as CustomEvent;
+        expect(evt.detail).toEqual({ widgetId: 'control-panel', label: 'Settings' });
+        window.removeEventListener('dwellium:open-widget', listener);
+    });
+
+    it('when a vault key is configured, clicking Start calls Anam session-token directly with Authorization: Bearer <key>', async () => {
+        mockFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            const urlStr = String(url);
+            if (urlStr === 'https://api.anam.ai/v1/auth/session-token' && opts?.method === 'POST') {
+                // Assert TARGET + header shape, not the key's cleartext beyond the
+                // test constant declared at the top of this file.
+                const headers = opts.headers as Record<string, string>;
+                expect(headers.Authorization).toBe(`Bearer ${FAKE_ANAM_KEY}`);
                 const body = JSON.parse(String(opts.body));
-                expect(body.agentId).toBe('ara');
-                return jsonResponse({ success: true, data: { sessionToken: 'mock-token-123' } });
+                expect(body.personaConfig.personaId).toBe('ara');
+                return jsonResponse({ sessionToken: 'mock-token-123' });
             }
-            return jsonResponse({ success: false, error: 'unexpected' }, 500);
+            throw new Error(`unexpected fetch: ${urlStr}`);
         });
 
         render(<AvatarHarness agentId="ara" />);
@@ -125,14 +165,11 @@ describe('AvatarHarness', () => {
     });
 
     it('calls disconnect() on unmount (teardown safety)', async () => {
-        mockAuthFetch.mockImplementation(async (url: string) => {
-            if (String(url).endsWith('/api/avatar/health')) {
-                return jsonResponse({ success: true, data: { configured: true } });
+        mockFetch.mockImplementation(async (url: string) => {
+            if (String(url) === 'https://api.anam.ai/v1/auth/session-token') {
+                return jsonResponse({ sessionToken: 'mock-token-456' });
             }
-            if (String(url).endsWith('/api/avatar/session-token')) {
-                return jsonResponse({ success: true, data: { sessionToken: 'mock-token-456' } });
-            }
-            return jsonResponse({ success: false, error: 'unexpected' }, 500);
+            throw new Error(`unexpected fetch: ${url}`);
         });
 
         const { unmount } = render(<AvatarHarness agentId="ara" />);
@@ -150,18 +187,32 @@ describe('AvatarHarness', () => {
         });
     });
 
+    it('surfaces a friendly error (not the raw key) when Anam returns a non-2xx', async () => {
+        mockFetch.mockImplementation(async (url: string) => {
+            if (String(url) === 'https://api.anam.ai/v1/auth/session-token') {
+                return jsonResponse({ message: 'Invalid API key' }, 401);
+            }
+            throw new Error(`unexpected fetch: ${url}`);
+        });
+
+        render(<AvatarHarness agentId="ara" />);
+        const startBtn = await screen.findByText(/start avatar/i);
+        fireEvent.click(startBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Invalid API key/i)).toBeInTheDocument();
+        });
+        // The vault key itself must never appear in the rendered error.
+        expect(screen.queryByText(new RegExp(FAKE_ANAM_KEY))).not.toBeInTheDocument();
+    });
+
     it('blocks avatar creation in the setup panel without the consent checkbox', async () => {
-        mockAuthFetch.mockImplementation(async (url: string) => {
-            if (String(url).endsWith('/api/avatar/health')) {
-                return jsonResponse({ success: true, data: { configured: true } });
+        mockFetch.mockImplementation(async (url: string) => {
+            const urlStr = String(url);
+            if (urlStr === 'https://api.anam.ai/v1/avatars' || urlStr === 'https://api.anam.ai/v1/voices') {
+                return jsonResponse({ data: [] });
             }
-            if (String(url).match(/\/api\/avatar\/profiles\//)) {
-                return jsonResponse({ success: true, data: null });
-            }
-            if (String(url).endsWith('/api/avatar/options')) {
-                return jsonResponse({ success: true, data: { avatars: [], voices: [] } });
-            }
-            return jsonResponse({ success: false, error: 'unexpected' }, 500);
+            throw new Error(`unexpected fetch: ${urlStr}`);
         });
 
         render(<AvatarHarness agentId="ara" />);

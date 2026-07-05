@@ -134,6 +134,8 @@ function deserialize(raw: string | null): IntegrationsBundle {
             // Recall.ai meeting-bot key — preserve across reload (the secret is
             // encrypted at rest like the LLM keys; integrationsCrypto handles it).
             recall: parsed.recall,
+            // Anam Avatar Engine key (plan 041) — same at-rest treatment as recall.
+            anam: parsed.anam,
             search: parsed.search ? { ...empty.search, ...parsed.search } : empty.search,
             storage: parsed.storage,
             tests: { ...empty.tests, ...(parsed.tests || {}) },

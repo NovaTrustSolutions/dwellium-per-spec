@@ -1,24 +1,25 @@
 /**
- * AvatarSetupPanel — per-agent avatar setup (plan 040).
+ * AvatarSetupPanel — per-agent avatar setup (plan 040, reworked backendless
+ * in plan 041).
  *
  * Upload a photo -> REQUIRED likeness-consent checkbox -> create a custom
- * Anam avatar from it -> pick a voice -> optional system-prompt override ->
- * Save (PUT /api/avatar/profiles/:agentId). The consent checkbox is a hard
- * gate: the Create button stays disabled until it is checked, AND the
- * backend independently re-validates `consent === true` on
- * POST /create-from-image, so the requirement can never be bypassed by
- * calling the API directly.
+ * Anam avatar from it (browser-direct to api.anam.ai via avatarClient, using
+ * the vault key) -> pick a voice -> optional system-prompt override -> Save
+ * (persisted to the LOCAL per-user `avatarProfilesStore`, One-Save-synced —
+ * no backend route). The consent checkbox is a hard gate: the Create button
+ * stays disabled until it is checked, AND `avatarClient.createAvatarFromImage`
+ * independently re-validates `consent === true`, so the requirement can never
+ * be bypassed by calling the function directly.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Upload, Loader2 } from 'lucide-react';
-import { useUser } from '../../context/UserContext';
+import { useIntegrations } from '../../hooks/useIntegrations';
 import {
     createAvatarFromImage,
-    getAvatarOptions,
-    getAvatarProfile,
-    saveAvatarProfile,
+    listOptions,
 } from '../../lib/avatarClient';
+import { useAvatarProfile } from '../../lib/avatarProfilesStore';
 import './AvatarSetupPanel.css';
 
 export interface AvatarSetupPanelProps {
@@ -32,7 +33,7 @@ function fileToBase64(file: File): Promise<string> {
         const reader = new FileReader();
         reader.onload = () => {
             const result = reader.result as string;
-            // Strip the "data:<mime>;base64," prefix — the backend wants raw base64.
+            // Strip the "data:<mime>;base64," prefix — Anam wants raw base64.
             const commaIdx = result.indexOf(',');
             resolve(commaIdx >= 0 ? result.slice(commaIdx + 1) : result);
         };
@@ -42,7 +43,8 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose }: AvatarSetupPanelProps) {
-    const { authFetch } = useUser();
+    const { integrations } = useIntegrations();
+    const { profile, save } = useAvatarProfile(agentId);
 
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string>('');
@@ -61,17 +63,24 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cancelledRef = useRef(false);
+    const hydratedRef = useRef(false);
+
+    // Hydrate the local fields from the profile store once on mount (not on
+    // every store change — the user is actively editing these fields).
+    useEffect(() => {
+        if (hydratedRef.current) return;
+        hydratedRef.current = true;
+        if (profile) {
+            setAvatarId(profile.avatarId || '');
+            setVoiceId(profile.voiceId || '');
+            setDisplayName(profile.displayName || '');
+            setSystemPrompt(profile.systemPrompt || systemPromptDefault || '');
+        }
+    }, [profile, systemPromptDefault]);
 
     useEffect(() => {
         cancelledRef.current = false;
-        getAvatarProfile(authFetch, agentId).then((res) => {
-            if (cancelledRef.current || !res.success || !res.data) return;
-            setAvatarId(res.data.avatarId || '');
-            setVoiceId(res.data.voiceId || '');
-            setDisplayName(res.data.displayName || '');
-            setSystemPrompt(res.data.systemPrompt || systemPromptDefault || '');
-        });
-        getAvatarOptions(authFetch).then((res) => {
+        listOptions(integrations).then((res) => {
             if (cancelledRef.current || !res.success) return;
             const list = Array.isArray((res.data?.voices as any)?.data)
                 ? (res.data!.voices as any).data
@@ -83,7 +92,7 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         return () => {
             cancelledRef.current = true;
         };
-    }, [authFetch, agentId, systemPromptDefault]);
+    }, [integrations]);
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -99,7 +108,7 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         setCreateError('');
         try {
             const imageBase64 = await fileToBase64(photoFile);
-            const res = await createAvatarFromImage(authFetch, {
+            const res = await createAvatarFromImage(integrations, {
                 imageBase64,
                 mimeType: photoFile.type || 'image/jpeg',
                 displayName: displayName || undefined,
@@ -115,25 +124,25 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         } finally {
             setCreating(false);
         }
-    }, [photoFile, consent, authFetch, displayName]);
+    }, [photoFile, consent, integrations, displayName]);
 
-    const handleSave = useCallback(async () => {
+    const handleSave = useCallback(() => {
         setSaving(true);
         setSaveStatus('idle');
         try {
-            const res = await saveAvatarProfile(authFetch, agentId, {
+            save({
                 avatarId: avatarId || null,
                 voiceId: voiceId || null,
                 systemPrompt: systemPrompt || null,
                 displayName: displayName || null,
             });
-            setSaveStatus(res.success ? 'saved' : 'error');
+            setSaveStatus('saved');
         } catch {
             setSaveStatus('error');
         } finally {
             setSaving(false);
         }
-    }, [authFetch, agentId, avatarId, voiceId, systemPrompt, displayName]);
+    }, [save, avatarId, voiceId, systemPrompt, displayName]);
 
     return (
         <div className="avatar-setup-panel">

@@ -13,6 +13,7 @@ import {
     Brain,
     Network,
     Users,
+    Video,
     Waves,
     Map,
     Hammer,
@@ -76,6 +77,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { TTS_VOICE_CATALOG, HUMANIZE_PREFIX, speakText } from '../../lib/ttsVoices';
 import { buildContextWarning, sumTokens } from '../../lib/contextWindow';
+import AvatarHarness from '../AvatarHarness/AvatarHarness';
 import {
     dreamStore,
     dreamUserIdHolder,
@@ -421,6 +423,10 @@ export default function StellaAgent() {
     });
     const honchoLearnRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [honchoLearnStats, setHonchoLearnStats] = useState({ captured: 0, lastCapture: '' });
+    // Avatar toggle (plan 040) — mounts <AvatarHarness agentId="stella" />
+    // above the chat when enabled. No password gate here (unlike ARA's
+    // legacy Anam block) — Stella's chat logic is untouched by this toggle.
+    const [avatarPanelOpen, setAvatarPanelOpen] = useState(false);
     // Extended state for full platform
     const [honchoPeers, setHonchoPeers] = useState<any[]>([]);
     const [honchoSessions, setHonchoSessions] = useState<any[]>([]);
@@ -1588,7 +1594,29 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                 {version && <span className="stella__version">v{version}</span>}
                 {healthMs !== null && status === 'online' && <span className="stella__latency">{healthMs}ms</span>}
                 {pid && <span className="stella__pid">PID {pid}</span>}
+                {/* Avatar toggle (plan 040) — mounts AvatarHarness above the chat. */}
+                <button
+                    className={`stella__avatar-toggle ${avatarPanelOpen ? 'stella__avatar-toggle--active' : ''}`}
+                    onClick={() => setAvatarPanelOpen(v => !v)}
+                    title={avatarPanelOpen ? 'Hide avatar' : 'Show avatar'}
+                    aria-label={avatarPanelOpen ? 'Hide avatar' : 'Show avatar'}
+                    aria-pressed={avatarPanelOpen}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: avatarPanelOpen ? 'var(--accent, #D6FE51)' : 'inherit', display: 'inline-flex', alignItems: 'center' }}
+                >
+                    <Video size={15} aria-hidden />
+                </button>
             </div>
+
+            {/* Avatar Panel (plan 040) — provider-agnostic AvatarHarness,
+                mounted above the chat when toggled on. Stella's own chat
+                logic is untouched; this is purely additive. */}
+            {avatarPanelOpen && (
+                <AvatarHarness
+                    agentId="stella"
+                    size="compact"
+                    systemPromptDefault="You are Stella, a personal AI assistant integrated into the Dwellium workspace. Be warm, concise, and proactive."
+                />
+            )}
 
             {/* Offline Banner — wording calls out the missing service so the
                 operator knows this isn't a transient hiccup but a setup gap.

@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'r
 import { Sparkles, X, Save, RefreshCw, Undo2 } from 'lucide-react';
 import { useTheme, THEMES, CUSTOM_TOKENS_KEY, applyAccentReset } from '../../context/ThemeContext';
 import { halocronOsStore } from '../../lib/halocronOsStore';
+import { fluidOsStore } from '../../lib/fluidOsStore';
 import { useWindows } from '../../context/WindowContext';
 import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
@@ -65,6 +66,7 @@ interface CalendarEvent {
 export default function ControlPanel() {
     const { theme, accentColor, setTheme, setAccentColor } = useTheme();
     const hosState = useSyncExternalStore(halocronOsStore.subscribe, halocronOsStore.getSnapshot, halocronOsStore.getServerSnapshot);
+    const fosState = useSyncExternalStore(fluidOsStore.subscribe, fluidOsStore.getSnapshot, fluidOsStore.getServerSnapshot);
     const [showImport, setShowImport] = useState(false);
     const [importText, setImportText] = useState('');
     const [editMsg, setEditMsg] = useState('');
@@ -240,20 +242,25 @@ export default function ControlPanel() {
                 <h3 className="cp-section__title">Appearance</h3>
 
                 <div className="cp-field">
-                    <label className="cp-label">Interface Layout — {hosState.enabled ? 'Holocron OS' : 'Classic desktop'}</label>
+                    <label className="cp-label">Interface Layout — {fosState.enabled ? 'Fluid OS' : hosState.enabled ? 'Holocron OS' : 'Classic desktop'}</label>
                     <div style={{ display: 'inline-flex', border: '1px solid var(--border-default, rgba(255,255,255,0.12))', borderRadius: 9, overflow: 'hidden' }}>
                         <button
                             type="button"
-                            onClick={() => halocronOsStore.setEnabled(false)}
-                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: !hosState.enabled ? 600 : 400, background: !hosState.enabled ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent', color: !hosState.enabled ? 'var(--text-primary, #fff)' : 'var(--text-secondary)', border: 'none' }}
+                            onClick={() => { halocronOsStore.setEnabled(false); fluidOsStore.setEnabled(false); }}
+                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: (!hosState.enabled && !fosState.enabled) ? 600 : 400, background: (!hosState.enabled && !fosState.enabled) ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent', color: (!hosState.enabled && !fosState.enabled) ? 'var(--text-primary, #fff)' : 'var(--text-secondary)', border: 'none' }}
                         >Classic desktop</button>
                         <button
                             type="button"
-                            onClick={() => halocronOsStore.setEnabled(true)}
+                            onClick={() => { halocronOsStore.setEnabled(true); fluidOsStore.setEnabled(false); }}
                             style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: hosState.enabled ? 600 : 400, background: hosState.enabled ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent', color: hosState.enabled ? 'var(--text-primary, #fff)' : 'var(--text-secondary)', border: 'none' }}
                         >Holocron OS</button>
+                        <button
+                            type="button"
+                            onClick={() => { fluidOsStore.setEnabled(true); halocronOsStore.setEnabled(false); }}
+                            style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: fosState.enabled ? 600 : 400, background: fosState.enabled ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent', color: fosState.enabled ? 'var(--text-primary, #fff)' : 'var(--text-secondary)', border: 'none' }}
+                        >Fluid OS</button>
                     </div>
-                    <div style={{ fontSize: 11, opacity: 0.6, marginTop: 6 }}>Same widgets, spaces and memory — two layouts. The OS shell launches every widget from one archive.</div>
+                    <div style={{ fontSize: 11, opacity: 0.6, marginTop: 6 }}>Same widgets, spaces and memory — three layouts. Each shell launches every widget from one archive.</div>
                 </div>
 
                 <div className="cp-field">

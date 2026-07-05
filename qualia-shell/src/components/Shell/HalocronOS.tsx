@@ -21,6 +21,7 @@ import { Brain, ChevronLeft, ChevronRight, Columns2, Columns3, Grid2X2, Maximize
 import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
 import { getIcon } from '../Sidebar/iconMap';
 import { halocronOsStore, type HalocronOsState } from '../../lib/halocronOsStore';
+import { fluidOsStore } from '../../lib/fluidOsStore';
 import WidgetErrorBoundary from '../Window/WidgetErrorBoundary';
 // KG_AGENTS is a plain data array, imported statically from its own tiny module
 // so the heavy KG component can be lazy below (a default-only React.lazy can't
@@ -758,12 +759,13 @@ export default function HalocronOS() {
                     {nav === 'settings' && (
                         <>
                             <h1 className="hos-h">Settings</h1>
-                            <p className="hos-sub">Same Dwellium, two layouts. Switch the whole shell here.</p>
+                            <p className="hos-sub">Same Dwellium, three layouts. Switch the whole shell here.</p>
                             <div className="hos-card hos-layout-toggle">
                                 <div className="hos-card__cap">INTERFACE LAYOUT</div>
                                 <div className="hos-seg">
-                                    <button type="button" onClick={() => halocronOsStore.setEnabled(false)}>Classic desktop</button>
+                                    <button type="button" onClick={() => { halocronOsStore.setEnabled(false); fluidOsStore.setEnabled(false); }}>Classic desktop</button>
                                     <button type="button" className="on">Holocron OS</button>
+                                    <button type="button" onClick={() => { fluidOsStore.setEnabled(true); halocronOsStore.setEnabled(false); }}>Fluid OS</button>
                                 </div>
                                 <p className="hos-note">Same windows, widgets, spaces and memory — reskinned and re-navigated. Toggle anytime; nothing is lost.</p>
                             </div>

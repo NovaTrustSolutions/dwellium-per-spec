@@ -1,37 +1,52 @@
 /**
  * AvatarHarness — the ONE reusable interactive-avatar component
- * (plan 040, reworked backendless in plan 041).
+ * (plan 040, reworked backendless in plan 041; plan 042 makes the keyless
+ * local photo-avatar provider the DEFAULT, Anam an optional upgrade).
  *
  * Any agent gets a live, photo-derived avatar by mounting:
  *   <AvatarHarness agentId="ara" />
  *   <AvatarHarness agentId="stella" systemPromptDefault="..." />
  *
- * Consolidates the Anam session/stream logic previously duplicated inside
- * ARAConsole.tsx into a single provider-agnostic harness (AnamAdapter is the
- * only current AvatarProviderAdapter implementation — see AnamAdapter.ts).
+ * Consolidates the avatar session/render logic previously duplicated inside
+ * ARAConsole.tsx into a single provider-agnostic harness. Two current
+ * `AvatarProviderAdapter` implementations (see `providerTypes.ts`):
+ *   - `LocalPhotoAvatarAdapter` (plan 042, DEFAULT) — zero API keys, canvas
+ *     talking-head warped from an uploaded photo, browser speechSynthesis,
+ *     brain = the user's own configured LLM via `llmClient`.
+ *   - `AnamAdapter` (plan 040/041) — neural video from Anam, requires the
+ *     user's own Anam vault key. Optional upgrade only — never mentioned in
+ *     the UI unless a key already exists in the vault.
  *
- * FULLY BACKENDLESS (plan 041): the harness reads the Anam key from the
- * user's own per-user integrations vault (`useIntegrations()`, the same vault
- * that holds Anthropic/OpenAI/etc. keys) and calls `avatarClient.ts`, which
- * talks to `api.anam.ai` directly from the browser. There is no backend
- * "configured" check anymore — "unconfigured" now means "no Anam key in your
- * vault", with a CTA that opens the Control Panel's API-Keys section (the
- * same `dwellium:open-widget` bus every other "open Settings" affordance in
- * this app uses).
+ * FULLY BACKENDLESS: both providers talk directly from the browser (Anam to
+ * api.anam.ai using the user's own vault key via `avatarClient.ts`; Local to
+ * nothing at all — no network call in its render/speech path). There is no
+ * "unconfigured" state for the local provider — it's live the moment a photo
+ * exists. The Anam "add a key" CTA only ever shows if this agent's profile
+ * has `provider === 'anam'` (which can only happen if the user explicitly
+ * chose Anam in the setup panel — gated there behind an existing vault key).
  *
- * States: unconfigured (no vault key -> CTA opens Settings) -> idle ->
- * connecting -> live (video + mic/mute/interrupt/stop) -> error. Session
- * lifecycle ALWAYS tears down on unmount (stop streams, close client) — this
- * repo has a history of unmount-leak findings, so the cleanup function is the
- * single place disconnect() is called from.
+ * Harness states:
+ *   - Local (default): `no-photo` (CTA -> setup panel) -> `live` (canvas
+ *     animating immediately, idle life even before any speech) -> `error`
+ *     (photo/landmark failure).
+ *   - Anam (opt-in only): `unconfigured` (no vault key -> CTA opens
+ *     Settings) -> `idle` -> `connecting` -> `live` (video +
+ *     mic/mute/interrupt/stop) -> `error`.
+ *
+ * Session lifecycle ALWAYS tears down on unmount (rAF/streams/speech/mic) —
+ * this repo has a history of unmount-leak findings, so the cleanup function
+ * is the single place disconnect() is called from.
  */
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Video, VideoOff, Mic, MicOff, Square, Loader2, TriangleAlert, Settings } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { getConfigured, createSessionToken, type PersonaConfigInput } from '../../lib/avatarClient';
-import { getAvatarProfile } from '../../lib/avatarProfilesStore';
-import { AnamAdapter, type AvatarConnectionState } from './AnamAdapter';
+import { getAvatarProfile, type AvatarProfile } from '../../lib/avatarProfilesStore';
+import { hasActiveLlm, callLlm } from '../../lib/llmClient';
+import { AnamAdapter } from './AnamAdapter';
+import { LocalPhotoAvatarAdapter } from './LocalPhotoAvatarAdapter';
+import type { AvatarConnectionState, AvatarProviderAdapter } from './providerTypes';
 import AvatarSetupPanel from './AvatarSetupPanel';
 import './AvatarHarness.css';
 
@@ -57,32 +72,61 @@ export interface AvatarHarnessHandle {
     isLive(): boolean;
 }
 
-type HarnessState = 'unconfigured' | 'idle' | 'connecting' | 'live' | 'error';
+type HarnessState = 'no-photo' | 'unconfigured' | 'idle' | 'connecting' | 'live' | 'error';
 
 /** Open the Control Panel's API-Keys section — same bus every other "open Settings" CTA uses. */
 function openApiKeysSettings(): void {
     window.dispatchEvent(new CustomEvent('dwellium:open-widget', { detail: { widgetId: 'control-panel', label: 'Settings' } }));
 }
 
+/** Fixed friendly line spoken (still animated) when no LLM key is configured — plan 042 no-key fallback. */
+function noLlmFallbackLine(): string {
+    return "I don't have a language model connected yet — add one in Settings and I'll be able to actually chat with you. I can still see and hear you in the meantime.";
+}
+
+/** Which concrete adapter a profile resolves to. Missing profile (brand-new agent) defaults to local. */
+function resolveProvider(profile: AvatarProfile | null): 'local' | 'anam' {
+    return profile?.provider === 'anam' ? 'anam' : 'local';
+}
+
 function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHarnessProps, ref: React.Ref<AvatarHarnessHandle>) {
     const { integrations } = useIntegrations();
-    const [state, setState] = useState<HarnessState>(() => (getConfigured(integrations) ? 'idle' : 'unconfigured'));
+    const initialProfile = getAvatarProfile(agentId);
+    const initialProvider = resolveProvider(initialProfile);
+    const [provider, setProviderState] = useState<'local' | 'anam'>(initialProvider);
+    const [state, setState] = useState<HarnessState>(() => {
+        if (initialProvider === 'anam') return getConfigured(integrations) ? 'idle' : 'unconfigured';
+        // NOT 'live' yet even if a photo exists — no adapter has connected
+        // to the canvas at this point. The mount-time auto-connect effect
+        // below does the actual connectLocal() work and flips this to
+        // 'live' once the (mocked or real) adapter emits 'connected'.
+        return initialProfile?.photoDataUrl ? 'connecting' : 'no-photo';
+    });
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [muted, setMuted] = useState(false);
     const [setupOpen, setSetupOpen] = useState(false);
+    const [listening, setListening] = useState(false);
+    const [chatInput, setChatInput] = useState('');
 
-    const adapterRef = useRef<AnamAdapter | null>(null);
+    const adapterRef = useRef<AvatarProviderAdapter | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const videoElementId = `avatar-harness-video-${agentId}`;
     const cancelledRef = useRef(false);
+    const historyRef = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
 
-    // Vault key presence drives the unconfigured/idle split — no network call
-    // (getConfigured only checks the in-memory bundle). Re-derive whenever the
+    // Vault key presence drives the unconfigured/idle split for Anam ONLY —
+    // no network call (getConfigured only checks the in-memory bundle).
+    // Local mode never depends on the vault, so it's excluded from this
+    // effect entirely (re-deriving 'live' vs 'no-photo' from vault changes
+    // would be a no-op anyway, but skipping it also avoids yanking a live
+    // local session out from under itself). Re-derive whenever the
     // bundle changes (e.g., the user just saved a key in Settings) so the
     // harness flips out of the unconfigured state without a remount.
     useEffect(() => {
+        if (provider !== 'anam') return;
         if (state === 'connecting' || state === 'live') return; // don't yank the rug mid-session
         setState(getConfigured(integrations) ? 'idle' : 'unconfigured');
-    }, [integrations, state]);
+    }, [integrations, state, provider]);
 
     const teardown = useCallback(async () => {
         const adapter = adapterRef.current;
@@ -92,7 +136,7 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
         }
     }, []);
 
-    const connect = useCallback(async () => {
+    const connectAnam = useCallback(async () => {
         setErrorMessage('');
         setState('connecting');
 
@@ -129,11 +173,122 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
         await adapter.connect(tokenRes.data.sessionToken, videoElementId);
     }, [integrations, agentId, systemPromptDefault, videoElementId]);
 
+    const connectLocal = useCallback(async () => {
+        const canvas = canvasRef.current;
+        const profile = getAvatarProfile(agentId);
+        if (!canvas || !profile?.photoDataUrl) {
+            setState('no-photo');
+            return;
+        }
+
+        setErrorMessage('');
+        setState('connecting');
+
+        const adapter = new LocalPhotoAvatarAdapter();
+        adapter.selectedVoiceURI = profile.browserVoiceURI || null;
+        adapterRef.current = adapter;
+        adapter.onStateChange((next: AvatarConnectionState, detail?: string) => {
+            if (cancelledRef.current) return;
+            if (next === 'connected') setState('live');
+            else if (next === 'error') {
+                setState('error');
+                setErrorMessage(detail || 'Avatar connection failed.');
+            } else if (next === 'disconnected') {
+                setState('no-photo');
+            }
+        });
+
+        await adapter.connect(profile, canvas);
+    }, [agentId]);
+
+    const connect = useCallback(async () => {
+        if (provider === 'anam') await connectAnam();
+        else await connectLocal();
+    }, [provider, connectAnam, connectLocal]);
+
     const stop = useCallback(async () => {
         await teardown();
-        setState('idle');
+        setState(provider === 'anam' ? 'idle' : 'no-photo');
         setMuted(false);
-    }, [teardown]);
+    }, [teardown, provider]);
+
+    // Local mode auto-connects the moment a photo exists — no manual "Start"
+    // step (plan 042: "canvas animating immediately"). Re-runs whenever the
+    // agent's provider/photo changes (e.g., just saved in the setup panel).
+    // Gated on `adapterRef.current` (an actual attached adapter), NOT on
+    // React `state` — `state` starts as 'connecting' on the very first
+    // render when a photo already exists, which would make a state-based
+    // guard skip the real connectLocal() call that's supposed to produce
+    // the adapter in the first place.
+    useEffect(() => {
+        if (provider !== 'local') return;
+        const profile = getAvatarProfile(agentId);
+        if (!profile?.photoDataUrl) {
+            setState('no-photo');
+            return;
+        }
+        if (adapterRef.current) return; // already connected/connecting
+        void connectLocal();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [provider, agentId, setupOpen]);
+
+    // Mic transcript -> callLlm(profile.systemPrompt) -> adapter.talk(reply).
+    // If no LLM key is configured, speak the fixed fallback line — the
+    // avatar keeps animating regardless (plan 042: "AVATAR STILL ANIMATES").
+    const sendToLlmAndSpeak = useCallback(async (userText: string) => {
+        const profile = getAvatarProfile(agentId);
+        historyRef.current.push({ role: 'user', content: userText });
+        historyRef.current = historyRef.current.slice(-10);
+
+        if (!hasActiveLlm(integrations.llm)) {
+            const fallback = noLlmFallbackLine();
+            await adapterRef.current?.talk(fallback);
+            return;
+        }
+
+        try {
+            const rollingHistory = historyRef.current
+                .map((turn) => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content}`)
+                .join('\n');
+            const res = await callLlm(
+                {
+                    prompt: `${rollingHistory}\nAssistant:`,
+                    systemPrompt: profile?.systemPrompt || systemPromptDefault || undefined,
+                },
+                integrations.llm,
+            );
+            const reply = res?.text?.trim();
+            if (reply) {
+                historyRef.current.push({ role: 'assistant', content: reply });
+                historyRef.current = historyRef.current.slice(-10);
+                await adapterRef.current?.talk(reply);
+            }
+        } catch {
+            await adapterRef.current?.talk("Sorry, I had trouble reaching my language model just now.");
+        }
+    }, [agentId, integrations.llm, systemPromptDefault]);
+
+    const sendChatInput = useCallback(async () => {
+        const text = chatInput.trim();
+        if (!text) return;
+        setChatInput('');
+        await sendToLlmAndSpeak(text);
+    }, [chatInput, sendToLlmAndSpeak]);
+
+    const toggleListening = useCallback(() => {
+        const adapter = adapterRef.current;
+        if (!(adapter instanceof LocalPhotoAvatarAdapter)) return;
+        if (listening) {
+            adapter.stopListening();
+            setListening(false);
+            return;
+        }
+        const started = adapter.startListening((transcript) => {
+            setListening(false);
+            void sendToLlmAndSpeak(transcript);
+        });
+        setListening(started);
+    }, [listening, sendToLlmAndSpeak]);
 
     const toggleMute = useCallback(() => {
         setMuted((prev) => {
@@ -169,6 +324,14 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
         };
     }, []);
 
+    const onSetupClose = useCallback(() => {
+        setSetupOpen(false);
+        // Setup may have just switched provider or saved a new photo — re-sync
+        // local state from the freshly-saved profile without a remount.
+        const profile = getAvatarProfile(agentId);
+        setProviderState(resolveProvider(profile));
+    }, [agentId]);
+
     return (
         <div className={`avatar-harness avatar-harness--${size}`} data-agent-id={agentId}>
             {state === 'unconfigured' && (
@@ -184,7 +347,20 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
                 </div>
             )}
 
-            {state !== 'unconfigured' && (
+            {state === 'no-photo' && (
+                <div className="avatar-harness__cta">
+                    <Video size={18} aria-hidden />
+                    <span>Upload a photo to bring this agent's avatar to life — no API key needed.</span>
+                    <button
+                        className="avatar-harness__btn avatar-harness__btn--primary"
+                        onClick={() => setSetupOpen(true)}
+                    >
+                        Add a photo
+                    </button>
+                </div>
+            )}
+
+            {state !== 'unconfigured' && state !== 'no-photo' && (
                 <>
                     <div className="avatar-harness__toolbar">
                         {state === 'idle' && (
@@ -199,9 +375,20 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
                         )}
                         {state === 'live' && (
                             <>
-                                <button className="avatar-harness__btn" onClick={toggleMute} aria-label={muted ? 'Unmute microphone' : 'Mute microphone'}>
-                                    {muted ? <MicOff size={14} aria-hidden /> : <Mic size={14} aria-hidden />}
-                                </button>
+                                {provider === 'local' && (
+                                    <button
+                                        className="avatar-harness__btn"
+                                        onClick={toggleListening}
+                                        aria-label={listening ? 'Stop listening' : 'Start listening'}
+                                    >
+                                        {listening ? <MicOff size={14} aria-hidden /> : <Mic size={14} aria-hidden />}
+                                    </button>
+                                )}
+                                {provider === 'anam' && (
+                                    <button className="avatar-harness__btn" onClick={toggleMute} aria-label={muted ? 'Unmute microphone' : 'Mute microphone'}>
+                                        {muted ? <MicOff size={14} aria-hidden /> : <Mic size={14} aria-hidden />}
+                                    </button>
+                                )}
                                 <button className="avatar-harness__btn" onClick={interrupt} aria-label="Interrupt avatar">
                                     Interrupt
                                 </button>
@@ -228,28 +415,60 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
                         </div>
                     )}
 
-                    <div className="avatar-harness__video-wrap" data-visible={state === 'live' || state === 'connecting'}>
-                        <video
-                            id={videoElementId}
-                            className="avatar-harness__video"
-                            autoPlay
-                            playsInline
-                        />
-                        {state !== 'live' && (
-                            <div className="avatar-harness__video-placeholder">
-                                <VideoOff size={20} aria-hidden />
-                            </div>
-                        )}
-                    </div>
+                    {provider === 'anam' ? (
+                        <div className="avatar-harness__video-wrap" data-visible={state === 'live' || state === 'connecting'}>
+                            <video
+                                id={videoElementId}
+                                className="avatar-harness__video"
+                                autoPlay
+                                playsInline
+                            />
+                            {state !== 'live' && (
+                                <div className="avatar-harness__video-placeholder">
+                                    <VideoOff size={20} aria-hidden />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="avatar-harness__video-wrap" data-visible={state === 'live' || state === 'connecting'}>
+                            <canvas
+                                ref={canvasRef}
+                                className="avatar-harness__video"
+                                aria-label={`${agentId} animated avatar`}
+                            />
+                            {state !== 'live' && (
+                                <div className="avatar-harness__video-placeholder">
+                                    <VideoOff size={20} aria-hidden />
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                    {setupOpen && (
-                        <AvatarSetupPanel
-                            agentId={agentId}
-                            systemPromptDefault={systemPromptDefault}
-                            onClose={() => setSetupOpen(false)}
-                        />
+                    {provider === 'local' && state === 'live' && (
+                        <div className="avatar-harness__chat-row">
+                            <input
+                                type="text"
+                                className="avatar-harness__chat-input"
+                                placeholder="Type a message…"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') void sendChatInput(); }}
+                                aria-label="Message the avatar"
+                            />
+                            <button className="avatar-harness__btn avatar-harness__btn--primary" onClick={() => void sendChatInput()}>
+                                Send
+                            </button>
+                        </div>
                     )}
                 </>
+            )}
+
+            {setupOpen && (
+                <AvatarSetupPanel
+                    agentId={agentId}
+                    systemPromptDefault={systemPromptDefault}
+                    onClose={onSetupClose}
+                />
             )}
         </div>
     );

@@ -1,8 +1,9 @@
 /**
- * AnamAdapter — the only current implementation of AvatarProviderAdapter
- * (plan 040). Wraps `@anam-ai/js-sdk@4.10.0`'s `createClient` / `AnamClient`
- * behind a minimal provider-agnostic seam so a second avatar provider could
- * be added later without touching AvatarHarness.
+ * AnamAdapter — the Anam implementation of AvatarProviderAdapter (plan 040).
+ * Wraps `@anam-ai/js-sdk@4.10.0`'s `createClient` / `AnamClient` behind the
+ * shared provider-agnostic seam (interface now lives in `providerTypes.ts`,
+ * extracted at plan 042 so `LocalPhotoAvatarAdapter` can implement the same
+ * seam without inheriting Anam's video-element-specific connect signature).
  *
  * SDK surface pinned from the installed .d.ts
  * (node_modules/@anam-ai/js-sdk/dist/module/{index,AnamClient}.d.ts):
@@ -19,27 +20,9 @@
  *   - `AnamEvent.CONNECTION_ESTABLISHED` / `CONNECTION_CLOSED` / `SESSION_READY`
  */
 
-export type AvatarConnectionState =
-    | 'idle'
-    | 'connecting'
-    | 'connected'
-    | 'disconnected'
-    | 'error';
+import type { AvatarProviderAdapter, AvatarConnectionState } from './providerTypes';
 
-export interface AvatarProviderAdapter {
-    /** Connect using a backend-issued session token and start streaming to the given video element. */
-    connect(sessionToken: string, videoElementId: string): Promise<void>;
-    /** Tear down the session and release all resources (WebRTC streams, listeners). Idempotent. */
-    disconnect(): Promise<void>;
-    /** Mute/unmute the user's microphone input. */
-    mute(muted: boolean): void;
-    /** Interrupt the persona mid-speech (barge-in). */
-    interrupt(): void;
-    /** Make the persona speak the given text (e.g. an agent's chat reply). No-op if not connected. */
-    talk(content: string): Promise<void>;
-    /** Subscribe to connection lifecycle changes. Returns an unsubscribe function. */
-    onStateChange(cb: (state: AvatarConnectionState, detail?: string) => void): () => void;
-}
+export type { AvatarConnectionState } from './providerTypes';
 
 export class AnamAdapter implements AvatarProviderAdapter {
     private client: any = null;

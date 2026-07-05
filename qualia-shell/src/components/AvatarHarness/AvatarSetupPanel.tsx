@@ -1,15 +1,23 @@
 /**
- * AvatarSetupPanel — per-agent avatar setup (plan 040, reworked backendless
- * in plan 041).
+ * AvatarSetupPanel — per-agent avatar setup (plan 040/041 Anam flow;
+ * plan 042 adds the keyless local photo-avatar path as the DEFAULT).
  *
- * Upload a photo -> REQUIRED likeness-consent checkbox -> create a custom
- * Anam avatar from it (browser-direct to api.anam.ai via avatarClient, using
- * the vault key) -> pick a voice -> optional system-prompt override -> Save
- * (persisted to the LOCAL per-user `avatarProfilesStore`, One-Save-synced —
- * no backend route). The consent checkbox is a hard gate: the Create button
- * stays disabled until it is checked, AND `avatarClient.createAvatarFromImage`
- * independently re-validates `consent === true`, so the requirement can never
- * be bypassed by calling the function directly.
+ * Provider segment ('Local (built-in)' | 'Anam (your key)') renders ONLY
+ * when an Anam vault key exists — with no key, this panel never mentions
+ * Anam anywhere, matching the plan's "no Anam mention in the keyless flow"
+ * requirement. The consent checkbox is required for BOTH providers (likeness
+ * consent applies to the local canvas-warp path exactly as much as to
+ * creating a remote Anam avatar).
+ *
+ * Local path: upload a photo -> consent -> downscale client-side (longest
+ * edge 768px, JPEG ~0.85 — `imageDownscale.ts`) -> store `photoDataUrl` on
+ * the profile -> pick a browser voice (`speechSynthesis.getVoices()`,
+ * async-safe: `voiceschanged` may fire after the initial empty list) ->
+ * optional system-prompt override -> Save. No network call at all.
+ *
+ * Anam path: unchanged from plan 041 — upload a photo -> consent -> create a
+ * custom Anam avatar from it (browser-direct to api.anam.ai) -> pick an Anam
+ * voice -> Save.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -18,8 +26,10 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import {
     createAvatarFromImage,
     listOptions,
+    getConfigured as getAnamConfigured,
 } from '../../lib/avatarClient';
-import { useAvatarProfile } from '../../lib/avatarProfilesStore';
+import { useAvatarProfile, type AvatarProviderKind } from '../../lib/avatarProfilesStore';
+import { downscaleImageDataUrl, fileToDataUrl } from '../../lib/imageDownscale';
 import './AvatarSetupPanel.css';
 
 export interface AvatarSetupPanelProps {
@@ -42,9 +52,30 @@ function fileToBase64(file: File): Promise<string> {
     });
 }
 
+/** Async-safe browser voice list — `getVoices()` can return [] before `voiceschanged` fires. */
+function useBrowserVoices(): SpeechSynthesisVoice[] {
+    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => {
+        if (typeof window === 'undefined' || !window.speechSynthesis) return [];
+        return window.speechSynthesis.getVoices();
+    });
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !window.speechSynthesis) return;
+        const update = () => setVoices(window.speechSynthesis.getVoices());
+        update();
+        window.speechSynthesis.addEventListener?.('voiceschanged', update);
+        return () => {
+            window.speechSynthesis.removeEventListener?.('voiceschanged', update);
+        };
+    }, []);
+
+    return voices;
+}
+
 export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose }: AvatarSetupPanelProps) {
     const { integrations } = useIntegrations();
     const { profile, save } = useAvatarProfile(agentId);
+    const anamConfigured = getAnamConfigured(integrations);
 
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string>('');
@@ -52,11 +83,15 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState<string>('');
 
+    const [provider, setProvider] = useState<AvatarProviderKind>('local');
     const [avatarId, setAvatarId] = useState<string>('');
     const [voiceId, setVoiceId] = useState<string>('');
+    const [browserVoiceURI, setBrowserVoiceURI] = useState<string>('');
+    const [photoDataUrl, setPhotoDataUrl] = useState<string>('');
     const [displayName, setDisplayName] = useState<string>('');
     const [systemPrompt, setSystemPrompt] = useState<string>(systemPromptDefault || '');
     const [voices, setVoices] = useState<Array<{ id: string; name?: string }>>([]);
+    const browserVoices = useBrowserVoices();
 
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
@@ -71,14 +106,20 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         if (hydratedRef.current) return;
         hydratedRef.current = true;
         if (profile) {
+            setProvider(profile.provider ?? 'local');
             setAvatarId(profile.avatarId || '');
             setVoiceId(profile.voiceId || '');
+            setBrowserVoiceURI(profile.browserVoiceURI || '');
+            setPhotoDataUrl(profile.photoDataUrl || '');
             setDisplayName(profile.displayName || '');
             setSystemPrompt(profile.systemPrompt || systemPromptDefault || '');
         }
     }, [profile, systemPromptDefault]);
 
+    // Anam voice list — only fetched when the Anam path is actually selected
+    // (no point hitting the network for a provider the user isn't using).
     useEffect(() => {
+        if (provider !== 'anam') return;
         cancelledRef.current = false;
         listOptions(integrations).then((res) => {
             if (cancelledRef.current || !res.success) return;
@@ -92,7 +133,7 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         return () => {
             cancelledRef.current = true;
         };
-    }, [integrations]);
+    }, [integrations, provider]);
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -101,6 +142,28 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         setPhotoPreview(URL.createObjectURL(file));
         setCreateError('');
     }, []);
+
+    // Local path: downscale the uploaded photo client-side and stash it as a
+    // data URL on save (no network call — the whole point of this provider).
+    useEffect(() => {
+        if (provider !== 'local' || !photoFile) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const rawDataUrl = await fileToDataUrl(photoFile);
+                if (cancelled) return;
+                const downscaled = await downscaleImageDataUrl(rawDataUrl);
+                if (cancelled) return;
+                setPhotoDataUrl(downscaled);
+            } catch {
+                // best-effort — leave photoDataUrl unset; Save stays disabled
+                // by the consent+photo gate below until a photo is ready.
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [provider, photoFile]);
 
     const handleCreate = useCallback(async () => {
         if (!photoFile || !consent) return;
@@ -126,13 +189,19 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         }
     }, [photoFile, consent, integrations, displayName]);
 
+    const canSaveLocal = provider === 'local' && consent && !!photoDataUrl;
+    const canSaveAnam = provider === 'anam';
+
     const handleSave = useCallback(() => {
         setSaving(true);
         setSaveStatus('idle');
         try {
             save({
-                avatarId: avatarId || null,
-                voiceId: voiceId || null,
+                provider,
+                avatarId: provider === 'anam' ? (avatarId || null) : null,
+                voiceId: provider === 'anam' ? (voiceId || null) : null,
+                browserVoiceURI: provider === 'local' ? (browserVoiceURI || null) : null,
+                photoDataUrl: provider === 'local' ? (photoDataUrl || null) : null,
                 systemPrompt: systemPrompt || null,
                 displayName: displayName || null,
             });
@@ -142,7 +211,13 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         } finally {
             setSaving(false);
         }
-    }, [save, avatarId, voiceId, systemPrompt, displayName]);
+    }, [save, provider, avatarId, voiceId, browserVoiceURI, photoDataUrl, systemPrompt, displayName]);
+
+    // Local path can save once a photo is downscaled+consented, OR if the
+    // agent already has a saved photo from a previous session (re-saving
+    // display name/system prompt without re-uploading a photo).
+    const localSaveBlocked = provider === 'local' && !canSaveLocal && !profile?.photoDataUrl;
+    const anamSaveBlocked = provider === 'anam' && !canSaveAnam;
 
     return (
         <div className="avatar-setup-panel">
@@ -152,6 +227,21 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
                     <X size={14} aria-hidden />
                 </button>
             </div>
+
+            {anamConfigured && (
+                <div className="avatar-setup-panel__section">
+                    <label className="avatar-setup-panel__label" htmlFor={`avatar-provider-${agentId}`}>Provider</label>
+                    <select
+                        id={`avatar-provider-${agentId}`}
+                        value={provider}
+                        onChange={(e) => setProvider(e.target.value as AvatarProviderKind)}
+                        className="avatar-setup-panel__select"
+                    >
+                        <option value="local">Local (built-in)</option>
+                        <option value="anam">Anam (your key)</option>
+                    </select>
+                </div>
+            )}
 
             <div className="avatar-setup-panel__section">
                 <label className="avatar-setup-panel__label" htmlFor={`avatar-photo-input-${agentId}`}>Photo</label>
@@ -163,8 +253,8 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
                     onChange={handleFileChange}
                     className="avatar-setup-panel__file-input"
                 />
-                {photoPreview && (
-                    <img src={photoPreview} alt="Selected photo preview" className="avatar-setup-panel__preview" />
+                {(photoPreview || photoDataUrl) && (
+                    <img src={photoPreview || photoDataUrl} alt="Selected photo preview" className="avatar-setup-panel__preview" />
                 )}
             </div>
 
@@ -177,31 +267,52 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
                 I have the right to use this person's likeness
             </label>
 
-            <button
-                className="avatar-setup-panel__btn avatar-setup-panel__btn--primary"
-                onClick={handleCreate}
-                disabled={!photoFile || !consent || creating}
-            >
-                {creating ? <><Loader2 size={14} className="avatar-setup-panel__spin" aria-hidden /> Creating…</> : <><Upload size={14} aria-hidden /> Create avatar</>}
-            </button>
+            {provider === 'anam' && (
+                <>
+                    <button
+                        className="avatar-setup-panel__btn avatar-setup-panel__btn--primary"
+                        onClick={handleCreate}
+                        disabled={!photoFile || !consent || creating}
+                    >
+                        {creating ? <><Loader2 size={14} className="avatar-setup-panel__spin" aria-hidden /> Creating…</> : <><Upload size={14} aria-hidden /> Create avatar</>}
+                    </button>
 
-            {createError && <div className="avatar-setup-panel__error">{createError}</div>}
-            {avatarId && <div className="avatar-setup-panel__avatar-id">Avatar ID: <code>{avatarId}</code></div>}
+                    {createError && <div className="avatar-setup-panel__error">{createError}</div>}
+                    {avatarId && <div className="avatar-setup-panel__avatar-id">Avatar ID: <code>{avatarId}</code></div>}
 
-            <div className="avatar-setup-panel__section">
-                <label className="avatar-setup-panel__label" htmlFor={`avatar-voice-select-${agentId}`}>Voice</label>
-                <select
-                    id={`avatar-voice-select-${agentId}`}
-                    value={voiceId}
-                    onChange={(e) => setVoiceId(e.target.value)}
-                    className="avatar-setup-panel__select"
-                >
-                    <option value="">Default</option>
-                    {voices.map((v) => (
-                        <option key={v.id} value={v.id}>{v.name || v.id}</option>
-                    ))}
-                </select>
-            </div>
+                    <div className="avatar-setup-panel__section">
+                        <label className="avatar-setup-panel__label" htmlFor={`avatar-voice-select-${agentId}`}>Voice</label>
+                        <select
+                            id={`avatar-voice-select-${agentId}`}
+                            value={voiceId}
+                            onChange={(e) => setVoiceId(e.target.value)}
+                            className="avatar-setup-panel__select"
+                        >
+                            <option value="">Default</option>
+                            {voices.map((v) => (
+                                <option key={v.id} value={v.id}>{v.name || v.id}</option>
+                            ))}
+                        </select>
+                    </div>
+                </>
+            )}
+
+            {provider === 'local' && (
+                <div className="avatar-setup-panel__section">
+                    <label className="avatar-setup-panel__label" htmlFor={`avatar-browser-voice-select-${agentId}`}>Voice (built-in)</label>
+                    <select
+                        id={`avatar-browser-voice-select-${agentId}`}
+                        value={browserVoiceURI}
+                        onChange={(e) => setBrowserVoiceURI(e.target.value)}
+                        className="avatar-setup-panel__select"
+                    >
+                        <option value="">Browser default</option>
+                        {browserVoices.map((v) => (
+                            <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             <div className="avatar-setup-panel__section">
                 <label className="avatar-setup-panel__label" htmlFor={`avatar-display-name-${agentId}`}>Display name</label>
@@ -228,7 +339,7 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
             <button
                 className="avatar-setup-panel__btn avatar-setup-panel__btn--primary"
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || localSaveBlocked || anamSaveBlocked}
             >
                 {saving ? 'Saving…' : 'Save'}
             </button>

@@ -110,3 +110,20 @@
     justify-content: center;
     color: var(--text-tertiary, #808080);
 }
+
+.avatar-harness__chat-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.avatar-harness__chat-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    background: var(--bg-primary, #111);
+    color: var(--text-primary, #fff);
+    font-family: inherit;
+}

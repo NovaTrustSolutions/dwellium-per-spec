@@ -46,11 +46,12 @@ export function initSentry(): void {
         replaysOnErrorSampleRate: 1.0,
         // Don't send PII
         sendDefaultPii: false,
-        // Filter noisy errors
-        beforeSend(event) {
+        // Filter noisy errors. Explicit param types required since
+        // @sentry/react 9.47 (lockfile bump surfaced implicit-any here).
+        beforeSend(event: Sentry.ErrorEvent) {
             // Skip errors from browser extensions
             if (event.exception?.values?.[0]?.stacktrace?.frames?.some(
-                (f) => f.filename?.includes('chrome-extension://'),
+                (f: { filename?: string }) => f.filename?.includes('chrome-extension://'),
             )) {
                 return null;
             }
@@ -75,7 +76,7 @@ export function captureError(
 
     const err = error instanceof Error ? error : new Error(String(error));
 
-    Sentry.withScope((scope) => {
+    Sentry.withScope((scope: Sentry.Scope) => {
         if (component) scope.setTag('component', component);
         if (metadata) scope.setExtras(metadata);
         Sentry.captureException(err);

@@ -2866,3 +2866,62 @@
     flex: 0 0 auto;
     align-self: center;
 }
+
+/* ── Persona Studio panel (Anam-lab-style persona; migrated 2026-07-06) ── */
+.ara-persona-panel {
+    position: absolute;
+    top: 56px;
+    bottom: 64px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.98);
+    border: 1px solid rgba(214, 254, 81, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 56;
+    overflow: hidden;
+    animation: avatarPanelReveal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ara-persona-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(214, 254, 81, 0.1);
+    background: rgba(214, 254, 81, 0.04);
+    flex: none;
+}
+
+.ara-persona-panel-header h4 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: #e4e4e7;
+    letter-spacing: -0.2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ara-persona-panel-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.ara-persona-panel-body > * {
+    flex: 1;
+    min-width: 0;
+}
+
+.ara-persona-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #808080;
+    width: 100%;
+}

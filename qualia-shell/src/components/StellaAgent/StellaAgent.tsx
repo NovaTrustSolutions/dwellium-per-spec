@@ -2,7 +2,7 @@
  * Stella Assistant — Personal AI assistant widget for Dwellium
  * Integrates Stella (Python/AgentScope) into the Qualia shell.
  */
-import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useContext, useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore, lazy, Suspense } from 'react';
 import {
     Search,
     Trash2,
@@ -66,6 +66,7 @@ import {
     Check,
     X,
     MessageCircle,
+    Drama,
     type LucideIcon,
 } from 'lucide-react';
 import './StellaAgent.css';
@@ -213,7 +214,11 @@ interface MemoryFile {
     modified_time: string;
 }
 
-type Tab = 'chat' | 'skills' | 'memory' | 'automation' | 'mcp' | 'voice' | 'settings' | 'honcho' | 'hermes';
+type Tab = 'chat' | 'persona' | 'skills' | 'memory' | 'automation' | 'mcp' | 'voice' | 'settings' | 'honcho' | 'hermes';
+
+// Sub-component altitude → bare React.lazy per the 2-layer lazyWithReload rule
+// (chunk-load failure must not reload the page and destroy Stella's state).
+const PersonaStudio = lazy(() => import('../PersonaStudio/PersonaStudio'));
 type ConnectionStatus = 'online' | 'offline' | 'loading' | 'starting' | 'degraded';
 
 interface StellaPermissions {
@@ -282,6 +287,7 @@ const PROVIDERS = [
 
 const TAB_CONFIG: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: 'chat', label: 'Chat', icon: MessageSquare },
+    { id: 'persona', label: 'Persona', icon: Drama },
     { id: 'honcho', label: 'Honcho', icon: Brain },
     { id: 'hermes', label: 'Hermes', icon: Zap },
     { id: 'skills', label: 'Skills', icon: Puzzle },
@@ -1654,6 +1660,13 @@ Schema: { "title": "3-6 word headline", "text": "1-2 short paragraphs of reflect
                     <TriangleAlert size={14} aria-hidden /> Stella agent is degraded — it's reachable, but a health signal is impaired. Chat still works; some replies may be slower or fall back.
                     <button className="stella__retry-btn" onClick={checkStatus}>Retry</button>
                 </div>
+            )}
+
+            {/* Persona Tab — Anam-lab-style live voice persona (Persona Studio) */}
+            {tab === 'persona' && (
+                <Suspense fallback={<div className="stella__loading">Loading persona…</div>}>
+                    <PersonaStudio host="stella" />
+                </Suspense>
             )}
 
             {/* Chat Tab */}

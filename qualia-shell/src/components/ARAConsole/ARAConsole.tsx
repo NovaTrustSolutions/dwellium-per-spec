@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Mic, Square, Volume2, VolumeX, Sparkles, UserRound, SlidersHorizontal, X, ChevronUp, ChevronDown, Shield, Loader2, ThumbsUp, ThumbsDown, Send, Trash2, Paperclip, Globe, Laptop, Lock, Mars, Venus, Network, Brain, Zap, Wrench, Settings, RefreshCw, type LucideIcon } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
+import { Mic, Square, Volume2, VolumeX, Sparkles, UserRound, SlidersHorizontal, X, ChevronUp, ChevronDown, Shield, Loader2, ThumbsUp, ThumbsDown, Send, Trash2, Paperclip, Globe, Laptop, Lock, Mars, Venus, Network, Brain, Zap, Wrench, Settings, RefreshCw, Drama, type LucideIcon } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -10,6 +10,10 @@ import { matchSkill, AGENT_SKILLS, runSkillForInput } from '../../lib/agents/ski
 import { ARA_SPAWN_EVENT, consumePendingSpawn, parseSpawn, type SpawnRequest } from '../../lib/agents/spawn';
 import { parseChain, executeChain } from '../../lib/conductorChain';
 import { getSpeechRecognitionCtor, startDictation, type DictationSession } from './araDictation';
+
+// Sub-component altitude → bare React.lazy per the 2-layer lazyWithReload rule
+// (chunk-load failure must not reload the page and destroy ARA's state).
+const PersonaStudio = lazy(() => import('../PersonaStudio/PersonaStudio'));
 import { classifyIntent, recordRoutingDecision, looksActionable, consumePendingAraPrompt, ARA_PROMPT_EVENT } from '../../lib/llmRouter';
 import { detectsOpenDocRequest, getActiveScribeDoc, buildOpenDocPrompt, NO_OPEN_DOC_MESSAGE } from '../../lib/openDocContext';
 import { recordArtifact, isSubstantialOutput } from '../../lib/artifactStore';
@@ -481,6 +485,8 @@ export default function ARAConsole() {
 
     // Voice Settings state
     const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
+    // Persona Studio panel (Anam-lab-style live voice persona)
+    const [personaOpen, setPersonaOpen] = useState(false);
     const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; path: string | null }>>([
         { id: 'default', path: null }
     ]);
@@ -2449,6 +2455,15 @@ export default function ARAConsole() {
                     </button>
                 )}
                 <button
+                    className={`ara-avatar-btn ${personaOpen ? 'ara-avatar-btn--active' : ''}`}
+                    onClick={() => setPersonaOpen(v => !v)}
+                    title={personaOpen ? 'Close Persona Studio' : 'Open Persona Studio — live voice persona'}
+                    aria-label={personaOpen ? 'Close Persona Studio' : 'Open Persona Studio'}
+                    aria-pressed={personaOpen}
+                >
+                    <Drama size={16} />
+                </button>
+                <button
                     className={`ara-avatar-btn ${avatarEnabled ? 'ara-avatar-btn--active' : ''}`}
                     onClick={handleAvatarToggle}
                     title={avatarEnabled ? 'Disable AI Avatar' : 'Enable AI Avatar (requires password)'}
@@ -2671,6 +2686,23 @@ export default function ARAConsole() {
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Persona Studio Panel — Anam-lab-style persona builder + free
+                on-device talking-portrait call stage (viseme lip-sync,
+                micro-expressions, Kokoro neural TTS, whisper STT). */}
+            {personaOpen && (
+                <div className="ara-persona-panel">
+                    <div className="ara-persona-panel-header">
+                        <h4><Drama size={14} aria-hidden /> Persona Studio</h4>
+                        <button className="ara-avatar-panel-close" onClick={() => setPersonaOpen(false)} title="Close Persona Studio" aria-label="Close Persona Studio"><X size={16} /></button>
+                    </div>
+                    <div className="ara-persona-panel-body">
+                        <Suspense fallback={<div className="ara-persona-loading">Loading persona…</div>}>
+                            <PersonaStudio host="ara" />
+                        </Suspense>
                     </div>
                 </div>
             )}

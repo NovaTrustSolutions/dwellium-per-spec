@@ -1,0 +1,876 @@
+/* PersonaStudio — Anam-lab-style builder + call stage.
+   Palette follows the fey.com design-system parity arc: pure black surfaces,
+   acid lime #D6FE51 accent, WCAG-AA text tiers (see CLAUDE.md contrast notes:
+   tertiary text #808080 = 5.02:1 on composited #0c0c0c glass). */
+
+.pstudio {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    background: #0c0c0c;
+    color: #f5f5f5;
+    font-size: 13px;
+}
+
+/* ── Builder rail ─────────────────────────────────────────────────── */
+.pstudio__builder {
+    width: 320px;
+    min-width: 260px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0e0e0e;
+    min-height: 0;
+}
+
+.pstudio__tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pstudio__tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #808080;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+.pstudio__tab--active {
+    color: #f5f5f5;
+    border-bottom-color: #D6FE51;
+}
+
+.pstudio__panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+}
+
+.pstudio__section {
+    background: rgba(27, 27, 27, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pstudio__section-title {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #f5f5f5;
+}
+
+.pstudio__section-title span {
+    color: #D6FE51;
+    margin-right: 6px;
+}
+
+.pstudio__textarea,
+.pstudio__input,
+.pstudio__select {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0c0c0c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #f5f5f5;
+    font: inherit;
+    padding: 8px 10px;
+    resize: vertical;
+}
+
+.pstudio__textarea:disabled {
+    color: #808080;
+}
+
+.pstudio__textarea:focus,
+.pstudio__input:focus,
+.pstudio__select:focus {
+    outline: none;
+    border-color: #D6FE51;
+}
+
+.pstudio__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.pstudio__row-label {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #808080;
+}
+
+.pstudio__row-value {
+    color: #D6FE51;
+    font-variant-numeric: tabular-nums;
+}
+
+.pstudio__row .pstudio__select {
+    width: auto;
+    min-width: 130px;
+}
+
+.pstudio__slider {
+    flex: 1;
+    accent-color: #D6FE51;
+}
+
+.pstudio__hint {
+    margin: 0;
+    color: #808080;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+/* Toggle (Anam-style pill) */
+.pstudio__toggle {
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    position: relative;
+    cursor: pointer;
+    flex: none;
+    padding: 0;
+}
+
+.pstudio__toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #808080;
+    transition: transform 160ms ease, background 160ms ease;
+}
+
+.pstudio__toggle--on {
+    background: rgba(214, 254, 81, 0.25);
+    border-color: #D6FE51;
+}
+
+.pstudio__toggle--on .pstudio__toggle-knob {
+    transform: translateX(16px);
+    background: #D6FE51;
+}
+
+/* Avatar grid */
+.pstudio__avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.pstudio__avatar-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px;
+    background: #0c0c0c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: #f5f5f5;
+    font: inherit;
+    cursor: pointer;
+}
+
+.pstudio__avatar-card--active {
+    border-color: #D6FE51;
+    box-shadow: 0 0 0 1px #D6FE51 inset;
+}
+
+.pstudio__avatar-card-swatch {
+    width: 100%;
+    height: 42px;
+    border-radius: 6px;
+    background: radial-gradient(circle at 50% 60%, rgba(214, 254, 81, 0.7), rgba(12, 12, 12, 0.9));
+}
+
+.pstudio__avatar-card-swatch[data-theme='orb'] {
+    background: radial-gradient(circle at 50% 50%, rgba(214, 254, 81, 0.9), rgba(12, 12, 12, 1) 70%);
+}
+
+.pstudio__avatar-card-swatch[data-theme='bars'] {
+    background: repeating-linear-gradient(90deg, rgba(214, 254, 81, 0.8) 0 6px, rgba(12, 12, 12, 1) 6px 12px);
+}
+
+.pstudio__avatar-card-swatch[data-theme='waveform'] {
+    background: linear-gradient(180deg, rgba(12, 12, 12, 1) 40%, rgba(214, 254, 81, 0.8) 50%, rgba(12, 12, 12, 1) 60%);
+}
+
+/* Voice / provider / tool lists */
+.pstudio__voice-list,
+.pstudio__provider-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pstudio__voice-row,
+.pstudio__provider-row,
+.pstudio__tool-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    text-align: left;
+    padding: 8px 10px;
+    background: #0c0c0c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #f5f5f5;
+    font: inherit;
+}
+
+.pstudio__voice-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    cursor: pointer;
+}
+
+.pstudio__voice-row:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pstudio__voice-row--active,
+.pstudio__provider-row--active {
+    border-color: #D6FE51;
+}
+
+.pstudio__voice-name {
+    font-weight: 600;
+    display: block;
+}
+
+.pstudio__voice-desc {
+    display: block;
+    color: #808080;
+    font-size: 12px;
+}
+
+/* ── Stage ────────────────────────────────────────────────────────── */
+.pstudio__stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    padding: 14px;
+    gap: 10px;
+}
+
+.pstudio__frame {
+    position: relative;
+    height: 240px;
+    flex: none;
+    border-radius: 14px;
+    overflow: hidden;
+    background: radial-gradient(120% 120% at 50% 30%, #161616 0%, #0a0a0a 70%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pstudio__frame--live {
+    border-color: rgba(214, 254, 81, 0.5);
+}
+
+.pstudio__avatar-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.pstudio__frame-idle {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.pstudio__frame-initial {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: #0c0c0c;
+    background: #D6FE51;
+}
+
+.pstudio__frame-name {
+    color: #f5f5f5;
+    font-weight: 600;
+}
+
+.pstudio__frame-status {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    z-index: 2;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #D6FE51;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 999px;
+    padding: 4px 10px;
+}
+
+.pstudio__call-btn {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    border: none;
+    border-radius: 999px;
+    padding: 8px 18px;
+    font: inherit;
+    font-weight: 700;
+    color: #0c0c0c;
+    background: #D6FE51;
+    cursor: pointer;
+}
+
+.pstudio__call-btn--stop {
+    background: #ff5c33;
+    color: #0c0c0c;
+}
+
+.pstudio__chips {
+    display: flex;
+    gap: 8px;
+    flex: none;
+    flex-wrap: wrap;
+}
+
+.pstudio__chip {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 6px 10px;
+    background: rgba(27, 27, 27, 0.6);
+    color: #f5f5f5;
+}
+
+.pstudio__chip span {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #808080;
+}
+
+.pstudio__banner {
+    flex: none;
+    border: 1px solid rgba(214, 254, 81, 0.4);
+    background: rgba(214, 254, 81, 0.08);
+    color: #f5f5f5;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.pstudio__banner--soft {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: #b5b5b5;
+}
+
+/* Transcript */
+.pstudio__transcript {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 2px;
+}
+
+.pstudio__bubble {
+    max-width: 78%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+.pstudio__bubble--assistant {
+    align-self: flex-start;
+    background: rgba(27, 27, 27, 0.85);
+    border: 1px solid rgba(214, 254, 81, 0.25);
+    color: #f5f5f5;
+}
+
+.pstudio__bubble--user {
+    align-self: flex-end;
+    background: #D6FE51;
+    color: #0c0c0c;
+    font-weight: 500;
+}
+
+.pstudio__event {
+    align-self: center;
+    color: #808080;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+}
+
+.pstudio__tool-chip {
+    align-self: stretch;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: #b5b5b5;
+    font-size: 12px;
+    background: rgba(27, 27, 27, 0.6);
+}
+
+/* Input bar */
+.pstudio__inputbar {
+    flex: none;
+    display: flex;
+    gap: 8px;
+}
+
+.pstudio__input--chat {
+    flex: 1;
+}
+
+.pstudio__send-btn {
+    width: 36px;
+    border: none;
+    border-radius: 8px;
+    background: #D6FE51;
+    color: #0c0c0c;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pstudio__send-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* Narrow containers (quadrant-spawned windows) stack the panes. */
+@container (max-width: 700px) {
+    .pstudio {
+        flex-direction: column;
+    }
+
+    .pstudio__builder {
+        width: 100%;
+        max-height: 45%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+}
+
+@media (max-width: 700px) {
+    .pstudio {
+        flex-direction: column;
+    }
+
+    .pstudio__builder {
+        width: 100%;
+        max-height: 45%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+}
+
+/* ── PersonaFace (photo talking-portrait) ─────────────────────────── */
+.pstudio__face-wrap {
+    position: absolute;
+    inset: 0;
+}
+
+.pstudio__face-still {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Portrait placement UI (Avatar tab) */
+.pstudio__upload-btn {
+    border: 1px dashed rgba(214, 254, 81, 0.5);
+    background: rgba(214, 254, 81, 0.06);
+    color: #f5f5f5;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.pstudio__place-wrap {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.pstudio__place-wrap--placing {
+    cursor: crosshair;
+    border-color: #D6FE51;
+}
+
+.pstudio__place-img {
+    width: 100%;
+    display: block;
+}
+
+.pstudio__marker {
+    position: absolute;
+    pointer-events: none;
+}
+
+.pstudio__marker--eye {
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border-radius: 50%;
+    border: 2px solid #D6FE51;
+    background: rgba(214, 254, 81, 0.25);
+}
+
+.pstudio__marker--mouth {
+    border: 2px solid #ff5c33;
+    border-radius: 6px;
+    background: rgba(255, 92, 51, 0.12);
+}
+
+.pstudio__place-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.pstudio__place-btn {
+    flex: 1;
+    min-width: 80px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: #0c0c0c;
+    color: #f5f5f5;
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.pstudio__place-btn--active {
+    border-color: #D6FE51;
+    color: #D6FE51;
+}
+
+/* ── Anam-parity Bucket A additions ───────────────────────────────── */
+
+/* Generate-prompt bar (above the builder tab strip) */
+.pstudio__genbar {
+    flex: none;
+    display: flex;
+    gap: 8px;
+    padding: 10px 10px 0;
+}
+
+.pstudio__genbar .pstudio__input {
+    flex: 1;
+    min-width: 0;
+}
+
+.pstudio__gen-btn {
+    flex: none;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font: inherit;
+    font-weight: 700;
+    background: #D6FE51;
+    color: #0c0c0c;
+    cursor: pointer;
+}
+
+.pstudio__gen-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.pstudio__gen-error {
+    flex: none;
+    padding: 6px 10px 0;
+    color: #ff5c33;
+    font-size: 12px;
+}
+
+/* Voice rows are now divs (role=button) so the ▶ preview can nest inside. */
+.pstudio__voice-row {
+    position: relative;
+    padding-right: 44px;
+    user-select: none;
+}
+
+.pstudio__voice-row:focus-visible {
+    outline: none;
+    border-color: #D6FE51;
+}
+
+.pstudio__voice-row--locked {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pstudio__voice-preview {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: #f5f5f5;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.pstudio__voice-preview:hover {
+    border-color: #D6FE51;
+    color: #D6FE51;
+}
+
+.pstudio__voice-preview:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* On-device neural voice (Kokoro) status line under the voice list */
+.pstudio__kokoro-status {
+    margin: 0;
+    color: #808080;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.pstudio__kokoro-status--ready {
+    color: #D6FE51;
+}
+
+/* Custom tools (Tools tab, section 02) */
+.pstudio__ct-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #0c0c0c;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+}
+
+.pstudio__ct-info {
+    min-width: 0;
+}
+
+.pstudio__ct-url {
+    display: block;
+    color: #808080;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pstudio__ct-delete {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #808080;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.pstudio__ct-delete:hover {
+    color: #ff5c33;
+}
+
+.pstudio__ct-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pstudio__ct-form-row {
+    display: flex;
+    gap: 8px;
+}
+
+.pstudio__ct-form-row .pstudio__select {
+    width: auto;
+    flex: none;
+}
+
+.pstudio__ct-form-row .pstudio__input {
+    flex: 1;
+    min-width: 0;
+}
+
+.pstudio__ct-add-btn {
+    align-self: flex-start;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font: inherit;
+    font-weight: 700;
+    background: #D6FE51;
+    color: #0c0c0c;
+    cursor: pointer;
+}
+
+.pstudio__ct-add-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* Fullscreen toggle on the stage frame */
+.pstudio__fullscreen-btn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 3;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.55);
+    color: #f5f5f5;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.pstudio__fullscreen-btn:hover {
+    border-color: #D6FE51;
+    color: #D6FE51;
+}
+
+/* ── B-10: cloned voices (backend ARA voice service) ──────────────── */
+.pstudio__clone-row {
+    cursor: default;
+    padding-right: 10px;
+}
+
+.pstudio__clone-offline {
+    color: #808080;
+    font-style: italic;
+}
+
+/* ── B-11: export / import / share footer (builder rail) ──────────── */
+.pstudio__share-row {
+    flex: none;
+    display: flex;
+    gap: 6px;
+    padding: 8px 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pstudio__share-btn {
+    flex: none;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background: transparent;
+    color: #b5b5b5;
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.pstudio__share-btn:hover {
+    border-color: #D6FE51;
+    color: #D6FE51;
+}
+
+.pstudio__share-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.pstudio__share-btn--active {
+    border-color: #D6FE51;
+    color: #D6FE51;
+}
+
+.pstudio__share-import {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px 8px;
+}
+
+.pstudio__share-import .pstudio__share-paste {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+
+.pstudio__share-notice {
+    flex: none;
+    padding: 0 10px 8px;
+    color: #808080;
+    font-size: 12px;
+    line-height: 1.45;
+}

@@ -40,6 +40,33 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 
 ## LOG (newest first)
 
+### F-017 — A full day of Persona Studio work landed in the WRONG clone (~/dwellium-per-spec), verified against stale caches
+- **Problem:** An entire feature arc (Persona Studio: Anam-parity builder,
+  talking-portrait face, neural TTS, whisper STT — 3 commits, ~6k lines) was
+  built and committed in `~/dwellium-per-spec`, a months-stale fork of this
+  repo (common ancestor `bce60c6`), because that folder was the one connected
+  to the Cowork session. Bonus failure inside that fork: its sandbox
+  verification copy carried stale `*.tsbuildinfo` caches AND its Mac
+  node_modules was stale vs its lockfile, so "tsc -b clean" claims masked 3
+  real @sentry/react 9.47 type errors until a fresh `npm ci` surfaced them.
+- **Root cause:** Two clones of the project exist on this machine
+  (`~/dwellium-per-spec` and `~/Downloads/Dwellium -Per Spec`); nothing in
+  either repo declares which is canonical, and the agent never verified the
+  connected folder against the Netlify-deployed remote before starting work.
+- **Fix:** Diffed the trees (`diff -rq`, 494 files unique to this repo),
+  identified this Downloads tree as canonical (Netlify + advisor/001-040
+  history, HEAD 2026-07-05), and migrated the day's work file-by-file:
+  wholesale copy of the new PersonaStudio dir + tests + docs, manual re-apply
+  of StellaAgent/ARAConsole integration edits against THIS tree's diverged
+  versions, native `npm install kokoro-js` here (no lockfile transplant).
+- **Prevention:** (1) FIRST ACTION in any session that will commit code:
+  confirm the working clone is canonical — `git remote -v` + `git log -1
+  --format=%ci` + ask which deploy it feeds if two clones exist. (2) Record
+  the canonical path HERE: **canonical = `~/Downloads/Dwellium -Per Spec`**;
+  `~/dwellium-per-spec` is a stale fork — do not commit new work there.
+  (3) Before trusting out-of-tree verification, delete `*.tsbuildinfo` and
+  `npm ci` — see the fork's F-010 for the full stale-cache post-mortem.
+
 ### F-016 — A dead backend session silently disabled ALL account persistence (keys, workspaces, knowledge graph) with zero user-facing signal
 - **Problem:** Ilya reported "API keys not saved, knowledge graph not saved,
   workspace not saved" across sessions. The deployed app showed a fully

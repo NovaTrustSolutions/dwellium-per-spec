@@ -76,6 +76,8 @@ export interface PersonaConfig {
     faceRegions: FaceRegions;
     /** Voice id from PERSONA_VOICE_CATALOG. */
     voiceId: string;
+    /** True once the user explicitly picked a voice (gates legacy-default migration). */
+    voiceUserPicked: boolean;
     /** Speech speed multiplier (0.5–2.0). */
     speechRate: number;
     /** Model override applied when the active integrations provider is OpenAI. */
@@ -107,7 +109,8 @@ export function defaultPersonaConfig(): PersonaConfig {
         avatarMode: 'viz',
         faceImage: '',
         faceRegions: defaultFaceRegions(),
-        voiceId: 'browser-samantha',
+        voiceId: 'auto',
+        voiceUserPicked: false,
         speechRate: 1,
         modelOverride: 'gpt-4.1-mini',
         tools: { endCall: true, skipTurn: true, changeLanguage: true, openWidget: true, hermes: true },
@@ -131,7 +134,7 @@ export interface PersonaVoiceOption {
     id: string;
     label: string;
     description: string;
-    provider: 'openai' | 'browser' | 'kokoro';
+    provider: 'auto' | 'openai' | 'browser' | 'kokoro';
     openaiVoice?: 'alloy' | 'echo' | 'fable' | 'nova' | 'onyx' | 'shimmer';
     browserVoiceMatch?: string[];
     /** kokoro-js voice id (e.g. 'af_heart') for the on-device neural tier. */
@@ -139,10 +142,15 @@ export interface PersonaVoiceOption {
 }
 
 /**
- * Three-tier catalog: free browser voices always, free on-device neural
- * voices (Kokoro-82M, ~90 MB one-time download), OpenAI TTS when a key exists.
+ * Voice catalog. 'Auto' (the default) resolves at speak time to the best
+ * available tier — OpenAI neural when the user's key exists, on-device
+ * Kokoro once its model is downloaded, browser voice as last resort — so
+ * nobody hears a robotic OS voice just because they never opened the Voice
+ * tab (2026-07-06 fix: the shipped default was plain browser Samantha and
+ * sounded terrible on non-Apple voice stacks).
  */
 export const PERSONA_VOICE_CATALOG: PersonaVoiceOption[] = [
+    { id: 'auto',             label: 'Auto',     description: 'Best available — OpenAI neural with your key, on-device neural once downloaded, else browser', provider: 'auto' },
     { id: 'browser-samantha', label: 'Samantha', description: 'Apple — Siri-quality female (free)', provider: 'browser', browserVoiceMatch: ['Samantha (Enhanced)', 'Samantha'] },
     { id: 'browser-karen',    label: 'Karen',    description: 'Apple — Australian female (free)',   provider: 'browser', browserVoiceMatch: ['Karen (Enhanced)', 'Karen'] },
     { id: 'browser-daniel',   label: 'Daniel',   description: 'Apple — calm British male (free)',   provider: 'browser', browserVoiceMatch: ['Daniel (Enhanced)', 'Daniel'] },
@@ -165,6 +173,18 @@ export const PERSONA_VOICE_CATALOG: PersonaVoiceOption[] = [
 
 export function getVoiceOption(id: string): PersonaVoiceOption {
     return PERSONA_VOICE_CATALOG.find(v => v.id === id) ?? PERSONA_VOICE_CATALOG[0];
+}
+
+/**
+ * Resolve the 'auto' voice to a concrete catalog id. Pure — callers pass the
+ * two runtime facts. Priority: OpenAI neural (user already pays for the key
+ * that drives the brain) > on-device Kokoro (free, needs one-time download)
+ * > best browser voice.
+ */
+export function resolveAutoVoiceId(openaiKeyPresent: boolean, kokoroReady: boolean): string {
+    if (openaiKeyPresent) return 'openai-nova';
+    if (kokoroReady) return 'kokoro-heart';
+    return 'browser-samantha';
 }
 
 // ── System-prompt composition ─────────────────────────────────────────

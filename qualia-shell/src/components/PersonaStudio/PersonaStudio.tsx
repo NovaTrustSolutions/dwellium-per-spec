@@ -26,6 +26,7 @@ import {
     PERSONA_STYLE_OPTIONS,
     PERSONA_VOICE_CATALOG,
     getVoiceOption,
+    resolveAutoVoiceId,
     type PersonaStyle,
     type PersonaVoiceOption,
 } from './personaEngine';
@@ -390,9 +391,13 @@ export default function PersonaStudio({ host }: PersonaStudioProps) {
     };
 
     /** Play a short sample line in the given catalog voice. Feature-detected; never throws. */
-    const previewVoice = async (v: PersonaVoiceOption) => {
+    const previewVoice = async (voice: PersonaVoiceOption) => {
         const sample = `Hi, I'm ${config.name}. This is how I sound.`;
         stopPreview();
+        // 'Auto' previews whatever it would actually resolve to right now.
+        const v = voice.provider === 'auto'
+            ? getVoiceOption(resolveAutoVoiceId(!!integrations.llm.openai?.apiKey, kokoroStatus === 'ready'))
+            : voice;
         if (v.provider === 'browser') {
             previewViaBrowser(sample, v.browserVoiceMatch);
             return;
@@ -507,6 +512,10 @@ export default function PersonaStudio({ host }: PersonaStudioProps) {
     const activeProvider = integrations.llm.active;
     const voiceOption = getVoiceOption(config.voiceId);
     const openaiKeyPresent = !!integrations.llm.openai?.apiKey;
+    /** What 'auto' resolves to right now — drives the chip + kokoro status line. */
+    const effectiveVoice = voiceOption.provider === 'auto'
+        ? getVoiceOption(resolveAutoVoiceId(openaiKeyPresent, kokoroStatus === 'ready'))
+        : voiceOption;
 
     const submitDraft = () => {
         const text = draft.trim();
@@ -791,12 +800,12 @@ export default function PersonaStudio({ host }: PersonaStudioProps) {
                                                 role="button"
                                                 tabIndex={0}
                                                 className={`pstudio__voice-row ${active ? 'pstudio__voice-row--active' : ''} ${locked ? 'pstudio__voice-row--locked' : ''}`}
-                                                onClick={() => { if (!locked) patch({ voiceId: v.id }); }}
+                                                onClick={() => { if (!locked) patch({ voiceId: v.id, voiceUserPicked: true }); }}
                                                 onKeyDown={e => {
                                                     if (locked) return;
                                                     if (e.key === 'Enter' || e.key === ' ') {
                                                         e.preventDefault();
-                                                        patch({ voiceId: v.id });
+                                                        patch({ voiceId: v.id, voiceUserPicked: true });
                                                     }
                                                 }}
                                                 aria-pressed={active}
@@ -817,7 +826,7 @@ export default function PersonaStudio({ host }: PersonaStudioProps) {
                                         );
                                     })}
                                 </div>
-                                {voiceOption.provider === 'kokoro' && (
+                                {(voiceOption.provider === 'kokoro' || (voiceOption.provider === 'auto' && effectiveVoice.provider === 'kokoro')) && (
                                     <p
                                         className={`pstudio__kokoro-status ${kokoroStatus === 'ready' ? 'pstudio__kokoro-status--ready' : ''}`}
                                         role="status"
@@ -1118,7 +1127,7 @@ export default function PersonaStudio({ host }: PersonaStudioProps) {
 
                 <div className="pstudio__chips">
                     <div className="pstudio__chip"><span>Avatar</span>{VISUALIZER_THEMES.find(t => t.id === config.avatarThemeId)?.label ?? config.avatarThemeId}</div>
-                    <div className="pstudio__chip"><span>Voice</span>{voiceOption.label}</div>
+                    <div className="pstudio__chip"><span>Voice</span>{voiceOption.provider === 'auto' ? `Auto → ${effectiveVoice.label}` : voiceOption.label}</div>
                     <div className="pstudio__chip"><span>LLM</span>{llmChip}</div>
                 </div>
 

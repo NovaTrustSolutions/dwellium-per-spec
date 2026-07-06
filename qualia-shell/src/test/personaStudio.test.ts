@@ -15,6 +15,7 @@ import {
     pickIdleNudge,
     stripForSpeech,
     getVoiceOption,
+    resolveAutoVoiceId,
     IDLE_NUDGES,
     DEFAULT_PERSONA_SYSTEM_PROMPT,
     PERSONA_VOICE_CATALOG,
@@ -125,12 +126,49 @@ describe('stripForSpeech', () => {
     });
 });
 
+describe('resolveAutoVoiceId (Auto — best available)', () => {
+    it('prefers OpenAI neural when a key exists, regardless of kokoro state', () => {
+        expect(resolveAutoVoiceId(true, false)).toBe('openai-nova');
+        expect(resolveAutoVoiceId(true, true)).toBe('openai-nova');
+    });
+
+    it('falls back to on-device kokoro when ready, else browser', () => {
+        expect(resolveAutoVoiceId(false, true)).toBe('kokoro-heart');
+        expect(resolveAutoVoiceId(false, false)).toBe('browser-samantha');
+    });
+
+    it("'auto' is the shipped default and exists in the catalog", () => {
+        expect(defaultPersonaConfig().voiceId).toBe('auto');
+        expect(getVoiceOption('auto').provider).toBe('auto');
+    });
+});
+
 describe('personaConfigStore (per-user dynamic key)', () => {
     it('returns defaults when nothing is stored', () => {
         const snap = personaConfigStore.getSnapshot();
         expect(snap.name).toBe('Liv');
         expect(snap.modelOverride).toBe('gpt-4.1-mini');
         expect(snap.tools.openWidget).toBe(true);
+    });
+
+    it('migrates the legacy browser-samantha DEFAULT to auto, but keeps explicit picks', () => {
+        // Legacy default (never explicitly picked) → upgraded to auto.
+        localStorage.setItem('persona-studio:user-legacy', JSON.stringify({ name: 'L', voiceId: 'browser-samantha' }));
+        personaUserIdHolder.current = 'user-legacy';
+        personaConfigStore.reset();
+        expect(personaConfigStore.getSnapshot().voiceId).toBe('auto');
+
+        // Explicit pick (voiceUserPicked) → preserved.
+        localStorage.setItem('persona-studio:user-picked', JSON.stringify({ name: 'P', voiceId: 'browser-samantha', voiceUserPicked: true }));
+        personaUserIdHolder.current = 'user-picked';
+        personaConfigStore.reset();
+        expect(personaConfigStore.getSnapshot().voiceId).toBe('browser-samantha');
+
+        // Non-default explicit voice → preserved even without the flag.
+        localStorage.setItem('persona-studio:user-kokoro', JSON.stringify({ name: 'K', voiceId: 'kokoro-emma' }));
+        personaUserIdHolder.current = 'user-kokoro';
+        personaConfigStore.reset();
+        expect(personaConfigStore.getSnapshot().voiceId).toBe('kokoro-emma');
     });
 
     it('namespaces per user id and merges stored partials over defaults', () => {

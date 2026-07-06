@@ -42,10 +42,11 @@ import {
     pickIdleNudge,
     stripForSpeech,
     getVoiceOption,
+    resolveAutoVoiceId,
     type PersonaConfig,
 } from './personaEngine';
 import { streamLlm } from './personaStream';
-import { ensureKokoro, synthesizeKokoro } from './personaNeuralTts';
+import { ensureKokoro, synthesizeKokoro, getKokoroStatus } from './personaNeuralTts';
 import { ensureWhisper, startWhisperSession, type WhisperSessionHandle } from './personaWhisperStt';
 
 // ── Minimal Web Speech typings (mirrors TranscriptionHub.tsx) ─────────
@@ -259,6 +260,17 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
         armIdleTimer();
     }, [armIdleTimer]);
 
+    /**
+     * Effective voice for the next chunk: 'auto' (the default) resolves to
+     * the best tier available RIGHT NOW — OpenAI neural when the user's key
+     * exists, on-device Kokoro once its model is ready, else browser.
+     */
+    const resolveVoice = useCallback(() => {
+        const selected = getVoiceOption(configRef.current.voiceId);
+        if (selected.provider !== 'auto') return selected;
+        return getVoiceOption(resolveAutoVoiceId(!!llmRef.current.openai?.apiKey, getKokoroStatus() === 'ready'));
+    }, []);
+
     /** Browser SpeechSynthesis path — one utterance per chunk, queued natively (no cancel). */
     const speakChunkBrowser = useCallback((cleaned: string, cues: string[], epoch: number) => {
         if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -266,7 +278,7 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
             return;
         }
         const cfg = configRef.current;
-        const option = getVoiceOption(cfg.voiceId);
+        const option = resolveVoice();
         const utterance = new SpeechSynthesisUtterance(cleaned);
         utterance.lang = langRef.current;
         utterance.rate = Math.max(0.5, Math.min(2, cfg.speechRate)) * 0.95;
@@ -336,7 +348,7 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
             const chunk = audioQueueRef.current.shift();
             if (!chunk) break;
             const cfg = configRef.current;
-            const option = getVoiceOption(cfg.voiceId);
+            const option = resolveVoice();
             const openaiKey = llmRef.current.openai?.apiKey || null;
             let played = false;
             if (option.provider === 'kokoro' && option.kokoroVoice) {
@@ -394,7 +406,7 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
         const cleaned = stripForSpeech(text);
         if (!cleaned) return;
         const epoch = epochRef.current;
-        const option = getVoiceOption(configRef.current.voiceId);
+        const option = resolveVoice();
         const openaiKey = llmRef.current.openai?.apiKey || null;
         pendingRef.current += 1;
         speakingRef.current = true;
@@ -808,8 +820,14 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
 
         const cfg = configRef.current;
         // Warm the on-device neural model in the background — the greeting
-        // (and early chunks) use the browser fallback until it's ready.
-        if (getVoiceOption(cfg.voiceId).provider === 'kokoro') void ensureKokoro();
+        // (and early chunks) use the browser fallback until it's ready. Also
+        // warm it when 'auto' is selected and no OpenAI key exists, so auto
+        // upgrades from browser → neural mid-session.
+        const selectedVoice = getVoiceOption(cfg.voiceId);
+        if (
+            selectedVoice.provider === 'kokoro' ||
+            (selectedVoice.provider === 'auto' && !llmRef.current.openai?.apiKey)
+        ) void ensureKokoro();
         if (!cfg.skipGreeting) {
             if (cfg.greeting.trim()) {
                 appendTurn(makeTurn({ role: 'assistant', text: cfg.greeting.trim() }));

@@ -38,6 +38,13 @@ function deserialize(raw: string | null): PersonaConfig {
             },
             customTools: Array.isArray(parsed?.customTools) ? parsed.customTools : defaults.customTools,
             llmDisabled: parsed?.llmDisabled === undefined ? defaults.llmDisabled : !!parsed.llmDisabled,
+            // Legacy-default migration (2026-07-06): 'browser-samantha' was the
+            // shipped default nobody chose — upgrade it to 'auto' (best tier
+            // available) UNLESS the user explicitly picked it (voiceUserPicked).
+            voiceId: parsed?.voiceId === undefined ||
+                (parsed.voiceId === 'browser-samantha' && parsed.voiceUserPicked !== true)
+                ? defaults.voiceId
+                : parsed.voiceId,
         };
     } catch {
         return defaults;

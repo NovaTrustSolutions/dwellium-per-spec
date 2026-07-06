@@ -514,17 +514,10 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 420,
         category: 'tools',
     },
-    // Natural-language UI editor (2026-06-12 Ilya): "change the header color
-    // to yellow" — Edit-mode panel + click-to-pick; edits persist per-user.
-    'ui-editor': {
-        id: 'ui-editor',
-        label: 'UI Editor',
-        icon: 'paintbrush',
-        component: lazyWithReload(() => import('../components/UiEditor/UiEditorPanel')),
-        minWidth: 420,
-        minHeight: 380,
-        category: 'tools',
-    },
+    // UI Editor DISABLED (2026-07-06 Andy): activating it blanked the entire
+    // screen. Registry entry removed so it can't be launched from the sidebar,
+    // command palette, or saved layouts (Desktop renders unknown ids safely).
+    // Component kept at components/UiEditor/ for a future fix — re-register here.
     'template-generator': {
         id: 'template-generator',
         label: 'Template Generator',

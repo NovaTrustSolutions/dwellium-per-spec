@@ -38,7 +38,9 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   + cloud-browser (server-rendered browsing inside Holocron, 2026-06-18)
         //   + audit-log (Andy-only Audit Log holocron, 730c82a — guard was not
         //     bumped when that widget shipped; corrected here, pre-existing drift).
-        expect(ids.length).toBe(56);
+        //   − ui-editor DISABLED (2026-07-06 Andy: activating it blanked the
+        //     screen; registry entry removed, component kept on disk) → 55.
+        expect(ids.length).toBe(55);
     });
 
     it.each(ids)('"%s" entry is well-formed', (id) => {

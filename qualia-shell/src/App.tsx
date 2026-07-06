@@ -1,4 +1,4 @@
-import { Suspense, useState, useSyncExternalStore } from 'react';
+import { Suspense, useEffect, useState, useSyncExternalStore } from 'react';
 import { BrowserRouter, Routes, Route, useSearchParams } from 'react-router';
 import { ThemeProvider } from './context/ThemeContext';
 import { UserProvider, useUser, tokenStore } from './context/UserContext';
@@ -53,7 +53,21 @@ function AuthGate() {
     // Google sign-in one click away.
     const rawToken = useSyncExternalStore(tokenStore.subscribe, tokenStore.getSnapshot, tokenStore.getServerSnapshot);
     const isLocalOnlySession = !!rawToken && rawToken.startsWith('static-');
-    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+    // Auto-start account-backed services once per real (backend-verified)
+    // login: refresh Google-account link state + kick the Inbox Zero Gmail
+    // fetch when an account is linked (2026-07-06 Andy). Lazy import keeps
+    // the auth-critical entry graph lean.
+    useEffect(() => {
+        if (!isAuthenticated || sessionExpired || sessionHealth.authDead || !rawToken) return;
+        if (isLocalOnlySession) {
+            // Banner removed at Andy's request (2026-07-06); keep the F-016
+            // "not saved to your account" signal at least in the console.
+            console.warn('[Dwellium] Quick-access session: work is NOT saved to your account. Sign in with Google for persistence.');
+            return;
+        }
+        void import('./lib/autoStartServices').then(m => m.autoStartServices(rawToken));
+    }, [isAuthenticated, isLocalOnlySession, sessionExpired, sessionHealth.authDead, rawToken]);
 
     if (isLoading) {
         return (
@@ -101,44 +115,12 @@ function AuthGate() {
                Fires from EITHER the context flag OR the module-level health
                store (F-016 belt-and-braces). */}
             {isAuthenticated && (sessionExpired || sessionHealth.authDead) && <SessionExpiredModal />}
-            {/* Local-only (quick-access) session: persistent warning strip —
-               nothing is saved to the account until a real Google sign-in. */}
-            {isAuthenticated && isLocalOnlySession && !sessionExpired && !sessionHealth.authDead && (
-                <>
-                    <div
-                        role="status"
-                        style={{
-                            position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 2147482000,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-                            padding: '8px 14px', fontSize: 13, fontFamily: 'Inter, -apple-system, sans-serif',
-                            background: 'rgba(120, 53, 15, 0.92)', color: '#fde68a',
-                            borderTop: '1px solid rgba(251, 191, 36, 0.4)', backdropFilter: 'blur(4px)',
-                        }}
-                    >
-                        <span>
-                            Local account — your work (API keys, workspaces, knowledge graph) is
-                            <strong> not being saved to your account</strong> on this device only.
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => setShowUpgradeModal(true)}
-                            style={{
-                                padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 13,
-                                background: '#fbbf24', color: '#1c1917', border: 'none', fontWeight: 600,
-                            }}
-                        >
-                            Sign in with Google to sync
-                        </button>
-                    </div>
-                    {showUpgradeModal && (
-                        <SessionExpiredModal
-                            heading="Save your work to your account"
-                            message="This quick-access account lives only in this browser — nothing you set up is saved under your name. Sign in with Google and your API keys, workspaces, and knowledge graph will sync to every device."
-                            onDismiss={() => setShowUpgradeModal(false)}
-                        />
-                    )}
-                </>
-            )}
+            {/* Bottom "local account — not being saved / Sign in with Google"
+               banner REMOVED at Andy's explicit request (2026-07-06). The
+               underlying F-016 fact still holds — quick-access (static-token)
+               sessions are client-side only and don't persist to the account;
+               that signal now lives in the console warning above. Google
+               sign-in remains the way to get account persistence. */}
         </>
     );
 }

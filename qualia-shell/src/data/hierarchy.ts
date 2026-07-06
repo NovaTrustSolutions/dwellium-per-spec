@@ -53,7 +53,8 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-artifact-gallery', label: 'Artifacts', icon: 'layers', component: 'artifact-gallery', pinned: true, group: 'AI Tools' },
    { id: 'dock-connections', label: 'Connections & Memory', icon: 'cable', component: 'connections', pinned: true, group: 'AI Tools' },
    { id: 'dock-knowledge-graph', label: 'Knowledge Graph', icon: 'network', component: 'knowledge-graph', pinned: true, group: 'AI Tools' },
-   { id: 'dock-ui-editor', label: 'UI Editor', icon: 'paintbrush', component: 'ui-editor', pinned: true, group: 'AI Tools' },
+   // 'dock-ui-editor' REMOVED (2026-07-06 Andy): the UI editor blanked the
+   // screen; its registry entry is disabled in widgetRegistry.ts.
    { id: 'dock-cognitive-harness', label: 'Harness', icon: 'brain-circuit', component: 'cognitive-harness', pinned: true, group: 'AI Tools' },
    // ── Filing Cabinet ──
    { id: 'dock-hierarchy', label: 'Explorer', icon: 'folder-tree', component: 'hierarchy-browser', pinned: true, group: 'Filing Cabinet' },

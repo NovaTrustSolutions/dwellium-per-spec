@@ -70,7 +70,7 @@ interface UserContextValue {
      *  modal instead of nuking state to the login screen. */
     sessionExpired: boolean;
     isLoading: boolean;
-    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string; offline?: boolean }>;
     /** Exchange a Google Identity Services ID token for a backend Dwellium session. */
     loginWithGoogle: (credential: string) => Promise<{ success: boolean; error?: string }>;
     /** Architect quick-access account — exact replica of Andy's god permissions.
@@ -357,34 +357,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
             }
             return { success: true };
         } catch {
-            // Static fallback: load user from exported data
-            try {
-                const usersRes = await fetch('/data/users.json');
-                if (usersRes.ok) {
-                    const users = await usersRes.json();
-                    const foundUser = users.find((u: any) => u.email === email);
-                    if (foundUser) {
-                        const staticToken = `static-${Date.now()}-${foundUser.id}`;
-                        const userData = {
-                            id: foundUser.id,
-                            name: foundUser.name || email.split('@')[0],
-                            email: foundUser.email,
-                            role: foundUser.role,
-                            assignedProperties: [],
-                            active: true,
-                            createdAt: foundUser.created_at || new Date().toISOString(),
-                            updatedAt: foundUser.updated_at || new Date().toISOString(),
-                        };
-                        tokenStore.set(staticToken, () => localStorage.setItem(TOKEN_KEY, staticToken));
-                        setUser(userData);
-                        setPermissions({});
-                        setSessionExpired(false);
-                        localStorage.setItem('dwellium-user', JSON.stringify(userData));
-                        return { success: true };
-                    }
-                }
-            } catch { /* ignore */ }
-            return { success: false, error: 'Cannot reach server' };
+            // HARDENED (2026-07-10, F-016 follow-up): NO silent static fallback.
+            // A network failure here used to fabricate a `static-…` session from
+            // /data/users.json and report success — the shell then LOOKED signed
+            // in while every backend save (API keys, Google link, knowledge
+            // graph, workspaces) 401'd silently. Offline entry now happens only
+            // through the caller's EXPLICIT choice (LoginScreen offline offer →
+            // loginLocal).
+            return { success: false, error: 'Cannot reach server', offline: true };
         }
     }, [saveTokens, scheduleRefresh]);
 

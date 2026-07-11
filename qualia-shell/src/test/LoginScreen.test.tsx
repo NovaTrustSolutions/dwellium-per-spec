@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginScreen, { LOCAL_ACCOUNTS } from '../components/Auth/LoginScreen';
 
 const auth = vi.hoisted(() => ({
+    login: vi.fn(),
     loginLocal: vi.fn(),
     loginWithGoogle: vi.fn(),
 }));
@@ -22,6 +23,8 @@ const andy = LOCAL_ACCOUNTS.find((a) => a.name === 'Andy')!;
 
 describe('LoginScreen local multi-step login', () => {
     beforeEach(() => {
+        auth.login.mockReset();
+        auth.login.mockResolvedValue({ success: true });
         auth.loginLocal.mockReset();
         auth.loginWithGoogle.mockReset();
     });
@@ -57,7 +60,7 @@ describe('LoginScreen local multi-step login', () => {
         expect(document.querySelectorAll('.login-avatar__name')).toHaveLength(0);
     });
 
-    it('after the gate, signs a user in with their own email + password', () => {
+    it('after the gate, signs a user in with their own email + password', async () => {
         render(<LoginScreen />);
 
         fireEvent.change(screen.getByLabelText('Access password'), { target: { value: GATE } });
@@ -75,17 +78,53 @@ describe('LoginScreen local multi-step login', () => {
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
         fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong' } });
         fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+        expect(auth.login).not.toHaveBeenCalled();
         expect(auth.loginLocal).not.toHaveBeenCalled();
         expect(screen.getByText(/incorrect email or password/i)).toBeInTheDocument();
 
-        // Correct creds → loginLocal with the stable id + role.
+        // Correct creds → REAL backend session via login(); loginLocal is NOT
+        // used on the happy path (F-016 hardening).
         fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
         fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+        await vi.waitFor(() => {
+            expect(auth.login).toHaveBeenCalledWith(andy.email, andy.backendPassword);
+        });
+        expect(auth.loginLocal).not.toHaveBeenCalled();
+    });
+
+    it('offers EXPLICIT offline entry only when the server is unreachable', async () => {
+        auth.login.mockResolvedValue({ success: false, error: 'Cannot reach server', offline: true });
+        render(<LoginScreen />);
+        fireEvent.change(screen.getByLabelText('Access password'), { target: { value: GATE } });
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: /Andy/ }));
+        fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
+        fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
+        fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        // No silent session: loginLocal only fires after the explicit choice.
+        const offlineBtn = await screen.findByRole('button', { name: /continue offline/i });
+        expect(auth.loginLocal).not.toHaveBeenCalled();
+        fireEvent.click(offlineBtn);
         expect(auth.loginLocal).toHaveBeenCalledWith({
             id: andy.id,
             name: 'Andy',
             email: andy.email,
             role: 'god',
         });
+    });
+
+    it('surfaces a server credential rejection instead of entering the shell', async () => {
+        auth.login.mockResolvedValue({ success: false, error: 'Invalid credentials' });
+        render(<LoginScreen />);
+        fireEvent.change(screen.getByLabelText('Access password'), { target: { value: GATE } });
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        fireEvent.click(screen.getByRole('button', { name: /Andy/ }));
+        fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
+        fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
+        fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+        expect(await screen.findByText(/server rejected/i)).toBeInTheDocument();
+        expect(auth.loginLocal).not.toHaveBeenCalled();
+        expect(screen.queryByRole('button', { name: /continue offline/i })).not.toBeInTheDocument();
     });
 });

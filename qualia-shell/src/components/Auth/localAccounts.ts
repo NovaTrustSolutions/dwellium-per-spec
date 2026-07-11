@@ -22,6 +22,9 @@ export interface LocalAccount {
     email: string;
     /** Effective client-side gate password ('' = not set yet). */
     password: string;
+    /** Seeded backend credential for the REAL server session (data/users.json
+     *  seed). Absent = no backend user; sign-in offers explicit offline mode. */
+    backendPassword?: string;
     role: string;
     color: string;
     initials: string;
@@ -41,8 +44,8 @@ export const ROLE_LABELS: Record<string, string> = {
  * sign in (sign-in is blocked while the effective password is empty).
  */
 export const LOCAL_ACCOUNTS: LocalAccount[] = [
-    { id: '9a921527-84b0-497f-b682-45df315c13d1', name: 'Andy', email: 'andy@dwellium.com', password: 'Fm8#vP2!kR9$wL3q', role: 'god', color: 'var(--accent)', initials: 'A', enabled: true },
-    { id: 'b5d3ac0c-f276-402d-b8ef-9a96fe42b570', name: 'Lisa', email: 'lisa@zpgroup.io', password: '', role: 'corporate', color: '#3b82f6', initials: 'L', enabled: true },
+    { id: '9a921527-84b0-497f-b682-45df315c13d1', name: 'Andy', email: 'andy@dwellium.com', password: 'Fm8#vP2!kR9$wL3q', backendPassword: 'admin123', role: 'god', color: 'var(--accent)', initials: 'A', enabled: true },
+    { id: 'b5d3ac0c-f276-402d-b8ef-9a96fe42b570', name: 'Lisa', email: 'lisa@zpgroup.io', password: '', backendPassword: 'corp123', role: 'corporate', color: '#3b82f6', initials: 'L', enabled: true },
     { id: 'architect-9a921527', name: 'Archi', email: 'iklipinitser@gmail.com', password: 'Jester2878!', role: 'god', color: 'var(--accent)', initials: 'AR', enabled: true },
 ];
 

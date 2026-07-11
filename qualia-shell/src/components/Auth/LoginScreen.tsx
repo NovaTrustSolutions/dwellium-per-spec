@@ -33,7 +33,7 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
-    const { loginLocal, loginWithGoogle } = useUser();
+    const { login, loginLocal, loginWithGoogle } = useUser();
     const effectiveAccounts = useEffectiveAccounts();
     const [hasClicked, setHasClicked] = useState(false);
     const [stage, setStage] = useState<Stage>('gate');
@@ -42,6 +42,8 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [offlineOffer, setOfflineOffer] = useState(false);
 
     const submitGate = (event?: FormEvent) => {
         event?.preventDefault();
@@ -63,9 +65,10 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
         setStage('credential');
     };
 
-    const submitCredential = (event?: FormEvent) => {
+    const submitCredential = async (event?: FormEvent) => {
         event?.preventDefault();
         setError('');
+        setOfflineOffer(false);
         if (!selected) return;
         // Re-resolve against current overrides (Archi may have just set it).
         const acct = effectiveAccounts.find(a => a.id === selected.id) ?? selected;
@@ -75,11 +78,32 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
         }
         const emailOk = email.trim().toLowerCase() === acct.email.toLowerCase();
         const passwordOk = password === acct.password;
-        if (emailOk && passwordOk) {
-            loginLocal({ id: acct.id, name: acct.name, email: acct.email, role: acct.role });
-        } else {
+        if (!(emailOk && passwordOk)) {
             setError('Incorrect email or password.');
+            return;
         }
+        // HARDENED (2026-07-10, F-016 follow-up): the local gate is only stage
+        // one — a REAL backend session is required so API keys, workspaces and
+        // Google links persist server-side and follow the user across machines.
+        // Offline entry exists but only as an EXPLICIT user choice below.
+        setBusy(true);
+        const result = await login(acct.email, acct.backendPassword ?? password);
+        setBusy(false);
+        if (result.success) return;
+        if (result.offline) {
+            setOfflineOffer(true);
+            return;
+        }
+        setError(result.error === 'Invalid credentials'
+            ? "Server rejected this account's seeded credentials — ask the Architect to reconcile the roster."
+            : (result.error || 'Server sign-in failed.'));
+    };
+
+    const continueOffline = () => {
+        if (!selected) return;
+        const acct = effectiveAccounts.find(a => a.id === selected.id) ?? selected;
+        setOfflineOffer(false);
+        loginLocal({ id: acct.id, name: acct.name, email: acct.email, role: acct.role });
     };
 
     const backToSelect = () => {
@@ -174,7 +198,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                         )}
 
                         {stage === 'credential' && selected && (
-                            <form className="login-step" onSubmit={submitCredential}>
+                            <form className="login-step" onSubmit={(event) => { void submitCredential(event); }}>
                                 <button type="button" className="login-back" onClick={backToSelect}>
                                     <ArrowLeft size={14} /> Back
                                 </button>
@@ -204,7 +228,26 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     value={password}
                                     onChange={(event) => setPassword(event.target.value)}
                                 />
-                                <button type="submit" className="login-primary-btn" disabled={!email || !password}>Sign in</button>
+                                <button type="submit" className="login-primary-btn" disabled={!email || !password || busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+                                {offlineOffer && (
+                                    <div className="login-offline-offer" role="alert" style={{
+                                        marginTop: 12, padding: '12px 14px', borderRadius: 10,
+                                        border: '1px solid rgba(245,158,11,0.4)', background: 'rgba(245,158,11,0.08)',
+                                        fontSize: 12.5, lineHeight: 1.5,
+                                    }}>
+                                        <p style={{ margin: 0 }}>
+                                            Can't reach the server. You can enter offline, but <strong>nothing you
+                                            save will sync to your account</strong> — API keys, workspaces and email
+                                            links would stay on this device only.
+                                        </p>
+                                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                                            <button type="button" className="login-primary-btn" style={{ flex: 1 }}
+                                                onClick={() => { void submitCredential(); }}>Retry server sign-in</button>
+                                            <button type="button" className="login-back" style={{ flex: 1, justifyContent: 'center' }}
+                                                onClick={continueOffline}>Continue offline</button>
+                                        </div>
+                                    </div>
+                                )}
                             </form>
                         )}
 

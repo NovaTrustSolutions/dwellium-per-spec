@@ -45,6 +45,16 @@ import {
     ResponsiveContainer,
     Cell,
 } from 'recharts';
+/**
+ * Sample-data gate for the hardcoded KPI band on the Overview.
+ *
+ * Shares VITE_APPFOLIO_SEEDS with ./fixtures/appfolioDerived so a single flag
+ * suppresses every non-live figure in Strata. Set VITE_APPFOLIO_SEEDS=false in
+ * the deploy environment (Netlify → Site settings → Environment variables) to
+ * hide them entirely.
+ */
+const SHOW_SAMPLE_KPIS = (import.meta as any).env?.VITE_APPFOLIO_SEEDS !== 'false';
+
 const PropertiesModule = lazy(() => import('./modules/PropertiesModule'));
 const WorkOrdersModule = lazy(() => import('./modules/WorkOrdersModule'));
 const LeasingModule = lazy(() => import('./modules/LeasingModule'));
@@ -473,7 +483,31 @@ function OverviewContent() {
             )}
 
             {/* ══════════ AppFolio: Payment Collection + Financial Health + Portal ══════════ */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10, margin: '12px 0' }}>
+            {/*
+              * These six figures are HARDCODED SAMPLE VALUES, not live data. They
+              * were rendering unconditionally next to live widgets that correctly
+              * reported "No properties found" and 0% occupancy — so the dashboard
+              * showed $127,450 collected against a portfolio it simultaneously
+              * reported as empty. For a property manager reading his own numbers,
+              * unlabelled invented money is worse than a blank card.
+              *
+              * Now gated on the same VITE_APPFOLIO_SEEDS flag as the fixtures in
+              * ./fixtures/appfolioDerived, and visibly badged while they show.
+              * Replace with real aggregates once Live AppFolio sync is enabled
+              * (Settings → Activation Center), then delete this block entirely.
+              */}
+            {SHOW_SAMPLE_KPIS && (
+            <div style={{ margin: '12px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+                        color: '#f59e0b', border: '1px solid #f59e0b', borderRadius: 3, padding: '1px 5px',
+                    }}>Sample data</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                        Not your portfolio — enable Live AppFolio sync in Settings → Activation Center
+                    </span>
+                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
                 {[
                     { label: 'Rent Collected', value: '87%', sub: '$127,450 of $146,500', color: '#22c55e', icon: <DollarSign size={16} /> },
                     { label: 'Outstanding', value: '13%', sub: '$19,050 past due', color: '#f59e0b', icon: <AlertTriangle size={16} /> },
@@ -482,7 +516,7 @@ function OverviewContent() {
                     { label: 'Leases Expiring', value: '7', sub: 'Next 90 days', color: 'var(--accent)', icon: <FileKey2 size={16} /> },
                     { label: 'Delinquency Rate', value: '4.2%', sub: '12 tenants', color: '#ef4444', icon: <AlertTriangle size={16} /> },
                 ].map(m => (
-                    <div key={m.label} className="s-glass-card" style={{ padding: '12px 16px' }}>
+                    <div key={m.label} className="s-glass-card" style={{ padding: '12px 16px', opacity: 0.75 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                             <span style={{ color: m.color }}>{m.icon}</span>
                             <span style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5 }}>{m.label}</span>
@@ -492,6 +526,8 @@ function OverviewContent() {
                     </div>
                 ))}
             </div>
+            </div>
+            )}
 
             {/* ══════════ Move-In / Move-Out Tables ══════════ */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, margin: '8px 0' }}>

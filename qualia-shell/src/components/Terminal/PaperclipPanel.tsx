@@ -16,13 +16,16 @@ import './PaperclipPanel.css';
 const LS_URL = 'dwellium-paperclip-url';
 const DEFAULT_URL = 'http://localhost:3100';
 
-type Reach = 'checking' | 'up' | 'down';
+// 'error'   = server answered with a non-2xx status (e.g. 503)
+// 'unknown' = server answered but CORS hid the status from us
+type Reach = 'checking' | 'up' | 'error' | 'unknown' | 'down';
 
 export default function PaperclipPanel() {
     const [url, setUrl] = useState(DEFAULT_URL);
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState(DEFAULT_URL);
     const [reach, setReach] = useState<Reach>('checking');
+    const [reachDetail, setReachDetail] = useState('');
     const [iframeKey, setIframeKey] = useState(0);
     const [showSetup, setShowSetup] = useState(false);
     const [copied, setCopied] = useState('');
@@ -34,18 +37,41 @@ export default function PaperclipPanel() {
         } catch { /* ignore */ }
     }, []);
 
-    // Best-effort reachability: no-cors fetch resolves if the server answers,
-    // rejects on a connection error (opaque response is fine — we only need "up?").
+    // Reachability.
+    //
+    // This previously used a single `mode: 'no-cors'` fetch and called any
+    // resolved promise "up". That is wrong: an opaque response resolves for
+    // EVERY http status, so a service answering 503 showed a green dot. It only
+    // rejects on a connection-level failure. Observed 2026-08-05: localhost:3100
+    // returning 503 while the panel reported Reachable.
+    //
+    // So: try a real fetch first, where the status is readable. Only fall back
+    // to no-cors when CORS blocks us, and report that honestly as "unknown"
+    // (amber) rather than claiming health we have not verified.
     const checkReach = useCallback(async (target: string) => {
         setReach('checking');
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 4000);
         try {
-            const ctrl = new AbortController();
-            const t = setTimeout(() => ctrl.abort(), 4000);
-            await fetch(target, { mode: 'no-cors', signal: ctrl.signal });
+            const res = await fetch(target, { signal: ctrl.signal });
             clearTimeout(t);
-            setReach('up');
+            setReach(res.ok ? 'up' : 'error');
+            setReachDetail(res.ok ? '' : `HTTP ${res.status}`);
+            return;
+        } catch {
+            // Either a network failure or a CORS block — indistinguishable here.
+            // A second, opaque probe tells the two apart.
+        }
+        try {
+            const ctrl2 = new AbortController();
+            const t2 = setTimeout(() => ctrl2.abort(), 4000);
+            await fetch(target, { mode: 'no-cors', signal: ctrl2.signal });
+            clearTimeout(t2);
+            setReach('unknown');
+            setReachDetail('answered, status hidden by CORS');
         } catch {
             setReach('down');
+            setReachDetail('');
         }
     }, []);
 
@@ -64,8 +90,15 @@ export default function PaperclipPanel() {
         try { await navigator.clipboard.writeText(text); setCopied(tag); setTimeout(() => setCopied(''), 2500); } catch { /* ignore */ }
     };
 
-    const dotColor = reach === 'up' ? '#22c55e' : reach === 'down' ? '#ff6b6b' : '#888';
-    const dotLabel = reach === 'up' ? 'Reachable' : reach === 'down' ? 'Not reachable' : 'Checking…';
+    const DOT: Record<Reach, { color: string; label: string }> = {
+        checking: { color: '#888',     label: 'Checking…' },
+        up:       { color: '#22c55e',  label: 'Healthy' },
+        error:    { color: '#ff6b6b',  label: 'Answering with an error' },
+        unknown:  { color: '#f59e0b',  label: 'Answered — health unverified' },
+        down:     { color: '#ff6b6b',  label: 'Not reachable' },
+    };
+    const dotColor = DOT[reach].color;
+    const dotLabel = reachDetail ? `${DOT[reach].label} (${reachDetail})` : DOT[reach].label;
 
     return (
         <div className="pc-panel">

@@ -626,7 +626,18 @@ export default function ControlPanel() {
                     </div>
                     <div className="cp-integration-card__meta">
                         <span>Mailbox: {gmailStatus?.watchEmail || 'N/A'}</span>
-                        <span>Fetcher: {gmailStatus?.fetcherRunning ? 'Running' : 'Stopped'}</span>
+                        {/*
+                          * Gate on `connected`. The backend keeps reporting
+                          * fetcherRunning:true after the OAuth grant dies, so this
+                          * read "Fetcher: Running / Processed: 0" beside a
+                          * Disconnected pill — telling the user the poller was
+                          * healthy when it could not authenticate at all.
+                          */}
+                        <span>
+                            Fetcher: {!gmailStatus?.connected
+                                ? 'Not running — disconnected'
+                                : gmailStatus?.fetcherRunning ? 'Running' : 'Stopped'}
+                        </span>
                         <span>Processed: {gmailStatus?.processedMessageCount ?? 0}</span>
                     </div>
                     <div className="cp-actions">

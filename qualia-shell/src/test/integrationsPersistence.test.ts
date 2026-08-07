@@ -175,3 +175,40 @@ describe('Task C regression — keys survive user.id drift across login paths', 
         expect(third).toBe(first);
     });
 });
+
+// --- Regression: One Save object id must satisfy the backend validator -------
+// Bug (2026-08-05): stableIntegrationsOwnerId returns `email:<addr>`; the ':'
+// and '@' failed /^[A-Za-z0-9_.-]{1,128}$/ so every remote save 400'd silently
+// and Gmail/Calendar state never persisted.
+describe('remote object id is backend-legal', () => {
+    const BACKEND_ID = /^[A-Za-z0-9_.-]{1,128}$/;
+    // Mirrors remoteObjectId() in integrationsStore.ts
+    const remoteId = (uid: string) =>
+        `integrations_${uid.replace(/[^A-Za-z0-9_.-]/g, '_')}`.slice(0, 128);
+
+    it('sanitizes an email-scoped owner id', () => {
+        const uid = stableIntegrationsOwnerId({ id: 'backend-uuid-1', email: 'andy@dwellium.com' })!;
+        expect(uid).toBe('email:andy@dwellium.com');          // source unchanged
+        expect(BACKEND_ID.test(uid)).toBe(false);              // and it is illegal
+        expect(remoteId(uid)).toBe('integrations_email_andy_dwellium.com');
+        expect(BACKEND_ID.test(remoteId(uid))).toBe(true);
+    });
+
+    it('leaves an already-legal uuid owner id intact', () => {
+        const uid = stableIntegrationsOwnerId({ id: 'bb0d822e-4cb9-4199-a8ee-b5f93226107f', email: '' })!;
+        expect(remoteId(uid)).toBe('integrations_bb0d822e-4cb9-4199-a8ee-b5f93226107f');
+        expect(BACKEND_ID.test(remoteId(uid))).toBe(true);
+    });
+
+    it('keeps distinct addresses distinct (. and - survive)', () => {
+        const a = remoteId(stableIntegrationsOwnerId({ id: 'x', email: 'a.b@x.com' })!);
+        const b = remoteId(stableIntegrationsOwnerId({ id: 'x', email: 'a-b@x.com' })!);
+        expect(a).not.toBe(b);
+    });
+
+    it('never exceeds the 128-char backend limit', () => {
+        const long = stableIntegrationsOwnerId({ id: 'x', email: `${'a'.repeat(200)}@x.com` })!;
+        expect(remoteId(long).length).toBeLessThanOrEqual(128);
+        expect(BACKEND_ID.test(remoteId(long))).toBe(true);
+    });
+});

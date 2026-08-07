@@ -73,8 +73,26 @@ function resolveKey(): string {
     return uid ? `integrations:${uid}` : 'integrations:_anonymous';
 }
 
+/**
+ * Backend One Save validates object ids against `/^[A-Za-z0-9_.-]{1,128}$/`
+ * (Docs/OneSave_Backend_P0.md). `stableIntegrationsOwnerId` returns
+ * `email:<addr>`, which carries ':' and '@' — both rejected — so EVERY remote
+ * integrations save returned 400 "invalid object id" and was swallowed
+ * silently. Symptom: Gmail/Calendar connect in the UI but their state never
+ * persists, and the backend Integrations panel keeps reporting Disconnected.
+ *
+ * Sanitize HERE, at the boundary, and nowhere else. The owner id itself must
+ * not change: it also namespaces the localStorage vault (`resolveKey`) and
+ * derives the at-rest AES key, so rewriting it would orphan existing local
+ * vaults and lose the keys they hold.
+ *
+ * '.' and '-' are legal, so addresses stay distinguishable:
+ *   email:andy@dwellium.com -> integrations_email_andy_dwellium.com
+ */
+const BACKEND_ID_ILLEGAL = /[^A-Za-z0-9_.-]/g;
+
 function remoteObjectId(userId: string): string {
-    return `integrations_${userId}`;
+    return `integrations_${userId.replace(BACKEND_ID_ILLEGAL, '_')}`.slice(0, 128);
 }
 
 /** A bundle "has a secret" if any secret field holds ciphertext OR plaintext. */

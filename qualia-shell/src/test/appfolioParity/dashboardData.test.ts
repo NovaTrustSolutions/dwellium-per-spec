@@ -86,22 +86,15 @@ describe('dashboardData — ageLabel', () => {
 });
 
 describe('dashboardData — fetchHeatmap', () => {
-    it('computes occupancy % and open-maintenance count per property', async () => {
+    it('maps the /stats byProperty breakdown (single stats source with Overview KPIs)', async () => {
         const deps = fakeDeps({
-            '/properties': [
-                { id: 'p1', name: 'Buena Vista' },
-                { id: 'p2', name: 'Maple Court' },
-            ],
-            '/units': [
-                { propertyId: 'p1', status: 'occupied' },
-                { propertyId: 'p1', status: 'occupied' },
-                { propertyId: 'p1', status: 'vacant' },
-                { propertyId: 'p2', status: 'vacant' },
-            ],
-            '/workitems': [
-                { id: 'w1', type: 'maintenance', status: 'open', propertyId: 'p1' },
-                { id: 'w2', type: 'maintenance', status: 'resolved', propertyId: 'p1' },
-            ],
+            '/stats': {
+                totalProperties: 2, totalUnits: 4, occupiedUnits: 2, occupancyRate: '50.0', openWorkOrders: 1,
+                byProperty: [
+                    { id: 'p1', name: 'Buena Vista', totalUnits: 3, occupiedUnits: 2, occupancyRate: 67, openWorkOrders: 1 },
+                    { id: 'p2', name: 'Maple Court', totalUnits: 1, occupiedUnits: 0, occupancyRate: 0, openWorkOrders: 0 },
+                ],
+            },
         });
         const rows = await fetchHeatmap(deps);
         expect(rows).toHaveLength(2);
@@ -109,9 +102,18 @@ describe('dashboardData — fetchHeatmap', () => {
         expect(rows[1]).toMatchObject({ name: 'Maple Court', occupancy: 0, maintenance: 0 });
     });
 
-    it('respects the row limit and tolerates empty seeds', async () => {
-        const deps = fakeDeps({ '/properties': [], '/units': [], '/workitems': [] });
-        expect(await fetchHeatmap(deps)).toEqual([]);
+    it('respects the row limit and tolerates a stats payload without byProperty', async () => {
+        const deps = fakeDeps({
+            '/stats': {
+                byProperty: [
+                    { id: 'p1', name: 'A', totalUnits: 1, occupiedUnits: 1, occupancyRate: 100, openWorkOrders: 0 },
+                    { id: 'p2', name: 'B', totalUnits: 1, occupiedUnits: 0, occupancyRate: 0, openWorkOrders: 0 },
+                ],
+            },
+        });
+        expect(await fetchHeatmap(deps, 1)).toHaveLength(1);
+        const legacy = fakeDeps({ '/stats': { totalUnits: 4 } });
+        expect(await fetchHeatmap(legacy)).toEqual([]);
     });
 });
 
@@ -472,8 +474,9 @@ describe('dashboardData — loadDashboardData', () => {
                 if (path === '/workitems') {
                     return [{ id: 'w', status: 'open', priority: 'critical', domain: 'maintenance', title: 'X', dueDate: '2026-06-01', createdAt: '2026-05-14T00:00:00Z' }];
                 }
-                if (path === '/properties') return [{ id: 'p1', name: 'P1' }];
-                if (path === '/units') return [{ propertyId: 'p1', status: 'occupied' }];
+                if (path === '/stats') {
+                    return { byProperty: [{ id: 'p1', name: 'P1', totalUnits: 1, occupiedUnits: 1, occupancyRate: 100, openWorkOrders: 0 }] };
+                }
                 if (path === '/audit') return { entries: [], total: 0 };
                 if (path === '/compliance') return [];
                 return [];

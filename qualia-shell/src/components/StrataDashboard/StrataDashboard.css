@@ -730,6 +730,11 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
     overflow-y: auto;
     overflow-x: hidden;
     padding: 0;
+    /* Size-query container for .s-module-info, which renders here — ABOVE
+       .s-module, so the Phase-6 container on .s-module can't see it. Safe:
+       flex:1 sizes this element extrinsically, and no descendant @container
+       rule resolves here (nearer .s-module wins for module content). */
+    container-type: inline-size;
 }
 
 /* ========================================
@@ -2493,4 +2498,89 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
         color: var(--accent);
         border-bottom-color: var(--accent);
     }
+}
+/* ── Module context strip ──────────────────────────────────────────────
+   "What is this section for?" shown on opening a module. Deliberately reads
+   as chrome, not content: muted surface, hairline border, no heading weight.
+   Sits above the module's own <h2> so it must not compete with it. */
+.strata-dashboard .s-module-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent, #6366f1) 6%, transparent);
+    color: var(--text-secondary);
+}
+
+.strata-dashboard .s-module-info > svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--accent, #6366f1);
+}
+
+.strata-dashboard .s-module-info__text {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.strata-dashboard .s-module-info__dismiss {
+    flex: 0 0 auto;
+    padding: 3px 8px;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-tertiary);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.strata-dashboard .s-module-info__dismiss:hover {
+    color: var(--text-primary);
+    border-color: var(--accent, #6366f1);
+}
+
+/* In a quadrant-sized window the strip wraps one word per line — worse than
+   absent. Same 700px threshold the .s-split-view collapse uses; the module's
+   own header carries the context at that size. */
+@container (max-width: 700px) {
+    .strata-dashboard .s-module-info {
+        display: none;
+    }
+}
+
+/* ── EntityLink — universal clickable entity names ────────────────────
+   Inline button dressed as the text it wraps: inherits font + color so it
+   drops into any row/cell/subtitle without shifting layout; underline on
+   hover + accent tint announce clickability. */
+.strata-dashboard .s-entity-link {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+    cursor: pointer;
+    text-decoration: underline transparent;
+    text-underline-offset: 2px;
+    transition: color 0.12s, text-decoration-color 0.12s;
+}
+
+.strata-dashboard .s-entity-link:hover,
+.strata-dashboard .s-entity-link:focus-visible {
+    color: var(--accent, #6366f1);
+    text-decoration-color: currentColor;
+}
+
+.strata-dashboard .s-entity-link:focus-visible {
+    outline: 2px solid var(--accent, #6366f1);
+    outline-offset: 2px;
+    border-radius: 3px;
 }

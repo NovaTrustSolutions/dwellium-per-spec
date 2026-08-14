@@ -9,6 +9,7 @@ import {
     AlertTriangle, Search, CheckCircle, Clock, Landmark, Plus, X, Repeat
 } from 'lucide-react';
 import { strataGet, strataPost } from '../strataApi';
+import EntityLink from '../EntityLink';
 import { useUser } from '../../../context/UserContext';
 import ProfileSpaces from './ProfileSpaces';
 import type { RecurringCharge } from '../strataTypes';
@@ -20,6 +21,8 @@ type AcctTab = 'overview' | 'receivables' | 'payables' | 'bank-accounts' | 'jour
 interface Invoice {
     id: string; type: string; vendorOrTenant: string; amount: number; status: string;
     dueDate: string; propertyId: string; description: string; createdAt: string;
+    /** Linked entity id (tenant on AR, vendor on AP) — null on unlinked rows. */
+    entityId?: string | null;
 }
 
 const TABS: { id: AcctTab; label: string; icon: typeof DollarSign }[] = [
@@ -251,7 +254,7 @@ export default function AccountingModule() {
                         <tbody>
                             {filteredAR.map(i => (
                                 <tr key={i.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{i.vendorOrTenant}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}><EntityLink type="tenant" id={i.entityId}>{i.vendorOrTenant}</EntityLink></td>
                                     <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{i.description}</td>
                                     <td style={{ padding: '8px 12px', color: '#22c55e', fontWeight: 600 }}>${i.amount.toLocaleString()}</td>
                                     <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{i.dueDate}</td>
@@ -286,7 +289,7 @@ export default function AccountingModule() {
                         <tbody>
                             {filteredAP.map(i => (
                                 <tr key={i.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>{i.vendorOrTenant}</td>
+                                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontWeight: 600 }}><EntityLink type="vendor" id={i.entityId}>{i.vendorOrTenant}</EntityLink></td>
                                     <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{i.description}</td>
                                     <td style={{ padding: '8px 12px', color: '#ef4444', fontWeight: 600 }}>${i.amount.toLocaleString()}</td>
                                     <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{i.dueDate}</td>

@@ -21,12 +21,24 @@ interface StrataNavContextValue {
     navigateToProperty: (propertyId: string) => void;
     navigateToResident: (residentId: string) => void;
     navigateToUnit: (unitId: string, propertyId: string) => void;
+    navigateToVendor: (vendorId: string) => void;
+    navigateToOwner: (ownerId: string) => void;
+    navigateToWorkitem: (workitemId: string) => void;
+    /** Type-keyed dispatch for generic callers (EntityLink). */
+    navigateToEntity: (type: EntityLinkType, id: string, parentId?: string) => void;
 }
+
+/** Entity types EntityLink can link to — matches the searchNavTarget types the modules consume. */
+export type EntityLinkType = 'property' | 'tenant' | 'unit' | 'vendor' | 'owner' | 'workitem';
 
 const StrataNavContext = createContext<StrataNavContextValue>({
     navigateToProperty: () => {},
     navigateToResident: () => {},
     navigateToUnit: () => {},
+    navigateToVendor: () => {},
+    navigateToOwner: () => {},
+    navigateToWorkitem: () => {},
+    navigateToEntity: () => {},
 });
 
 export function useStrataNav(): StrataNavContextValue {
@@ -55,8 +67,34 @@ export function StrataNavProvider({ children, setActiveModule, setSearchNavTarge
         setActiveModule('properties');
     }, [setActiveModule, setSearchNavTarget]);
 
+    const navigateToVendor = useCallback((vendorId: string) => {
+        setSearchNavTarget({ type: 'vendor', id: vendorId });
+        setActiveModule('vendors');
+    }, [setActiveModule, setSearchNavTarget]);
+
+    const navigateToOwner = useCallback((ownerId: string) => {
+        setSearchNavTarget({ type: 'owner', id: ownerId });
+        setActiveModule('owners');
+    }, [setActiveModule, setSearchNavTarget]);
+
+    const navigateToWorkitem = useCallback((workitemId: string) => {
+        setSearchNavTarget({ type: 'workitem', id: workitemId });
+        setActiveModule('work-orders');
+    }, [setActiveModule, setSearchNavTarget]);
+
+    const navigateToEntity = useCallback((type: EntityLinkType, id: string, parentId?: string) => {
+        switch (type) {
+            case 'property': navigateToProperty(id); break;
+            case 'tenant': navigateToResident(id); break;
+            case 'unit': navigateToUnit(id, parentId ?? ''); break;
+            case 'vendor': navigateToVendor(id); break;
+            case 'owner': navigateToOwner(id); break;
+            case 'workitem': navigateToWorkitem(id); break;
+        }
+    }, [navigateToProperty, navigateToResident, navigateToUnit, navigateToVendor, navigateToOwner, navigateToWorkitem]);
+
     return (
-        <StrataNavContext.Provider value={{ navigateToProperty, navigateToResident, navigateToUnit }}>
+        <StrataNavContext.Provider value={{ navigateToProperty, navigateToResident, navigateToUnit, navigateToVendor, navigateToOwner, navigateToWorkitem, navigateToEntity }}>
             {children}
         </StrataNavContext.Provider>
     );

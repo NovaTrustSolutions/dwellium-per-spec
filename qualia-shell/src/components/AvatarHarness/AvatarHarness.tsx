@@ -42,10 +42,17 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import { Video, VideoOff, Mic, MicOff, Square, Loader2, TriangleAlert, Settings } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { getConfigured, createSessionToken, type PersonaConfigInput } from '../../lib/avatarClient';
-import { getAvatarProfile, type AvatarProfile } from '../../lib/avatarProfilesStore';
+import { getAvatarProfile, type AvatarProfile, type AvatarProviderKind } from '../../lib/avatarProfilesStore';
 import { hasActiveLlm, callLlm } from '../../lib/llmClient';
 import { AnamAdapter } from './AnamAdapter';
 import { LocalPhotoAvatarAdapter } from './LocalPhotoAvatarAdapter';
+import { EvolveAvatarAdapter } from './EvolveAvatarAdapter';
+
+/** Bundled default face for the Evolve tier — the persona from the closing
+ * shot of the welcome video (`ara-intro.mp4`), extracted to a still. Lets a
+ * brand-new agent show a living, named face with ZERO setup; replaced the
+ * moment the user uploads their own photo in Avatar setup. */
+export const EVOLVE_DEFAULT_FACE_URL = '/assets/evolve-default-face.jpg';
 import type { AvatarConnectionState, AvatarProviderAdapter } from './providerTypes';
 import AvatarSetupPanel from './AvatarSetupPanel';
 import './AvatarHarness.css';
@@ -84,23 +91,29 @@ function noLlmFallbackLine(): string {
     return "I don't have a language model connected yet — add one in Settings and I'll be able to actually chat with you. I can still see and hear you in the meantime.";
 }
 
-/** Which concrete adapter a profile resolves to. Missing profile (brand-new agent) defaults to local. */
-function resolveProvider(profile: AvatarProfile | null): 'local' | 'anam' {
-    return profile?.provider === 'anam' ? 'anam' : 'local';
+/** Which concrete adapter a profile resolves to. A SAVED profile's choice is
+ * always respected (stored provider defaults to 'local' at creation, so we
+ * can't tell chosen-local from default-local — don't silently override it).
+ * A brand-new agent: Anam when a key is already in the vault (real neural
+ * video), otherwise Evolve with the bundled welcome-video face — a living
+ * default that needs zero setup. One click back to either in Setup. */
+function resolveProvider(profile: AvatarProfile | null, anamConfigured: boolean): AvatarProviderKind {
+    if (profile) return profile.provider; // store normalizes unknown values to 'local'
+    return anamConfigured ? 'anam' : 'evolve';
 }
 
 function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHarnessProps, ref: React.Ref<AvatarHarnessHandle>) {
     const { integrations } = useIntegrations();
     const initialProfile = getAvatarProfile(agentId);
-    const initialProvider = resolveProvider(initialProfile);
-    const [provider, setProviderState] = useState<'local' | 'anam'>(initialProvider);
+    const initialProvider = resolveProvider(initialProfile, getConfigured(integrations));
+    const [provider, setProviderState] = useState<AvatarProviderKind>(initialProvider);
     const [state, setState] = useState<HarnessState>(() => {
         if (initialProvider === 'anam') return getConfigured(integrations) ? 'idle' : 'unconfigured';
         // NOT 'live' yet even if a photo exists — no adapter has connected
         // to the canvas at this point. The mount-time auto-connect effect
         // below does the actual connectLocal() work and flips this to
         // 'live' once the (mocked or real) adapter emits 'connected'.
-        return initialProfile?.photoDataUrl ? 'connecting' : 'no-photo';
+        return (initialProfile?.photoDataUrl || initialProvider === 'evolve') ? 'connecting' : 'no-photo';
     });
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [muted, setMuted] = useState(false);
@@ -175,16 +188,31 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
 
     const connectLocal = useCallback(async () => {
         const canvas = canvasRef.current;
-        const profile = getAvatarProfile(agentId);
-        if (!canvas || !profile?.photoDataUrl) {
+        const savedProfile = getAvatarProfile(agentId);
+        // Evolve ships a face: no uploaded photo → the welcome-video persona.
+        const photoUrl = savedProfile?.photoDataUrl
+            || (provider === 'evolve' ? EVOLVE_DEFAULT_FACE_URL : null);
+        if (!canvas || !photoUrl) {
             setState('no-photo');
             return;
         }
+        const profile: AvatarProfile = savedProfile
+            ? { ...savedProfile, photoDataUrl: photoUrl }
+            : {
+                avatarId: null, voiceId: null, systemPrompt: null, displayName: null,
+                provider: 'evolve', photoDataUrl: photoUrl, browserVoiceURI: null,
+                updatedAt: Date.now(),
+            };
 
         setErrorMessage('');
         setState('connecting');
 
-        const adapter = new LocalPhotoAvatarAdapter();
+        // 'evolve' shares the whole photo-canvas path; its adapter adds real
+        // neural TTS + analyser lipsync + viseme shaping on top.
+        const adapter = provider === 'evolve' ? new EvolveAvatarAdapter() : new LocalPhotoAvatarAdapter();
+        if (adapter instanceof EvolveAvatarAdapter) {
+            adapter.openaiApiKey = integrations.llm?.openai?.apiKey || null;
+        }
         adapter.selectedVoiceURI = profile.browserVoiceURI || null;
         adapterRef.current = adapter;
         adapter.onStateChange((next: AvatarConnectionState, detail?: string) => {
@@ -199,7 +227,7 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
         });
 
         await adapter.connect(profile, canvas);
-    }, [agentId]);
+    }, [agentId, provider, integrations]);
 
     const connect = useCallback(async () => {
         if (provider === 'anam') await connectAnam();
@@ -221,9 +249,9 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
     // guard skip the real connectLocal() call that's supposed to produce
     // the adapter in the first place.
     useEffect(() => {
-        if (provider !== 'local') return;
+        if (provider === 'anam') return;
         const profile = getAvatarProfile(agentId);
-        if (!profile?.photoDataUrl) {
+        if (!profile?.photoDataUrl && provider !== 'evolve') {
             setState('no-photo');
             return;
         }
@@ -329,8 +357,8 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
         // Setup may have just switched provider or saved a new photo — re-sync
         // local state from the freshly-saved profile without a remount.
         const profile = getAvatarProfile(agentId);
-        setProviderState(resolveProvider(profile));
-    }, [agentId]);
+        setProviderState(resolveProvider(profile, getConfigured(integrations)));
+    }, [agentId, integrations]);
 
     return (
         <div className={`avatar-harness avatar-harness--${size}`} data-agent-id={agentId}>
@@ -375,7 +403,7 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
                         )}
                         {state === 'live' && (
                             <>
-                                {provider === 'local' && (
+                                {provider !== 'anam' && (
                                     <button
                                         className="avatar-harness__btn"
                                         onClick={toggleListening}
@@ -444,7 +472,7 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
                         </div>
                     )}
 
-                    {provider === 'local' && state === 'live' && (
+                    {provider !== 'anam' && state === 'live' && (
                         <div className="avatar-harness__chat-row">
                             <input
                                 type="text"

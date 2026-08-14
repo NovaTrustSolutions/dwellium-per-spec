@@ -4,6 +4,7 @@ import { AlertTriangle, TrendingDown, TrendingUp, Minus, Plus, CheckCircle, News
 import { strataGet, isStaticMode } from '../strataApi';
 import type { SentimentScore, SentimentScoreView } from '@qualia/types';
 import { useStrataNav } from '../StrataNavContext';
+import EntityLink from '../EntityLink';
 // Task 2.8 — GR-13 observability wiring + ErrorBoundary, mirrors the
 // 2.1 / 2.2 / 2.4 / 2.10 retrofit pattern. Sentry breadcrumbs are
 // try/catch-wrapped so missing DSN is silent in test/local builds.
@@ -247,7 +248,7 @@ function SentimentModuleInner() {
                                             style={{ borderBottom: '1px solid #1a2233', cursor: 'pointer', background: selected?.tenantId === t.tenantId ? '#293244' : 'transparent', transition: 'background 0.15s' }}>
                                             <td style={{ padding: '10px 14px', color: 'var(--text-primary)', fontWeight: 500 }}>
                                                 {t.atRisk && <AlertTriangle size={12} color="#ef4444" style={{ marginRight: 6, verticalAlign: 'middle' }} />}
-                                                {t.tenantName}
+                                                <EntityLink type="tenant" id={t.tenantId}>{t.tenantName}</EntityLink>
                                             </td>
                                             <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{t.unit}</td>
                                             <td style={{ padding: '10px 14px', color: 'var(--text-secondary)', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -271,7 +272,7 @@ function SentimentModuleInner() {
                         <div data-testid="sentiment-detail-panel" style={{ background: '#1e2537', borderRadius: 12, padding: 18 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                                 <div>
-                                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{selected.tenantName}</div>
+                                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}><EntityLink type="tenant" id={selected.tenantId}>{selected.tenantName}</EntityLink></div>
                                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                                         {selected.unit} · {selected.propertyId ? (
                                             <button className="s-property-link" style={{ fontSize: 12 }} onClick={() => navigateToProperty(selected.propertyId)}>{selected.propertyName}</button>

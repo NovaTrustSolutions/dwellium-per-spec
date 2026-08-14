@@ -67,7 +67,7 @@ const SWAY_TRANSLATE_PX = 1.5;
 const GAZE_MIN_INTERVAL_MS = 3000;
 const GAZE_MAX_INTERVAL_MS = 7000;
 const GAZE_SHIFT_PX = 1.2;
-const FEATHER_BLUR_PX = 3;
+export const FEATHER_BLUR_PX = 3;
 const MOUTH_OSCILLATOR_HZ = 10.5; // midpoint of the 9-12Hz syllable-approximation range
 const BOUNDARY_EVENT_GRACE_MS = 600; // if no 'boundary' event fires within this window, fall back to the oscillator
 const ENVELOPE_ATTACK_MS = 60;
@@ -83,10 +83,10 @@ const FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 39
 const LEFT_IRIS = [468, 469, 470, 471, 472];
 const RIGHT_IRIS = [473, 474, 475, 476, 477];
 
-interface Point { x: number; y: number }
+export interface Point { x: number; y: number }
 type LandmarkList = Array<{ x: number; y: number; z?: number }>;
 
-interface CachedLandmarks {
+export interface CachedLandmarks {
     all: LandmarkList;
     leftEye: Point[];
     rightEye: Point[];
@@ -104,14 +104,14 @@ function toPixelRing(landmarks: LandmarkList, indices: number[], width: number, 
     });
 }
 
-function ringCenter(ring: Point[]): Point {
+export function ringCenter(ring: Point[]): Point {
     const n = ring.length || 1;
     const sum = ring.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
     return { x: sum.x / n, y: sum.y / n };
 }
 
 /** Trace a closed path through a ring of points on the given context (caller does fill/clip/stroke). */
-function tracePath(ctx: CanvasRenderingContext2D, ring: Point[]): void {
+export function tracePath(ctx: CanvasRenderingContext2D, ring: Point[]): void {
     if (ring.length === 0) return;
     ctx.beginPath();
     ctx.moveTo(ring[0].x, ring[0].y);
@@ -171,7 +171,7 @@ interface QueuedUtterance {
 
 export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     private listeners: Array<(state: AvatarConnectionState, detail?: string) => void> = [];
-    private cancelled = false;
+    protected cancelled = false;
 
     /**
      * The CDN module loader, injectable via the constructor — defaults to
@@ -187,10 +187,10 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
         this.loadVisionModule = loadVisionModule;
     }
 
-    private canvas: HTMLCanvasElement | null = null;
-    private ctx: CanvasRenderingContext2D | null = null;
-    private image: HTMLImageElement | null = null;
-    private landmarks: CachedLandmarks | null = null;
+    protected canvas: HTMLCanvasElement | null = null;
+    protected ctx: CanvasRenderingContext2D | null = null;
+    protected image: HTMLImageElement | null = null;
+    protected landmarks: CachedLandmarks | null = null;
     private rafHandle: number | null = null;
 
     // Idle-life schedule state (re-randomized each cycle).
@@ -202,8 +202,8 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     private gazeDy = 0;
 
     // Speaking-envelope state.
-    private speaking = false;
-    private envelope = 0; // [0,1] mouth-open amount, current frame
+    protected speaking = false;
+    protected envelope = 0; // [0,1] mouth-open amount, current frame
     private utteranceStartedAt = 0;
     private lastBoundaryAt = 0;
     private boundaryEventSeen = false;
@@ -217,7 +217,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     private recognition: any = null;
     private recognitionActive = false;
 
-    private emit(state: AvatarConnectionState, detail?: string): void {
+    protected emit(state: AvatarConnectionState, detail?: string): void {
         for (const cb of this.listeners) {
             try { cb(state, detail); } catch { /* listener error must not break the adapter */ }
         }
@@ -349,7 +349,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     }
 
     /** Returns [0,1] eyelid-closed amount for the current frame (0 = fully open). */
-    private computeBlinkAmount(now: number): number {
+    protected computeBlinkAmount(now: number): number {
         if (this.blinkStartedAt === null) {
             if (now >= this.nextBlinkAt) this.blinkStartedAt = now;
             return 0;
@@ -368,7 +368,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     }
 
     /** Updates (and returns) the current gaze micro-shift offset in pixels. */
-    private computeGazeShift(now: number): { dx: number; dy: number } {
+    protected computeGazeShift(now: number): { dx: number; dy: number } {
         if (this.gazeStartedAt === null) {
             if (now >= this.nextGazeAt) {
                 this.gazeStartedAt = now;
@@ -392,7 +392,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     // ── Speaking envelope ───────────────────────────────────────────────────
 
     /** Updates `this.envelope` for the current frame based on active speech state. */
-    private computeEnvelope(now: number): number {
+    protected computeEnvelope(now: number): number {
         if (!this.speaking) return 0;
 
         const elapsedSinceBoundary = now - this.lastBoundaryAt;
@@ -437,7 +437,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
         this.rafHandle = requestAnimationFrame(frame);
     }
 
-    private renderFrame(now: number): void {
+    protected renderFrame(now: number): void {
         const ctx = this.ctx;
         const canvas = this.canvas;
         const img = this.image;
@@ -490,7 +490,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     }
 
     /** Feathered-clip vertical squash of a region (used for eyelid blinks). */
-    private warpRegionVerticalSquash(
+    protected warpRegionVerticalSquash(
         ctx: CanvasRenderingContext2D,
         img: HTMLImageElement,
         ring: Point[],
@@ -514,7 +514,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     }
 
     /** Subtle iris-region translate (gaze micro-shift). */
-    private warpIrisShift(
+    protected warpIrisShift(
         ctx: CanvasRenderingContext2D,
         img: HTMLImageElement,
         irisCenter: Point,
@@ -537,7 +537,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
     }
 
     /** Feathered-clip jaw-open warp of the mouth region, driven by the envelope. */
-    private warpMouth(
+    protected warpMouth(
         ctx: CanvasRenderingContext2D,
         img: HTMLImageElement,
         ring: Point[],
@@ -586,7 +586,7 @@ export class LocalPhotoAvatarAdapter implements AvatarProviderAdapter {
         }
     }
 
-    private speakOne(text: string): Promise<void> {
+    protected speakOne(text: string): Promise<void> {
         return new Promise<void>((resolve) => {
             if (typeof window === 'undefined' || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') {
                 // No speechSynthesis available — still animate via the

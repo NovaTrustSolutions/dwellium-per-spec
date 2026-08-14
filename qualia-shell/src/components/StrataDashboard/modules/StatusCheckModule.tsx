@@ -42,11 +42,51 @@ const STATUS_CONFIG = {
     degraded: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)', label: 'Degraded', icon: <AlertTriangle size={14} /> },
 };
 
+/**
+ * Repair action per service — a status page that can't fix anything is a
+ * dead end. Only services with a REAL repair endpoint get a button; env-only
+ * config (Trello, OpenAI) keeps its honest detail text instead.
+ * Returns a user-facing progress/result message.
+ */
+const authHeaders = (): Record<string, string> => {
+    const token = getAuthToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const reconnectGoogle = async (): Promise<string> => {
+    const res = await fetch(`${API_BASE}/api/google/oauth/start?mode=json`, { headers: authHeaders() });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.success || !json?.data?.url) {
+        throw new Error(json?.error || `OAuth start failed (HTTP ${res.status})`);
+    }
+    window.open(json.data.url, '_blank', 'noopener');
+    return 'Google consent opened in a new tab — statuses refresh automatically after you approve.';
+};
+
+const FIX_ACTIONS: Record<string, { label: string; run: () => Promise<string> }> = {
+    'Gmail': { label: 'Reconnect Google', run: reconnectGoogle },
+    'Google Calendar': { label: 'Reconnect Google', run: reconnectGoogle },
+    'Google Drive': { label: 'Reconnect Google', run: reconnectGoogle },
+    'ruVector': {
+        label: 'Re-index',
+        run: async () => {
+            const res = await fetch(`${API_BASE}/api/search/index`, { method: 'POST', headers: authHeaders() });
+            const json = await res.json().catch(() => null);
+            if (res.status === 409) return 'Indexing already in progress — check back shortly.';
+            if (!res.ok) throw new Error(json?.error || `Re-index failed (HTTP ${res.status})`);
+            return 'Re-index started — the card goes green when documents land.';
+        },
+    },
+};
+
 export default function StatusCheckModule() {
     const [data, setData] = useState<StatusData | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [lastChecked, setLastChecked] = useState<Date | null>(null);
+    /** Service name whose fix action is running, and the last action's outcome. */
+    const [fixing, setFixing] = useState<string | null>(null);
+    const [fixMsg, setFixMsg] = useState('');
 
     const fetchStatus = useCallback(async () => {
         setLoading(true);
@@ -158,6 +198,17 @@ export default function StatusCheckModule() {
                 </div>
             )}
 
+            {/* Fix-action outcome */}
+            {fixMsg && (
+                <div role="status" style={{
+                    padding: '12px 16px', borderRadius: 10, marginBottom: '1rem',
+                    background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+                    color: 'var(--text-secondary)', fontSize: 13,
+                }}>
+                    {fixMsg}
+                </div>
+            )}
+
             {/* Service Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
                 {(data?.services || []).map(svc => {
@@ -195,6 +246,31 @@ export default function StatusCheckModule() {
                             <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                                 {svc.details || '—'}
                             </div>
+
+                            {svc.status !== 'online' && FIX_ACTIONS[svc.name] && (
+                                <button
+                                    type="button"
+                                    disabled={fixing !== null}
+                                    onClick={async () => {
+                                        setFixing(svc.name);
+                                        setFixMsg('');
+                                        try {
+                                            setFixMsg(await FIX_ACTIONS[svc.name].run());
+                                        } catch (e: any) {
+                                            setFixMsg(`${svc.name}: ${e.message}`);
+                                        }
+                                        setFixing(null);
+                                    }}
+                                    style={{
+                                        marginTop: 10, padding: '5px 12px', borderRadius: 6,
+                                        border: `1px solid ${config.color}55`, background: 'transparent',
+                                        color: config.color, fontSize: 12, fontWeight: 600,
+                                        cursor: fixing ? 'wait' : 'pointer',
+                                    }}
+                                >
+                                    {fixing === svc.name ? 'Working…' : FIX_ACTIONS[svc.name].label}
+                                </button>
+                            )}
 
                             {svc.latencyMs !== undefined && (
                                 <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>

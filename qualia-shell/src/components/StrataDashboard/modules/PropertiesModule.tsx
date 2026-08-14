@@ -225,7 +225,10 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
             if (navType === 'unit' && searchNavTarget.parentId) {
                 const target = properties.find(p => p.id === searchNavTarget.parentId);
                 if (target) {
-                    setSelected(target);
+                    // openDetail (not bare setSelected): it also flips view to
+                    // 'detail' — without it the selection is set but the list
+                    // keeps rendering, which silently broke search-nav.
+                    openDetail(target);
                     setActiveTab('units');
                     // Defer unit selection until units are loaded (handled via separate effect below)
                     setPendingUnitId(searchNavTarget.id);
@@ -237,7 +240,7 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
             if (['property', 'insurance', 'work', 'legal', 'units', 'documents', 'incidents', 'vehicles', 'utilities', 'residents'].includes(navType)) {
                 const target = properties.find(p => p.id === searchNavTarget.id);
                 if (target) {
-                    setSelected(target);
+                    openDetail(target); // includes setView('detail') — see unit branch note
                     const tab = TAB_MAP[navType] || 'overview';
                     setActiveTab(tab);
                     onNavComplete?.();

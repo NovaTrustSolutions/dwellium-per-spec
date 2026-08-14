@@ -76,6 +76,7 @@ import type { PortalTab, TenantPortalPagination, TenantPortalStats } from '../st
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
 import { useStrataNav } from '../StrataNavContext';
+import EntityLink from '../EntityLink';
 
 const TABS: { id: PortalTab; label: string; icon: typeof Users }[] = [
     { id: 'directory', label: 'Directory', icon: Users },
@@ -542,10 +543,12 @@ function TenantPortalModuleInner() {
                                                     <div className="tp-detail-avatar" style={{ background: nameColor(wo.tenantName), width: 22, height: 22, fontSize: 9 }}>
                                                         {getInitials(wo.tenantName)}
                                                     </div>
-                                                    {wo.tenantName}
+                                                    <EntityLink type="tenant" id={wo.tenantId}>{wo.tenantName}</EntityLink>
                                                 </div>
                                             </td>
-                                            <td>{wo.unitNumber || '—'}</td>
+                                            <td>{wo.unitNumber
+                                                ? <EntityLink type="unit" id={wo.unitId} parentId={wo.propertyId ?? undefined}>{wo.unitNumber}</EntityLink>
+                                                : '—'}</td>
                                             <td>{priorityBadge(wo.priority)}</td>
                                             <td>{statusBadge(wo.status)}</td>
                                             <td style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{new Date(wo.createdAt).toLocaleDateString()}</td>
@@ -756,7 +759,7 @@ function TenantPortalModuleInner() {
                                                     {getInitials(a.tenantName)}
                                                 </div>
                                                 <div>
-                                                    <div className="tp-cell-name">{a.tenantName}</div>
+                                                    <div className="tp-cell-name"><EntityLink type="tenant" id={a.tenantId}>{a.tenantName}</EntityLink></div>
                                                     <div className="tp-cell-sub">{a.tenantEmail}</div>
                                                 </div>
                                             </div>
@@ -766,7 +769,8 @@ function TenantPortalModuleInner() {
                                         ) : a.propertyName}</td>
                                         <td>
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                                <Hash size={11} style={{ color: 'var(--text-tertiary)' }} />{a.unitNumber}
+                                                <Hash size={11} style={{ color: 'var(--text-tertiary)' }} />
+                                                <EntityLink type="unit" id={a.unitId} parentId={a.propertyId ?? undefined}>{a.unitNumber}</EntityLink>
                                             </span>
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap' }}>{new Date(a.leaseEnd).toLocaleDateString()}</td>

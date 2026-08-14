@@ -70,12 +70,34 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
             (w.status === 'open' || w.status === 'in_progress') && w.type === 'work_order',
         ).length;
         const occRateNum = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+        // Per-property breakdown, mirroring backend getDashboardStats.byProperty
+        // (single stats source for the Astra heatmap and any per-property widget).
+        const byProperty = activeProps
+            .slice()
+            .map(p => {
+                const propUnits = (units as any[]).filter(u => u.propertyId === p.id);
+                const occupied = propUnits.filter(u => u.status === 'occupied').length;
+                return {
+                    id: p.id,
+                    name: p.name ?? p.id,
+                    totalUnits: propUnits.length,
+                    occupiedUnits: occupied,
+                    occupancyRate: propUnits.length > 0 ? Math.round((occupied / propUnits.length) * 100) : 0,
+                    openWorkOrders: (wis as any[]).filter(w =>
+                        w.propertyId === p.id &&
+                        (w.status === 'open' || w.status === 'in_progress') && w.type === 'work_order',
+                    ).length,
+                };
+            })
+            // Largest first, mirroring backend getDashboardStats ordering.
+            .sort((a, b) => (b.totalUnits - a.totalUnits) || a.name.localeCompare(b.name));
         return {
             totalProperties: activeProps.length,
             totalUnits,
             occupiedUnits,
             occupancyRate: String(occRateNum),
             openWorkOrders,
+            byProperty,
         };
     }
     if (path === '/comms') {
@@ -1146,12 +1168,17 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
         );
         const rows = wos.map(w => {
             const u = w.unitId ? unitById.get(w.unitId) : null;
-            const tenantNameFromUnit = u?.currentTenantId ? String(u.currentTenantId) : '';
+            // Resolve the REAL tenant name via entity lookup (mirrors the
+            // backend fix — previously stringified currentTenantId as a name).
+            const unitTenant = u?.currentTenantId ? tenantById.get(u.currentTenantId) : null;
             const tenantById_ = w.assignedTo ? tenantById.get(w.assignedTo) : null;
             return {
                 id: w.id,
                 title: w.title || '',
-                tenantName: tenantNameFromUnit || tenantById_?.name || '',
+                tenantId: unitTenant?.id || tenantById_?.id || null,
+                tenantName: unitTenant?.name || tenantById_?.name || '',
+                unitId: w.unitId || null,
+                propertyId: u?.propertyId || null,
                 unitNumber: u?.unitNumber || null,
                 priority: w.priority || 'medium',
                 status: w.status || 'open',
@@ -1201,8 +1228,11 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
             loadTable('entities') as Promise<any[]>,
         ]);
         const tenantByName = new Map<string, any>();
+        const tenantByIdAlert = new Map<string, any>();
         for (const e of tenants) {
-            if (e.entityType === 'tenant' && e.name) tenantByName.set(String(e.name), e);
+            if (e.entityType !== 'tenant') continue;
+            if (e.name) tenantByName.set(String(e.name), e);
+            tenantByIdAlert.set(String(e.id), e);
         }
         const now = Date.now();
         const ninetyDaysMs = 90 * 86400000;
@@ -1217,11 +1247,18 @@ async function matchRoute(path: string, params?: Record<string, string>): Promis
             const urgency: 'high' | 'medium' | 'low' =
                 daysRemaining <= 30 ? 'high' :
                     daysRemaining <= 60 ? 'medium' : 'low';
-            const t = u.currentTenantId ? tenantByName.get(String(u.currentTenantId)) : null;
+            // currentTenantId may hold an entity id or (legacy seeds) a name —
+            // resolve by id first, then name. Emit the REAL display name; the
+            // raw value used to leak into tenantName as-is.
+            const t = u.currentTenantId
+                ? (tenantByIdAlert.get(String(u.currentTenantId)) ?? tenantByName.get(String(u.currentTenantId)))
+                : null;
             const emailRaw = typeof t?.email === 'string' ? t.email.split(',')[0].trim() : '';
             alerts.push({
                 urgency,
-                tenantName: u.currentTenantId || '',
+                tenantId: t?.id || null,
+                tenantName: t?.name || u.currentTenantId || '',
+                unitId: u.id || null,
                 tenantEmail: emailRaw,
                 propertyId: (t?.propertyIds && t.propertyIds[0]) || u.propertyId || null,
                 propertyName: t?.metadata?.propertyName || '',

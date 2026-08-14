@@ -620,18 +620,20 @@ export default function Desktop() {
     }, []);
 
     // ── System Initialization ──────────────────────────────────────────
-    // Auto-open Notebook (NotebookLM) and Paperclip (Terminal → Paperclip tab)
-    // once per app start. Slight delay lets the window manager settle so both
-    // windows place cleanly.
+    // Open the property-management workspace once per app start. Slight delay
+    // lets the window manager settle so the window places cleanly.
+    //
+    // This previously opened NotebookLM AND the Terminal pre-set to its
+    // Paperclip tab. Paperclip iframes http://localhost:3100 — an optional
+    // third-party service nothing in this repo serves — so a new user's first
+    // screen was a dev tool showing a connection error, beside a notebook
+    // panel they never asked for. Both remain one click away in the sidebar
+    // and the ⌘K palette; neither belongs in front of a cold start.
     useEffect(() => {
         if (sysInitFired) return;
         sysInitFired = true;
         const t = setTimeout(() => {
-            try { openWindow('notebooklm-context', 'NotebookLM', ''); } catch { /* ignore */ }
-            try {
-                sessionStorage.setItem('dwellium-terminal-initial-tab', 'paperclip');
-            } catch { /* sandboxed */ }
-            try { openWindow('terminal', 'Paperclip', ''); } catch { /* ignore */ }
+            try { openWindow('strata-dashboard', 'Strata Dashboard', ''); } catch { /* ignore */ }
         }, 600);
         return () => clearTimeout(t);
     }, [openWindow]);

@@ -8,6 +8,7 @@ import {
     Shield, AlertTriangle, CheckCircle2, XCircle, Truck, Inbox, ThumbsUp, ThumbsDown, FileSearch
 } from 'lucide-react';
 import { strataGet, strataPost } from '../strataApi';
+import EntityLink from '../EntityLink';
 import type { Report } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
 import { useStrataNav } from '../StrataNavContext';
@@ -608,7 +609,7 @@ export default function ReportingModule() {
                                                 }}>
                                                     <Truck size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
                                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{v.vendorName}</div>
+                                                        <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}><EntityLink type="vendor" id={v.vendorId}>{v.vendorName}</EntityLink></div>
                                                         <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
                                                             {v.serviceType && <span>{v.serviceType} · </span>}
                                                             {v.accountNumber && <span>Acct: {v.accountNumber} · </span>}

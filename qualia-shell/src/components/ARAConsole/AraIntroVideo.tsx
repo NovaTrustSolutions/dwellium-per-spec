@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Volume2 } from 'lucide-react';
 
 /**
- * ARA startup intro — plays a short video ONCE PER LOGIN SESSION (the first time
- * ARA opens after the user logs on), not every time the console is opened. A
- * per-session flag (sessionStorage) records that it has played; the flag is
- * cleared at login (see UserContext) so a fresh logon replays it. Tries to
+ * ARA startup intro — plays a short video ONCE PER LOGIN SESSION (the first
+ * time ARA opens after the user logs on), not every time the console is opened.
+ * A per-session flag (sessionStorage) records that it has played; UserContext
+ * clears it at each login path (4 sites — grep the literal string
+ * 'dwellium-ara-intro-played', NOT the constant name: UserContext uses the
+ * literal, which is how a 2026-08-07 grep for ARA_INTRO_PLAYED_KEY wrongly
+ * concluded nothing clears it) so a fresh logon replays it. Tries to
  * autoplay with sound; if the browser blocks unmuted autoplay it falls back to
  * muted playback and surfaces a tap-to-unmute button. Always skippable. Dismisses
  * on end, on error, or immediately when video playback isn't available (e.g.

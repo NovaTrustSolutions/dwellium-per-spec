@@ -342,6 +342,11 @@ function AvatarHarness({ agentId, systemPromptDefault, size = 'full' }: AvatarHa
     // state we were in. This repo has a documented history of unmount-leak
     // findings; this cleanup is the single authoritative teardown path.
     useEffect(() => {
+        // Reset on every mount: refs SURVIVE StrictMode's dev double-mount, so
+        // the cleanup's cancelled=true from the throwaway first mount would
+        // otherwise mute every state event of the real second mount — the
+        // adapter connects and animates but the UI stays on "Connecting…".
+        cancelledRef.current = false;
         return () => {
             cancelledRef.current = true;
             const adapter = adapterRef.current;

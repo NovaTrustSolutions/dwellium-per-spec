@@ -116,7 +116,6 @@ function renderHalocronForUser(user: DwelliumUser) {
             isLoading: false,
             login: vi.fn(),
             loginWithGoogle: vi.fn(),
-            loginAsArchitect: vi.fn(),
             loginLocal: vi.fn(),
             logout: vi.fn(),
             authFetch: vi.fn(),

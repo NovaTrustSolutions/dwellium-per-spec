@@ -27,6 +27,7 @@ import { findPersona } from '../../lib/agents/personas';
 import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun } from '../HonchoHermesPanel/hermesLearningStore';
 import { useSyncExternalStore } from 'react';
 import { araFewShot, recordAraChat } from './araHermes';
+import { looksLikeRefusal, runAraEscalation } from './araEscalation';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -1080,6 +1081,30 @@ export default function ARAConsole() {
         // Connections & Memory pane) rides every chat the same bracketed way.
         outgoingMessage += buildAgentContextBlock();
 
+        // ── Refusal → solution (2026-08-16 Ilya) ─────────────────────────
+        // When ARA's reply is "I can't do that", don't stop there: hand the
+        // ORIGINAL request to Hermes (backend delegate → skills → ReAct); if
+        // Hermes can't either, propose the tool that would make it possible
+        // (+ a `new goal:` line for Mission Control). Returns true when it
+        // took over the reply, so callers skip speaking the refusal aloud.
+        const escalateIfRefusal = async (reply: string): Promise<boolean> => {
+            if (!looksLikeRefusal(reply)) return false;
+            const progress = createChatMessage({ role: 'assistant', content: 'That’s outside what I can do directly — handing it to Hermes…', mode: modeToUse });
+            setMessages(prev => [...prev, progress]);
+            const setProgress = (c: string) => setMessages(prev => prev.map(m => (m.id === progress.id ? { ...m, content: c } : m)));
+            hermesLearningUserIdHolder.current = user?.id ?? null;
+            const outcome = await runAraEscalation(text, reply, {
+                authFetch,
+                llm: integrations.llm,
+                search: integrations.search,
+                onProgress: setProgress,
+            });
+            setProgress(outcome.text);
+            if (outcome.proposalTitle) recordArtifact({ content: outcome.text, source: 'ara', title: outcome.proposalTitle, type: 'markdown' });
+            if (ttsEnabled) void speakText(outcome.via === 'hermes' ? 'I couldn’t do that myself, so Hermes handled it — the result is on screen.' : outcome.text);
+            return true;
+        };
+
         try {
             const res = await authFetch(`${API_ARA}/chat`, {
                 method: 'POST',
@@ -1121,6 +1146,9 @@ export default function ARAConsole() {
             });
             setMessages(prev => [...prev, araMsg]);
             fetchObservability();
+
+            // Refusal → Hermes / tool proposal (see escalateIfRefusal above).
+            if (await escalateIfRefusal(data.data.content)) return;
 
             // ── Pipe ARA's response to live avatar if connected ──
             if (avatarEnabled && avatarHarnessRef.current?.isLive()) {
@@ -1176,6 +1204,7 @@ export default function ARAConsole() {
                             mode: modeToUse,
                             hermesRunId: hermesRec.id,
                         })]);
+                        await escalateIfRefusal(llmRes.text);
                         return;
                     }
                 } catch (llmErr) {
@@ -1206,6 +1235,7 @@ export default function ARAConsole() {
         ttsEnabled,
         humanizeEnabled,
         integrations.llm,
+        integrations.search,
         user,
     ]);
 

@@ -27,7 +27,7 @@ import { findPersona } from '../../lib/agents/personas';
 import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun } from '../HonchoHermesPanel/hermesLearningStore';
 import { useSyncExternalStore } from 'react';
 import { araFewShot, recordAraChat } from './araHermes';
-import { shouldEscalate, runAraEscalation } from './araEscalation';
+import { classifyForEscalation, looksLikeActionRequest, runAraEscalation } from './araEscalation';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -473,6 +473,10 @@ export default function ARAConsole() {
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const sessionId = useRef(`session-${Date.now()}`);
+    // Refusal→solution ladder: the last "DO this" request the user made, kept
+    // for a few turns so a later "here's the draft" reply is judged against
+    // the ORIGINAL "email the owner…" ask, not the details turn that followed.
+    const pendingActionRef = useRef<{ text: string; at: number } | null>(null);
     const skipSessionPersistRef = useRef(true);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -1089,13 +1093,22 @@ export default function ARAConsole() {
         // Hermes can't either, propose the tool that would make it possible
         // (+ a `new goal:` line for Mission Control). Returns true when it
         // took over the reply, so callers skip speaking the refusal aloud.
+        const PENDING_ACTION_TTL_MS = 5 * 60_000;
+        if (looksLikeActionRequest(text)) pendingActionRef.current = { text, at: Date.now() };
+        const pending = pendingActionRef.current;
+        const actionText = looksLikeActionRequest(text)
+            ? text
+            : (pending && Date.now() - pending.at < PENDING_ACTION_TTL_MS ? pending.text : text);
         const escalateIfRefusal = async (reply: string): Promise<boolean> => {
-            if (!(await shouldEscalate(text, reply, integrations.llm))) return false;
+            const verdict = await classifyForEscalation(actionText, reply, integrations.llm);
+            console.info('[ARA escalation]', { verdict, actionText, latest: text, replyHead: reply.slice(0, 80) });
+            if (verdict !== 'refusal' && verdict !== 'substitute' && verdict !== 'judge-deflected') return false;
+            pendingActionRef.current = null; // one escalation per request
             const progress = createChatMessage({ role: 'assistant', content: 'That’s outside what I can do directly — handing it to Hermes…', mode: modeToUse });
             setMessages(prev => [...prev, progress]);
             const setProgress = (c: string) => setMessages(prev => prev.map(m => (m.id === progress.id ? { ...m, content: c } : m)));
             hermesLearningUserIdHolder.current = user?.id ?? null;
-            const outcome = await runAraEscalation(text, reply, {
+            const outcome = await runAraEscalation(actionText, reply, {
                 authFetch,
                 llm: integrations.llm,
                 search: integrations.search,

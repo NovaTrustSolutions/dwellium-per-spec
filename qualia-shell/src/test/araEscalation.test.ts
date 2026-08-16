@@ -8,6 +8,8 @@ import { describe, it, expect, vi } from 'vitest';
 import {
     looksLikeRefusal,
     looksLikeActionRequest,
+    looksLikeSubstitute,
+    classifyForEscalation,
     judgeReplyDeflects,
     shouldEscalate,
     runAraEscalation,
@@ -122,8 +124,42 @@ describe('judgeReplyDeflects / shouldEscalate', () => {
         const judge = vi.fn(async () => true);
         expect(await shouldEscalate('what is the median rent?', 'About $1,850.', LLM_ON, judge)).toBe(false);
         expect(judge).not.toHaveBeenCalled();
+        // A deflection the regexes can't see (no "can't", no draft) → the judge decides.
+        expect(await shouldEscalate('email the owner about the leak', 'You could ask the property manager to reach out to them.', LLM_ON, judge)).toBe(true);
+        expect(judge).toHaveBeenCalledTimes(1);
+        // The classic draft pivot is caught for free, before the judge.
         expect(await shouldEscalate('email the owner about the leak', DEFLECT_REPLY, LLM_ON, judge)).toBe(true);
         expect(judge).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('looksLikeSubstitute / classifyForEscalation (the live "here is a draft" case)', () => {
+    const DRAFT_REPLY = "Got it. Here's a quick draft for the email:\n\n---\n\nSubject: Urgent: Leak Issue Needs Attention\n\nHi [Owner's Name],\n\nThere's a leak…\n\nWhat would you like me to do next?";
+
+    it('email/send request + draft reply → substitute (no LLM needed)', () => {
+        expect(looksLikeSubstitute('email the owner about the leak', DRAFT_REPLY)).toBe(true);
+        expect(looksLikeSubstitute('send the renewal notice to unit 4B', "Here's a template you can copy and paste:")).toBe(true);
+        expect(looksLikeSubstitute('text the plumber', 'I can help draft the text. What should it say?')).toBe(true);
+    });
+
+    it('authoring requests are NOT substitutes — a draft is what was asked', () => {
+        expect(looksLikeSubstitute('draft an email to the owner about the leak', DRAFT_REPLY)).toBe(false);
+        expect(looksLikeSubstitute('write a text to the plumber', "Here's a text you can send:")).toBe(false);
+        expect(looksLikeSubstitute('help me draft the renewal notice', 'Sure — draft below.')).toBe(false);
+    });
+
+    it('delivery request with a real result is not a substitute', () => {
+        expect(looksLikeSubstitute('email the owner about the leak', 'Sent — the owner got it at 4:41 PM.')).toBe(false);
+        expect(looksLikeSubstitute('what is the leak policy?', "Here's a draft policy:")).toBe(false);
+    });
+
+    it('classifyForEscalation ladders: refusal → substitute → judge; questions never escalate', async () => {
+        const judge = vi.fn(async () => false);
+        expect(await classifyForEscalation('email the owner about the leak', DRAFT_REPLY, LLM_ON, judge)).toBe('substitute');
+        expect(judge).not.toHaveBeenCalled();                                   // substitute short-circuits the paid judge
+        expect(await classifyForEscalation('email the owner about the leak', 'Sent.', LLM_ON, judge)).toBe('judge-ok');
+        expect(await classifyForEscalation('what is the leak policy?', "Here's a draft policy:", LLM_ON, judge)).toBe('not-action');
+        expect(await classifyForEscalation('anything', "I can't do that.", LLM_ON, judge)).toBe('refusal');
     });
 });
 

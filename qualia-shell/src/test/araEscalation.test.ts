@@ -15,6 +15,7 @@ import {
     type AraEscalationDeps,
 } from '../components/ARAConsole/araEscalation';
 import type { HermesRunResult } from '../components/HonchoHermesPanel/hermesRunner';
+import type { LlmRequest, LlmResponse } from '../lib/llmClient';
 
 function hermesResult(over: Partial<HermesRunResult> = {}): HermesRunResult {
     return {
@@ -91,15 +92,15 @@ describe('looksLikeActionRequest', () => {
 
 describe('judgeReplyDeflects / shouldEscalate', () => {
     const DEFLECT_REPLY = "I can help draft the email about the leak. What key points do you want to include? Do you have the owner's contact info ready?";
-    const judgeSaying = (word: string) => vi.fn(async () => ({ text: word, provider: 'openai', model: 'x' } as const));
+    const judgeSaying = (word: string) => vi.fn(async (_req: LlmRequest): Promise<LlmResponse | null> => ({ text: word, provider: 'openai', model: 'x' }));
 
     it('DEFLECTED verdict → true (the "I can draft it" case Ilya hit)', async () => {
         const call = judgeSaying('DEFLECTED');
         expect(await judgeReplyDeflects('email the owner about the leak', DEFLECT_REPLY, LLM_ON, call)).toBe(true);
-        const req = call.mock.calls[0][0];
-        expect(req.systemPrompt).toContain('DEFLECTED');
-        expect(req.prompt).toContain('email the owner about the leak');
-        expect(req.maxTokens).toBeLessThanOrEqual(8);
+        const req = call.mock.calls[0]?.[0];
+        expect(req?.systemPrompt).toContain('DEFLECTED');
+        expect(req?.prompt).toContain('email the owner about the leak');
+        expect(req?.maxTokens ?? 99).toBeLessThanOrEqual(8);
     });
 
     it('DID / NEEDS_INFO / garbage → false; no LLM key → false without calling', async () => {

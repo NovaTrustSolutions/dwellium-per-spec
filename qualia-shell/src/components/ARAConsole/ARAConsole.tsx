@@ -27,7 +27,7 @@ import { findPersona } from '../../lib/agents/personas';
 import { hermesLearningUserIdHolder, hermesLearningStore, recordRun, relevantPastRuns, formatFewShot, rateRun } from '../HonchoHermesPanel/hermesLearningStore';
 import { useSyncExternalStore } from 'react';
 import { araFewShot, recordAraChat } from './araHermes';
-import { looksLikeRefusal, runAraEscalation } from './araEscalation';
+import { shouldEscalate, runAraEscalation } from './araEscalation';
 import './ARAConsole.css';
 import { API_BASE } from '../../config';
 import { FileUploadButton } from '../shared/FileUploadButton';
@@ -1082,13 +1082,15 @@ export default function ARAConsole() {
         outgoingMessage += buildAgentContextBlock();
 
         // ── Refusal → solution (2026-08-16 Ilya) ─────────────────────────
-        // When ARA's reply is "I can't do that", don't stop there: hand the
+        // When ARA's reply is "I can't do that" — or, for action requests, a
+        // soft deflection ("I can draft it" when asked to SEND; judged by one
+        // tiny LLM call) — don't stop there: hand the
         // ORIGINAL request to Hermes (backend delegate → skills → ReAct); if
         // Hermes can't either, propose the tool that would make it possible
         // (+ a `new goal:` line for Mission Control). Returns true when it
         // took over the reply, so callers skip speaking the refusal aloud.
         const escalateIfRefusal = async (reply: string): Promise<boolean> => {
-            if (!looksLikeRefusal(reply)) return false;
+            if (!(await shouldEscalate(text, reply, integrations.llm))) return false;
             const progress = createChatMessage({ role: 'assistant', content: 'That’s outside what I can do directly — handing it to Hermes…', mode: modeToUse });
             setMessages(prev => [...prev, progress]);
             const setProgress = (c: string) => setMessages(prev => prev.map(m => (m.id === progress.id ? { ...m, content: c } : m)));

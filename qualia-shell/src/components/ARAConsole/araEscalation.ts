@@ -60,6 +60,19 @@ export function looksLikeActionRequest(userText: string): boolean {
     return looksActionable(t) || ACTION_OPENER.test(t);
 }
 
+// The most common soft deflection, caught without an LLM: user asked ARA to
+// SEND/BOOK/… something and ARA handed back a draft/template instead.
+const DELIVERY_INTENT = /\b(?:email|e-mail|send|text|sms|message|dm|call|phone|notify|forward|reply to|book|schedule|reserve|order|pay|submit|file|post|publish|invite|dispatch)\b/i;
+const AUTHORING_INTENT = /\b(?:draft|write|compose|prepare|word|phrase|show me|give me|help me (?:write|draft)|example of|template for)\b/i;
+const SUBSTITUTE_REPLY = /\b(?:draft|template|here(?:'|’)?s (?:a|the|your) (?:quick |rough |short )?(?:draft|template|email|message|note|text)|you can (?:copy|paste|send|use|forward)|copy(?:-| and | & )paste|feel free to (?:send|use|forward)|ready (?:to|for you to) (?:send|copy))\b/i;
+
+/** True when the user asked for DELIVERY (send/book/…) but the reply only offers a draft/template. Free, deterministic. */
+export function looksLikeSubstitute(userText: string, reply: string): boolean {
+    const u = (userText ?? '').trim();
+    if (!u || !DELIVERY_INTENT.test(u) || AUTHORING_INTENT.test(u)) return false;
+    return SUBSTITUTE_REPLY.test((reply ?? '').slice(0, 400));
+}
+
 /** System prompt for the deflection judge. Exported for tests. */
 export const DEFLECTION_JUDGE_SYSTEM =
     'You audit an assistant (ARA) inside a property-management app. The user asked ARA to DO something. ' +
@@ -96,19 +109,35 @@ export async function judgeReplyDeflects(
     } catch { return false; }
 }
 
+export type EscalationVerdict = 'refusal' | 'substitute' | 'judge-deflected' | 'judge-ok' | 'not-action' | 'no';
+
 /**
- * Should this reply be escalated? Regex refusal → yes (free). Otherwise, for
- * action requests only, ask the judge (one tiny LLM call on the user's key).
+ * Should this reply be escalated? Ladder, cheapest first:
+ *   refusal regex (free) → substitute regex (free, action requests only) →
+ *   LLM judge (one tiny call, action requests only).
+ * `userText` should be the ORIGINAL action request when the conversation has
+ * moved on to details (ARAConsole remembers it for a few turns).
  */
+export async function classifyForEscalation(
+    userText: string,
+    reply: string,
+    llm: IntegrationsBundle['llm'],
+    judgeFn: typeof judgeReplyDeflects = judgeReplyDeflects,
+): Promise<EscalationVerdict> {
+    if (looksLikeRefusal(reply)) return 'refusal';
+    if (!looksLikeActionRequest(userText)) return 'not-action';
+    if (looksLikeSubstitute(userText, reply)) return 'substitute';
+    return (await judgeFn(userText, reply, llm)) ? 'judge-deflected' : 'judge-ok';
+}
+
 export async function shouldEscalate(
     userText: string,
     reply: string,
     llm: IntegrationsBundle['llm'],
     judgeFn: typeof judgeReplyDeflects = judgeReplyDeflects,
 ): Promise<boolean> {
-    if (looksLikeRefusal(reply)) return true;
-    if (!looksLikeActionRequest(userText)) return false;
-    return judgeFn(userText, reply, llm);
+    const v = await classifyForEscalation(userText, reply, llm, judgeFn);
+    return v === 'refusal' || v === 'substitute' || v === 'judge-deflected';
 }
 
 export interface AraEscalationOutcome {

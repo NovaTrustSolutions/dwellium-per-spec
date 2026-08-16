@@ -21,7 +21,8 @@ import { buildReactLoopFn, mergedToolNames } from '../HonchoHermesPanel/hermesRe
 import { formatHermesReply } from '../StellaAgent/stellaHermesSpawn';
 import { runSkillForInput, describeSkillsForPrompt } from '../../lib/agents/skills';
 import { WIDGET_ACTIONS } from '../../lib/widgetActions';
-import { callLlm, hasActiveLlm } from '../../lib/llmClient';
+import { callLlm, hasActiveLlm, type LlmRequest, type LlmResponse } from '../../lib/llmClient';
+import { looksActionable } from '../../lib/llmRouter';
 import type { IntegrationsBundle } from '../../types/integrations';
 
 // ponytail: regex heuristic over the reply's opening. False positives cost one
@@ -44,6 +45,70 @@ export function looksLikeRefusal(reply: string): boolean {
     const head = (reply ?? '').trim().slice(0, 500);
     if (!head) return false;
     return REFUSAL_PATTERNS.some(re => re.test(head));
+}
+
+// Imperative openers that mean "DO this", beyond llmRouter.looksActionable's
+// ≤10-word heuristic. Gates the (paid) deflection judge so plain questions and
+// long prose never trigger it.
+const ACTION_OPENER = /^(?:(?:please|pls|can you|could you|would you|will you|go ahead and|ara[,:]?)\s+)*(?:email|e-mail|send|text|sms|call|phone|book|schedule|reschedule|cancel|create|make|build|generate|update|delete|remove|add|set|turn|order|pay|submit|file|upload|download|export|import|post|share|invite|assign|move|renew|run|start|stop|open|close|change|edit|fix|sync|connect|log|record|track|remind|notify|message|reply|forward|print|save|calculate|convert|transfer|deposit|charge|refund|approve|reject|escalate|dispatch|route|publish|archive|restore|rename|copy|attach|tag|label|flag|mark|toggle|enable|disable|install|deploy|push|merge|pull|fetch|scrape|crawl|search|look up|find|check|verify|monitor|watch|alert|ping|trigger|kick off|launch)\b/i;
+
+/** True when the user is asking ARA to DO something (imperative), not asking a question. */
+export function looksLikeActionRequest(userText: string): boolean {
+    const t = (userText ?? '').trim();
+    if (!t) return false;
+    if (t.endsWith('?') && !/^(?:can|could|would|will) you\b/i.test(t)) return false;
+    return looksActionable(t) || ACTION_OPENER.test(t);
+}
+
+/** System prompt for the deflection judge. Exported for tests. */
+export const DEFLECTION_JUDGE_SYSTEM =
+    'You audit an assistant (ARA) inside a property-management app. The user asked ARA to DO something. ' +
+    "Classify ARA's reply with exactly one word:\n" +
+    'DID — ARA performed or is performing the requested action itself (opened, sent, created, updated, ran…), or reports the concrete result.\n' +
+    'DEFLECTED — ARA did NOT perform the action itself and shows no path to doing it: it offers a substitute ' +
+    '(e.g. "I can draft it" when asked to SEND; "here\'s how you can…"; "you\'ll need to do that in…"), says it lacks access/tools/ability, ' +
+    'or asks the user to do it elsewhere. Asking for details that only matter for the substitute still counts as DEFLECTED.\n' +
+    'NEEDS_INFO — ARA can and will do the EXACT requested action but first needs a missing detail (a recipient, a date, a unit number).\n' +
+    'Example: user "email the owner about the leak" / reply "I can help draft the email. What key points do you want? Do you have the owner\'s contact info?" → DEFLECTED (drafting ≠ sending).\n' +
+    'Example: user "open strata" / reply "Opening Strata — it\'s on your screen now." → DID.\n' +
+    'Example: user "schedule the plumber for unit 4B" / reply "Sure — booking it now; what day and time works?" → NEEDS_INFO.\n' +
+    'Answer with one word only.';
+
+/**
+ * LLM judge for soft refusals the regex can't see ("I can help draft…" when asked to send).
+ * Returns true only on a confident DEFLECTED verdict; any error/ambiguity → false (no escalation).
+ */
+export async function judgeReplyDeflects(
+    userText: string,
+    reply: string,
+    llm: IntegrationsBundle['llm'],
+    callLlmFn: (req: LlmRequest, llm: IntegrationsBundle['llm']) => Promise<LlmResponse | null> = callLlm,
+): Promise<boolean> {
+    if (!hasActiveLlm(llm)) return false;
+    try {
+        const res = await callLlmFn({
+            systemPrompt: DEFLECTION_JUDGE_SYSTEM,
+            prompt: `User asked ARA:\n<<<${userText.slice(0, 400)}>>>\n\nARA replied:\n<<<${reply.slice(0, 700)}>>>\n\nVerdict:`,
+            maxTokens: 5,
+            temperature: 0,
+        }, llm);
+        return /^\W*DEFLECTED/i.test(res?.text ?? '');
+    } catch { return false; }
+}
+
+/**
+ * Should this reply be escalated? Regex refusal → yes (free). Otherwise, for
+ * action requests only, ask the judge (one tiny LLM call on the user's key).
+ */
+export async function shouldEscalate(
+    userText: string,
+    reply: string,
+    llm: IntegrationsBundle['llm'],
+    judgeFn: typeof judgeReplyDeflects = judgeReplyDeflects,
+): Promise<boolean> {
+    if (looksLikeRefusal(reply)) return true;
+    if (!looksLikeActionRequest(userText)) return false;
+    return judgeFn(userText, reply, llm);
 }
 
 export interface AraEscalationOutcome {
@@ -76,6 +141,9 @@ export function buildToolProposalSystemPrompt(): string {
         'widget-action bus). ARA just REFUSED a user request because no existing tool covers it. ' +
         'Your job is to turn that refusal into a solution proposal — never repeat the refusal.\n\n' +
         'Tools ARA has today:\n' + describeSkillsForPrompt() + '\n\nWidget verbs available:\n' + widgetVerbs + '\n\n' +
+        'Integrations already wired that a new tool can build on: per-user Google OAuth tokens on the backend (Gmail + Calendar), ' +
+        "Supabase + Postgres connections, the user's LLM providers, Tavily/Brave web search, Open-Meteo weather, the widget-action bus, " +
+        'and the /api/hermes/delegate backend tool runner.\n\n' +
         'Reply in Markdown, under 220 words, with exactly these sections:\n' +
         '1. **What it would take** — one sentence.\n' +
         '2. **Proposed tool** — name (`skill-<kebab>`), what it does, 3 trigger phrases, inputs, and which API/service ' +

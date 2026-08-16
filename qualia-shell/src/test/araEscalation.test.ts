@@ -7,11 +7,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
     looksLikeRefusal,
+    looksLikeActionRequest,
+    judgeReplyDeflects,
+    shouldEscalate,
     runAraEscalation,
     buildToolProposalSystemPrompt,
     type AraEscalationDeps,
 } from '../components/ARAConsole/araEscalation';
 import type { HermesRunResult } from '../components/HonchoHermesPanel/hermesRunner';
+import type { LlmRequest, LlmResponse } from '../lib/llmClient';
 
 function hermesResult(over: Partial<HermesRunResult> = {}): HermesRunResult {
     return {
@@ -66,6 +70,60 @@ describe('looksLikeRefusal', () => {
     it('only inspects the opening of the reply', () => {
         const longOk = 'Here is the plan.\n' + 'x'.repeat(600) + "\nI can't do the last step.";
         expect(looksLikeRefusal(longOk)).toBe(false);
+    });
+});
+
+describe('looksLikeActionRequest', () => {
+    it.each([
+        'email the owner about the leak',
+        'Please send the renewal notice to unit 4B',
+        'can you text the plumber',
+        'schedule a walkthrough for Friday at 3',
+        'open strata',
+    ])('action: %s', t => expect(looksLikeActionRequest(t)).toBe(true));
+
+    it.each([
+        'what is the median rent in Atlanta?',
+        'why did the ledger not reconcile',
+        'explain the eviction timeline in Georgia',
+        '',
+    ])('not action: %s', t => expect(looksLikeActionRequest(t)).toBe(false));
+});
+
+describe('judgeReplyDeflects / shouldEscalate', () => {
+    const DEFLECT_REPLY = "I can help draft the email about the leak. What key points do you want to include? Do you have the owner's contact info ready?";
+    const judgeSaying = (word: string) => vi.fn(async (_req: LlmRequest): Promise<LlmResponse | null> => ({ text: word, provider: 'openai', model: 'x' }));
+
+    it('DEFLECTED verdict → true (the "I can draft it" case Ilya hit)', async () => {
+        const call = judgeSaying('DEFLECTED');
+        expect(await judgeReplyDeflects('email the owner about the leak', DEFLECT_REPLY, LLM_ON, call)).toBe(true);
+        const req = call.mock.calls[0]?.[0];
+        expect(req?.systemPrompt).toContain('DEFLECTED');
+        expect(req?.prompt).toContain('email the owner about the leak');
+        expect(req?.maxTokens ?? 99).toBeLessThanOrEqual(8);
+    });
+
+    it('DID / NEEDS_INFO / garbage → false; no LLM key → false without calling', async () => {
+        expect(await judgeReplyDeflects('open strata', 'Opening Strata now.', LLM_ON, judgeSaying('DID'))).toBe(false);
+        expect(await judgeReplyDeflects('schedule the plumber', 'Sure — what day?', LLM_ON, judgeSaying('NEEDS_INFO'))).toBe(false);
+        expect(await judgeReplyDeflects('do x', 'y', LLM_ON, judgeSaying('¯\\_(ツ)_/¯'))).toBe(false);
+        const noCall = judgeSaying('DEFLECTED');
+        expect(await judgeReplyDeflects('do x', 'y', LLM_OFF, noCall)).toBe(false);
+        expect(noCall).not.toHaveBeenCalled();
+    });
+
+    it('shouldEscalate: regex refusal short-circuits (no judge call)', async () => {
+        const judge = vi.fn(async () => false);
+        expect(await shouldEscalate('what is x?', "I can't access that.", LLM_ON, judge)).toBe(true);
+        expect(judge).not.toHaveBeenCalled();
+    });
+
+    it('shouldEscalate: questions never hit the judge; action requests do', async () => {
+        const judge = vi.fn(async () => true);
+        expect(await shouldEscalate('what is the median rent?', 'About $1,850.', LLM_ON, judge)).toBe(false);
+        expect(judge).not.toHaveBeenCalled();
+        expect(await shouldEscalate('email the owner about the leak', DEFLECT_REPLY, LLM_ON, judge)).toBe(true);
+        expect(judge).toHaveBeenCalledTimes(1);
     });
 });
 

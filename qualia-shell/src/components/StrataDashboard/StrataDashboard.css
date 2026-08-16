@@ -3,7 +3,6 @@
    All styles scoped under .strata-dashboard
    ======================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 .strata-dashboard {
     /* -- Base Colors (fey.com parity: pure black, tonal layers) -- */

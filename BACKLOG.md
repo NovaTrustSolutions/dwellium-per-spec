@@ -44,7 +44,7 @@ Unfinished items surfaced across the Fey-UI, ARA/skills, Hermes, and Terminal·B
 
 ### 🟢 Performance / housekeeping
 - **StrataDashboard chunk is 1.11 MB** — by far the largest; split its modules further.
-- **Media weight:** `nebula-bg.mp4` 71 MB (accepted+monitored) + new `ara-intro.mp4` 21 MB — consider compressed/teaser-loop variants; watch GitHub's 100 MB hard limit.
+- **Media weight:** ~~`nebula-bg.mp4` 71 MB (accepted+monitored)~~ → 716 KB `nebula-bg-1280.mp4` (plan 043, 2026-08-16) + `ara-intro.mp4` 21 MB — consider compressed/teaser-loop variants; watch GitHub's 100 MB hard limit.
 - **`.gitignore` gap:** `build/` + `.react-router/` (Phase-9 carry-forward).
 - **Window x-clamp:** y is now rescue-clamped everywhere; x still allows near-total off-screen by design — revisit if it bites.
 - **A11y re-check under BL4:** 10px mono uppercase labels + `#82908a` secondary text on black — run an axe pass with BL4 active (CI baselines run the default theme, so CI won't catch it).

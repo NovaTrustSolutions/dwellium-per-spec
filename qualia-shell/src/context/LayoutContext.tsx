@@ -166,6 +166,15 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
         } else {
             const fontStack = FONT_PRESETS[settings.fontFamily] || FONT_PRESETS['Inter'];
             root.style.setProperty('--font-primary', fontStack);
+            // Roboto/Outfit are not in the boot font <link> (plan 043) — fetch on demand, once.
+            const family = settings.fontFamily === 'Roboto' || settings.fontFamily === 'Outfit' ? settings.fontFamily : null;
+            if (family && !document.querySelector(`link[data-layout-font="${family}"]`)) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = `https://fonts.googleapis.com/css2?family=${family}:wght@300;400;500;700&display=swap`;
+                link.dataset.layoutFont = family;
+                document.head.appendChild(link);
+            }
         }
         root.style.setProperty('--fs-scale', String(settings.fontScale));
         root.style.setProperty('--ui-scale', String(settings.uiScale));

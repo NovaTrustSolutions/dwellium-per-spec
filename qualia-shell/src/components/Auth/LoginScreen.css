@@ -11,7 +11,10 @@
     background: transparent;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: 90px 0 40px;
+    /* 48px top (was 90px: with the 4vh header margin the logo card scrolled out of view
+       at 1280x720 once the password input auto-focused); 16px sides so the card is
+       never clipped on narrow phones. */
+    padding: 48px 16px 40px;
     z-index: 99999;
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
 
@@ -203,8 +206,9 @@
 .login-header {
     text-align: center;
     margin-bottom: 32px;
-    margin-top: 4vh;
+    margin-top: 0;
     padding: 24px;
+    max-width: 100%;
     background: rgba(14, 14, 14, 0.85);
     border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
     border-radius: 20px;
@@ -220,7 +224,11 @@
 }
 
 .login-logo-img {
-    width: 320px;
+    /* 320px desktop; shrinks on phones (320px + 2x24px padding overflowed a 375px
+       viewport) and on short viewports (at 1280x720 the logo card + login card did
+       not fit, so the auto-focused input scrolled the logo out of view). */
+    width: min(320px, 80vw, 40vh);
+    max-width: 100%;
     height: auto;
     margin: 0 auto;
     display: block;

@@ -22,6 +22,7 @@ import { LoadingState, ErrorState } from '../StateView';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
 import { useStrataNav } from '../StrataNavContext';
+import EntityLink from '../EntityLink';
 import type { ResidentHistoryEvent, ResidentLinkage, CommunicationTemplate, Occupancy, EntityProfile, EmergencyContact, Animal, Vehicle } from '../strataTypes';
 
 const API = API_BASE;
@@ -536,7 +537,7 @@ function OtherOccupantsSection({ tenant, allTenants }: { tenant: Tenant; allTena
                             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}
                         >
                             <Users size={12} color="#64748b" />
-                            <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>{o.name}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}><EntityLink type="tenant" id={o.id}>{o.name}</EntityLink></span>
                             <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)' }}>
                                 {o.metadata?.tenantType || 'Other Occupant'}
                             </span>

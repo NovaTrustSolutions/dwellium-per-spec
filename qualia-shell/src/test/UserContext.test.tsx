@@ -224,22 +224,11 @@ describe('UserContext', () => {
         expect(result.current.hasPermission('delete_property')).toBe(true);
     });
 
-    it('loginAsArchitect creates a god session with Andy-level permission bypass', async () => {
+    it('no passwordless architect backdoor is exposed on the context', async () => {
         const { result } = renderHook(() => useUser(), { wrapper });
         await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-        act(() => {
-            result.current.loginAsArchitect();
-        });
-
-        expect(result.current.user).toMatchObject({
-            name: 'Architect',
-            email: 'architect@dwellium.com',
-            role: 'god',
-        });
-        expect(result.current.hasMinRole('god')).toBe(true);
-        expect(result.current.hasPermission('anything')).toBe(true);
-        expect(localStorage.getItem('dwellium-auth-token')).toContain('architect-9a921527');
+        expect('loginAsArchitect' in result.current).toBe(false);
     });
 
     it('hasPermission() checks permissions map for non-god roles', async () => {

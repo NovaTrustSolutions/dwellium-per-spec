@@ -270,7 +270,12 @@ async function fetchOpenAIModels(apiKey: string): Promise<string[]> {
 /** Keep chat/completions models; drop embeddings / audio / image / moderation. */
 function isChatCapableOpenAIId(id: string): boolean {
     if (!id) return false;
-    if (!/^(gpt-|o1|o3|o4|chatgpt-)/.test(id)) return false;
+    // `o\d` rather than an o1|o3|o4 allowlist: the reasoning series has already
+    // gone o1 → o3 → o4, and an enumerated list silently HIDES the next one from
+    // the dropdown — the live catalog fetch would return it and we would filter
+    // it back out. Prefix families (gpt-*, chatgpt-*) are open-ended for the
+    // same reason; the exclusion list below is what keeps non-chat ids out.
+    if (!/^(gpt-|o\d|chatgpt-)/.test(id)) return false;
     if (/(embedding|whisper|tts|dall-e|image|audio|realtime|moderation|transcribe|search)/.test(id)) return false;
     return true;
 }

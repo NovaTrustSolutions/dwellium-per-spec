@@ -21,7 +21,7 @@ Dwellium -Per Spec/
 │   │   ├── hooks/, services/, config/
 │   │   └── ...
 │   ├── e2e/                        ← Playwright tests (passphrase sync'd)
-│   ├── public/                     ← static assets (nebula-bg.mp4, logos)
+│   ├── public/                     ← static assets (nebula-bg-1280.mp4, logos)
 │   ├── package.json                ← deps locked
 │   └── vite.config.ts
 ├── packages/                       ← internal shared packages

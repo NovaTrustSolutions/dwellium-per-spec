@@ -15,6 +15,7 @@ import type { Property, Unit, EntityProfile } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
 import { strataGet } from '../strataApi';
 import { useStrataNav } from '../StrataNavContext';
+import EntityLink from '../EntityLink';
 
 // Entity is an alias for EntityProfile (canonical type from strataTypes)
 type Entity = EntityProfile;
@@ -205,7 +206,7 @@ export default function ProfilesModule() {
                                             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                                             onMouseLeave={e => (e.currentTarget.style.background = '')}
                                         >
-                                            <td style={{ ...tdStyle, fontWeight: 600 }}>{p.name}</td>
+                                            <td style={{ ...tdStyle, fontWeight: 600 }}><EntityLink type="property" id={p.id}>{p.name}</EntityLink></td>
                                             <td style={tdStyle}>
                                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     <MapPin size={12} color="#64748b" /> {p.address || '—'}
@@ -239,7 +240,7 @@ export default function ProfilesModule() {
                                             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                                             onMouseLeave={e => (e.currentTarget.style.background = '')}
                                         >
-                                            <td style={{ ...tdStyle, fontWeight: 600 }}>{u.unitNumber}</td>
+                                            <td style={{ ...tdStyle, fontWeight: 600 }}><EntityLink type="unit" id={u.id} parentId={u.propertyId}>{u.unitNumber}</EntityLink></td>
                                             <td style={tdStyle}>{u.bedrooms}bd / {u.bathrooms}ba</td>
                                             <td style={tdStyle}>{u.sqFt.toLocaleString()}</td>
                                             <td style={tdStyle}>${u.rentAmount.toLocaleString()}</td>
@@ -270,7 +271,11 @@ export default function ProfilesModule() {
                                             onMouseEnter={ev => (ev.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                                             onMouseLeave={ev => (ev.currentTarget.style.background = '')}
                                         >
-                                            <td style={{ ...tdStyle, fontWeight: 600 }}>{e.name}</td>
+                                            <td style={{ ...tdStyle, fontWeight: 600 }}>
+                                                {tab === 'tenants' ? <EntityLink type="tenant" id={e.id}>{e.name}</EntityLink>
+                                                    : tab === 'owners' ? <EntityLink type="owner" id={e.id}>{e.name}</EntityLink>
+                                                        : e.name}
+                                            </td>
                                             <td style={tdStyle}>
                                                 {e.email ? (
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

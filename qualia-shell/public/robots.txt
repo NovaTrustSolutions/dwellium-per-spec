@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /og-image.png
+Disallow: /

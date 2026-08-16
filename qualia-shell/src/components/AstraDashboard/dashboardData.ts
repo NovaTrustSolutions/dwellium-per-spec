@@ -469,38 +469,40 @@ export function buildResearchPrompt(topic: string): string {
 
 /* ──────────────────────────── fetchers ────────────────────────────── */
 
+/** Per-property row inside the `/stats` payload (see backend getDashboardStats). */
+interface StatsByProperty {
+    id: string;
+    name: string;
+    totalUnits: number;
+    occupiedUnits: number;
+    occupancyRate: number;
+    openWorkOrders: number;
+}
+
 /**
- * Portfolio heatmap: one row per property with occupancy % (occupied
- * units / total units), open-maintenance count, and delinquency %
- * (placeholder 0 until an invoices/delinquency endpoint carries real
- * data — invoices seed is empty today; kept as a real field so Cycle 7
- * can light it up without a shape change). Limited to `limit` rows.
+ * Portfolio heatmap: one row per property with occupancy %, open work-order
+ * count, and delinquency % (placeholder 0 until an invoices/delinquency
+ * endpoint carries real data; kept as a real field so Cycle 7 can light it
+ * up without a shape change). Limited to `limit` rows.
+ *
+ * Reads the `/stats` byProperty breakdown — the same source the Strata
+ * Overview KPIs use — so every surface shows the same numbers. The previous
+ * client-side join against `/properties` × `/units` broke silently once the
+ * portfolio outgrew the /units page cap (1000 rows of 1536): properties
+ * whose units fell past the cap all rendered 0% occupancy.
  */
 export async function fetchHeatmap(
     deps: DashboardDataDeps = defaultDeps,
     limit = 12,
 ): Promise<HeatmapProperty[]> {
-    const [propsRes, unitsRes, workitemsRes] = await Promise.all([
-        deps.get<unknown>('/properties'),
-        deps.get<unknown>('/units'),
-        deps.get<unknown>('/workitems', { type: 'maintenance' }),
-    ]);
-    const properties = asArray<PropertyRow>(propsRes);
-    const units = asArray<UnitRow>(unitsRes);
-    const maintenance = asArray<WorkitemRow>(workitemsRes).filter((w) => isOpen(w.status));
-
-    return properties.slice(0, limit).map((p) => {
-        const propUnits = units.filter((u) => u.propertyId === p.id);
-        const occupied = propUnits.filter((u) => String(u.status).toLowerCase() === 'occupied').length;
-        const occupancy = propUnits.length > 0 ? Math.round((occupied / propUnits.length) * 100) : 0;
-        const maint = maintenance.filter((w) => w.propertyId === p.id).length;
-        return {
-            name: p.name ?? p.id,
-            occupancy,
-            delinquency: 0,
-            maintenance: maint,
-        };
-    });
+    const res = await deps.get<{ byProperty?: StatsByProperty[] }>('/stats');
+    const rows = Array.isArray(res?.byProperty) ? res.byProperty : [];
+    return rows.slice(0, limit).map((p) => ({
+        name: p.name ?? p.id,
+        occupancy: p.occupancyRate ?? 0,
+        delinquency: 0,
+        maintenance: p.openWorkOrders ?? 0,
+    }));
 }
 
 /**

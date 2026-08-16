@@ -116,6 +116,43 @@ vi.mock('../components/AvatarHarness/LocalPhotoAvatarAdapter', () => {
     return { LocalPhotoAvatarAdapter: MockLocalPhotoAvatarAdapter };
 });
 
+// EvolveAvatarAdapter extends LocalPhotoAvatarAdapter in production; here it
+// gets its own equally-shaped mock (plus the Evolve-specific key field) so
+// the new-agent default path (Evolve + bundled welcome-video face) is
+// deterministic in jsdom.
+vi.mock('../components/AvatarHarness/EvolveAvatarAdapter', () => {
+    class MockEvolveAvatarAdapter {
+        openaiApiKey: string | null = null;
+        openaiVoice = 'nova';
+        selectedVoiceURI: string | null = null;
+        connect = vi.fn(async (_profile: unknown, _canvas: unknown) => {
+            this._emit?.('connected');
+        });
+        disconnect = vi.fn(async () => {
+            this._emit?.('idle');
+        });
+        mute = vi.fn();
+        interrupt = vi.fn();
+        talk = vi.fn(async () => {});
+        startListening = vi.fn(() => true);
+        stopListening = vi.fn();
+        _listeners: Array<(state: string, detail?: string) => void> = [];
+        onStateChange = vi.fn((cb: (state: string, detail?: string) => void) => {
+            this._listeners.push(cb);
+            return () => {
+                this._listeners = this._listeners.filter((l) => l !== cb);
+            };
+        });
+        _emit(state: string, detail?: string) {
+            for (const cb of this._listeners) cb(state, detail);
+        }
+        constructor() {
+            localAdapterInstances.push(this as any);
+        }
+    }
+    return { EvolveAvatarAdapter: MockEvolveAvatarAdapter, EVOLVE_DEFAULT_FACE_URL: '/assets/evolve-default-face.jpg' };
+});
+
 // avatarProfilesStore is per-user localStorage — reset between tests so a
 // stale profile from one test doesn't leak into the next.
 import { avatarProfilesStore, useAvatarProfile } from '../lib/avatarProfilesStore';
@@ -178,13 +215,17 @@ describe('AvatarHarness (plan 042 — keyless local default / Anam optional upgr
     });
 
     describe('local provider (default, keyless)', () => {
-        it('shows the "add a photo" CTA when no photo has been saved yet — no Anam mention anywhere', async () => {
+        it('a brand-new agent goes LIVE on the bundled welcome-video face — no photo CTA, no Anam mention', async () => {
             render(<AvatarHarness agentId="ara" />);
 
+            // Evolve default: connects immediately with the bundled face.
             await waitFor(() => {
-                expect(screen.getByText(/Upload a photo to bring this agent's avatar to life/i)).toBeInTheDocument();
+                expect(localAdapterInstances.length).toBeGreaterThan(0);
             });
-            expect(screen.getByText(/Add a photo/i)).toBeInTheDocument();
+            const connectArg = localAdapterInstances[0].connect.mock.calls[0]?.[0] as { photoDataUrl?: string };
+            expect(connectArg?.photoDataUrl).toBe('/assets/evolve-default-face.jpg');
+            // No upload CTA — the agent already has a face out of the box.
+            expect(screen.queryByText(/Upload a photo to bring this agent's avatar to life/i)).not.toBeInTheDocument();
             // The whole point of the keyless flow: no Anam mention anywhere in the DOM.
             expect(screen.queryByText(/anam/i)).not.toBeInTheDocument();
             expect(mockFetch).not.toHaveBeenCalled();
@@ -361,14 +402,17 @@ describe('AvatarHarness (plan 042 — keyless local default / Anam optional upgr
     });
 
     describe('setup panel — provider gating', () => {
-        it('does not show a provider picker (and never mentions Anam) when no Anam key exists', async () => {
+        it('shows the keyless provider tiers (Local, Evolve) and never mentions Anam when no Anam key exists', async () => {
             render(<AvatarHarness agentId="ara" />);
 
-            const addPhotoBtn = await screen.findByText(/Add a photo/i);
-            fireEvent.click(addPhotoBtn);
+            const setupBtn = await screen.findByLabelText(/Avatar setup/i);
+            fireEvent.click(setupBtn);
 
             await screen.findByText(/Avatar setup — ara/i);
-            expect(screen.queryByLabelText(/provider/i)).not.toBeInTheDocument();
+            // Picker exists (two keyless tiers to choose between)…
+            expect(screen.getByLabelText(/provider/i)).toBeInTheDocument();
+            expect(screen.getByText(/Evolve \(realistic lip sync\)/i)).toBeInTheDocument();
+            // …but the keyless flow still never mentions Anam anywhere.
             expect(screen.queryByText(/anam/i)).not.toBeInTheDocument();
         });
 

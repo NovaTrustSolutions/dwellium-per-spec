@@ -20,6 +20,7 @@ import {
     BookOpen,
     CheckCircle2,
     XCircle,
+    Info,
     RefreshCw,
     ExternalLink,
     Clock,
@@ -343,6 +344,91 @@ function QuickActions() {
 /* ========================================
    Main StrataDashboard export
    ======================================== */
+/**
+ * One-line "what is this and what is it for" per module, shown as a context
+ * strip when you open the module.
+ *
+ * Written from each module's implementation, NOT from its name — several are
+ * not what the label suggests (Projects rolls workitems up by entity rather
+ * than being a flat board; Status Check is service health, not property
+ * status). Anything describing a capability that does not exist would be worse
+ * than no help text at all, so keep these honest when modules change.
+ *
+ * Rendered once at the module mount point below, so adding a module means
+ * adding a line here — not editing 26 module files.
+ *
+ * Partial by design: the canonical StrataModule union carries two ids that no
+ * nav item reaches ('work-orders', 'visualization'). Rather than invent copy
+ * for modules I have not read, they simply render no strip.
+ */
+const MODULE_HELP_KEY = 'dwellium-strata-module-help';
+
+const MODULE_INFO: Partial<Record<StrataModule | 'settings', string>> = {
+    'settings': 'Strata configuration — module visibility, defaults and per-account preferences for this dashboard.',
+    'overview': 'Portfolio at a glance — occupancy, open work orders and recent activity across every property.',
+    'manager-home': 'Your daily operating screen: move-ins and move-outs, outstanding work orders, lease expirations, tasks assigned to you, and portfolio income.',
+    'calendar': 'Scheduled events across the portfolio — inspections, lease dates and appointments in one timeline.',
+    'properties': 'Every property you manage. Add and edit buildings, track unit counts, status and ownership.',
+    'leasing': 'Leases and their lifecycle — terms, start and end dates, renewals and expirations.',
+    'residents': 'Tenant directory — contact details, the unit each person occupies, and lease standing.',
+    'vendors': 'Contractors and suppliers, with insurance and licence expiry tracking so lapsed cover surfaces before you dispatch work.',
+    'owners': 'Property owners and the buildings each one holds, including payment preferences.',
+    'accounting': 'Financial records for the portfolio — charges, payments and the general ledger.',
+    'maintenance': 'Work orders from report to completion — priority, assignment and current status.',
+    'reporting': 'Generated reports and saved snapshots across the portfolio.',
+    'communication': 'A log of contact with tenants, owners and vendors — email, phone, SMS and portal messages in one thread.',
+    'profiles': 'The entity browser. Every person and company — tenants, contractors, employees, owners, corporate — each with its own record, files, linked entities and communication history.',
+    'corporate-review': 'Upload, triage and approve documents, then convert them into tracked work.',
+    'integrations': 'Connect external services — Google, accounting, AppFolio and other data sources.',
+    'tenant-portal': 'What your residents see, and the administration behind it.',
+    'forecast': 'Forward projections built from lease and financial data.',
+    'sentiment': 'Tenant sentiment trends drawn from communications, so dissatisfaction is visible before it becomes a notice.',
+    'legal': 'Legal matters and their documents, notes and status.',
+    'projects': 'Work grouped by the property or entity it belongs to, rather than as one flat list.',
+    'audit': 'A record of who did what and when across the system.',
+    'status-check': 'Service health for Dwellium itself — which parts of the system are up, refreshed every 30 seconds. Not property status.',
+    'compliance': 'Obligations and expiry dates — certificates, inspections and requirements, with what is coming due.',
+    'design-studio': 'AI-generated architectural concepts and floor plans. Every output is a DRAFT and needs professional review before use.',
+    'civil-engineering': 'AI-generated site grading, drainage, utility and structural concepts. Every output is a DRAFT and requires a licensed engineer’s stamp.',
+    'incidents': 'Incidents across the portfolio — what happened, where, and how it was resolved.',
+};
+
+/**
+ * Context strip explaining the module you just opened.
+ *
+ * Dismissible and remembered: help that cannot be turned off is noise for
+ * someone in here every day. localStorage is read in an effect rather than a
+ * useState initializer — the repo classes init-time browser globals as
+ * SSR-UNSAFE (see the per-provider-SSR-safety taxonomy in CLAUDE.md).
+ */
+function ModuleInfoBar({ module }: { module: StrataModule | 'settings' }) {
+    const [hidden, setHidden] = useState(false);
+    useEffect(() => {
+        try { setHidden(localStorage.getItem(MODULE_HELP_KEY) === 'off'); } catch { /* sandboxed */ }
+    }, []);
+
+    const text = MODULE_INFO[module];
+    if (hidden || !text) return null;
+
+    return (
+        <aside className="s-module-info" role="note" aria-label="About this section">
+            <Info size={15} aria-hidden />
+            <p className="s-module-info__text">{text}</p>
+            <button
+                type="button"
+                className="s-module-info__dismiss"
+                onClick={() => {
+                    setHidden(true);
+                    try { localStorage.setItem(MODULE_HELP_KEY, 'off'); } catch { /* sandboxed */ }
+                }}
+                aria-label="Hide section descriptions"
+            >
+                Hide
+            </button>
+        </aside>
+    );
+}
+
 const NAV_ITEMS: { id: StrataModule; label: string; icon: ReactNode; permKey: string }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={18} />, permKey: 'strata:module:overview' },
     { id: 'manager-home', label: 'Manager Home', icon: <Bell size={18} />, permKey: 'strata:module:manager-home' },
@@ -441,6 +527,16 @@ function OverviewContent() {
 
     useEffect(() => { fetchOverviewData(); }, [fetchOverviewData]);
 
+    /**
+     * Nothing imported yet, as distinct from a portfolio that is performing
+     * badly. "0%" beside "0 of 0 units occupied" reads as collapse; it is
+     * actually an un-set-up account. Say which one it is.
+     *
+     * NOTE: this only changes how emptiness is WORDED. It does not invent
+     * numbers — see the SAMPLE DATA gate below for why that line matters here.
+     */
+    const noPortfolio = !!stats && stats.totalProperties === 0 && stats.totalUnits === 0;
+
     return (
         <div className="s-dashboard">
             {/* Header */}
@@ -454,9 +550,11 @@ function OverviewContent() {
             {hasPermission('strata:overview:kpi') && (
                 <div className="s-kpi-grid">
                     <KPICard icon={<Building2 />} iconColor="blue"
-                        value={stats ? `${stats.occupancyRate}%` : loading ? '…' : '—'}
+                        value={noPortfolio ? '—' : stats ? `${stats.occupancyRate}%` : loading ? '…' : '—'}
                         label="Occupancy Rate"
-                        subtitle={stats ? `${stats.occupiedUnits} of ${stats.totalUnits} units occupied` : ''}
+                        subtitle={noPortfolio
+                            ? 'No properties imported yet'
+                            : stats ? `${stats.occupiedUnits} of ${stats.totalUnits} units occupied` : ''}
                         delay={1} />
                     <KPICard icon={<DollarSign />} iconColor="green"
                         value="—"
@@ -464,9 +562,11 @@ function OverviewContent() {
                         subtitle="Connect QuickBooks for data"
                         delay={2} />
                     <KPICard icon={<Wrench />} iconColor="amber"
-                        value={stats ? String(stats.openWorkOrders) : loading ? '…' : '0'}
+                        value={noPortfolio ? '—' : stats ? String(stats.openWorkOrders) : loading ? '…' : '0'}
                         label="Open Work Orders"
-                        subtitle={stats ? `${stats.totalProperties} active properties` : ''}
+                        subtitle={noPortfolio
+                            ? 'Import properties to begin'
+                            : stats ? `${stats.totalProperties} active properties` : ''}
                         delay={3} />
                     <KPICard icon={<AlertTriangle />} iconColor="red"
                         value="—"
@@ -1829,6 +1929,7 @@ export default function StrataDashboard() {
                     (sub-component altitude per the 2-layer lazyWithReload
                     rule) so the 1.05 MB Strata chunk splits per module. */}
                 <main className="s-main-content">
+                    <ModuleInfoBar module={activeModule} />
                     <Suspense fallback={<div style={{ padding: 24, color: 'var(--text-tertiary)' }}>Loading module…</div>}>
                         {renderModule()}
                     </Suspense>

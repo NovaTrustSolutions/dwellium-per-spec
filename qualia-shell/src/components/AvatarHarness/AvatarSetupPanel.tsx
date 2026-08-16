@@ -146,7 +146,7 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
     // Local path: downscale the uploaded photo client-side and stash it as a
     // data URL on save (no network call — the whole point of this provider).
     useEffect(() => {
-        if (provider !== 'local' || !photoFile) return;
+        if (provider === 'anam' || !photoFile) return;
         let cancelled = false;
         (async () => {
             try {
@@ -189,7 +189,14 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
         }
     }, [photoFile, consent, integrations, displayName]);
 
-    const canSaveLocal = provider === 'local' && consent && !!photoDataUrl;
+    // Local: uploaded photo + likeness consent required. Evolve: photo is
+    // OPTIONAL (bundled welcome-video face is the default); consent applies
+    // only when a photo IS uploaded.
+    const canSaveLocal = provider === 'local'
+        ? (consent && !!photoDataUrl)
+        : provider === 'evolve'
+            ? (!photoDataUrl || consent)
+            : false;
     const canSaveAnam = provider === 'anam';
 
     const handleSave = useCallback(() => {
@@ -200,8 +207,8 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
                 provider,
                 avatarId: provider === 'anam' ? (avatarId || null) : null,
                 voiceId: provider === 'anam' ? (voiceId || null) : null,
-                browserVoiceURI: provider === 'local' ? (browserVoiceURI || null) : null,
-                photoDataUrl: provider === 'local' ? (photoDataUrl || null) : null,
+                browserVoiceURI: provider !== 'anam' ? (browserVoiceURI || null) : null,
+                photoDataUrl: provider !== 'anam' ? (photoDataUrl || null) : null,
                 systemPrompt: systemPrompt || null,
                 displayName: displayName || null,
             });
@@ -216,7 +223,7 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
     // Local path can save once a photo is downscaled+consented, OR if the
     // agent already has a saved photo from a previous session (re-saving
     // display name/system prompt without re-uploading a photo).
-    const localSaveBlocked = provider === 'local' && !canSaveLocal && !profile?.photoDataUrl;
+    const localSaveBlocked = provider !== 'anam' && !canSaveLocal && !profile?.photoDataUrl;
     const anamSaveBlocked = provider === 'anam' && !canSaveAnam;
 
     return (
@@ -228,20 +235,22 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
                 </button>
             </div>
 
-            {anamConfigured && (
-                <div className="avatar-setup-panel__section">
-                    <label className="avatar-setup-panel__label" htmlFor={`avatar-provider-${agentId}`}>Provider</label>
-                    <select
-                        id={`avatar-provider-${agentId}`}
-                        value={provider}
-                        onChange={(e) => setProvider(e.target.value as AvatarProviderKind)}
-                        className="avatar-setup-panel__select"
-                    >
-                        <option value="local">Local (built-in)</option>
-                        <option value="anam">Anam (your key)</option>
-                    </select>
-                </div>
-            )}
+            {/* Two keyless tiers always exist (Local, Evolve) — the picker is
+                always shown; the Anam option appears only when a key is in
+                the vault (keyless flow must never mention Anam). */}
+            <div className="avatar-setup-panel__section">
+                <label className="avatar-setup-panel__label" htmlFor={`avatar-provider-${agentId}`}>Provider</label>
+                <select
+                    id={`avatar-provider-${agentId}`}
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value as AvatarProviderKind)}
+                    className="avatar-setup-panel__select"
+                >
+                    <option value="local">Local (built-in)</option>
+                    <option value="evolve">Evolve (realistic lip sync)</option>
+                    {anamConfigured && <option value="anam">Anam (your key)</option>}
+                </select>
+            </div>
 
             <div className="avatar-setup-panel__section">
                 <label className="avatar-setup-panel__label" htmlFor={`avatar-photo-input-${agentId}`}>Photo</label>
@@ -297,9 +306,9 @@ export default function AvatarSetupPanel({ agentId, systemPromptDefault, onClose
                 </>
             )}
 
-            {provider === 'local' && (
+            {provider !== 'anam' && (
                 <div className="avatar-setup-panel__section">
-                    <label className="avatar-setup-panel__label" htmlFor={`avatar-browser-voice-select-${agentId}`}>Voice (built-in)</label>
+                    <label className="avatar-setup-panel__label" htmlFor={`avatar-browser-voice-select-${agentId}`}>Voice (built-in{provider === 'evolve' ? ' — fallback when no OpenAI key' : ''})</label>
                     <select
                         id={`avatar-browser-voice-select-${agentId}`}
                         value={browserVoiceURI}

@@ -21,6 +21,8 @@ export interface FontPairingDef {
     bodyStack: string;
     /** CSS value for --font-mono */
     monoStack: string;
+    /** Google Fonts `family=` query for families NOT in the boot <link> (app/root.tsx). Loaded on demand. */
+    googleFonts?: string;
 }
 
 export const FONT_PAIRINGS: FontPairingDef[] = [
@@ -38,6 +40,7 @@ export const FONT_PAIRINGS: FontPairingDef[] = [
     },
     {
         id: 'modern',
+        googleFonts: 'Roboto:wght@300;400;500;700',
         name: 'Modern / Tech',
         personality: 'Clean, scalable, professional',
         headings: 'Inter',
@@ -50,6 +53,7 @@ export const FONT_PAIRINGS: FontPairingDef[] = [
     },
     {
         id: 'elegant',
+        googleFonts: 'Playfair+Display:wght@400;700;900&family=Montserrat:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;600;700',
         name: 'Elegant / Luxury',
         personality: 'Sophisticated, high-contrast, editorial',
         headings: 'Playfair Display',
@@ -62,6 +66,7 @@ export const FONT_PAIRINGS: FontPairingDef[] = [
     },
     {
         id: 'friendly',
+        googleFonts: 'Poppins:wght@400;500;600;700;800&family=Open+Sans:wght@300;400;600;700&family=Nunito:wght@400;600;700;800&family=Lato:wght@300;400;700;900',
         name: 'Friendly / Consumer',
         personality: 'Approachable, balanced, warm',
         headings: 'Poppins',
@@ -74,6 +79,7 @@ export const FONT_PAIRINGS: FontPairingDef[] = [
     },
     {
         id: 'brutalist',
+        googleFonts: 'Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700',
         name: 'Brutalist / Bold',
         personality: 'Raw, technical, unconventional',
         headings: 'Space Grotesk',
@@ -86,6 +92,7 @@ export const FONT_PAIRINGS: FontPairingDef[] = [
     },
     {
         id: 'editorial',
+        googleFonts: 'Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;600;700&family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700',
         name: 'Editorial / Content',
         personality: 'Readable, trustworthy, classic',
         headings: 'Merriweather',
@@ -296,9 +303,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         else root.style.removeProperty('--accent');
     }, [theme, accentColor]);
 
-    // Apply font pairing CSS variables
+    // Apply font pairing CSS variables (+ fetch the pairing's Google Fonts once, on demand)
     useEffect(() => {
         const def = FONT_PAIRINGS.find(f => f.id === fontPairing) || FONT_PAIRINGS[0];
+        if (def.googleFonts && !document.querySelector(`link[data-font-pairing="${def.id}"]`)) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `https://fonts.googleapis.com/css2?family=${def.googleFonts}&display=swap`;
+            link.dataset.fontPairing = def.id;
+            document.head.appendChild(link);
+        }
         const root = document.documentElement;
         root.style.setProperty('--font-heading', def.headingStack);
         root.style.setProperty('--font-primary', def.bodyStack);

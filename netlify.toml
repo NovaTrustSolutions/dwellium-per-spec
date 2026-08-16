@@ -49,6 +49,14 @@
 # plus 'self' (the /api/* + /health proxy is same-origin, so the Cloud Run
 # backend origin is NOT needed here). 'unsafe-inline' on style-src reflects the
 # app's widespread inline styles; tightening it is a deliberate later step.
+#
+# Plan 043 (2026-08-16): style-src/font-src now allow Google Fonts (the app's
+# body fonts) so reports are signal, not noise. Still REPORT-ONLY on purpose:
+# `script-src 'self'` would block the 4 inline <script>s React Router emits into
+# index.html (theme IIFE + __reactRouterContext + module import + stream close)
+# — measured live via a `securitypolicyviolation` probe: `script-src-elem inline`.
+# Enforcing needs per-build script hashes (or 'unsafe-inline'), plus a real
+# behind-login sweep of connect-src (Sentry, api.anam.ai, …). Not done blind.
 [[headers]]
   for = "/*"
   [headers.values]
@@ -56,4 +64,28 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://api.tavily.com https://api.search.brave.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    # Mic/camera (TranscriptionHub, avatars) + geolocation (Sidebar weather widget) are used
+    # by the app itself; no third-party origin needs them.
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()"
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; media-src 'self'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://api.tavily.com https://api.search.brave.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+# Vite content-hashes its JS/CSS/wasm output under /assets/ — safe to cache forever.
+# Scoped by extension on purpose: qualia-shell/public/assets/* (png/webp/mp4/jpg)
+# is copied UNHASHED into the same folder and must stay revalidatable.
+# index.html keeps Netlify's default max-age=0 so new deploys are picked up.
+[[headers]]
+  for = "/assets/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+[[headers]]
+  for = "/assets/*.mjs"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+[[headers]]
+  for = "/assets/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+[[headers]]
+  for = "/assets/*.wasm"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

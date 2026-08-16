@@ -600,6 +600,7 @@ export default function ARAConsole() {
                     currentAudioRef.current = null;
                 }
                 window.speechSynthesis.cancel();
+                speakGenRef.current++;
                 setIsSpeaking(false);
             }
             return next;
@@ -612,6 +613,8 @@ export default function ARAConsole() {
             currentAudioRef.current = null;
         }
         window.speechSynthesis.cancel();
+        // Also cancel any TTS fetch still in flight, or it plays after the stop.
+        speakGenRef.current++;
         setIsSpeaking(false);
     }, []);
 
@@ -633,6 +636,38 @@ export default function ARAConsole() {
     }, []);
 
     const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+    /**
+     * Playback generation. Bumped by every speak AND every stop.
+     *
+     * The stop-block below only halts audio that is ALREADY playing — but the
+     * OpenAI path awaits a network fetch before `.play()`. Two speaks inside
+     * that window (spawn completions at ~L1203/L1214 do exactly this) both
+     * cleared an empty stop-block, both fetched, and both played: two voices.
+     * Worse, the first one's `currentAudioRef` was overwritten by the second,
+     * so nothing could stop it. An in-flight fetch now compares its captured
+     * generation before playing and drops the audio if anything superseded it.
+     */
+    const speakGenRef = useRef(0);
+
+    /**
+     * Split a reply into TTS chunks: first sentence alone (fastest possible
+     * time-to-first-audio), remaining sentences merged up to ~280 chars per
+     * request. One whole-reply request meant nothing played until the FULL
+     * completion was synthesized and downloaded — the single biggest source
+     * of "talking to a machine" latency in the console.
+     */
+    const chunkForTts = (text: string): string[] => {
+        const sentences = text.match(/[^.!?\u2026\n]+[.!?\u2026]*\s*/g)?.map(x => x.trim()).filter(Boolean) ?? [];
+        if (sentences.length <= 1) return sentences.length ? sentences : (text ? [text] : []);
+        const chunks: string[] = [sentences[0]];
+        let cur = '';
+        for (const sent of sentences.slice(1)) {
+            if (cur && (cur.length + sent.length + 1) > 280) { chunks.push(cur); cur = ''; }
+            cur = cur ? `${cur} ${sent}` : sent;
+        }
+        if (cur) chunks.push(cur);
+        return chunks;
+    };
 
     const speakText = useCallback(async (text: string) => {
         // Stop any current playback
@@ -646,6 +681,11 @@ export default function ARAConsole() {
         if (!cleaned) return;
 
         setIsSpeaking(true);
+        // Claim playback; invalidates any fetch still in flight. Must come AFTER
+        // the empty-text bail: a no-op speak that invalidated a live one would
+        // strand isSpeaking=true (the superseded call returns without clearing
+        // it, and the superseding call never started), freezing the visualizer.
+        const gen = ++speakGenRef.current;
 
         // Resolve the active voice option from the catalog. Backward compat:
         // legacy values 'female' / 'male' (pre-Cycle-1 voice arc) map to
@@ -658,37 +698,62 @@ export default function ARAConsole() {
         // Same browser-direct pattern as llmClient.ts for Anthropic. Key comes
         // from the per-user integrations bundle; no server proxy required.
         if (option.provider === 'openai' && openaiApiKey) {
+            const fetchTtsChunk = (input: string) => fetch(OPENAI_TTS_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${openaiApiKey}`,
+                },
+                body: JSON.stringify({ model: 'tts-1', input, voice: option.openaiVoice, response_format: 'mp3' }),
+            });
+            /* Play one chunk; resolves on ended/error/pause (pause = stopSpeaking
+             * fired — the gen check after the await handles cleanup ownership). */
+            const playChunk = (blob: Blob) => new Promise<void>((resolve) => {
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                currentAudioRef.current = audio;
+                const done = () => { URL.revokeObjectURL(url); resolve(); };
+                audio.onended = done;
+                audio.onerror = done;
+                audio.onpause = () => { if (audio.ended === false) done(); };
+                audio.play().catch(done);
+            });
             try {
-                console.log(`[ARA TTS] Requesting OpenAI TTS — voice=${option.openaiVoice}`);
-                const res = await fetch(OPENAI_TTS_ENDPOINT, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${openaiApiKey}`,
-                    },
-                    body: JSON.stringify({
-                        model: 'tts-1',
-                        input: cleaned.length > 4000 ? cleaned.slice(0, 4000) : cleaned,
-                        voice: option.openaiVoice,
-                        response_format: 'mp3',
-                    }),
-                });
-                if (res.ok) {
+                const capped = cleaned.length > 4000 ? cleaned.slice(0, 4000) : cleaned;
+                const chunks = chunkForTts(capped);
+                console.log(`[ARA TTS] OpenAI ${option.openaiVoice} — ${chunks.length} chunk(s)`);
+                let playedAny = false;
+                const startFetch = (input: string) => {
+                    const req = fetchTtsChunk(input);
+                    req.catch(() => { /* superseded-and-abandoned fetch must not surface as unhandled */ });
+                    return req;
+                };
+                let pending: Promise<Response> = startFetch(chunks[0]);
+                for (let i = 0; i < chunks.length; i++) {
+                    const res = await pending;
+                    if (gen !== speakGenRef.current) return; // superseded mid-fetch
+                    if (!res.ok) {
+                        const errText = await res.text().catch(() => '');
+                        console.warn(`[ARA TTS] OpenAI HTTP ${res.status}: ${errText.slice(0, 200)}`);
+                        if (i === 0) break; // nothing played yet — fall through to browser TTS
+                        setIsSpeaking(false); currentAudioRef.current = null;
+                        return; // mid-reply failure: end gracefully, no voice switch
+                    }
                     const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const audio = new Audio(url);
-                    currentAudioRef.current = audio;
-                    audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null; };
-                    audio.onerror = (e) => {
-                        console.error('[ARA TTS] OpenAI audio playback error:', e);
-                        setIsSpeaking(false); URL.revokeObjectURL(url); currentAudioRef.current = null;
-                    };
-                    await audio.play();
-                    console.log(`[ARA TTS] OpenAI ${option.openaiVoice} playing (${blob.size} bytes)`);
+                    if (gen !== speakGenRef.current) return;
+                    // Prefetch the next chunk WHILE this one plays — the network
+                    // wait hides entirely behind playback.
+                    if (i + 1 < chunks.length) pending = startFetch(chunks[i + 1]);
+                    playedAny = true;
+                    await playChunk(blob);
+                    if (gen !== speakGenRef.current) return; // stopped mid-playback
+                }
+                if (playedAny) {
+                    setIsSpeaking(false);
+                    currentAudioRef.current = null;
                     return;
                 }
-                const errText = await res.text().catch(() => '');
-                console.warn(`[ARA TTS] OpenAI returned HTTP ${res.status}: ${errText.slice(0, 200)} — falling back to browser TTS`);
+                // First chunk never played (HTTP failure) — fall through to browser TTS.
             } catch (err) {
                 console.error('[ARA TTS] OpenAI TTS fetch failed — falling back:', err);
             }
@@ -725,6 +790,8 @@ export default function ARAConsole() {
         if (preferred) utterance.voice = preferred;
         utterance.onend = () => setIsSpeaking(false);
         utterance.onerror = () => setIsSpeaking(false);
+        // Path A may have awaited a failed fetch before falling through here.
+        if (gen !== speakGenRef.current) return;
         window.speechSynthesis.speak(utterance);
         console.log(`[ARA TTS] Browser SpeechSynthesis — voice=${preferred?.name ?? 'default'}`);
     }, [stripMarkdown, activeVoice, openaiApiKey]);
@@ -735,6 +802,8 @@ export default function ARAConsole() {
             currentAudioRef.current = null;
         }
         window.speechSynthesis.cancel();
+        // Also cancel any TTS fetch still in flight, or it plays after the stop.
+        speakGenRef.current++;
         setIsSpeaking(false);
     }, []);
 
@@ -1816,6 +1885,15 @@ export default function ARAConsole() {
                 micStreamRef.current.getTracks().forEach(t => t.stop());
             }
             window.speechSynthesis.cancel();
+            // Detaching the console does NOT stop an <audio> element — without
+            // this, closing ARA mid-sentence leaves the old voice playing and
+            // reopening starts a second one over the top of it.
+            if (currentAudioRef.current) {
+                currentAudioRef.current.pause();
+                currentAudioRef.current = null;
+            }
+            // Stop an in-flight fetch from playing into an unmounted console.
+            speakGenRef.current++;
         };
     }, []);
 

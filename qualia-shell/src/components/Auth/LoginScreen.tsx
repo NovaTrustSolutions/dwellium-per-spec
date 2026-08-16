@@ -118,7 +118,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
         <>
             <video
                 className="login-video-bg"
-                poster="/assets/hero-bg.png"
+                poster="/assets/hero-bg.webp"
                 muted
                 loop
                 playsInline
@@ -126,7 +126,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                 autoPlay={hasClicked}
                 key={hasClicked ? 'play' : 'idle'}
             >
-                {hasClicked && <source src="/assets/nebula-bg.mp4" type="video/mp4" />}
+                {hasClicked && <source src="/assets/nebula-bg-1280.mp4" type="video/mp4" />}
             </video>
 
             <div
@@ -143,7 +143,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
 
                 <div className="login-container">
                     <div className="login-header">
-                        <img src="/assets/astra-strata-logo.png" alt="AstraStrata Property Management" className="login-logo-img" />
+                        <img src="/assets/astra-strata-logo.png" alt="AstraStrata Property Management" className="login-logo-img" width={640} height={640} />
                     </div>
 
                     <div className="login-card">
@@ -166,7 +166,8 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     placeholder="Access password"
                                     value={gateInput}
                                     onChange={(event) => setGateInput(event.target.value)}
-                                    autoFocus
+                                    // focus without scrollIntoView so the logo card stays visible on short viewports
+                                    ref={(el) => el?.focus({ preventScroll: true })}
                                 />
                                 <button type="submit" className="login-primary-btn" disabled={!gateInput}>Continue</button>
                             </form>

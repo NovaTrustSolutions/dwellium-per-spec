@@ -34,8 +34,8 @@ import '../src/utils/spotlight';
  *     (Phase-8+ Task 8.4 Finding β empirical correction — className pattern
  *     NOT data-attribute pattern; sister-shape to `qualia-shell/src/context/ThemeContext.tsx`
  *     L70-L75 useEffect application altitude)
- *   - Google Fonts preconnect + preload: 16 font families (Inter/Roboto/JetBrains
- *     Mono/etc.) preserved unchanged
+ *   - Google Fonts preconnect + stylesheet: trimmed to Hanken Grotesk + Inter +
+ *     JetBrains Mono at plan 043 (2026-08-16); other pairings load on demand
  *   - `<Meta />` + `<Links />` enable per-route meta/link injection (RR v7
  *     framework-mode `meta` + `links` route module exports)
  *   - `<Outlet />` is where matched route component renders
@@ -58,7 +58,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <html lang="en" suppressHydrationWarning>
             <head>
                 <meta charSet="UTF-8" />
-                <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+                <link rel="icon" type="image/png" href="/favicon.png" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
                 <meta name="theme-color" content="#6366f1" />
                 <link rel="manifest" href="/manifest.json" />
@@ -73,7 +73,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     content="AstraStrata — Property management platform combining AppFolio parity with AI-driven workflow automation."
                 />
                 <meta property="og:type" content="website" />
-                <meta property="og:image" content="/og-image.png" />
+                {/* Crawlers (FB/X/LinkedIn/Slack) need an ABSOLUTE og:image; the SPA can't compute
+                    its origin at crawl time. Update if the site moves to a custom domain. */}
+                <meta property="og:image" content="https://argyleholocron.netlify.app/og-image.png" />
+                <meta property="og:image:width" content="1200" />
+                <meta property="og:image:height" content="630" />
+                {/* LCP element on the login splash — fetch it before the JS bundle. */}
+                <link rel="preload" as="image" href="/assets/hero-bg.webp" fetchPriority="high" />
                 <script
                     dangerouslySetInnerHTML={{
                         __html: `(function () {
@@ -94,8 +100,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                {/* Boot fonts only: Hanken Grotesk (--font-primary default) + Inter (default pairing)
+                    + JetBrains Mono. Non-default font pairings load their own families on demand
+                    via ThemeContext (was a 17-family / 183 KB render-blocking request). */}
                 <link
-                    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Montserrat:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;600;700&family=Poppins:wght@400;500;600;700;800&family=Open+Sans:wght@300;400;600;700&family=Nunito:wght@400;600;700;800&family=Lato:wght@300;400;700;900&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;600;700&family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap"
+                    href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
                     rel="stylesheet"
                 />
                 <Meta />

@@ -16,8 +16,7 @@ import type { DashboardDataDeps } from '../../components/AstraDashboard/dashboar
 function countingDeps(): { deps: DashboardDataDeps; calls: () => number } {
     let calls = 0;
     const routes: Record<string, unknown> = {
-        '/properties': [{ id: 'p1', name: 'Maple Court' }],
-        '/units': [{ propertyId: 'p1', status: 'occupied' }],
+        '/stats': { byProperty: [{ id: 'p1', name: 'Maple Court', totalUnits: 1, occupiedUnits: 1, occupancyRate: 100, openWorkOrders: 0 }] },
         '/workitems': [
             { id: 'w1', title: 'Roof leak', status: 'open', priority: 'critical', domain: 'maintenance', createdAt: '2026-05-29T08:00:00Z', dueDate: '2026-06-01', propertyId: 'p1' },
         ],

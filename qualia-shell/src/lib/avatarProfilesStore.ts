@@ -32,7 +32,7 @@ import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { avatarProfilesUserIdHolder } from './perUserIdentity';
 import { withSync } from './oneSaveStore';
 
-export type AvatarProviderKind = 'local' | 'anam';
+export type AvatarProviderKind = 'local' | 'anam' | 'evolve';
 
 export interface AvatarProfile {
     avatarId: string | null;
@@ -54,7 +54,7 @@ export interface AvatarProfile {
  * old flow) — every brand-new profile defaults to 'local' per plan 042.
  */
 function inferProvider(p: Record<string, unknown>): AvatarProviderKind {
-    if (p.provider === 'anam' || p.provider === 'local') return p.provider;
+    if (p.provider === 'anam' || p.provider === 'local' || p.provider === 'evolve') return p.provider;
     return typeof p.avatarId === 'string' && p.avatarId ? 'anam' : 'local';
 }
 

@@ -343,6 +343,10 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
     const drainAudioQueue = useCallback(async (epoch: number) => {
         if (drainingRef.current) return;                // single drain loop at a time
         drainingRef.current = true;
+        // One-ahead TTS prefetch (OpenAI path): synth for chunk N+1 starts
+        // while chunk N plays, hiding the network wait behind playback.
+        // Keyed by text so a stale prefetch is simply unused, never misplayed.
+        let prefetched: { text: string; promise: Promise<Response> } | null = null;
         while (audioQueueRef.current.length > 0) {
             if (epochRef.current !== epoch) return;     // stopSpeech flushed mid-drain
             const chunk = audioQueueRef.current.shift();
@@ -362,27 +366,36 @@ export function usePersonaCall(config: PersonaConfig, host: 'ara' | 'stella'): U
                     played = true;
                 }
             } else if (option.provider === 'openai' && openaiKey) {
+                const requestTts = (text: string) => fetch(OPENAI_TTS_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+                    body: JSON.stringify({
+                        model: 'tts-1',
+                        input: text.slice(0, 4000),
+                        voice: option.openaiVoice,
+                        speed: Math.max(0.5, Math.min(2, cfg.speechRate)),
+                        response_format: 'mp3',
+                    }),
+                });
                 try {
-                    const res = await fetch(OPENAI_TTS_ENDPOINT, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
-                        body: JSON.stringify({
-                            model: 'tts-1',
-                            input: chunk.text.slice(0, 4000),
-                            voice: option.openaiVoice,
-                            speed: Math.max(0.5, Math.min(2, cfg.speechRate)),
-                            response_format: 'mp3',
-                        }),
-                    });
+                    const res = await (prefetched?.text === chunk.text ? prefetched.promise : requestTts(chunk.text));
+                    prefetched = null;
                     if (epochRef.current !== epoch) return;
                     if (res.ok) {
                         const blob = await res.blob();
                         if (epochRef.current !== epoch) return;
+                        const next = audioQueueRef.current[0];
+                        if (next) {
+                            const promise = requestTts(next.text);
+                            promise.catch(() => { /* abandoned prefetch must not surface as unhandled */ });
+                            prefetched = { text: next.text, promise };
+                        }
                         await playBlobChunk(blob, chunk, epoch);
                         if (epochRef.current !== epoch) return;
                         played = true;
                     }
                 } catch {
+                    prefetched = null;
                     /* fetch failed — fall back to the browser path for this chunk */
                 }
             }

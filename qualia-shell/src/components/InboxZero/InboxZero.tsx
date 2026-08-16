@@ -39,6 +39,7 @@ import {
     useSettings as useSettingsQuery, useEmailBody,
     inboxKeys,
 } from './useInboxQueries';
+import { readSse } from '../../lib/readSse';
 
 // QueryClient is provided at the App level via QueryProvider.
 
@@ -339,22 +340,16 @@ export default function InboxZero() {
         setSettingsDirty(true);
     };
 
-    // GAP-01: Wire SSE EventSource for real-time inbox updates → invalidate React Query cache
+    // GAP-01: real-time inbox updates → invalidate React Query cache.
+    // fetch-based SSE (not EventSource) so the request carries the session
+    // Bearer like every other /api/* call; readSse reconnects with backoff.
     useEffect(() => {
-        const sseBase = INBOX_API;
-        const sse = new EventSource(`${sseBase}/stream`);
-
-        sse.addEventListener('inbox:new', () => {
-            invalidateInbox();
+        const sse = readSse(`${INBOX_API}/stream`, {
+            onEvent: ({ event }) => {
+                if (event === 'inbox:new' || event === 'inbox:status-change') invalidateInbox();
+            },
+            // onError: disconnected — React Query's staleTime + the poll below cover it
         });
-
-        sse.addEventListener('inbox:status-change', () => {
-            invalidateInbox();
-        });
-
-        sse.onerror = () => {
-            // SSE disconnected — React Query's staleTime handles background refetch
-        };
 
         // Polling fallback — 60s (reduced from 900s because SSE handles real-time)
         const poll = window.setInterval(() => {
@@ -362,7 +357,7 @@ export default function InboxZero() {
         }, 60_000);
 
         return () => {
-            sse.close();
+            sse.abort();
             clearInterval(poll);
         };
     }, [invalidateInbox]);

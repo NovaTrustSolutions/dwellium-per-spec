@@ -68,7 +68,8 @@
 .scribe-idocs__topbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-default); background: var(--bg-surface); flex-wrap: wrap; }
 .scribe-idocs__title-input.scribe-idocs__title-input { width: auto; flex: 0 1 280px; font-size: var(--fs-lg); font-weight: var(--fw-semibold); background: transparent; border-color: transparent; }
 .scribe-idocs__title-input.scribe-idocs__title-input:hover, .scribe-idocs__title-input.scribe-idocs__title-input:focus { border-color: var(--border-default); background: var(--bg-desktop); }
-.scribe-idocs__swatches { display: flex; gap: 5px; }
+.scribe-idocs__swatches { display: flex; gap: 5px; flex: 0 1 auto; max-width: min(46vw, 560px); overflow-x: auto; overflow-y: hidden; padding: 2px; scrollbar-width: thin; }
+.scribe-idocs__swatch { flex: 0 0 auto; }
 .scribe-idocs__swatch { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-strong); cursor: pointer; padding: 0; }
 .scribe-idocs__swatch.is-active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-subtle); }
 .scribe-idocs__body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; }

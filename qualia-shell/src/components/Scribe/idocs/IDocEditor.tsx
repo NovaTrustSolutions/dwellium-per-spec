@@ -37,7 +37,7 @@ const BlockEditor = BlockEditorModule.default;
 const CardBackgroundEditor = (BlockEditorModule as unknown as { CardBackgroundEditor?: ComponentType<{ card: Card; onChange: (next: unknown) => void }> }).CardBackgroundEditor;
 
 /** Agent B exports `DOC_AI_ACTIONS` from ./idocsDocAi.ts; glob-import resolves to {} while the file is absent. */
-export interface DocAiAction { id: string; label: string; needsInput?: boolean; run: (doc: IDoc, input: string, llm: LlmBundle) => Promise<IDoc | null | undefined> | IDoc | null | undefined }
+export interface DocAiAction { id: string; label: string; needsInput?: boolean; inputHint?: string; perCard?: boolean; run: (doc: IDoc, input: string, llm: LlmBundle) => Promise<IDoc | null | undefined> | IDoc | null | undefined }
 const docAiModules = import.meta.glob<{ DOC_AI_ACTIONS?: DocAiAction[] }>('./idocsDocAi.ts');
 async function loadDocAiActions(): Promise<DocAiAction[]> {
     const loader = docAiModules['./idocsDocAi.ts'];
@@ -66,8 +66,12 @@ function Menu({ label, children, align = 'right', title }: { label: string; chil
     useEffect(() => {
         if (!open) return;
         const onDoc = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+        // Esc closes the menu — captured + stopped so Desktop's global "Esc closes the
+        // top window" shortcut doesn't close Scribe (found in the wave-1 live pass).
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setOpen(false); } };
         document.addEventListener('mousedown', onDoc);
-        return () => document.removeEventListener('mousedown', onDoc);
+        window.addEventListener('keydown', onKey, { capture: true });
+        return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('keydown', onKey, { capture: true }); };
     }, [open]);
     return (
         <div className="scribe-idocs__menu" ref={ref}>
@@ -412,7 +416,7 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
         try {
             debouncer.cancel(); pushSnapshot(doc.id); // ⌘Z reverts the AI edit
             const latest = idocsStore.getSnapshot().docs.find((d) => d.id === doc.id) ?? doc;
-            const out = await action.run(latest, input, integrations.llm);
+            const out = await action.run(latest, action.perCard ? `${activeCard?.id ?? ''}|${input}` : input, integrations.llm);
             if (!out) { flash('AI returned nothing'); return; }
             replaceDoc({ ...out, id: doc.id, createdAt: latest.createdAt, analytics: latest.analytics }); flash(`${action.label} ✓ (⌘Z to revert)`);
         } catch (e) { flash(`AI failed: ${(e as Error).message}`); } finally { setAiBusy(null); }
@@ -534,8 +538,8 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
             </div>
             {aiPrompt && (
                 <form className="scribe-idocs-ed__aiprompt" onSubmit={(e) => { e.preventDefault(); void runDocAi(aiPrompt.action, aiPrompt.input); }}>
-                    <span>{aiPrompt.action.label}:</span>
-                    <input ref={(el) => el?.focus()} value={aiPrompt.input} onChange={(e) => setAiPrompt({ ...aiPrompt, input: e.target.value })} placeholder="What should the AI do?" aria-label={`${aiPrompt.action.label} input`} />
+                    <span>{aiPrompt.action.label}{aiPrompt.action.perCard && activeCard ? ` — “${activeCard.title || 'this card'}”` : ''}:</span>
+                    <input ref={(el) => el?.focus()} value={aiPrompt.input} onChange={(e) => setAiPrompt({ ...aiPrompt, input: e.target.value })} placeholder={aiPrompt.action.inputHint || 'What should the AI do?'} aria-label={`${aiPrompt.action.label} input`} />
                     <button type="submit" className="scribe-idocs__btn scribe-idocs__btn--primary">Run</button>
                     <button type="button" className="scribe-idocs__btn" onClick={() => setAiPrompt(null)}>Cancel</button>
                 </form>

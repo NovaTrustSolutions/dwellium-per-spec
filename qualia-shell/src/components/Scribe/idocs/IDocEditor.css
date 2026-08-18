@@ -3,7 +3,7 @@
 
 .scribe-idocs-ed { outline: none; }
 .scribe-idocs-ed__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.scribe-idocs-ed__pagesize { width: auto; font-size: var(--fs-sm); }
+.scribe-idocs-ed__pagesize { width: auto; max-width: 110px; flex: 0 0 auto; font-size: var(--fs-sm); }
 
 /* Outline (nested + DnD + multi-select) */
 .scribe-idocs-ed__outline-item { padding-left: calc(var(--idocs-depth, 0) * 14px); position: relative; cursor: grab; }

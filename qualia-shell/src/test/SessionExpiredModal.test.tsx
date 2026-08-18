@@ -34,12 +34,13 @@ describe('SessionExpiredModal password re-auth', () => {
         auth.loginLocal.mockReset();
     });
 
-    it('offers a password path (email prefilled) alongside Google and Log out', () => {
+    it('offers a password path (email prefilled) + Log out; Google hidden unless VITE_GOOGLE_LOGIN=true', () => {
         render(<SessionExpiredModal />);
         expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('andy@dwellium.com');
         expect(screen.getByRole('button', { name: /sign in with password/i })).toBeTruthy();
-        expect(screen.getByText('Continue with Google')).toBeTruthy();
         expect(screen.getByRole('button', { name: /log out instead/i })).toBeTruthy();
+        // Same gate as LoginScreen — off in this test env, so no dead Google button.
+        expect(screen.queryByText('Continue with Google')).toBeNull();
     });
 
     it('correct local password → backend login() with the account backend password', async () => {

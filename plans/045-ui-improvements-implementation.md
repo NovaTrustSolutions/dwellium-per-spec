@@ -156,8 +156,10 @@ Facts: `Sidebar.css:6-18` has no width (inline `DEFAULT_WIDTH = 240`, `Sidebar.t
 - D2: do **not** blank client passwords unless plan 014's server verification ships in the same wave (lockout risk — 014 §STOP).
 - C2: if a colour replacement changes contrast on the Stella bubble or Strata cards, re-run the WCAG check the repo already documents (composited background) before committing.
 
-## Decision gates for Ilya (answer inline and I'll dispatch)
+## Decision gates — ANSWERED by Ilya 2026-08-16
 
-1. **A2 renames**: `Universal Shell` → ? · `Trello` → ? (or keep).
-2. **E1**: (a) responsive rail (M) or (b) desktop-only interstitial (S)?
-3. **B1**: new-users-only default (recommended) or reset everyone's region layout too?
+1. **A2 renames**: **no renames** — keep `Universal Shell` / `Trello`.
+2. **E1**: **(a) responsive rail**. Implementation constraint added at dispatch: E puts all rules in a new `src/styles/responsive.css` (imported from `global.css`) and does NOT edit `Sidebar.tsx`/`Sidebar.css`, which Cluster A owns — avoids the only file overlap in the wave.
+3. **B1**: **new users only** — no migration of persisted `dwellium-layout-settings`.
+
+**Dispatch record**: 5 agents launched in parallel worktrees `.advisor-worktrees/045-{a-sidebar,b-desktop,c-buttons,d-ara-login,e-responsive}` on branches `ui/045-*` (each off `main` @ `34686ce`). Ownership tweak vs. the text above: Cluster A owns `defaultStack.ts` (sets `DEFAULT_STARTUP_STACK` = ARA + Strata and exports `PINNED_WIDGETS`); Cluster B does the Honcho auto-open removal + toast copy only. Cluster C scoped to: primitive + visible CTAs (Scribe/Inbox/Task Board/System Health/Honcho) + TaskBoard.css sweep + Strata chart; deeper sweeps (HalocronOS/PersonaStudio/Stella/…) are wave 2.

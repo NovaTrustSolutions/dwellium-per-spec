@@ -5,8 +5,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
     normalizeDoc, normalizeBlock, generateDocFromPrompt, generateDocFromText, rewriteBlockMd,
-    embedSrcFor, suggestThemeFor, parseJsonLoose, docFromMarkdownHeadings, type LlmBundle,
+    embedSrcFor, suggestThemeFor, parseJsonLoose, docFromMarkdownHeadings, dirForLanguage, BLOCK_CONTRACT, type LlmBundle,
 } from '../components/Scribe/idocs/idocsAi';
+import { BUILTIN_TEMPLATES, docFromTemplate } from '../components/Scribe/idocs/idocsTemplates';
+import { BLOCK_TYPES } from '../components/Scribe/idocs/idocTypes';
 
 const LLM_ON = { active: 'openai', openai: { enabled: true, apiKey: 'sk-test', model: 'gpt-x' } } as unknown as LlmBundle;
 const LLM_OFF = { active: null } as unknown as LlmBundle;
@@ -89,6 +91,100 @@ describe('generateDocFromPrompt', () => {
         const callLlmFn = vi.fn().mockResolvedValue({ text: '```markdown\nShorter.\n```', provider: 'openai', model: 'm' });
         expect(await rewriteBlockMd('A long paragraph.', 'shorten', LLM_ON, callLlmFn)).toBe('Shorter.');
     });
+
+    it('puts amount / audience / language / tone in the system prompt and lists all 24 block types', async () => {
+        const callLlmFn = vi.fn().mockResolvedValue({ text: '{"title":"T","cards":[{"title":"a","blocks":[]}]}', provider: 'openai', model: 'm' });
+        const doc = await generateDocFromPrompt('x', { cards: 3, amount: 'brief', audience: 'owners', language: 'Spanish', tone: 'friendly' }, LLM_ON, callLlmFn);
+        const sys: string = callLlmFn.mock.calls[0][0].systemPrompt;
+        expect(sys).toContain('Exactly 3 cards');
+        expect(sys).toContain('2-3 blocks per card');
+        expect(sys).toContain('Audience: owners');
+        expect(sys).toContain('Tone: friendly');
+        expect(sys).toContain('in Spanish');
+        for (const t of BLOCK_TYPES) expect(sys).toContain(`"type":"${t}"`);
+        expect(sys).toContain('"children"');
+        expect(doc!.language).toBe('Spanish');
+        expect(doc!.dir).toBe('ltr');
+    });
+
+    it('RTL language sets dir=rtl; dirForLanguage covers names and codes', async () => {
+        const callLlmFn = vi.fn().mockResolvedValue({ text: '{"title":"T","cards":[{"title":"a","blocks":[]}]}', provider: 'openai', model: 'm' });
+        const doc = await generateDocFromPrompt('x', { language: 'Arabic' }, LLM_ON, callLlmFn);
+        expect(doc!.dir).toBe('rtl');
+        expect(dirForLanguage('he')).toBe('rtl');
+        expect(dirForLanguage('Hebrew')).toBe('rtl');
+        expect(dirForLanguage('French')).toBe('ltr');
+        expect(dirForLanguage(undefined)).toBeUndefined();
+    });
+
+    it('>12 cards → outline call then ≤10-card batches, merged in order (cap 30)', async () => {
+        const outline = { title: 'Big', description: 'd', cards: Array.from({ length: 25 }, (_, i) => ({ title: `Sec ${i + 1}`, goal: `cover ${i + 1}` })) };
+        const callLlmFn = vi.fn().mockImplementation(async (req: { prompt: string; systemPrompt: string }) => {
+            if (req.systemPrompt.includes('planning')) return { text: JSON.stringify(outline), provider: 'openai', model: 'm' };
+            const m = req.prompt.match(/Write cards (\d+)-(\d+):/)!;
+            const from = Number(m[1]); const to = Number(m[2]);
+            const cards = Array.from({ length: to - from + 1 }, (_, k) => ({ title: `Sec ${from + k}`, layout: 'default', blocks: [{ type: 'steps', items: [{ title: 's', md: 'm' }] }] }));
+            return { text: JSON.stringify({ cards }), provider: 'openai', model: 'm' };
+        });
+        const doc = await generateDocFromPrompt('long thing', { cards: 25, language: 'fa' }, LLM_ON, callLlmFn);
+        expect(callLlmFn).toHaveBeenCalledTimes(1 + 3); // outline + 10 + 10 + 5
+        expect(doc!.title).toBe('Big');
+        expect(doc!.cards).toHaveLength(25);
+        expect(doc!.cards[0].title).toBe('Sec 1');
+        expect(doc!.cards[24].title).toBe('Sec 25');
+        expect(doc!.cards[12].blocks[0].type).toBe('steps');
+        expect(doc!.dir).toBe('rtl');
+        expect(callLlmFn.mock.calls[1][0].systemPrompt).toContain(BLOCK_CONTRACT.slice(0, 40));
+    });
+
+    it('outline-first: a failed batch keeps title-only stubs; cards>30 is capped', async () => {
+        const callLlmFn = vi.fn().mockImplementation(async (req: { prompt: string; systemPrompt: string }) => {
+            if (req.systemPrompt.includes('planning')) return { text: JSON.stringify({ title: 'X', cards: Array.from({ length: 40 }, (_, i) => ({ title: `S${i}` })) }), provider: 'openai', model: 'm' };
+            return req.prompt.includes('Write cards 1-10:') ? { text: JSON.stringify({ cards: [{ title: 'S0', blocks: [{ type: 'text', md: 'ok' }] }] }), provider: 'openai', model: 'm' } : { text: 'garbage', provider: 'openai', model: 'm' };
+        });
+        const doc = await generateDocFromPrompt('x', { cards: 99 }, LLM_ON, callLlmFn);
+        expect(doc!.cards).toHaveLength(30);
+        expect(doc!.cards[0].blocks[0]).toMatchObject({ type: 'text', md: 'ok' });
+        expect(doc!.cards[1].blocks).toEqual([]);
+        expect(doc!.cards[29].title).toBe('S29');
+    });
+
+    it('normalizeCard keeps children / background / notes / footnotes; normalizeDoc keeps a valid theme + isTemplate', () => {
+        const doc = normalizeDoc({
+            title: 'T', theme: 'midnight', isTemplate: true, language: 'ar',
+            cards: [{ title: 'P', notes: 'speaker', background: { color: '#000', overlay: 'faded', intensity: 500 }, footnotes: [{ text: 'fn1' }, 'fn2'],
+                children: [{ title: 'K', blocks: [{ type: 'boxes', columns: 9, items: [{ title: 'b' }] }], children: [{ title: 'KK', children: [{ title: 'KKK' }] }] }] }],
+        });
+        expect(doc.theme).toBe('midnight');
+        expect(doc.isTemplate).toBe(true);
+        expect(doc.dir).toBe('rtl');
+        const c = doc.cards[0];
+        expect(c.notes).toBe('speaker');
+        expect(c.background).toEqual({ color: '#000', image: undefined, overlay: 'faded', intensity: 100, align: undefined });
+        expect(c.footnotes?.map((f) => f.text)).toEqual(['fn1', 'fn2']);
+        expect(c.children?.[0].title).toBe('K');
+        expect(c.children?.[0].blocks[0]).toMatchObject({ type: 'boxes', columns: 3 });
+        expect(c.children?.[0].children?.[0].title).toBe('KK');
+        expect(c.children?.[0].children?.[0].children).toBeUndefined(); // depth guard
+        expect(normalizeDoc({ title: 'x', theme: 'nope' }).theme).toBe('inherit');
+    });
+});
+
+describe('built-in templates', () => {
+    it('ships 6 property-manager templates, each 4–6 cards with only known block types', () => {
+        expect(BUILTIN_TEMPLATES).toHaveLength(6);
+        const seen = new Set<string>();
+        for (const tpl of BUILTIN_TEMPLATES) {
+            const doc = docFromTemplate(tpl);
+            expect(doc.isTemplate).toBe(false);
+            expect(doc.cards.length).toBeGreaterThanOrEqual(4);
+            expect(doc.cards.length).toBeLessThanOrEqual(6);
+            const rawBlocks = (tpl.doc as { cards: { blocks: { type: string }[] }[] }).cards.flatMap((c) => c.blocks);
+            for (const b of rawBlocks) { expect(BLOCK_TYPES).toContain(b.type); seen.add(b.type); }
+            expect(docFromTemplate(tpl).id).not.toBe(doc.id);
+        }
+        for (const t of ['steps', 'boxes', 'funnel', 'quiz', 'timeline', 'chart', 'diagram', 'table', 'accordion']) expect(seen.has(t)).toBe(true);
+    });
 });
 
 describe('parseJsonLoose', () => {
@@ -116,6 +212,20 @@ describe('embedSrcFor', () => {
         ['https://form.typeform.com/to/abc', 'https://form.typeform.com/to/abc', 'typeform'],
         ['https://example.com/file.pdf', 'https://example.com/file.pdf', 'pdf'],
         ['https://example.com/page', 'https://example.com/page', 'web'],
+        // wave 1
+        ['https://www.tiktok.com/@someone/video/7234567890123456789', 'https://www.tiktok.com/embed/v2/7234567890123456789', 'tiktok'],
+        ['https://acme.wistia.com/medias/abc123xyz', 'https://fast.wistia.net/embed/iframe/abc123xyz', 'wistia'],
+        ['https://form.jotform.com/240012345678901', 'https://form.jotform.com/240012345678901', 'jotform'],
+        ['https://www.instagram.com/p/CxYz123/', 'https://www.instagram.com/p/CxYz123/embed', 'instagram'],
+        ['https://www.instagram.com/reel/CxYz456/?utm_source=x', 'https://www.instagram.com/p/CxYz456/embed', 'instagram'],
+        ['https://x.com/someone/status/1234567890', 'https://platform.twitter.com/embed/Tweet.html?id=1234567890', 'x'],
+        ['https://twitter.com/someone/status/987?s=20', 'https://platform.twitter.com/embed/Tweet.html?id=987', 'x'],
+        ['https://onedrive.live.com/embed?resid=ABC&authkey=xyz', 'https://onedrive.live.com/embed?resid=ABC&authkey=xyz', 'office-365'],
+        ['https://contoso.sharepoint.com/:p:/r/sites/x/Doc.pptx?action=embedview', 'https://contoso.sharepoint.com/:p:/r/sites/x/Doc.pptx?action=embedview', 'office-365'],
+        ['https://app.powerbi.com/view?r=eyJrIjoi', 'https://app.powerbi.com/view?r=eyJrIjoi', 'power-bi'],
+        ['https://public.tableau.com/views/Book1/Dash', 'https://public.tableau.com/views/Book1/Dash?:showVizHome=no&:embed=true', 'tableau'],
+        ['https://public.tableau.com/views/Book1/Dash?:language=en', 'https://public.tableau.com/views/Book1/Dash?:language=en&:showVizHome=no&:embed=true', 'tableau'],
+        ['https://drive.google.com/file/d/1AbCdEf/view?usp=sharing', 'https://drive.google.com/file/d/1AbCdEf/preview', 'google-drive'],
     ])('%s → %s (%s)', (input, src, provider) => {
         const r = embedSrcFor(input);
         expect(r).not.toBeNull();
@@ -126,6 +236,13 @@ describe('embedSrcFor', () => {
     it('figma wraps the url; plain maps links become output=embed', () => {
         expect(embedSrcFor('https://www.figma.com/file/ABC/Design')!.src).toBe(`https://www.figma.com/embed?embed_host=share&url=${encodeURIComponent('https://www.figma.com/file/ABC/Design')}`);
         expect(embedSrcFor('https://www.google.com/maps/place/Eiffel+Tower')!.src).toBe('https://www.google.com/maps?q=Eiffel%20Tower&output=embed');
+    });
+
+    it('new providers without an id yield null (no half-built iframes)', () => {
+        expect(embedSrcFor('https://www.tiktok.com/@someone')).toBeNull();
+        expect(embedSrcFor('https://x.com/someone')).toBeNull();
+        expect(embedSrcFor('https://www.instagram.com/someone/')).toBeNull();
+        expect(embedSrcFor('https://acme.wistia.com/')).toBeNull();
     });
 
     it('rejects javascript:, data:, and garbage', () => {

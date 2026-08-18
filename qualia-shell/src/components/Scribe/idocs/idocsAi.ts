@@ -7,30 +7,54 @@
 import { callLlm, hasActiveLlm, type LlmRequest, type LlmResponse } from '../../../lib/llmClient';
 import type { IntegrationsBundle } from '../../../types/integrations';
 import {
-    BLOCK_TYPES, CARD_LAYOUTS, createEmptyDoc, newId,
-    type Block, type BlockTone, type BlockType, type Card, type CardLayout, type IDoc, type IDocThemeId,
+    BLOCK_TYPES, CARD_LAYOUTS, IDOC_THEMES, createEmptyDoc, newId,
+    type Block, type BlockTone, type BlockType, type Card, type CardBackground, type CardLayout, type IDoc, type IDocThemeId,
 } from './idocTypes';
 
 export type LlmBundle = IntegrationsBundle['llm'];
 export type CallLlmFn = (req: LlmRequest, llm: LlmBundle) => Promise<LlmResponse | null>;
 
+export type GenerateAmount = 'brief' | 'medium' | 'detailed' | 'extensive';
+
 export interface GenerateOpts {
-    /** Target card count (default 6, capped at 12). */
+    /** Target card count (default 6, capped at 30; >12 uses the outline-first two-step). */
     cards?: number;
     tone?: string;
     audience?: string;
+    /** How much text per card (default medium). */
+    amount?: GenerateAmount;
+    /** BCP-47 name or code, e.g. "Spanish", "es", "Arabic". Model writes ALL text in it; sets doc.language/dir. */
+    language?: string;
 }
 
-const MAX_CARDS = 12;
+export const MAX_CARDS = 30;
+/** Above this, generation goes outline → batches. */
+const SINGLE_SHOT_MAX = 12;
+const BATCH_SIZE = 10;
 const MAX_SOURCE_CHARS = 12_000;
 
-/** The JSON contract the model must follow — one example per block type. */
-const BLOCK_CONTRACT = `Block types (use ONLY these; every block is an object with "type"):
+const AMOUNT_HINT: Record<GenerateAmount, string> = {
+    brief: '2-3 blocks per card, ≤ 60 words of prose per card — headlines and bullets.',
+    medium: '3-5 blocks per card, ~120 words of prose per card.',
+    detailed: '4-7 blocks per card, ~200 words of prose per card with examples.',
+    extensive: '5-8 blocks per card, ~300 words of prose per card; thorough, with supporting detail.',
+};
+
+/** Languages written right-to-left (names + ISO codes). ponytail: small list; extend if a user asks. */
+const RTL = /^(ar|arabic|he|hebrew|fa|farsi|persian|ur|urdu|ps|pashto|yi|yiddish|sd|sindhi|ug|uyghur|dv|dhivehi|ku|kurdish|syr|syriac)\b/i;
+export function dirForLanguage(language: string | undefined): 'ltr' | 'rtl' | undefined {
+    if (!language?.trim()) return undefined;
+    return RTL.test(language.trim()) ? 'rtl' : 'ltr';
+}
+
+/** The JSON contract the model must follow — one example per block type (all 24). Exported for doc-level AI prompts. */
+export const BLOCK_CONTRACT = `Block types (use ONLY these; every block is an object with "type"):
 - {"type":"heading","level":2,"text":"Section title"}  (level 1|2|3)
 - {"type":"text","md":"Markdown paragraph(s)."}
 - {"type":"callout","tone":"info","md":"Key point"}  (tone info|success|warning|danger)
 - {"type":"quote","md":"Quoted text","cite":"Who"}
 - {"type":"image","src":"https://…","alt":"desc","caption":"…"}  (only if you have a REAL url; else skip)
+- {"type":"gallery","images":[{"src":"https://…","alt":"…"}]}  (only real urls)
 - {"type":"embed","url":"https://www.youtube.com/watch?v=…"}  (only real urls)
 - {"type":"chart","kind":"bar","title":"Revenue","data":[{"label":"Q1","value":12},{"label":"Q2","value":18},{"label":"Q3","value":22}]}  (kind bar|line|pie; 3-8 numeric points)
 - {"type":"table","headers":["Col A","Col B"],"rows":[["a1","b1"],["a2","b2"]]}
@@ -42,19 +66,50 @@ const BLOCK_CONTRACT = `Block types (use ONLY these; every block is an object wi
 - {"type":"divider"}
 - {"type":"timeline","items":[{"date":"2024","title":"Launch","md":"What happened"}]}
 - {"type":"quiz","question":"…?","options":["A","B","C"],"answerIndex":1,"explanation":"Why"}
-- {"type":"toc"}`;
+- {"type":"toc"}
+- {"type":"steps","numbered":true,"items":[{"title":"Step","md":"What to do"}]}  (sequential process, 3-6 steps)
+- {"type":"funnel","items":[{"label":"Stage","value":100},{"label":"Next","value":40}]}  (narrowing stages, top→bottom)
+- {"type":"boxes","columns":3,"items":[{"title":"Box","md":"Short point","emphasis":false}]}  (grid of 2-6 equal cards; columns 2|3|4)
+- {"type":"math","latex":"E = mc^2","inline":false}
+- {"type":"diagram","mermaid":"flowchart LR\\n  A --> B"}  (mermaid source; flowchart/sequence/gantt)
+- {"type":"qr","url":"https://…","caption":"Scan me"}`;
+
+const LAYOUT_HINTS = `Smart layouts: prefer "steps" for processes, "boxes" for parallel points/features, "funnel" for narrowing stages, "timeline" for dates, "columns" for side-by-side comparisons, "table" for data.
+Cards may nest sub-cards via "children":[{"title":"…","layout":"default","blocks":[…]}] when a section has natural sub-sections (rare; ≤ 3 children).
+Cards may add "background":{"color":"#0b1020","overlay":"faded"} ONLY when a hero/section-break card benefits from it.`;
+
+function commonRules(opts: GenerateOpts): string {
+    const amount = AMOUNT_HINT[opts.amount ?? 'medium'];
+    return `- ${amount} Mix block types where they genuinely help; don't force every type.
+- Charts need 3-8 numeric data points with short labels. Tables ≤ 6 rows.
+- Markdown fields may use **bold**, lists, links. No HTML.
+${opts.tone ? `- Tone: ${opts.tone}.\n` : ''}${opts.audience ? `- Audience: ${opts.audience}.\n` : ''}${opts.language ? `- Language: write ALL text (titles, blocks, labels, options) in ${opts.language}.\n` : ''}${LAYOUT_HINTS}`;
+}
 
 function systemPrompt(opts: GenerateOpts): string {
-    const n = Math.min(MAX_CARDS, Math.max(1, opts.cards ?? 6));
+    const n = Math.min(SINGLE_SHOT_MAX, Math.max(1, opts.cards ?? 6));
     return `You are a document designer producing a Gamma-style interactive card document.
 Respond with STRICT JSON only — no markdown fences, no commentary:
 {"title":"…","description":"one sentence","cards":[{"title":"…","layout":"default","blocks":[…]}]}
 Rules:
 - Exactly ${n} cards. Card layout is one of ${CARD_LAYOUTS.join('|')} (use "hero" for the first card when apt).
-- 2 to 6 blocks per card. Mix text, callout, chart, table, accordion, quiz, timeline, columns where they genuinely help; don't force every type.
-- Charts need 3-8 numeric data points with short labels. Tables ≤ 6 rows.
-- Markdown fields may use **bold**, lists, links. No HTML.
-${opts.tone ? `- Tone: ${opts.tone}.` : ''}${opts.audience ? `\n- Audience: ${opts.audience}.` : ''}
+${commonRules(opts)}
+${BLOCK_CONTRACT}`;
+}
+
+function outlinePrompt(n: number, opts: GenerateOpts): string {
+    return `You are a document designer planning a ${n}-card Gamma-style document.
+Respond with STRICT JSON only: {"title":"…","description":"one sentence","cards":[{"title":"…","goal":"one sentence on what this card must cover"}]}
+- Exactly ${n} cards, in reading order. Titles are short. Do NOT write the card bodies yet.
+${opts.tone ? `- Tone: ${opts.tone}.\n` : ''}${opts.audience ? `- Audience: ${opts.audience}.\n` : ''}${opts.language ? `- Language: ${opts.language}.\n` : ''}`;
+}
+
+function batchPrompt(opts: GenerateOpts): string {
+    return `You are a document designer writing the bodies of some cards of a Gamma-style document from an outline.
+Respond with STRICT JSON only: {"cards":[{"title":"…","layout":"default","blocks":[…]}]} — one entry per requested card, same order, same titles.
+Rules:
+- Card layout is one of ${CARD_LAYOUTS.join('|')}.
+${commonRules(opts)}
 ${BLOCK_CONTRACT}`;
 }
 
@@ -138,48 +193,109 @@ export function normalizeBlock(raw: unknown): Block {
     }
 }
 
-export function normalizeCard(raw: unknown, index: number): Card {
+function normalizeBackground(raw: unknown): CardBackground | undefined {
+    const r = rec(raw);
+    if (!Object.keys(r).length) return undefined;
+    const overlay = ['none', 'frosted', 'faded', 'clear'].includes(str(r.overlay)) ? (r.overlay as CardBackground['overlay']) : undefined;
+    const align = ['top', 'center', 'bottom'].includes(str(r.align)) ? (r.align as CardBackground['align']) : undefined;
+    const bg: CardBackground = {
+        color: r.color ? str(r.color) : undefined,
+        image: r.image ? str(r.image) : undefined,
+        overlay,
+        intensity: r.intensity == null ? undefined : Math.min(100, Math.max(0, Math.round(num(r.intensity)))),
+        align,
+    };
+    return bg.color || bg.image ? bg : undefined;
+}
+
+export function normalizeCard(raw: unknown, index: number, depth = 0): Card {
     const r = rec(raw);
     const layout = (CARD_LAYOUTS as readonly string[]).includes(str(r.layout)) ? (r.layout as CardLayout) : 'default';
-    return {
+    const card: Card = {
         id: str(r.id) || newId('c'),
         title: r.title == null ? `Card ${index + 1}` : str(r.title),
         layout,
         headerImage: r.headerImage ? str(r.headerImage) : undefined,
         blocks: arr(r.blocks, (b) => normalizeBlock(b)),
     };
+    // ponytail: one level of nesting is all the prompt asks for; depth guard stops runaway models.
+    const children = depth < 2 ? arr(r.children, (c) => c) : [];
+    if (children.length) card.children = children.slice(0, 5).map((c, i) => normalizeCard(c, i, depth + 1));
+    const background = normalizeBackground(r.background);
+    if (background) card.background = background;
+    if (r.notes) card.notes = str(r.notes);
+    const footnotes = arr(r.footnotes, (f) => { const x = rec(f); const text = str(x.text ?? (typeof f === 'string' ? f : '')); return text ? { id: str(x.id) || newId('fn'), text } : null; });
+    if (footnotes.length) card.footnotes = footnotes;
+    return card;
 }
+
+const isTheme = (t: unknown): t is IDocThemeId => IDOC_THEMES.some((x) => x.id === t);
 
 /** Coerce a raw (model or imported) object into a full IDoc. Never throws. */
 export function normalizeDoc(raw: unknown, base: Partial<IDoc> = {}): IDoc {
     const r = rec(raw);
     const cardsRaw = Array.isArray(r.cards) ? r.cards : Array.isArray(r.slides) ? r.slides : Array.isArray(r.sections) ? r.sections : [];
     const cards = cardsRaw.map((c, i) => normalizeCard(c, i));
+    const language = str(r.language) || base.language;
+    const dir = r.dir === 'rtl' || r.dir === 'ltr' ? r.dir : base.dir ?? dirForLanguage(language);
     const doc = createEmptyDoc({
         ...base,
         title: str(r.title, base.title ?? 'Untitled doc'),
         description: r.description == null ? base.description : str(r.description),
         cards: cards.length ? cards : createEmptyDoc().cards,
+        ...(language ? { language } : {}),
+        ...(dir ? { dir } : {}),
+        ...(r.isTemplate === true ? { isTemplate: true } : {}),
     });
-    doc.theme = suggestThemeFor(doc.title);
+    doc.theme = isTheme(r.theme) ? r.theme : base.theme ?? suggestThemeFor(doc.title);
     return doc;
 }
 
 // ── generation ───────────────────────────────────────────────────────
 
-async function generate(prompt: string, sys: string, llm: LlmBundle, callLlmFn: CallLlmFn): Promise<IDoc | null> {
-    if (!hasActiveLlm(llm)) return null;
-    const res = await callLlmFn({ prompt, systemPrompt: sys, maxTokens: 6000, temperature: 0.5, responseFormat: 'json' }, llm);
+async function askJson(prompt: string, sys: string, llm: LlmBundle, callLlmFn: CallLlmFn, maxTokens = 6000): Promise<Record<string, unknown> | null> {
+    const res = await callLlmFn({ prompt, systemPrompt: sys, maxTokens, temperature: 0.5, responseFormat: 'json' }, llm);
     if (!res?.text) return null;
     const parsed = parseJsonLoose(res.text);
-    if (!parsed) return null;
-    return normalizeDoc(parsed);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+}
+
+function langBase(opts: GenerateOpts): Partial<IDoc> {
+    const language = opts.language?.trim();
+    return language ? { language, dir: dirForLanguage(language) } : {};
+}
+
+/**
+ * Single-shot for ≤ 12 cards. Above that: outline call → per-batch card calls
+ * (≤ 10 each) → merge → normalizeDoc. A failed batch keeps the outline stubs
+ * (title only) so the doc still opens with the right shape.
+ */
+async function generate(task: string, opts: GenerateOpts, llm: LlmBundle, callLlmFn: CallLlmFn): Promise<IDoc | null> {
+    if (!hasActiveLlm(llm)) return null;
+    const n = Math.min(MAX_CARDS, Math.max(1, Math.round(opts.cards ?? 6)));
+    if (n <= SINGLE_SHOT_MAX) {
+        const parsed = await askJson(task, systemPrompt({ ...opts, cards: n }), llm, callLlmFn);
+        return parsed ? normalizeDoc(parsed, langBase(opts)) : null;
+    }
+    const outline = await askJson(task, outlinePrompt(n, opts), llm, callLlmFn, 2000);
+    if (!outline) return null;
+    const stubs = arr(outline.cards, (c) => { const x = rec(c); const title = str(x.title); return title ? { title, goal: str(x.goal) } : null; }).slice(0, n);
+    if (!stubs.length) return null;
+    const cards: unknown[] = [];
+    for (let i = 0; i < stubs.length; i += BATCH_SIZE) {
+        const slice = stubs.slice(i, i + BATCH_SIZE);
+        const prompt = `${task}\n\nDocument title: ${str(outline.title)}\nFull outline (for context): ${stubs.map((s, k) => `${k + 1}. ${s.title}`).join('; ')}\n\nWrite cards ${i + 1}-${i + slice.length}:\n${slice.map((s, k) => `${i + k + 1}. ${s.title} — ${s.goal}`).join('\n')}`;
+        const res = await askJson(prompt, batchPrompt(opts), llm, callLlmFn);
+        const got = Array.isArray(res?.cards) ? res.cards : [];
+        slice.forEach((s, k) => cards.push(got[k] ? { title: s.title, ...rec(got[k]) } : { title: s.title, blocks: [] }));
+    }
+    return normalizeDoc({ title: outline.title, description: outline.description, cards }, langBase(opts));
 }
 
 export function generateDocFromPrompt(prompt: string, opts: GenerateOpts, llm: LlmBundle, callLlmFn: CallLlmFn = callLlm): Promise<IDoc | null> {
     const p = prompt.trim();
     if (!p) return Promise.resolve(null);
-    return generate(`Create the document about:\n${p}`, systemPrompt(opts), llm, callLlmFn);
+    return generate(`Create the document about:\n${p}`, opts, llm, callLlmFn);
 }
 
 /** "Paste text/outline → structured cards". Source is truncated to 12k chars with a note. */
@@ -187,7 +303,7 @@ export function generateDocFromText(sourceText: string, opts: GenerateOpts, llm:
     let src = sourceText.trim();
     if (!src) return Promise.resolve(null);
     if (src.length > MAX_SOURCE_CHARS) src = `${src.slice(0, MAX_SOURCE_CHARS)}\n\n[Source truncated at ${MAX_SOURCE_CHARS} chars]`;
-    return generate(`Restructure the following source text into the card document. Preserve facts; do not invent numbers.\n\n<source>\n${src}\n</source>`, systemPrompt(opts), llm, callLlmFn);
+    return generate(`Restructure the following source text into the card document. Preserve facts; do not invent numbers.\n\n<source>\n${src}\n</source>`, opts, llm, callLlmFn);
 }
 
 export type RewriteInstruction = 'rewrite' | 'shorten' | 'expand' | 'simplify' | 'formal' | 'friendly' | (string & {});
@@ -274,6 +390,37 @@ export function embedSrcFor(url: string): EmbedInfo | null {
     if (host === 'open.spotify.com') return { src: path.startsWith('/embed') ? u.toString() : `https://open.spotify.com/embed${path}`, provider: 'spotify', aspect: 'auto' };
     if (host === 'calendly.com') return { src: u.toString(), provider: 'calendly', aspect: 'auto' };
     if (host.endsWith('typeform.com')) return { src: u.toString(), provider: 'typeform', aspect: '4:3' };
+    // ── Wave 1 providers ──
+    if (host === 'tiktok.com' || host === 'm.tiktok.com') {
+        const id = path.match(/\/video\/(\d+)/)?.[1] ?? path.match(/^\/embed\/(?:v2\/)?(\d+)/)?.[1];
+        return id ? { src: `https://www.tiktok.com/embed/v2/${id}`, provider: 'tiktok', aspect: 'auto' } : null;
+    }
+    if (host.endsWith('wistia.com') || host.endsWith('wistia.net')) {
+        const id = path.match(/\/(?:medias|embed\/iframe|embed\/medias)\/([a-zA-Z0-9]+)/)?.[1];
+        return id ? { src: `https://fast.wistia.net/embed/iframe/${id}`, provider: 'wistia', aspect: '16:9' } : null;
+    }
+    if (host === 'form.jotform.com' || host === 'jotform.com') return { src: u.toString(), provider: 'jotform', aspect: '4:3' };
+    if (host === 'instagram.com') {
+        const id = path.match(/^\/(?:p|reel|reels|tv)\/([^/?]+)/)?.[1];
+        return id ? { src: `https://www.instagram.com/p/${id}/embed`, provider: 'instagram', aspect: 'auto' } : null;
+    }
+    if (host === 'x.com' || host === 'twitter.com' || host === 'mobile.twitter.com') {
+        const id = path.match(/\/status(?:es)?\/(\d+)/)?.[1];
+        return id ? { src: `https://platform.twitter.com/embed/Tweet.html?id=${id}`, provider: 'x', aspect: 'auto' } : null;
+    }
+    if (host === 'onedrive.live.com' || host.endsWith('.sharepoint.com') || host.endsWith('.sharepoint-df.com')) {
+        // Office 365: OneDrive "Embed" links and SharePoint `?action=embedview` links are already iframe-able.
+        return { src: u.toString(), provider: 'office-365', aspect: '4:3' };
+    }
+    if (host === 'app.powerbi.com') return { src: u.toString(), provider: 'power-bi', aspect: '16:9' };
+    if (host === 'public.tableau.com') {
+        const src = /[?&]:embed=/.test(u.search) ? u.toString() : `${u.origin}${path}${u.search ? `${u.search}&` : '?'}:showVizHome=no&:embed=true`;
+        return { src, provider: 'tableau', aspect: '16:9' };
+    }
+    if (host === 'drive.google.com') {
+        const id = path.match(/\/file\/d\/([^/?]+)/)?.[1] ?? u.searchParams.get('id');
+        return id ? { src: `https://drive.google.com/file/d/${id}/preview`, provider: 'google-drive', aspect: '4:3' } : { src: u.toString(), provider: 'google-drive', aspect: '4:3' };
+    }
     if (/\.pdf$/i.test(path)) return { src: u.toString(), provider: 'pdf', aspect: '4:3' };
     return { src: u.toString(), provider: 'web', aspect: '16:9' };
 }

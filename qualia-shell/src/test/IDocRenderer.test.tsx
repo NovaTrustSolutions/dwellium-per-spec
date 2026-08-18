@@ -71,6 +71,18 @@ describe('IDocRenderer scroll mode', () => {
 });
 
 describe('IDocRenderer present mode', () => {
+    it('present-mode Escape does NOT reach bubble-phase window listeners (Desktop closes the top window on Esc)', () => {
+        const desktopEsc = vi.fn();
+        const bubble = (e: KeyboardEvent) => { if (e.key === 'Escape') desktopEsc(); };
+        window.addEventListener('keydown', bubble); // like Desktop.tsx:925 — bubble phase, registered first
+        const onExit = vi.fn();
+        render(<IDocRenderer doc={fixture()} mode="present" onExit={onExit} />);
+        fireEvent.keyDown(window, { key: 'Escape' });
+        expect(onExit).toHaveBeenCalledTimes(1);
+        expect(desktopEsc).not.toHaveBeenCalled();
+        window.removeEventListener('keydown', bubble);
+    });
+
     it('shows one card, ArrowRight advances, ArrowLeft goes back, Escape exits, dots jump', () => {
         const onExit = vi.fn();
         const onVisible = vi.fn();

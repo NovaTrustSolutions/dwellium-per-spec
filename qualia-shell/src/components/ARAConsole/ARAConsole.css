@@ -365,8 +365,7 @@
 /* [D16] Lens text with accent color */
 .ara-detail-lens {
     font-size: 12px;
-    color: var(--opt-accent, var(--accent));
-    font-style: italic;
+    color: var(--text-secondary);
     margin: 0 0 10px;
     line-height: 1.5;
 }
@@ -569,8 +568,7 @@
 /* [D24] Lens text */
 .ara-hint-lens {
     font-size: 13px;
-    color: var(--ara-accent, var(--accent));
-    font-style: italic;
+    color: var(--text-secondary);
     margin: 0 0 8px;
     opacity: 0.8;
 }
@@ -1779,6 +1777,13 @@
     align-self: flex-end;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     font-family: inherit;
+}
+
+/* 045-D1b: lives inside the voice-settings drawer now — don't stretch. */
+.ara-voice-section .ara-gender-toggle {
+    width: fit-content;
+    height: 36px;
+    align-self: auto;
 }
 
 .ara-gender-toggle:hover {

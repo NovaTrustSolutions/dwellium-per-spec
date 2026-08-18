@@ -195,6 +195,7 @@ export function FileUploadButton({
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 title="Upload file for AI analysis (images, PDF, txt, docx)"
+                aria-label="Upload file for AI analysis (images, PDF, txt, docx)"
                 disabled={isUploading}
                 type="button"
             >

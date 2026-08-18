@@ -1,20 +1,20 @@
 /**
  * LoginScreen — local account authority for Dwellium.
  *
- * Flow: splash "Click to login" → shared access password → user selection
- * (Andy / Lisa / Archi) → that user's own email + password. Validated
- * client-side against LOCAL_ACCOUNTS, then handed to `loginLocal`, which builds
- * a stable-id session so each user's LLM keys + saved workflows persist and stay
- * isolated. Local-first: these credentials are a gate, not hardened security.
+ * Flow: splash "Click to login" → shared access password → email + password
+ * (045-D2: the Andy / Lisa / Archi picker is gone; the email resolves the
+ * account against LOCAL_ACCOUNTS + overrides). Validated client-side, then a
+ * REAL backend session via `login`; `loginLocal` only on the explicit offline
+ * choice. Local-first: these credentials are a gate, not hardened security.
  *
  * Google login is retained behind VITE_GOOGLE_LOGIN=true (off by default).
  */
 
 import { useState, type FormEvent } from 'react';
 import { useUser } from '../../context/UserContext';
-import { AlertCircle, ArrowLeft, Shield } from 'lucide-react';
+import { AlertCircle, Shield } from 'lucide-react';
 import GoogleSignInButton from './GoogleSignInButton';
-import { useEffectiveAccounts, isPasswordSet, ROLE_LABELS, type LocalAccount } from './localAccounts';
+import { useEffectiveAccounts, isPasswordSet } from './localAccounts';
 import './LoginScreen.css';
 
 // Re-exported so tests (and any importer) can read the base roster.
@@ -26,7 +26,7 @@ const GATE_PASSWORD = 'Comet2878!';
 /** Google login is kept in the code but hidden unless explicitly enabled. */
 const GOOGLE_LOGIN_ENABLED = (import.meta.env.VITE_GOOGLE_LOGIN as string | undefined) === 'true';
 
-type Stage = 'gate' | 'select' | 'credential';
+type Stage = 'gate' | 'credential';
 
 interface LoginScreenProps {
     onTenantMode?: () => void;
@@ -38,7 +38,6 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     const [hasClicked, setHasClicked] = useState(false);
     const [stage, setStage] = useState<Stage>('gate');
     const [gateInput, setGateInput] = useState('');
-    const [selected, setSelected] = useState<LocalAccount | null>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -50,35 +49,32 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
         setError('');
         if (gateInput === GATE_PASSWORD) {
             setGateInput('');
-            setStage('select');
+            setStage('credential');
         } else {
             setError('Incorrect access password.');
         }
     };
 
-    const pickAccount = (account: LocalAccount) => {
-        if (!account.enabled) return;
-        setSelected(account);
-        setEmail('');
-        setPassword('');
-        setError('');
-        setStage('credential');
+    /** Resolve the typed email against the roster (+ current overrides). */
+    const resolveAccount = () => {
+        const wanted = email.trim().toLowerCase();
+        return effectiveAccounts.find(a => a.enabled && a.email.toLowerCase() === wanted) ?? null;
     };
 
     const submitCredential = async (event?: FormEvent) => {
         event?.preventDefault();
         setError('');
         setOfflineOffer(false);
-        if (!selected) return;
-        // Re-resolve against current overrides (Archi may have just set it).
-        const acct = effectiveAccounts.find(a => a.id === selected.id) ?? selected;
+        const acct = resolveAccount();
+        if (!acct) {
+            setError('Incorrect email or password.');
+            return;
+        }
         if (!isPasswordSet(acct)) {
             setError('Password not set yet — ask the Architect to set it in Control Panel → Accounts.');
             return;
         }
-        const emailOk = email.trim().toLowerCase() === acct.email.toLowerCase();
-        const passwordOk = password === acct.password;
-        if (!(emailOk && passwordOk)) {
+        if (password !== acct.password) {
             setError('Incorrect email or password.');
             return;
         }
@@ -100,18 +96,10 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
     };
 
     const continueOffline = () => {
-        if (!selected) return;
-        const acct = effectiveAccounts.find(a => a.id === selected.id) ?? selected;
+        const acct = resolveAccount();
+        if (!acct) return;
         setOfflineOffer(false);
         loginLocal({ id: acct.id, name: acct.name, email: acct.email, role: acct.role });
-    };
-
-    const backToSelect = () => {
-        setSelected(null);
-        setEmail('');
-        setPassword('');
-        setError('');
-        setStage('select');
     };
 
     return (
@@ -173,43 +161,10 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                             </form>
                         )}
 
-                        {stage === 'select' && (
-                            <div className="login-step">
-                                <span className="login-quick__label">Select Account</span>
-                                <h2>Who's signing in?</h2>
-                                <div className="login-quick__grid">
-                                    {effectiveAccounts.map((account) => (
-                                        <button
-                                            key={account.id}
-                                            type="button"
-                                            className={`login-avatar spotlight-card ${account.enabled ? '' : 'is-disabled'}`}
-                                            onClick={() => pickAccount(account)}
-                                            disabled={!account.enabled}
-                                            title={account.enabled ? `${account.name} — ${ROLE_LABELS[account.role] ?? account.role}` : `${account.name} — coming soon`}
-                                        >
-                                            <div className="login-avatar__circle" style={{ background: account.color }}>{account.initials}</div>
-                                            <span className="login-avatar__name">{account.name}</span>
-                                            <span className="login-avatar__role" style={{ color: account.enabled ? account.color : 'var(--text-tertiary)' }}>
-                                                {account.enabled ? (ROLE_LABELS[account.role] ?? account.role) : 'Coming soon'}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {stage === 'credential' && selected && (
+                        {stage === 'credential' && (
                             <form className="login-step" onSubmit={(event) => { void submitCredential(event); }}>
-                                <button type="button" className="login-back" onClick={backToSelect}>
-                                    <ArrowLeft size={14} /> Back
-                                </button>
-                                <div className="login-credential__who">
-                                    <div className="login-avatar__circle" style={{ background: selected.color }}>{selected.initials}</div>
-                                    <div className="login-credential__who-text">
-                                        <strong>{selected.name}</strong>
-                                        <span>{ROLE_LABELS[selected.role] ?? selected.role}</span>
-                                    </div>
-                                </div>
+                                <span className="login-quick__label">Account Login</span>
+                                <h2>Sign in</h2>
                                 <input
                                     type="email"
                                     className="login-input"
@@ -218,7 +173,7 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                                     autoComplete="username"
                                     value={email}
                                     onChange={(event) => setEmail(event.target.value)}
-                                    autoFocus
+                                    ref={(el) => el?.focus({ preventScroll: true })}
                                 />
                                 <input
                                     type="password"

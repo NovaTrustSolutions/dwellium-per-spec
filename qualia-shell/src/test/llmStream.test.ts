@@ -48,4 +48,12 @@ describe('araPrefsStore', () => {
         araPrefsStore.reset();
         expect(araPrefsStore.getSnapshot().streamTokens).toBe(false);
     });
+
+    it('introSeen defaults false and persists to localStorage (045-D1c)', () => {
+        expect(DEFAULT_ARA_PREFS.introSeen).toBe(false);
+        expect(araPrefsStore.getSnapshot().introSeen).toBe(false);
+        araPrefsStore.set('introSeen', true);
+        expect(araPrefsStore.getSnapshot().introSeen).toBe(true);
+        expect(JSON.parse(localStorage.getItem('dwellium-ara-prefs')!).introSeen).toBe(true);
+    });
 });

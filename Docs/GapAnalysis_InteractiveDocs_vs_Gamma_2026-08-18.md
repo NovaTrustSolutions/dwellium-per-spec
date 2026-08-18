@@ -1,11 +1,19 @@
 # Gap analysis — Scribe "Interactive Docs" v1 vs Gamma.app Documents
 
 **Date:** 2026-08-18 · **Ours:** `qualia-shell/src/components/Scribe/idocs/` (main `8e2e188`, live on argyleholocron.netlify.app) · **Theirs:** Gamma.app *Documents* as inventoried from help.gamma.app / developers.gamma.app / pricing (marketing pages 403 to fetchers; 97 sourced facts, see §Sources).
-**Target stated by Ilya:** 100 % parity. **Honest score today: 41 % weighted parity (see §Scoring).** The core authoring loop (AI-generate → card/block doc → theme → present → export) is at parity; the gaps are almost entirely *platform* features (real-time collaboration, hosted publishing, cloud analytics, AI media, native diagrams, imports beyond text).
+**Target stated by Ilya:** 100 % parity. **Score at v1 (2026-08-18 a.m.): 41 %. After Wave 1 (2026-08-18 p.m., main `d6a70e3`): ≈ 69 % weighted parity (see §Scoring — per-area re-scores below).** The core authoring loop (AI-generate → card/block doc → theme → present → export) is at parity; the gaps are almost entirely *platform* features (real-time collaboration, hosted publishing, cloud analytics, AI media, native diagrams, imports beyond text).
 
 Legend: ✅ parity · 🟡 partial (works, narrower) · ❌ missing · ➕ ours only.
 
 ---
+
+## Wave 1 — SHIPPED 2026-08-18 (main `d6a70e3`, live on argyleholocron.netlify.app)
+
+Three parallel branches (A renderer/export/blocks · B AI/import/library · C editor/store/history), merged with zero conflicts; gate on merged main: tsc 0 · vitest **227 files / 1968 tests** (+80) · Netlify build 0; live browser pass at 1440×900 (templates → editor, all new blocks incl. KaTeX + Mermaid rendering, slash palette, doc settings, history, present, spotlight, Esc-safe).
+
+Now ✅ that were ❌/🟡 this morning: card backgrounds (color/image/overlay/intensity/align) · `image-top`/`background` layouts · page sizes (16:9 · 4:3 · 1:1 · A4 · Letter · fluid, incl. `@page` for print) · **nested cards** (⌘⇧O) · footnotes (`[^n]`) · headers/footers/logo/section numbers · Emphasize (boxes) · smart layouts `steps`/`process`, `funnel`, `boxes` (+ existing timeline/columns/gallery) · card-link buttons · **drag-and-drop** cards + blocks · copy/paste/duplicate/multi-select cards · insert cards from another doc · math (KaTeX) · diagrams (Mermaid) · Prism code · **local QR** block · donut/area charts · Spotlight (`S`) · presenter notes (stored; presenter *view* is wave 2) · `/` slash palette · **version history + ⌘Z/⌘⇧Z** (30 snapshots) · templates (6 built-in + save-as-template) · doc-level AI (summarize / add card / translate / restyle / regenerate card) · amount/audience/language options + RTL `dir` · outline-first generation up to 30 cards · URL import (backend Readability proxy) · PDF import (pdf.js) · +9 embed providers (24 total: adds TikTok, Wistia, JotForm, Instagram, X, Office 365, Power BI, Tableau, Google Drive) · 47 themes · library search/sort.
+
+Still open (→ waves 2–3): AI images/Unsplash/Giphy, theme editor + font upload, in-editor agent chat, presenter view, comments, real-time collaboration, publish/share links/embed code/password/SEO, server analytics, PPTX/PNG export, HTTP API, custom domains.
 
 ## 1. Content model
 
@@ -144,23 +152,23 @@ Legend: ✅ parity · 🟡 partial (works, narrower) · ❌ missing · ➕ ours 
 
 Weighted by what a document author touches daily (weights in parentheses):
 
-| Area | Weight | Parity | Notes |
-|---|---|---|---|
-| 1 Content model | 15 | 55 % | cards/toggles/TOC/timeline/columns ✅; nesting, backgrounds, sizes, headers/footers ❌ |
-| 2 Blocks & interactive | 20 | 60 % | 18 block types incl. quiz+tabs (ahead); no math/diagrams/QR/AI images |
-| 3 AI | 20 | 40 % | generate/paste/import/rewrite ✅; no agent chat, outline-first, translate, images |
-| 4 Design | 10 | 30 % | 7 themes; no theme editor/fonts |
-| 5 Modes | 5 | 50 % | present/scroll ✅; spotlight/presenter ❌ |
-| 6 Collaboration | 10 | 5 % | none |
-| 7 Sharing/publishing | 10 | 10 % | export files only |
-| 8 Analytics | 3 | 40 % | local |
-| 9 Export/import | 5 | 55 % | HTML/MD/print ✅; PPTX/PNG ❌ |
-| 10 Platform | 2 | 30 % | bus, offline |
-| **Weighted total** | 100 | **≈ 41 %** | |
+| Area | Weight | v1 | after Wave 1 | Notes (post-wave-1) |
+|---|---|---|---|---|
+| 1 Content model | 15 | 55 % | 90 % | nesting/backgrounds/sizes/footnotes/chrome/emphasize ✅; multipage & merge-gammas ❌ |
+| 2 Blocks & interactive | 20 | 60 % | 85 % | 24 block types incl. math/diagram/QR/steps/funnel/boxes; AI infographics, freeform diagram canvas ❌ |
+| 3 AI | 20 | 40 % | 65 % | options/outline-first/doc-level actions/translate ✅; agent chat, AI images, remix ❌ |
+| 4 Design | 10 | 30 % | 55 % | 47 themes ✅; theme editor/font upload/custom logo theme ❌ |
+| 5 Modes | 5 | 50 % | 75 % | spotlight ✅, page sizes ≈ deck; presenter view ❌ |
+| 6 Collaboration | 10 | 5 % | 25 % | version history + templates ✅; comments/realtime/permissions ❌ |
+| 7 Sharing/publishing | 10 | 10 % | 10 % | unchanged (wave 3) |
+| 8 Analytics | 3 | 40 % | 40 % | unchanged |
+| 9 Export/import | 5 | 55 % | 80 % | URL/PDF import ✅, HTML/MD/print ✅; PPTX/PNG ❌ |
+| 10 Platform | 2 | 30 % | 45 % | ⌘Z/shortcuts/`?` sheet ✅; HTTP API ❌ |
+| **Weighted total** | 100 | **≈ 41 %** | **≈ 69 %** | |
 
 ## Road to 100 % — sequenced by leverage (each item is one plan-045-style ticket)
 
-**Wave 1 — authoring parity (all S, ~2 days, no new deps):** card backgrounds + page sizes + `image-top/background` layouts · nested cards · footnotes · `steps`/`process`/`funnel`/`boxes` blocks · card-link buttons · drag-and-drop reorder + copy card · math + Prism + Mermaid via `previewEnhance` · donut/area charts · TikTok/Wistia/JotForm/Instagram/X/PowerBI/Tableau mappers · QR block · headers/footers · Spotlight · `/` slash palette · 40 more themes (data) · version snapshots + ⌘Z · templates (save/new-from) · translate/summarize/add-card doc-level AI · amount/audience/language options · URL + PDF import.
+**Wave 1 — authoring parity — ✅ SHIPPED 2026-08-18 (see block above; projected 68 %, landed ≈ 69 %):** card backgrounds + page sizes + `image-top/background` layouts · nested cards · footnotes · `steps`/`process`/`funnel`/`boxes` blocks · card-link buttons · drag-and-drop reorder + copy card · math + Prism + Mermaid via `previewEnhance` · donut/area charts · TikTok/Wistia/JotForm/Instagram/X/PowerBI/Tableau mappers · QR block · headers/footers · Spotlight · `/` slash palette · 40 more themes (data) · version snapshots + ⌘Z · templates (save/new-from) · translate/summarize/add-card doc-level AI · amount/audience/language options · URL + PDF import.
 → projected **≈ 68 %**.
 
 **Wave 2 — AI media + editor depth (M, ~3 days):** AI image generation on `image` blocks (reuse `skill-image-gen`) · Unsplash/Giphy pickers · theme editor + font upload · outline-first "Create with Agent" flow · in-editor AI chat (ARA-in-Scribe already exists as `AraMiniPanel` — point it at the active idoc) · Presenter view (popout) · block comments (reuse Scribe `CommentEditor`) · Google Sheets chart sync · styled PDF (print pipeline) · PNG per card.

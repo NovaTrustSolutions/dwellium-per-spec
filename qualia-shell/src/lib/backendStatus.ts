@@ -27,8 +27,11 @@ export function isBackendDownError(err: unknown): boolean {
     return isBackendDownMessage(msg);
 }
 
+// Plan 045 §A1: calm, user-facing copy; the "start the backend / VITE_API_URL"
+// hint only helps a developer, so it is appended in dev builds only.
 export const BACKEND_DOWN_MESSAGE =
-    'The Dwellium backend isn’t reachable. Start the backend (or set VITE_API_URL) to load live data.';
+    'Live data is paused — you’re working from your last sync.'
+    + (import.meta.env.DEV ? ' (Dev: start the backend or set VITE_API_URL.)' : '');
 
 /**
  * Map a raw error string to a friendly, accurate explanation. Backend-down

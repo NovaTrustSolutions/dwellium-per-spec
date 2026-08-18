@@ -1,0 +1,10 @@
+/* IDocLibrary — wave-1 additions (templates section, search toolbar, composer options). Tokens only. */
+.scribe-idocs-lib__opts .scribe-idocs__inline input[type="text"] { width: 150px; }
+.scribe-idocs-lib__opts .scribe-idocs__inline input[type="number"] { width: 64px; }
+.scribe-idocs-lib__section { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.scribe-idocs-lib__section h2 { margin: 0; font-size: var(--fs-lg); font-family: var(--font-heading); }
+.scribe-idocs-lib__section .scribe-idocs__grid { margin-top: 10px; }
+.scribe-idocs-lib__tpl { border-style: dashed; }
+.scribe-idocs-lib__tpl .scribe-idocs__doccard { cursor: default; }
+.scribe-idocs-lib__toolbar { margin-top: 18px; }
+.scribe-idocs-lib__search.scribe-idocs-lib__search { width: 260px; max-width: 100%; }

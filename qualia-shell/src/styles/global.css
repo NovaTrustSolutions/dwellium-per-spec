@@ -5,6 +5,7 @@
 @import './variables.css';
 @import './themes-master.css';
 @import './animations.css';
+@import './responsive.css'; /* last import: narrow-viewport overrides (045-E); @import must precede rules */
 
 *,
 *::before,

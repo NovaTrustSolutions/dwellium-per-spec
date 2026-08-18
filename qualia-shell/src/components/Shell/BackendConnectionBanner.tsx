@@ -43,7 +43,7 @@ export default function BackendConnectionBanner() {
         <div className="backend-banner" role="alert" aria-live="assertive">
             <span className="backend-banner__icon" aria-hidden="true"><WifiOff size={16} /></span>
             <div className="backend-banner__body">
-                <strong className="backend-banner__title">Backend connection failed</strong>
+                <strong className="backend-banner__title">Not connected to Dwellium</strong>
                 <span className="backend-banner__msg">
                     {snap.message || 'The Dwellium backend isn’t reachable.'} You’re still signed in.
                 </span>

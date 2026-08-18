@@ -1,11 +1,11 @@
 /**
- * defaultStack — default startup workspace (Ilya, 2026-06-11).
+ * defaultStack — default startup workspace (Ilya, 2026-06-11; trimmed 2026-08-17
+ * per plan 045 §B2: two windows, not five).
  *
- * On the first launch with an EMPTY canvas, the One-Front-Door pinned set
- * (ARA · Strata · Scribe · Inbox Zero · Task Board — the sidebar PINNED
- * five) auto-opens tiled as the default workspace, via the existing
- * `dwellium:apply-space` bus (Desktop's spaces handler tiles 4+ widgets into
- * quadrants with overflow tabs).
+ * On the first launch with an EMPTY canvas, ARA + Strata auto-open as the
+ * default workspace via the existing `dwellium:apply-space` bus. The full
+ * One-Front-Door pinned set (PINNED_WIDGETS below) stays one click away in
+ * the sidebar's PINNED rail.
  *
  * One-time per browser (localStorage flag, honchoAutoOpen sister shape) AND
  * empty-canvas-guarded — a returning user's saved layout is never stomped:
@@ -22,14 +22,26 @@ export const DEFAULT_STACK_KEY = 'dwellium:default-stack:v1';
 /** Value written once the auto-open has fired. */
 export const DEFAULT_STACK_DONE = 'done';
 
-/** The pinned One-Front-Door set (keep in sync with Sidebar PINNED). */
-export const DEFAULT_STARTUP_STACK: ReadonlyArray<string> = [
-    'ara-console',
-    'strata-dashboard',
-    'scribe',
-    'inbox',
-    'task-board',
+export interface PinnedWidget {
+    component: string;
+    label: string;
+    icon: string;
+}
+
+/**
+ * The One-Front-Door pinned five — single source of truth for the sidebar's
+ * PINNED rail (Sidebar.tsx) and for excluding these ids from the widget groups.
+ */
+export const PINNED_WIDGETS: ReadonlyArray<PinnedWidget> = [
+    { component: 'ara-console', label: 'ARA', icon: 'brain-circuit' },
+    { component: 'strata-dashboard', label: 'Strata', icon: 'building-2' },
+    { component: 'scribe', label: 'Scribe', icon: 'pen-tool' },
+    { component: 'inbox', label: 'Inbox Zero', icon: 'mail-open' },
+    { component: 'task-board', label: 'Task Board', icon: 'layout-grid' },
 ];
+
+/** First screen: ARA + Strata (the first two pinned) — plan 045 §B2. */
+export const DEFAULT_STARTUP_STACK: ReadonlyArray<string> = PINNED_WIDGETS.slice(0, 2).map(p => p.component);
 
 /** Fire only when the flag is unset AND the canvas is empty. */
 export function shouldOpenDefaultStack(storedFlag: string | null, openWindowCount: number): boolean {

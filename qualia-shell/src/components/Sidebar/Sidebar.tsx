@@ -10,6 +10,8 @@ import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import SpacesSwitcher from './SpacesSwitcher';
 import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce, hideTerminalOnce } from '../../lib/hiddenWidgetsStore';
 import { useGridLock } from '../../hooks/useGridLock';
+import { backendStatusStore } from '../../lib/backendStatusStore';
+import { PINNED_WIDGETS } from '../Shell/defaultStack';
 import { Check, CloudFog, CloudRain, CloudSnow, CloudSun, FolderOpen, Lock, Search, Settings, Sun, Unlock, X, Zap, type LucideIcon } from 'lucide-react';
 import './Sidebar.css';
 import React from 'react';
@@ -37,6 +39,13 @@ const SIDEBAR_GROUPS_KEY = 'qualia_sidebar_groups';
 
 const DEFAULT_WIDTH = 240;
 const DEFAULT_SPLIT_RATIO = 0.5;
+
+// One Front Door (Way 1, decided 2026-06-11): the 5 pinned primary-nav widgets
+// live in Shell/defaultStack.ts (single source of truth, plan 045 §A2).
+const PINNED_COMPONENTS = new Set(PINNED_WIDGETS.map(p => p.component));
+
+/** Footer connectivity pill copy (plan 045 §A1) — keyed by backendStatusStore state. */
+const STATUS_LABEL = { online: 'Live', checking: 'Reconnecting…', offline: 'Offline' } as const;
 
 // ============================================
 // SSR-SAFE EXTERNAL STORES (Phase-8+ Task 8.10 PROVIDER-SSR-REMEDIATION)
@@ -256,7 +265,7 @@ function TreeNode({ item, depth = 0 }: { item: HierarchyItem; depth?: number }) 
 
 export default function Sidebar() {
     const { hierarchy, addItem, getBreadcrumb, expandAll: expandAllDomains, collapseAll: collapseAllDomains } = useHierarchy();
-    const { dockItems, windows, openWindow, closeWindow, restoreWindow, moveDockItem, saveLayout, savedLayouts, saveNamedLayout, loadNamedLayout, deleteNamedLayout } = useWindows();
+    const { dockItems, windows, openWindow, closeWindow, focusWindow, restoreWindow, moveDockItem, saveLayout, savedLayouts, saveNamedLayout, loadNamedLayout, deleteNamedLayout } = useWindows();
     const { user, logout, hasMinRole } = useUser();
     const { can } = usePermissions();
     const { locked: gridLocked, toggle: toggleGridLock } = useGridLock();
@@ -292,6 +301,12 @@ export default function Sidebar() {
         domainsCollapsedStore.set(next, () => localStorage.setItem(DOMAINS_COLLAPSED_KEY, String(next)));
     }, []);
     const [showOptions, setShowOptions] = useState(false);
+    // Plan 045 §A1: footer pill reads the ONE connectivity truth (same store as the banner).
+    const backendState = useSyncExternalStore(
+        backendStatusStore.subscribe,
+        backendStatusStore.getSnapshot,
+        backendStatusStore.getServerSnapshot,
+    ).state;
 
     // Icon-only collapsed mode
     const iconOnly = useSyncExternalStore(
@@ -435,9 +450,9 @@ export default function Sidebar() {
         document.addEventListener('mouseup', onUp);
     }, [splitRatio]);
 
-    // --- Widget launcher (click-to-toggle per Ilya 2026-05-28) ---
+    // --- Widget launcher (plan 045 §A3: click focuses, never closes) ---
     // Click an unopened widget → opens it.
-    // Click an already-open widget → closes it.
+    // Click an already-open widget → brings it to front (close = × / middle-click).
     // Click a minimized widget → restores it (treats minimized as "open but hidden").
     const handleWidgetClick = useCallback((component: string, label: string, icon: string) => {
         const existing = windows.find(w => w.component === component);
@@ -446,9 +461,9 @@ export default function Sidebar() {
         } else if (existing.minimized) {
             restoreWindow(existing.id);
         } else {
-            closeWindow(existing.id);
+            focusWindow(existing.id);
         }
-    }, [windows, openWindow, restoreWindow, closeWindow]);
+    }, [windows, openWindow, restoreWindow, focusWindow]);
 
     // --- Widget drag-to-reorder ---
     const onWidgetDragStart = useCallback((e: DragEvent, id: string, group: string | undefined, index: number) => {
@@ -783,7 +798,11 @@ export default function Sidebar() {
                                     ? rankWidgetSearchResults(permittedItems, query, new Set(windows.map(w => w.component)))
                                     : [];
                                 const matchById = new Map(searchMatches.map(match => [match.item.id, match]));
-                                const availableItems = searchActive ? searchMatches.map(m => m.item) : permittedItems;
+                                // Plan 045 §A2: the PINNED five render once, in the pinned rail — drop them from the groups
+                                // (search still sees them so "Strata" is findable from the search box).
+                                const availableItems = searchActive
+                                    ? searchMatches.map(m => m.item)
+                                    : permittedItems.filter(item => !PINNED_COMPONENTS.has(item.component));
 
                                 const WIDGET_GROUPS = [
                                     { name: 'Property Management', icon: 'building' },
@@ -890,17 +909,9 @@ export default function Sidebar() {
                                     );
                                 }
 
-                                // ── One Front Door (Way 1, decided 2026-06-11): 5 pinned
-                                // primary-nav widgets above the groups. Daily-driver set per
-                                // Ilya; everything else stays reachable via ⌘K + groups below.
-                                const PINNED: Array<{ component: string; label: string; icon: string }> = [
-                                    { component: 'ara-console', label: 'ARA', icon: 'brain-circuit' },
-                                    { component: 'strata-dashboard', label: 'Strata', icon: 'building-2' },
-                                    { component: 'scribe', label: 'Scribe', icon: 'pen-tool' },
-                                    { component: 'inbox', label: 'Inbox Zero', icon: 'mail-open' },
-                                    { component: 'task-board', label: 'Task Board', icon: 'layout-grid' },
-                                ];
-                                const pinnedItems = PINNED.filter(p => can(`widget:${p.component}`));
+                                // ── One Front Door: the pinned five above the groups. Daily-driver
+                                // set per Ilya; everything else stays reachable via ⌘K + groups below.
+                                const pinnedItems = PINNED_WIDGETS.filter(p => can(`widget:${p.component}`));
 
                                 return (
                                     <>
@@ -914,7 +925,7 @@ export default function Sidebar() {
                                                         key={`pin-${p.component}`}
                                                         className={`sidebar-widget sidebar-widget--pinned ${isOpen ? 'sidebar-widget--open' : ''} ${isMinimized ? 'sidebar-widget--minimized' : ''}`}
                                                         onClick={() => handleWidgetClick(p.component, p.label, p.icon)}
-                                                        title={p.label}
+                                                        title={collapsed ? p.label : undefined}
                                                     >
                                                         <span className="sidebar-widget__icon"><SidebarIcon iconKey={p.icon} size={18} /></span>
                                                         {!collapsed && <span className="sidebar-widget__label">{p.label}</span>}
@@ -940,7 +951,7 @@ export default function Sidebar() {
                                                     <button
                                                         className="sidebar__widget-group-header"
                                                         onClick={() => toggleGroup(group.name)}
-                                                        title={group.name}
+                                                        title={collapsed ? group.name : undefined}
                                                     >
                                                         <span className="sidebar__widget-group-toggle">{isExpanded ? '−' : '+'}</span>
                                                         {!collapsed && <span className="sidebar__widget-group-icon"><SidebarIcon iconKey={group.icon} size={14} /></span>}
@@ -993,8 +1004,8 @@ export default function Sidebar() {
 
             {/* Footer */}
             <div className="sidebar__footer">
-                <span className="sidebar__status-dot" />
-                {!iconOnly && !collapsed && <span className="sidebar__status-text">System Online</span>}
+                <span className={`sidebar__status-dot sidebar__status-dot--${backendState}`} title={STATUS_LABEL[backendState]} />
+                {!iconOnly && !collapsed && <span className="sidebar__status-text">{STATUS_LABEL[backendState]}</span>}
                 {!iconOnly && (
                     <button
                         className={`sidebar__options-btn ${showOptions ? 'sidebar__options-btn--active' : ''}`}

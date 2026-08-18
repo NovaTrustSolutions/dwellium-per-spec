@@ -73,6 +73,8 @@ actually contains the expected value (see §4 and the verifier's check 3).
 | Var | Purpose |
 |---|---|
 | `GOOGLE_CLIENT_ID` | Backend-side verification of the Google ID token the frontend sends to `/api/auth/google`. Missing → backend returns 503 `{"error":"Google login is not configured on the backend"}`. |
+| | **Value contract (2026-08-18 incident):** must CONTAIN the frontend `VITE_GOOGLE_CLIENT_ID` (`200583798886-…`) — it is the ID-token *audience* list (comma-separated ok). It is NOT the Gmail/Calendar OAuth web client (`GOOGLE_OAUTH_CLIENT_ID`, `394200865376-…`). Drift found live: it held only the OAuth client → every ID token failed → "Google sign-in could not be verified" in the Session-expired modal. Fixed at revision `dwellium-backend-00037-jb8` (both IDs). `deploy/cloud-run.sh` no longer copies one into the other. |
+| `AUTH_SESSION_HOURS` | Sliding-session window (backend `authService` `SESSION_WINDOW_HOURS`). **168** since `dwellium-backend-00037-jb8` (was a dead `72` — parsed, never applied). Cap = `AUTH_SESSION_MAX_HOURS` (default 720). Any authenticated call in the second half of the window extends it; `/api/auth/me` returns the current `expiresAt`. |
 | `GOOGLE_AUTH_ALLOWED_EMAILS` | Allowlist gating which verified Google accounts may create/link a Dwellium session. |
 
 Both were restored 2026-07-03.

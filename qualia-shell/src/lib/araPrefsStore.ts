@@ -7,6 +7,8 @@
  *   showToolActivity — show a "running: web search…" activity line.
  *   holdToTalk       — push-to-talk mic loop (reuses TranscriptionHub's
  *                      SpeechRecognition) feeding the composer.
+ *   introSeen        — the ARA intro video has ended or been skipped once on
+ *                      this device (045-D1c: once per user, not per session).
  *
  * useSyncExternalStore-shaped + `.reset()` per repo convention.
  */
@@ -15,12 +17,14 @@ export interface AraPrefs {
     streamTokens: boolean;
     showToolActivity: boolean;
     holdToTalk: boolean;
+    introSeen: boolean;
 }
 
 export const DEFAULT_ARA_PREFS: AraPrefs = {
     streamTokens: false,
     showToolActivity: false,
     holdToTalk: false,
+    introSeen: false,
 };
 
 const STORAGE_KEY = 'dwellium-ara-prefs';

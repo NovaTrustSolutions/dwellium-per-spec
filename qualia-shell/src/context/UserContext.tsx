@@ -324,8 +324,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     /* ── Login ────────────────────────────────────────── */
 
     const login = useCallback(async (email: string, password: string) => {
-        // Fresh logon: allow the ARA intro video to play once this session.
-        try { sessionStorage.removeItem('dwellium-ara-intro-played'); } catch { /* sandboxed */ }
         try {
             const res = await fetch(`${API_BASE}/api/auth/login`, {
                 method: 'POST',
@@ -366,7 +364,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }, [saveTokens, scheduleRefresh]);
 
     const loginWithGoogle = useCallback(async (credential: string) => {
-        try { sessionStorage.removeItem('dwellium-ara-intro-played'); } catch { /* sandboxed */ }
         try {
             const res = await fetch(`${API_BASE}/api/auth/google`, {
                 method: 'POST',
@@ -404,7 +401,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
      * keys, workspaces, OpenJarvis history — persist + isolate by the stable id,
      * independent of whether the backend knows the account. */
     const loginLocal = useCallback((profile: { id: string; name: string; email: string; role: string }) => {
-        try { sessionStorage.removeItem('dwellium-ara-intro-played'); } catch { /* ignore */ }
         const userData = {
             id: profile.id,
             name: profile.name,

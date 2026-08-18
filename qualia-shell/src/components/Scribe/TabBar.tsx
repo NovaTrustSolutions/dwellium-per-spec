@@ -54,6 +54,7 @@ export function TabBar() {
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, marginRight: 8, flexShrink: 0 }}>
                 <ModeTab label="Doc" active={editorMode === 'document'} onClick={() => setEditorMode('document')} />
                 <ModeTab label="Dump" active={editorMode === 'dump'} onClick={() => setEditorMode('dump')} />
+                <ModeTab label="Interactive Docs" active={editorMode === 'idocs'} onClick={() => setEditorMode('idocs')} />
             </div>
             {editorMode === 'document' && openFiles.map((file) => (
                 <Tab

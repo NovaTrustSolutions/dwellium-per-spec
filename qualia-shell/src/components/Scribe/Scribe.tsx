@@ -3,7 +3,7 @@
  * AI redlines, inline comments, versioning, and table of contents.
  */
 
-import { useEffect, useRef, useCallback, useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useCallback, useMemo, useState, lazy, Suspense, type ChangeEvent } from 'react';
 import { Check, Eye, Maximize, Upload } from 'lucide-react';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
@@ -33,7 +33,11 @@ import { FileTree } from './FileTree';
 import { SearchPanel } from './SearchPanel';
 import { docxToMarkdown } from './docxConvert';
 import DumpMode from './DumpMode';
+import { WIDGET_ACTION_EVENT, peekPendingWidgetAction, type WidgetActionRequest } from '../../lib/widgetActions';
 import './Scribe.css';
+
+// Sub-component altitude → bare React.lazy (NOT lazyWithReload; see repo 2-layer rule).
+const InteractiveDocs = lazy(() => import('./idocs/InteractiveDocs'));
 
 export default function Scribe() {
     useScribeTheme();
@@ -149,6 +153,19 @@ export default function Scribe() {
         // editor would render blank after a mode round-trip).
     }, [activeFilepath, editorMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Widget-action bus: `scribe.create-interactive-doc` (from ARA/skills) must
+    // land in Interactive Docs mode. Switch here (host altitude, mount-only +
+    // live event); InteractiveDocs itself consumes the pending slot on mount.
+    useEffect(() => {
+        const toIdocs = (req: WidgetActionRequest | null) => {
+            if (req?.widget === 'scribe' && req.verb === 'create-interactive-doc') useScribeStore.getState().setEditorMode('idocs');
+        };
+        toIdocs(peekPendingWidgetAction('scribe'));
+        const handler = (ev: Event) => toIdocs((ev as CustomEvent<WidgetActionRequest>).detail);
+        window.addEventListener(WIDGET_ACTION_EVENT, handler);
+        return () => window.removeEventListener(WIDGET_ACTION_EVENT, handler);
+    }, []);
+
     // Brain Dump intake (spec §5.2) — the sticky "Dump" tab toggles this. It
     // doesn't require an open document, so it short-circuits before the
     // empty-state / editor branches. All hooks above run unconditionally so
@@ -158,6 +175,19 @@ export default function Scribe() {
             <div className="scribe">
                 <TabBar />
                 <DumpMode />
+            </div>
+        );
+    }
+
+    // Interactive Docs (Gamma-style card/block builder) — same early-return
+    // shape as Dump; all hooks above run unconditionally.
+    if (editorMode === 'idocs') {
+        return (
+            <div className="scribe">
+                <TabBar />
+                <Suspense fallback={<div style={{ padding: 16, color: 'var(--text-secondary)' }}>Loading Interactive Docs…</div>}>
+                    <InteractiveDocs />
+                </Suspense>
             </div>
         );
     }

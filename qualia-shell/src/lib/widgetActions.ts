@@ -36,6 +36,7 @@ export interface WidgetActionSpec {
 /** Verbs widgets currently honor (extend as widgets opt in). */
 export const WIDGET_ACTIONS: ReadonlyArray<WidgetActionSpec> = [
     { widget: 'notepad', verb: 'insert-text', description: 'Create a note containing the given text (title optional)' },
+    { widget: 'scribe', verb: 'create-interactive-doc', description: 'Generate an Interactive Doc in Scribe from a prompt (title optional)' },
 ];
 
 export function supportsWidgetAction(widget: string, verb: string): boolean {
@@ -58,6 +59,11 @@ export function performWidgetAction(widget: string, verb: string, payload: Widge
         window.dispatchEvent(new CustomEvent(WIDGET_ACTION_EVENT, { detail: req }));
     } catch { /* SSR / sandbox */ }
     return true;
+}
+
+/** Non-consuming look at a widget's pending action (lets a host switch mode before the consumer mounts). */
+export function peekPendingWidgetAction(widget: string): WidgetActionRequest | null {
+    return pending.get(widget) ?? null;
 }
 
 /** One-shot mount-time pickup for a widget's pending action. */

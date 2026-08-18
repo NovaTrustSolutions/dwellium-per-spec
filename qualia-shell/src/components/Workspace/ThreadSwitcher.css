@@ -1,0 +1,46 @@
+/* ThreadSwitcher — footer pill (bottom-center of .desktop). Narrow-viewport
+   placement lives in styles/responsive.css (.thread-switcher-pill). */
+
+.thread-switcher-pill {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9980;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(10, 10, 10, 0.82);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #9aa;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.thread-switcher-pill--active {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    color: #D6FE51;
+}
+
+.thread-switcher-pill__label {
+    min-width: 0;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-switcher-pill__tier {
+    color: #666;
+    font-weight: 400;
+}
+
+.thread-switcher-pill__empty {
+    color: var(--text-tertiary);
+}

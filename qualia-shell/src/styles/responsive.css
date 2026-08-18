@@ -1,0 +1,152 @@
+/* ============================================
+   RESPONSIVE — narrow-viewport overrides (plan 045 Cluster E, option (a)).
+   CSS-only: the sidebar keeps its normal DOM; at <=768px it is squeezed to a
+   56px icon rail (width is inline from Sidebar.tsx, hence !important).
+   `.shell` prefix = +1 specificity over Sidebar.css so ties don't depend on
+   bundle order. Do not add rules to Sidebar.css/.tsx here — see plan 045.
+   ============================================ */
+
+@media (max-width: 768px) {
+    /* ---- Sidebar -> 56px rail ---- */
+    .shell .sidebar {
+        width: 56px !important;
+        min-width: 56px;
+        max-width: 56px;
+    }
+
+    .shell .sidebar__resize-handle,
+    .shell .sidebar__logo-text,
+    .shell .sidebar__greeting,
+    .shell .sidebar__breadcrumb,
+    .shell .sidebar__split-top,
+    .shell .sidebar__split-divider,
+    .shell .sidebar__split-bottom-header,
+    .shell .sidebar__status-text,
+    .shell .sidebar__widget-divider,
+    .shell .sidebar-widget__drag-handle,
+    .shell .sidebar-widget__content,
+    .shell .sidebar-widget__label, /* pinned rows have no __content wrapper */
+    .shell .sidebar-widget__search-score,
+    .shell .sidebar-widget__remove,
+    .shell .sidebar__widget-group-toggle,
+    .shell .sidebar__widget-group-label,
+    .shell .sidebar__add-widget > span:not(.sidebar__add-widget-plus),
+    .shell .spaces-switcher__label,
+    .shell .spaces-switcher__name {
+        display: none;
+    }
+
+    .shell .sidebar__header {
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 4px;
+    }
+
+    /* Sign-out stays reachable: swap the text for a power glyph. */
+    .shell .sidebar__signout-btn {
+        font-size: 0;
+        padding: 4px 6px;
+    }
+    .shell .sidebar__signout-btn::after {
+        content: '\23FB'; /* ⏻ */
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    .shell .spaces-switcher {
+        padding: 6px 4px;
+    }
+    .shell .spaces-switcher__row {
+        align-items: center;
+    }
+    .shell .spaces-switcher__btn {
+        width: 36px;
+        height: 36px;
+        justify-content: center;
+        padding: 0;
+        border-left: none;
+        border-radius: 8px;
+    }
+
+    .shell .sidebar__split-bottom {
+        flex: 1;
+    }
+
+    .shell .sidebar-widget,
+    .shell .sidebar__widget-group-header,
+    .shell .sidebar__add-widget {
+        justify-content: center;
+        padding: 8px 4px;
+        gap: 0;
+    }
+    .shell .sidebar-widget__dot {
+        margin-left: 2px;
+    }
+    .shell .sidebar__widget-group-children {
+        padding: 2px 0;
+    }
+
+    .shell .sidebar__footer {
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 4px;
+    }
+    /* "Options" text -> gear glyph (title attr keeps the name). */
+    .shell .sidebar__options-btn {
+        margin-left: 0;
+        padding: 4px 6px;
+        font-size: 0;
+    }
+    .shell .sidebar__options-btn::after {
+        content: '\2699'; /* ⚙ */
+        font-size: 14px;
+        line-height: 1;
+    }
+    /* Options popup can't fit inside a 56px rail — float it beside the rail. */
+    .shell .sidebar__options-popup {
+        left: 52px;
+        right: auto;
+        bottom: 8px;
+        width: 220px;
+    }
+
+    /* ---- Backend banner: actions drop to their own row, message wraps by word ---- */
+    /* Doubled classes below = +1 specificity over each component's own CSS,
+       which is bundled after this file. */
+    .backend-banner.backend-banner {
+        flex-wrap: wrap;
+        row-gap: 8px;
+    }
+    .backend-banner .backend-banner__actions {
+        flex: 1 1 100%;
+        justify-content: flex-end;
+    }
+    .backend-banner .backend-banner__prompt {
+        white-space: normal;
+    }
+
+    /* ---- Thread pill: bottom-left, capped so it never reaches the FAB ---- */
+    .desktop .thread-switcher-pill {
+        left: 12px;
+        transform: none;
+        max-width: calc(100% - 96px); /* 12 inset + 56 FAB + 12 gap + 16 slack */
+    }
+
+    /* ---- Assistant FAB: tighter inset ---- */
+    .al-fab-wrap.al-fab-wrap {
+        right: 12px;
+        bottom: 12px;
+    }
+
+    /* ---- SystemHealth toast: explicit width (was shrink-to-fit at left:50%) ---- */
+    .sysh-banner.sysh-banner {
+        left: 8px;
+        right: 8px;
+        transform: none;
+        max-width: none;
+    }
+    .sysh-banner .sysh-banner-text {
+        min-width: 0;
+    }
+}

@@ -81,7 +81,12 @@ export interface Card {
     // ponytail: no nested cards in v1 — add `children?: Card[]` + recursive renderer when needed.
 }
 
-export type IDocThemeId = 'inherit' | 'paper' | 'midnight' | 'sunrise' | 'forest' | 'slate' | 'neon';
+export type IDocThemeId = 'inherit' | 'paper' | 'midnight' | 'sunrise' | 'forest' | 'slate' | 'neon'
+    // Wave 1 (+40, generated from WAVE1_PALETTES below)
+    | 'ocean' | 'sand' | 'lavender' | 'terracotta' | 'mint' | 'ivory' | 'coral' | 'sky' | 'olive' | 'rose'
+    | 'cobalt' | 'lime' | 'arctic' | 'peach' | 'sage' | 'linen' | 'blush' | 'citrus' | 'pearl' | 'dune'
+    | 'graphite' | 'plum' | 'mocha' | 'steel' | 'ember' | 'moss' | 'obsidian' | 'ink' | 'cocoa' | 'aubergine'
+    | 'pine' | 'cherry' | 'navy' | 'charcoal' | 'wine' | 'bronze' | 'teal' | 'violet' | 'rust' | 'sunset';
 
 export interface IDocAnalytics {
     views: number;
@@ -126,6 +131,63 @@ const MONO_FONT = "'JetBrains Mono', ui-monospace, monospace";
  * must look the same regardless of the app's light/dark mode. `inherit`
  * forwards the app tokens instead.
  */
+/**
+ * Wave 1 palette table → 40 generated themes (20 light + 20 dark).
+ * [id, label, bg, surface, text, muted, accent, border, headingFont, radius]
+ */
+type PaletteRow = [IDocThemeId, string, string, string, string, string, string, string, string, string];
+const WAVE1_PALETTES: readonly PaletteRow[] = [
+    // ── light family ──
+    ['ocean', 'Ocean', '#eef6fb', '#ffffff', '#0d2b3e', '#4f6b7c', '#0e7490', '#cfe3ee', HEADING_FONT, '10px'],
+    ['sand', 'Sand', '#f7f1e3', '#fffdf7', '#3b2f1e', '#7a6b55', '#b7791f', '#e7dcc4', SERIF_FONT, '6px'],
+    ['lavender', 'Lavender', '#f3f0fa', '#ffffff', '#2a2340', '#6d6488', '#7c5cbf', '#dcd4ee', HEADING_FONT, '12px'],
+    ['terracotta', 'Terracotta', '#fbf1ec', '#ffffff', '#3d2019', '#8a5c4f', '#c2410c', '#f0d5c8', SERIF_FONT, '8px'],
+    ['mint', 'Mint', '#eefaf4', '#ffffff', '#0f2e22', '#4f7a67', '#059669', '#cdebdc', HEADING_FONT, '12px'],
+    ['ivory', 'Ivory', '#fbfaf5', '#ffffff', '#262420', '#6c675c', '#8b7355', '#e9e5d9', SERIF_FONT, '4px'],
+    ['coral', 'Coral', '#fff1ee', '#ffffff', '#3a1a14', '#8d5a50', '#e0533f', '#fbd3cb', HEADING_FONT, '14px'],
+    ['sky', 'Sky', '#eef7ff', '#ffffff', '#0f2740', '#4d6885', '#2563eb', '#cfe2f7', HEADING_FONT, '10px'],
+    ['olive', 'Olive', '#f4f5ea', '#fcfdf5', '#26290f', '#676c47', '#65731d', '#dfe2c4', SERIF_FONT, '6px'],
+    ['rose', 'Rose', '#fdf0f4', '#ffffff', '#3d1424', '#8b5468', '#be185d', '#f6cfdc', HEADING_FONT, '12px'],
+    ['cobalt', 'Cobalt', '#eef1fb', '#ffffff', '#111a3d', '#525c86', '#1e40af', '#d1d8f0', HEADING_FONT, '8px'],
+    ['lime', 'Lime', '#f5fbe6', '#ffffff', '#1c2a08', '#5c6f3a', '#4d7c0f', '#dceabd', MONO_FONT, '4px'],
+    ['arctic', 'Arctic', '#f2f8fa', '#ffffff', '#12303a', '#557480', '#0891b2', '#d3e6ec', HEADING_FONT, '16px'],
+    ['peach', 'Peach', '#fff4ea', '#ffffff', '#3d2412', '#8c6a52', '#ea580c', '#fbdcc4', HEADING_FONT, '14px'],
+    ['sage', 'Sage', '#f1f6f1', '#ffffff', '#1f2e22', '#5f7563', '#3f7a52', '#d4e2d6', SERIF_FONT, '10px'],
+    ['linen', 'Linen', '#faf6f0', '#ffffff', '#33291f', '#75685a', '#9a6b3f', '#eadfd0', SERIF_FONT, '2px'],
+    ['blush', 'Blush', '#fdf2f5', '#ffffff', '#3b1f28', '#87616d', '#d6336c', '#f5d5df', HEADING_FONT, '18px'],
+    ['citrus', 'Citrus', '#fffbe6', '#ffffff', '#302a06', '#75693a', '#ca8a04', '#f3e8b4', HEADING_FONT, '8px'],
+    ['pearl', 'Pearl', '#f6f6f8', '#ffffff', '#1f1f27', '#66666f', '#5b5bd6', '#dedee6', HEADING_FONT, '10px'],
+    ['dune', 'Dune', '#f5efe6', '#fdf9f2', '#3a2f22', '#7d6d59', '#a16207', '#e5d9c8', SERIF_FONT, '6px'],
+    // ── dark family ──
+    ['graphite', 'Graphite', '#16181d', '#1f2229', '#e6e8ec', '#9aa0aa', '#7dd3fc', '#2c3038', HEADING_FONT, '8px'],
+    ['plum', 'Plum', '#1a1020', '#26182f', '#f1e8f6', '#a894b7', '#c084fc', '#3a2848', SERIF_FONT, '12px'],
+    ['mocha', 'Mocha', '#1c1512', '#28201b', '#f2eae3', '#a89586', '#d9a066', '#3a2f28', SERIF_FONT, '8px'],
+    ['steel', 'Steel', '#141a21', '#1d252e', '#e2e8f0', '#94a3b8', '#38bdf8', '#2a3441', HEADING_FONT, '6px'],
+    ['ember', 'Ember', '#1a1010', '#261717', '#f5e9e6', '#b08b84', '#f97316', '#3d2320', HEADING_FONT, '10px'],
+    ['moss', 'Moss', '#111a14', '#19261d', '#e4efe7', '#8fa997', '#4ade80', '#25382c', SERIF_FONT, '10px'],
+    ['obsidian', 'Obsidian', '#0a0a0b', '#141416', '#f4f4f5', '#8f8f96', '#e4e4e7', '#26262a', MONO_FONT, '2px'],
+    ['ink', 'Ink', '#0f1419', '#18202a', '#e6edf3', '#8b98a8', '#60a5fa', '#263241', HEADING_FONT, '12px'],
+    ['cocoa', 'Cocoa', '#1b1412', '#27201d', '#f1e9e4', '#a89388', '#f4a261', '#3b312c', HEADING_FONT, '14px'],
+    ['aubergine', 'Aubergine', '#170f1a', '#231627', '#f2e9f4', '#a992ad', '#e879f9', '#382443', HEADING_FONT, '12px'],
+    ['pine', 'Pine', '#0d1a17', '#142823', '#e2efe9', '#89a89c', '#2dd4bf', '#213b33', SERIF_FONT, '8px'],
+    ['cherry', 'Cherry', '#1c0e12', '#29161c', '#f7e8ec', '#b58a97', '#fb7185', '#3f222b', HEADING_FONT, '10px'],
+    ['navy', 'Navy', '#0b1226', '#131c37', '#e8ecf8', '#8f9ac0', '#93c5fd', '#22305a', HEADING_FONT, '10px'],
+    ['charcoal', 'Charcoal', '#1e1e1e', '#2a2a2a', '#f0f0f0', '#a3a3a3', '#facc15', '#3a3a3a', HEADING_FONT, '4px'],
+    ['wine', 'Wine', '#1d0f14', '#2b171e', '#f6e9ee', '#b08c98', '#e11d48', '#43242e', SERIF_FONT, '8px'],
+    ['bronze', 'Bronze', '#171310', '#231d18', '#f1ebe4', '#a89a8a', '#d4a017', '#3a3128', SERIF_FONT, '6px'],
+    ['teal', 'Teal', '#0c1a1c', '#132628', '#e3f2f3', '#88a9ac', '#2dd4bf', '#1f3a3d', HEADING_FONT, '12px'],
+    ['violet', 'Violet', '#120f22', '#1c1732', '#ece8fb', '#9d95c4', '#a78bfa', '#2e2750', HEADING_FONT, '14px'],
+    ['rust', 'Rust', '#1a1210', '#271a16', '#f4ebe6', '#ad9184', '#ea580c', '#3f2820', MONO_FONT, '4px'],
+    ['sunset', 'Sunset', '#1a1017', '#271722', '#f8e9ef', '#b48ea0', '#fb923c', '#42243a', HEADING_FONT, '12px'],
+];
+const WAVE1_THEMES: readonly IDocTheme[] = WAVE1_PALETTES.map(([id, label, bg, surface, text, muted, accent, border, headingFont, radius]) => ({
+    id, label, swatch: accent,
+    vars: {
+        '--idoc-bg': bg, '--idoc-surface': surface, '--idoc-text': text, '--idoc-muted': muted, '--idoc-accent': accent,
+        '--idoc-heading-font': headingFont, '--idoc-body-font': BODY_FONT, '--idoc-radius': radius, '--idoc-border': border,
+    },
+}));
+
 export const IDOC_THEMES: readonly IDocTheme[] = [
     {
         id: 'inherit', label: 'Inherit app', swatch: 'var(--accent)',
@@ -185,6 +247,7 @@ export const IDOC_THEMES: readonly IDocTheme[] = [
             '--idoc-body-font': BODY_FONT, '--idoc-radius': '2px', '--idoc-border': '#262626',
         },
     },
+    ...WAVE1_THEMES,
 ] as const;
 
 export function themeById(id: string | undefined): IDocTheme {

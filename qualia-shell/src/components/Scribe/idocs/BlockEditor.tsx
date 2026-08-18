@@ -1,16 +1,26 @@
 /**
  * BlockEditor — small form editors per block type. Controlled: receives the
  * block, emits a replacement via onChange. Plain inputs/textareas only.
+ *
+ * Card-level editors exported for the editor's card header bar (mounted by IDocEditor):
+ *   <CardBackgroundEditor card={card} onChange={(patch: Partial<Card>) => …} />
+ *     — color / image URL+upload / overlay (none|frosted|faded|clear) / intensity 0–100 / align (top|center|bottom).
+ *       Emits `{ background: CardBackground | undefined }` patches (undefined when everything is cleared).
+ *   <CardFootnotesEditor card={card} onChange={(patch: Partial<Card>) => …} />
+ *     — ordered footnote list; reference from any markdown block with `[^n]` (1-based).
+ *       Emits `{ footnotes: Footnote[] }` patches.
  */
 import { useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 import { fileToDataUrl, downscaleImageDataUrl } from '../../../lib/imageDownscale';
 import { embedSrcFor } from './idocsAi';
-import type { Block, BlockTone, ChartKind } from './idocTypes';
+import { newId, type Block, type BlockTone, type Card, type CardBackground, type ChartKind } from './idocTypes';
 
 interface Props { block: Block; onChange: (b: Block) => void }
 
 const TONES: BlockTone[] = ['info', 'success', 'warning', 'danger'];
-const KINDS: ChartKind[] = ['bar', 'line', 'pie'];
+const KINDS: ChartKind[] = ['bar', 'line', 'area', 'pie', 'donut'];
+const OVERLAYS: NonNullable<CardBackground['overlay']>[] = ['none', 'frosted', 'faded', 'clear'];
+const ALIGNS: NonNullable<CardBackground['align']>[] = ['top', 'center', 'bottom'];
 
 /** Image file → downscaled data URL (bounded payload for localStorage). */
 async function fileToImageSrc(file: File): Promise<string> {
@@ -175,8 +185,9 @@ export default function BlockEditor({ block, onChange }: Props) {
         case 'button': return (
             <div className="scribe-idocs__row">
                 <input value={block.label} onChange={(e) => up({ label: e.target.value })} placeholder="Label" aria-label="Button label" />
-                <input type="url" value={block.href} onChange={(e) => up({ href: e.target.value })} placeholder="https://…" aria-label="Button link" />
+                <input value={block.href} onChange={(e) => up({ href: e.target.value })} placeholder="https://… or #card:<card-id>" aria-label="Button link" />
                 <select value={block.variant} onChange={(e) => up({ variant: e.target.value as 'primary' | 'secondary' })} aria-label="Variant"><option value="primary">primary</option><option value="secondary">secondary</option></select>
+                <small className="scribe-idocs__hint">Use <code>#card:&lt;id&gt;</code> to jump to a card in this doc.</small>
             </div>
         );
         case 'code': return (
@@ -215,5 +226,108 @@ export default function BlockEditor({ block, onChange }: Props) {
             </>
         );
         case 'toc': return <small className="scribe-idocs__hint">Table of contents — lists all card titles automatically.</small>;
+        case 'steps': return (
+            <>
+                <label className="scribe-idocs__inline"><input type="checkbox" checked={block.numbered !== false} onChange={(e) => up({ numbered: e.target.checked })} /> Numbered</label>
+                <ItemList items={block.items} onChange={(items) => up({ items })} blank={{ title: 'Step', md: '' }} label="step"
+                    render={(it, set) => (
+                        <>
+                            <input value={it.title} onChange={(e) => set({ title: e.target.value })} placeholder="Step title" aria-label="Step title" />
+                            <textarea rows={2} value={it.md} onChange={(e) => set({ md: e.target.value })} placeholder="Details (markdown)" aria-label="Step details" />
+                        </>
+                    )} />
+            </>
+        );
+        case 'funnel': return (
+            <ItemList items={block.items} onChange={(items) => up({ items })} blank={{ label: 'Stage', value: 50 }} label="stage"
+                render={(it, set) => (
+                    <div className="scribe-idocs__row">
+                        <input value={it.label} onChange={(e) => set({ label: e.target.value })} placeholder="Stage" aria-label="Stage label" />
+                        <input type="number" value={it.value ?? ''} onChange={(e) => set({ value: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="Value" aria-label="Stage value" style={{ maxWidth: 110 }} />
+                    </div>
+                )} />
+        );
+        case 'boxes': return (
+            <>
+                <div className="scribe-idocs__row">
+                    <span className="scribe-idocs__hint">Columns</span>
+                    {([2, 3, 4] as const).map((n) => <button key={n} type="button" className={`scribe-idocs__chip${(block.columns ?? 3) === n ? ' is-active' : ''}`} onClick={() => up({ columns: n })}>{n}</button>)}
+                </div>
+                <ItemList items={block.items} onChange={(items) => up({ items })} blank={{ title: 'Box', md: '' }} label="box"
+                    render={(it, set) => (
+                        <>
+                            <div className="scribe-idocs__row">
+                                <input value={it.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" aria-label="Box title" />
+                                <label className="scribe-idocs__inline"><input type="checkbox" checked={!!it.emphasis} onChange={(e) => set({ emphasis: e.target.checked })} /> Emphasize</label>
+                            </div>
+                            <textarea rows={2} value={it.md} onChange={(e) => set({ md: e.target.value })} placeholder="Markdown…" aria-label="Box content" />
+                        </>
+                    )} />
+            </>
+        );
+        case 'math': return (
+            <>
+                <textarea rows={2} className="is-mono" value={block.latex} onChange={(e) => up({ latex: e.target.value })} placeholder="LaTeX, e.g. \\frac{a}{b}" aria-label="LaTeX" spellCheck={false} />
+                <label className="scribe-idocs__inline"><input type="checkbox" checked={!!block.inline} onChange={(e) => up({ inline: e.target.checked })} /> Inline</label>
+            </>
+        );
+        case 'diagram': return (
+            <>
+                <textarea rows={6} className="is-mono" value={block.mermaid} onChange={(e) => up({ mermaid: e.target.value })} placeholder={"flowchart LR\n  A --> B"} aria-label="Mermaid source" spellCheck={false} />
+                <small className="scribe-idocs__hint">Mermaid syntax (flowchart, sequenceDiagram, gantt, pie, …). Renders via CDN; falls back to source text offline.</small>
+            </>
+        );
+        case 'qr': return (
+            <div className="scribe-idocs__row">
+                <input type="url" value={block.url} onChange={(e) => up({ url: e.target.value })} placeholder="https://…" aria-label="QR URL" />
+                <input value={block.caption ?? ''} onChange={(e) => up({ caption: e.target.value })} placeholder="Caption (optional)" aria-label="QR caption" />
+            </div>
+        );
     }
+}
+
+/** Card background editor — see the file header for the contract. */
+export function CardBackgroundEditor({ card, onChange }: { card: Card; onChange: (patch: Partial<Card>) => void }) {
+    const bg = card.background ?? {};
+    const set = (patch: Partial<CardBackground>) => {
+        const next: CardBackground = { ...bg, ...patch };
+        (Object.keys(next) as (keyof CardBackground)[]).forEach((k) => { if (next[k] === undefined || next[k] === '') delete next[k]; });
+        onChange({ background: Object.keys(next).length ? next : undefined });
+    };
+    return (
+        <div className="scribe-idocs__cardbg" role="group" aria-label="Card background">
+            <div className="scribe-idocs__row">
+                <label className="scribe-idocs__inline">Color
+                    <input type="color" value={bg.color && /^#[0-9a-f]{6}$/i.test(bg.color) ? bg.color : '#ffffff'} onChange={(e) => set({ color: e.target.value })} aria-label="Background color" />
+                </label>
+                {bg.color && <button type="button" className="scribe-idocs__minibtn" onClick={() => set({ color: undefined })}>clear color</button>}
+            </div>
+            <ImagePicker value={bg.image ?? ''} onChange={(image) => set({ image: image || undefined })} />
+            {bg.image && (
+                <div className="scribe-idocs__row">
+                    <select value={bg.overlay ?? 'faded'} onChange={(e) => set({ overlay: e.target.value as CardBackground['overlay'] })} aria-label="Overlay">
+                        {OVERLAYS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                    <label className="scribe-idocs__inline">Intensity
+                        <input type="range" min={0} max={100} value={bg.intensity ?? 60} onChange={(e) => set({ intensity: Number(e.target.value) })} aria-label="Overlay intensity" />
+                        <span>{bg.intensity ?? 60}</span>
+                    </label>
+                    <select value={bg.align ?? 'center'} onChange={(e) => set({ align: e.target.value as CardBackground['align'] })} aria-label="Image alignment">
+                        {ALIGNS.map((a) => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** Card footnotes editor — see the file header for the contract. */
+export function CardFootnotesEditor({ card, onChange }: { card: Card; onChange: (patch: Partial<Card>) => void }) {
+    const items = card.footnotes ?? [];
+    return (
+        <div className="scribe-idocs__cardfn" role="group" aria-label="Footnotes">
+            <ItemList items={items} onChange={(footnotes) => onChange({ footnotes })} blank={{ id: newId('fn'), text: '' }} label="footnote"
+                render={(f, set) => <input value={f.text} onChange={(e) => set({ text: e.target.value })} placeholder={`Footnote text — reference with [^${items.indexOf(f) + 1}]`} aria-label="Footnote text" />} />
+        </div>
+    );
 }

@@ -10,9 +10,15 @@ import { markdownToPdfBytes, downloadPdf } from '../pdfExport';
 import { renderSafeMarkdown } from '../../../utils/safeMarkdown';
 import { embedSrcFor } from './idocsAi';
 import { themeById, type Block, type Card, type IDoc } from './idocTypes';
+import { qrSvg } from './blocks/qr';
+import { PAGE_ASPECT, PAGE_PRINT_SIZE, cardLinkId } from './IDocRenderer';
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const md = (s: string): string => renderSafeMarkdown(s || '');
+/** Sanitized markdown; `[^n]` (which survives sanitizing as literal text) becomes a superscript footnote link. */
+const md = (s: string, cardId = ''): string => {
+    const html = renderSafeMarkdown(s || '');
+    return cardId ? html.replace(/\[\^(\w+)\](?!:)/g, (_m, n: string) => `<sup class="idoc-fnref"><a href="#fn-${esc(cardId)}-${n}">${n}</a></sup>`) : html;
+};
 const safeUrl = (u: string): string => (/^(https?:|mailto:|data:image\/)/i.test(u.trim()) ? esc(u.trim()) : '');
 
 function svgBars(data: { label: string; value: number }[]): string {
@@ -29,7 +35,18 @@ function svgBars(data: { label: string; value: number }[]): string {
     return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bar chart" style="width:100%;height:auto">${bars}</svg>`;
 }
 
-function svgPie(data: { label: string; value: number }[]): string {
+function svgArea(data: { label: string; value: number }[]): string {
+    const max = Math.max(1, ...data.map((d) => Math.abs(d.value)));
+    const W = 480, H = 220, pad = 28;
+    const n = Math.max(1, data.length - 1);
+    const pts = data.map((d, i) => [pad + (i / n) * (W - pad * 2), H - pad - (Math.abs(d.value) / max) * (H - pad * 2)] as const);
+    const line = pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+    const area = `${pad},${H - pad} ${line} ${(pts[pts.length - 1]?.[0] ?? pad).toFixed(1)},${H - pad}`;
+    const labels = data.map((d, i) => `<text x="${pts[i][0].toFixed(1)}" y="${H - pad + 14}" font-size="10" text-anchor="middle" fill="var(--idoc-muted)">${esc(d.label)}</text>`).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Area chart" style="width:100%;height:auto"><polygon points="${area}" fill="var(--idoc-accent)" fill-opacity=".25"/><polyline points="${line}" fill="none" stroke="var(--idoc-accent)" stroke-width="2"/>${labels}</svg>`;
+}
+
+function svgPie(data: { label: string; value: number }[], donut = false): string {
     const total = data.reduce((s, d) => s + Math.max(0, d.value), 0) || 1;
     const R = 80, cx = 100, cy = 100;
     let angle = -Math.PI / 2;
@@ -47,19 +64,20 @@ function svgPie(data: { label: string; value: number }[]): string {
         return path;
     }).join('');
     const legend = data.map((d, i) => `<li><span style="display:inline-block;width:10px;height:10px;background:var(--idoc-accent);opacity:${ops[i % ops.length]};margin-right:6px"></span>${esc(d.label)} — ${d.value}</li>`).join('');
-    return `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 200 200" role="img" aria-label="Pie chart" style="width:200px;height:200px">${slices}</svg><ul style="list-style:none;padding:0;margin:0;font-size:13px">${legend}</ul></div>`;
+    const hole = donut ? `<circle cx="${cx}" cy="${cy}" r="${R * 0.55}" fill="var(--idoc-surface)"/>` : '';
+    return `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 200 200" role="img" aria-label="${donut ? 'Donut' : 'Pie'} chart" style="width:200px;height:200px">${slices}${hole}</svg><ul style="list-style:none;padding:0;margin:0;font-size:13px">${legend}</ul></div>`;
 }
 
 function dataTable(data: { label: string; value: number }[]): string {
     return `<table class="idoc-table"><thead><tr><th>Label</th><th>Value</th></tr></thead><tbody>${data.map((d) => `<tr><td>${esc(d.label)}</td><td>${d.value}</td></tr>`).join('')}</tbody></table>`;
 }
 
-export function blockToHtml(b: Block, doc: IDoc): string {
+export function blockToHtml(b: Block, doc: IDoc, cardId = ''): string {
     switch (b.type) {
         case 'heading': return `<h${b.level}>${esc(b.text)}</h${b.level}>`;
-        case 'text': return `<div class="idoc-md">${md(b.md)}</div>`;
-        case 'callout': return `<div class="idoc-callout idoc-callout--${b.tone}">${md(b.md)}</div>`;
-        case 'quote': return `<blockquote class="idoc-quote">${md(b.md)}${b.cite ? `<cite>— ${esc(b.cite)}</cite>` : ''}</blockquote>`;
+        case 'text': return `<div class="idoc-md">${md(b.md, cardId)}</div>`;
+        case 'callout': return `<div class="idoc-callout idoc-callout--${b.tone}">${md(b.md, cardId)}</div>`;
+        case 'quote': return `<blockquote class="idoc-quote">${md(b.md, cardId)}${b.cite ? `<cite>— ${esc(b.cite)}</cite>` : ''}</blockquote>`;
         case 'image': return safeUrl(b.src) ? `<figure class="idoc-figure"><img src="${safeUrl(b.src)}" alt="${esc(b.alt || '')}"/>${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ''}</figure>` : '';
         case 'gallery': return `<div class="idoc-gallery">${b.images.filter((i) => safeUrl(i.src)).map((i) => `<img src="${safeUrl(i.src)}" alt="${esc(i.alt || '')}"/>`).join('')}</div>`;
         case 'embed': {
@@ -68,32 +86,66 @@ export function blockToHtml(b: Block, doc: IDoc): string {
             return `<div class="idoc-embed idoc-embed--${info.aspect.replace(':', 'x')}"><iframe src="${esc(info.src)}" title="${esc(info.provider)} embed" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe></div>`;
         }
         case 'chart': {
-            const body = b.kind === 'bar' ? svgBars(b.data) : b.kind === 'pie' ? svgPie(b.data) : dataTable(b.data);
+            const body = b.kind === 'bar' ? svgBars(b.data) : b.kind === 'pie' || b.kind === 'donut' ? svgPie(b.data, b.kind === 'donut') : b.kind === 'area' ? svgArea(b.data) : dataTable(b.data);
             return `<figure class="idoc-chart">${b.title ? `<figcaption>${esc(b.title)}</figcaption>` : ''}${body}</figure>`;
         }
         case 'table': return `<table class="idoc-table">${b.headers.length ? `<thead><tr>${b.headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>` : ''}<tbody>${b.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
         case 'accordion': return `<div class="idoc-accordion">${b.items.map((it) => `<details><summary>${esc(it.title)}</summary><div class="idoc-md">${md(it.md)}</div></details>`).join('')}</div>`;
         case 'tabs': return `<div class="idoc-tabs">${b.items.map((it) => `<section class="idoc-tab"><h4>${esc(it.title)}</h4><div class="idoc-md">${md(it.md)}</div></section>`).join('')}</div>`;
         case 'columns': return `<div class="idoc-columns" style="grid-template-columns:repeat(${b.columns.length},1fr)">${b.columns.map((c) => `<div class="idoc-md">${md(c)}</div>`).join('')}</div>`;
-        case 'button': return safeUrl(b.href) ? `<p><a class="idoc-btn idoc-btn--${b.variant}" href="${safeUrl(b.href)}" target="_blank" rel="noopener noreferrer">${esc(b.label)}</a></p>` : '';
+        case 'button': {
+            const cid = cardLinkId(b.href);
+            if (cid) return `<p><a class="idoc-btn idoc-btn--${b.variant}" href="#card-${esc(cid)}">${esc(b.label)}</a></p>`;
+            return safeUrl(b.href) ? `<p><a class="idoc-btn idoc-btn--${b.variant}" href="${safeUrl(b.href)}" target="_blank" rel="noopener noreferrer">${esc(b.label)}</a></p>` : '';
+        }
         case 'code': return `<pre class="idoc-code"><code>${esc(b.code)}</code></pre>`;
         case 'divider': return '<hr/>';
         case 'timeline': return `<ol class="idoc-timeline">${b.items.map((it) => `<li><span class="idoc-tl-date">${esc(it.date)}</span><div><strong>${esc(it.title)}</strong><div class="idoc-md">${md(it.md)}</div></div></li>`).join('')}</ol>`;
         case 'quiz': return `<div class="idoc-quiz"><p><strong>${esc(b.question)}</strong></p><ol type="A">${b.options.map((o) => `<li>${esc(o)}</li>`).join('')}</ol><details><summary>Show answer</summary><p>Answer: <strong>${esc(b.options[b.answerIndex] ?? '')}</strong>${b.explanation ? ` — ${esc(b.explanation)}` : ''}</p></details></div>`;
-        case 'toc': return `<nav class="idoc-toc"><ol>${doc.cards.map((c, i) => `<li><a href="#card-${esc(c.id)}">${esc(c.title || `Card ${i + 1}`)}</a></li>`).join('')}</ol></nav>`;
-        case 'steps': return `<ol class="idoc-steps${b.numbered === false ? ' idoc-steps--plain' : ''}">${b.items.map((it) => `<li><strong>${esc(it.title)}</strong><div class="idoc-md">${md(it.md)}</div></li>`).join('')}</ol>`;
+        case 'toc': return `<nav class="idoc-toc">${tocList(doc.cards)}</nav>`;
+        case 'steps': return `<ol class="idoc-steps${b.numbered === false ? ' idoc-steps--plain' : ''}">${b.items.map((it, i) => `<li><span class="idoc-step-marker">${b.numbered === false ? '' : i + 1}</span><div><strong>${esc(it.title)}</strong><div class="idoc-md">${md(it.md, cardId)}</div></div></li>`).join('')}</ol>`;
         case 'funnel': { const max = Math.max(1, ...b.items.map((it) => it.value ?? 0)); return `<div class="idoc-funnel">${b.items.map((it) => `<div class="idoc-funnel__row" style="width:${it.value == null ? 100 : Math.max(20, Math.round((it.value / max) * 100))}%"><span>${esc(it.label)}</span>${it.value == null ? '' : `<em>${it.value}</em>`}</div>`).join('')}</div>`; }
-        case 'boxes': return `<div class="idoc-boxes" style="grid-template-columns:repeat(${b.columns ?? 3},1fr)">${b.items.map((it) => `<div class="idoc-box${it.emphasis ? ' idoc-box--emphasis' : ''}"><strong>${esc(it.title)}</strong><div class="idoc-md">${md(it.md)}</div></div>`).join('')}</div>`;
+        case 'boxes': return `<div class="idoc-boxes" style="grid-template-columns:repeat(${b.columns ?? 3},1fr)">${b.items.map((it) => `<div class="idoc-box${it.emphasis ? ' idoc-box--emphasis' : ''}"><strong>${esc(it.title)}</strong><div class="idoc-md">${md(it.md, cardId)}</div></div>`).join('')}</div>`;
         case 'math': return b.inline ? `<code class="idoc-math">${esc(b.latex)}</code>` : `<pre class="idoc-math idoc-math--block">${esc(b.latex)}</pre>`;
         case 'diagram': return `<pre class="idoc-diagram mermaid">${esc(b.mermaid)}</pre>`;
-        case 'qr': return safeUrl(b.url) ? `<figure class="idoc-qr"><img alt="QR code for ${esc(b.url)}" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(b.url)}"/>${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ''}</figure>` : '';
+        case 'qr': {
+            if (!safeUrl(b.url)) return '';
+            // Local SVG first; the remote service is only the fallback when the URL is too long for version 10.
+            const svg = qrSvg(b.url, { title: `QR code for ${b.url}` }) ?? `<img alt="QR code for ${esc(b.url)}" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(b.url)}"/>`;
+            return `<figure class="idoc-qr">${svg}${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ''}</figure>`;
+        }
     }
 }
 
-function cardToHtml(c: Card, doc: IDoc): string {
-    const media = c.headerImage && safeUrl(c.headerImage) ? `<img class="idoc-card-media" src="${safeUrl(c.headerImage)}" alt=""/>` : '';
-    const body = `<div class="idoc-card-body">${c.title ? `<h2 class="idoc-card-title">${esc(c.title)}</h2>` : ''}${c.blocks.map((b) => blockToHtml(b, doc)).join('\n')}</div>`;
-    return `<section id="card-${esc(c.id)}" class="idoc-card idoc-card--${c.layout}">${c.layout === 'split-right' ? body + media : media + body}</section>`;
+function tocList(cards: Card[]): string {
+    return `<ol>${cards.map((c, i) => `<li><a href="#card-${esc(c.id)}">${esc(c.title || `Card ${i + 1}`)}</a>${c.children?.length ? tocList(c.children) : ''}</li>`).join('')}</ol>`;
+}
+
+/** Inline style mirroring IDocRenderer.cardBackgroundStyle (CSS vars consumed by EXPORT_CSS). */
+function cardBgStyle(c: Card): string {
+    const bg = c.background;
+    const parts: string[] = [];
+    if (bg?.color) parts.push(`--idoc-card-bg:${esc(bg.color.replace(/[;{}]/g, ''))}`);
+    const img = bg?.image || (c.layout === 'background' ? c.headerImage : undefined);
+    if (img && safeUrl(img)) {
+        parts.push(`--idoc-card-image:url(&quot;${safeUrl(img)}&quot;)`);
+        parts.push(`--idoc-card-image-pos:${bg?.align === 'top' ? 'top' : bg?.align === 'bottom' ? 'bottom' : 'center'}`);
+    }
+    if (bg?.intensity != null) parts.push(`--idoc-overlay:${Math.max(0, Math.min(100, bg.intensity)) / 100}`);
+    return parts.length ? ` style="${parts.join(';')}"` : '';
+}
+
+function cardToHtml(c: Card, doc: IDoc, index: number, depth = 0): string {
+    const media = c.headerImage && c.layout !== 'background' && safeUrl(c.headerImage) ? `<img class="idoc-card-media" src="${safeUrl(c.headerImage)}" alt=""/>` : '';
+    const children = (c.children ?? []).map((ch, i) => `<details class="idoc-subcard" open><summary>${esc(ch.title || `Section ${i + 1}`)}</summary>${cardToHtml(ch, doc, i, depth + 1)}</details>`).join('\n');
+    const footnotes = c.footnotes?.length ? `<ol class="idoc-footnotes">${c.footnotes.map((f, i) => `<li id="fn-${esc(c.id)}-${i + 1}">${md(f.text)}</li>`).join('')}</ol>` : '';
+    const body = `<div class="idoc-card-body">${c.title ? `<h2 class="idoc-card-title">${esc(c.title)}</h2>` : ''}${c.blocks.map((b) => blockToHtml(b, doc, c.id)).join('\n')}${children}${footnotes}</div>`;
+    const chrome = depth === 0 && !(doc.chrome?.hideOnFirst && index === 0) ? doc.chrome : undefined;
+    const top = chrome && (chrome.header || chrome.logo) ? `<div class="idoc-chrome idoc-chrome--top"><span>${esc(chrome.header || '')}</span>${chrome.logo && safeUrl(chrome.logo) ? `<img class="idoc-chrome-logo" src="${safeUrl(chrome.logo)}" alt=""/>` : ''}</div>` : '';
+    const bottom = chrome && (chrome.footer || chrome.sectionNumbers) ? `<div class="idoc-chrome idoc-chrome--bottom"><span>${esc(chrome.footer || '')}</span>${chrome.sectionNumbers ? `<span class="idoc-chrome-num">${index + 1} / ${doc.cards.length}</span>` : ''}</div>` : '';
+    const hasImage = !!(c.background?.image || (c.layout === 'background' && c.headerImage));
+    const cls = `idoc-card idoc-card--${c.layout}${depth ? ' idoc-card--nested' : ''}${hasImage ? ` idoc-card--has-image idoc-card--overlay-${c.background?.overlay ?? 'faded'}` : ''}${c.background?.color ? ' idoc-card--has-color' : ''}`;
+    return `<section id="card-${esc(c.id)}" class="${cls}"${cardBgStyle(c)}>${top}${c.layout === 'split-right' ? body + media : media + body}${bottom}</section>`;
 }
 
 const EXPORT_CSS = `
@@ -123,7 +175,34 @@ h1,h2,h3,h4{font-family:var(--idoc-heading-font);line-height:1.2;margin:.6em 0 .
 .idoc-toc ol{padding-left:20px}.idoc-toc a{color:var(--idoc-accent)}
 .idoc-chart figcaption{font-weight:600;margin-bottom:6px}
 hr{border:0;border-top:1px solid var(--idoc-border);margin:16px 0}
-@media print{body{background:#fff}.idoc-card{page-break-after:always;break-after:page;box-shadow:none}.idoc-embed{display:none}}
+.idoc-card{position:relative;background:var(--idoc-card-bg,var(--idoc-surface));aspect-ratio:var(--idoc-aspect,auto);overflow:auto}
+.idoc-card--has-image{background-image:var(--idoc-card-image);background-size:cover;background-position:var(--idoc-card-image-pos,center)}
+.idoc-card--has-image>*{position:relative}
+.idoc-card--has-image::before{content:"";position:absolute;inset:0;pointer-events:none;background:color-mix(in srgb,var(--idoc-surface) calc(var(--idoc-overlay,.6)*100%),transparent)}
+.idoc-card--overlay-frosted::before{backdrop-filter:blur(calc(var(--idoc-overlay,.6)*14px))}
+.idoc-card--overlay-clear::before,.idoc-card--overlay-none::before{background:transparent}
+.idoc-card--overlay-clear{color:var(--idoc-text);text-shadow:0 1px 3px var(--idoc-bg)}
+.idoc-card--image-top{padding-top:0}.idoc-card--image-top .idoc-card-media{margin:0 0 16px}
+.idoc-card--background{min-height:320px;display:flex;flex-direction:column;justify-content:center}
+.idoc-card--nested{margin:0;border:0;padding:8px 0 0}
+.idoc-subcard{border:1px solid var(--idoc-border);border-radius:8px;padding:8px 14px;margin:12px 0}.idoc-subcard>summary{cursor:pointer;font-weight:600;font-family:var(--idoc-heading-font)}
+.idoc-footnotes{margin:18px 0 0;padding:10px 0 0 22px;border-top:1px solid var(--idoc-border);font-size:.85em;color:var(--idoc-muted)}
+.idoc-fnref{font-size:.75em;line-height:0}.idoc-fnref a{color:var(--idoc-accent);text-decoration:none}
+.idoc-chrome{display:flex;justify-content:space-between;align-items:center;font-size:.8em;color:var(--idoc-muted)}
+.idoc-chrome--top{margin:-12px 0 12px}.idoc-chrome--bottom{margin:16px 0 -12px}.idoc-chrome-logo{height:22px;width:auto}
+.idoc-steps{list-style:none;padding:0;margin:12px 0}.idoc-steps li{display:flex;gap:14px;position:relative;padding:0 0 18px}
+.idoc-steps li::before{content:"";position:absolute;left:13px;top:28px;bottom:0;width:2px;background:var(--idoc-border)}.idoc-steps li:last-child::before{display:none}
+.idoc-step-marker{flex:none;width:28px;height:28px;border-radius:50%;background:var(--idoc-accent);color:var(--idoc-bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85em}
+.idoc-steps--plain .idoc-step-marker{width:12px;height:12px;margin:8px 8px 0}.idoc-steps--plain li::before{left:13px}
+.idoc-funnel{display:flex;flex-direction:column;align-items:center;gap:6px;margin:12px 0}
+.idoc-funnel__row{display:flex;justify-content:space-between;gap:12px;padding:8px 14px;border-radius:6px;background:var(--idoc-accent);color:var(--idoc-bg);font-weight:600;min-width:20%}
+.idoc-funnel__row:nth-child(2n){opacity:.85}.idoc-funnel__row em{font-style:normal;opacity:.85}
+.idoc-boxes{display:grid;gap:12px;margin:12px 0}.idoc-box{border:1px solid var(--idoc-border);border-radius:8px;padding:12px 14px;background:color-mix(in srgb,var(--idoc-text) 3%,transparent)}
+.idoc-box--emphasis{border-color:var(--idoc-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--idoc-accent) 30%,transparent);background:color-mix(in srgb,var(--idoc-accent) 10%,transparent)}
+.idoc-math{font-family:ui-monospace,monospace}.idoc-math--block{text-align:center;padding:10px;overflow:auto}
+.idoc-diagram{white-space:pre;overflow:auto;background:color-mix(in srgb,var(--idoc-text) 6%,transparent);padding:12px;border-radius:6px}
+.idoc-qr{margin:12px 0;text-align:center}.idoc-qr svg,.idoc-qr img{width:200px;height:200px}.idoc-qr figcaption{color:var(--idoc-muted);font-size:.85em}
+@media print{body{background:#fff}.idoc-card{page-break-after:always;break-after:page;box-shadow:none}.idoc-embed{display:none}.idoc-card--overlay-frosted::before{backdrop-filter:none}}
 `;
 
 /** Standalone HTML document — no scripts, inline CSS, theme vars on :root. */
@@ -131,20 +210,22 @@ export function exportHtml(doc: IDoc): string {
     const theme = themeById(doc.theme);
     // `inherit` references app tokens that don't exist outside the app — fall back to paper for the export.
     const vars = theme.id === 'inherit' ? themeById('paper').vars : theme.vars;
-    const rootVars = Object.entries(vars).map(([k, v]) => `${k}:${v}`).join(';');
+    const pageSize = doc.pageSize ?? 'fluid';
+    const rootVars = Object.entries({ ...vars, '--idoc-aspect': PAGE_ASPECT[pageSize] }).map(([k, v]) => `${k}:${v}`).join(';');
+    const pageCss = PAGE_PRINT_SIZE[pageSize] ? `@media print{@page{size:${PAGE_PRINT_SIZE[pageSize]}}}` : '';
     return `<!doctype html>
-<html lang="en">
+<html lang="${esc(doc.language || 'en')}"${doc.dir ? ` dir="${esc(doc.dir)}"` : ''}>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${esc(doc.title)}</title>
-<style>:root{${rootVars}}${EXPORT_CSS}</style>
+<style>:root{${rootVars}}${EXPORT_CSS}${pageCss}</style>
 </head>
 <body>
 <main class="idoc-wrap">
 <h1 class="idoc-title">${esc(doc.title)}</h1>
 ${doc.description ? `<p class="idoc-desc">${esc(doc.description)}</p>` : ''}
-${doc.cards.map((c) => cardToHtml(c, doc)).join('\n')}
+${doc.cards.map((c, i) => cardToHtml(c, doc, i)).join('\n')}
 </main>
 </body>
 </html>`;
@@ -164,12 +245,12 @@ function blockToMd(b: Block, doc: IDoc): string {
         case 'accordion': return b.items.map((it) => `<details><summary>${it.title}</summary>\n\n${it.md}\n\n</details>`).join('\n\n');
         case 'tabs': return b.items.map((it) => `#### ${it.title}\n\n${it.md}`).join('\n\n');
         case 'columns': return b.columns.join('\n\n');
-        case 'button': return `[${b.label}](${b.href})`;
+        case 'button': { const cid = cardLinkId(b.href); return `[${b.label}](${cid ? `#card-${cid}` : b.href})`; }
         case 'code': return `\`\`\`${b.lang}\n${b.code}\n\`\`\``;
         case 'divider': return '---';
         case 'timeline': return b.items.map((it) => `- **${it.date}** — ${it.title}${it.md ? `\n  ${it.md.replace(/\n/g, '\n  ')}` : ''}`).join('\n');
         case 'quiz': return `**${b.question}**\n\n${b.options.map((o, i) => `${i + 1}. ${o}`).join('\n')}\n\n<details><summary>Answer</summary>${b.options[b.answerIndex] ?? ''}${b.explanation ? ` — ${b.explanation}` : ''}</details>`;
-        case 'toc': return doc.cards.map((c, i) => `${i + 1}. ${c.title || `Card ${i + 1}`}`).join('\n');
+        case 'toc': return tocMd(doc.cards);
         case 'steps': return b.items.map((it, i) => `${b.numbered === false ? '-' : `${i + 1}.`} **${it.title}**${it.md ? ` — ${it.md}` : ''}`).join('\n');
         case 'funnel': return b.items.map((it) => `- ${it.label}${it.value == null ? '' : `: ${it.value}`}`).join('\n');
         case 'boxes': return b.items.map((it) => `**${it.title}**${it.md ? `\n${it.md}` : ''}`).join('\n\n');
@@ -179,14 +260,22 @@ function blockToMd(b: Block, doc: IDoc): string {
     }
 }
 
+function tocMd(cards: Card[], indent = ''): string {
+    return cards.map((c, i) => `${indent}${i + 1}. ${c.title || `Card ${i + 1}`}${c.children?.length ? `\n${tocMd(c.children, `${indent}   `)}` : ''}`).join('\n');
+}
+
+function cardToMd(c: Card, doc: IDoc, parts: string[], depth: number): void {
+    parts.push(`\n${'#'.repeat(Math.min(6, depth + 2))} ${c.title || (depth ? 'Section' : 'Card')}`);
+    if (c.headerImage) parts.push(`![](${c.headerImage})`);
+    for (const b of c.blocks) { const s = blockToMd(b, doc); if (s) parts.push(s); }
+    for (const ch of c.children ?? []) cardToMd(ch, doc, parts, depth + 1);
+    if (c.footnotes?.length) parts.push(c.footnotes.map((f, i) => `[^${i + 1}]: ${f.text}`).join('\n'));
+}
+
 export function exportMarkdown(doc: IDoc): string {
     const parts = [`# ${doc.title}`];
     if (doc.description) parts.push(doc.description);
-    for (const c of doc.cards) {
-        parts.push(`\n## ${c.title || 'Card'}`);
-        if (c.headerImage) parts.push(`![](${c.headerImage})`);
-        for (const b of c.blocks) { const s = blockToMd(b, doc); if (s) parts.push(s); }
-    }
+    for (const c of doc.cards) cardToMd(c, doc, parts, 0);
     return parts.join('\n\n').trim() + '\n';
 }
 

@@ -80,6 +80,91 @@ describe('exportMarkdown', () => {
     });
 });
 
+function wave1(): IDoc {
+    return createEmptyDoc({
+        title: 'W1',
+        theme: 'graphite',
+        pageSize: 'a4',
+        language: 'de',
+        dir: 'rtl',
+        chrome: { header: 'Head', footer: 'Foot', logo: 'https://img.example/logo.png', sectionNumbers: true, hideOnFirst: true },
+        cards: [
+            { id: 'c1', title: 'One', layout: 'background', headerImage: 'https://img.example/bg.jpg', background: { overlay: 'frosted', intensity: 30, align: 'bottom' }, blocks: [
+                { id: 'b1', type: 'text', md: 'Note here[^1] and[^2]' },
+                { id: 'b2', type: 'button', label: 'Jump', href: '#card:c2', variant: 'secondary' },
+                { id: 'b3', type: 'toc' },
+            ], footnotes: [{ id: 'f1', text: 'first' }, { id: 'f2', text: 'second' }] },
+            { id: 'c2', title: 'Two', layout: 'image-top', headerImage: 'https://img.example/top.jpg', background: { color: '#abcdef' }, blocks: [
+                { id: 'b4', type: 'steps', items: [{ title: 'S1', md: 'go' }] },
+                { id: 'b5', type: 'funnel', items: [{ label: 'Top', value: 10 }, { label: 'Bottom', value: 5 }] },
+                { id: 'b6', type: 'boxes', columns: 4, items: [{ title: 'Box', md: 'x', emphasis: true }] },
+                { id: 'b7', type: 'math', latex: 'a^2', inline: true },
+                { id: 'b8', type: 'diagram', mermaid: 'graph TD; A-->B' },
+                { id: 'b9', type: 'qr', url: 'https://example.com/x', caption: 'cap' },
+                { id: 'b10', type: 'chart', kind: 'donut', data: [{ label: 'a', value: 1 }, { label: 'b', value: 3 }] },
+                { id: 'b11', type: 'chart', kind: 'area', data: [{ label: 'a', value: 1 }, { label: 'b', value: 3 }] },
+            ], children: [
+                { id: 'c2a', title: 'Nested A', layout: 'default', blocks: [{ id: 'b12', type: 'text', md: 'inner text' }], children: [
+                    { id: 'c2aa', title: 'Deeper', layout: 'default', blocks: [{ id: 'b13', type: 'text', md: 'deepest' }] },
+                ] },
+            ] },
+        ],
+    });
+}
+
+describe('exportHtml — wave 1', () => {
+    const html = exportHtml(wave1());
+    it('still has no scripts; carries lang/dir, page-size aspect var and @page size', () => {
+        expect(html).not.toMatch(/<script/i);
+        expect(html).toContain('<html lang="de" dir="rtl">');
+        expect(html).toContain('--idoc-aspect:210 / 297');
+        expect(html).toContain('@media print{@page{size:A4}}');
+    });
+    it('mirrors backgrounds + layouts via inline style vars and classes', () => {
+        expect(html).toMatch(/<section id="card-c1" class="idoc-card idoc-card--background idoc-card--has-image idoc-card--overlay-frosted" style="--idoc-card-image:url\(&quot;https:\/\/img\.example\/bg\.jpg&quot;\);--idoc-card-image-pos:bottom;--idoc-overlay:0\.3"/);
+        expect(html).toMatch(/<section id="card-c2" class="idoc-card idoc-card--image-top idoc-card--has-color" style="--idoc-card-bg:#abcdef"/);
+        expect(html).toContain('<img class="idoc-card-media" src="https://img.example/top.jpg"');
+    });
+    it('renders chrome (hidden on first card), nested cards as <details>, footnotes + refs, toc with children', () => {
+        const c1 = html.slice(html.indexOf('id="card-c1"'), html.indexOf('id="card-c2"'));
+        const c2 = html.slice(html.indexOf('id="card-c2"'));
+        expect(c1).not.toContain('idoc-chrome');
+        expect(c2).toContain('<div class="idoc-chrome idoc-chrome--top"><span>Head</span><img class="idoc-chrome-logo" src="https://img.example/logo.png" alt=""/></div>');
+        expect(c2).toContain('<span>Foot</span><span class="idoc-chrome-num">2 / 2</span>');
+        expect(c2).toContain('<details class="idoc-subcard" open><summary>Nested A</summary><section id="card-c2a" class="idoc-card idoc-card--default idoc-card--nested">');
+        expect(c2).toContain('<summary>Deeper</summary>');
+        expect(c2).toContain('deepest');
+        expect(c1).toContain('<sup class="idoc-fnref"><a href="#fn-c1-1">1</a></sup>');
+        expect(c1).toContain('<ol class="idoc-footnotes"><li id="fn-c1-1">');
+        expect(c1).toContain('second');
+        expect(c1).toContain('<li><a href="#card-c2">Two</a><ol><li><a href="#card-c2a">Nested A</a><ol><li><a href="#card-c2aa">Deeper</a></li></ol></li></ol></li>');
+    });
+    it('exports the new blocks + donut/area + card-link anchors + local QR svg', () => {
+        expect(html).toContain('<a class="idoc-btn idoc-btn--secondary" href="#card-c2">Jump</a>');
+        expect(html).toContain('<ol class="idoc-steps"><li><span class="idoc-step-marker">1</span>');
+        expect(html).toContain('<div class="idoc-funnel__row" style="width:50%"><span>Bottom</span><em>5</em></div>');
+        expect(html).toContain('<div class="idoc-boxes" style="grid-template-columns:repeat(4,1fr)"><div class="idoc-box idoc-box--emphasis">');
+        expect(html).toContain('<code class="idoc-math">a^2</code>');
+        expect(html).toContain('<pre class="idoc-diagram mermaid">graph TD; A--&gt;B</pre>');
+        expect(html).toContain('<figure class="idoc-qr"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33"');
+        expect(html).not.toContain('api.qrserver.com');
+        expect(html).toContain('aria-label="Donut chart"');
+        expect(html).toContain('aria-label="Area chart"');
+    });
+});
+
+describe('exportMarkdown — wave 1', () => {
+    const md = exportMarkdown(wave1());
+    it('nests children as deeper headings, emits footnote definitions and card-link anchors', () => {
+        expect(md).toContain('## Two');
+        expect(md).toContain('### Nested A');
+        expect(md).toContain('#### Deeper');
+        expect(md).toContain('[^1]: first\n[^2]: second');
+        expect(md).toContain('[Jump](#card-c2)');
+        expect(md).toContain('1. One\n2. Two\n   1. Nested A\n      1. Deeper');
+    });
+});
+
 describe('safeFilename', () => {
     it('slugs', () => {
         expect(safeFilename('My Doc: v2 / final!')).toBe('my-doc-v2-final');

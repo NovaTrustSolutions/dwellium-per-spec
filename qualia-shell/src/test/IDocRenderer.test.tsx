@@ -70,6 +70,48 @@ describe('IDocRenderer scroll mode', () => {
     });
 });
 
+describe('IDocRenderer wave 1 smoke', () => {
+    it('renders nested cards + card-link + funnel/steps/boxes/math/qr + donut/area without the extra suite', () => {
+        const doc = createEmptyDoc({ cards: [
+            { id: 'p', title: 'Parent', layout: 'default', blocks: [
+                { id: 'x1', type: 'button', label: 'To child', href: '#card:k', variant: 'primary' },
+                { id: 'x2', type: 'funnel', items: [{ label: 'a', value: 2 }, { label: 'b', value: 1 }] },
+                { id: 'x3', type: 'steps', numbered: false, items: [{ title: 'one', md: '' }] },
+                { id: 'x4', type: 'boxes', items: [{ title: 'bx', md: '', emphasis: true }] },
+                { id: 'x5', type: 'math', latex: 'x', inline: true },
+                { id: 'x6', type: 'qr', url: 'https://a.b' },
+                { id: 'x7', type: 'chart', kind: 'donut', data: [{ label: 'a', value: 1 }] },
+                { id: 'x8', type: 'chart', kind: 'area', data: [{ label: 'a', value: 1 }] },
+            ], children: [{ id: 'k', title: 'Kid', layout: 'default', blocks: [{ id: 'x9', type: 'text', md: 'kid body' }] }] },
+        ] });
+        render(<IDocRenderer doc={doc} />);
+        const details = document.querySelector('details.scribe-idocs__subcard')!;
+        expect(details.hasAttribute('open')).toBe(true);
+        expect(screen.getByText('kid body')).toBeInTheDocument();
+        fireEvent.click(details.querySelector('summary')!);
+        expect(details.hasAttribute('open')).toBe(false);
+        expect(screen.getByRole('button', { name: 'To child' }).tagName).toBe('BUTTON');
+        expect((document.querySelector('.scribe-idocs__funnel-row') as HTMLElement).style.width).toBe('100%');
+        expect(document.querySelector('.scribe-idocs__steps--plain')).not.toBeNull();
+        expect(document.querySelector('.scribe-idocs__box--emphasis')).toHaveTextContent('bx');
+        expect(document.querySelector('.scribe-idocs__math--inline')).toHaveTextContent('$x$');
+        expect(document.querySelector('.scribe-idocs__qr svg')).not.toBeNull();
+        expect(document.querySelectorAll('figure.scribe-idocs__chart').length).toBe(2);
+    });
+    it('present: S toggles spotlight and ArrowDown reveals the next block', () => {
+        render(<IDocRenderer doc={fixture()} mode="present" />);
+        fireEvent.keyDown(window, { key: 'S' });
+        let slots = document.querySelectorAll('.scribe-idocs__blockslot');
+        expect(slots.length).toBe(9);
+        expect(slots[1].className).toContain('is-dimmed');
+        fireEvent.keyDown(window, { key: 'ArrowDown' });
+        slots = document.querySelectorAll('.scribe-idocs__blockslot');
+        expect(slots[1].className).not.toContain('is-dimmed');
+        fireEvent.keyDown(window, { key: 'S' });
+        expect(document.querySelectorAll('.scribe-idocs__blockslot').length).toBe(0);
+    });
+});
+
 describe('IDocRenderer present mode', () => {
     it('present-mode Escape does NOT reach bubble-phase window listeners (Desktop closes the top window on Esc)', () => {
         const desktopEsc = vi.fn();

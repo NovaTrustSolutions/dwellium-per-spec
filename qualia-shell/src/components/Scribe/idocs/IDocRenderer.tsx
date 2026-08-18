@@ -60,16 +60,21 @@ export default function IDocRenderer(props: IDocRendererProps) {
         else document.getElementById(`idoc-card-${cardId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, [doc.cards, mode, setIdx]);
 
-    // Present-mode keyboard: ← → Esc.
+    // Present-mode keyboard: ← → Esc. Registered in the CAPTURE phase and
+    // stopping propagation, because Desktop.tsx has a window-level "Esc closes
+    // the top window" shortcut — without this, exiting a presentation with Esc
+    // would also close the whole Scribe window (found in the live pass).
     useEffect(() => {
         if (mode !== 'present') return;
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); setIdx(idx + 1); }
-            else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); setIdx(idx - 1); }
-            else if (e.key === 'Escape') { onExit?.(); }
+            const t = e.target as HTMLElement | null;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+            if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIdx(idx + 1); }
+            else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); e.stopPropagation(); setIdx(idx - 1); }
+            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onExit?.(); }
         };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
+        window.addEventListener('keydown', onKey, { capture: true });
+        return () => window.removeEventListener('keydown', onKey, { capture: true });
     }, [mode, idx, setIdx, onExit]);
 
     useEffect(() => {

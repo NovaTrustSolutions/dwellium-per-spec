@@ -10,7 +10,7 @@
  */
 
 export type BlockTone = 'info' | 'success' | 'warning' | 'danger';
-export type ChartKind = 'bar' | 'line' | 'pie';
+export type ChartKind = 'bar' | 'line' | 'pie' | 'donut' | 'area';
 
 export type Block =
     | { id: string; type: 'heading'; level: 1 | 2 | 3; text: string }
@@ -30,20 +30,40 @@ export type Block =
     | { id: string; type: 'divider' }
     | { id: string; type: 'timeline'; items: { date: string; title: string; md: string }[] }
     | { id: string; type: 'quiz'; question: string; options: string[]; answerIndex: number; explanation?: string }
-    | { id: string; type: 'toc' };
+    | { id: string; type: 'toc' }
+    // ── Wave 1 (Gamma "smart layout" family) ──
+    | { id: string; type: 'steps'; items: { title: string; md: string }[]; numbered?: boolean }
+    | { id: string; type: 'funnel'; items: { label: string; value?: number }[] }
+    | { id: string; type: 'boxes'; items: { title: string; md: string; emphasis?: boolean }[]; columns?: 2 | 3 | 4 }
+    | { id: string; type: 'math'; latex: string; inline?: boolean }
+    | { id: string; type: 'diagram'; mermaid: string }
+    | { id: string; type: 'qr'; url: string; caption?: string };
 
 export type BlockType = Block['type'];
 
 export const BLOCK_TYPES: readonly BlockType[] = [
     'heading', 'text', 'callout', 'quote', 'image', 'gallery', 'embed', 'chart', 'table',
     'accordion', 'tabs', 'columns', 'button', 'code', 'divider', 'timeline', 'quiz', 'toc',
+    'steps', 'funnel', 'boxes', 'math', 'diagram', 'qr',
 ] as const;
 
 /** Block types whose primary content is markdown (eligible for per-block AI rewrite). */
 export const MD_BLOCK_TYPES: readonly BlockType[] = ['text', 'callout', 'quote'] as const;
 
-export type CardLayout = 'default' | 'split-left' | 'split-right' | 'hero';
-export const CARD_LAYOUTS: readonly CardLayout[] = ['default', 'split-left', 'split-right', 'hero'] as const;
+export type CardLayout = 'default' | 'split-left' | 'split-right' | 'hero' | 'image-top' | 'background';
+export const CARD_LAYOUTS: readonly CardLayout[] = ['default', 'split-left', 'split-right', 'hero', 'image-top', 'background'] as const;
+
+/** Wave 1: per-card background (Gamma: color / image / overlay 0–100 / v-align). */
+export interface CardBackground {
+    color?: string;
+    image?: string;
+    overlay?: 'none' | 'frosted' | 'faded' | 'clear';
+    intensity?: number; // 0–100
+    align?: 'top' | 'center' | 'bottom';
+}
+
+/** Wave 1: footnotes render at card bottom; referenced from md via [^n]. */
+export interface Footnote { id: string; text: string }
 
 export interface Card {
     id: string;
@@ -52,6 +72,12 @@ export interface Card {
     /** Used by hero + split layouts (split puts it beside the blocks). */
     headerImage?: string;
     blocks: Block[];
+    /** Wave 1: nested cards (expand/collapse in render; outline shows them indented). */
+    children?: Card[];
+    background?: CardBackground;
+    footnotes?: Footnote[];
+    /** Presenter notes (not rendered in the doc; shown in presenter view / export as comments). */
+    notes?: string;
     // ponytail: no nested cards in v1 — add `children?: Card[]` + recursive renderer when needed.
 }
 
@@ -73,6 +99,12 @@ export interface IDoc {
     createdAt: string;
     updatedAt: string;
     analytics: IDocAnalytics;
+    /** Wave 1 */
+    pageSize?: 'fluid' | '16:9' | '4:3' | '1:1' | 'a4' | 'letter';
+    chrome?: { header?: string; footer?: string; logo?: string; sectionNumbers?: boolean; hideOnFirst?: boolean };
+    isTemplate?: boolean;
+    language?: string;
+    dir?: 'ltr' | 'rtl';
 }
 
 /** CSS custom properties applied on the doc root via inline style. */
@@ -206,5 +238,11 @@ export function defaultBlock(type: BlockType): Block {
         case 'timeline': return { id, type, items: [{ date: '2026', title: 'Milestone', md: 'What happened.' }] };
         case 'quiz': return { id, type, question: 'Question?', options: ['Option A', 'Option B'], answerIndex: 0, explanation: '' };
         case 'toc': return { id, type };
+        case 'steps': return { id, type, numbered: true, items: [{ title: 'Step 1', md: 'First…' }, { title: 'Step 2', md: 'Then…' }, { title: 'Step 3', md: 'Finally…' }] };
+        case 'funnel': return { id, type, items: [{ label: 'Awareness', value: 100 }, { label: 'Interest', value: 60 }, { label: 'Decision', value: 25 }] };
+        case 'boxes': return { id, type, columns: 3, items: [{ title: 'One', md: '' }, { title: 'Two', md: '' }, { title: 'Three', md: '' }] };
+        case 'math': return { id, type, latex: 'E = mc^2', inline: false };
+        case 'diagram': return { id, type, mermaid: 'flowchart LR\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Done]\n  B -->|No| A' };
+        case 'qr': return { id, type, url: 'https://', caption: '' };
     }
 }

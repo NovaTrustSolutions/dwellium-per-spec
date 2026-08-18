@@ -129,6 +129,12 @@ export function normalizeBlock(raw: unknown): Block {
             return { id, type, question: str(r.question, 'Question?'), options, answerIndex, explanation: r.explanation == null ? undefined : str(r.explanation) };
         }
         case 'toc': return { id, type };
+        case 'steps': return { id, type, numbered: r.numbered !== false, items: arr(r.items ?? r.steps, (x) => { const i = rec(x); return { title: str(i.title ?? i.label, 'Step'), md: str(i.md ?? i.text ?? i.description) }; }) };
+        case 'funnel': return { id, type, items: arr(r.items ?? r.stages, (x) => { const i = rec(x); return { label: str(i.label ?? i.title, 'Stage'), value: i.value == null ? undefined : num(i.value) }; }) };
+        case 'boxes': { const cols = num(r.columns, 3); return { id, type, columns: (cols === 2 || cols === 4 ? cols : 3) as 2 | 3 | 4, items: arr(r.items ?? r.boxes, (x) => { const i = rec(x); return { title: str(i.title ?? i.label, 'Box'), md: str(i.md ?? i.text ?? i.description), emphasis: i.emphasis === true }; }) }; }
+        case 'math': return { id, type, latex: str(r.latex ?? r.tex ?? r.text), inline: r.inline === true };
+        case 'diagram': return { id, type, mermaid: str(r.mermaid ?? r.code ?? r.text) };
+        case 'qr': return { id, type, url: str(r.url ?? r.href), caption: r.caption == null ? undefined : str(r.caption) };
     }
 }
 

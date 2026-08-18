@@ -81,6 +81,12 @@ export function blockToHtml(b: Block, doc: IDoc): string {
         case 'timeline': return `<ol class="idoc-timeline">${b.items.map((it) => `<li><span class="idoc-tl-date">${esc(it.date)}</span><div><strong>${esc(it.title)}</strong><div class="idoc-md">${md(it.md)}</div></div></li>`).join('')}</ol>`;
         case 'quiz': return `<div class="idoc-quiz"><p><strong>${esc(b.question)}</strong></p><ol type="A">${b.options.map((o) => `<li>${esc(o)}</li>`).join('')}</ol><details><summary>Show answer</summary><p>Answer: <strong>${esc(b.options[b.answerIndex] ?? '')}</strong>${b.explanation ? ` — ${esc(b.explanation)}` : ''}</p></details></div>`;
         case 'toc': return `<nav class="idoc-toc"><ol>${doc.cards.map((c, i) => `<li><a href="#card-${esc(c.id)}">${esc(c.title || `Card ${i + 1}`)}</a></li>`).join('')}</ol></nav>`;
+        case 'steps': return `<ol class="idoc-steps${b.numbered === false ? ' idoc-steps--plain' : ''}">${b.items.map((it) => `<li><strong>${esc(it.title)}</strong><div class="idoc-md">${md(it.md)}</div></li>`).join('')}</ol>`;
+        case 'funnel': { const max = Math.max(1, ...b.items.map((it) => it.value ?? 0)); return `<div class="idoc-funnel">${b.items.map((it) => `<div class="idoc-funnel__row" style="width:${it.value == null ? 100 : Math.max(20, Math.round((it.value / max) * 100))}%"><span>${esc(it.label)}</span>${it.value == null ? '' : `<em>${it.value}</em>`}</div>`).join('')}</div>`; }
+        case 'boxes': return `<div class="idoc-boxes" style="grid-template-columns:repeat(${b.columns ?? 3},1fr)">${b.items.map((it) => `<div class="idoc-box${it.emphasis ? ' idoc-box--emphasis' : ''}"><strong>${esc(it.title)}</strong><div class="idoc-md">${md(it.md)}</div></div>`).join('')}</div>`;
+        case 'math': return b.inline ? `<code class="idoc-math">${esc(b.latex)}</code>` : `<pre class="idoc-math idoc-math--block">${esc(b.latex)}</pre>`;
+        case 'diagram': return `<pre class="idoc-diagram mermaid">${esc(b.mermaid)}</pre>`;
+        case 'qr': return safeUrl(b.url) ? `<figure class="idoc-qr"><img alt="QR code for ${esc(b.url)}" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(b.url)}"/>${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ''}</figure>` : '';
     }
 }
 
@@ -164,6 +170,12 @@ function blockToMd(b: Block, doc: IDoc): string {
         case 'timeline': return b.items.map((it) => `- **${it.date}** — ${it.title}${it.md ? `\n  ${it.md.replace(/\n/g, '\n  ')}` : ''}`).join('\n');
         case 'quiz': return `**${b.question}**\n\n${b.options.map((o, i) => `${i + 1}. ${o}`).join('\n')}\n\n<details><summary>Answer</summary>${b.options[b.answerIndex] ?? ''}${b.explanation ? ` — ${b.explanation}` : ''}</details>`;
         case 'toc': return doc.cards.map((c, i) => `${i + 1}. ${c.title || `Card ${i + 1}`}`).join('\n');
+        case 'steps': return b.items.map((it, i) => `${b.numbered === false ? '-' : `${i + 1}.`} **${it.title}**${it.md ? ` — ${it.md}` : ''}`).join('\n');
+        case 'funnel': return b.items.map((it) => `- ${it.label}${it.value == null ? '' : `: ${it.value}`}`).join('\n');
+        case 'boxes': return b.items.map((it) => `**${it.title}**${it.md ? `\n${it.md}` : ''}`).join('\n\n');
+        case 'math': return b.inline ? `$${b.latex}$` : `$$\n${b.latex}\n$$`;
+        case 'diagram': return `\`\`\`mermaid\n${b.mermaid}\n\`\`\``;
+        case 'qr': return `[QR: ${b.url}](${b.url})${b.caption ? ` — ${b.caption}` : ''}`;
     }
 }
 

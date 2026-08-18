@@ -26,7 +26,10 @@ const DEFAULT_SETTINGS: LayoutSettings = {
     snapToWindows: true,
     showSnapGuides: true,
     regionsEnabled: true,
-    regionLayout: 'halves-h',
+    // Plan 045 B1: no auto-tiling by default — new windows float freely.
+    // Regions stay enabled so drag-to-region + Settings → Regions still work.
+    // Existing users keep their persisted regionLayout (no migration).
+    regionLayout: 'none',
 };
 
 // ============================================

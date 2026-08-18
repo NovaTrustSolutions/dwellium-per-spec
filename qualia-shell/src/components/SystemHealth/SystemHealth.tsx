@@ -63,7 +63,7 @@ export default function SystemHealth() {
                             ? 'Checking AI services…'
                             : summary.allReady
                                 ? `All ${summary.total} AI services ready`
-                                : `${summary.ok + summary.degraded} of ${summary.total} ready · ${summary.down} need attention`}
+                                : `${summary.ok + summary.degraded} of ${summary.total} ready · ${summary.down} need${summary.down === 1 ? 's' : ''} setup`}
                     </p>
                 </div>
                 <button className="sysh-recheck" onClick={() => recheck()} disabled={checking}>

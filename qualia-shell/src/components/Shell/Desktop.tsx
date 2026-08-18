@@ -14,7 +14,6 @@ import Window from '../Window/Window';
 
 // Widget Registry — single source of truth for all widget components
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
-import { HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE, HONCHO_COMPONENT, shouldAutoOpenHoncho } from './honchoAutoOpen';
 import { DEFAULT_STACK_KEY, DEFAULT_STACK_DONE, DEFAULT_STARTUP_STACK, shouldOpenDefaultStack } from './defaultStack';
 import { applySpaceBus, type ApplySpacePayload } from '../../lib/busChannels';
 import HalocronBoot from './HalocronBoot';
@@ -658,19 +657,6 @@ export default function Desktop() {
         return () => window.removeEventListener('qualia-open-widget', handleOpenWidget);
     }, [openWindow]);
 
-    // ── Honcho "always-on by default" one-time auto-open (Cycle 8, D-5) ──
-    // Opens the standalone Honcho widget once on the first ready Desktop, then
-    // records a localStorage flag so it never reopens against a user who closed
-    // it. SSR-safe: localStorage is touched only here, inside an effect.
-    useEffect(() => {
-        try {
-            if (shouldAutoOpenHoncho(localStorage.getItem(HONCHO_AUTO_OPEN_KEY))) {
-                localStorage.setItem(HONCHO_AUTO_OPEN_KEY, HONCHO_AUTO_OPEN_DONE);
-                openWindow(HONCHO_COMPONENT, 'Honcho', 'brain-circuit');
-            }
-        } catch { /* sandboxed / disabled storage — skip auto-open */ }
-    }, [openWindow]);
-
     // ── Default startup stack (Ilya 2026-06-11) ──
     // First launch with an empty canvas → open the pinned One-Front-Door set
     // tiled as the default workspace (apply-space handler does the tiling).
@@ -1295,17 +1281,18 @@ export default function Desktop() {
                     <div
                         key={'tabs-' + region.id}
                         data-region-id={region.id}
+                        className="region-tabs"
                         onDragOver={e => {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'move';
                             (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--accent) 15%, transparent)';
                         }}
                         onDragLeave={e => {
-                            (e.currentTarget as HTMLElement).style.background = 'rgba(15,17,23,0.92)';
+                            (e.currentTarget as HTMLElement).style.background = '';
                         }}
                         onDrop={e => {
                             e.preventDefault();
-                            (e.currentTarget as HTMLElement).style.background = 'rgba(15,17,23,0.92)';
+                            (e.currentTarget as HTMLElement).style.background = '';
                             const draggedWindowId = e.dataTransfer.getData('text/tab-window-id');
                             const sourceRegionId = e.dataTransfer.getData('text/tab-source-region');
                             if (!draggedWindowId) return;
@@ -1331,14 +1318,7 @@ export default function Desktop() {
                             manuallyFreedRef.current.delete(draggedWindowId); // re-docked into a region
                             moveTabToRegion(draggedWindowId, region.id, insertIdx);
                         }}
-                        style={{
-                            position: 'absolute', left: region.x, top: region.y,
-                            width: region.w, height: 30, zIndex: (maxZ * 10) + 1,
-                            display: 'flex', gap: 0,
-                            background: 'rgba(15,17,23,0.92)', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                            backdropFilter: 'blur(10px)',
-                            transition: 'background 0.15s ease',
-                        }}
+                        style={{ left: region.x, top: region.y, width: region.w, zIndex: (maxZ * 10) + 1 }}
                     >
                         {ids.map((wid, idx) => {
                             const win = windows.find(w => w.id === wid);
@@ -1406,24 +1386,15 @@ export default function Desktop() {
                                         moveTabToRegion(draggedWid, region.id, targetIdx);
                                     }}
                                     onClick={() => setActiveRegionTab(region.id, wid)}
-                                    style={{
-                                        flex: '0 1 auto', maxWidth: 160, padding: '4px 10px 4px 14px', fontSize: 11,
-                                        fontWeight: isActive ? 600 : 400, cursor: 'grab',
-                                        background: isActive ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
-                                        border: 'none', borderBottom: isActive ? '2px solid #818cf8' : '2px solid transparent',
-                                        color: isActive ? '#e2e8f0' : '#64748b',
-                                        display: 'flex', alignItems: 'center', gap: 5,
-                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                        transition: 'all 0.15s ease',
-                                        fontFamily: 'inherit',
-                                    }}
+                                    className={`region-tabs__tab${isActive ? ' region-tabs__tab--active' : ''}`}
                                 >
-                                    <span style={{ fontSize: 13, flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>{(() => { const Icon = getIcon(win.icon); return Icon ? <Icon size={14} strokeWidth={1.75} /> : win.icon; })()}</span>
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{win.title}</span>
+                                    <span className="region-tabs__icon">{(() => { const Icon = getIcon(win.icon); return Icon ? <Icon size={14} strokeWidth={1.75} /> : win.icon; })()}</span>
+                                    <span className="region-tabs__title">{win.title}</span>
                                     {/* × Close button inside the tab */}
                                     <span
                                         role="button"
                                         aria-label={`Close ${win.title}`}
+                                        className="region-tabs__close"
                                         onClick={e => {
                                             e.stopPropagation();
                                             // Browser behavior: closing a tab reveals the one behind it.
@@ -1431,24 +1402,6 @@ export default function Desktop() {
                                             // next tab takes the active (index-0) slot, then close it.
                                             clearWindowRegion(win.id);
                                             closeWindow(win.id);
-                                        }}
-                                        style={{
-                                            flexShrink: 0, marginLeft: 2,
-                                            width: 14, height: 14,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            borderRadius: '50%',
-                                            fontSize: 10, lineHeight: 1,
-                                            color: isActive ? '#94a3b8' : '#475569',
-                                            transition: 'all 0.12s ease',
-                                            cursor: 'pointer',
-                                        }}
-                                        onMouseEnter={e => {
-                                            (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.2)';
-                                            (e.currentTarget as HTMLElement).style.color = '#ef4444';
-                                        }}
-                                        onMouseLeave={e => {
-                                            (e.currentTarget as HTMLElement).style.background = '';
-                                            (e.currentTarget as HTMLElement).style.color = isActive ? '#94a3b8' : '#475569';
                                         }}
                                     >
                                         ×
@@ -1562,8 +1515,8 @@ export default function Desktop() {
                                         flex: '0 1 auto', maxWidth: 160, padding: '4px 10px', fontSize: 11,
                                         fontWeight: isActive ? 600 : 400, cursor: 'grab',
                                         background: isActive ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
-                                        border: 'none', borderBottom: isActive ? '2px solid var(--accent, #818cf8)' : '2px solid transparent',
-                                        color: isActive ? 'var(--text-primary, #e2e8f0)' : 'var(--text-tertiary, #64748b)',
+                                        border: 'none', borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                                        color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
                                         display: 'flex', alignItems: 'center', gap: 5,
                                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                                         fontFamily: 'inherit',

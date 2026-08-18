@@ -120,13 +120,15 @@ describe('Phase-8+ Task 8.10 — AdminShell-tree SSR-safety: getServerSnapshot c
         expect(sidebarWidthStore.getServerSnapshot()).toBe(240);
     });
 
-    it('layoutSettingsStore.getServerSnapshot() returns DEFAULT_SETTINGS (Inter font / 32px grid / halves-h regions)', () => {
+    it('layoutSettingsStore.getServerSnapshot() returns DEFAULT_SETTINGS (Inter font / 32px grid / no auto-tiling, regions enabled)', () => {
         const result = layoutSettingsStore.getServerSnapshot();
         expect(result.fontFamily).toBe('Inter');
         expect(result.fontScale).toBe(1.0);
         expect(result.gridSize).toBe(32);
         expect(result.snapEnabled).toBe(true);
-        expect(result.regionLayout).toBe('halves-h');
+        // Plan 045 B1: new users get no auto-tiling; regions stay opt-in via Settings.
+        expect(result.regionLayout).toBe('none');
+        expect(result.regionsEnabled).toBe(true);
     });
 
     it('hierarchyStore.getServerSnapshot() returns deepCloned defaultHierarchy (empty seed; users build dynamically)', () => {

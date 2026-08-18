@@ -50,7 +50,9 @@ Covers the backend repo (`../dwellium-backend/ai-dashboard369-file-manager`) for
 
 | Plan | Title | Priority | Effort | Repo | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
-| 043 | Live-site improvement plan — 10 items: creds in bundle (=014), LCP image, 17-family font link, immutable asset cache, 74 MB video, missing favicon/OG/robots, mobile login clip, CSP enforce | P0–P2 | S each | frontend | 014 (item 1) | DONE (items 2–8, 10) + PARTIAL (9: Permissions-Policy + CSP font origins; enforce blocked by RR inline scripts) + SKIPPED (1, per Ilya) — branch `advisor/043-live-site-fixes`, tsc/vitest 1775/build GREEN, browser-verified 375 w + 1280×720; NOT pushed/deployed — awaiting Ilya |
+| 043 | Live-site improvement plan — 10 items: creds in bundle (=014), LCP image, 17-family font link, immutable asset cache, 74 MB video, missing favicon/OG/robots, mobile login clip, CSP enforce | P0–P2 | S each | frontend | 014 (item 1) | DONE 2026-08-16 (items 2–8, 10 shipped `3d1048b` → main, deployed; item 9 partial — CSP stays report-only; item 1 skipped per Ilya) |
+| 044 | UI review — 9 prioritized improvements with the reason each solution was chosen (status contradiction, region auto-snap default, sticky tooltips, per-widget colour drift 84/87 CSS files, sidebar duplicates, ARA composer/intro, 4-step login, narrow viewports, first-screen stack) | P1–P2 | S–M each | frontend | — | TODO (review only; nothing changed) |
+| 045 | UI improvements — implementation plan for 044: 5 parallel clusters (A sidebar truth/IA/click-focus · B desktop defaults: no auto-tiling, 2-window first screen · C `.btn-*` tokens + 8-file hex sweep · D ARA composer/intro-once + one-form login · E narrow viewports) with file:line anchors, tests, verify lines; 3 Ilya gates (renames / mobile strategy / layout migration) | P1–P2 | S–M per cluster | frontend | 044; D2 pairs with 014 | TODO |
 
 ### Round 3 — audited 2026-07-03 against `df3bf79` (frontend) / `fa9e529` (backend), delta + reconcile depth
 

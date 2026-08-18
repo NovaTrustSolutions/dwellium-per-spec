@@ -3,16 +3,21 @@ import { Page, expect } from '@playwright/test';
 /**
  * Shared login helper for E2E tests.
  *
- * Replicates the Dwellium login flow:
- *  1. Click the splash overlay ("Click to Access Terminal")
- *  2. Click the avatar for the given user (passwordless quick-select)
- *  3. Wait for the Shell to load (Sidebar with "DWELLIUM" visible)
+ * Plan 045 (2026-08-16): the passwordless quick-select avatars are gone
+ * (3530a73 + one-form login), so `loginAs` no longer drives the login UI.
+ * It seeds the app's OWN offline session restore (UserContext: a
+ * `static-…` token + `dwellium-user` restore without a backend round-trip)
+ * and lands directly on the shell. The login UI itself is covered by
+ * e2e/login.spec.ts. Advantages: no credentials in the harness, no coupling
+ * to login-screen markup, faster specs.
  */
 
 interface QuickUser {
   name: string;
   email: string;
   role: string;
+  /** Stable id used for per-user stores; defaults to a deterministic slug. */
+  id?: string;
 }
 
 /**
@@ -20,7 +25,7 @@ interface QuickUser {
  * Add more as needed.
  */
 export const USERS: Record<string, QuickUser> = {
-  andy: { name: 'Andy', email: 'andy@dwellium.com', role: 'god' },
+  andy: { name: 'Andy', email: 'andy@dwellium.com', role: 'god', id: '9a921527-84b0-497f-b682-45df315c13d1' },
   lisa: { name: 'Lisa', email: 'lisa@zpgroup.io', role: 'corporate' },
   architect: { name: 'Architect', email: 'architect@dwellium.com', role: 'god' },
   wendy: { name: 'Wendy', email: 'wendy@dwellium.com', role: 'management' },
@@ -43,38 +48,34 @@ export async function loginAs(
   //  - qualia_sidebar_icon_only=false: render the EXPANDED sidebar. Real users
   //    now default to the icon-rail, but the nav specs + screenshot baselines
   //    expect the expanded sidebar (and .sidebar__logo-text only renders then).
-  await page.addInitScript(() => {
+  const id = user.id ?? `e2e-${user.name.toLowerCase()}`;
+  await page.addInitScript(({ user, id }) => {
     try {
       localStorage.setItem(
         'qualia_sidebar_groups',
         '["Property Management","AI Tools","Filing Cabinet"]',
       );
       localStorage.setItem('qualia_sidebar_icon_only', 'false');
-      // Default-startup-stack (2026-06-11) auto-opens the pinned five on a
-      // fresh EMPTY canvas — exactly what every e2e context is. Seed the
-      // one-shot flag so specs keep their clean-desktop baseline (sister to
-      // the sidebar-groups seed above; its absence broke the axe-baseline
+      // Default-startup-stack auto-opens ARA + Strata on a fresh EMPTY canvas —
+      // exactly what every e2e context is. Seed the one-shot flag so specs keep
+      // their clean-desktop baseline (its absence broke the axe-baseline
       // Overview spec on push run 27390457673).
       localStorage.setItem('dwellium:default-stack:v1', 'done');
+      // Offline session restore (UserContext.tsx: `static-` token skips the
+      // backend validator; `dwellium-user` is restored optimistically).
+      const now = new Date().toISOString();
+      localStorage.setItem('dwellium-auth-token', `static-${Date.now()}-${id}`);
+      localStorage.setItem('dwellium-user', JSON.stringify({
+        id, name: user.name, email: user.email, role: user.role,
+        assignedProperties: [], active: true, createdAt: now, updatedAt: now,
+      }));
     } catch { /* private-mode storage denial */ }
-  });
+  }, { user, id });
 
-  // Navigate to app
+  // Navigate to app — lands on the shell directly.
   await page.goto('/');
 
-  // 1. Click the splash overlay to reveal the login form
-  const overlay = page.locator('.login-start-overlay');
-  await expect(overlay).toBeVisible({ timeout: 10_000 });
-  await overlay.click();
-
-  // 2. Click the user's avatar — quick-select logs straight in (passwordless).
-  const avatarButton = page.locator('.login-avatar', {
-    has: page.locator('.login-avatar__name', { hasText: user.name }),
-  });
-  await expect(avatarButton).toBeVisible({ timeout: 5_000 });
-  await avatarButton.click();
-
-  // 5. Wait for the shell to load — sidebar logo text is the indicator
+  // Wait for the shell to load — sidebar logo text is the indicator
   const sidebarLogo = page.locator('.sidebar__logo-text', { hasText: 'DWELLIUM' });
   await expect(sidebarLogo).toBeVisible({ timeout: 15_000 });
 }

@@ -314,6 +314,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
             sessionHealthStore.markAuthOk(); // /api/auth/me accepted the credential (F-016)
             try { localStorage.setItem('dwellium-user', JSON.stringify(validatedUser)); } catch { /* ignore */ }
             backendStatusStore.markOnline();
+            // Sliding sessions (backend 2026-08-18): /me reports the CURRENT
+            // expiry after any server-side renewal — keep the local copy in sync.
+            if (typeof data.expiresAt === 'string' && data.expiresAt) {
+                try { localStorage.setItem(EXPIRES_AT_KEY, data.expiresAt); } catch { /* ignore */ }
+            }
             const expiresAt = localStorage.getItem(EXPIRES_AT_KEY);
             if (expiresAt) scheduleRefresh(expiresAt);
         } catch (err) {

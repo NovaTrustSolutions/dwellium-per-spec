@@ -15,6 +15,9 @@ import { useUser } from '../../context/UserContext';
 import GoogleSignInButton from './GoogleSignInButton';
 import { getEffectiveAccounts, isPasswordSet } from './localAccounts';
 
+/** Same gate as LoginScreen: Google sign-in is hidden unless explicitly enabled. */
+const GOOGLE_LOGIN_ENABLED = (import.meta.env.VITE_GOOGLE_LOGIN as string | undefined) === 'true';
+
 const overlay: React.CSSProperties = {
     position: 'fixed',
     inset: 0,
@@ -151,8 +154,12 @@ export default function SessionExpiredModal({
                         {busy ? 'Signing in…' : 'Sign in with password'}
                     </button>
                 </form>
-                <div style={divider}>or</div>
-                <GoogleSignInButton onCredential={loginWithGoogle} />
+                {GOOGLE_LOGIN_ENABLED && (
+                    <>
+                        <div style={divider}>or</div>
+                        <GoogleSignInButton onCredential={loginWithGoogle} />
+                    </>
+                )}
                 {onDismiss ? (
                     <button type="button" onClick={onDismiss} style={secondaryBtn}>
                         Not now

@@ -6,6 +6,61 @@
 @import './themes-master.css';
 @import './animations.css';
 
+/* ============================================
+   BUTTON PRIMITIVE (plan 045 C1)
+   One token-driven class set so CTAs re-theme under all themes at once.
+   `.btn` in animations.css is motion-only — these carry the paint.
+   Text-on-accent uses --text-inverse (== theme bg); --accent-text is
+   "accent used AS text", not "text on accent".
+   ============================================ */
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-1);
+    padding: var(--sp-2) var(--sp-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-weight: var(--fw-semibold);
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+}
+.btn-primary { background: var(--accent); color: var(--text-inverse); border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-primary:active { filter: brightness(0.92); }
+
+.btn-secondary { background: var(--bg-surface-elevated); color: var(--text-primary); border-color: var(--border-default); }
+.btn-secondary:hover { background: var(--bg-surface-hover); border-color: var(--border-strong); }
+.btn-secondary:active { background: var(--bg-surface-active); }
+
+/* --danger is peach #ffa16c in the dark theme → white text fails AA; inverse (bg) text passes in every theme */
+.btn-danger { background: var(--danger); color: var(--text-inverse); border-color: var(--danger); }
+.btn-danger:hover { filter: brightness(1.08); }
+.btn-danger:active { filter: brightness(0.92); }
+
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover { background: var(--bg-surface-hover); color: var(--text-primary); border-color: var(--border-default); }
+.btn-ghost:active { background: var(--bg-surface-active); }
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled,
+.btn-ghost:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: none;
+    transform: none;
+}
+/* focus-visible: global :focus-visible ring (below) already applies; keep transparent
+   outline offset from the accent fill so the halo reads on --accent backgrounds. */
+.btn-primary:focus-visible { outline-color: var(--text-primary); }
+
 *,
 *::before,
 *::after {

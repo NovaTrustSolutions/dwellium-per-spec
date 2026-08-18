@@ -66,7 +66,7 @@ export default function SystemHealth() {
                                 : `${summary.ok + summary.degraded} of ${summary.total} ready · ${summary.down} need${summary.down === 1 ? 's' : ''} setup`}
                     </p>
                 </div>
-                <button className="sysh-recheck" onClick={() => recheck()} disabled={checking}>
+                <button className="btn-secondary sysh-recheck" onClick={() => recheck()} disabled={checking}>
                     {checking ? 'Checking…' : 'Re-check all'}
                 </button>
             </div>
@@ -92,7 +92,7 @@ export default function SystemHealth() {
                                     </button>
                                 )}
                                 {item.connectWidget && (
-                                    <button className="sysh-connect" onClick={() => connect(item.connectWidget)}>
+                                    <button className="btn-primary sysh-connect" onClick={() => connect(item.connectWidget)}>
                                         {item.connectLabel || 'Connect'}
                                     </button>
                                 )}

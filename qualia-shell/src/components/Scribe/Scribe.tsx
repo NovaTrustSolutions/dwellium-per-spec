@@ -533,16 +533,16 @@ function EmptyState() {
                             else if (e.key === 'Escape') cancelCreate();
                         }}
                     />
-                    <button className="scribe__new-btn" onClick={confirmCreate} disabled={!draftName.trim()}>Create</button>
-                    <button className="scribe__new-cancel" onClick={cancelCreate}>Cancel</button>
+                    <button className="btn-primary scribe__new-btn" onClick={confirmCreate} disabled={!draftName.trim()}>Create</button>
+                    <button className="btn-secondary scribe__new-cancel" onClick={cancelCreate}>Cancel</button>
                 </div>
             ) : (
-                <button className="scribe__new-btn" onClick={startCreate}>
+                <button className="btn-primary scribe__new-btn" onClick={startCreate}>
                     + New File
                 </button>
             )}
 
-            <label className="scribe__new-btn" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }} title="Import a Word .docx file as Markdown">
+            <label className="btn-secondary scribe__new-btn" title="Import a Word .docx file as Markdown">
                 <Upload size={14} aria-hidden /> Import .docx
                 <input type="file" accept=".docx" onChange={(e) => void handleDocxFile(e)} style={{ display: 'none' }} />
             </label>

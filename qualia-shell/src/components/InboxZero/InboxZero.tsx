@@ -732,7 +732,7 @@ export default function InboxZero() {
                                 )}
                             </div>
                             <button
-                                className="iz-toolbar__search-btn"
+                                className="btn-primary iz-toolbar__search-btn"
                                 onClick={() => setDebouncedSearch(searchQuery)}
                                 title="Search now"
                             >
@@ -952,8 +952,8 @@ export default function InboxZero() {
                                 <div className="iz-empty__sub">{itemsErrorMessage}</div>
                                 <button
                                     type="button"
-                                    className="iz-action iz-action--retry"
-                                    style={{ marginTop: 12, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
+                                    className="btn-primary"
+                                    style={{ marginTop: 12 }}
                                     onClick={() => itemsQuery.refetch()}
                                 >
                                     Retry
@@ -1221,7 +1221,6 @@ export default function InboxZero() {
                                                 {(item.gmailError || item.retryable) && (
                                                     <button
                                                         className="iz-action iz-action--retry"
-                                                        style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
                                                         onClick={async () => {
                                                             try {
                                                                 const res = await authFetch(`${INBOX_API}/${item.id}/retry`, { method: 'POST' });

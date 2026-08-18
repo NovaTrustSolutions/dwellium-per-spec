@@ -379,10 +379,10 @@ export default function TaskBoard() {
                 <span className="tb-spacer" />
 
                 {/* Backup Actions */}
-                <button className="tb-btn tb-btn--ghost" onClick={handleSaveBoard} title="Save/download task board backup">
+                <button className="btn-ghost tb-btn" onClick={handleSaveBoard} title="Save/download task board backup">
                     Save Board
                 </button>
-                <button className="tb-btn tb-btn--ghost" onClick={() => fileInputRef.current?.click()} title="Load/restore task board from backup">
+                <button className="btn-ghost tb-btn" onClick={() => fileInputRef.current?.click()} title="Load/restore task board from backup">
                     Load Board
                 </button>
                 <input
@@ -405,24 +405,24 @@ export default function TaskBoard() {
                             <option value="" disabled>Move to…</option>
                             {columns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                         </select>
-                        <button className="tb-btn tb-btn--ghost" onClick={clearSel}>Clear</button>
+                        <button className="btn-ghost tb-btn" onClick={clearSel}>Clear</button>
                     </div>
                 )}
 
                 <button
-                    className="tb-btn tb-btn--ai"
+                    className="btn-secondary tb-btn tb-btn--ai"
                     onClick={() => aiFileBacklog('ara')}
                     title="Local rule (not an LLM call): ARA files every Backlog card into To Do — reversible via Undo last AI"
                 >
                     <Sparkles size={14} aria-hidden /> AI: file Backlog
                 </button>
-                <button className="tb-btn" onClick={() => setShowMetrics(m => !m)} aria-pressed={showMetrics}>
+                <button className="btn-secondary tb-btn" onClick={() => setShowMetrics(m => !m)} aria-pressed={showMetrics}>
                     Metrics
                 </button>
-                <button className="tb-btn" onClick={() => setShowAudit(s => !s)} aria-pressed={showAudit}>
+                <button className="btn-secondary tb-btn" onClick={() => setShowAudit(s => !s)} aria-pressed={showAudit}>
                     Activity ({board.audit.length})
                 </button>
-                <button className="tb-btn tb-btn--ghost" onClick={() => undo()} aria-label="Undo last action" title="Undo last action">↶ Undo</button>
+                <button className="btn-ghost tb-btn" onClick={() => undo()} aria-label="Undo last action" title="Undo last action">↶ Undo</button>
             </div>
 
             <div className="tb-main">
@@ -635,8 +635,8 @@ export default function TaskBoard() {
                                                 }}
                                             />
                                             <div className="tb-add__actions">
-                                                <button className="tb-btn tb-btn--primary" onClick={() => submitNewCard(col.id)}>Add</button>
-                                                <button className="tb-btn tb-btn--ghost" onClick={() => { setAddingTo(null); setNewTitle(''); }} aria-label="Cancel"><X size={14} /></button>
+                                                <button className="btn-primary tb-btn" onClick={() => submitNewCard(col.id)}>Add</button>
+                                                <button className="btn-ghost tb-btn" onClick={() => { setAddingTo(null); setNewTitle(''); }} aria-label="Cancel"><X size={14} /></button>
                                             </div>
                                         </div>
                                     ) : (
@@ -667,9 +667,9 @@ export default function TaskBoard() {
                             <button className="tb-icon-btn" aria-label="Close activity log" onClick={() => setShowAudit(false)}>×</button>
                         </div>
                         <div className="tb-audit__actions">
-                            <button className="tb-btn tb-btn--ghost" onClick={() => undo()}>↶ Undo last</button>
-                            <button className="tb-btn tb-btn--ghost" onClick={() => undoLastAi()} disabled={aiActionCount === 0} title="Reverse the most recent AI edit">↶ Undo last AI</button>
-                            <button className="tb-btn tb-btn--ghost" onClick={copyReport}>{copied ? 'Copied' : '⧉ AI report'}</button>
+                            <button className="btn-ghost tb-btn" onClick={() => undo()}>↶ Undo last</button>
+                            <button className="btn-ghost tb-btn" onClick={() => undoLastAi()} disabled={aiActionCount === 0} title="Reverse the most recent AI edit">↶ Undo last AI</button>
+                            <button className="btn-ghost tb-btn" onClick={copyReport}>{copied ? 'Copied' : '⧉ AI report'}</button>
                         </div>
                         <div className="tb-audit__list">
                             {board.audit.length === 0 && <p className="tb-audit__empty">No activity yet.</p>}
@@ -704,8 +704,8 @@ export default function TaskBoard() {
                             Proceeding will violate the WIP limits.
                         </p>
                         <div className="tb-modal-actions">
-                            <button className="tb-btn tb-btn--ghost" onClick={() => setWipAlert(null)}>Cancel</button>
-                            <button className="tb-btn tb-btn--primary" style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', color: '#fff' }} onClick={wipAlert.onConfirm}>
+                            <button className="btn-ghost tb-btn" onClick={() => setWipAlert(null)}>Cancel</button>
+                            <button className="btn-danger tb-btn" onClick={wipAlert.onConfirm}>
                                 Override & Proceed
                             </button>
                         </div>
@@ -751,7 +751,7 @@ function AssigneePicker({ onPick, onClose }: { onPick: (a: Assignee | null) => v
                 <input className="tb-assign-input" placeholder="Custom name" value={name} onChange={e => setName(e.target.value)} aria-label="Custom assignee name" />
                 <input className="tb-assign-input" placeholder="email@addr (optional)" value={email} onChange={e => setEmail(e.target.value)} aria-label="Custom assignee email" />
                 <button
-                    className="tb-btn tb-btn--primary"
+                    className="btn-primary tb-btn"
                     disabled={!name.trim()}
                     onClick={() => onPick({ kind: 'person', id: `custom-${name.trim().toLowerCase().replace(/\s+/g, '-')}`, label: name.trim(), email: email.trim() || undefined })}
                 >Set</button>
@@ -854,7 +854,7 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                                     <div key={r.id} className="tb-pv__rel-item">
                                         <span className="tb-pv__rel-src">{r.source}</span>
                                         <span className="tb-pv__rel-title" title={r.tags.map(t => `#${t}`).join(' ')}>{r.title}</span>
-                                        <button className="tb-btn tb-btn--ghost" onClick={() => addCard({ title: r.title })} title="Add this linked item as a card on the board">＋ Add as card</button>
+                                        <button className="btn-ghost tb-btn" onClick={() => addCard({ title: r.title })} title="Add this linked item as a card on the board">＋ Add as card</button>
                                     </div>
                                 ))}
                             </div>
@@ -894,7 +894,7 @@ function ProjectView({ board, cardId, onOpenCard, onClose }: {
                                 onChange={e => setSub(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && sub.trim()) { addSubtask(cardId, sub.trim()); setSub(''); } }}
                             />
-                            <button className="tb-btn tb-btn--primary" disabled={!sub.trim()} onClick={() => { if (sub.trim()) { addSubtask(cardId, sub.trim()); setSub(''); } }}>Add</button>
+                            <button className="btn-primary tb-btn" disabled={!sub.trim()} onClick={() => { if (sub.trim()) { addSubtask(cardId, sub.trim()); setSub(''); } }}>Add</button>
                         </div>
                     </section>
 
@@ -991,7 +991,7 @@ function ColumnSettingsPopover({ column, onClose }: { column: any; onClose: () =
                 />
             </div>
 
-            <button className="tb-btn tb-btn--primary" onClick={handleSave}>Save Settings</button>
+            <button className="btn-primary tb-btn" onClick={handleSave}>Save Settings</button>
         </div>
     );
 }
@@ -1022,8 +1022,8 @@ function ExitCriteriaModal({ policies, onConfirm, onCancel }: { policies: string
                     ))}
                 </div>
                 <div className="tb-modal-actions">
-                    <button className="tb-btn tb-btn--ghost" onClick={onCancel}>Cancel</button>
-                    <button className="tb-btn tb-btn--primary" disabled={!allChecked} onClick={onConfirm}>
+                    <button className="btn-ghost tb-btn" onClick={onCancel}>Cancel</button>
+                    <button className="btn-primary tb-btn" disabled={!allChecked} onClick={onConfirm}>
                         Move Card
                     </button>
                 </div>

@@ -124,48 +124,10 @@
     color: var(--text-tertiary);
 }
 
-.scribe__new-cancel {
-    padding: 8px 14px;
-    background: transparent;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    color: var(--text-tertiary);
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: color 100ms, border-color 100ms;
-}
-
-.scribe__new-cancel:hover {
-    color: var(--text-primary);
-    border-color: var(--text-tertiary);
-}
-
-.scribe__new-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    background: transparent;
-    color: var(--accent);
-}
-
-.scribe__new-btn {
-    margin-top: 8px;
-    padding: 10px 24px;
-    border-radius: 6px;
-    border: 1px solid var(--accent);
-    background: transparent;
-    color: var(--accent);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 150ms, color 150ms;
-}
-
-.scribe__new-btn:hover {
-    background: var(--accent);
-    color: var(--text-inverse);
-}
+/* Empty-state CTAs ride the global .btn-primary / .btn-secondary primitive (plan 045 C1);
+   these classes only carry layout. */
+.scribe__new-cancel { padding: 8px 14px; font-size: 13px; }
+.scribe__new-btn { margin-top: 8px; padding: 10px 24px; font-size: 14px; }
 
 /* ── File list in empty state ───────────────────────── */
 

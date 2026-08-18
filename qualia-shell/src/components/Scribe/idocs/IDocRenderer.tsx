@@ -211,6 +211,37 @@ export function BlockView({ block, ctx }: { block: Block; ctx: RenderCtx }) {
                 </ol>
             </nav>
         );
+        // ── Wave 1 blocks: minimal renderers (agent A upgrades these: KaTeX/Mermaid/local QR) ──
+        case 'steps': return (
+            <ol className={`scribe-idocs__steps${block.numbered === false ? ' scribe-idocs__steps--plain' : ''}`}>
+                {block.items.map((it, i) => <li key={i}><strong>{it.title}</strong><Md md={it.md} /></li>)}
+            </ol>
+        );
+        case 'funnel': {
+            const max = Math.max(1, ...block.items.map((it) => it.value ?? 0));
+            return (
+                <div className="scribe-idocs__funnel">
+                    {block.items.map((it, i) => (
+                        <div key={i} className="scribe-idocs__funnel-row" style={{ width: `${it.value == null ? 100 : Math.max(20, Math.round((it.value / max) * 100))}%` }}>
+                            <span>{it.label}</span>{it.value != null && <em>{it.value}</em>}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+        case 'boxes': return (
+            <div className="scribe-idocs__boxes" style={{ gridTemplateColumns: `repeat(${block.columns ?? 3}, 1fr)` }}>
+                {block.items.map((it, i) => <div key={i} className={`scribe-idocs__box${it.emphasis ? ' scribe-idocs__box--emphasis' : ''}`}><strong>{it.title}</strong><Md md={it.md} /></div>)}
+            </div>
+        );
+        case 'math': return block.inline ? <code className="scribe-idocs__math">{block.latex}</code> : <pre className="scribe-idocs__math scribe-idocs__math--block">{block.latex}</pre>;
+        case 'diagram': return <pre className="scribe-idocs__diagram">{block.mermaid}</pre>;
+        case 'qr': return embedSrcFor(block.url) ? (
+            <figure className="scribe-idocs__qr">
+                <img alt={`QR code for ${block.url}`} src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(block.url)}`} width={200} height={200} />
+                {block.caption && <figcaption>{block.caption}</figcaption>}
+            </figure>
+        ) : <div className="scribe-idocs__placeholder">QR: enter an http(s) URL</div>;
     }
 }
 

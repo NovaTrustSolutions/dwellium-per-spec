@@ -496,7 +496,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                             <option value="observation">Observations</option>
                             <option value="insight">Insights</option>
                         </select>
-                        <button className="hhp__add-btn" onClick={() => setShowAddMemory(!showAddMemory)}>
+                        <button className="btn-primary hhp__add-btn" onClick={() => setShowAddMemory(!showAddMemory)}>
                             {showAddMemory ? 'Cancel' : '+ Add Memory'}
                         </button>
                     </div>

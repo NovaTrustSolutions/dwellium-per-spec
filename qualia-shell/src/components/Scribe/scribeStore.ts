@@ -46,8 +46,8 @@ export interface DocComment {
     status: 'open' | 'resolved';
 }
 
-/** Which surface the center column shows: the document editor or the Brain Dump intake (spec §5.2). */
-export type EditorMode = 'document' | 'dump';
+/** Which surface the center column shows: the document editor, the Brain Dump intake (spec §5.2), or Interactive Docs. */
+export type EditorMode = 'document' | 'dump' | 'idocs';
 
 interface ScribeState {
     openFiles: OpenFile[];

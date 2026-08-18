@@ -1,29 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { Volume2 } from 'lucide-react';
+import { araPrefsStore } from '../../lib/araPrefsStore';
 
 /**
- * ARA startup intro — plays a short video ONCE PER LOGIN SESSION (the first
- * time ARA opens after the user logs on), not every time the console is opened.
- * A per-session flag (sessionStorage) records that it has played; UserContext
- * clears it at each login path (4 sites — grep the literal string
- * 'dwellium-ara-intro-played', NOT the constant name: UserContext uses the
- * literal, which is how a 2026-08-07 grep for ARA_INTRO_PLAYED_KEY wrongly
- * concluded nothing clears it) so a fresh logon replays it. Tries to
- * autoplay with sound; if the browser blocks unmuted autoplay it falls back to
- * muted playback and surfaces a tap-to-unmute button. Always skippable. Dismisses
- * on end, on error, or immediately when video playback isn't available (e.g.
- * jsdom in tests) so it never blocks the UI.
+ * ARA startup intro — plays a short video ONCE PER USER/DEVICE (045-D1c): the
+ * first time ARA opens, until it ends or Skip is pressed. That is persisted as
+ * `araPrefsStore.introSeen` (localStorage `dwellium-ara-prefs`), so a fresh
+ * logon does NOT replay the 21 MB clip. Within a session a sessionStorage marker
+ * still stops replays if the user closed ARA mid-video (and is migrated into
+ * introSeen on the next mount). Tries to autoplay with sound; if the browser
+ * blocks unmuted autoplay it falls back to muted playback and surfaces a
+ * tap-to-unmute button. Always skippable. Dismisses on end, on error, or
+ * immediately when video playback isn't available (e.g. jsdom in tests) so it
+ * never blocks the UI.
  */
+/** Manual override (ARA Settings): never show the intro. */
 export const ARA_SKIP_INTRO_KEY = 'dwellium-ara-skip-intro';
-/** Per-session marker: set once the intro has played this login session. */
+/** Per-session marker: set once the intro has mounted this session. */
 export const ARA_INTRO_PLAYED_KEY = 'dwellium-ara-intro-played';
+
+const markSeen = () => araPrefsStore.set('introSeen', true);
 
 export default function AraIntroVideo() {
     const [show, setShow] = useState(() => {
         try {
             // Persistent "skip intro" toggle (ARA Settings) wins.
             if (localStorage.getItem(ARA_SKIP_INTRO_KEY) === 'true') return false;
-            // Already played this login session → don't replay on subsequent opens.
+            if (araPrefsStore.getSnapshot().introSeen) return false;
+            // Already played this session (old per-session scheme) → migrated
+            // to introSeen in the mount effect below.
             if (sessionStorage.getItem(ARA_INTRO_PLAYED_KEY) === 'true') return false;
             return true;
         } catch { return true; }
@@ -32,14 +37,17 @@ export default function AraIntroVideo() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
 
     useEffect(() => {
-        // Mark as played for this login session the moment the intro mounts, so
-        // reopening ARA in the same session won't replay it.
-        try { sessionStorage.setItem(ARA_INTRO_PLAYED_KEY, 'true'); } catch { /* sandboxed */ }
         const v = videoRef.current;
         if (!v) {
+            // Not showing. Migration (045-D1c): the old per-session marker
+            // means the user already sat through it → count as seen.
+            try { if (sessionStorage.getItem(ARA_INTRO_PLAYED_KEY) === 'true') markSeen(); } catch { /* sandboxed */ }
             setShow(false);
             return;
         }
+        // Mark as played for this session the moment the intro mounts, so
+        // reopening ARA in the same session won't replay it.
+        try { sessionStorage.setItem(ARA_INTRO_PLAYED_KEY, 'true'); } catch { /* sandboxed */ }
         let done = false;
         const dismiss = () => {
             if (done) return;
@@ -47,7 +55,7 @@ export default function AraIntroVideo() {
             setShow(false);
         };
 
-        v.onended = dismiss;
+        v.onended = () => { markSeen(); dismiss(); };
         v.onerror = dismiss;
 
         // Attempt playback with sound; fall back to muted; bail if unsupported.
@@ -117,6 +125,7 @@ export default function AraIntroVideo() {
                     onClick={() => {
                         const v = videoRef.current;
                         if (v) { try { v.pause(); v.muted = true; } catch { /* ignore */ } }
+                        markSeen();
                         setShow(false);
                     }}
                 >

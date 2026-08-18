@@ -16,6 +16,13 @@ import { useWindows } from '../../context/WindowContext';
 // designed to be: message + "Open System Health", nothing more.
 import './SystemHealth.css';
 
+/** Plan 045 B2 toast copy — "N connection(s) need(s) setup — open System Health". */
+export function needSetupCopy(down: number): string {
+    return down === 1
+        ? '1 connection needs setup — open System Health'
+        : `${down} connections need setup — open System Health`;
+}
+
 export default function SystemHealthBanner() {
     const { summary, checking } = useSystemHealth();
     const { openWindow } = useWindows();
@@ -27,7 +34,7 @@ export default function SystemHealthBanner() {
         <div className="sysh-banner" role="status">
             <span className="sysh-banner-dot">!</span>
             <span className="sysh-banner-text">
-                {summary.down} AI service{summary.down !== 1 ? 's' : ''} need attention before everything's operational.
+                {needSetupCopy(summary.down)}
             </span>
             <button
                 className="sysh-banner-open"

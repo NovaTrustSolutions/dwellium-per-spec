@@ -2604,25 +2604,6 @@ export default function ARAConsole() {
                 >
                     <SlidersHorizontal size={16} />
                 </button>
-                <button
-                    className="ara-gender-toggle"
-                    onClick={() => {
-                        const next = voiceGender === 'female' ? 'male' : 'female';
-                        setVoiceGender(next);
-                        setActiveVoice(next);
-                        localStorage.setItem('dwellium-ara-gender', next);
-                        localStorage.setItem('dwellium-ara-voice', next);
-                    }}
-                    title={`Voice: ${voiceGender === 'female' ? 'Female' : 'Male'} — click to switch`}
-                    aria-label={`Voice gender: ${voiceGender === 'female' ? 'female' : 'male'}. Click to switch.`}
-                >
-                    <span className={`ara-gender-option ${voiceGender === 'female' ? 'ara-gender-option--active' : ''}`}>
-                        <Venus size={13} aria-hidden="true" /> Female
-                    </span>
-                    <span className={`ara-gender-option ${voiceGender === 'male' ? 'ara-gender-option--active' : ''}`}>
-                        <Mars size={13} aria-hidden="true" /> Male
-                    </span>
-                </button>
                 <FileUploadButton
                     size="sm"
                     iconOnly
@@ -2681,6 +2662,31 @@ export default function ARAConsole() {
                             Fallback chain: {voiceStatus.tts.fallbacks.map(formatProviderLabel).join(' → ')}
                         </div>
                     ) : null}
+
+                    {/* Voice gender (045-D1b): moved out of the composer bar into
+                        this drawer; same control, same storage keys. */}
+                    <div className="ara-voice-section">
+                        <h5>Voice Gender</h5>
+                        <button
+                            className="ara-gender-toggle"
+                            onClick={() => {
+                                const next = voiceGender === 'female' ? 'male' : 'female';
+                                setVoiceGender(next);
+                                setActiveVoice(next);
+                                localStorage.setItem('dwellium-ara-gender', next);
+                                localStorage.setItem('dwellium-ara-voice', next);
+                            }}
+                            title={`Voice: ${voiceGender === 'female' ? 'Female' : 'Male'} — click to switch`}
+                            aria-label={`Voice gender: ${voiceGender === 'female' ? 'female' : 'male'}. Click to switch.`}
+                        >
+                            <span className={`ara-gender-option ${voiceGender === 'female' ? 'ara-gender-option--active' : ''}`}>
+                                <Venus size={13} aria-hidden="true" /> Female
+                            </span>
+                            <span className={`ara-gender-option ${voiceGender === 'male' ? 'ara-gender-option--active' : ''}`}>
+                                <Mars size={13} aria-hidden="true" /> Male
+                            </span>
+                        </button>
+                    </div>
 
                     {/* TTS Voice Picker (2026-05-28 ARA voice arc Cycle 1) ──────
                         10-voice catalog: 6 OpenAI TTS voices + 3 enhanced macOS

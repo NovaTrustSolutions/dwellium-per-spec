@@ -7,6 +7,7 @@ import {
     shouldOpenDefaultStack,
     DEFAULT_STACK_DONE,
     DEFAULT_STARTUP_STACK,
+    PINNED_WIDGETS,
 } from '../components/Shell/defaultStack';
 import { sidebarGroupsStore } from '../components/Sidebar/Sidebar';
 
@@ -20,10 +21,14 @@ describe('shouldOpenDefaultStack', () => {
     it('never stomps an existing layout (open windows present)', () => {
         expect(shouldOpenDefaultStack(null, 3)).toBe(false);
     });
-    it('the stack is the sidebar PINNED five, in order', () => {
-        expect([...DEFAULT_STARTUP_STACK]).toEqual([
+    it('the sidebar PINNED five, in order (single source of truth)', () => {
+        expect(PINNED_WIDGETS.map(p => p.component)).toEqual([
             'ara-console', 'strata-dashboard', 'scribe', 'inbox', 'task-board',
         ]);
+    });
+    it('the startup stack is two windows — ARA + Strata (plan 045 §B2)', () => {
+        expect([...DEFAULT_STARTUP_STACK]).toEqual(['ara-console', 'strata-dashboard']);
+        expect(DEFAULT_STARTUP_STACK).toHaveLength(2);
     });
 });
 

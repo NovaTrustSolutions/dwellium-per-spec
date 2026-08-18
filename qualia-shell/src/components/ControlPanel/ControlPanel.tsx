@@ -459,6 +459,7 @@ export default function ControlPanel() {
                         <label className="cp-label">Region Layout</label>
                         <div className="cp-region-selector">
                             {([
+                                { value: 'none', label: 'None (default)' },
                                 { value: 'halves-h', label: 'Left / Right' },
                                 { value: 'halves-v', label: 'Top / Bottom' },
                                 { value: 'thirds-h', label: 'Thirds' },
@@ -471,6 +472,9 @@ export default function ControlPanel() {
                                     title={opt.label}
                                 >
                                     <svg viewBox="0 0 40 28" className="cp-region-preview">
+                                        {opt.value === 'none' && (
+                                            <rect x="1" y="1" width="38" height="26" rx="2" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 2" />
+                                        )}
                                         {opt.value === 'halves-h' && (
                                             <>
                                                 <rect x="1" y="1" width="18" height="26" rx="2" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1" />

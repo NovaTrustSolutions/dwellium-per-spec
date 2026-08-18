@@ -294,10 +294,10 @@
 }
 
 .sidebar__pinned-label {
-    font-size: 10px;
+    font-size: 12px; /* plan 045 §A2: readable section headers */
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.2px;
     color: var(--text-tertiary);
     padding: 4px 12px 6px;
     user-select: none;
@@ -320,7 +320,7 @@
     /* [40] rounded corners */
     cursor: pointer;
     color: var(--text-secondary);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-base); /* 13px — plan 045 §A2 item-label floor */
     font-family: var(--font-primary);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
@@ -961,6 +961,19 @@
     }
 }
 
+/* Plan 045 §A1 — the pill mirrors backendStatusStore (same truth as the banner). */
+.sidebar__status-dot--offline {
+    background: var(--danger);
+    animation: none;
+    box-shadow: 0 0 6px var(--danger);
+}
+
+.sidebar__status-dot--checking {
+    background: var(--warning);
+    animation: none; /* statusDotPulse keyframes bake in --success */
+    box-shadow: 0 0 6px var(--warning);
+}
+
 .sidebar__status-text {
     letter-spacing: 0.5px;
     text-transform: uppercase;
@@ -1561,10 +1574,10 @@
 
 /* Match .sidebar__panel-title typography (DOMAINS baseline) */
 .sidebar__widget-group-label {
-    font-size: var(--fs-xs, 11px);
+    font-size: 12px; /* plan 045 §A2: readable section headers */
     font-weight: var(--fw-bold, 700);
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.2px;
     color: var(--text-secondary);
     transition: color 0.2s ease;
     line-height: 1;

@@ -316,16 +316,16 @@ export default function Window({ state, children, regionRect, containerStyle }: 
             <div className="window__titlebar" onMouseDown={onTitleMouseDown} onDoubleClick={() => maximizeWindow(state.id)}>
                 {/* Controls — LEFT side (macOS style) */}
                 <div className="window__controls">
-                    <button className="window__btn window__btn--close" onClick={e => { e.stopPropagation(); closeWindow(state.id); }} title="Close">
+                    <button className="window__btn window__btn--close" onClick={e => { e.stopPropagation(); closeWindow(state.id); }} title="Close" aria-label="Close">
                         <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.5" /><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.5" /></svg>
                     </button>
-                    <button className="window__btn window__btn--minimize" onClick={e => { e.stopPropagation(); minimizeWindow(state.id); }} title="Minimize">
+                    <button className="window__btn window__btn--minimize" onClick={e => { e.stopPropagation(); minimizeWindow(state.id); }} title="Minimize" aria-label="Minimize">
                         <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" strokeWidth="1.5" /></svg>
                     </button>
-                    <button className="window__btn window__btn--maximize" onClick={e => { e.stopPropagation(); maximizeWindow(state.id); }} title="Maximize">
+                    <button className="window__btn window__btn--maximize" onClick={e => { e.stopPropagation(); maximizeWindow(state.id); }} title="Maximize" aria-label="Maximize">
                         <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1.2" /></svg>
                     </button>
-                    <button className="window__btn window__btn--popout" onClick={e => { e.stopPropagation(); popOutWindow(state.id); }} title="Pop out">
+                    <button className="window__btn window__btn--popout" onClick={e => { e.stopPropagation(); popOutWindow(state.id); }} title="Pop out" aria-label="Pop out">
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4">
                             <polyline points="6,1 9,1 9,4" /><line x1="9" y1="1" x2="5" y2="5" />
                             <polyline points="4,2 1,2 1,9 8,9 8,6" />

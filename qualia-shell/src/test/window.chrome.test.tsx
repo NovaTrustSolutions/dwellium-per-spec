@@ -82,6 +82,13 @@ describe('Window chrome — no persistent pop-out banner', () => {
         expect(popout.tagName).toBe('BUTTON');
     });
 
+    it('gives every traffic-light button an accessible name (plan 045 B3 / axe button-name)', () => {
+        renderWindow();
+        for (const name of ['Close', 'Minimize', 'Maximize', 'Pop out']) {
+            expect(screen.getByRole('button', { name })).toBeTruthy();
+        }
+    });
+
     it('hides the tear-off handle entirely when the window is maximized', () => {
         const { container } = renderWindow({ ...baseState, maximized: true });
         expect(container.querySelector('.window__tearoff-handle')).toBeNull();

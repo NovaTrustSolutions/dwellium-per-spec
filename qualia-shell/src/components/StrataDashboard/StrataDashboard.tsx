@@ -45,7 +45,9 @@ import {
     Tooltip,
     ResponsiveContainer,
     Cell,
+    LabelList,
 } from 'recharts';
+import { truncateLabel } from './truncateLabel';
 /**
  * Sample-data gate for the hardcoded KPI band on the Overview.
  *
@@ -148,9 +150,9 @@ function OccupancyTooltip({ active, payload }: OccupancyTooltipProps) {
 }
 
 const getBarColor = (occupancy: number) => {
-    if (occupancy >= 95) return '#22c55e';
-    if (occupancy >= 90) return '#D6FE51';
-    return '#f59e0b';
+    if (occupancy >= 95) return 'var(--success)';
+    if (occupancy >= 90) return 'var(--accent)';
+    return 'var(--warning)';
 };
 
 interface OccupancyRow { name: string; occupancy: number; units: number }
@@ -171,17 +173,22 @@ function OccupancyChart({ data }: { data: OccupancyRow[] }) {
                 <h3>Occupancy by Property</h3>
             </div>
             <div className="s-chart-container">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                {/* minWidth/minHeight 0: silences Recharts width(0)/height(0) warnings when the
+                    region is collapsed; right margin leaves room for the value LabelList. */}
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <BarChart data={data} layout="vertical" margin={{ top: 5, right: 44, left: 0, bottom: 5 }}>
                         <XAxis type="number" domain={[minOccupancy, 100]} axisLine={false} tickLine={false}
                             tick={{ fill: 'var(--text-tertiary)', fontSize: 11 }} tickFormatter={(v: number) => `${v}%`} />
-                        <YAxis type="category" dataKey="name" axisLine={false} tickLine={false}
-                            tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} width={140} />
+                        <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={140}
+                            tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
+                            tickFormatter={(v: unknown) => truncateLabel(v, 18)} />
                         <Tooltip content={<OccupancyTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                         <Bar dataKey="occupancy" radius={[0, 6, 6, 0]} barSize={18}>
                             {data.map((_entry, index) => (
                                 <Cell key={index} fill={getBarColor(data[index].occupancy)} />
                             ))}
+                            <LabelList dataKey="occupancy" position="right" fill="var(--text-secondary)" fontSize={11}
+                                formatter={(v: unknown) => `${v}%`} />
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>

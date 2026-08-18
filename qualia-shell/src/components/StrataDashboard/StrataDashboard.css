@@ -136,9 +136,17 @@
     font-size: 1.625rem;
     font-weight: 800;
     letter-spacing: -0.02em;
-    background: var(--s-accent-gradient);
+    /* plan 045: shared hero-text gradient token, not the lime accent gradient */
+    background: var(--gradient-hero-text);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+/* --gradient-hero-text is white→grey (dark-first); on light themes use the same
+   text-primary→text-secondary ramp the Tenant Portal title already uses. */
+:is(.theme-light, .theme-trust, .theme-vibrant, .theme-luxury, .theme-healthcare, .theme-creative) .strata-dashboard .s-header__title {
+    background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+    -webkit-background-clip: text;
     background-clip: text;
 }
 
@@ -337,6 +345,7 @@
 
 .strata-dashboard .s-chart-container {
     width: 100%;
+    min-width: 0; /* let flex/grid parents shrink it instead of overflowing when a region collapses */
     height: 280px;
 }
 

@@ -261,70 +261,6 @@
     text-align: center;
 }
 
-.login-quick__grid {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.login-avatar {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 10px 8px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    cursor: pointer;
-    transition: all 0.2s;
-    min-width: 68px;
-}
-
-.login-avatar:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-    transform: translateY(-2px);
-}
-
-.login-avatar--active {
-    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.login-avatar:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.login-avatar__circle {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.login-avatar__name {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-.login-avatar__role {
-    font-size: 9px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
 /* ── Divider ── */
 .login-divider {
     display: flex;
@@ -635,33 +571,6 @@
 
 .login-back:hover {
     color: var(--text-secondary);
-}
-
-.login-credential__who {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    justify-content: center;
-    margin-bottom: 4px;
-}
-
-.login-credential__who-text {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    line-height: 1.2;
-}
-
-.login-credential__who-text strong {
-    color: var(--text-primary);
-    font-size: 15px;
-}
-
-.login-credential__who-text span {
-    color: var(--text-tertiary);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .login-google-alt {

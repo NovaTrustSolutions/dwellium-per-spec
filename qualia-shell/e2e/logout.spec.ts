@@ -58,7 +58,7 @@ test.describe('Logout Flow', () => {
     await loginAs(page, USERS.andy);
 
     // Open Strata
-    const strataWidget = page.locator('.sidebar-widget:not(.sidebar-widget--pinned)', {
+    const strataWidget = page.locator('.sidebar-widget', {
       has: page.locator('.sidebar-widget__label', { hasText: 'Strata' }),
     });
     await strataWidget.click();

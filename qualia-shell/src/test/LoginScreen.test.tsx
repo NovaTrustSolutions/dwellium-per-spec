@@ -21,6 +21,12 @@ vi.mock('../components/Auth/GoogleSignInButton', () => ({
 const GATE = 'Comet2878!';
 const andy = LOCAL_ACCOUNTS.find((a) => a.name === 'Andy')!;
 
+/** Gate → credential form (045-D2: no account picker in between). */
+function passGate() {
+    fireEvent.change(screen.getByLabelText('Access password'), { target: { value: GATE } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+}
+
 describe('LoginScreen local multi-step login', () => {
     beforeEach(() => {
         auth.login.mockReset();
@@ -45,34 +51,37 @@ describe('LoginScreen local multi-step login', () => {
         expect(container.querySelector('source[src*="nebula"]')).not.toBeNull();
     });
 
-    it('gates on the access password before showing the roster, with Google hidden by default', () => {
-        render(<LoginScreen />);
+    it('gates on the access password before showing the credential form, with Google hidden by default', () => {
+        render(<LoginScreen onTenantMode={() => undefined} />);
 
         expect(screen.getByLabelText('Access password')).toBeInTheDocument();
-        expect(document.querySelectorAll('.login-avatar__name')).toHaveLength(0);
         expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Continue with Google' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /resident\? sign in here/i })).toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText('Access password'), { target: { value: 'nope' } });
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
         expect(screen.getByText(/incorrect access password/i)).toBeInTheDocument();
-        expect(document.querySelectorAll('.login-avatar__name')).toHaveLength(0);
+        expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
     });
 
-    it('after the gate, signs a user in with their own email + password', async () => {
+    it('after the gate, goes straight to email + password (no account picker) and signs in', async () => {
         render(<LoginScreen />);
+        passGate();
 
-        fireEvent.change(screen.getByLabelText('Access password'), { target: { value: GATE } });
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-
-        const names = [...document.querySelectorAll('.login-avatar__name')].map((n) => n.textContent);
-        expect(names).toEqual(['Andy', 'Lisa', 'Archi']);
-        expect(screen.getByRole('button', { name: /Lisa/ })).toBeEnabled();
-
-        fireEvent.click(screen.getByRole('button', { name: /Andy/ }));
+        // One form: no roster / avatars in between (045-D2).
+        expect(document.querySelectorAll('.login-avatar')).toHaveLength(0);
+        expect(screen.queryByRole('button', { name: /Andy/ })).not.toBeInTheDocument();
         expect(screen.getByLabelText('Email')).toBeInTheDocument();
         expect(screen.getByLabelText('Password')).toBeInTheDocument();
+
+        // Unknown email → same generic error, nothing called.
+        fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'nobody@example.com' } });
+        fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
+        fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+        expect(auth.login).not.toHaveBeenCalled();
+        expect(screen.getByText(/incorrect email or password/i)).toBeInTheDocument();
 
         // Wrong password → no login, error shown.
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
@@ -95,9 +104,7 @@ describe('LoginScreen local multi-step login', () => {
     it('offers EXPLICIT offline entry only when the server is unreachable', async () => {
         auth.login.mockResolvedValue({ success: false, error: 'Cannot reach server', offline: true });
         render(<LoginScreen />);
-        fireEvent.change(screen.getByLabelText('Access password'), { target: { value: GATE } });
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-        fireEvent.click(screen.getByRole('button', { name: /Andy/ }));
+        passGate();
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
         fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
         fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
@@ -117,9 +124,7 @@ describe('LoginScreen local multi-step login', () => {
     it('surfaces a server credential rejection instead of entering the shell', async () => {
         auth.login.mockResolvedValue({ success: false, error: 'Invalid credentials' });
         render(<LoginScreen />);
-        fireEvent.change(screen.getByLabelText('Access password'), { target: { value: GATE } });
-        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-        fireEvent.click(screen.getByRole('button', { name: /Andy/ }));
+        passGate();
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
         fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
         fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));

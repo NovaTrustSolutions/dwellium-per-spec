@@ -204,4 +204,24 @@ describe('strataApi', () => {
         const callArgs = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
         expect(callArgs[1].headers['X-Qualia-API']).toBe('v2');
     });
+
+    // ── Plan 046 D1 — demo workspace routes to the static layer at call time ──
+
+    it('routes to the static layer when the demo workspace is on, back to the backend when off', async () => {
+        const { setDemoWorkspace, demoWorkspaceStore } = await import('../lib/demoWorkspaceStore');
+        demoWorkspaceStore.reset();
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ([]) });
+
+        setDemoWorkspace(true);
+        await strataGet('/properties');
+        const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+        const demoUrl = calls[calls.length - 1][0] as string;
+        expect(demoUrl.startsWith('/data/')).toBe(true);
+        expect(demoUrl.includes('/api/dwellium')).toBe(false);
+
+        setDemoWorkspace(false);
+        await strataGet('/properties');
+        const liveUrl = calls[calls.length - 1][0] as string;
+        expect(liveUrl.startsWith('/api/dwellium')).toBe(true);
+    });
 });

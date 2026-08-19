@@ -5,7 +5,6 @@
  */
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { API_BASE } from '../../config';
 import {
     LayoutDashboard, Wrench, MessageSquare,
     Building2, AlertTriangle, DollarSign,
@@ -20,6 +19,9 @@ import {
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { openStrataModule } from '../StrataDashboard/strataDeepLink';
+import { strataPost } from '../StrataDashboard/strataApi';
+import { DemoBanner } from '../common/DemoBanner';
+import { NotYet } from '../common/NotYet';
 import AstraWorkspace from './AstraWorkspace';
 import ThreadChannels from './ThreadChannels';
 import IntelligenceDashboard from './IntelligenceDashboard';
@@ -931,7 +933,8 @@ function ActiveWorkitems({ items, loading, error }: PanelProps & { items: Active
     const handlePromote = async (id: string) => {
         setPromoting(id);
         try {
-            await fetch(`${API_BASE}/api/dwellium/workitems/${id}/promote`, { method: 'POST' });
+            // Plan 046 D1: through strataApi so the demo workspace never reaches the backend.
+            await strataPost(`/workitems/${id}/promote`, {});
         } catch { /* offline fallback */ }
         setTimeout(() => setPromoting(null), 1200);
     };
@@ -1024,81 +1027,22 @@ function CrossDomainSnapshots({ snapshots, loading, error }: PanelProps & { snap
 
 /* ═══════════════════════════  QUICK ARBITRAGE (90-DAY)  ═══════════════════ */
 
-const ARBITRAGE_OPPORTUNITIES: { id: string; title: string; roi: string; confidence: number; window: string; type: 'lease' | 'maintenance' | 'finance' | 'revenue' }[] = [];
-
-const ARB_COLORS: Record<string, string> = {
-    lease: '#3b82f6', maintenance: '#f97316', finance: '#22c55e', revenue: '#D6FE51',
-};
-
 function QuickArbitrage() {
     return (
         <div className="a-panel a-panel--glass">
-            <h3 className="a-panel__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={16} aria-hidden /> 90-Day Quick Arbitrage <MockBadge /></h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {ARBITRAGE_OPPORTUNITIES.map(opp => (
-                    <div key={opp.id} style={{
-                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
-                        background: 'rgba(255,255,255,0.03)', borderRadius: 8,
-                        borderLeft: `3px solid ${ARB_COLORS[opp.type]}`,
-                    }}>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#ddd' }}>{opp.title}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                                Window: {opp.window} • Confidence: {opp.confidence}%
-                            </div>
-                        </div>
-                        <div style={{
-                            background: 'rgba(34,197,94,0.15)', color: '#22c55e',
-                            padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                        }}>
-                            {opp.roi}
-                        </div>
-                    </div>
-                ))}
-            </div>
-            {ARBITRAGE_OPPORTUNITIES.length > 0 && (
-                <div style={{ marginTop: 10, fontSize: 11, color: '#666', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Total potential: calculated</span>
-                    <span>{ARBITRAGE_OPPORTUNITIES.length} opportunities identified</span>
-                </div>
-            )}
-            {ARBITRAGE_OPPORTUNITIES.length === 0 && (
-                <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-                    No opportunities identified yet.
-                </div>
-            )}
+            <h3 className="a-panel__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={16} aria-hidden /> 90-Day Quick Arbitrage</h3>
+            <NotYet reason="90-day arbitrage detection." />
         </div>
     );
 }
 
 /* ═══════════════════════════  DOMAIN VIEWS  ═══════════════════ */
 
-const DOMAIN_VIEWS: { id: string; name: string; module: string; filters: Record<string, any>; count: number; color: string }[] = [];
-
 function DomainViews() {
     return (
         <div className="a-panel a-panel--glass">
-            <h3 className="a-panel__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Search size={16} aria-hidden /> Saved Domain Views <MockBadge /></h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {DOMAIN_VIEWS.map(view => (
-                    <div key={view.id} style={{
-                        padding: '10px 12px', borderRadius: 8,
-                        background: `${view.color}11`, border: `1px solid ${view.color}33`,
-                        cursor: 'pointer', transition: 'all 0.2s',
-                    }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: view.color }}>{view.name}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{view.module}</span>
-                            <span style={{
-                                background: `${view.color}22`, color: view.color,
-                                padding: '1px 8px', borderRadius: 10, fontSize: 12, fontWeight: 700,
-                            }}>
-                                {view.count}
-                            </span>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <h3 className="a-panel__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Search size={16} aria-hidden /> Saved Domain Views</h3>
+            <NotYet reason="Saved domain views." />
         </div>
     );
 }
@@ -1354,6 +1298,7 @@ export default function AstraDashboard() {
 
     return (
         <div className="astra-dashboard">
+            <DemoBanner />
             <div className="a-topbar">
                 <div className="a-topbar-brand">
                     <span className="a-brand-icon">◈</span>

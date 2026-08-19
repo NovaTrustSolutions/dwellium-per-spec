@@ -5,7 +5,9 @@
 .tools-hub__h3 { margin: 0 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary, #bbb); }
 .tools-hub__sub { margin: 4px 0 0; color: var(--text-secondary, #bbb); font-size: 12px; }
 .tools-hub__scroll { flex: 1; min-height: 0; overflow: auto; padding: 0 16px; }
-.tools-hub__table { width: 100%; border-collapse: collapse; }
+.tools-hub__table { width: 100%; min-width: 680px; border-collapse: collapse; } /* keep columns readable in narrow windows; .tools-hub__scroll scrolls sideways */
+.tools-hub__table td:nth-child(3), .tools-hub__table td:nth-child(4), .tools-hub__table td:nth-child(5), .tools-hub__table td:nth-child(6) { white-space: nowrap; }
+.tools-hub__table td:nth-child(2) { min-width: 240px; }
 .tools-hub__table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text-tertiary, #808080); padding: 6px 8px; border-bottom: 1px solid var(--border, rgba(255,255,255,.1)); position: sticky; top: 0; background: var(--window-bg, #0c0c0c); }
 .tools-hub__table td { padding: 8px; border-bottom: 1px solid var(--border, rgba(255,255,255,.06)); vertical-align: top; }
 .tools-hub__name { font-weight: 600; white-space: nowrap; }

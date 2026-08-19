@@ -128,7 +128,7 @@ describe('parseCommand — Conductor (placement / compound / group / window ops)
 
     it('opens the Agent Lab for spawn-team / agents commands', () => {
         const ev = captureEvents(() => parseCommand('spawn a research team')!.run());
-        expect(ev).toContainEqual({ name: 'dwellium:open-widget', detail: { widgetId: 'agent-lab' } });
+        expect(ev).toContainEqual({ name: 'dwellium:open-widget', detail: { widgetId: 'agent-lab', label: 'Agent Lab', icon: expect.any(String) } });
         expect(parseCommand('assemble a crew of agents')?.label).toMatch(/Agent Lab/);
         expect(parseCommand('open agent lab')?.label).toMatch(/Open/);
     });

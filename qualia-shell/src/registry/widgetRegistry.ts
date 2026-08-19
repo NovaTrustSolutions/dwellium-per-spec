@@ -300,7 +300,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'inbox-zero': {
         id: 'inbox-zero',
         label: 'Inbox Zero (deprecated)',
-        description: 'Older Inbox Zero entry kept for saved layouts — use Inbox Zero instead.',
+        description: 'Email triage (legacy entry — same Inbox Zero; kept so saved layouts keep opening).',
         tip: { tryThis: 'Use Inbox Zero instead — this entry only keeps old layouts opening.', related: ['inbox'] },
         icon: 'mail-open',
         component: lazyWithReload(() => import('../components/InboxZero/InboxZero')),
@@ -748,7 +748,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         tier: 'tools',
         icon: 'layout-grid',
         component: lazyWithReload(() => import('../components/ToolsHub/ToolsHub')),
-        minWidth: 560,
+        minWidth: 720,
         minHeight: 420,
         category: 'tools',
     },

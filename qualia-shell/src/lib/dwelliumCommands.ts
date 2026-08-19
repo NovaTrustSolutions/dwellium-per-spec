@@ -132,7 +132,10 @@ export function stripPoliteness(input: string): string {
 // ── tool primitives ──
 export function openWidget(componentId: string): void {
     lastOpenedWidgetHolder.current = componentId; // P11-7: "…in IT" resolution
-    dispatch('dwellium:open-widget', { widgetId: componentId });
+    // Pass the registry label/icon so the window title reads "Tools hub", not "tools-hub"
+    // (WindowContext falls back to the id when label is missing).
+    const meta = WIDGET_REGISTRY[componentId];
+    dispatch('dwellium:open-widget', { widgetId: componentId, label: meta?.label, icon: meta?.icon });
 }
 export function spawnAgent(name: string): void { openWidget(WIDGET_ALIASES[name.trim().toLowerCase()] || 'ara-console'); }
 export function tileWindows(components?: string[]): void { dispatch('dwellium:tile', { components: components ?? null }); toast('Arranged windows'); }

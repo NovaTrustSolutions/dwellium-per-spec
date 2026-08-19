@@ -2,8 +2,9 @@
    .window__content, never inside it — zero-DOM contract). FirstRunCard tokens. */
 .widget-tip {
     position: absolute;
-    right: 12px;
-    bottom: 12px;
+    /* bottom-LEFT of the window: the screen-fixed Assistant FAB + toasts live bottom-right */
+    left: 12px;
+    bottom: 52px; /* clears the screen-fixed thread pill when the window sits at the canvas bottom */
     width: 300px;
     max-width: calc(100% - 24px);
     z-index: 5;

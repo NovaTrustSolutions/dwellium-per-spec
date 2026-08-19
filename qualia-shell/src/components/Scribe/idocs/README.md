@@ -46,6 +46,19 @@ charts, sandboxed iframes), Markdown, text-PDF (pdf-lib helper), print (`@media 
 - Present: **Presenter view** (`PresenterView.tsx` — popup window via BroadcastChannel; notes, timer, clock, next-card preview; inline drawer if popups are blocked).
 - Collab (local): **comments** per card/block (`CommentsPanel.tsx`, replies, resolve, badges); find-in-doc (⌘F); collapsible outline groups.
 
+## Wave 3 (2026-08-19) — what changed
+
+Platform wave, three parallel branches + a backend branch, built to a frozen contract (`Docs/idocs-wave3-api.md`):
+- **A — export/import** (`README.wave3-a.md`): PPTX export (`idocPptx.ts`, `pptxgenjs@3.12.0` lazy chunk; native text/tables/charts/images/notes), DOCX export (`idocDocx.ts`, existing `docx`), PPTX **import** (`idocsPptxImport.ts`, `jszip@3.10.1`), theme import from a `.pptx`, merge docs.
+- **B — publish/share/live-lite** (`README.wave3-b.md`): `idocsApi.ts` client, Publish dialog (slug/password/SEO/noindex/embed → `/p/<slug>` + embed code + LinkedIn), server analytics section, Share dialog (view/comment/edit), "Shared with me", `useSharedDocSync` (5 s poll, version-conflict banner, presence chips), Netlify `/p/*` proxy rule.
+- **C — backend** (`ai-dashboard369-file-manager/docs/idocs-wave3-backend.md`): `/api/idocs/*` publish/viewer/beacon/analytics/sharing/comments/presence/generate. Public viewer serves the exported HTML with an injected beacon; password pages set an `idoc_<slug>` cookie (`Path=/`); presence is single-instance in-memory.
+- Two optional `IDoc` fields: `publication?` and `shared?` (stripped before any server PUT).
+
+## Known simplifications (after wave 3)
+- Real-time is **live-lite** (poll + optimistic version + presence), not CRDT; last-writer-wins at doc granularity. Comment-role members can add comments only.
+- PPTX: no title slide; text height is estimated (`fit:'shrink'`); import ignores master inheritance/positions and reads the first chart series only. DOCX skips svg/webp images. Uploaded fonts don't embed in PPTX/DOCX.
+- Publishing has no custom domains / site navigation; unpublish clears that slug's beacons.
+
 ## Known simplifications (after wave 2)
 - No realtime collaboration, share links, or permissions — comments/history are per user, local (One Save syncs the user's own data). Wave 3: publish/share/realtime.
 - Analytics local-only (views, seconds per card from Present in this browser).

@@ -28,7 +28,7 @@ import { dreamStore, dreamUserIdHolder, appendDream } from '../components/Stella
 import { buildDreamCorpus, parseDeepDream, DEEP_DREAM_SYSTEM, dayKey } from '../lib/dailySynthesis';
 import { hermesLearningUserIdHolder } from '../components/HonchoHermesPanel/hermesLearningStore';
 import { thoughtWeaverUserIdHolder } from '../components/ThoughtWeaver/thoughtWeaverStore';
-import { upsertBrief } from '../lib/morningBriefStore';
+import { upsertBrief, todaysBrief } from '../lib/morningBriefStore';
 import { goalsStore, goalProgress } from '../lib/goalsStore';
 import { artifactStore } from '../lib/artifactStore';
 import { lastNDays, planAdvice } from '../lib/llmUsageStore';
@@ -84,6 +84,7 @@ export function useHonchoBackgroundRunner(): void {
         // Data lines need NO LLM key; insights/suggestions do.
         const deepCycle = async () => {
             const today = dayKey();
+            if (todaysBrief()) return; // plan 046 B2: the server brief (or an earlier client one) wins the day
             try { if (localStorage.getItem(deepDayKey(uid)) === today) return; } catch { return; }
             try { localStorage.setItem(deepDayKey(uid), today); } catch { /* claim the day first */ }
 

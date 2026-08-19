@@ -170,7 +170,7 @@ describe('custom theme + font-face', () => {
         expect(html).not.toMatch(/<script/i);
     });
     it('EXPORT_ACTIONS exposes the menu seam with stable ids and run(doc, ctx)', () => {
-        expect(EXPORT_ACTIONS.map((a) => a.id)).toEqual(['html', 'markdown', 'pdf-styled', 'pdf-text', 'print', 'png-card', 'png-all']);
+        expect(EXPORT_ACTIONS.map((a) => a.id)).toEqual(['html', 'markdown', 'pdf-styled', 'pdf-text', 'print', 'png-card', 'png-all', 'pptx', 'docx']); // wave 3A appended pptx + docx
         for (const a of EXPORT_ACTIONS) { expect(typeof a.label).toBe('string'); expect(typeof a.run).toBe('function'); }
         render(<IDocRenderer doc={customDoc()} />);
         expect(renderedCardEls(document)).toHaveLength(1);

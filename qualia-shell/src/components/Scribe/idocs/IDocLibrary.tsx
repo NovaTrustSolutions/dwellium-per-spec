@@ -1,7 +1,7 @@
 /**
  * IDocLibrary — "New with AI" / "Create with Agent" (outline-first: draft →
  * edit outline → generate, with style presets + optional web research) /
- * paste / import (.md .txt .docx .json .pdf) / from URL / blank / templates +
+ * paste / import (.md .txt .docx .pptx .json .pdf) / from URL / blank / templates +
  * the searchable, sortable doc grid. Composer options (cards, amount, tone,
  * audience, language) persist in localStorage['scribe-idocs:composer'].
  */
@@ -13,13 +13,14 @@ import { docxToMarkdown } from '../docxConvert';
 import { download, exportHtml, safeFilename } from './idocExport';
 import { MAX_CARDS, docFromMarkdownHeadings, generateDocFromPrompt, generateDocFromText, type GenerateAmount, type GenerateOpts } from './idocsAi';
 import { defaultExtractPdfText, fetchUrlText, importFromPdf, importFromUrl } from './idocsImport';
+import { mergeDocs } from './idocsMerge';
 import {
     STYLE_PRESETS, canResearch, generateFromOutline, generateOutline, loadRecentOutlines, researchTopic, saveLastOutline,
     type DocOutline, type OutlineCard, type ResearchResult, type StylePreset,
 } from './idocsOutline';
 import { createDoc, deleteDoc, duplicateDoc, exportDoc, importDoc, replaceDoc, setActive, setView, updateDoc, type IdocsState } from './idocsStore';
 import { BUILTIN_TEMPLATES, docFromTemplate } from './idocsTemplates';
-import { themeById, type IDoc } from './idocTypes';
+import { newId, themeById, type IDoc } from './idocTypes';
 import './IDocLibrary.css';
 
 const TONES = ['', 'professional', 'friendly', 'persuasive', 'educational', 'playful'];
@@ -63,6 +64,17 @@ export default function IDocLibrary({ state, initialPrompt }: { state: IdocsStat
     const [sort, setSort] = useState<SortKey>('updated');
     const fileRef = useRef<HTMLInputElement>(null);
     const [confirmDel, setConfirmDel] = useState<string | null>(null);
+    // Wave 3A: multi-select → merge into a new doc.
+    const [selected, setSelected] = useState<Set<string>>(() => new Set());
+    const toggleSelected = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    const mergeSelected = () => {
+        const picked = state.docs.filter((d) => selected.has(d.id));
+        if (picked.length < 2) return;
+        const [first, ...rest] = picked;
+        const merged = mergeDocs(first, rest);
+        setSelected(new Set());
+        createDoc({ ...merged, id: newId('doc'), title: `${first.title} (merged)`, isTemplate: false, analytics: { views: 0, cardSeconds: {} } });
+    };
     // A widget-action prompt that couldn't auto-generate (no LLM) lands in the composer.
     useEffect(() => { if (initialPrompt) { setPrompt(initialPrompt); setTab('ai'); } }, [initialPrompt]);
     useEffect(() => { try { localStorage.setItem(COMPOSER_KEY, JSON.stringify(opts)); } catch { /* sandboxed */ } }, [opts]);
@@ -106,6 +118,11 @@ export default function IDocLibrary({ state, initialPrompt }: { state: IdocsStat
                 if ('error' in r) setError(r.message); else open(r.doc);
                 return;
             }
+            if (name.endsWith('.pptx')) {
+                const { importPptxFile } = await import('./idocsPptxImport');
+                open(await importPptxFile(f));
+                return;
+            }
             const text = name.endsWith('.docx') ? await docxToMarkdown(await f.arrayBuffer()) : await f.text();
             if (llmReady) {
                 const d = await generateDocFromText(text, genOpts, integrations.llm);
@@ -141,8 +158,8 @@ export default function IDocLibrary({ state, initialPrompt }: { state: IdocsStat
                     <button type="button" className={`scribe-idocs__btn${tab === 'agent' ? ' is-active' : ''}`} onClick={() => setTab(tab === 'agent' ? null : 'agent')} title="Outline first, then generate — with style presets and optional web research">✦ Create with Agent</button>
                     <button type="button" className={`scribe-idocs__btn${tab === 'paste' ? ' is-active' : ''}`} onClick={() => setTab(tab === 'paste' ? null : 'paste')}>Paste text / outline</button>
                     <button type="button" className={`scribe-idocs__btn${tab === 'url' ? ' is-active' : ''}`} onClick={() => setTab(tab === 'url' ? null : 'url')}>From URL</button>
-                    <button type="button" className="scribe-idocs__btn" onClick={() => fileRef.current?.click()} disabled={busy}>Import (.md .txt .docx .pdf .json)</button>
-                    <input ref={fileRef} type="file" accept=".md,.txt,.markdown,.docx,.pdf,.json,text/plain,text/markdown,application/pdf,application/json" hidden onChange={onImport} />
+                    <button type="button" className="scribe-idocs__btn" onClick={() => fileRef.current?.click()} disabled={busy}>Import (.md .txt .docx .pptx .pdf .json)</button>
+                    <input ref={fileRef} type="file" accept=".md,.txt,.markdown,.docx,.pptx,.pdf,.json,text/plain,text/markdown,application/pdf,application/json,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden onChange={onImport} />
                     <button type="button" className={`scribe-idocs__btn${showTemplates ? ' is-active' : ''}`} onClick={() => setShowTemplates((v) => !v)}>Templates</button>
                     <button type="button" className="scribe-idocs__btn" onClick={() => createDoc()}>Blank</button>
                 </div>
@@ -218,6 +235,11 @@ export default function IDocLibrary({ state, initialPrompt }: { state: IdocsStat
                     <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search docs…" aria-label="Search docs" className="scribe-idocs-lib__search" />
                     <label className="scribe-idocs__inline">Sort <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}><option value="updated">Last updated</option><option value="title">Title</option></select></label>
                     <span className="scribe-idocs__hint">{docs.length} doc{docs.length === 1 ? '' : 's'}{userTemplates.length ? ` · ${userTemplates.length} template${userTemplates.length === 1 ? '' : 's'}` : ''}</span>
+                    {selected.size > 0 && <>
+                        <span className="scribe-idocs__spacer" />
+                        <button type="button" className="scribe-idocs__btn scribe-idocs__btn--primary" onClick={mergeSelected} disabled={selected.size < 2} title="Append the selected docs' cards into a new doc (first selected keeps its theme)">Merge {selected.size} into new doc</button>
+                        <button type="button" className="scribe-idocs__btn" onClick={() => setSelected(new Set())}>Clear</button>
+                    </>}
                 </div>
             )}
 
@@ -229,6 +251,7 @@ export default function IDocLibrary({ state, initialPrompt }: { state: IdocsStat
                 <ul className="scribe-idocs__grid">
                     {docs.map((d) => (
                         <li key={d.id} className="scribe-idocs__docitem">
+                            <label className="scribe-idocs-lib__pick"><input type="checkbox" checked={selected.has(d.id)} onChange={() => toggleSelected(d.id)} aria-label={`Select ${d.title || 'Untitled'} for merge`} /></label>
                             <button type="button" className="scribe-idocs__doccard" onClick={() => { setActive(d.id); setView('edit'); }}>
                                 <span className="scribe-idocs__docswatch" style={{ background: themeById(d.theme).swatch }} />
                                 <strong>{d.title || 'Untitled'}</strong>

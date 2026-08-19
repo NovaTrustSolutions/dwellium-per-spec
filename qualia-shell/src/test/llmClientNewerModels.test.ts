@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
     isOpenAiReasoningModel, buildOpenAiBody, parseOpenAiText, parseGeminiText, retryBudget, callLlm, LlmError,
+    isAnthropicNoSamplingModel, buildAnthropicBody, parseAnthropicText,
 } from '../lib/llmClient';
 import type { IntegrationsBundle } from '../types/integrations';
 
@@ -52,6 +53,79 @@ describe('parsers', () => {
         expect(retryBudget(5)).toBe(4096);
         expect(retryBudget(2000)).toBe(8000);
         expect(retryBudget(undefined)).toBe(4096);
+    });
+});
+
+describe('Anthropic helpers', () => {
+    it.each(['claude-opus-5', 'claude-sonnet-5', 'claude-fable-5', 'claude-mythos-5', 'claude-opus-4-8', 'claude-opus-4-7'])('no sampling: %s', (m) => expect(isAnthropicNoSamplingModel(m)).toBe(true));
+    it.each(['claude-haiku-4-5-20251001', 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-sonnet-4-5'])('sampling ok: %s', (m) => expect(isAnthropicNoSamplingModel(m)).toBe(false));
+
+    it('body: older Claude keeps temperature; 4.7+/5 drops it and uses low effort for tiny budgets', () => {
+        const old = buildAnthropicBody(REQ, 'claude-haiku-4-5-20251001');
+        expect(old.temperature).toBe(0);
+        expect(old.max_tokens).toBe(5);
+        expect(old.system).toBe('sys');
+        expect(old).not.toHaveProperty('output_config');
+        const v5 = buildAnthropicBody(REQ, 'claude-opus-5');
+        expect(v5).not.toHaveProperty('temperature');
+        expect(v5.output_config).toEqual({ effort: 'low' });
+        expect(buildAnthropicBody({ ...REQ, maxTokens: 2000 }, 'claude-opus-5')).not.toHaveProperty('output_config');
+        expect(buildAnthropicBody(REQ, 'claude-opus-5', 4096).max_tokens).toBe(4096);
+        expect(buildAnthropicBody(REQ, 'claude-haiku-4-5-20251001', undefined, true)).not.toHaveProperty('temperature');
+    });
+
+    it('parser: joins text blocks after thinking; flags max_tokens + refusal', () => {
+        expect(parseAnthropicText({ stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'Hello ' }, { type: 'text', text: 'world' }] }))
+            .toEqual({ text: 'Hello world', truncated: false, refused: false });
+        expect(parseAnthropicText({ stop_reason: 'max_tokens', content: [{ type: 'thinking', thinking: '' }] }))
+            .toEqual({ text: '', truncated: true, refused: false });
+        expect(parseAnthropicText({ stop_reason: 'refusal', content: [] })).toEqual({ text: '', truncated: false, refused: true });
+        expect(parseAnthropicText({})).toEqual({ text: '', truncated: false, refused: false });
+    });
+});
+
+describe('callLlm with a Claude Opus 5 key', () => {
+    const llm = { active: 'anthropic', anthropic: { enabled: true, apiKey: 'sk-ant-test', model: 'claude-opus-5' } } as unknown as IntegrationsBundle['llm'];
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('thinking ate the 5-token budget → retries at 4096 and returns the text block', async () => {
+        const bodies: any[] = [];
+        const fetchMock = vi.fn(async (_url: string, init: any) => {
+            bodies.push(JSON.parse(init.body));
+            const first = bodies.length === 1;
+            return new Response(JSON.stringify(first
+                ? { stop_reason: 'max_tokens', content: [{ type: 'thinking', thinking: '' }] }
+                : { stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'DEFLECTED' }] }), { status: 200 });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const res = await callLlm({ prompt: 'judge', maxTokens: 5, temperature: 0 }, llm);
+        expect(res?.text).toBe('DEFLECTED');
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(bodies[0]).not.toHaveProperty('temperature');
+        expect(bodies[0].max_tokens).toBe(5);
+        expect(bodies[1].max_tokens).toBe(4096);
+    });
+
+    it('unknown future model id: 400 mentioning temperature → one retry without it', async () => {
+        const future = { active: 'anthropic', anthropic: { enabled: true, apiKey: 'k', model: 'claude-nova-9' } } as unknown as IntegrationsBundle['llm'];
+        const bodies: any[] = [];
+        vi.stubGlobal('fetch', vi.fn(async (_url: string, init: any) => {
+            bodies.push(JSON.parse(init.body));
+            if ('temperature' in bodies[bodies.length - 1]) {
+                return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: '`temperature` is not supported on this model' } }), { status: 400 });
+            }
+            return new Response(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok' }] }), { status: 200 });
+        }));
+        const res = await callLlm({ prompt: 'x' }, future);
+        expect(res?.text).toBe('ok');
+        expect(bodies).toHaveLength(2);
+        expect(bodies[0]).toHaveProperty('temperature');
+        expect(bodies[1]).not.toHaveProperty('temperature');
+    });
+
+    it('still empty after the retry → a clear LlmError, not a silent blank', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ stop_reason: 'max_tokens', content: [] }), { status: 200 })));
+        await expect(callLlm({ prompt: 'x', maxTokens: 5 }, llm)).rejects.toBeInstanceOf(LlmError);
     });
 });
 

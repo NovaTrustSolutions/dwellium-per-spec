@@ -10,6 +10,7 @@ import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync } from './oneSaveStore';
 import { firstRunUserIdHolder, usePerUserIdentity } from './perUserIdentity';
+import { logFirstWin, resetOnboarding } from './onboardingStore';
 
 export type FirstRunStep = 'key' | 'data' | 'ara';
 export const FIRST_RUN_STEPS: readonly FirstRunStep[] = ['key', 'data', 'ara'];
@@ -68,6 +69,7 @@ export function markDone(step: FirstRunStep): void {
     const s = firstRunStore.getSnapshot();
     if (s.done.includes(step)) return;
     persist({ ...s, done: [...s.done, step] });
+    logFirstWin(step); // plan 047 §7 metric: time-to-first-win (exactly once per step)
 }
 
 export function setNeverShow(): void {
@@ -80,6 +82,16 @@ export function setNeverShow(): void {
 export function resetFirstRun(): void {
     firstRunStore.reset();
     persist(EMPTY);
+}
+
+/** Plan 047 §6 — "Replay first-run" (ShortcutSheet): FirstRunCard listens and un-dismisses this session. */
+export const FIRST_RUN_REPLAY_EVENT = 'dwellium:first-run:replay';
+
+export function replayFirstRun(): void {
+    resetOnboarding();
+    resetFirstRun();
+    try { sessionStorage.removeItem(FIRST_RUN_DISMISSED_SESSION_KEY); } catch { /* sandboxed */ }
+    try { window.dispatchEvent(new CustomEvent(FIRST_RUN_REPLAY_EVENT)); } catch { /* SSR */ }
 }
 
 /** Pure: live signals OR sticky `done` → per-step ticks + count. */

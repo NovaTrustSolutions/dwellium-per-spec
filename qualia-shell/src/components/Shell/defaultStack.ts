@@ -50,6 +50,24 @@ export const PINNED_WIDGETS: ReadonlyArray<PinnedWidget> = [
 /** First screen: ARA + Strata (the first two pinned) — plan 045 §B2. */
 export const DEFAULT_STARTUP_STACK: ReadonlyArray<string> = PINNED_WIDGETS.slice(0, 2).map(p => p.component);
 
+/** Plan 047 onboarding roles (G12): owner-operator / staff. Residents never reach the admin shell. */
+export type OnboardingRole = 'owner' | 'staff';
+
+/**
+ * Role-based starter sets (plan 047 §2). Owner = the pinned five; staff =
+ * Strata + Task Board + Inbox Zero until an admin unlocks more (`can()` stays
+ * authoritative — this only picks what the first run shows).
+ */
+export const STARTER_SETS: Readonly<Record<OnboardingRole, ReadonlyArray<PinnedWidget>>> = {
+    owner: PINNED_WIDGETS,
+    staff: PINNED_WIDGETS.filter(p => ['strata-dashboard', 'task-board', 'inbox'].includes(p.component)),
+};
+
+/** First-run auto-open per role: owner ARA+Strata (045 §B2); staff Strata+Task Board. */
+export function getStartupStack(role: OnboardingRole | null): ReadonlyArray<string> {
+    return role === 'staff' ? ['strata-dashboard', 'task-board'] : DEFAULT_STARTUP_STACK;
+}
+
 /** Fire only when the flag is unset AND the canvas is empty. */
 export function shouldOpenDefaultStack(storedFlag: string | null, openWindowCount: number): boolean {
     return storedFlag !== DEFAULT_STACK_DONE && openWindowCount === 0;

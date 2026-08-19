@@ -1,0 +1,45 @@
+/* WidgetTip — plan 047 §4. Positioned card inside the window root (sibling of
+   .window__content, never inside it — zero-DOM contract). FirstRunCard tokens. */
+.widget-tip {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    width: 300px;
+    max-width: calc(100% - 24px);
+    z-index: 5;
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #0d1a14;
+    border: 1px solid color-mix(in srgb, var(--accent, #D6FE51) 50%, transparent);
+    color: var(--text-primary, #e8f5e9);
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.widget-tip__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.widget-tip__title { font-weight: 700; font-size: 13px; }
+.widget-tip__got-it {
+    padding: 4px 10px;
+    border-radius: 7px;
+    border: none;
+    background: var(--accent, #D6FE51);
+    color: var(--text-inverse, #000);
+    font-weight: 700;
+    font-size: 11.5px;
+    cursor: pointer;
+}
+.widget-tip__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.widget-tip__list b { font-weight: 600; }
+.widget-tip__chip {
+    margin: 0 4px 2px 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent, #D6FE51) 45%, transparent);
+    background: transparent;
+    color: var(--accent, #D6FE51);
+    font-size: 11px;
+    cursor: pointer;
+}
+.widget-tip__chip:hover { background: color-mix(in srgb, var(--accent, #D6FE51) 18%, transparent); }

@@ -1745,3 +1745,6 @@
     background: color-mix(in srgb, var(--accent, #6366f1) 14%, transparent);
 }
 .widget-gallery__btn--add:hover { background: color-mix(in srgb, var(--accent, #6366f1) 26%, transparent); }
+/* Plan 047 §3 — "Show N more" row inside a long group (local state, never persisted). */
+.sidebar-widget--more { color: var(--text-tertiary, #808080); font-style: italic; }
+.sidebar-widget--more:hover { color: var(--text-primary, #e8e8e8); }

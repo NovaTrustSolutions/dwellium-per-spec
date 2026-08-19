@@ -13,3 +13,8 @@
 .shortcut-sheet__label { color: var(--text-secondary, #9a8757); }
 .shortcut-sheet kbd { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 4px; color: var(--accent-text, var(--accent)); background: var(--accent-subtle, rgba(255,255,255,.06)); }
 .shortcut-sheet__foot { margin-top: 14px; font-size: 11px; color: var(--text-tertiary, #6f6244); }
+
+/* Plan 047 §6 — Guides row (Guide · Tools hub · Replay first-run). */
+.shortcut-sheet__guides { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
+.shortcut-sheet__guides-label { color: var(--text-tertiary, #6f6244); text-transform: uppercase; letter-spacing: .04em; font-size: 10.5px; }
+.shortcut-sheet__link { background: transparent; border: none; padding: 0; color: var(--accent, #D6FE51); cursor: pointer; text-decoration: underline; font-size: inherit; }

@@ -14,7 +14,9 @@ import Window from '../Window/Window';
 
 // Widget Registry — single source of truth for all widget components
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
-import { defaultStackKey, readDefaultStackFlag, DEFAULT_STACK_DONE, DEFAULT_STARTUP_STACK, shouldOpenDefaultStack } from './defaultStack';
+import { defaultStackKey, readDefaultStackFlag, DEFAULT_STACK_DONE, getStartupStack, shouldOpenDefaultStack } from './defaultStack';
+import { onboardingStore, deriveOnboardingRole } from '../../lib/onboardingStore';
+import { UserContext } from '../../context/UserContext';
 import { applySpaceBus, type ApplySpacePayload } from '../../lib/busChannels';
 import HalocronBoot from './HalocronBoot';
 import { lazyWithReload } from '../../utils/lazyWithReload';
@@ -606,6 +608,10 @@ export default function Desktop() {
     const tooltipTimeout = useRef<number | ReturnType<typeof setTimeout> | null>(null);
     const windowsRef = useRef(windows);
     windowsRef.current = windows;
+    // Plan 047 §2: raw context (not useUser — degrades to null outside a provider); ref so the mount-only effect reads the live value.
+    const userCtx = React.useContext(UserContext);
+    const userCtxRef = useRef(userCtx);
+    userCtxRef.current = userCtx;
 
     // Toast listener
     useEffect(() => {
@@ -679,7 +685,11 @@ export default function Desktop() {
                 // Assessment sweep: typed-bus emit — if the apply-space listener
                 // hasn't attached yet, its replayWithinMs subscription picks this
                 // up on attach (the 50ms defer above remains as belt-and-braces).
-                applySpaceBus.emit({ widgets: [...DEFAULT_STARTUP_STACK] });
+                // Plan 047 §2: role-based starter stack — the picked onboarding
+                // role, else derived from the account role (owner: ARA+Strata;
+                // staff: Strata+Task Board). Deterministic at mount, no race.
+                const role = onboardingStore.getSnapshot().role ?? deriveOnboardingRole(userCtxRef.current?.user?.role);
+                applySpaceBus.emit({ widgets: [...getStartupStack(role)] });
             } catch { /* sandboxed / disabled storage — skip */ }
         }, 50);
         // mount-only by design; windowsRef avoids a stale-closure dep

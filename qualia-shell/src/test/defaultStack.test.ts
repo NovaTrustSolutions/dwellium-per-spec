@@ -11,6 +11,8 @@ import {
     DEFAULT_STACK_DONE,
     DEFAULT_STARTUP_STACK,
     PINNED_WIDGETS,
+    STARTER_SETS,
+    getStartupStack,
 } from '../components/Shell/defaultStack';
 import { sidebarGroupsStore } from '../components/Sidebar/Sidebar';
 
@@ -32,6 +34,13 @@ describe('shouldOpenDefaultStack', () => {
     it('the startup stack is two windows — ARA + Strata (plan 045 §B2)', () => {
         expect([...DEFAULT_STARTUP_STACK]).toEqual(['ara-console', 'strata-dashboard']);
         expect(DEFAULT_STARTUP_STACK).toHaveLength(2);
+    });
+    it('plan 047 §2 starter sets per role: owner = pinned five; staff = Strata + Task Board + Inbox Zero; stacks per role', () => {
+        expect(STARTER_SETS.owner).toBe(PINNED_WIDGETS);
+        expect(STARTER_SETS.staff.map(p => p.component).sort()).toEqual(['inbox', 'strata-dashboard', 'task-board']);
+        expect([...getStartupStack('owner')]).toEqual([...DEFAULT_STARTUP_STACK]);
+        expect([...getStartupStack('staff')]).toEqual(['strata-dashboard', 'task-board']);
+        expect([...getStartupStack(null)]).toEqual([...DEFAULT_STARTUP_STACK]);
     });
 });
 

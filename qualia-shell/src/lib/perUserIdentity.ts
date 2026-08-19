@@ -66,6 +66,8 @@ export const avatarProfilesUserIdHolder: UserIdHolder = makeHolder();
 export const firstRunUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 047 — per-user onboarding state (role, seen tips, unlocked tiers). */
 export const onboardingUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 046-A2 — per-user "Today at a glance" once-per-day throttle (araDailyGlance). */
+export const araGlanceUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -85,6 +87,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     avatarProfilesUserIdHolder,
     firstRunUserIdHolder,
     onboardingUserIdHolder,
+    araGlanceUserIdHolder,
 ];
 
 /**

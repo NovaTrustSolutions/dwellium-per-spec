@@ -307,6 +307,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 700,
         minHeight: 500,
         category: 'core',
+        tier: 'labs', // plan 046 D4: deprecated entry — ⌘K "labs:" only
     },
     'tasks': {
         id: 'tasks',
@@ -724,6 +725,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 480,
         minHeight: 400,
         category: 'tools',
+        tier: 'labs', // plan 046 D4: One Save event-log browser (dev tool)
     },
     // Halocron theme (2026-06-12): animated Old Republic holocron archive.
     'holocron-library': {
@@ -736,6 +738,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 520,
         minHeight: 440,
         category: 'tools',
+        tier: 'labs', // plan 046 D4: theme toy, no backend
     },
     // ═══════════════════════════════════════
     //  PLAN 047 — Onboarding surface (Tools hub + Guide)

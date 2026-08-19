@@ -21,6 +21,7 @@
 
 import { useEffect } from 'react';
 import { useHonchoBackgroundRunner } from '../../services/honchoBackgroundRunner';
+import { useMorningBriefSync } from '../../hooks/useMorningBriefSync';
 import { useHermesAutonomousRunner } from '../../services/hermesAutonomousRunner';
 import { useApplyUiEdits } from '../../lib/uiEditStore';
 import { LayoutProvider } from '../../context/LayoutContext';
@@ -36,6 +37,7 @@ import FirstRunCard from './FirstRunCard';
 import TagHotkey from './TagHotkey';
 import CommandPill from './CommandPill';
 import ShortcutSheet from './ShortcutSheet';
+import SyncStatusPill from './SyncStatusPill';
 import type { DockBackMessage } from '../PopupShell/PopupShell';
 
 function ShellLayout() {
@@ -44,6 +46,8 @@ function ShellLayout() {
     // Honcho runs in the background while signed in: an autonomous reflection loop
     // that keeps synthesizing over your memories even when the Honcho widget is closed.
     useHonchoBackgroundRunner();
+    // Plan 046 B2: pull the server-written morning brief on tab focus/resume.
+    useMorningBriefSync();
 
     // Hermes personas claim durable queued tasks while the signed-in shell is
     // open, even when the Honcho/Hermes window itself is closed.
@@ -167,6 +171,7 @@ function ShellLayout() {
             <MorningBriefBanner />
             <FirstRunCard />
             <TagHotkey />
+            <SyncStatusPill />
         </div>
     );
 }

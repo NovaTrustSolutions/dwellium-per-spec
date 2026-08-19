@@ -131,6 +131,12 @@ describe('tierOf', () => {
         expect(tierOf('terminal')).toBe('labs');
         expect(tierOf('georgia-code')).toBe('labs');
         expect(tierOf('audit-log')).toBe('labs');
+        // plan 046 D4: Labs membership reconciled onto the 047 tier system.
+        expect(tierOf('inbox-zero')).toBe('labs');
+        expect(tierOf('time-travel')).toBe('labs');
+        expect(tierOf('holocron-library')).toBe('labs');
+        expect(tierOf('autonomous-runs')).toBe('labs');
+        expect(tierOf('file-explorer')).not.toBe('labs');
         expect(tierOf('astra-dashboard')).toBe('daily');
         expect(tierOf('agent-lab')).toBe('ai');
         expect(tierOf('notepad')).toBe('tools');

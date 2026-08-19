@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
-import { oneSaveSync, withSync } from '../lib/oneSaveStore';
+import { oneSaveSync, withSync, syncStatusStore } from '../lib/oneSaveStore';
 import { oneSaveClient } from '../lib/oneSaveClient';
 import { backendStatusStore } from '../lib/backendStatusStore';
 import type { DwelliumObject } from '../lib/oneSaveClient';
@@ -168,6 +168,97 @@ describe('oneSaveStore write-through retry', () => {
             .mocked(oneSaveClient.put)
             .mock.calls.some(([obj]) => obj.ownerId === 'account-b' || obj.id.includes('account-b'));
         expect(targetedB).toBe(false);
+    });
+});
+
+// plan 046 S1d — sync-state snapshot + reconnect replay.
+describe('oneSaveStore syncStatusStore', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.mocked(oneSaveClient.put).mockReset();
+        vi.mocked(oneSaveClient.get).mockReset();
+        backendStatusStore.reset();
+        syncStatusStore.reset();
+    });
+
+    afterEach(() => {
+        syncStatusStore.reset();
+        backendStatusStore.reset();
+        vi.useRealTimers();
+    });
+
+    function makeStore(objectType: string) {
+        const holder: { current: string | null } = { current: 'account-a' };
+        const resolveKey = () => `${objectType}:${holder.current ?? '_anonymous'}`;
+        const store = withSync(
+            createLocalStorageStore<string>({
+                key: resolveKey,
+                deserializer: (raw) => raw ?? '',
+                defaultValue: '',
+            }),
+            { objectType, holder, resolveKey, debounceMs: 10 },
+        );
+        return { store, holder, resolveKey };
+    }
+
+    it('set() → pending 1; after the put resolves → pending 0 + lastSavedAt', async () => {
+        vi.mocked(oneSaveClient.put).mockResolvedValue(savedObject('sync-a_account-a', 'account-a', 'v'));
+        const { store, resolveKey } = makeStore('sync-a');
+
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
+        store.set('v', () => localStorage.setItem(resolveKey(), 'v'));
+        expect(syncStatusStore.getSnapshot().pending).toBe(1);
+        expect(syncStatusStore.getSnapshot().lastSavedAt).toBeNull();
+
+        await vi.advanceTimersByTimeAsync(10);
+        const snap = syncStatusStore.getSnapshot();
+        expect(snap.pending).toBe(0);
+        expect(snap.lastSavedAt).toBeTypeOf('number');
+    });
+
+    it('3 failed puts → offline + pending 0; markOnline() replays the same payload once', async () => {
+        vi.mocked(oneSaveClient.put).mockResolvedValue(null);
+        const { store, resolveKey } = makeStore('sync-b');
+
+        store.set('v', () => localStorage.setItem(resolveKey(), 'v'));
+        await vi.advanceTimersByTimeAsync(10 + 500 + 1000);
+
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(3);
+        expect(backendStatusStore.getSnapshot().state).toBe('offline');
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
+
+        // Reconnect → the parked write is re-scheduled (debounced) and re-put.
+        vi.mocked(oneSaveClient.put).mockResolvedValue(savedObject('sync-b_account-a', 'account-a', 'v'));
+        backendStatusStore.markOnline();
+        expect(syncStatusStore.getSnapshot().pending).toBe(1);
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(4);
+        const last = vi.mocked(oneSaveClient.put).mock.calls[3][0];
+        expect(last).toMatchObject({ id: 'sync-b_account-a', ownerId: 'account-a', payload: 'v' });
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
+
+        // A second markOnline() must not replay again (failed set was cleared).
+        backendStatusStore.markOffline('x');
+        backendStatusStore.markOnline();
+        await vi.advanceTimersByTimeAsync(10);
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(4);
+    });
+
+    it('replay never writes into a switched account namespace', async () => {
+        vi.mocked(oneSaveClient.put).mockResolvedValue(null);
+        const { store, holder, resolveKey } = makeStore('sync-c');
+
+        store.set('private A', () => localStorage.setItem(resolveKey(), 'private A'));
+        await vi.advanceTimersByTimeAsync(10 + 500 + 1000);
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(3);
+
+        holder.current = 'account-b';
+        backendStatusStore.markOnline();
+        await vi.advanceTimersByTimeAsync(10);
+
+        expect(oneSaveClient.put).toHaveBeenCalledTimes(3);
+        expect(syncStatusStore.getSnapshot().pending).toBe(0);
     });
 });
 

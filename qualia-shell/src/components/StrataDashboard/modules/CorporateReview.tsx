@@ -16,6 +16,7 @@ import {
     Search, RefreshCw, AlertTriangle, Plus
 } from 'lucide-react';
 import { strataGet, strataPost, strataUpload, isStaticMode } from '../strataApi';
+import { notYetMessage } from '../../common/NotYet';
 import type { ReviewStatus, DocPriority, ReviewDocument } from '../strataTypes';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
@@ -39,7 +40,7 @@ const CATEGORIES = ['Invoice', 'Lease', 'Compliance', 'Insurance', 'Legal', 'Tax
 type WriteAction = 'Upload' | 'Triage' | 'Approve' | 'Reject' | 'Create workitem';
 
 function staticModeMessage(action: WriteAction): string {
-    return `${action} requires backend mode (static deck is read-only).`;
+    return notYetMessage(action);
 }
 
 function CorporateReviewInner() {

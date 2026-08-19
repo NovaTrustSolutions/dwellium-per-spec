@@ -239,7 +239,7 @@ describe('projects parity — Task 3.7 GR-13 retrofit (render layer)', () => {
         expect(mocks.strataPut).not.toHaveBeenCalled();
 
         // (b) Read-only banner surfaces with the message text from L95.
-        expect(await screen.findByText(/static deck is read-only/i)).toBeInTheDocument();
+        expect(await screen.findByText(/not available in this read-only preview/i)).toBeInTheDocument();
 
         // (c) Sentry.addBreadcrumb received the toggle.skipped payload from
         // ProjectsModule.tsx:97-103. Note: addBreadcrumb is also called by

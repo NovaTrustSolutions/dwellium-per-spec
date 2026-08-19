@@ -1,9 +1,10 @@
 /**
  * araPrefsStore — ARA console UX preferences (assessment sweep 2026-06-12,
- * upgrade #6 + #10). Per-device flags, default OFF so ARA behaves exactly as
- * today until the user opts in and the matching console wiring lands:
+ * upgrade #6 + #10). Per-device flags. `streamTokens` defaults ON since plan
+ * 046-A3/A4 (real SSE landed); the rest default OFF until their console wiring
+ * lands:
  *
- *   streamTokens     — render replies token-by-token (uses lib/llmStream).
+ *   streamTokens     — render replies token-by-token (lib/llmStream + /chat/stream).
  *   showToolActivity — show a "running: web search…" activity line.
  *   holdToTalk       — push-to-talk mic loop (reuses TranscriptionHub's
  *                      SpeechRecognition) feeding the composer.
@@ -21,7 +22,7 @@ export interface AraPrefs {
 }
 
 export const DEFAULT_ARA_PREFS: AraPrefs = {
-    streamTokens: false,
+    streamTokens: true,
     showToolActivity: false,
     holdToTalk: false,
     introSeen: false,

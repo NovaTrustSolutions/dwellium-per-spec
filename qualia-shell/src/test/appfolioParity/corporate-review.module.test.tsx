@@ -209,7 +209,7 @@ describe('corporate review parity — Task 3.8 GR-13 retrofit (render layer)', (
         // early-return at CorporateReview.tsx:97-110 short-circuits.
         expect(mocks.strataUpload).not.toHaveBeenCalled();
         // (a2) Banner surfaces with the upload-specific message.
-        expect(await screen.findByText(/upload requires backend mode/i)).toBeInTheDocument();
+        expect(await screen.findByText(/upload is not available/i)).toBeInTheDocument();
         // (a3) upload.skipped breadcrumb received.
         expect(mocks.addBreadcrumb).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -241,7 +241,7 @@ describe('corporate review parity — Task 3.8 GR-13 retrofit (render layer)', (
         expect(mocks.strataPost).not.toHaveBeenCalled();
         // (b2) Banner now reads the triage-specific message (sticky-until-
         // replaced semantics — the upload message was overwritten).
-        expect(await screen.findByText(/triage requires backend mode/i)).toBeInTheDocument();
+        expect(await screen.findByText(/triage is not available/i)).toBeInTheDocument();
         // (b3) submit.skipped breadcrumb received with action: 'triage'.
         // Note: the action data field is normalized via .toLowerCase().
         // replace(' ', '-') so 'Triage' → 'triage' (single word, no

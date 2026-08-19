@@ -1,0 +1,27 @@
+/* SyncStatusPill — fixed bottom-centre, just above the ThreadSwitcher
+   "No active thread" pill (absolute bottom:12px, ~30px tall, z 9980 —
+   ThreadSwitcher.css). Assistant FAB + toasts are bottom-right, FirstRunCard
+   bottom-left, CommandPill top-centre, banners top (z 98000). Passive:
+   pointer-events none so it never steals a click. */
+
+.sync-pill {
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9970;
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--surface-2, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    color: var(--text-tertiary);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.sync-pill--offline {
+    border-color: var(--danger-border, rgba(244, 113, 116, 0.4));
+    color: var(--text-secondary);
+}

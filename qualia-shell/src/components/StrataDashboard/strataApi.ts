@@ -16,6 +16,7 @@
 
 import * as backendImpl from './strataApi.backend';
 import * as staticImpl from './strataApi.static';
+import { isDemoWorkspace } from '../../lib/demoWorkspaceStore';
 
 // Vite inlines import.meta.env.VITE_* at build time. String compare is
 // deliberate — env vars are always strings when set via CLI/.env.
@@ -23,7 +24,12 @@ const RAW_FLAG = import.meta.env.VITE_USE_STATIC_API;
 const USE_STATIC =
     RAW_FLAG === true || RAW_FLAG === 'true' || RAW_FLAG === '1';
 
-const impl = USE_STATIC ? staticImpl : backendImpl;
+// Plan 046 D1: the demo-workspace flag (Settings → Data) is a per-user
+// runtime predicate evaluated per call — so a toggle + reload swaps layers
+// without a rebuild. `isStaticMode` below stays build-time on purpose: in
+// demo mode the module write-guards stay off and writes land in the
+// localStorage sandbox (strataApi.static.ts matchWriteRoute).
+const pick = () => (USE_STATIC || isDemoWorkspace()) ? staticImpl : backendImpl;
 
 // Task 2.8 — module-level static-mode detection. SentimentModule
 // imports this to short-circuit POST writes in static-mode builds.
@@ -46,11 +52,11 @@ if (typeof window !== 'undefined' && !(window as any).__strataApiModeLogged) {
 }
 
 export function strataGet<T>(path: string, params?: Record<string, string>): Promise<T> {
-    return impl.strataGet<T>(path, params);
+    return pick().strataGet<T>(path, params);
 }
 
 export function strataPost<T>(path: string, body: unknown): Promise<T> {
-    return impl.strataPost<T>(path, body);
+    return pick().strataPost<T>(path, body);
 }
 
 // Task 3.8 — multipart upload precedent. Mirrors strataPost shape but
@@ -61,15 +67,15 @@ export function strataPost<T>(path: string, body: unknown): Promise<T> {
 // CorporateReview's /upload path; reusable for any future multipart
 // surfaces.
 export function strataUpload<T>(path: string, formData: FormData): Promise<T> {
-    return impl.strataUpload<T>(path, formData);
+    return pick().strataUpload<T>(path, formData);
 }
 
 export function strataPut<T>(path: string, body: unknown): Promise<T> {
-    return impl.strataPut<T>(path, body);
+    return pick().strataPut<T>(path, body);
 }
 
 export function strataDelete(path: string): Promise<void> {
-    return impl.strataDelete(path);
+    return pick().strataDelete(path);
 }
 
 // ── Cursor Pagination ──────────────────────────────────────
@@ -81,5 +87,5 @@ export function strataGetPaginated<T>(
     path: string,
     params?: Record<string, string>
 ): Promise<PaginatedResponse<T>> {
-    return impl.strataGetPaginated<T>(path, params);
+    return pick().strataGetPaginated<T>(path, params);
 }

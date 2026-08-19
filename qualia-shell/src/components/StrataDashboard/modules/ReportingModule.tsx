@@ -8,6 +8,7 @@ import {
     Shield, AlertTriangle, CheckCircle2, XCircle, Truck, Inbox, ThumbsUp, ThumbsDown, FileSearch
 } from 'lucide-react';
 import { strataGet, strataPost } from '../strataApi';
+import { NotYet } from '../../common/NotYet';
 import EntityLink from '../EntityLink';
 import type { Report } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
@@ -427,7 +428,7 @@ export default function ReportingModule() {
                     <Clipboard size={40} strokeWidth={1} style={{ color: 'var(--text-tertiary)', marginBottom: 12 }} />
                     <h3 style={{ color: 'var(--text-primary)', margin: '0 0 6px' }}>Tenant Surveys</h3>
                     <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: 0 }}>Create and distribute satisfaction surveys to tenants</p>
-                    <span style={{ display: 'inline-block', marginTop: 12, padding: '4px 12px', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 10%, transparent)', color: 'var(--accent)', fontSize: 12, fontWeight: 600 }}>Coming Soon</span>
+                    <div style={{ display: 'inline-flex', marginTop: 12 }}><NotYet reason="Create and send tenant satisfaction surveys." /></div>
                 </div>
             )}
 

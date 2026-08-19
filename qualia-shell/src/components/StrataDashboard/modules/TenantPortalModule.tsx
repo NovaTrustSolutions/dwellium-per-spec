@@ -72,6 +72,7 @@ import { AlertTriangle, Building2, Calendar, CheckCircle, ChevronLeft, ChevronRi
 import { useUser } from '../../../context/UserContext';
 import './TenantPortal.css';
 import { strataGet, strataPost, isStaticMode } from '../strataApi';
+import { notYetMessage } from '../../common/NotYet';
 import type { PortalTab, TenantPortalPagination, TenantPortalStats } from '../strataTypes';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
@@ -87,7 +88,7 @@ const TABS: { id: PortalTab; label: string; icon: typeof Users }[] = [
 ];
 
 function staticModeMessage(): string {
-    return 'Send message requires backend mode (static deck is read-only).';
+    return notYetMessage('Send message');
 }
 
 // Initials helper

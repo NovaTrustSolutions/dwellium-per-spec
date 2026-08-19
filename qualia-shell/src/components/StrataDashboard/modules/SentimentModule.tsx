@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AlertTriangle, TrendingDown, TrendingUp, Minus, Plus, CheckCircle, Newspaper } from 'lucide-react';
 import { strataGet, isStaticMode } from '../strataApi';
+import { notYetMessage } from '../../common/NotYet';
 import type { SentimentScore, SentimentScoreView } from '@qualia/types';
 import { useStrataNav } from '../StrataNavContext';
 import EntityLink from '../EntityLink';
@@ -90,7 +91,7 @@ function SentimentModuleInner() {
         // an inline import.meta.env check to avoid divergence with the
         // router's routing decision.
         if (isStaticMode) {
-            setSubmitMsg('Survey submission requires backend mode (static deck is read-only).');
+            setSubmitMsg(notYetMessage('Survey submission'));
             try {
                 Sentry.addBreadcrumb({
                     category: 'ui.submit',

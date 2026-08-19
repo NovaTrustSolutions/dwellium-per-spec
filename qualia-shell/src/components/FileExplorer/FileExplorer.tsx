@@ -1,10 +1,9 @@
 /**
  * FileExplorer — Holocron-style tree-view file browser (Dwellium port).
  *
- * Cycle 2 (this file): scaffold UI + lock/dual-mode toggles + empty state.
+ * Cycle 2: scaffold UI + lock/dual-mode toggles + empty state.
  *   Per-user state via fileExplorerStore (sister to scribeLayoutStore).
- *   No data fetching yet — empty tree placeholder.
- * Cycle 3: data fetching from /api/files/tree, populate entries.
+ * Cycle 3+ (shipped): tree fetched via fileExplorerApi.fetchTree() (/api/files/tree).
  * Cycle 4: inline rename + create file/folder.
  * Cycle 5: drag-from (sets application/x-dwellium-path + text/uri-list).
  * Cycle 6: drag-into (move/copy between folders).

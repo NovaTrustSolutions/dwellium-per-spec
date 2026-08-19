@@ -12,6 +12,7 @@ import {
     Plus, X, History, PenTool, Upload
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
+import { NotYet } from '../../common/NotYet';
 import type { Workitem } from '../strataTypes';
 import { LoadingState, EmptyState, ErrorState } from '../StateView';
 import TrelloCardModal from './TrelloCardModal';
@@ -215,9 +216,7 @@ function ItemCard({ item, selected, onClick }: { item: Workitem; selected: boole
 // ── Block 7: View as Maintenance Tech (stub per v1 L168) ──
 export function BlockViewAsTech(_props: { item: Workitem }) {
     return (
-        <div data-testid="wo-block-view-as-tech" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-            Coming soon — Phase-N wires RBAC tech-portal perspective filter.
-        </div>
+        <NotYet testId="wo-block-view-as-tech" reason="RBAC tech-portal view lands with role-based access." />
     );
 }
 
@@ -239,27 +238,21 @@ export function BlockWithheldAmount({ item }: { item: Workitem }) {
 // ── Block 11: Invoices (stub per v1 L168) ──
 export function BlockInvoices(_props: { item: Workitem }) {
     return (
-        <div data-testid="wo-block-invoices" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-            Coming soon — Phase-N wires invoice ledger surface.
-        </div>
+        <NotYet testId="wo-block-invoices" reason="Invoice ledger per work order." />
     );
 }
 
 // ── Block 12: Texts (stub per v1 L168) ──
 export function BlockTexts(_props: { item: Workitem }) {
     return (
-        <div data-testid="wo-block-texts" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-            Coming soon — Phase-N wires SMS thread surface.
-        </div>
+        <NotYet testId="wo-block-texts" reason="SMS thread per work order." />
     );
 }
 
 // ── Block 13: Emails (stub per v1 L168) ──
 export function BlockEmails(_props: { item: Workitem }) {
     return (
-        <div data-testid="wo-block-emails" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-            Coming soon — Phase-N wires email thread surface.
-        </div>
+        <NotYet testId="wo-block-emails" reason="Email thread per work order." />
     );
 }
 

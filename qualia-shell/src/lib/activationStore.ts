@@ -193,7 +193,7 @@ export function capabilityStatuses(c: ActivationConfig): CapabilityStatus[] {
             label: 'Desktop notifications',
             state: c.notifications.enabled ? 'ready' : 'off',
             detail: c.notifications.enabled
-                ? 'On — morning brief can surface via the Notification API (asks permission once).'
+                ? `On — the morning brief arrives as a desktop notification (permission: ${typeof Notification === 'undefined' ? 'unsupported' : Notification.permission}).`
                 : 'Off. Turn on to get the morning brief as a desktop notification.',
         },
         {

@@ -19,8 +19,15 @@ export interface AIDegradedStateProps {
     availability: AiAvailability;
     /** Optional cached output the widget can still show. */
     lastKnownLabel?: string;
-    /** Override the configure CTA label (default "Open Settings"). */
+    /** Override the configure CTA label (default "Open API Keys"). */
     ctaLabel?: string;
+    /**
+     * This surface calls `callLlm` directly (no backend fallback), so
+     * 'backend-only' must be treated as degraded — plan 046 S1a.
+     */
+    needsKey?: boolean;
+    /** Override the banner text. */
+    reason?: string;
 }
 
 const STATUS_ICON: Record<string, LucideIcon> = {
@@ -30,22 +37,24 @@ const STATUS_ICON: Record<string, LucideIcon> = {
     'unavailable': Unplug,
 };
 
-export default function AIDegradedState({ availability, lastKnownLabel, ctaLabel }: AIDegradedStateProps) {
-    if (availability.status === 'ready') return null;
+export default function AIDegradedState({ availability, lastKnownLabel, ctaLabel, needsKey, reason }: AIDegradedStateProps) {
+    if (availability.status === 'ready' || (availability.status === 'backend-only' && !needsKey)) return null;
     return (
         <div className={`ai-degraded ai-degraded--${availability.status}`} role="status">
             <span className="ai-degraded__icon" aria-hidden="true">
                 {(() => { const Icon = STATUS_ICON[availability.status] ?? AlertTriangle; return <Icon size={14} />; })()}
             </span>
             <span className="ai-degraded__text">
-                {availability.reason}
+                {reason ?? (needsKey && availability.status === 'backend-only'
+                    ? 'Needs your own AI key — add one to run this.'
+                    : availability.reason)}
                 {lastKnownLabel ? (
                     <span className="ai-degraded__cached"> Showing last known: {lastKnownLabel}.</span>
                 ) : null}
             </span>
-            {availability.status !== 'backend-only' && (
+            {(availability.status !== 'backend-only' || needsKey) && (
                 <button type="button" className="ai-degraded__cta" onClick={availability.configure}>
-                    {ctaLabel ?? 'Open Settings'}
+                    {ctaLabel ?? 'Open API Keys'}
                 </button>
             )}
         </div>

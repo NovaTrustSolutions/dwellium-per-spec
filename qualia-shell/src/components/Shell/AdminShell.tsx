@@ -36,6 +36,7 @@ import FirstRunCard from './FirstRunCard';
 import TagHotkey from './TagHotkey';
 import CommandPill from './CommandPill';
 import ShortcutSheet from './ShortcutSheet';
+import SyncStatusPill from './SyncStatusPill';
 import type { DockBackMessage } from '../PopupShell/PopupShell';
 
 function ShellLayout() {
@@ -167,6 +168,7 @@ function ShellLayout() {
             <MorningBriefBanner />
             <FirstRunCard />
             <TagHotkey />
+            <SyncStatusPill />
         </div>
     );
 }

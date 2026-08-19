@@ -41,6 +41,7 @@ vi.mock('../context/HierarchyContext', () => ({
 }));
 
 import ARAConsole from '../components/ARAConsole/ARAConsole';
+import { backendStatusStore } from '../lib/backendStatusStore';
 
 function jsonResponse(data: any, ok = true, status = 200): Response {
     return {
@@ -172,7 +173,22 @@ describe('ARAConsole', () => {
     });
 
     afterEach(() => {
+        backendStatusStore.reset();
         vi.useRealTimers();
+    });
+
+    // plan 046 S1c — missing-key banner above the composer. No key (llmClient
+    // mock → hasActiveLlm false) + backend offline ⇒ 'unavailable' ⇒ CTA shown;
+    // default 'backend-only' stays silent (ARA tries the backend first).
+    it('shows the AI-unavailable banner with "Open API Keys" above the composer when offline + no key', async () => {
+        render(<ARAConsole />);
+        await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+        expect(screen.queryByRole('button', { name: 'Open API Keys' })).toBeNull();
+
+        act(() => { backendStatusStore.markOffline('Backend unreachable'); });
+
+        expect(await screen.findByRole('button', { name: 'Open API Keys' })).toBeInTheDocument();
+        expect(screen.getByText(/No AI key configured and the backend is unreachable/)).toBeInTheDocument();
     });
 
     it('shows context sources and diagnostics for ARA replies', async () => {

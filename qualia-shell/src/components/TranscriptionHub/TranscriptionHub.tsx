@@ -18,8 +18,9 @@ import './TranscriptionHub.css';
 import { API_BASE } from '../../config';
 import { TagInput } from '../Tags/TagInput';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { useAIAvailability } from '../../hooks/useAIAvailability';
+import AIDegradedState from '../Shell/AIDegradedState';
 import { scanSegmentsViaLlm, buildNotebookLmQuery } from './legalShieldClient';
-import { hasActiveLlm } from '../../lib/llmClient';
 import { buildMatchedStatutes, dedupMatchedStatutes, formatSimilarity } from './statuteMatch';
 import type { LegalScanResult as LegalScanResultLlm } from './legalShieldClient';
 
@@ -345,6 +346,7 @@ function SpeakerLibraryPanel({ apiBase }: { apiBase: string }) {
 export default function TranscriptionHub() {
     // Per-user integrations (LLM + Google email used for NotebookLM deep-link)
     const { integrations } = useIntegrations();
+    const ai = useAIAvailability();
     const googleEmail: string | null = integrations?.google?.calendar?.email ?? null;
 
     // --- Tab state ---
@@ -2345,11 +2347,7 @@ export default function TranscriptionHub() {
                                 <Scale size={14} aria-hidden /> {legalShieldEnabled ? 'Legal Shield ON' : 'Legal Shield OFF'}
                                 {legalScanRunning && <span className="th-legal-spinner">⟳</span>}
                             </button>
-                            {legalShieldEnabled && !hasActiveLlm(integrations.llm) && (
-                                <span className="th-legal-hint" role="status">
-                                    <Scale size={14} aria-hidden /> Add an LLM key in Settings → API Keys to enable statute matching.
-                                </span>
-                            )}
+                            {legalShieldEnabled && <AIDegradedState availability={ai} needsKey ctaLabel="Add a key" reason="Add an LLM key to enable statute matching." />}
                             <button
                                 className="th-legal-toggle"
                                 onClick={() => {

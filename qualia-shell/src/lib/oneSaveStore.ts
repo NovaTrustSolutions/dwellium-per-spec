@@ -79,6 +79,63 @@ interface RegistryEntry {
 const registry: RegistryEntry[] = [];
 let currentUserId: string | null = null;
 
+/* ---------- sync status (plan 046 S1d) ----------
+ * Counter lives where the timer lives: every scheduled write-through is
+ * `pending` until it persists or is dropped; exhausted retries park a replay
+ * closure in `failed` and re-run when the backend comes back online.
+ * SSR-safe: no browser globals. */
+export interface SyncStatusSnapshot {
+    /** Write-throughs scheduled or in flight. */
+    pending: number;
+    /** Epoch ms of the last successful durable write this session. */
+    lastSavedAt: number | null;
+}
+
+const SYNC_SERVER: SyncStatusSnapshot = { pending: 0, lastSavedAt: null };
+const pending = new Set<string>();
+const failed = new Map<string, () => void>();
+let lastSavedAt: number | null = null;
+let syncSnap: SyncStatusSnapshot = SYNC_SERVER;
+const syncListeners = new Set<() => void>();
+
+function emitSync(): void {
+    syncSnap = { pending: pending.size, lastSavedAt };
+    syncListeners.forEach((l) => l());
+}
+
+export const syncStatusStore = {
+    subscribe(listener: () => void): () => void {
+        syncListeners.add(listener);
+        return () => { syncListeners.delete(listener); };
+    },
+    getSnapshot(): SyncStatusSnapshot {
+        return syncSnap;
+    },
+    getServerSnapshot(): SyncStatusSnapshot {
+        return SYNC_SERVER;
+    },
+    /** Standing convention: test escape hatch. */
+    reset(): void {
+        pending.clear();
+        failed.clear();
+        lastSavedAt = null;
+        emitSync();
+    },
+};
+
+// Reconnect replay — makes "Offline — will retry" true. Each parked closure
+// checks its original owner before re-scheduling, so a switched account never
+// gets the old user's write.
+// ponytail: last-value replay only; full outbox if multi-tab ordering ever matters
+if (ONE_SAVE_ENABLED) {
+    backendStatusStore.subscribe(() => {
+        if (backendStatusStore.getSnapshot().state !== 'online' || failed.size === 0) return;
+        const fns = [...failed.values()];
+        failed.clear();
+        fns.forEach((f) => f());
+    });
+}
+
 /** Shared machinery for both wrappers. */
 function makeSynced<T>(
     base: LocalStorageStore<T>,
@@ -96,11 +153,13 @@ function makeSynced<T>(
         if (timer) clearTimeout(timer);
         const scheduledOwnerId = ownerId();
         const scheduledObjectId = objectId();
+        pending.add(scheduledObjectId);
+        emitSync();
         timer = setTimeout(async () => {
             timer = null;
             // Never let an account switch redirect a pending private write into
             // the next user's namespace.
-            if (ownerId() !== scheduledOwnerId) return;
+            if (ownerId() !== scheduledOwnerId) { pending.delete(scheduledObjectId); emitSync(); return; }
             // Retry on transient failure with bounded backoff. `put` resolves to
             // the saved object on success, `null` on failure (no throw); a
             // dropped write is no longer silently lost.
@@ -108,14 +167,20 @@ function makeSynced<T>(
                 // Guard before EVERY attempt: if the account switched during the
                 // prior backoff, drop the retry — never re-issue the prior user's
                 // write after a switch.
-                if (ownerId() !== scheduledOwnerId) return;
+                if (ownerId() !== scheduledOwnerId) { pending.delete(scheduledObjectId); emitSync(); return; }
                 const saved = await oneSaveClient.put({
                     id: scheduledObjectId,
                     type: objectType,
                     ownerId: scheduledOwnerId,
                     payload: value,
                 });
-                if (saved) return; // persisted — done
+                if (saved) { // persisted — done
+                    pending.delete(scheduledObjectId);
+                    failed.delete(scheduledObjectId);
+                    lastSavedAt = Date.now();
+                    emitSync();
+                    return;
+                }
                 // Last attempt failed → don't sleep, fall through to surface it.
                 if (attempt < WRITE_THROUGH_MAX_ATTEMPTS - 1) {
                     await new Promise((resolve) =>
@@ -123,8 +188,15 @@ function makeSynced<T>(
                     );
                 }
             }
-            // All attempts failed: surface persistent failure via the global
-            // banner instead of silently dropping the durable write.
+            // All attempts failed: park a replay for reconnect and surface the
+            // persistent failure via the global banner instead of silently
+            // dropping the durable write.
+            pending.delete(scheduledObjectId);
+            // Replay only while the SAME owner is still active — scheduleWriteThrough
+            // re-captures ownerId() at call time, so without this guard a switched
+            // account would inherit the previous user's payload.
+            failed.set(scheduledObjectId, () => { if (ownerId() === scheduledOwnerId) scheduleWriteThrough(value); });
+            emitSync();
             backendStatusStore.markOffline('One Save write failed');
         }, debounceMs);
     }

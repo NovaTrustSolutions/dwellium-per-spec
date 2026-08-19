@@ -3,7 +3,7 @@
  * The single AI-degradation contract every widget shares.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import {
     aiHealthStore,
     recordAiFailure,
@@ -12,6 +12,7 @@ import {
 } from '../lib/aiHealthStore';
 import { useAIAvailability } from '../hooks/useAIAvailability';
 import AIDegradedState from '../components/Shell/AIDegradedState';
+import HydraSplit from '../components/HydraAI/HydraSplit';
 
 // No UserProvider in test → hook degrades to _anonymous (no key). Backend
 // status store defaults to 'online'. So with no key + backend up → 'backend-only'.
@@ -80,6 +81,40 @@ describe('useAIAvailability + AIDegradedState', () => {
         expect(screen.getByTestId('status').textContent).toBe('rate-limited');
         expect(screen.getByText(/rate limit/i)).toBeTruthy();
         expect(screen.getByText(/Showing last known: cached value/)).toBeTruthy();
+    });
+
+    // plan 046 S1a — direct-`callLlm` surfaces pass needsKey so 'backend-only'
+    // is treated as degraded and the CTA opens the API Keys window.
+    it('needsKey: backend-only renders "Open API Keys" and the CTA opens api-keys', () => {
+        function NeedsKeyProbe() {
+            const a = useAIAvailability();
+            return <AIDegradedState availability={a} needsKey />;
+        }
+        const listener = vi.fn();
+        window.addEventListener('dwellium:open-widget', listener);
+        render(<NeedsKeyProbe />);
+        expect(screen.getByText(/Needs your own AI key/)).toBeTruthy();
+        fireEvent.click(screen.getByRole('button', { name: 'Open API Keys' }));
+        expect(listener).toHaveBeenCalledTimes(1);
+        const evt = listener.mock.calls[0][0] as CustomEvent;
+        expect(evt.detail).toEqual({ widgetId: 'api-keys', label: 'API Keys' });
+        window.removeEventListener('dwellium:open-widget', listener);
+    });
+
+    it('needsKey + reason override replaces the default text', () => {
+        function ReasonProbe() {
+            const a = useAIAvailability();
+            return <AIDegradedState availability={a} needsKey reason="Custom reason." ctaLabel="Add a key" />;
+        }
+        render(<ReasonProbe />);
+        expect(screen.getByText('Custom reason.')).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'Add a key' })).toBeTruthy();
+    });
+
+    // plan 046 S1b — one wired widget as a representative (others use the same props).
+    it('HydraSplit shows the "Add a key" banner when no provider is configured', () => {
+        render(<HydraSplit />);
+        expect(screen.getByRole('button', { name: 'Add a key' })).toBeTruthy();
     });
 
     it('AIDegradedState renders nothing when status is ready', () => {

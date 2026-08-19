@@ -7,6 +7,8 @@
 import { useState, useCallback, useContext } from 'react';
 import { Bot, Play, Copy, FileUp, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { useAIAvailability } from '../../hooks/useAIAvailability';
+import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { useScribeStore } from '../Scribe/scribeStore';
 import { UserContext } from '../../context/UserContext';
@@ -18,6 +20,7 @@ const MODES: AgentMode[] = ['schema', 'prd', 'gap'];
 
 export default function BuilderAgents() {
     const { integrations } = useIntegrations();
+    const ai = useAIAvailability();
     const llmReady = hasActiveLlm(integrations.llm);
     const userCtx = useContext(UserContext);
     copawUserIdHolder.current = userCtx?.user?.id ?? null;
@@ -33,7 +36,7 @@ export default function BuilderAgents() {
 
     const run = useCallback(async () => {
         if (!canRun(mode, values) || busy) return;
-        if (!hasActiveLlm(integrations.llm)) { setErr('No LLM configured — add a provider in Settings → API Keys to run agents.'); return; }
+        if (!hasActiveLlm(integrations.llm)) { setErr('No LLM configured — add a key above.'); return; }
         setBusy(true); setErr(''); setOutput(''); setCopied(false);
         try {
             const { systemPrompt, prompt } = composePrompt(mode, values);
@@ -102,6 +105,7 @@ export default function BuilderAgents() {
                         {busy ? <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Play size={13} />}
                         {busy ? 'Running…' : `Run ${def.label}`}
                     </button>
+                    <AIDegradedState availability={ai} needsKey ctaLabel="Add a key" />
                     {err && <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', borderRadius: 6, background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.25)', color: '#ff8da5', fontSize: 11 }}><TriangleAlert size={14} aria-hidden style={{ flexShrink: 0 }} /><span>{err}</span></div>}
                 </div>
 

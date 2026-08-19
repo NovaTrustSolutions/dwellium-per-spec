@@ -101,6 +101,18 @@ export default function ThemeEditor({ doc, customThemes, onApply, onSave, onDele
             setTheme({ name: t.name, vars: { ...t.vars }, fontFaces: Array.isArray(t.fontFaces) ? t.fontFaces.filter((x) => x && typeof x.family === 'string' && typeof x.dataUrl === 'string') : undefined, logo: typeof t.logo === 'string' ? t.logo : undefined });
         } catch (ex) { setErr((ex as Error)?.message || 'Import failed'); }
     };
+    // Wave 3A: colours + fonts from a PowerPoint theme (ppt/theme/theme1.xml); lazy module keeps jszip out of the entry chunk.
+    const onImportPptx = async (e: ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0];
+        e.target.value = '';
+        if (!f) return;
+        setErr('');
+        try {
+            const { importPptxTheme } = await import('./idocsPptxImport');
+            const t = await importPptxTheme(f);
+            setTheme((cur) => ({ ...cur, name: t.name, vars: { ...cur.vars, ...t.vars } }));
+        } catch (ex) { setErr((ex as Error)?.message || 'PowerPoint theme import failed'); }
+    };
     const clean = (): CustomTheme => {
         const t: CustomTheme = { name: theme.name.trim() || 'My theme', vars: { ...theme.vars } };
         if (theme.fontFaces?.length) t.fontFaces = theme.fontFaces;
@@ -151,6 +163,7 @@ export default function ThemeEditor({ doc, customThemes, onApply, onSave, onDele
                     </label>
                     <label className="scribe-idocs__filebtn">Upload font<input type="file" accept=".ttf,.otf,.woff,.woff2,font/*" onChange={(e) => void onFontFile(e)} hidden /></label>
                     <label className="scribe-idocs__filebtn">Import JSON<input type="file" accept=".json,application/json" onChange={(e) => void onImport(e)} hidden /></label>
+                    <label className="scribe-idocs__filebtn" title="Colours + fonts from a PowerPoint theme">Import .pptx theme<input type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={(e) => void onImportPptx(e)} hidden /></label>
                     <button type="button" className="scribe-idocs__minibtn" onClick={() => download(`${(theme.name || 'theme').replace(/[^\w-]+/g, '-')}.idoc-theme.json`, 'application/json', JSON.stringify(clean(), null, 2))}>Export JSON</button>
                 </div>
                 {theme.fontFaces && theme.fontFaces.length > 0 && (

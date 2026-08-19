@@ -469,4 +469,7 @@ export const EXPORT_ACTIONS: readonly ExportAction[] = [
     { id: 'print', label: 'Print…', hint: 'Show all cards first, then print', run: () => printDoc() },
     { id: 'png-card', label: 'PNG (this card)', run: async (doc, ctx) => { if (ctx.activeCardEl) await exportCardPng(ctx.activeCardEl, { filename: `${safeFilename(doc.title)}-card.png` }); } },
     { id: 'png-all', label: 'PNG (all cards)', hint: 'One download per card', run: async (doc, ctx) => { await exportAllCardsPng(doc, ctx.docEl ?? document); } },
+    // Wave 3A — lazy modules: pptxgenjs / docx stay out of the entry chunk.
+    { id: 'pptx', label: 'PowerPoint (.pptx)', hint: 'Editable slides — text, tables, charts, images, notes', run: (doc) => import('./idocPptx').then((m) => m.exportPptx(doc)) },
+    { id: 'docx', label: 'Word (.docx)', run: (doc) => import('./idocDocx').then((m) => m.exportDocx(doc)) },
 ];

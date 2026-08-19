@@ -1,11 +1,11 @@
 /**
- * Interactive Docs — doc-level AI actions: each returns a NEW normalized doc,
+ * Interactive Docs — doc-level AI actions: each returns a NEW normalized doc, remixDoc deck/brief,
  * translate sets language/dir, summarize inserts at 0, regenerateCard keeps id,
  * restyle keeps structure/ids, DOC_AI_ACTIONS catalog shape.
  */
 import { describe, it, expect, vi } from 'vitest';
 import {
-    DOC_AI_ACTIONS, addCardWithAi, regenerateCard, restyleDoc, summarizeDocToCard, translateDoc,
+    DOC_AI_ACTIONS, addCardWithAi, docContext, parseRemixInput, regenerateCard, remixDoc, restyleDoc, summarizeDocToCard, translateDoc,
 } from '../components/Scribe/idocs/idocsDocAi';
 import { normalizeDoc, type LlmBundle } from '../components/Scribe/idocs/idocsAi';
 
@@ -117,9 +117,68 @@ describe('regenerateCard', () => {
     });
 });
 
+describe('remixDoc', () => {
+    it('deck: ≤4 blocks/card, pageSize 16:9, ids kept where titles match (case-insensitive), theme swapped', async () => {
+        const doc = base();
+        const callLlmFn = vi.fn().mockResolvedValue(reply({
+            title: 'Owner deck', description: 'Slides',
+            cards: [
+                { title: 'intro', blocks: [{ type: 'heading', level: 1, text: 'H' }, { type: 'text', md: 'a' }, { type: 'boxes', items: [{ title: 'x', md: 'y' }] }, { type: 'divider' }, { type: 'text', md: 'dropped' }, { type: 'text', md: 'dropped2' }] },
+                { title: 'Brand new', blocks: [{ type: 'text', md: 'n' }] },
+                { title: 'Numbers', blocks: [{ type: 'chart', kind: 'bar', data: [{ label: 'A', value: 1 }, { label: 'B', value: 2 }, { label: 'C', value: 3 }] }] },
+            ],
+        }));
+        const out = await remixDoc(doc, { format: 'deck', theme: 'midnight', instruction: 'punchy' }, LLM_ON, callLlmFn);
+        expect(out).not.toBeNull();
+        expect(out!.id).toBe(doc.id);
+        expect(out!.title).toBe('Owner deck');
+        expect(out!.pageSize).toBe('16:9');
+        expect(out!.theme).toBe('midnight');
+        expect(out!.cards.map((c) => c.id.startsWith('c') && c.id.length <= 2 ? c.id : 'new')).toEqual(['c1', 'new', 'c2']);
+        expect(out!.cards[0].blocks).toHaveLength(4);
+        expect(out!.cards[2].blocks[0]).toMatchObject({ id: 'b3', type: 'chart' });
+        expect(doc.cards).toHaveLength(2);
+        const req = callLlmFn.mock.calls[0][0] as { prompt: string; systemPrompt: string };
+        expect(req.prompt).toContain('slide DECK');
+        expect(req.prompt).toContain('Instruction: punchy');
+        expect(req.prompt).toContain('Hello **world**');
+        expect(req.systemPrompt).toContain('{"type":"heading","level":2');
+    });
+
+    it('brief: capped at 3 cards, no pageSize change; bad theme ignored; null when off / garbage', async () => {
+        const doc = base();
+        const callLlmFn = vi.fn().mockResolvedValue(reply({ cards: Array.from({ length: 5 }, (_, i) => ({ title: `B${i}`, blocks: [{ type: 'text', md: `b${i}` }] })) }));
+        const out = await remixDoc(doc, { format: 'brief', theme: 'nope' as never }, LLM_ON, callLlmFn);
+        expect(out!.cards).toHaveLength(3);
+        expect(out!.pageSize).toBeUndefined();
+        expect(out!.theme).toBe(doc.theme);
+        expect(out!.title).toBe(doc.title);
+        expect((callLlmFn.mock.calls[0][0] as { prompt: string }).prompt).toContain('BRIEF of 1-3 cards');
+        expect(await remixDoc(doc, {}, LLM_OFF, vi.fn())).toBeNull();
+        expect(await remixDoc(doc, {}, LLM_ON, vi.fn().mockResolvedValue(reply({ cards: [] })))).toBeNull();
+    });
+
+    it('parseRemixInput: deck / brief / doc keywords → format (+ trailing instruction); anything else → instruction', () => {
+        expect(parseRemixInput('deck')).toEqual({ format: 'deck', instruction: undefined });
+        expect(parseRemixInput('Brief: for the board')).toEqual({ format: 'brief', instruction: 'for the board' });
+        expect(parseRemixInput('make it funnier')).toEqual({ format: 'doc', instruction: 'make it funnier' });
+        expect(parseRemixInput('  ')).toEqual({ format: 'doc', instruction: undefined });
+    });
+
+    it('docContext: title, per-card ids/titles/type counts + text, capped', () => {
+        const ctx = docContext(base());
+        expect(ctx).toContain('Title: Owner report');
+        expect(ctx).toContain('#1 id=c1 "Intro" [text, callout]');
+        expect(ctx).toContain('blocks: b1:text b2:callout');
+        expect(ctx).toContain('Hello **world** Note');
+        expect(docContext(base(), 400, 50)).toHaveLength(50);
+    });
+});
+
 describe('DOC_AI_ACTIONS catalog', () => {
-    it('has the five actions with the documented shape and runs through run()', async () => {
-        expect(DOC_AI_ACTIONS.map((a) => a.id)).toEqual(['summarize', 'add-card', 'translate', 'restyle', 'regenerate-card']);
+    it('has the six actions with the documented shape and runs through run()', async () => {
+        expect(DOC_AI_ACTIONS.map((a) => a.id)).toEqual(['summarize', 'add-card', 'translate', 'restyle', 'regenerate-card', 'remix']);
+        expect(DOC_AI_ACTIONS.find((a) => a.id === 'remix')).toMatchObject({ needsInput: true, inputHint: 'e.g. deck, brief, or an instruction' });
         for (const a of DOC_AI_ACTIONS) { expect(typeof a.label).toBe('string'); expect(typeof a.run).toBe('function'); }
         expect(DOC_AI_ACTIONS.find((a) => a.id === 'translate')!.needsInput).toBe(true);
         expect(DOC_AI_ACTIONS.find((a) => a.id === 'regenerate-card')!.perCard).toBe(true);

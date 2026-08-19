@@ -593,7 +593,7 @@
     flex-wrap: wrap;
     gap: 8px;
     justify-content: center;
-    margin-top: 12px;
+    margin: 8px 12px 4px; /* sits between the mode hint / header and the chat area */
 }
 
 /* [D25] Tag pills with glass */

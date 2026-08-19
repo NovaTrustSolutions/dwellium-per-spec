@@ -2263,12 +2263,17 @@ export default function ARAConsole() {
                         <span className="ara-hint-tag">{currentMode.voice.split('—')[0]?.trim()}</span>
                         <span className="ara-hint-tag">{currentMode.logic.split('—')[0]?.trim()}</span>
                     </div>
-                    {/* 046-A1: starter prompts — routeUtterance so "Open Strata" runs as a command */}
-                    <div className="ara-starter-row" role="group" aria-label="Suggested prompts">
-                        {starterPromptsFor(currentMode.id).map(p => (
-                            <button key={p} type="button" className="ara-action-btn ara-handoff-btn" onClick={() => void routeUtterance(p)}>{p}</button>
-                        ))}
-                    </div>
+                </div>
+            )}
+
+            {/* 046-A1: starter prompts — shown until the user's OWN first message (the daily
+                glance is an assistant post and must not hide them); routeUtterance so
+                "Open Strata" runs as a command */}
+            {currentMode && !messages.some(m => m.role === 'user') && (
+                <div className="ara-starter-row" role="group" aria-label="Suggested prompts">
+                    {starterPromptsFor(currentMode.id).map(p => (
+                        <button key={p} type="button" className="ara-action-btn ara-handoff-btn" onClick={() => void routeUtterance(p)}>{p}</button>
+                    ))}
                 </div>
             )}
 

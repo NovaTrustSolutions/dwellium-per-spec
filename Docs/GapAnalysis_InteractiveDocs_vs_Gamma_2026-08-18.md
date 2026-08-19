@@ -1,7 +1,7 @@
 # Gap analysis — Scribe "Interactive Docs" v1 vs Gamma.app Documents
 
 **Date:** 2026-08-18 · **Ours:** `qualia-shell/src/components/Scribe/idocs/` (main `8e2e188`, live on argyleholocron.netlify.app) · **Theirs:** Gamma.app *Documents* as inventoried from help.gamma.app / developers.gamma.app / pricing (marketing pages 403 to fetchers; 97 sourced facts, see §Sources).
-**Target stated by Ilya:** 100 % parity. **Score at v1 (2026-08-18 a.m.): 41 % → Wave 1 (2026-08-18 p.m., `d6a70e3`): ≈ 69 % → Wave 2 (2026-08-19, `e14611a`): ≈ 83 % weighted parity (see §Scoring).** The core authoring loop (AI-generate → card/block doc → theme → present → export) is at parity; the gaps are almost entirely *platform* features (real-time collaboration, hosted publishing, cloud analytics, AI media, native diagrams, imports beyond text).
+**Target stated by Ilya:** 100 % parity. **Score at v1 (2026-08-18 a.m.): 41 % → Wave 1 (2026-08-18 p.m., `d6a70e3`): ≈ 69 % → Wave 2 (2026-08-19, `e14611a`): ≈ 83 % → Wave 3 (2026-08-19, frontend `e263249` + backend `a340d0d`): ≈ 88 % weighted parity (see §Scoring).** The core authoring loop (AI-generate → card/block doc → theme → present → export) is at parity; the gaps are almost entirely *platform* features (real-time collaboration, hosted publishing, cloud analytics, AI media, native diagrams, imports beyond text).
 
 Legend: ✅ parity · 🟡 partial (works, narrower) · ❌ missing · ➕ ours only.
 
@@ -22,6 +22,14 @@ Three parallel branches again (A media/design/export · B AI flows/chat · C pre
 Now ✅ that were ❌/🟡 after wave 1: **AI image generation** on image/gallery/header/background (reuses the app's image-gen skill; style presets) · **stock images** (Openverse without a key; Unsplash/Giphy with an inline key) + placeholder · fit/fill + focal point + ratio presets · **theme editor** (8 vars, live sample card, save/reuse per user, JSON import/export) + **font upload** (TTF/OTF/WOFF2 → `@font-face`) + logo · **chart CSV / published Google Sheets sync** (source URL, sync now, auto-refresh) · **styled PDF** (print-to-PDF of the export HTML) · **PNG per card / all cards** · **Create with Agent** (outline-first: prompt/attachments/URL → editable outline → per-card generation; 4 style presets Minimal/Visual/Classic/Consultant; optional web research with a Sources card; recent outlines) · **in-editor AI chat** ("Ask about this doc", apply/discard preview, chips: summarize/add card/translate/fix grammar/shorter/suggest images) · **Remix** (doc / deck / brief) · **Presenter view** (popup window synced via BroadcastChannel; notes, timer, clock, next card; inline fallback) · **comments** per card/block (replies, resolve, badges, "show resolved") · find-in-doc (⌘F) · collapsible outline groups.
 
 Still open (→ wave 3): real-time co-editing, share links / permissions / embed code / password / SEO, server-side analytics, PPTX export (needs a new dep — your call), public HTTP API, custom domains, mobile app, credit economy.
+
+## Wave 3 — SHIPPED (code) 2026-08-19 (frontend main `e263249`; backend main `a340d0d` — **backend Cloud Run deploy pending**, so publish/share/generate return 404 on the live site until then)
+
+Three parallel branches (A export/import · B publish/share/live-lite UI · C backend routes) built to a frozen contract (`Docs/idocs-wave3-api.md`); zero merge conflicts; gate on merged frontend main: tsc 0 · vitest **240 files / 2058 tests** (+40 over wave 2 close) · eslint 0 · Netlify build 0 (pptxgenjs is a lazy chunk, entry unchanged); backend: tsc 0 · jest **27 suites / 224 tests** (+30, incl. boot-without-`OPENAI_API_KEY` fix); local dev backend restarted and route smoke green.
+
+Now ✅/🟡 that were ❌ after wave 2: **publish** to `/p/<slug>` (static export HTML served by the backend; slug, **password**, SEO title/description, **noindex**, embed toggle) · **share link + embed iframe code + LinkedIn share** · **server analytics** (views, unique 30 d, per-card views/avg s/% viewers via an injected beacon; local analytics kept) · **workspace sharing** with view/comment/edit roles, "Shared with me", comment-only posting · **live-lite** co-editing (5 s poll, optimistic version → conflict banner "Load theirs / Keep mine", presence chips) · **PPTX export** (native text/tables/**charts**/images/notes; page size → layout) · **DOCX export** · **PPTX import** (slides→cards, media, tables, notes) · **theme import from .pptx** · merge docs · **HTTP generate API** (`POST /api/idocs/generate` + `/generate/schema`; ARA/Hermes/connectors can call it).
+
+Still open: true real-time (CRDT + cursors, follow mode), reactions/@mentions/Slack DMs, custom domains / publish-as-site navigation, AI infographics / video / Studio-mode image editing, Google Slides direct export (open the PPTX instead), mobile app, Slack app, credit economy — the last four are Gamma's hosted business features, not editor gaps.
 
 ## 1. Content model
 
@@ -109,8 +117,8 @@ Still open (→ wave 3): real-time co-editing, share links / permissions / embed
 
 | Gamma | Ours (v1) | Status | Gap → what closes it |
 |---|---|---|---|
-| Permissions View/Comment/Edit; workspace defaults | per-user private store (One Save sync) | ❌ | share to workspace users via One Save `objectType: scribe-idocs-shared` + role check (M) |
-| Real-time co-editing with cursors | — | ❌ | needs CRDT/WS (L) — no such infra in the app today |
+| Permissions View/Comment/Edit; workspace defaults | Share dialog: members by email with view/comment/edit; "Shared with me" (wave 3) | ✅ | workspace-level defaults ❌ (S) |
+| Real-time co-editing with cursors | **live-lite**: 5 s poll, optimistic version + conflict banner, presence chips (wave 3) | 🟡 | true CRDT + cursors still needs WS infra (L) |
 | Block-level comments + reactions, @mentions, Slack DMs | — (Scribe Doc mode has inline comments; not wired to idocs) | ❌ | reuse Scribe `CommentEditor` per block (M) |
 | Workspaces, folders | library list | 🟡 | folder tag on doc (S) |
 | Workspace templates + template instructions; public template gallery | — | ❌ | "Save as template" = doc JSON with `isTemplate` + "New from template" (S) |
@@ -120,36 +128,36 @@ Still open (→ wave 3): real-time co-editing, share links / permissions / embed
 
 | Gamma | Ours (v1) | Status | Gap → what closes it |
 |---|---|---|---|
-| Public link with access levels; embed iframe | Copy JSON; save HTML to Artifact Gallery; download HTML | ❌ | backend `POST /api/idocs/publish` → static HTML at `/p/<slug>` (M) — the export HTML is already self-contained/no-script |
-| Password protection (Pro) | — | ❌ | with publish (S after publish) |
+| Public link with access levels; embed iframe | `/p/<slug>` public link + embed iframe code (wave 3) | ✅ | access levels = public / password; per-user link ACL ❌ |
+| Password protection (Pro) | ✅ (scrypt hash, cookie unlock) | ✅ | — |
 | Hide "Made with" badge | n/a | ➕ | no badge |
 | Publish as site: subdomain, custom domains, navbar, favicon | — | ❌ | L (product decision) |
-| SEO title/description, indexing toggle, GA/GTM/Pixel | `description` field | ❌ | with publish |
-| Direct post to LinkedIn | — | ❌ | S after publish |
+| SEO title/description, indexing toggle, GA/GTM/Pixel | SEO title/description + noindex (wave 3) | 🟡 | GA/GTM/Pixel snippets ❌ (S) |
+| Direct post to LinkedIn | LinkedIn share (share-offsite) (wave 3) | ✅ | — |
 | Mobile app | — | ❌ | n/a |
 
 ## 8. Analytics
 
 | Gamma | Ours (v1) | Status | Gap → what closes it |
 |---|---|---|---|
-| Views, unique viewers (30 d), % views per card, time per card, cards viewed, viewer identity, Pro | views + seconds per card, local (this browser), Analytics popover | 🟡 | server-side beacons once published (M) |
+| Views, unique viewers (30 d), % views per card, time per card, cards viewed, viewer identity, Pro | server analytics for published docs (views, unique 30 d, per-card views/avg s/%) + local analytics (wave 3) | 🟡 | viewer identity ❌ (anonymous by design) |
 
 ## 9. Export / import
 
 | Gamma | Ours (v1) | Status | Gap → what closes it |
 |---|---|---|---|
-| PDF (styled), PPTX, PNG, Google Slides; fonts embedded | PDF (text-only via pdf-lib), **Print** (styled, page-per-card), HTML (standalone, no-script), Markdown, JSON | 🟡 | styled PDF = print-to-PDF today; PPTX (pptxgenjs is a new dep — needs Ilya's OK, M); PNG per card (canvas of DOM, M) |
-| Import PDF/PPTX/DOCX/Google Docs/Notion/URL | DOCX/MD/TXT/JSON | 🟡 | see §3 |
-| DOCX/Markdown/HTML export | HTML + Markdown ✅; DOCX ❌ | ➕/🟡 | DOCX via existing mammoth is read-only; writer needs a dep |
+| PDF (styled), PPTX, PNG, Google Slides; fonts embedded | styled PDF, **PPTX** (native text/tables/charts/images/notes), PNG, HTML, Markdown, JSON, **DOCX** (wave 3) | ✅ | Google Slides = open the PPTX; uploaded fonts don't embed |
+| Import PDF/PPTX/DOCX/Google Docs/Notion/URL | DOCX/MD/TXT/JSON/URL/PDF + **PPTX** (wave 3) | 🟡 | Google Docs/Notion connectors ❌ |
+| DOCX/Markdown/HTML export | HTML + Markdown + DOCX ✅ (wave 3) | ✅ | — |
 
 ## 10. Platform
 
 | Gamma | Ours (v1) | Status | Gap → what closes it |
 |---|---|---|---|
-| Generate API, themes/folders/export/analytics endpoints, OAuth | widget-action bus `scribe.create-interactive-doc` (ARA/Hermes can trigger); no HTTP API | 🟡 | backend route wrapping `generateDocFromPrompt` server-side (M) |
+| Generate API, themes/folders/export/analytics endpoints, OAuth | `POST /api/idocs/generate` + `/generate/schema`, publications + analytics endpoints (wave 3); widget-action bus | 🟡 | OAuth/API keys for third parties ❌ (session auth only) |
 | Connectors: ChatGPT/Claude MCP, Zapier/Make/n8n; inbound Airtable/HubSpot/Notion/Slack/… | ARA + Hermes skills; Supabase/Postgres/Gmail integrations exist app-wide | 🟡 | ARA skill "make an interactive doc from <source>" (S) |
 | Slack app | — | ❌ | n/a |
-| Version history | — | ❌ | see §6 |
+| Version history | ✅ (wave 1) | ✅ | — |
 | Shortcuts (⌘Z, ⌘E agent, S spotlight, E quick edit, ⌘⇧O) | ←/→/Esc in present | ❌ | ⌘Z via snapshot history; S/E once features exist |
 | Offline | ➕ works offline (local store, One Save syncs later) | ➕ | — |
 | SOC 2 / SSO / AI-training opt-out | n/a — data never leaves the user's own LLM key/backend | ➕ | — |
@@ -160,19 +168,19 @@ Still open (→ wave 3): real-time co-editing, share links / permissions / embed
 
 Weighted by what a document author touches daily (weights in parentheses):
 
-| Area | Weight | v1 | Wave 1 | Wave 2 | Notes (post-wave-2) |
-|---|---|---|---|---|---|
-| 1 Content model | 15 | 55 % | 90 % | 92 % | multipage docs & merge-gammas still ❌ |
-| 2 Blocks & interactive | 20 | 60 % | 85 % | 92 % | AI images ✅, chart sync ✅; AI infographics, freeform diagram canvas, video-gen ❌ |
-| 3 AI | 20 | 40 % | 65 % | 88 % | Create with Agent, chat, remix, images ✅; Studio Mode / image editing (Imagine) ❌ |
-| 4 Design | 10 | 30 % | 55 % | 85 % | theme editor + font upload + logo ✅; import theme from PPTX ❌ |
-| 5 Modes | 5 | 50 % | 75 % | 90 % | presenter view ✅; follow mode ❌ (realtime) |
-| 6 Collaboration | 10 | 5 % | 25 % | 50 % | comments (local) + history + templates ✅; realtime/permissions ❌ |
-| 7 Sharing/publishing | 10 | 10 % | 10 % | 10 % | wave 3 |
-| 8 Analytics | 3 | 40 % | 40 % | 40 % | wave 3 |
-| 9 Export/import | 5 | 55 % | 80 % | 92 % | styled PDF + PNG ✅; PPTX ❌ (dep gate) |
-| 10 Platform | 2 | 30 % | 45 % | 50 % | HTTP API ❌ |
-| **Weighted total** | 100 | **≈ 41 %** | **≈ 69 %** | **≈ 83 %** | |
+| Area | Weight | v1 | Wave 1 | Wave 2 | Wave 3 | Notes (post-wave-3) |
+|---|---|---|---|---|---|---|
+| 1 Content model | 15 | 55 % | 90 % | 92 % | 95 % | merge docs ✅ (wave 3); multipage ❌ |
+| 2 Blocks & interactive | 20 | 60 % | 85 % | 92 % | 92 % | AI infographics, freeform diagram canvas, video-gen ❌ |
+| 3 AI | 20 | 40 % | 65 % | 88 % | 88 % | Studio Mode / image editing (Imagine) ❌ |
+| 4 Design | 10 | 30 % | 55 % | 85 % | 90 % | theme import from PPTX ✅ (wave 3) |
+| 5 Modes | 5 | 50 % | 75 % | 90 % | 90 % | follow mode ❌ (needs realtime) |
+| 6 Collaboration | 10 | 5 % | 25 % | 50 % | 70 % | roles + shared docs + live-lite ✅; CRDT/cursors, reactions/@mentions ❌ |
+| 7 Sharing/publishing | 10 | 10 % | 10 % | 10 % | 85 % | publish/password/SEO/embed/LinkedIn ✅; custom domains/site nav/GA ❌ |
+| 8 Analytics | 3 | 40 % | 40 % | 40 % | 85 % | server beacons ✅; viewer identity ❌ |
+| 9 Export/import | 5 | 55 % | 80 % | 92 % | 98 % | PPTX + DOCX + PPTX import ✅ |
+| 10 Platform | 2 | 30 % | 45 % | 50 % | 80 % | HTTP generate API ✅; third-party OAuth ❌ |
+| **Weighted total** | 100 | **≈ 41 %** | **≈ 69 %** | **≈ 83 %** | **≈ 88 %** | |
 
 ## Road to 100 % — sequenced by leverage (each item is one plan-045-style ticket)
 
@@ -182,8 +190,10 @@ Weighted by what a document author touches daily (weights in parentheses):
 **Wave 2 — AI media + editor depth — ✅ SHIPPED 2026-08-19 (projected 84 %, landed ≈ 83 %):** AI image generation on `image` blocks (reuse `skill-image-gen`) · Unsplash/Giphy pickers · theme editor + font upload · outline-first "Create with Agent" flow · in-editor AI chat (ARA-in-Scribe already exists as `AraMiniPanel` — point it at the active idoc) · Presenter view (popout) · block comments (reuse Scribe `CommentEditor`) · Google Sheets chart sync · styled PDF (print pipeline) · PNG per card.
 → projected **≈ 84 %**.
 
-**Wave 3 — platform (M–L, needs backend + product decisions):** publish to `/p/<slug>` (static HTML already generated) → password, SEO, share links, embed code, server analytics · workspace sharing + roles · real-time co-editing (CRDT; **L**) · PPTX export (new dep, Ilya gate) · public HTTP generate API · custom domains (L).
-→ **≈ 95–100 %** (the last points are Gamma's hosted business features — custom domains, mobile app, Slack app, credit economy — which are product choices, not gaps in the editor).
+**Wave 3 — platform — ✅ SHIPPED (code) 2026-08-19 (projected 95–100 %, landed ≈ 88 %; backend deploy pending):** publish `/p/<slug>` + password + SEO/noindex + embed + LinkedIn + server analytics · workspace sharing + roles + live-lite · PPTX/DOCX export + PPTX import + theme import · HTTP generate API. The gap between projected and landed is exactly the items I chose NOT to fake: real-time stayed live-lite (no CRDT infra), custom domains untouched.
+
+**Wave 4 — the last 12 % (each is a product/infra decision, not an editor gap):** (a) true real-time — Yjs + a WebSocket room on Cloud Run (needs `MAX_INSTANCES>1` awareness or a Redis adapter; L) → cursors, follow mode, reactions/@mentions; (b) publish-as-site — custom domains + navbar/favicon (Netlify domain aliases or a `sites` table + edge proxy; L, product call); (c) AI media — infographic/video generation, Studio-mode image edits (depends on the user's image provider; M); (d) connectors — Google Docs/Notion import, GA/GTM/Pixel snippets, third-party API keys/OAuth for the generate API (S–M each). Mobile app / Slack app / credit economy: n/a by design.
+→ **≈ 95–100 %**.
 
 ## Sources
 - Gamma inventory (97 items, each with URL): research pass 2026-08-18 over help.gamma.app (collections: Editing/Designing, AI Content & Images, Sharing/Collab/Analytics, Websites & Publishing, Connectors/Imports/Embeds), developers.gamma.app/llms-full.txt, lab.gamma.app, gamma.app/pricing, third-party reviews (kripeshadwani, eesel, presentations.ai). Facts marked "unverified" in the inventory were treated as gaps in Gamma's favour.

@@ -307,6 +307,59 @@ async function fetchOpenAICompatibleModels(url: string, apiKey?: string): Promis
     return dedupeSorted(ids);
 }
 
+// ── Newer-model compatibility (2026-08-19, Ilya: "empty responses on newer models") ──
+// OpenAI GPT-5 / o-series reject `max_tokens` (want `max_completion_tokens`) and any
+// `temperature` other than the default → HTTP 400, which every caller swallowed as
+// an empty reply. Reasoning models also spend the token budget on reasoning first,
+// so small budgets come back as content "" with finish_reason "length". Same shape
+// on Gemini 2.5 (thinking shares maxOutputTokens; text may sit in a later part).
+
+/** OpenAI models that take `max_completion_tokens` only and reject non-default temperature. */
+export function isOpenAiReasoningModel(model: string): boolean {
+    return /^(gpt-5|o[1-9])/i.test(model.trim());
+}
+
+/** Build the OpenAI chat-completions body for ANY current model. Pure. */
+export function buildOpenAiBody(req: LlmRequest, model: string, maxTokensOverride?: number): Record<string, unknown> {
+    const maxTokens = maxTokensOverride ?? req.maxTokens ?? 1024;
+    const reasoning = isOpenAiReasoningModel(model);
+    const body: Record<string, unknown> = {
+        model,
+        // `max_completion_tokens` is accepted by every current chat model; `max_tokens` is
+        // rejected by GPT-5 / o-series.
+        max_completion_tokens: maxTokens,
+        messages: [
+            ...(req.systemPrompt ? [{ role: 'system', content: req.systemPrompt }] : []),
+            { role: 'user', content: req.prompt },
+        ],
+    };
+    if (!reasoning) body.temperature = req.temperature ?? 0.3;
+    // Keep short answers short: reasoning models otherwise burn a tiny budget on thinking.
+    if (reasoning && maxTokens <= 256) body.reasoning_effort = 'minimal';
+    if (req.responseFormat === 'json') body.response_format = { type: 'json_object' };
+    return body;
+}
+
+/** Text from an OpenAI chat-completions response; '' when the model returned nothing. */
+export function parseOpenAiText(json: any): { text: string; truncated: boolean } {
+    const choice = json?.choices?.[0];
+    const text = typeof choice?.message?.content === 'string' ? choice.message.content : '';
+    return { text, truncated: choice?.finish_reason === 'length' };
+}
+
+/** Text from a Gemini generateContent response — joins all non-thought parts. */
+export function parseGeminiText(json: any): { text: string; truncated: boolean } {
+    const cand = json?.candidates?.[0];
+    const parts: any[] = Array.isArray(cand?.content?.parts) ? cand.content.parts : [];
+    const text = parts.filter((p) => p && !p.thought && typeof p.text === 'string').map((p) => p.text).join('');
+    return { text, truncated: cand?.finishReason === 'MAX_TOKENS' };
+}
+
+/** Budget used for the one automatic retry after an empty, truncated reply. */
+export function retryBudget(requested: number | undefined): number {
+    return Math.max(4096, (requested ?? 1024) * 4);
+}
+
 // ── Provider implementations ──────────────────────────────────────────
 
 async function callAnthropic(req: LlmRequest, apiKey: string, model: string): Promise<LlmResponse> {
@@ -335,17 +388,8 @@ async function callAnthropic(req: LlmRequest, apiKey: string, model: string): Pr
     return { text, provider: 'anthropic', model };
 }
 
-async function callOpenAI(req: LlmRequest, apiKey: string, model: string): Promise<LlmResponse> {
-    const body: any = {
-        model,
-        max_tokens: req.maxTokens ?? 1024,
-        temperature: req.temperature ?? 0.3,
-        messages: [
-            ...(req.systemPrompt ? [{ role: 'system', content: req.systemPrompt }] : []),
-            { role: 'user', content: req.prompt },
-        ],
-    };
-    if (req.responseFormat === 'json') body.response_format = { type: 'json_object' };
+async function callOpenAI(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number): Promise<LlmResponse> {
+    const body = buildOpenAiBody(req, model, maxTokensOverride);
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -356,18 +400,25 @@ async function callOpenAI(req: LlmRequest, apiKey: string, model: string): Promi
         throw new LlmError('openai', res.status, errText || `HTTP ${res.status}`);
     }
     const json = await res.json();
-    const text = json?.choices?.[0]?.message?.content ?? '';
+    const { text, truncated } = parseOpenAiText(json);
+    // Reasoning model spent the whole budget thinking → retry ONCE with a real budget.
+    if (!text && truncated && maxTokensOverride === undefined) {
+        return callOpenAI(req, apiKey, model, retryBudget(req.maxTokens));
+    }
+    if (!text && truncated) {
+        throw new LlmError('openai', 200, `${model} returned no text (token budget exhausted by reasoning) — raise maxTokens or pick a non-reasoning model`);
+    }
     return { text, provider: 'openai', model };
 }
 
-async function callGemini(req: LlmRequest, apiKey: string, model: string): Promise<LlmResponse> {
+async function callGemini(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number): Promise<LlmResponse> {
     // Gemini uses ?key=<apiKey> in URL. Combined system+user via instructions
     // field if systemPrompt provided.
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const body: any = {
         contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
         generationConfig: {
-            maxOutputTokens: req.maxTokens ?? 1024,
+            maxOutputTokens: maxTokensOverride ?? req.maxTokens ?? 1024,
             temperature: req.temperature ?? 0.3,
             ...(req.responseFormat === 'json' ? { responseMimeType: 'application/json' } : {}),
         },
@@ -385,7 +436,14 @@ async function callGemini(req: LlmRequest, apiKey: string, model: string): Promi
         throw new LlmError('gemini', res.status, errText || `HTTP ${res.status}`);
     }
     const json = await res.json();
-    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const { text, truncated } = parseGeminiText(json);
+    // Gemini 2.5 thinking shares maxOutputTokens → empty on small budgets; retry once bigger.
+    if (!text && truncated && maxTokensOverride === undefined) {
+        return callGemini(req, apiKey, model, retryBudget(req.maxTokens));
+    }
+    if (!text && truncated) {
+        throw new LlmError('gemini', 200, `${model} returned no text (output budget consumed by thinking) — raise maxTokens`);
+    }
     return { text, provider: 'gemini', model };
 }
 

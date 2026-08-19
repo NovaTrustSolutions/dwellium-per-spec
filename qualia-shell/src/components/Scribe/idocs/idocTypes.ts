@@ -20,7 +20,7 @@ export type Block =
     | { id: string; type: 'image'; src: string; alt?: string; caption?: string }
     | { id: string; type: 'gallery'; images: { src: string; alt?: string }[] }
     | { id: string; type: 'embed'; url: string; provider?: string }
-    | { id: string; type: 'chart'; kind: ChartKind; title?: string; data: { label: string; value: number }[] }
+    | { id: string; type: 'chart'; kind: ChartKind; title?: string; data: { label: string; value: number }[]; /** Wave 2: CSV / published Google Sheet URL to refresh `data` from */ sourceUrl?: string; syncedAt?: string }
     | { id: string; type: 'table'; headers: string[]; rows: string[][] }
     | { id: string; type: 'accordion'; items: { title: string; md: string }[] }
     | { id: string; type: 'tabs'; items: { title: string; md: string }[] }
@@ -65,6 +65,12 @@ export interface CardBackground {
 /** Wave 1: footnotes render at card bottom; referenced from md via [^n]. */
 export interface Footnote { id: string; text: string }
 
+/** Wave 2: block/card comment thread (local, per doc; realtime is wave 3). */
+export interface BlockComment { id: string; blockId?: string; author: string; text: string; at: string; resolved?: boolean; replies?: { id: string; author: string; text: string; at: string }[] }
+
+/** Wave 2: per-doc custom theme (theme id 'custom'); `vars` = the 8 `--idoc-*` vars; fontFaces = uploaded TTF/OTF as data URLs. */
+export interface CustomTheme { name: string; vars: Record<string, string>; fontFaces?: { family: string; dataUrl: string; weight?: string }[]; logo?: string }
+
 export interface Card {
     id: string;
     title?: string;
@@ -78,10 +84,12 @@ export interface Card {
     footnotes?: Footnote[];
     /** Presenter notes (not rendered in the doc; shown in presenter view / export as comments). */
     notes?: string;
+    /** Wave 2 */
+    comments?: BlockComment[];
     // ponytail: no nested cards in v1 — add `children?: Card[]` + recursive renderer when needed.
 }
 
-export type IDocThemeId = 'inherit' | 'paper' | 'midnight' | 'sunrise' | 'forest' | 'slate' | 'neon'
+export type IDocThemeId = 'inherit' | 'paper' | 'midnight' | 'sunrise' | 'forest' | 'slate' | 'neon' | 'custom'
     // Wave 1 (+40, generated from WAVE1_PALETTES below)
     | 'ocean' | 'sand' | 'lavender' | 'terracotta' | 'mint' | 'ivory' | 'coral' | 'sky' | 'olive' | 'rose'
     | 'cobalt' | 'lime' | 'arctic' | 'peach' | 'sage' | 'linen' | 'blush' | 'citrus' | 'pearl' | 'dune'
@@ -110,6 +118,8 @@ export interface IDoc {
     isTemplate?: boolean;
     language?: string;
     dir?: 'ltr' | 'rtl';
+    /** Wave 2: used when theme === 'custom' (renderer merges vars over 'inherit'). */
+    customTheme?: CustomTheme;
 }
 
 /** CSS custom properties applied on the doc root via inline style. */
@@ -251,7 +261,14 @@ export const IDOC_THEMES: readonly IDocTheme[] = [
 ] as const;
 
 export function themeById(id: string | undefined): IDocTheme {
+    if (id === 'custom') return { id: 'custom', label: 'Custom', vars: { ...IDOC_THEMES[0].vars }, swatch: 'conic-gradient(from 0deg, #f97316, #22c55e, #3b82f6, #f97316)' };
     return IDOC_THEMES.find((t) => t.id === id) ?? IDOC_THEMES[0];
+}
+
+/** Effective theme vars for a doc: named theme, or 'custom' → doc.customTheme.vars over the inherit base. */
+export function themeVarsFor(doc: Pick<IDoc, 'theme' | 'customTheme'>): Record<string, string> {
+    if (doc.theme === 'custom' && doc.customTheme) return { ...IDOC_THEMES[0].vars, ...doc.customTheme.vars };
+    return { ...themeById(doc.theme).vars };
 }
 
 export function newId(prefix = 'b'): string {

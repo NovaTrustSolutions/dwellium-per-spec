@@ -12,6 +12,8 @@
  * sync when a global hotkey is added/removed.
  */
 import { useEffect, useState } from 'react';
+import { openWidget } from '../../lib/dwelliumCommands';
+import { replayFirstRun } from '../../lib/firstRunStore';
 import './ShortcutSheet.css';
 
 // Same one-liner as IDocEditor.tsx `isField`.
@@ -84,6 +86,13 @@ export default function ShortcutSheet() {
                         </li>
                     ))}
                 </ul>
+                {/* Plan 047 §6 — Guides: the Guide widget, the Tools hub, and "Replay first-run". */}
+                <div className="shortcut-sheet__guides">
+                    <span className="shortcut-sheet__guides-label">Guides</span>
+                    <button type="button" className="shortcut-sheet__link" onClick={() => { openWidget('guide'); setOpen(false); }}>Getting started</button>
+                    <button type="button" className="shortcut-sheet__link" onClick={() => { openWidget('tools-hub'); setOpen(false); }}>Tools hub</button>
+                    <button type="button" className="shortcut-sheet__link" onClick={() => { replayFirstRun(); setOpen(false); }}>Replay first-run</button>
+                </div>
                 <div className="shortcut-sheet__foot">⌘ is Ctrl on Windows/Linux · press <kbd>?</kbd> or <kbd>Esc</kbd> to close</div>
             </div>
         </div>

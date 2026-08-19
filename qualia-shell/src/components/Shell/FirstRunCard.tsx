@@ -21,9 +21,23 @@ import { openWidgetBus } from '../../lib/busChannels';
 import { requestAraPrompt } from '../../lib/llmRouter';
 import {
     useFirstRun, markDone, setNeverShow, deriveSteps, shouldShowFirstRun,
-    FIRST_RUN_DISMISSED_SESSION_KEY, type FirstRunStep,
+    FIRST_RUN_DISMISSED_SESSION_KEY, FIRST_RUN_REPLAY_EVENT, type FirstRunStep,
 } from '../../lib/firstRunStore';
+import { useOnboarding, setOnboardingRole, deriveOnboardingRole, unlockTier, maybeStampDone, type OnboardingRole } from '../../lib/onboardingStore';
+import { setSidebarGroups } from '../Sidebar/sidebarGroupsStore';
 import './FirstRunCard.css';
+
+/** Plan 047 §2 step-0 role chooser copy (G12 roles). */
+const ROLE_COPY: Record<OnboardingRole, { title: string; sub: string }> = {
+    owner: { title: 'I run the properties', sub: 'Owner-operator: ARA + Strata open first, Property Management expanded.' },
+    staff: { title: 'I help manage them', sub: 'Staff: Strata + Task Board + Inbox Zero to start; more as it’s unlocked.' },
+};
+
+/** Plan 047 §3 default expansion per role: owner = Property Management; staff = nothing. */
+export function pickRole(role: OnboardingRole): void {
+    setOnboardingRole(role);
+    setSidebarGroups(() => new Set(role === 'owner' ? ['Property Management'] : []));
+}
 
 export const ARA_HELLO_PROMPT = 'What can you help me with in Dwellium?';
 
@@ -49,12 +63,19 @@ function readSessionDismissed(): boolean {
 
 export default function FirstRunCard() {
     const state = useFirstRun();
+    const ob = useOnboarding(); // plan 047 role / seen tips / unlocked tiers
     const { integrations } = useIntegrations();
     const userCtx = useContext(UserContext);
     // Same value ARAConsole writes during render — set BEFORE the store read.
     hermesLearningUserIdHolder.current = userCtx?.user?.id ?? null;
     useSyncExternalStore(hermesLearningStore.subscribe, hermesLearningStore.getSnapshot, hermesLearningStore.getServerSnapshot);
     const [sessionDismissed, setSessionDismissed] = useState(readSessionDismissed);
+    // Plan 047 §6 "Replay first-run" (ShortcutSheet) — un-dismiss for this session too.
+    useEffect(() => {
+        const onReplay = () => setSessionDismissed(false);
+        window.addEventListener(FIRST_RUN_REPLAY_EVENT, onReplay);
+        return () => window.removeEventListener(FIRST_RUN_REPLAY_EVENT, onReplay);
+    }, []);
     // Only fetch /properties while the card can actually show (no extra call once hidden for good).
     const properties = useProperties(!state.neverShow && !sessionDismissed).data;
 
@@ -71,6 +92,20 @@ export default function FirstRunCard() {
         if (live.hasData) markDone('data');
         if (live.araReplied) markDone('ara');
     }, [live.hasLlm, live.hasData, live.araReplied]);
+
+    // Plan 047 §3: first ARA reply unlocks the AI tier ONCE — expand "AI Tools"
+    // + toast, only for users who went through the role pick (legacy accounts
+    // get the flag silently, no toast). Permissions untouched (`can()` rules).
+    useEffect(() => {
+        if (!live.araReplied) return;
+        if (unlockTier('ai') && ob.role) {
+            setSidebarGroups(prev => new Set([...prev, 'AI Tools']));
+            try { window.dispatchEvent(new CustomEvent('qualia-toast', { detail: 'AI Tools unlocked — the group is now open in the sidebar.' })); } catch { /* */ }
+        }
+    }, [live.araReplied, ob.role]);
+
+    // Plan 047 §7: stamp "done onboarding" once 3/3 + every starter-set tip is seen.
+    useEffect(() => { maybeStampDone(state); }, [state, ob.seenTips, ob.role]);
 
     // 3/3 → show "you're set" briefly, then never again.
     useEffect(() => {
@@ -99,6 +134,21 @@ export default function FirstRunCard() {
                 </div>
                 <span className="firstrun-card__count">{derived.done}/{derived.total}</span>
             </div>
+            {/* Plan 047 §2 step 0 — role chooser, shown until a role is picked; derived role is marked. */}
+            {ob.role === null && (() => {
+                const suggested = deriveOnboardingRole(userCtx?.user?.role);
+                return (
+                    <div className="firstrun-role" role="group" aria-label="How do you use Dwellium?">
+                        <div className="firstrun-role__q">First — how do you use Dwellium?</div>
+                        {(['owner', 'staff'] as const).map(r => (
+                            <button key={r} type="button" className={`firstrun-role__opt ${r === suggested ? 'is-suggested' : ''}`} onClick={() => pickRole(r)}>
+                                <span className="firstrun-role__title">{ROLE_COPY[r].title}{r === suggested ? <em> · recommended</em> : null}</span>
+                                <span className="firstrun-role__sub">{ROLE_COPY[r].sub}</span>
+                            </button>
+                        ))}
+                    </div>
+                );
+            })()}
             <ol className="firstrun-card__steps">
                 {derived.steps.map(s => (
                     <li key={s.id} className={`firstrun-step ${s.done ? 'is-done' : ''}`}>

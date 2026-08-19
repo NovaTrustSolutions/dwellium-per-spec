@@ -8,6 +8,8 @@ import WindowTagButton from './WindowTagButton';
 import WidgetShell, { useWidgetEnhancementFlags, enhancementClasses } from './WidgetShell';
 import { useGridLock } from '../../hooks/useGridLock';
 import { getWidgetMeta } from '../../registry/widgetRegistry';
+import WidgetTip from './WidgetTip';
+import { showWidgetTip } from '../../lib/helpCommands';
 import './Window.css';
 
 export const CLASSIC_FOCUS_FRAME_MAX_WIDTH = 1440;
@@ -362,6 +364,17 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                         <CornerUpRight size={12} aria-hidden="true" />
                     </span>
                     <WindowTagButton source="widget" sourceId={String(state.component)} title={state.title} />
+                    {/* Plan 047 §4: re-arm + show this widget's first-open tip. */}
+                    {getWidgetMeta(String(state.component))?.tip && (
+                        <button
+                            type="button"
+                            className="window__tip-btn"
+                            title="Show tip"
+                            aria-label="Show tip"
+                            onMouseDown={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); showWidgetTip(String(state.component)); }}
+                        >?</button>
+                    )}
                 </div>
                 {/* AI loading shimmer bar */}
                 {state.isLoading && <div className="window__loading-bar" />}
@@ -392,6 +405,8 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                     {children}
                 </WidgetShell>
             </div>
+            {/* Plan 047 §4: first-open tip — a SIBLING of .window__content (zero-DOM contract above). */}
+            <WidgetTip widgetId={String(state.component)} />
 
             {/* Tear-off grip — compact, pinned handle (NOT a persistent chrome
                 row). Drag it outside the window to detach into its own window.

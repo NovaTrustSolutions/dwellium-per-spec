@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DockItem } from '../../data/types';
 import { useWindows } from '../../context/WindowContext';
 import { rankWidgetSearchResults } from '../Sidebar/widgetSearch';
@@ -10,6 +10,8 @@ import { requestAraPrompt } from '../../lib/llmRouter';
 import { searchTranscriptions, type TranscriptHit } from '../../lib/transcriptSearch';
 import { hiddenWidgetsStore } from '../../lib/hiddenWidgetsStore';
 import { getWidgetMeta } from '../../registry/widgetRegistry';
+import { buildHelpRows } from '../../lib/helpCommands';
+import { UserContext } from '../../context/UserContext';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -115,7 +117,7 @@ const SECTION_TITLES: Record<CommandResultKind, string> = {
     transcript: 'Audio Transcripts',
 };
 const SECTION_LIMITS: Record<CommandResultKind, number> = {
-    command: 3,
+    command: 12, // plan 047: help:/labs: rows share this tier (parsed cmd + Ask ARA are ≤2)
     memory: 5,
     window: 5,
     widget: 6,
@@ -592,6 +594,8 @@ function renderResultIcon(icon: string): ReactNode {
 
 export default function CommandPalette() {
     const { windows, dockItems, openWindow, focusWindow, restoreWindow } = useWindows();
+    // Plan 047 §6: raw context (null outside a provider) — gates restricted labs/help rows by email.
+    const userEmail = useContext(UserContext)?.user?.email ?? null;
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -820,6 +824,13 @@ export default function CommandPalette() {
         const commandResults: CommandResult[] = parsedCmd
             ? [{ id: `command:${parsedCmd.label}`, kind: 'command', score: 1000, icon: 'wand-2', title: parsedCmd.label, subtitle: 'Run this command', meta: 'talk-to-customize', reason: 'matched intent', actionLabel: 'Run', payload: parsedCmd }]
             : [];
+        // Plan 047 §6: "help:" / "?" → Guide · shortcuts · Tools hub · help: <widget>
+        // (opens + re-arms its tip); "labs:" → the hidden-door widgets. Same
+        // COMMAND tier + `{label, run}` payload the parsed commands use.
+        const helpResults: CommandResult[] = buildHelpRows(queryValue, userEmail).map(r => ({
+            id: `command:${r.id}`, kind: 'command', score: 900, icon: r.icon, title: r.title, subtitle: r.subtitle,
+            meta: 'help', reason: 'help', actionLabel: 'Open', payload: { label: r.title, run: r.run } as ParsedCommand,
+        }));
         // Phase-10 B2: multi-word queries no exact parser claims get an
         // "Ask ARA" row — ARA re-runs the tiers + llmRouter normalization
         // ("can you get the strata thing up" → "open strata"). Low score so
@@ -843,7 +854,7 @@ export default function CommandPalette() {
                 actionLabel: 'Open Transcript', payload: h,
             }));
 
-        const merged = [...commandResults, ...askAraResults, ...windowResults, ...widgetResults, ...memoryResults, ...transcriptResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
+        const merged = [...commandResults, ...helpResults, ...askAraResults, ...windowResults, ...widgetResults, ...memoryResults, ...transcriptResults, ...taskResults, ...inboxResults, ...fileResults, ...noteResults]
             .sort((a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
@@ -851,7 +862,7 @@ export default function CommandPalette() {
             });
 
         return merged;
-    }, [query, windows, dockItems, tasks, inboxItems, files, notes, semanticHits]);
+    }, [query, windows, dockItems, tasks, inboxItems, files, notes, semanticHits, userEmail]);
 
     const sections = useMemo<ResultSection[]>(() => {
         const buckets = new Map<CommandResultKind, CommandResult[]>();

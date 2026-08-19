@@ -37,9 +37,18 @@ charts, sandboxed iframes), Markdown, text-PDF (pdf-lib helper), print (`@media 
 - Present: Spotlight (`S`, ↓/↑ reveal), 47 themes.
 - AI/import: amount/audience/language options, outline-first for >12 cards (cap 30), URL import (backend `/api/scribe/fetch-article` → fallback fetch), PDF import (pdf.js via PDFGear), 6 built-in templates + save-as-template, +9 embed providers (24 total).
 
-## Known simplifications (after wave 1)
-- No realtime collaboration or share links — "Share" = copy JSON / save HTML to Artifact Gallery (wave 3: publish).
+## Wave 2 (2026-08-19) — what changed
+- Images: **AI generation** on image/gallery/header/background (reuses `skill-image-gen`, `blocks/aiImage.ts`), stock pickers (Openverse no-key; Unsplash/Giphy with an inline key), placeholder, fit/fill + focal point + ratio presets (`blocks/imageOpts.ts`).
+- Design: **Theme editor** (`ThemeEditor.tsx`) — 8 vars, font upload (TTF/OTF/WOFF2 → `@font-face`), logo, JSON import/export; saved custom themes per user (`customThemes` in the store) appear as swatches; theme id `'custom'` + `doc.customTheme`.
+- Data: chart **CSV / published Google Sheets sync** (`blocks/chartData.ts`, source URL + Sync now + auto-refresh).
+- Export: **styled PDF** (print-to-PDF of the export HTML in a hidden iframe), **PNG per card / all cards** (foreignObject → canvas; limitations in JSDoc); `EXPORT_ACTIONS` catalog.
+- AI: **Create with Agent** — outline-first flow (`idocsOutline.ts`: outline → editable → per-card generation, 4 style presets, optional web research via the search skill, attachments/URL as source, recent outlines); **in-editor AI chat** (`IDocChatPanel.tsx`, apply/discard preview, quick chips); **Remix** (doc/deck/brief) in `DOC_AI_ACTIONS`.
+- Present: **Presenter view** (`PresenterView.tsx` — popup window via BroadcastChannel; notes, timer, clock, next-card preview; inline drawer if popups are blocked).
+- Collab (local): **comments** per card/block (`CommentsPanel.tsx`, replies, resolve, badges); find-in-doc (⌘F); collapsible outline groups.
+
+## Known simplifications (after wave 2)
+- No realtime collaboration, share links, or permissions — comments/history are per user, local (One Save syncs the user's own data). Wave 3: publish/share/realtime.
 - Analytics local-only (views, seconds per card from Present in this browser).
-- Embeds are iframes only (no oEmbed/metadata); images URL or downscaled data URL; no AI image generation yet (wave 2).
-- PDF export is text-only (pdf-lib); Print gives the styled page-per-card output.
+- Embeds are iframes only (no oEmbed/metadata). AI image size is steered by prompt (skill emits 1024²).
+- Styled PDF uses the browser print dialog ("Save as PDF"); PNG export skips iframes/remote backgrounds.
 - Math/diagram/code rendering upgrades via the CDN-lazy `previewEnhance` loaders (fail-safe to plain text/monospace).

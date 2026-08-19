@@ -99,7 +99,10 @@
 .scribe-idocs-ed__badge { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; margin-left: 4px; border-radius: 8px; background: var(--accent); color: var(--accent-fg, var(--bg-desktop)); font-size: 10px; font-weight: 600; line-height: 1; vertical-align: middle; }
 .scribe-idocs-ed__cmt.has-open { color: var(--accent-text); }
 .scribe-idocs-ed__swatch--custom { border-radius: 4px !important; }
-.scribe-idocs-ed__body--drawer { grid-template-columns: 220px 1fr 320px; }
+/* Specificity: InteractiveDocs.css also sets grid-template-columns on .scribe-idocs__body; without the
+   compound selector the drawer wrapped under the rail depending on CSS load order (wave-2 live pass). */
+.scribe-idocs__body.scribe-idocs-ed__body--drawer { grid-template-columns: 220px 1fr 380px; }
+.scribe-idocs-ed__drawer .scribe-idocs__themeed { grid-template-columns: 1fr; padding: 0; border: 0; background: transparent; }
 .scribe-idocs-ed__drawer { border-left: 1px solid var(--border-default); background: var(--bg-surface); overflow: auto; padding: 10px; min-height: 0; display: flex; flex-direction: column; gap: 8px; font-size: var(--fs-sm); }
 .scribe-idocs-ed__drawer-head { display: flex; align-items: center; gap: 8px; }
 .scribe-idocs-ed__drawer-head strong { flex: 1; font-family: var(--font-heading); }
@@ -123,6 +126,6 @@
 .scribe-idocs-ed__reply-form { display: flex; gap: 4px; margin-top: 6px; }
 .scribe-idocs-ed__reply-form input { flex: 1; min-width: 0; }
 @media (max-width: 720px) {
-    .scribe-idocs-ed__body--drawer { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+    .scribe-idocs__body.scribe-idocs-ed__body--drawer { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
     .scribe-idocs-ed__drawer { border-left: 0; border-top: 1px solid var(--border-default); max-height: 40vh; }
 }

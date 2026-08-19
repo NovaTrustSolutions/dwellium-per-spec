@@ -38,6 +38,7 @@ const PAGE_SIZES: NonNullable<IDoc['pageSize']>[] = ['fluid', '16:9', '4:3', '1:
 // TODO(wave1-merge): confirm onChange payload shape (full Card vs CardBackground) — both are handled below.
 const BlockEditor = BlockEditorModule.default;
 const CardBackgroundEditor = (BlockEditorModule as unknown as { CardBackgroundEditor?: ComponentType<{ card: Card; onChange: (next: unknown) => void }> }).CardBackgroundEditor;
+const CardHeaderImageEditor = (BlockEditorModule as unknown as { CardHeaderImageEditor?: ComponentType<{ card: Card; onChange: (patch: unknown) => void }> }).CardHeaderImageEditor;
 
 /** Agent B exports `DOC_AI_ACTIONS` from ./idocsDocAi.ts; glob-import resolves to {} while the file is absent. */
 export interface DocAiAction { id: string; label: string; needsInput?: boolean; inputHint?: string; perCard?: boolean; run: (doc: IDoc, input: string, llm: LlmBundle) => Promise<IDoc | null | undefined> | IDoc | null | undefined }
@@ -160,7 +161,9 @@ function CardCanvas({ card, depth, ed }: { card: Card; depth: number; ed: Editor
                 <select value={card.layout} onChange={(e) => ed.patchCard(card.id, { layout: e.target.value as CardLayout })} aria-label="Card layout">
                     {CARD_LAYOUTS.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
-                <input type="url" className="scribe-idocs__hdrimg" value={card.headerImage ?? ''} onChange={(e) => ed.patchCard(card.id, { headerImage: e.target.value || undefined })} placeholder="Header image URL (hero/split)" aria-label="Header image URL" />
+                {CardHeaderImageEditor
+                    ? <CardHeaderImageEditor card={card} onChange={(patch) => ed.patchCard(card.id, patch as Partial<Card>)} />
+                    : <input type="url" className="scribe-idocs__hdrimg" value={card.headerImage ?? ''} onChange={(e) => ed.patchCard(card.id, { headerImage: e.target.value || undefined })} placeholder="Header image URL (hero/split)" aria-label="Header image URL" />}
                 {isNested && <button type="button" className="scribe-idocs__btn" onClick={() => ed.unnest(card.id)} title="Move this card out of its parent">Un-nest</button>}
             </div>
             {CardBackgroundEditor && (
@@ -263,6 +266,19 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
     const rootRef = useRef<HTMLDivElement>(null);
     const findRef = useRef<HTMLInputElement>(null);
     const [drawer, setDrawer] = useState<Drawer>(null);
+    // Esc closes an open drawer — capture phase + stopPropagation so Desktop's global
+    // "Esc closes the top window" shortcut doesn't close Scribe (wave-2 live pass).
+    useEffect(() => {
+        if (!drawer) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            const t = e.target as HTMLElement | null;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) { (t as HTMLElement).blur(); }
+            e.preventDefault(); e.stopPropagation(); setDrawer(null);
+        };
+        window.addEventListener('keydown', onKey, { capture: true });
+        return () => window.removeEventListener('keydown', onKey, { capture: true });
+    }, [drawer]);
     const [find, setFind] = useState<string | null>(null);
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     const [ThemeEditor, setThemeEditor] = useState<ThemeEditorComponent | null>(null);
@@ -593,10 +609,13 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                 )}</Menu>
                 <Menu label="Export">{(close) => (
                     <>
-                        <button type="button" role="menuitem" onClick={() => { download(`${fname}.html`, 'text/html', exportHtml(doc)); close(); }}>HTML (standalone)</button>
-                        <button type="button" role="menuitem" onClick={() => { download(`${fname}.md`, 'text/markdown', exportMarkdown(doc)); close(); }}>Markdown</button>
-                        <button type="button" role="menuitem" onClick={() => { void exportPdf(doc); close(); }}>PDF (text)</button>
-                        <button type="button" role="menuitem" onClick={() => { setPreviewAll(true); setTimeout(printDoc, 150); close(); }}>Print…</button>
+                        {/* Static fallbacks only when the EXPORT_ACTIONS catalog is absent (wave-2 dedupe). */}
+                        {EXPORT_ACTIONS.length === 0 && <>
+                            <button type="button" role="menuitem" onClick={() => { download(`${fname}.html`, 'text/html', exportHtml(doc)); close(); }}>HTML (standalone)</button>
+                            <button type="button" role="menuitem" onClick={() => { download(`${fname}.md`, 'text/markdown', exportMarkdown(doc)); close(); }}>Markdown</button>
+                            <button type="button" role="menuitem" onClick={() => { void exportPdf(doc); close(); }}>PDF (text)</button>
+                            <button type="button" role="menuitem" onClick={() => { setPreviewAll(true); setTimeout(printDoc, 150); close(); }}>Print…</button>
+                        </>}
                         <button type="button" role="menuitem" onClick={() => { download(`${fname}.idoc.json`, 'application/json', exportDoc(doc.id)); close(); }}>JSON</button>
                         {EXPORT_ACTIONS.map((a) => (
                             <button key={a.id} type="button" role="menuitem" onClick={() => {

@@ -13,6 +13,7 @@ import { WIDGET_ACTION_EVENT, consumePendingWidgetAction, type WidgetActionReque
 import IDocEditor from './IDocEditor';
 import IDocLibrary from './IDocLibrary';
 import IDocRenderer from './IDocRenderer';
+import PresenterHost from './PresenterView';
 import { generateDocFromPrompt } from './idocsAi';
 import { addCardSeconds, idocsUserIdHolder, recordView, replaceDoc, setActive, setView, useIdocs } from './idocsStore';
 import './InteractiveDocs.css';
@@ -84,8 +85,13 @@ export default function InteractiveDocs() {
         cardTimer.current = { cardId, since: Date.now() };
     }, [flushCard]);
     const [scrollPresent, setScrollPresent] = useState(false);
+    // Wave 2: Present is controlled here so the presenter window can drive it.
+    const [presentIdx, setPresentIdx] = useState(0);
+    const [presenter, setPresenter] = useState(false);
+    useEffect(() => { if (!presenting) { setPresentIdx(0); setPresenter(false); } }, [presenting]);
     const exitPresent = useCallback(() => { setScrollPresent(false); setView('edit'); }, []);
     const toggleScroll = useCallback(() => setScrollPresent((s) => !s), []);
+    const closePresenter = useCallback(() => setPresenter(false), []);
 
     return (
         <div className="scribe-idocs">
@@ -95,6 +101,10 @@ export default function InteractiveDocs() {
                 : <IDocLibrary state={state} initialPrompt={pendingPrompt} />}
             {presenting && active && (
                 <div className="scribe-idocs__present-overlay">
+                    {!scrollPresent && (
+                        <button type="button" className={`scribe-idocs__presenter-btn${presenter ? ' is-active' : ''}`} onClick={() => setPresenter((p) => !p)} aria-pressed={presenter} title="Open presenter view (notes, timer, next card)">Presenter view</button>
+                    )}
+                    {presenter && !scrollPresent && <PresenterHost doc={active} index={presentIdx} onIndex={setPresentIdx} onClose={closePresenter} />}
                     {scrollPresent ? (
                         <div className="scribe-idocs__present-scroll">
                             <div className="scribe-idocs__present-bar scribe-idocs__present-bar--top">
@@ -105,7 +115,7 @@ export default function InteractiveDocs() {
                             <IDocRenderer doc={active} mode="scroll" onCardVisible={onCardVisible} />
                         </div>
                     ) : (
-                        <IDocRenderer doc={active} mode="present" onExit={exitPresent} onToggleScroll={toggleScroll} onCardVisible={onCardVisible} />
+                        <IDocRenderer doc={active} mode="present" activeCardIndex={presentIdx} onActiveCardChange={setPresentIdx} onExit={exitPresent} onToggleScroll={toggleScroll} onCardVisible={onCardVisible} />
                     )}
                 </div>
             )}

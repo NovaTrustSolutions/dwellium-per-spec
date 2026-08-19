@@ -1,0 +1,31 @@
+/* PresenterView — wave-2 presenter window / inline drawer. Tokens only. Prefix: .scribe-idocs-pv */
+
+.scribe-idocs-pv { display: flex; flex-direction: column; height: 100vh; min-height: 0; background: var(--bg-desktop, #111); color: var(--text-primary, #eee); font-family: var(--font-body, system-ui, sans-serif); font-size: var(--fs-md, 14px); }
+.scribe-idocs-pv--inline { height: auto; flex: 0 0 320px; min-height: 0; border-left: 1px solid var(--border-default); overflow: auto; }
+.scribe-idocs-pv__bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-default); background: var(--bg-surface); flex: none; flex-wrap: wrap; }
+.scribe-idocs-pv__bar button, .scribe-idocs-pv__nav button { padding: 4px 10px; border: 1px solid var(--border-default); background: var(--bg-surface-elevated); color: var(--text-primary); border-radius: var(--radius-sm); font: inherit; cursor: pointer; }
+.scribe-idocs-pv__bar button:hover, .scribe-idocs-pv__nav button:hover { border-color: var(--accent); color: var(--accent-text); }
+.scribe-idocs-pv__bar button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent-text); }
+.scribe-idocs-pv__title { font-family: var(--font-heading); }
+.scribe-idocs-pv__spacer { flex: 1; }
+.scribe-idocs-pv__count, .scribe-idocs-pv__clock { color: var(--text-secondary); font-family: var(--font-mono); }
+.scribe-idocs-pv__timer { font-family: var(--font-mono); font-size: 1.4em; font-variant-numeric: tabular-nums; }
+.scribe-idocs-pv__grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.4fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; padding: 12px; overflow: auto; }
+.scribe-idocs-pv--inline .scribe-idocs-pv__grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+.scribe-idocs-pv__grid > section { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 10px 12px; min-height: 0; overflow: auto; }
+.scribe-idocs-pv__current { grid-row: 1 / span 2; }
+.scribe-idocs-pv--inline .scribe-idocs-pv__current { grid-row: auto; }
+.scribe-idocs-pv__grid h2 { margin: 0 0 8px; font-family: var(--font-heading); font-size: 1.3em; }
+.scribe-idocs-pv__grid h3 { margin: 0 0 6px; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; color: var(--text-tertiary); }
+.scribe-idocs-pv__grid ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+.scribe-idocs-pv__grid li small { color: var(--text-tertiary); font-family: var(--font-mono); margin-right: 4px; }
+.scribe-idocs-pv__notes { display: flex; flex-direction: column; }
+.scribe-idocs-pv__notes textarea { flex: 1; min-height: 100px; width: 100%; resize: vertical; background: var(--bg-surface-elevated); color: var(--text-primary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 6px 8px; font: inherit; }
+.scribe-idocs-pv__next small { color: var(--text-tertiary); }
+.scribe-idocs-pv__nav { display: flex; justify-content: center; gap: 12px; padding: 8px; border-top: 1px solid var(--border-default); background: var(--bg-surface); flex: none; }
+.scribe-idocs-pv__nav button { font-size: 1.2em; padding: 6px 18px; }
+
+/* Present overlay: presenter toggle + inline drawer layout */
+.scribe-idocs__present-overlay .scribe-idocs-pv--inline { position: absolute; right: 0; top: 0; bottom: 0; width: 320px; z-index: 2; box-shadow: var(--shadow-lg); }
+.scribe-idocs__presenter-btn { position: absolute; top: 8px; right: 12px; z-index: 3; padding: 4px 10px; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); border-radius: var(--radius-sm); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.scribe-idocs__presenter-btn:hover, .scribe-idocs__presenter-btn.is-active { border-color: var(--accent); color: var(--accent-text); }

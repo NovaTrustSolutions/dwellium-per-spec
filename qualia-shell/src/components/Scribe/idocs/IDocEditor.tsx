@@ -6,23 +6,26 @@
  * Every change goes straight to the store (autosave); a debounced snapshot
  * feeds per-doc undo/redo (idocsHistory.ts).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type DragEvent, type ReactNode, type SyntheticEvent } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type DragEvent, type ReactNode, type SyntheticEvent } from 'react';
+import { UserContext } from '../../../context/UserContext';
 import { recordArtifact } from '../../../lib/artifactStore';
 import { hasActiveLlm } from '../../../lib/llmClient';
 import { useIntegrations } from '../../../hooks/useIntegrations';
 import * as BlockEditorModule from './BlockEditor';
+import CommentsPanel from './CommentsPanel';
 import IDocRenderer, { BlockView } from './IDocRenderer';
+import * as ExportModule from './idocExport';
 import { download, exportHtml, exportMarkdown, exportPdf, printDoc, safeFilename } from './idocExport';
 import { rewriteBlockMd, type LlmBundle, type RewriteInstruction } from './idocsAi';
 import { createSnapshotDebouncer, relativeTime } from './idocsHistory';
 import {
-    cloneCard, exportDoc, findCard, findCardParent, flattenCards, idocsStore, insertCardsAt, isCard, listSnapshots, mapCard,
-    pushSnapshot, redo, relocateCards, removeCards, replaceDoc, restoreSnapshot, setView, undo, unnestCard, updateCard, useIdocs,
+    cloneCard, deleteCustomTheme, exportDoc, findCard, findCardParent, flattenCards, idocsStore, insertCardsAt, isCard, listSnapshots, mapCard,
+    pushSnapshot, redo, relocateCards, removeCards, replaceDoc, restoreSnapshot, saveCustomTheme, setView, undo, unnestCard, unresolvedCount, updateCard, updateDoc, useIdocs,
 } from './idocsStore';
 import SlashPalette, { detectSlash, stripSlash } from './SlashPalette';
 import {
-    BLOCK_TYPES, CARD_LAYOUTS, IDOC_THEMES, MD_BLOCK_TYPES, createEmptyCard, defaultBlock, newId,
-    type Block, type BlockType, type Card, type CardLayout, type IDoc, type IDocThemeId,
+    BLOCK_TYPES, CARD_LAYOUTS, IDOC_THEMES, MD_BLOCK_TYPES, createEmptyCard, defaultBlock, newId, themeVarsFor,
+    type Block, type BlockType, type Card, type CardLayout, type CustomTheme, type IDoc, type IDocThemeId,
 } from './idocTypes';
 import './IDocEditor.css';
 
@@ -43,6 +46,27 @@ async function loadDocAiActions(): Promise<DocAiAction[]> {
     const loader = docAiModules['./idocsDocAi.ts'];
     if (!loader) return [];
     try { return (await loader()).DOC_AI_ACTIONS ?? []; } catch { return []; }
+}
+
+// ── Wave-2 seams (agents A/B; all degrade to "absent" so this branch compiles standalone) ──
+
+/** Agent A: `EXPORT_ACTIONS` from ./idocExport.ts — appended to the Export ▾ menu. */
+// TODO(wave2-merge): assumed shape { id, label, run(doc, ctx: { activeCardEl?: HTMLElement | null }) } (sync or async).
+export interface ExportAction { id: string; label: string; run: (doc: IDoc, ctx: { activeCardEl?: HTMLElement | null }) => unknown }
+const EXPORT_ACTIONS: ExportAction[] = (ExportModule as unknown as { EXPORT_ACTIONS?: ExportAction[] }).EXPORT_ACTIONS ?? [];
+
+/** Agent A: `<ThemeEditor doc customThemes onApply onSave onDelete onClose />` (default export of ./ThemeEditor.tsx). */
+// TODO(wave2-merge): assumed onApply(customTheme: CustomTheme); onSave(theme); onDelete(name).
+export type ThemeEditorComponent = ComponentType<{ doc: IDoc; customThemes: CustomTheme[]; onApply: (t: CustomTheme) => void; onSave: (t: CustomTheme) => void; onDelete: (name: string) => void; onClose: () => void }>;
+/** Agent B: `<IDocChatPanel doc llm onApply(next, label) onClose />` (default export of ./IDocChatPanel.tsx). */
+// TODO(wave2-merge): assumed onApply(next: IDoc, label: string).
+export type ChatPanelComponent = ComponentType<{ doc: IDoc; llm: LlmBundle; onApply: (next: IDoc, label: string) => void; onClose?: () => void }>;
+const themeEditorModules = import.meta.glob<{ default?: ThemeEditorComponent }>('./ThemeEditor.tsx');
+const chatPanelModules = import.meta.glob<{ default?: ChatPanelComponent }>('./IDocChatPanel.tsx');
+async function loadSeam<T>(mods: Record<string, () => Promise<{ default?: T }>>, path: string): Promise<T | null> {
+    const loader = mods[path];
+    if (!loader) return null;
+    try { return (await loader()).default ?? null; } catch { return null; }
 }
 
 // ── small helpers ──
@@ -109,6 +133,8 @@ interface EditorApi {
     blockDrop: { blockId: string; pos: 'before' | 'after' } | null;
     setBlockDrop: (d: { blockId: string; pos: 'before' | 'after' } | null) => void;
     dropBlock: (targetCardId: string, targetBlockId: string | null) => void;
+    /** Wave 2: open the comments drawer scoped to a card (+ optional block). */
+    openComments: (cardId: string, blockId?: string) => void;
 }
 
 /** One card's editing surface. Recurses into `card.children`. */
@@ -127,6 +153,7 @@ function CardCanvas({ card, depth, ed }: { card: Card; depth: number; ed: Editor
     };
     return (
         <section className={`scribe-idocs__card scribe-idocs__card--${card.layout} is-editing scribe-idocs-ed__cardcanvas${isNested ? ' scribe-idocs-ed__cardcanvas--nested' : ''}`}
+            id={isNested ? undefined : `idoc-card-${card.id}`}
             data-testid={`idoc-cardcanvas-${card.id}`} aria-label={isNested ? `Nested card ${card.title || ''}` : undefined}>
             <div className="scribe-idocs-ed__card-head">
                 <input className="scribe-idocs__card-title-input" value={card.title ?? ''} onChange={(e) => ed.patchCard(card.id, { title: e.target.value })} placeholder={isNested ? 'Nested card title' : 'Card title'} aria-label={isNested ? 'Nested card title' : 'Card title'} />
@@ -168,6 +195,9 @@ function CardCanvas({ card, depth, ed }: { card: Card; depth: number; ed: Editor
                                             : <small className="scribe-idocs__hint">Add an LLM key in Control Panel → API Keys</small>
                                     )}</Menu>
                                 )}
+                                {(() => { const n = unresolvedCount(card, b.id); return (
+                                    <button type="button" className={`scribe-idocs-ed__cmt${n ? ' has-open' : ''}`} onClick={() => ed.openComments(card.id, b.id)} aria-label={`Comments on this block${n ? ` (${n} open)` : ''}`} title="Comment on this block">💬{n ? <span className="scribe-idocs-ed__badge">{n}</span> : null}</button>
+                                ); })()}
                                 <button type="button" onClick={() => ed.deleteBlock(card.id, b.id)} aria-label="Delete block">✕</button>
                             </div>
                             {editing && (
@@ -214,11 +244,29 @@ function CardCanvas({ card, depth, ed }: { card: Card; depth: number; ed: Editor
     );
 }
 
+type Drawer = { kind: 'comments'; blockId?: string } | { kind: 'chat' } | { kind: 'theme' } | null;
+
+/** Case-insensitive "find in doc": does this card's title / block text contain `q`? */
+export function cardMatches(card: Card, q: string): boolean {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return false;
+    if ((card.title ?? '').toLowerCase().includes(needle)) return true;
+    return card.blocks.some((b) => JSON.stringify(b).toLowerCase().includes(needle));
+}
+
 export default function IDocEditor({ doc }: { doc: IDoc }) {
     const { integrations } = useIntegrations();
-    const { docs: allDocs } = useIdocs();
+    const { docs: allDocs, customThemes } = useIdocs();
+    // Raw context (not useUser()) — anon/test envs degrade to "You", same as InteractiveDocs.tsx.
+    const author = useContext(UserContext)?.user?.name || 'You';
     const llmReady = hasActiveLlm(integrations.llm);
     const rootRef = useRef<HTMLDivElement>(null);
+    const findRef = useRef<HTMLInputElement>(null);
+    const [drawer, setDrawer] = useState<Drawer>(null);
+    const [find, setFind] = useState<string | null>(null);
+    const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+    const [ThemeEditor, setThemeEditor] = useState<ThemeEditorComponent | null>(null);
+    const [ChatPanel, setChatPanel] = useState<ChatPanelComponent | null>(null);
     const [activeCardId, setActiveCardId] = useState<string>(doc.cards[0]?.id ?? '');
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -242,12 +290,28 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
     const activeCard = findCard(doc.cards, activeCardId) ?? doc.cards[0];
     useEffect(() => { if (!findCard(doc.cards, activeCardId)) setActiveCardId(doc.cards[0]?.id ?? ''); }, [doc.cards, activeCardId]);
     const flat = useMemo(() => flattenCards(doc.cards), [doc.cards]);
+    // Outline rows: hide descendants of collapsed groups.
+    const visibleFlat = useMemo(() => {
+        if (!collapsed.size) return flat;
+        const hidden = new Set<string>();
+        for (const id of collapsed) flattenCards(findCard(doc.cards, id)?.children ?? []).forEach((f) => hidden.add(f.card.id));
+        return flat.filter((f) => !hidden.has(f.card.id));
+    }, [flat, collapsed, doc.cards]);
+    const matchIds = useMemo(() => new Set(find ? flat.filter((f) => cardMatches(f.card, find)).map((f) => f.card.id) : []), [flat, find]);
+    const openCommentCount = useMemo(() => flat.reduce((n, f) => n + unresolvedCount(f.card), 0), [flat]);
 
     // ── history: baseline on mount, debounced snapshot after edits ──
     const debouncer = useMemo(() => createSnapshotDebouncer(() => pushSnapshot(doc.id)), [doc.id]);
     useEffect(() => { pushSnapshot(doc.id); return () => debouncer.cancel(); }, [doc.id, debouncer]);
     useEffect(() => { debouncer.touch(); }, [doc, debouncer]);
-    useEffect(() => { let on = true; void loadDocAiActions().then((a) => { if (on) setDocAi(a); }); return () => { on = false; }; }, []);
+    useEffect(() => {
+        let on = true;
+        void loadDocAiActions().then((a) => { if (on) setDocAi(a); });
+        void loadSeam<ThemeEditorComponent>(themeEditorModules, './ThemeEditor.tsx').then((c) => { if (on && c) setThemeEditor(() => c); });
+        void loadSeam<ChatPanelComponent>(chatPanelModules, './IDocChatPanel.tsx').then((c) => { if (on && c) setChatPanel(() => c); });
+        return () => { on = false; };
+    }, []);
+    useEffect(() => { if (find !== null) findRef.current?.focus(); }, [find]);
 
     const save = useCallback((patch: Partial<IDoc>) => replaceDoc({ ...doc, ...patch }), [doc]);
     const setCards = (cards: Card[]) => save({ cards });
@@ -422,9 +486,13 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
         } catch (e) { flash(`AI failed: ${(e as Error).message}`); } finally { setAiBusy(null); }
     };
 
+    // ── wave 2: theme editor / chat panel apply paths (snapshot first so ⌘Z reverts) ──
+    const applyCustomTheme = (customTheme: CustomTheme) => { debouncer.cancel(); pushSnapshot(doc.id); updateDoc(doc.id, { theme: 'custom', customTheme }); flash(`Theme “${customTheme.name}” applied`); };
+    const applyChat = (next: IDoc, label: string) => { debouncer.cancel(); pushSnapshot(doc.id); replaceDoc({ ...next, id: doc.id, createdAt: doc.createdAt, analytics: doc.analytics }); flash(`${label} ✓ (⌘Z to revert)`); };
+
     // ── keyboard shortcuts (capture; only when the editor holds focus; inputs keep native undo) ──
-    const shortcutState = useRef({ activeCard, showShortcuts, doUndo, doRedo, duplicateCards, idsFor });
-    shortcutState.current = { activeCard, showShortcuts, doUndo, doRedo, duplicateCards, idsFor };
+    const shortcutState = useRef({ activeCard, showShortcuts, doUndo, doRedo, duplicateCards, idsFor, find });
+    shortcutState.current = { activeCard, showShortcuts, doUndo, doRedo, duplicateCards, idsFor, find };
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             const root = rootRef.current;
@@ -433,9 +501,11 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
             const mod = e.metaKey || e.ctrlKey; const k = e.key.toLowerCase(); const inField = isField(e.target);
             if (mod && k === 'z') { if (inField) return; e.preventDefault(); e.stopPropagation(); if (e.shiftKey) st.doRedo(); else st.doUndo(); }
             else if (mod && k === 'd') { if (inField || !st.activeCard) return; e.preventDefault(); e.stopPropagation(); st.duplicateCards(st.idsFor(st.activeCard.id)); }
+            else if (mod && k === 'f') { e.preventDefault(); e.stopPropagation(); setFind((f) => (f === null ? '' : f)); findRef.current?.focus(); } // ⌘F / ⌘⇧F: find in doc (editor focused only)
             else if (mod && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); setView('present'); }
             else if (e.key === '?' && !inField && !mod) { e.preventDefault(); setShowShortcuts((s) => !s); }
             else if (e.key === 'Escape' && st.showShortcuts) { e.preventDefault(); e.stopPropagation(); setShowShortcuts(false); }
+            else if (e.key === 'Escape' && st.find !== null) { e.preventDefault(); e.stopPropagation(); setFind(null); }
         };
         window.addEventListener('keydown', onKey, { capture: true });
         return () => window.removeEventListener('keydown', onKey, { capture: true });
@@ -456,7 +526,9 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
         doc, llmReady, aiBusy, editingBlockId, setEditingBlockId, setActiveCardId, patchCard, patchBlock, addBlock, moveBlock, deleteBlock,
         aiRewrite: (c, b, i) => void aiRewrite(c, b, i), addNestedCard, unnest: (id) => { unnestCard(doc.id, id); announce('Card un-nested'); },
         slash, onSlashCheck, onSlashPick, onSlashClose, blockDrag, setBlockDrag, blockDrop, setBlockDrop, dropBlock,
+        openComments: (cardId, blockId) => { setActiveCardId(cardId); setDrawer({ kind: 'comments', blockId }); },
     };
+    const commentsCard = drawer?.kind === 'comments' ? activeCard : undefined;
 
     return (
         <div className="scribe-idocs__editor scribe-idocs-ed" ref={rootRef} tabIndex={-1} data-testid="idoc-editor">
@@ -469,6 +541,13 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                             className={`scribe-idocs__swatch${doc.theme === t.id ? ' is-active' : ''}`} style={{ background: t.swatch }}
                             onClick={() => save({ theme: t.id as IDocThemeId })} />
                     ))}
+                    {customThemes.map((t) => (
+                        <button key={`custom:${t.name}`} type="button" role="radio" data-custom aria-checked={doc.theme === 'custom' && doc.customTheme?.name === t.name} title={`Custom: ${t.name}`} aria-label={`Custom theme ${t.name}`}
+                            className={`scribe-idocs__swatch scribe-idocs-ed__swatch--custom${doc.theme === 'custom' && doc.customTheme?.name === t.name ? ' is-active' : ''}`}
+                            style={{ background: t.vars['--idoc-bg'] || t.vars['--idoc-accent'] || 'var(--bg-surface)' }}
+                            onClick={() => applyCustomTheme(t)} />
+                    ))}
+                    {ThemeEditor && <button type="button" className={`scribe-idocs__btn scribe-idocs__btn--ghost${drawer?.kind === 'theme' ? ' is-active' : ''}`} onClick={() => setDrawer(drawer?.kind === 'theme' ? null : { kind: 'theme' })} title="Custom theme editor">Theme…</button>}
                 </div>
                 <select className="scribe-idocs-ed__pagesize" value={doc.pageSize ?? 'fluid'} onChange={(e) => save({ pageSize: e.target.value as IDoc['pageSize'] })} aria-label="Page size" title="Page size">
                     {PAGE_SIZES.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -486,6 +565,8 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                 <span className="scribe-idocs__spacer" />
                 <button type="button" className={`scribe-idocs__btn${previewAll ? ' is-active' : ''}`} onClick={() => setPreviewAll((p) => !p)} title="Toggle full-doc preview">{previewAll ? 'Edit' : 'Preview'}</button>
                 <button type="button" className="scribe-idocs__btn scribe-idocs__btn--primary" onClick={() => setView('present')} title="⌘⏎">▶ Present</button>
+                <button type="button" className={`scribe-idocs__btn${drawer?.kind === 'comments' ? ' is-active' : ''}`} onClick={() => setDrawer(drawer?.kind === 'comments' ? null : { kind: 'comments' })} aria-pressed={drawer?.kind === 'comments'} title="Comments on the current card">Comments{openCommentCount ? ` (${openCommentCount})` : ''}</button>
+                {ChatPanel && <button type="button" className={`scribe-idocs__btn${drawer?.kind === 'chat' ? ' is-active' : ''}`} onClick={() => setDrawer(drawer?.kind === 'chat' ? null : { kind: 'chat' })} aria-pressed={drawer?.kind === 'chat'} title="Chat with this doc">Chat</button>}
                 {docAi.length > 0 && (
                     <Menu label={aiBusy?.startsWith('doc:') ? 'AI…' : 'AI'} title="Doc-level AI actions">{(close) => (
                         llmReady
@@ -517,6 +598,13 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                         <button type="button" role="menuitem" onClick={() => { void exportPdf(doc); close(); }}>PDF (text)</button>
                         <button type="button" role="menuitem" onClick={() => { setPreviewAll(true); setTimeout(printDoc, 150); close(); }}>Print…</button>
                         <button type="button" role="menuitem" onClick={() => { download(`${fname}.idoc.json`, 'application/json', exportDoc(doc.id)); close(); }}>JSON</button>
+                        {EXPORT_ACTIONS.map((a) => (
+                            <button key={a.id} type="button" role="menuitem" onClick={() => {
+                                close();
+                                const ctx = { activeCardEl: activeCard ? document.getElementById(`idoc-card-${activeCard.id}`) : null };
+                                Promise.resolve().then(() => a.run(doc, ctx)).catch((e: unknown) => flash(`${a.label} failed: ${(e as Error).message}`));
+                            }}>{a.label}</button>
+                        ))}
                     </>
                 )}</Menu>
                 <Menu label="Share">{(close) => (
@@ -548,8 +636,20 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
             {previewAll ? (
                 <div className="scribe-idocs__preview-scroll"><IDocRenderer doc={doc} mode="scroll" /></div>
             ) : (
-                <div className="scribe-idocs__body">
+                <div className={`scribe-idocs__body${drawer ? ' scribe-idocs-ed__body--drawer' : ''}`}>
                     <aside className="scribe-idocs__rail" aria-label="Cards">
+                        <div className="scribe-idocs-ed__find">
+                            {find === null ? (
+                                <button type="button" className="scribe-idocs__btn scribe-idocs__btn--ghost scribe-idocs__btn--block" onClick={() => setFind('')} title="⌘F">🔍 Find in doc</button>
+                            ) : (
+                                <>
+                                    <input ref={findRef} value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find in cards…" aria-label="Find in doc"
+                                        onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setFind(null); } else if (e.key === 'Enter' && matchIds.size) { const first = flat.find((f) => matchIds.has(f.card.id)); if (first) setActiveCardId(first.card.id); } }} />
+                                    <small aria-live="polite">{find.trim() ? `${matchIds.size} match${matchIds.size === 1 ? '' : 'es'}` : ''}</small>
+                                    <button type="button" onClick={() => setFind(null)} aria-label="Close find">✕</button>
+                                </>
+                            )}
+                        </div>
                         {selected.size > 1 && (
                             <div className="scribe-idocs-ed__selbar" role="toolbar" aria-label="Selected cards">
                                 <span>{selected.size} selected</span>
@@ -560,22 +660,30 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                             </div>
                         )}
                         <ol className="scribe-idocs__outline scribe-idocs-ed__outline" aria-label="Card outline">
-                            {flat.map(({ card: c, depth, index }, n) => {
+                            {visibleFlat.map(({ card: c, depth, index, parentId }) => {
                                 const isActive = c.id === activeCard?.id; const isSel = selected.has(c.id);
                                 const drop = cardDrop?.id === c.id ? cardDrop.pos : null;
-                                const siblings = (depth === 0 ? doc.cards : findCard(doc.cards, flat[n].parentId!)?.children ?? []);
+                                const siblings = (depth === 0 ? doc.cards : findCard(doc.cards, parentId!)?.children ?? []);
+                                const hasKids = (c.children?.length ?? 0) > 0; const isCollapsed = collapsed.has(c.id);
+                                const openN = unresolvedCount(c);
+                                const matchCls = find?.trim() ? (matchIds.has(c.id) ? ' is-match' : ' is-nomatch') : '';
                                 return (
                                     <li key={c.id} draggable data-testid={`idoc-outline-${c.id}`} aria-level={depth + 1} aria-grabbed={cardDrag?.includes(c.id) ?? false}
-                                        className={`scribe-idocs__outline-item scribe-idocs-ed__outline-item${isActive ? ' is-active' : ''}${isSel ? ' is-selected' : ''}${drop ? ` scribe-idocs-ed__drop-${drop}` : ''}${cardDrag?.includes(c.id) ? ' scribe-idocs-ed__dragging' : ''}`}
+                                        className={`scribe-idocs__outline-item scribe-idocs-ed__outline-item${isActive ? ' is-active' : ''}${isSel ? ' is-selected' : ''}${drop ? ` scribe-idocs-ed__drop-${drop}` : ''}${cardDrag?.includes(c.id) ? ' scribe-idocs-ed__dragging' : ''}${matchCls}`}
                                         style={{ '--idocs-depth': depth } as CSSProperties}
                                         onDragStart={(e) => { const ids = idsFor(c.id); e.dataTransfer?.setData('text/plain', c.id); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; setCardDrag(ids); setLive(`Dragging ${ids.length > 1 ? `${ids.length} cards` : c.title || 'card'}`); }}
                                         onDragEnd={() => { setCardDrag(null); setCardDrop(null); }}
                                         onDragOver={(e) => onCardDragOver(e, c.id)} onDragLeave={() => { if (cardDrop?.id === c.id) setCardDrop(null); }}
                                         onDrop={(e) => onCardDrop(e, c.id)}>
+                                        {hasKids && (
+                                            <button type="button" className="scribe-idocs-ed__twisty" onClick={() => setCollapsed((s) => { const n = new Set(s); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; })}
+                                                aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} nested cards of ${c.title || 'card'}`}>{isCollapsed ? '▸' : '▾'}</button>
+                                        )}
                                         <button type="button" className="scribe-idocs__outline-btn" onClick={(e) => selectCard(c.id, e)} aria-pressed={isSel || undefined} title="Click to edit · Shift-click to multi-select · drag to reorder or nest">
                                             <span className="scribe-idocs__outline-n">{depth ? '·' : index + 1}</span>
                                             <span className="scribe-idocs__outline-t">{c.title || 'Untitled card'}</span>
                                             <small>{c.blocks.length} blk{c.children?.length ? ` · ${c.children.length} sub` : ''}</small>
+                                            {openN > 0 && <span className="scribe-idocs-ed__badge" aria-label={`${openN} open comment${openN > 1 ? 's' : ''}`} title="Open comments">{openN}</span>}
                                         </button>
                                         <div className="scribe-idocs__outline-tools">
                                             <button type="button" onClick={() => moveCardBy(c.id, -1)} aria-label="Move card up" disabled={index === 0}>↑</button>
@@ -626,11 +734,23 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
 
                     <main className={`scribe-idocs__canvas scribe-idocs-ed__canvas scribe-idocs-ed__canvas--${doc.pageSize ?? 'fluid'}`}>
                         {activeCard ? (
-                            <div className={`scribe-idocs__doc scribe-idocs__theme-${doc.theme} scribe-idocs__canvas-doc`} style={IDOC_THEMES.find((t) => t.id === doc.theme)?.vars as CSSProperties}>
+                            <div className={`scribe-idocs__doc scribe-idocs__theme-${doc.theme} scribe-idocs__canvas-doc`} style={themeVarsFor(doc) as CSSProperties}>
                                 <CardCanvas card={activeCard} depth={0} ed={ed} />
                             </div>
                         ) : <p className="scribe-idocs__empty">Add a card to start.</p>}
                     </main>
+                    {drawer?.kind === 'comments' && commentsCard && (
+                        <CommentsPanel docId={doc.id} card={commentsCard} author={author} blockId={drawer.blockId && commentsCard.blocks.some((b) => b.id === drawer.blockId) ? drawer.blockId : undefined}
+                            onScope={(blockId) => setDrawer({ kind: 'comments', blockId })} onClose={() => setDrawer(null)} />
+                    )}
+                    {drawer?.kind === 'chat' && ChatPanel && (
+                        <aside className="scribe-idocs-ed__drawer" aria-label="Chat"><ChatPanel doc={doc} llm={integrations.llm} onApply={applyChat} onClose={() => setDrawer(null)} /></aside>
+                    )}
+                    {drawer?.kind === 'theme' && ThemeEditor && (
+                        <aside className="scribe-idocs-ed__drawer" aria-label="Theme editor">
+                            <ThemeEditor doc={doc} customThemes={customThemes} onApply={applyCustomTheme} onSave={(t) => { saveCustomTheme(t); flash(`Theme “${t.name}” saved`); }} onDelete={(name) => { deleteCustomTheme(name); flash(`Theme “${name}” deleted`); }} onClose={() => setDrawer(null)} />
+                        </aside>
+                    )}
                 </div>
             )}
 
@@ -642,14 +762,19 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                             <dt>⌘Z / ⌘⇧Z</dt><dd>Undo / redo (outside text fields)</dd>
                             <dt>⌘D</dt><dd>Duplicate current card (or selection)</dd>
                             <dt>⌘⏎</dt><dd>Present</dd>
+                            <dt>⌘F</dt><dd>Find in doc (highlights matching cards in the outline; Esc closes)</dd>
                             <dt>/</dt><dd>At line start in a text field: insert block palette</dd>
                             <dt>Shift-click</dt><dd>Multi-select cards in the outline</dd>
+                            <dt>▾ / ▸</dt><dd>Collapse / expand nested cards in the outline</dd>
+                            <dt>💬</dt><dd>Comment on a block (hover toolbar) · “Comments” for the whole card</dd>
+                            <dt>⌘⏎ in comment</dt><dd>Post the comment</dd>
                             <dt>?</dt><dd>This sheet</dd>
                         </dl>
                         <h4>Present mode</h4>
                         <dl>
                             <dt>← / →  · Space</dt><dd>Previous / next card</dd>
                             <dt>S</dt><dd>Spotlight</dd>
+                            <dt>Presenter view</dt><dd>Notes, timer, next card in a popup window (button, top right)</dd>
                             <dt>Esc</dt><dd>Exit</dd>
                         </dl>
                         <button type="button" className="scribe-idocs__btn" onClick={() => setShowShortcuts(false)}>Close</button>

@@ -11,7 +11,7 @@ import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../../../utils/createLocalStorageStore';
 import { withSync } from '../../../lib/oneSaveStore';
 import { createEmptyDoc, newId, type Card, type IDoc } from './idocTypes';
-import type { CustomTheme } from './idocTypes';
+import type { BlockComment, CustomTheme } from './idocTypes';
 import {
     capHistoryBytes, normalizeHistory, pushSnapshot as pushHistory, undo as undoHistory, redo as redoHistory,
     restoreSnapshot as restoreHistory, type HistoryMap, type Snapshot,
@@ -349,6 +349,37 @@ export function restoreSnapshot(docId: string, index: number): boolean {
 
 export function listSnapshots(docId: string): { snapshots: Snapshot[]; cursor: number } {
     return snap().history[docId] ?? { snapshots: [], cursor: -1 };
+}
+
+// ── Wave 2: comments (per card; `blockId` scopes a thread to one block) ──
+
+function writeComments(docId: string, cardId: string, fn: (comments: BlockComment[]) => BlockComment[]): void {
+    writeDocCards(docId, (cards) => (findCard(cards, cardId) ? mapCard(cards, cardId, (c) => ({ ...c, comments: fn(c.comments ?? []) })) : null));
+}
+
+/** Add a thread. `comment` may omit id/at (filled in). Returns the stored comment. */
+export function addComment(docId: string, cardId: string, comment: Omit<BlockComment, 'id' | 'at'> & Partial<Pick<BlockComment, 'id' | 'at'>>): BlockComment {
+    const full: BlockComment = { ...comment, id: comment.id ?? newId('cm'), at: comment.at ?? new Date().toISOString() };
+    writeComments(docId, cardId, (list) => [...list, full]);
+    return full;
+}
+
+export function updateComment(docId: string, cardId: string, commentId: string, patch: Partial<Omit<BlockComment, 'id'>>): void {
+    writeComments(docId, cardId, (list) => list.map((c) => (c.id === commentId ? { ...c, ...patch } : c)));
+}
+
+export function deleteComment(docId: string, cardId: string, commentId: string): void {
+    writeComments(docId, cardId, (list) => list.filter((c) => c.id !== commentId));
+}
+
+export function replyToComment(docId: string, cardId: string, commentId: string, reply: { author: string; text: string; id?: string; at?: string }): void {
+    const full = { id: reply.id ?? newId('re'), author: reply.author, text: reply.text, at: reply.at ?? new Date().toISOString() };
+    writeComments(docId, cardId, (list) => list.map((c) => (c.id === commentId ? { ...c, replies: [...(c.replies ?? []), full] } : c)));
+}
+
+/** Unresolved thread count for a card (all blocks) or one block. Nested children are NOT included. */
+export function unresolvedCount(card: Pick<Card, 'comments'>, blockId?: string): number {
+    return (card.comments ?? []).filter((c) => !c.resolved && (blockId === undefined || c.blockId === blockId)).length;
 }
 
 // ── Wave 2: custom themes ──

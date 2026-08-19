@@ -9,6 +9,7 @@ import {
     recordView, addCardSeconds, exportDoc, importDoc,
     updateCard, moveCard, nestCard, unnestCard, insertCards, relocateCards, findCard, findCardParent, flattenCards, cloneCard, removeCards,
     pushSnapshot, undo, redo, restoreSnapshot, listSnapshots,
+    addComment, updateComment, deleteComment, replyToComment, unresolvedCount, saveCustomTheme, deleteCustomTheme,
 } from '../components/Scribe/idocs/idocsStore';
 import { createEmptyCard, type Card } from '../components/Scribe/idocs/idocTypes';
 
@@ -232,5 +233,52 @@ describe('idocsStore · wave 1 history', () => {
         expect(h.cursor).toBe(29);
         deleteDoc(d.id);
         expect(idocsStore.getSnapshot().history[d.id]).toBeUndefined();
+    });
+
+    // ── wave 2 ──
+    it('comments: add (card + block scoped, nested card) / reply / resolve / delete; unresolvedCount; docs without comments deserialize', () => {
+        const d = createDoc({ title: 'C', cards: tree() });
+        expect(findCard(docCards(), 'a')!.comments).toBeUndefined();
+        const c1 = addComment(d.id, 'a', { author: 'Ann', text: 'whole card' });
+        const c2 = addComment(d.id, 'a', { author: 'Bob', text: 'on block', blockId: 'a-b', id: 'cm-fixed', at: '2026-01-01T00:00:00.000Z' });
+        addComment(d.id, 'a2x', { author: 'Ann', text: 'deep' }); // nested card via mapCard
+        expect(c1.id).toMatch(/^cm/);
+        expect(c2).toMatchObject({ id: 'cm-fixed', at: '2026-01-01T00:00:00.000Z', blockId: 'a-b' });
+        expect(findCard(docCards(), 'a')!.comments!.map((c) => c.text)).toEqual(['whole card', 'on block']);
+        expect(findCard(docCards(), 'a2x')!.comments).toHaveLength(1);
+        expect(unresolvedCount(findCard(docCards(), 'a')!)).toBe(2);
+        expect(unresolvedCount(findCard(docCards(), 'a')!, 'a-b')).toBe(1);
+        expect(unresolvedCount(findCard(docCards(), 'a')!, 'nope')).toBe(0);
+        replyToComment(d.id, 'a', c1.id, { author: 'Bob', text: 'agree' });
+        expect(findCard(docCards(), 'a')!.comments![0].replies).toMatchObject([{ author: 'Bob', text: 'agree' }]);
+        updateComment(d.id, 'a', c1.id, { resolved: true });
+        expect(unresolvedCount(findCard(docCards(), 'a')!)).toBe(1);
+        updateComment(d.id, 'a', c1.id, { resolved: false, text: 'edited' });
+        expect(findCard(docCards(), 'a')!.comments![0]).toMatchObject({ resolved: false, text: 'edited' });
+        deleteComment(d.id, 'a', c2.id);
+        expect(findCard(docCards(), 'a')!.comments!.map((c) => c.id)).toEqual([c1.id]);
+        // unknown card / doc → no-op
+        addComment(d.id, 'zzz', { author: 'x', text: 'y' });
+        addComment('nope', 'a', { author: 'x', text: 'y' });
+        expect(findCard(docCards(), 'a')!.comments).toHaveLength(1);
+        // reload: comments persist; cards without comments stay optional
+        idocsStore.reset();
+        expect(findCard(docCards(), 'a')!.comments).toHaveLength(1);
+        expect(findCard(docCards(), 'b')!.comments).toBeUndefined();
+    });
+
+    it('customThemes: save (upsert by name) / delete persist and reset() reloads them; fresh store starts empty', () => {
+        expect(idocsStore.getSnapshot().customThemes).toEqual([]);
+        saveCustomTheme({ name: 'Brand', vars: { '--idoc-bg': '#000' } });
+        saveCustomTheme({ name: 'Brand', vars: { '--idoc-bg': '#111' } });
+        saveCustomTheme({ name: 'Other', vars: { '--idoc-bg': '#222' } });
+        expect(idocsStore.getSnapshot().customThemes.map((t) => [t.name, t.vars['--idoc-bg']])).toEqual([['Brand', '#111'], ['Other', '#222']]);
+        idocsStore.reset();
+        expect(idocsStore.getSnapshot().customThemes).toHaveLength(2);
+        deleteCustomTheme('Brand');
+        expect(idocsStore.getSnapshot().customThemes.map((t) => t.name)).toEqual(['Other']);
+        localStorage.clear();
+        idocsStore.reset();
+        expect(idocsStore.getSnapshot().customThemes).toEqual([]);
     });
 });

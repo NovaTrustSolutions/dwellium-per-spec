@@ -18,3 +18,5 @@
 .shortcut-sheet__guides { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
 .shortcut-sheet__guides-label { color: var(--text-tertiary, #6f6244); text-transform: uppercase; letter-spacing: .04em; font-size: 10.5px; }
 .shortcut-sheet__link { background: transparent; border: none; padding: 0; color: var(--accent, #D6FE51); cursor: pointer; text-decoration: underline; font-size: inherit; }
+
+.shortcut-sheet__link.is-current { color: var(--accent, #D6FE51); text-decoration: none; font-weight: 600; }

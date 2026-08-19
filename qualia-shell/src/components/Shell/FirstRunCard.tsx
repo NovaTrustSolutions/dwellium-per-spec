@@ -28,7 +28,7 @@ import { setSidebarGroups } from '../Sidebar/sidebarGroupsStore';
 import './FirstRunCard.css';
 
 /** Plan 047 §2 step-0 role chooser copy (G12 roles). */
-const ROLE_COPY: Record<OnboardingRole, { title: string; sub: string }> = {
+export const ROLE_COPY: Record<OnboardingRole, { title: string; sub: string }> = {
     owner: { title: 'I run the properties', sub: 'Owner-operator: ARA + Strata open first, Property Management expanded.' },
     staff: { title: 'I help manage them', sub: 'Staff: Strata + Task Board + Inbox Zero to start; more as it’s unlocked.' },
 };

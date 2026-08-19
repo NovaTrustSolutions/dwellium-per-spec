@@ -28,6 +28,7 @@ vi.mock('../context/WindowContext', () => ({
 import CommandPalette from '../components/CommandPalette/CommandPalette';
 import CommandPill from '../components/Shell/CommandPill';
 import ShortcutSheet from '../components/Shell/ShortcutSheet';
+import { onboardingStore, resetOnboarding } from '../lib/onboardingStore';
 
 beforeEach(() => {
     // Palette fetches tasks/inbox/files on open — keep it offline.
@@ -113,5 +114,18 @@ describe('S2-8b — ShortcutSheet', () => {
         render(<ShortcutSheet />);
         act(() => { window.dispatchEvent(new CustomEvent('dwellium:open-shortcuts')); });
         expect(screen.getByRole('dialog', { name: /keyboard shortcuts/i })).toBeInTheDocument();
+    });
+
+    it('"Your role" row lets an existing account pick a role (second door after the first-run card)', () => {
+        resetOnboarding();
+        render(<ShortcutSheet />);
+        act(() => { window.dispatchEvent(new CustomEvent('dwellium:open-shortcuts')); });
+        const group = screen.getByRole('group', { name: /your role/i });
+        const staff = screen.getByRole('button', { name: /I help manage them/ });
+        expect(staff).toHaveAttribute('aria-pressed', 'false');
+        fireEvent.click(staff);
+        expect(onboardingStore.getSnapshot().role).toBe('staff');
+        expect(screen.getByRole('button', { name: /I help manage them/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(group).toBeInTheDocument();
     });
 });

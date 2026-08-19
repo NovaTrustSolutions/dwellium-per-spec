@@ -14,6 +14,8 @@
 import { useEffect, useState } from 'react';
 import { openWidget } from '../../lib/dwelliumCommands';
 import { replayFirstRun } from '../../lib/firstRunStore';
+import { useOnboarding, type OnboardingRole } from '../../lib/onboardingStore';
+import { pickRole, ROLE_COPY } from './FirstRunCard';
 import './ShortcutSheet.css';
 
 // Same one-liner as IDocEditor.tsx `isField`.
@@ -33,6 +35,7 @@ const ROWS: Array<{ keys: string[]; label: string }> = [
 
 export default function ShortcutSheet() {
     const [open, setOpen] = useState(false);
+    const ob = useOnboarding();
 
     // Bubble-phase toggle on `?` + CustomEvent opener.
     useEffect(() => {
@@ -92,6 +95,15 @@ export default function ShortcutSheet() {
                     <button type="button" className="shortcut-sheet__link" onClick={() => { openWidget('guide'); setOpen(false); }}>Getting started</button>
                     <button type="button" className="shortcut-sheet__link" onClick={() => { openWidget('tools-hub'); setOpen(false); }}>Tools hub</button>
                     <button type="button" className="shortcut-sheet__link" onClick={() => { replayFirstRun(); setOpen(false); }}>Replay first-run</button>
+                </div>
+                {/* Role row — existing accounts that were already 3/3 never saw the card's chooser; this is the second door. */}
+                <div className="shortcut-sheet__guides" role="group" aria-label="Your role">
+                    <span className="shortcut-sheet__guides-label">Your role</span>
+                    {(['owner', 'staff'] as OnboardingRole[]).map(r => (
+                        <button key={r} type="button" className={`shortcut-sheet__link ${ob.role === r ? 'is-current' : ''}`} aria-pressed={ob.role === r} title={ROLE_COPY[r].sub} onClick={() => pickRole(r)}>
+                            {ROLE_COPY[r].title}{ob.role === r ? ' ✓' : ''}
+                        </button>
+                    ))}
                 </div>
                 <div className="shortcut-sheet__foot">⌘ is Ctrl on Windows/Linux · press <kbd>?</kbd> or <kbd>Esc</kbd> to close</div>
             </div>

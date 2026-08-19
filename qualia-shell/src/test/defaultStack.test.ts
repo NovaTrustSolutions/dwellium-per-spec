@@ -5,6 +5,9 @@
 import { describe, it, expect } from 'vitest';
 import {
     shouldOpenDefaultStack,
+    defaultStackKey,
+    readDefaultStackFlag,
+    DEFAULT_STACK_KEY,
     DEFAULT_STACK_DONE,
     DEFAULT_STARTUP_STACK,
     PINNED_WIDGETS,
@@ -29,6 +32,23 @@ describe('shouldOpenDefaultStack', () => {
     it('the startup stack is two windows — ARA + Strata (plan 045 §B2)', () => {
         expect([...DEFAULT_STARTUP_STACK]).toEqual(['ara-console', 'strata-dashboard']);
         expect(DEFAULT_STARTUP_STACK).toHaveLength(2);
+    });
+});
+
+describe('defaultStackKey — per-user flag (046-F1)', () => {
+    it('namespaces by user id; null falls back to the legacy key', () => {
+        expect(defaultStackKey('u1')).toBe('dwellium:default-stack:v1:u1');
+        expect(defaultStackKey(null)).toBe(DEFAULT_STACK_KEY);
+    });
+    it('legacy per-browser done counts for EVERY user (read both, never migrate)', () => {
+        const legacyOnly = (k: string) => (k === DEFAULT_STACK_KEY ? DEFAULT_STACK_DONE : null);
+        expect(readDefaultStackFlag(legacyOnly, 'u1')).toBe(DEFAULT_STACK_DONE);
+        expect(shouldOpenDefaultStack(readDefaultStackFlag(legacyOnly, 'u1'), 0)).toBe(false);
+        const perUserOnly = (k: string) => (k === defaultStackKey('u1') ? DEFAULT_STACK_DONE : null);
+        expect(readDefaultStackFlag(perUserOnly, 'u1')).toBe(DEFAULT_STACK_DONE);
+        // Another user on the same browser, no legacy flag → fires for them.
+        expect(readDefaultStackFlag(perUserOnly, 'u2')).toBeNull();
+        expect(shouldOpenDefaultStack(readDefaultStackFlag(perUserOnly, 'u2'), 0)).toBe(true);
     });
 });
 

@@ -32,6 +32,7 @@ import CommandPalette from '../CommandPalette/CommandPalette';
 import AssistantLauncher from '../AssistantLauncher/AssistantLauncher';
 import SystemHealthBanner from '../SystemHealth/SystemHealthBanner';
 import MorningBriefBanner from './MorningBriefBanner';
+import FirstRunCard from './FirstRunCard';
 import TagHotkey from './TagHotkey';
 import CommandPill from './CommandPill';
 import ShortcutSheet from './ShortcutSheet';
@@ -164,6 +165,7 @@ function ShellLayout() {
             <AssistantLauncher />
             <SystemHealthBanner />
             <MorningBriefBanner />
+            <FirstRunCard />
             <TagHotkey />
         </div>
     );

@@ -1,4 +1,4 @@
-import { useWindows, COMPONENT_DEFAULT_SIZES } from '../../context/WindowContext';
+import { useWindows, COMPONENT_DEFAULT_SIZES, savedLayoutsUserIdHolder } from '../../context/WindowContext';
 import { AlertTriangle, Archive, Braces, Code, Columns2, Columns3, Download, Eye, File, FileAudio, FileImage, FileSpreadsheet, FileText, FileVideo, Globe, Grid2X2, Palette, Presentation, Square, type LucideIcon } from 'lucide-react';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useLayout, getRegionRects } from '../../context/LayoutContext';
@@ -14,7 +14,7 @@ import Window from '../Window/Window';
 
 // Widget Registry — single source of truth for all widget components
 import { WINDOW_COMPONENTS as REGISTRY_COMPONENTS, WIDGET_REGISTRY } from '../../registry/widgetRegistry';
-import { DEFAULT_STACK_KEY, DEFAULT_STACK_DONE, DEFAULT_STARTUP_STACK, shouldOpenDefaultStack } from './defaultStack';
+import { defaultStackKey, readDefaultStackFlag, DEFAULT_STACK_DONE, DEFAULT_STARTUP_STACK, shouldOpenDefaultStack } from './defaultStack';
 import { applySpaceBus, type ApplySpacePayload } from '../../lib/busChannels';
 import HalocronBoot from './HalocronBoot';
 import { lazyWithReload } from '../../utils/lazyWithReload';
@@ -670,12 +670,12 @@ export default function Desktop() {
         //     run 2 no-op'd → decide AND consume INSIDE the timer (no cleanup
         //     cancel; the duplicate timer no-ops on the consumed flag).
         try {
-            if (!shouldOpenDefaultStack(localStorage.getItem(DEFAULT_STACK_KEY), windowsRef.current.filter(w => !w.minimized).length)) return;
+            if (!shouldOpenDefaultStack(readDefaultStackFlag(k => localStorage.getItem(k), savedLayoutsUserIdHolder.current), windowsRef.current.filter(w => !w.minimized).length)) return;
         } catch { return; }
         window.setTimeout(() => {
             try {
-                if (localStorage.getItem(DEFAULT_STACK_KEY) === DEFAULT_STACK_DONE) return; // another mount won
-                localStorage.setItem(DEFAULT_STACK_KEY, DEFAULT_STACK_DONE);
+                if (readDefaultStackFlag(k => localStorage.getItem(k), savedLayoutsUserIdHolder.current) === DEFAULT_STACK_DONE) return; // another mount won
+                localStorage.setItem(defaultStackKey(savedLayoutsUserIdHolder.current), DEFAULT_STACK_DONE);
                 // Assessment sweep: typed-bus emit — if the apply-space listener
                 // hasn't attached yet, its replayWithinMs subscription picks this
                 // up on attach (the 50ms defer above remains as belt-and-braces).

@@ -150,4 +150,30 @@ describe('InteractiveDocs', () => {
         fireEvent.keyDown(editor, { key: 'Enter', metaKey: true });
         expect(await screen.findByTestId('idoc-present')).toBeInTheDocument();
     });
+
+    it('wave 2: Present is controlled from InteractiveDocs (index resets on re-enter) and offers a Presenter view button', async () => {
+        vi.spyOn(window, 'open').mockReturnValue(null); // popup blocked → inline panel
+        render(<InteractiveDocs />);
+        fireEvent.click(screen.getByRole('button', { name: 'Blank' }));
+        await screen.findByLabelText('Document title');
+        fireEvent.click(screen.getByRole('button', { name: '+ Add card' }));
+        fireEvent.click(screen.getByRole('button', { name: '▶ Present' }));
+        await screen.findByTestId('idoc-present');
+        expect(screen.getByRole('button', { name: 'Presenter view' })).toBeInTheDocument();
+        fireEvent.keyDown(window, { key: 'ArrowRight' });
+        expect(screen.getByRole('tab', { name: 'Card 2' })).toHaveAttribute('aria-selected', 'true');
+        // Scroll view hides the presenter button; back to cards keeps the index
+        fireEvent.click(screen.getByRole('button', { name: 'Scroll' }));
+        expect(screen.queryByRole('button', { name: 'Presenter view' })).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
+        expect(screen.getByRole('tab', { name: 'Card 2' })).toHaveAttribute('aria-selected', 'true');
+        // Esc → editor; re-enter → index reset to the first card
+        fireEvent.keyDown(window, { key: 'Escape' });
+        await waitFor(() => expect(screen.queryByTestId('idoc-present')).toBeNull());
+        fireEvent.click(screen.getByRole('button', { name: '▶ Present' }));
+        await screen.findByTestId('idoc-present');
+        expect(screen.getByRole('tab', { name: 'Card 1' })).toHaveAttribute('aria-selected', 'true');
+        fireEvent.click(screen.getByRole('button', { name: 'Presenter view' }));
+        expect(await screen.findByTestId('idoc-presenter')).toBeInTheDocument();
+    });
 });

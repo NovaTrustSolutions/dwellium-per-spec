@@ -70,4 +70,7 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-docs', label: 'Docs', icon: 'file-text', component: 'doc-viewer', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-pdf-gear', label: 'PDF Gear', icon: 'file-stack', component: 'pdf-gear', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-terminal', label: 'Terminal', icon: 'terminal', component: 'terminal', pinned: true, group: 'Filing Cabinet' },
+   // Plan 047 onboarding: Tools hub + Guide live inside Filing Cabinet (G11: no renames).
+   { id: 'dock-tools-hub', label: 'Tools hub', icon: 'layout-grid', component: 'tools-hub', pinned: true, group: 'Filing Cabinet' },
+   { id: 'dock-guide', label: 'Guide', icon: 'book-open', component: 'guide', pinned: true, group: 'Filing Cabinet' },
 ];

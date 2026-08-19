@@ -22,6 +22,13 @@ export const DEFAULT_STACK_KEY = 'dwellium:default-stack:v1';
 /** Value written once the auto-open has fired. */
 export const DEFAULT_STACK_DONE = 'done';
 
+/** Per-user key (046-F1): new users only — an existing browser flag stays valid for its user. */
+export const defaultStackKey = (userId: string | null): string => userId ? `${DEFAULT_STACK_KEY}:${userId}` : DEFAULT_STACK_KEY;
+
+/** 046-F1 critic rule: the legacy per-browser 'done' counts for EVERY user (read both, write only per-user, no migration). */
+export const readDefaultStackFlag = (read: (key: string) => string | null, userId: string | null): string | null =>
+    read(DEFAULT_STACK_KEY) === DEFAULT_STACK_DONE ? DEFAULT_STACK_DONE : read(defaultStackKey(userId));
+
 export interface PinnedWidget {
     component: string;
     label: string;
@@ -42,6 +49,24 @@ export const PINNED_WIDGETS: ReadonlyArray<PinnedWidget> = [
 
 /** First screen: ARA + Strata (the first two pinned) — plan 045 §B2. */
 export const DEFAULT_STARTUP_STACK: ReadonlyArray<string> = PINNED_WIDGETS.slice(0, 2).map(p => p.component);
+
+/** Plan 047 onboarding roles (G12): owner-operator / staff. Residents never reach the admin shell. */
+export type OnboardingRole = 'owner' | 'staff';
+
+/**
+ * Role-based starter sets (plan 047 §2). Owner = the pinned five; staff =
+ * Strata + Task Board + Inbox Zero until an admin unlocks more (`can()` stays
+ * authoritative — this only picks what the first run shows).
+ */
+export const STARTER_SETS: Readonly<Record<OnboardingRole, ReadonlyArray<PinnedWidget>>> = {
+    owner: PINNED_WIDGETS,
+    staff: PINNED_WIDGETS.filter(p => ['strata-dashboard', 'task-board', 'inbox'].includes(p.component)),
+};
+
+/** First-run auto-open per role: owner ARA+Strata (045 §B2); staff Strata+Task Board. */
+export function getStartupStack(role: OnboardingRole | null): ReadonlyArray<string> {
+    return role === 'staff' ? ['strata-dashboard', 'task-board'] : DEFAULT_STARTUP_STACK;
+}
 
 /** Fire only when the flag is unset AND the canvas is empty. */
 export function shouldOpenDefaultStack(storedFlag: string | null, openWindowCount: number): boolean {

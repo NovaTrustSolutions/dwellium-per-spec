@@ -40,7 +40,19 @@ describe('WIDGET_REGISTRY integrity', () => {
         //     bumped when that widget shipped; corrected here, pre-existing drift).
         //   − ui-editor DISABLED (2026-07-06 Andy: activating it blanked the
         //     screen; registry entry removed, component kept on disk) → 55.
-        expect(ids.length).toBe(55);
+        //   + tools-hub + guide (plan 047 onboarding surface) → 57.
+        expect(ids.length).toBe(57);
+    });
+
+    // Plan 047: every widget carries a first-open tip whose related ids resolve.
+    it.each(ids)('"%s" has a description + tip with resolvable related ids', (id) => {
+        const w = WIDGET_REGISTRY[id];
+        expect(w.description.length).toBeGreaterThan(0);
+        expect(w.tip?.tryThis.length ?? 0).toBeGreaterThan(0);
+        expect(w.tip!.related.length).toBeGreaterThanOrEqual(1);
+        expect(w.tip!.related.length).toBeLessThanOrEqual(2);
+        for (const r of w.tip!.related) expect(WIDGET_REGISTRY[r], `related "${r}" of "${id}"`).toBeDefined();
+        if (w.tier !== undefined) expect(['core', 'daily', 'ai', 'tools', 'labs']).toContain(w.tier);
     });
 
     it.each(ids)('"%s" entry is well-formed', (id) => {
@@ -66,6 +78,15 @@ describe('WIDGET_REGISTRY integrity', () => {
     it('every category is one of the known buckets', () => {
         const ok = new Set([undefined, 'core', 'ai', 'filing', 'tools']);
         for (const id of ids) expect(ok.has(WIDGET_REGISTRY[id].category)).toBe(true);
+    });
+
+    // plan 046 S2-6: one plain-English line per widget (⌘K rows, sidebar hover, window title).
+    it('every widget has a one-line description', () => {
+        for (const r of Object.values(WIDGET_REGISTRY)) {
+            expect(r.description, r.id).toBeTruthy();
+            expect(r.description.length, r.id).toBeLessThanOrEqual(100);
+            expect(r.description, r.id).not.toMatch(/\n/);
+        }
     });
 });
 

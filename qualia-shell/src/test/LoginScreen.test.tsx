@@ -21,8 +21,14 @@ vi.mock('../components/Auth/GoogleSignInButton', () => ({
 const GATE = 'Comet2878!';
 const andy = LOCAL_ACCOUNTS.find((a) => a.name === 'Andy')!;
 
+/** 046-F3: the splash is a real block now — enter it first (unmounts the splash buttons). */
+function enterSplash() {
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+}
+
 /** Gate → credential form (045-D2: no account picker in between). */
 function passGate() {
+    enterSplash();
     fireEvent.change(screen.getByLabelText('Access password'), { target: { value: GATE } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 }
@@ -46,13 +52,35 @@ describe('LoginScreen local multi-step login', () => {
         expect(video!.getAttribute('preload')).toBe('none');
         expect(container.querySelector('source[src*="nebula"]')).toBeNull();
 
-        // Clicking the "Click to Login" overlay opts in → the <source> mounts.
-        fireEvent.click(screen.getByText('Click to Login'));
+        // Clicking the splash "Sign in" opts in → the <source> mounts.
+        fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
         expect(container.querySelector('source[src*="nebula"]')).not.toBeNull();
+    });
+
+    it('046-F3: first paint shows the product name, the promise, Sign in and the resident link', () => {
+        render(<LoginScreen onTenantMode={() => undefined} />);
+        expect(screen.getByRole('heading', { name: 'Dwellium' })).toBeInTheDocument();
+        expect(screen.getByText('Your properties, your inbox, your AI — one screen.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /resident\? sign in here/i }).length).toBeGreaterThan(0);
+        // Google stays hidden on the splash unless the flag is on.
+        expect(screen.queryByRole('button', { name: 'Continue with Google' })).not.toBeInTheDocument();
+    });
+
+    it('046-F3: with VITE_GOOGLE_LOGIN=true the Google button is on the splash', async () => {
+        vi.stubEnv('VITE_GOOGLE_LOGIN', 'true');
+        vi.resetModules();
+        const { default: FreshLogin } = await import('../components/Auth/LoginScreen');
+        render(<FreshLogin />);
+        // One on the splash (.login-front__google) + the card's own block — both visible before any click.
+        expect(screen.getAllByRole('button', { name: 'Continue with Google' })).toHaveLength(2);
+        expect(document.querySelector('.login-front__google button')).not.toBeNull();
+        vi.unstubAllEnvs();
     });
 
     it('gates on the access password before showing the credential form, with Google hidden by default', () => {
         render(<LoginScreen onTenantMode={() => undefined} />);
+        enterSplash();
 
         expect(screen.getByLabelText('Access password')).toBeInTheDocument();
         expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();

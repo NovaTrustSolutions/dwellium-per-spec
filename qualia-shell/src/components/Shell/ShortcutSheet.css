@@ -1,0 +1,22 @@
+/* ShortcutSheet — "?" global shortcuts (plan 046 S2-8b).
+   Scrim/card mirror TagHotkey.css (.tagdlg__scrim / .tagdlg), z-index 200000. */
+
+.shortcut-sheet__scrim { position: fixed; inset: 0; z-index: 200000; background: rgba(0,0,0,.5); display: grid; place-items: center; backdrop-filter: blur(2px); }
+.shortcut-sheet { width: min(480px, 92vw); background: var(--bg-surface, #14110b); border: 1px solid var(--border-default, rgba(255,255,255,.15)); border-radius: 14px; padding: 18px 20px; box-shadow: 0 30px 80px -30px #000; color: var(--text-primary, #fff); font-family: var(--font-primary, system-ui, sans-serif); }
+.shortcut-sheet__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.shortcut-sheet__h { font-family: 'Georgia', serif; font-size: 17px; color: var(--accent-text, var(--accent)); margin: 0; }
+.shortcut-sheet__close { background: none; border: none; color: var(--text-secondary, #9a8757); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.shortcut-sheet__close:hover { color: var(--text-primary, #fff); }
+.shortcut-sheet__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.shortcut-sheet__row { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+.shortcut-sheet__keys { display: inline-flex; gap: 4px; min-width: 120px; flex-shrink: 0; }
+.shortcut-sheet__label { color: var(--text-secondary, #9a8757); }
+.shortcut-sheet kbd { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 4px; color: var(--accent-text, var(--accent)); background: var(--accent-subtle, rgba(255,255,255,.06)); }
+.shortcut-sheet__foot { margin-top: 14px; font-size: 11px; color: var(--text-tertiary, #6f6244); }
+
+/* Plan 047 §6 — Guides row (Guide · Tools hub · Replay first-run). */
+.shortcut-sheet__guides { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
+.shortcut-sheet__guides-label { color: var(--text-tertiary, #6f6244); text-transform: uppercase; letter-spacing: .04em; font-size: 10.5px; }
+.shortcut-sheet__link { background: transparent; border: none; padding: 0; color: var(--accent, #D6FE51); cursor: pointer; text-decoration: underline; font-size: inherit; }
+
+.shortcut-sheet__link.is-current { color: var(--accent, #D6FE51); text-decoration: none; font-weight: 600; }

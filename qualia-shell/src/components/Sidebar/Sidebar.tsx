@@ -12,9 +12,16 @@ import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce, h
 import { useGridLock } from '../../hooks/useGridLock';
 import { backendStatusStore } from '../../lib/backendStatusStore';
 import { PINNED_WIDGETS } from '../Shell/defaultStack';
+import { mottoFor } from './mottoFor';
 import { Check, CloudFog, CloudRain, CloudSnow, CloudSun, FolderOpen, Lock, Search, Settings, Sun, Unlock, X, Zap, type LucideIcon } from 'lucide-react';
 import './Sidebar.css';
 import React from 'react';
+import { getWidgetMeta } from '../../registry/widgetRegistry';
+import { tierOf } from '../../lib/onboardingStore';
+import { sidebarGroupsStore, SIDEBAR_GROUPS_KEY } from './sidebarGroupsStore';
+
+// plan 046 S2-6: hover tooltip = "Label — one-line description" (registry is the single source).
+const withDesc = (i: { label: string; component: string }) => { const d = getWidgetMeta(i.component)?.description; return d ? `${i.label} — ${d}` : i.label; };
 
 /**
  * Renders a Lucide SVG icon if the key is recognized, otherwise falls back to text/emoji.
@@ -35,7 +42,6 @@ const STORAGE_KEY = 'dwellium-sidebar-width';
 const SPLIT_STORAGE_KEY = 'dwellium-sidebar-split';
 const DOMAINS_COLLAPSED_KEY = 'qualia_domains_collapsed';
 const ICON_ONLY_KEY = 'qualia_sidebar_icon_only';
-const SIDEBAR_GROUPS_KEY = 'qualia_sidebar_groups';
 
 const DEFAULT_WIDTH = 240;
 const DEFAULT_SPLIT_RATIO = 0.5;
@@ -82,19 +88,13 @@ export const iconOnlyStore = createLocalStorageStore<boolean>(
     true,
 );
 
-export const sidebarGroupsStore = createLocalStorageStore<Set<string>>(
-    () => {
-        try {
-            const saved = localStorage.getItem(SIDEBAR_GROUPS_KEY);
-            if (saved) return new Set(JSON.parse(saved));
-        } catch { /* ignore */ }
-        // Default arrangement (Ilya 2026-06-11): the daily-driver groups open
-        // out of the box — matches the canonical e2e seed set, so fresh
-        // browsers see the same sidebar the tests (and Ilya) see.
-        return new Set<string>(['Property Management', 'AI Tools', 'Filing Cabinet']);
-    },
-    new Set<string>(),
-);
+// Plan 047 §3: the expanded-groups store lives in ./sidebarGroupsStore.ts so
+// FirstRunCard / the AI-tier unlock can set it without importing this module.
+// Re-exported here so existing `from '../components/Sidebar/Sidebar'` imports hold.
+export { sidebarGroupsStore };
+
+/** Plan 047 §3: groups longer than this show "Show N more" until expanded (local state, no persistence). */
+export const SIDEBAR_GROUP_PREVIEW = 6;
 
 export const sidebarSplitStore = createLocalStorageStore<number>(
     () => {
@@ -341,6 +341,8 @@ export default function Sidebar() {
     }, []);
     const [searchQuery, setSearchQuery] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
+    // Plan 047 §3: per-group "Show more" (session-local by design — not persisted).
+    const [showAllGroups, setShowAllGroups] = useState<Set<string>>(() => new Set());
 
     // Keyboard shortcuts (local widget filter only; global Cmd/Ctrl+K is handled by Command Palette)
     useEffect(() => {
@@ -497,19 +499,6 @@ export default function Sidebar() {
 
 
     /* ── Personalized greeting + weather ──────────────── */
-    const GREETING_MESSAGES: Record<string, string> = {
-        'Andy': "Let's build the future",
-        'Lisa': "Command the empire",
-        'Wendy': "Leading the way forward",
-        'Candace': "Excellence in motion",
-        'Grieve': "Wise counsel, sharp moves",
-        'Baldwin': "Strategy meets precision",
-        'Leo': "Vision without limits",
-        'Lee': "Keeping it all running",
-        'Jose': "Hands that build greatness",
-        'Marcus Johnson': "Welcome home",
-    };
-
     const getTimeGreeting = () => {
         const h = new Date().getHours();
         if (h < 12) return 'Good morning';
@@ -575,7 +564,7 @@ export default function Sidebar() {
     }, []);
 
     const userName = user?.name || 'there';
-    const personalMessage = GREETING_MESSAGES[userName] || "Let's get things done";
+    const personalMessage = mottoFor(user?.role);
     const timeGreeting = getTimeGreeting();
 
     return (
@@ -645,7 +634,7 @@ export default function Sidebar() {
                                 key={item.id}
                                 className={`sidebar__icon-rail-btn ${isOpen ? 'sidebar__icon-rail-btn--open' : ''}`}
                                 onClick={() => handleWidgetClick(item.component, item.label, item.icon)}
-                                title={item.label}
+                                title={withDesc(item)}
                             >
                                 <span className="sidebar__icon-rail-icon"><SidebarIcon iconKey={item.icon} size={18} /></span>
                                 {isOpen && <span className="sidebar__icon-rail-dot" />}
@@ -793,7 +782,8 @@ export default function Sidebar() {
                                 const query = searchQuery.trim();
                                 const searchActive = query.length > 0;
                                 // 2026-05-26: exclude control-panel — Settings is now opened from the gear button next to the Domains header, not from the widgets list.
-                                const permittedItems = dockItems.filter(item => can(`widget:${item.component}`) && item.component !== 'control-panel' && !hiddenSet.has(item.component));
+                                // Plan 047 §3: `labs`-tier widgets never list in the groups — reachable via ⌘K "labs:" and the gallery's Open button.
+                                const permittedItems = dockItems.filter(item => can(`widget:${item.component}`) && item.component !== 'control-panel' && !hiddenSet.has(item.component) && tierOf(item.component) !== 'labs');
                                 const searchMatches = searchActive
                                     ? rankWidgetSearchResults(permittedItems, query, new Set(windows.map(w => w.component)))
                                     : [];
@@ -846,7 +836,7 @@ export default function Sidebar() {
                                                     if (w) closeWindow(w.id);
                                                 }
                                             }}
-                                            title={`${item.label} (Middle-click to close)`}
+                                            title={`${withDesc(item)} (Middle-click to close)`}
                                             draggable={!searchActive}
                                             onDragStart={e => {
                                                 if (searchActive) return;
@@ -959,7 +949,18 @@ export default function Sidebar() {
                                                     </button>
                                                     {(!collapsed && isExpanded) && items.length > 0 && (
                                                         <div className="sidebar__widget-group-children">
-                                                            {items.map((item, index) => renderWidget(item, index, true))}
+                                                            {/* Plan 047 §3: preview the first N, "Show N more" reveals the rest (local, not persisted). */}
+                                                            {(showAllGroups.has(group.name) ? items : items.slice(0, SIDEBAR_GROUP_PREVIEW)).map((item, index) => renderWidget(item, index, true))}
+                                                            {items.length > SIDEBAR_GROUP_PREVIEW && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="sidebar-widget sidebar-widget--child sidebar-widget--more"
+                                                                    onClick={() => setShowAllGroups(prev => { const n = new Set(prev); if (n.has(group.name)) n.delete(group.name); else n.add(group.name); return n; })}
+                                                                >
+                                                                    <span className="sidebar-widget__icon" aria-hidden>{showAllGroups.has(group.name) ? '−' : '+'}</span>
+                                                                    <span className="sidebar-widget__label">{showAllGroups.has(group.name) ? 'Show less' : `Show ${items.length - SIDEBAR_GROUP_PREVIEW} more`}</span>
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                     {(!collapsed && isExpanded) && items.length === 0 && (
@@ -1145,11 +1146,18 @@ export default function Sidebar() {
                                 .filter(it => can(`widget:${it.component}`) && it.component !== 'control-panel')
                                 .map(it => {
                                     const isHidden = hiddenSet.has(it.component);
+                                    // Plan 047 §3: labs widgets never list in the sidebar groups — the gallery opens them directly.
+                                    const isLabs = tierOf(it.component) === 'labs';
                                     return (
                                         <div key={it.id} className={`widget-gallery__card ${isHidden ? 'widget-gallery__card--hidden' : ''}`}>
                                             <span className="widget-gallery__icon"><SidebarIcon iconKey={it.icon} size={20} /></span>
-                                            <span className="widget-gallery__label" title={it.label}>{it.label}</span>
-                                            {isHidden ? (
+                                            <span className="widget-gallery__label" title={withDesc(it)}>{it.label}{isLabs ? ' · labs' : ''}</span>
+                                            {isLabs ? (
+                                                <button
+                                                    className="widget-gallery__btn widget-gallery__btn--add"
+                                                    onClick={() => openWindow(it.component, it.label, it.icon)}
+                                                >Open</button>
+                                            ) : isHidden ? (
                                                 <button
                                                     className="widget-gallery__btn widget-gallery__btn--add"
                                                     onClick={() => { unhideWidget(it.component); openWindow(it.component, it.label, it.icon); }}

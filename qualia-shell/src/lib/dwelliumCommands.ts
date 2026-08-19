@@ -132,7 +132,10 @@ export function stripPoliteness(input: string): string {
 // ── tool primitives ──
 export function openWidget(componentId: string): void {
     lastOpenedWidgetHolder.current = componentId; // P11-7: "…in IT" resolution
-    dispatch('dwellium:open-widget', { widgetId: componentId });
+    // Pass the registry label/icon so the window title reads "Tools hub", not "tools-hub"
+    // (WindowContext falls back to the id when label is missing).
+    const meta = WIDGET_REGISTRY[componentId];
+    dispatch('dwellium:open-widget', { widgetId: componentId, label: meta?.label, icon: meta?.icon });
 }
 export function spawnAgent(name: string): void { openWidget(WIDGET_ALIASES[name.trim().toLowerCase()] || 'ara-console'); }
 export function tileWindows(components?: string[]): void { dispatch('dwellium:tile', { components: components ?? null }); toast('Arranged windows'); }
@@ -246,6 +249,9 @@ function parseSingle(input: string): ParsedCommand | null {
     const l = stripPoliteness(s);
     if (!l) return null;
     let m: RegExpMatchArray | null;
+
+    // keyboard shortcuts sheet (plan 046 S2-8) — ShortcutSheet listens for the event.
+    if (/^(keyboard )?shortcuts?$|^hotkeys?$|^show shortcuts$/.test(l)) return { label: 'Keyboard shortcuts', run: () => window.dispatchEvent(new CustomEvent('dwellium:open-shortcuts')) };
 
     // theme
     if (l === 'dark mode' || l === 'dark') return { label: 'Theme → dark', run: () => setTheme('dark') };

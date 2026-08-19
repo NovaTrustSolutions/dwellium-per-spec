@@ -1,0 +1,79 @@
+/* FirstRunCard — plan 046 F1 (MorningBriefBanner token sister). Bottom-LEFT so
+   the Assistant FAB + .qualia-toast corner (bottom-right) stays clear. */
+
+.firstrun-card {
+    position: fixed;
+    left: 16px;
+    bottom: 72px;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    z-index: 97000; /* below the banners' 98000 */
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 12px;
+    background: #0d1a14;
+    border: 1px solid color-mix(in srgb, var(--accent, #D6FE51) 50%, transparent);
+    color: var(--text-primary, #e8f5e9);
+    font-size: 12.5px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.firstrun-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.firstrun-card__title { font-weight: 700; font-size: 14px; }
+.firstrun-card__sub { color: var(--text-secondary, #bbb); font-size: 12px; margin-top: 2px; }
+.firstrun-card__count {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent, #D6FE51) 18%, transparent);
+    color: var(--accent, #D6FE51);
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.firstrun-card__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.firstrun-step { display: flex; align-items: center; gap: 8px; }
+.firstrun-step__tick {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--text-secondary, #bbb);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-inverse, #000);
+}
+.firstrun-step.is-done .firstrun-step__tick { background: var(--accent, #D6FE51); border-color: var(--accent, #D6FE51); }
+.firstrun-step__body { flex: 1; min-width: 0; }
+.firstrun-step.is-done .firstrun-step__title { text-decoration: line-through; opacity: 0.7; }
+.firstrun-step__title { font-weight: 600; }
+.firstrun-step__sub { color: var(--text-secondary, #bbb); font-size: 11.5px; }
+.firstrun-step__cta {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border-radius: 7px;
+    border: none;
+    background: var(--accent, #D6FE51);
+    color: var(--text-inverse, #000);
+    font-weight: 700;
+    font-size: 11.5px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.firstrun-card__foot { display: flex; align-items: center; gap: 8px; color: var(--text-secondary, #bbb); font-size: 11.5px; }
+.firstrun-card__link { background: transparent; border: none; padding: 0; color: inherit; cursor: pointer; text-decoration: underline; font-size: inherit; }
+.firstrun-card__x { margin-left: auto; background: transparent; border: none; color: var(--text-secondary, #bbb); cursor: pointer; display: inline-flex; padding: 2px; }
+
+/* Plan 047 §2 — step-0 role chooser (shown until a role is picked). */
+.firstrun-role { display: grid; gap: 6px; }
+.firstrun-role__q { font-weight: 600; font-size: 12.5px; }
+.firstrun-role__opt {
+    display: grid; gap: 2px; text-align: left;
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    background: transparent; color: inherit;
+    border: 1px solid color-mix(in srgb, var(--accent, #D6FE51) 30%, transparent);
+}
+.firstrun-role__opt:hover, .firstrun-role__opt.is-suggested { border-color: var(--accent, #D6FE51); background: color-mix(in srgb, var(--accent, #D6FE51) 10%, transparent); }
+.firstrun-role__title { font-weight: 600; font-size: 12.5px; }
+.firstrun-role__title em { font-style: normal; color: var(--accent, #D6FE51); font-weight: 500; font-size: 11px; }
+.firstrun-role__sub { color: var(--text-secondary, #bbb); font-size: 11.5px; }

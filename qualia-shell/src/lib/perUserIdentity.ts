@@ -62,6 +62,10 @@ export const halocronKnowledgeGraphUserIdHolder: UserIdHolder = makeHolder();
 export const scribeKbUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 041 — per-user avatar profiles (avatarId/voiceId/systemPrompt per agentId). */
 export const avatarProfilesUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 046-F1 — per-user first-run checklist state (firstRunStore). */
+export const firstRunUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 047 — per-user onboarding state (role, seen tips, unlocked tiers). */
+export const onboardingUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -79,6 +83,8 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     halocronKnowledgeGraphUserIdHolder,
     scribeKbUserIdHolder,
     avatarProfilesUserIdHolder,
+    firstRunUserIdHolder,
+    onboardingUserIdHolder,
 ];
 
 /**

@@ -15,6 +15,10 @@ import { PINNED_WIDGETS } from '../Shell/defaultStack';
 import { Check, CloudFog, CloudRain, CloudSnow, CloudSun, FolderOpen, Lock, Search, Settings, Sun, Unlock, X, Zap, type LucideIcon } from 'lucide-react';
 import './Sidebar.css';
 import React from 'react';
+import { getWidgetMeta } from '../../registry/widgetRegistry';
+
+// plan 046 S2-6: hover tooltip = "Label — one-line description" (registry is the single source).
+const withDesc = (i: { label: string; component: string }) => { const d = getWidgetMeta(i.component)?.description; return d ? `${i.label} — ${d}` : i.label; };
 
 /**
  * Renders a Lucide SVG icon if the key is recognized, otherwise falls back to text/emoji.
@@ -645,7 +649,7 @@ export default function Sidebar() {
                                 key={item.id}
                                 className={`sidebar__icon-rail-btn ${isOpen ? 'sidebar__icon-rail-btn--open' : ''}`}
                                 onClick={() => handleWidgetClick(item.component, item.label, item.icon)}
-                                title={item.label}
+                                title={withDesc(item)}
                             >
                                 <span className="sidebar__icon-rail-icon"><SidebarIcon iconKey={item.icon} size={18} /></span>
                                 {isOpen && <span className="sidebar__icon-rail-dot" />}
@@ -846,7 +850,7 @@ export default function Sidebar() {
                                                     if (w) closeWindow(w.id);
                                                 }
                                             }}
-                                            title={`${item.label} (Middle-click to close)`}
+                                            title={`${withDesc(item)} (Middle-click to close)`}
                                             draggable={!searchActive}
                                             onDragStart={e => {
                                                 if (searchActive) return;
@@ -1148,7 +1152,7 @@ export default function Sidebar() {
                                     return (
                                         <div key={it.id} className={`widget-gallery__card ${isHidden ? 'widget-gallery__card--hidden' : ''}`}>
                                             <span className="widget-gallery__icon"><SidebarIcon iconKey={it.icon} size={20} /></span>
-                                            <span className="widget-gallery__label" title={it.label}>{it.label}</span>
+                                            <span className="widget-gallery__label" title={withDesc(it)}>{it.label}</span>
                                             {isHidden ? (
                                                 <button
                                                     className="widget-gallery__btn widget-gallery__btn--add"

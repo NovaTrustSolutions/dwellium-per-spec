@@ -1,0 +1,60 @@
+/* CommandPill — top-centre "Search or ask… ⌘K" (plan 046 S2-8a).
+   z-index 4900: above the ThreadSwitcher pill tier, below the palette (5000)
+   so the palette scrim covers it; banners (98000) stay on top. Pill + kbd
+   styling mirrors .desktop__empty-kbd (Desktop.css) minus the fade-in. */
+
+.cmd-pill-wrap {
+    position: fixed;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4900;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cmd-pill,
+.cmd-pill__help {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: var(--fs-xs);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-full);
+    background: var(--gradient-surface-sheen, linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent));
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    transition: color 150ms ease, border-color 150ms ease;
+}
+
+.cmd-pill:hover,
+.cmd-pill:focus-visible,
+.cmd-pill__help:hover,
+.cmd-pill__help:focus-visible {
+    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    outline: none;
+}
+
+.cmd-pill kbd {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    padding: 1px 6px;
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: 4px;
+    color: var(--accent-text);
+    background: var(--accent-subtle);
+}
+
+.cmd-pill__help {
+    padding: 6px 10px;
+    font-family: var(--font-mono);
+}
+
+@media (max-width: 600px) {
+    .cmd-pill-wrap { display: none; }
+}

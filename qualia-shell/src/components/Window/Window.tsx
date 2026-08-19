@@ -7,6 +7,7 @@ import { getIcon } from '../Sidebar/iconMap';
 import WindowTagButton from './WindowTagButton';
 import WidgetShell, { useWidgetEnhancementFlags, enhancementClasses } from './WidgetShell';
 import { useGridLock } from '../../hooks/useGridLock';
+import { getWidgetMeta } from '../../registry/widgetRegistry';
 import './Window.css';
 
 export const CLASSIC_FOCUS_FRAME_MAX_WIDTH = 1440;
@@ -334,7 +335,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                 </div>
                 <div className="window__titlebar-left">
                     <span className="window__icon" style={{ display: 'inline-flex', alignItems: 'center' }}>{(() => { const Icon = getIcon(state.icon); return Icon ? <Icon size={14} strokeWidth={1.75} /> : state.icon; })()}</span>
-                    <span className="window__title">{state.title}</span>
+                    <span className="window__title" title={getWidgetMeta(String(state.component))?.description}>{state.title}</span>
                     {/* Drag-grip — drag into Scribe to insert a markdown reference (Phase D DnD bridge) */}
                     <span
                         className="window__drag-grip"

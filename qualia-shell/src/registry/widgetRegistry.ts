@@ -25,6 +25,8 @@ export interface WidgetRegistration {
     id: string;
     /** Human-readable display name shown in titlebar, command palette, etc. */
     label: string;
+    /** One plain-English line: what it does for a property manager. Shown in ⌘K rows, sidebar hover, window-title hover. */
+    description: string;
     /** Lucide icon key (from iconMap.ts) — used in sidebar and window titlebar */
     icon: string;
     /** Lazy-loadable component factory */
@@ -61,6 +63,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'audit-log': {
         id: 'audit-log',
         label: 'Audit Log',
+        description: 'Who signed in, when, from where, and what each account worked on (Andy only).',
         icon: 'scroll-text',
         component: lazyWithReload(() => import('../components/AuditLog/AuditLogWidget')),
         minWidth: 720,
@@ -74,6 +77,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'strata-dashboard': {
         id: 'strata-dashboard',
         label: 'Strata Dashboard',
+        description: 'Day-to-day property operations: residents, work orders, money, compliance — your main desk.',
         icon: 'building-2',
         component: lazyWithReload(() => import('../components/StrataDashboard/StrataDashboard')),
         minWidth: 900,
@@ -83,6 +87,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'astra-dashboard': {
         id: 'astra-dashboard',
         label: 'Astra Dashboard',
+        description: 'Executive view: portfolio heatmap, watchdog list, financial snapshots, compliance calendar.',
         icon: 'diamond',
         component: lazyWithReload(() => import('../components/AstraDashboard/AstraDashboard')),
         minWidth: 800,
@@ -93,6 +98,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'wiki': {
         id: 'wiki',
         label: 'Wiki',
+        description: 'AI-compiled reference pages for each domain, project and thread, with source citations.',
         icon: 'book-open',
         component: lazyWithReload(() => import('../components/Wiki/Wiki')),
         minWidth: 720,
@@ -103,6 +109,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'synthesis': {
         id: 'synthesis',
         label: 'Synthesis Lab',
+        description: 'Ask a question across your documents, keep the answer, and build on it with a second pass.',
         icon: 'sparkles',
         component: lazyWithReload(() => import('../components/Synthesis/Synthesis')),
         minWidth: 760,
@@ -113,6 +120,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'foundry': {
         id: 'foundry',
         label: 'Foundry',
+        description: 'Intake for new documents: capture, AI triage, review, then admit to your library.',
         icon: 'inbox',
         component: lazyWithReload(() => import('../components/Foundry/Foundry')),
         minWidth: 720,
@@ -123,6 +131,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'knowledge-graph': {
         id: 'knowledge-graph',
         label: 'Knowledge Graph',
+        description: 'Interactive map of how your files, projects and agents connect.',
         icon: 'network',
         component: lazyWithReload(() => import('../components/Shell/HalocronKnowledgeGraph')),
         minWidth: 760,
@@ -134,6 +143,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'memory-graph-rag': {
         id: 'memory-graph-rag',
         label: 'Cognitive M Network',
+        description: 'Long-term memory for AI: stores facts from your documents and answers with sources.',
         icon: 'earth',
         component: lazyWithReload(() => import('../components/MemoryGraphRAG/MemoryGraphRAG')),
         minWidth: 820,
@@ -144,6 +154,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'builder-agents': {
         id: 'builder-agents',
         label: 'Builder Agents',
+        description: 'Three AI helpers that draft data schemas, requirement docs and gap analyses.',
         icon: 'cpu',
         component: lazyWithReload(() => import('../components/BuilderAgents/BuilderAgents')),
         minWidth: 780,
@@ -154,6 +165,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'hive': {
         id: 'hive',
         label: 'The Hive',
+        description: 'Control room for every AI agent: status, last action, manual trigger, cost by provider.',
         icon: 'layout-grid',
         component: lazyWithReload(() => import('../components/Hive/Hive')),
         minWidth: 820,
@@ -164,6 +176,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'system-health': {
         id: 'system-health',
         label: 'System Health',
+        description: 'Which AI features are connected, which are limited, and a button to fix each one.',
         icon: 'layout-grid',
         component: lazyWithReload(() => import('../components/SystemHealth/SystemHealth')),
         minWidth: 480,
@@ -174,6 +187,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'content-search': {
         id: 'content-search',
         label: 'Search',
+        description: 'Full-text search across notes, syntheses, wiki pages, intake items and file names.',
         icon: 'search-check',
         component: lazyWithReload(() => import('../components/ContentSearch/ContentSearch')),
         minWidth: 640,
@@ -184,6 +198,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'autonomous-runs': {
         id: 'autonomous-runs',
         label: 'Autonomous Runs',
+        description: 'Catalog of long-running automated jobs with the exact command to launch each.',
         icon: 'terminal',
         component: lazyWithReload(() => import('../components/AutonomousRuns/AutonomousRuns')),
         minWidth: 700,
@@ -201,6 +216,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'universal-shell': {
         id: 'universal-shell',
         label: 'Universal Shell',
+        description: 'Four-column workbench: filing cabinet, scratch pad, canvas and orchestrator side by side.',
         icon: 'layout-grid',
         component: lazyWithReload(() => import('../components/UniversalShell/UniversalShell')),
         minWidth: 960,
@@ -210,6 +226,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'inbox': {
         id: 'inbox',
         label: 'Inbox Zero',
+        description: 'Email triage: sort signal from noise, approve, and route messages to the right place.',
         icon: 'mail-open',
         component: lazyWithReload(() => import('../components/InboxZero/InboxZero')),
         minWidth: 700,
@@ -223,6 +240,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'api-keys': {
         id: 'api-keys',
         label: 'API Keys',
+        description: 'Your own AI provider keys and which model is active (stored privately, write-only).',
         icon: 'settings',
         component: lazyWithReload(() => import('../components/ApiKeysWidget/ApiKeysWidget')),
         minWidth: 480,
@@ -240,6 +258,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'inbox-zero': {
         id: 'inbox-zero',
         label: 'Inbox Zero (deprecated)',
+        description: 'Older Inbox Zero entry kept for saved layouts — use Inbox Zero instead.',
         icon: 'mail-open',
         component: lazyWithReload(() => import('../components/InboxZero/InboxZero')),
         minWidth: 700,
@@ -249,6 +268,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'tasks': {
         id: 'tasks',
         label: 'Task Menu',
+        description: 'Your to-do list with urgency, status, AI ranking and a Kanban view.',
         icon: 'check-square',
         component: lazyWithReload(() => import('../components/TaskMenu/TaskMenu')),
         category: 'core',
@@ -256,6 +276,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'trello-board': {
         id: 'trello-board',
         label: 'Trello Board',
+        description: 'Your Trello boards and cards, live inside Dwellium.',
         icon: 'layout-list',
         component: lazyWithReload(() => import('../components/TrelloBoard/TrelloBoard')),
         category: 'core',
@@ -263,6 +284,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'task-board': {
         id: 'task-board',
         label: 'Task Board',
+        description: 'Local Kanban: drag cards between columns, bulk-move, full undo history.',
         icon: 'layout-grid',
         component: lazyWithReload(() => import('../components/TaskBoard/TaskBoard')),
         minWidth: 680,
@@ -272,6 +294,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'tag-file': {
         id: 'tag-file',
         label: 'Tag File',
+        description: "Everything you've tagged anywhere in the app, grouped by tag.",
         icon: 'tag',
         component: lazyWithReload(() => import('../components/TagFile/TagFile')),
         minWidth: 420,
@@ -281,6 +304,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'home-upkeep-ai': {
         id: 'home-upkeep-ai',
         label: 'Home Upkeep AI',
+        description: 'Tracks building systems against their lifespans and flags inspections and wear early.',
         icon: 'home',
         component: lazyWithReload(() => import('../components/HomeUpkeepAI/HomeUpkeepAI')),
         category: 'core',
@@ -288,6 +312,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'automation-hub': {
         id: 'automation-hub',
         label: 'Automation Hub',
+        description: 'Recurring workflow automations with schedules, launch buttons and an audit log.',
         icon: 'zap',
         component: lazyWithReload(() => import('../components/AutomationHub/AutomationHub')),
         category: 'core',
@@ -295,6 +320,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'tenant-portal-mgmt': {
         id: 'tenant-portal-mgmt',
         label: 'Tenant Portal',
+        description: 'What residents see — directory, maintenance, payments, messages, lease alerts — and its admin.',
         icon: 'home',
         component: lazyWithReload(() => import('../components/TenantPortalMgmt/TenantPortalMgmt')),
         category: 'core',
@@ -302,6 +328,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'georgia-code': {
         id: 'georgia-code',
         label: 'Georgia Code',
+        description: 'Search the Official Code of Georgia (OCGA) by meaning, not just keywords.',
         icon: 'book-open',
         component: lazyWithReload(() => import('../components/GeorgiaCode/GeorgiaCode')),
         category: 'core',
@@ -313,6 +340,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'agent-lab': {
         id: 'agent-lab',
         label: 'Agent Lab',
+        description: 'Give a goal to a team of AI specialists; they split the work, verify it and merge a result.',
         icon: 'bot',
         component: lazyWithReload(() => import('../components/AgentLab/AgentLab')),
         minWidth: 760,
@@ -322,6 +350,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'ara-console': {
         id: 'ara-console',
         label: 'ARA Console',
+        description: 'Your main AI assistant: chat, voice, files and actions across Dwellium.',
         icon: 'brain-circuit',
         component: lazyWithReload(() => import('../components/ARAConsole/ARAConsole')),
         minWidth: 600,
@@ -336,6 +365,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'meeting': {
         id: 'meeting',
         label: 'Meeting Notetaker',
+        description: 'ARA joins or listens to a meeting, transcribes live and coaches you during it.',
         icon: 'mic',
         component: lazyWithReload(() => import('../components/AraMeeting/AraMeetingPanel')),
         minWidth: 460,
@@ -345,6 +375,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'stella-agent': {
         id: 'stella-agent',
         label: 'Stella Agent',
+        description: 'Personal AI assistant with its own tools, memory and task follow-through.',
         icon: 'sparkles',
         component: lazyWithReload(() => import('../components/StellaAgent/StellaAgent')),
         minWidth: 600,
@@ -362,6 +393,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'honcho': {
         id: 'honcho',
         label: 'Honcho',
+        description: "The AI's always-on memory: what it remembers about you, searchable and editable.",
         icon: 'brain-circuit',
         component: lazyWithReload(() => import('../components/HonchoHermesPanel/HonchoHermesPanel')),
         minWidth: 600,
@@ -377,6 +409,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'hermes': {
         id: 'hermes',
         label: 'Hermes',
+        description: 'The AI agent roster: a persona card for each specialist and what it has learned.',
         icon: 'zap',
         component: lazyWithReload(() => import('../components/HonchoHermesPanel/HermesAgentsWidget')),
         minWidth: 600,
@@ -386,6 +419,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'hydra-ai': {
         id: 'hydra-ai',
         label: 'Hydra AI',
+        description: 'Ask one question, see every configured AI model answer side by side.',
         icon: 'network',
         component: lazyWithReload(() => import('../components/HydraAI/HydraSplit')),
         category: 'ai',
@@ -393,6 +427,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'thought-weaver': {
         id: 'thought-weaver',
         label: 'Thought Weaver',
+        description: 'Drop raw thoughts — meetings, ideas, tasks — and AI sorts them into action items.',
         icon: 'brain',
         component: lazyWithReload(() => import('../components/ThoughtWeaver/ThoughtWeaver')),
         category: 'ai',
@@ -400,6 +435,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'notebooklm-context': {
         id: 'notebooklm-context',
         label: 'NotebookLM',
+        description: 'Link your Google NotebookLM notebooks as AI context (manual — Google has no API).',
         icon: 'book-open',
         component: lazyWithReload(() => import('../components/NotebookLMContext/NotebookLMContext')),
         category: 'ai',
@@ -407,6 +443,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'two-brains': {
         id: 'two-brains',
         label: 'Two Brains',
+        description: 'Shared board for two people: notes, reactions, screen share and an audit log.',
         icon: 'brain',
         component: lazyWithReload(() => import('../components/TwoBrains/TwoBrains')),
         category: 'ai',
@@ -414,6 +451,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'transcription': {
         id: 'transcription',
         label: 'Transcription Hub',
+        description: 'Record or upload audio, transcribe it, identify speakers and search what was said.',
         icon: 'mic',
         component: lazyWithReload(() => import('../components/TranscriptionHub/TranscriptionHub')),
         category: 'ai',
@@ -421,6 +459,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'fact-check-log': {
         id: 'fact-check-log',
         label: 'Fact Check Log',
+        description: 'Log of claims checked by AI, with verdicts and evidence.',
         icon: 'search-check',
         component: lazyWithReload(() => import('../components/FactCheckLog/FactCheckLog')),
         category: 'ai',
@@ -428,6 +467,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'cognitive-harness': {
         id: 'cognitive-harness',
         label: 'Cognitive Harness',
+        description: "Animated map of the AI stack's parts (retrieval, memory, tools, routing) with live status.",
         icon: 'brain-circuit',
         component: lazyWithReload(() => import('../components/CognitiveHarness/CognitiveHarness')),
         minWidth: 800,
@@ -446,6 +486,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'file-manager': {
         id: 'file-manager',
         label: 'File Manager',
+        description: 'Same as File Explorer — kept so older layouts still open.',
         icon: 'folder-open',
         component: lazyWithReload(() => import('../components/FileExplorer/FileExplorer')),
         category: 'filing',
@@ -453,6 +494,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'doc-viewer': {
         id: 'doc-viewer',
         label: 'Doc Viewer',
+        description: 'Read and mark up uploaded or generated documents.',
         icon: 'file-text',
         component: lazyWithReload(() => import('../components/DocViewer/DocViewer')),
         category: 'filing',
@@ -460,6 +502,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'pdf-gear': {
         id: 'pdf-gear',
         label: 'PDF Gear',
+        description: 'PDF toolkit in the browser: merge, split, compress, convert, fill and sign.',
         icon: 'file-stack',
         component: lazyWithReload(() => import('../components/PDFGear/PDFGear')),
         category: 'filing',
@@ -467,6 +510,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'notepad': {
         id: 'notepad',
         label: 'Notepad',
+        description: 'Quick Markdown notes; type @ to link a task or project.',
         icon: 'file-edit',
         component: lazyWithReload(() => import('../components/Notepad/Notepad')),
         category: 'filing',
@@ -476,6 +520,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'mission-control': {
         id: 'mission-control',
         label: 'Mission Control',
+        description: "Mid-term goals with AI-drafted plans: the agent's actions, your actions, open questions.",
         icon: 'target',
         component: lazyWithReload(() => import('../components/MissionControl/MissionControl')),
         minWidth: 520,
@@ -487,6 +532,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'artifact-gallery': {
         id: 'artifact-gallery',
         label: 'Artifacts',
+        description: 'Everything your AI agents produced — replies, drafts, images — browsable and pinnable.',
         icon: 'layers',
         component: lazyWithReload(() => import('../components/ArtifactGallery/ArtifactGallery')),
         minWidth: 520,
@@ -498,6 +544,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'ai-spend': {
         id: 'ai-spend',
         label: 'AI Spend',
+        description: "Today's AI calls and cost, a 14-day trend, by provider, plus plan advice.",
         icon: 'coins',
         component: lazyWithReload(() => import('../components/AiSpend/AiSpend')),
         minWidth: 420,
@@ -508,6 +555,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'connections': {
         id: 'connections',
         label: 'Connections & Memory',
+        description: 'Status of every integration (AI keys, Google, database, backend) and every memory store.',
         icon: 'cable',
         component: lazyWithReload(() => import('../components/Connections/ConnectionsPanel')),
         minWidth: 460,
@@ -521,6 +569,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'template-generator': {
         id: 'template-generator',
         label: 'Template Generator',
+        description: 'Fill DOCX/HTML templates with variables and export PDFs — leases, notices, letters.',
         icon: 'file-text',
         component: lazyWithReload(() => import('../components/DocViewer/TemplateGenerator')),
         category: 'filing',
@@ -532,6 +581,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'scribe': {
         id: 'scribe',
         label: 'Scribe',
+        description: 'Markdown writing desk: tabs, AI redlines, comments, versions and interactive docs.',
         icon: 'pen-tool',
         component: lazyWithReload(() => import('../components/Scribe/Scribe')),
         category: 'tools',
@@ -539,6 +589,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'file-explorer': {
         id: 'file-explorer',
         label: 'File Explorer',
+        description: 'Browse, rename, create and drag files in your Dwellium file tree.',
         icon: 'folder-tree',
         component: lazyWithReload(() => import('../components/FileExplorer/FileExplorer')),
         category: 'filing',
@@ -548,6 +599,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'workspace': {
         id: 'workspace',
         label: 'Workspace',
+        description: 'Browse by Domain → Project → Thread, with status and stage per thread.',
         icon: 'layers',
         component: lazyWithReload(() => import('../components/Workspace/Workspace')),
         category: 'filing',
@@ -557,6 +609,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'terminal': {
         id: 'terminal',
         label: 'Terminal',
+        description: 'Command line and CLI tools (hidden by default; re-add from the widget gallery).',
         icon: 'terminal',
         component: lazyWithReload(() => import('../components/Terminal/Terminal')),
         category: 'tools',
@@ -564,6 +617,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'cloud-browser': {
         id: 'cloud-browser',
         label: 'Cloud Browser',
+        description: 'A web browser rendered on the server, for sites that refuse to load in an iframe.',
         icon: 'globe',
         component: lazyWithReload(() => import('../components/CloudBrowser/CloudBrowser')),
         category: 'tools',
@@ -573,6 +627,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'control-panel': {
         id: 'control-panel',
         label: 'Control Panel',
+        description: 'Appearance, layout and system settings for the shell.',
         icon: 'settings',
         component: lazyWithReload(() => import('../components/ControlPanel/ControlPanel')),
         category: 'tools',
@@ -581,6 +636,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'time-travel': {
         id: 'time-travel',
         label: 'Time Travel',
+        description: 'Version history for any saved object: diff versions and restore without losing anything.',
         icon: 'history',
         component: lazyWithReload(() => import('../components/TimeTravel/TimeTravel')),
         minWidth: 480,
@@ -591,6 +647,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'holocron-library': {
         id: 'holocron-library',
         label: 'Holocron Library',
+        description: 'Animated gallery of the eight holocrons — click one to read its lore.',
         icon: 'diamond',
         component: lazyWithReload(() => import('../components/HolocronLibrary/HolocronLibrary')),
         minWidth: 520,

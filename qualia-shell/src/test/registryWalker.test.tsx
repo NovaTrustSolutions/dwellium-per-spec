@@ -67,6 +67,15 @@ describe('WIDGET_REGISTRY integrity', () => {
         const ok = new Set([undefined, 'core', 'ai', 'filing', 'tools']);
         for (const id of ids) expect(ok.has(WIDGET_REGISTRY[id].category)).toBe(true);
     });
+
+    // plan 046 S2-6: one plain-English line per widget (⌘K rows, sidebar hover, window title).
+    it('every widget has a one-line description', () => {
+        for (const r of Object.values(WIDGET_REGISTRY)) {
+            expect(r.description, r.id).toBeTruthy();
+            expect(r.description.length, r.id).toBeLessThanOrEqual(100);
+            expect(r.description, r.id).not.toMatch(/\n/);
+        }
+    });
 });
 
 describe('Widget Enhancement Layer isolates crashes (weakness #2)', () => {

@@ -9,6 +9,7 @@ import { parseCommand, recallMemory, type ParsedCommand } from '../../lib/dwelli
 import { requestAraPrompt } from '../../lib/llmRouter';
 import { searchTranscriptions, type TranscriptHit } from '../../lib/transcriptSearch';
 import { hiddenWidgetsStore } from '../../lib/hiddenWidgetsStore';
+import { getWidgetMeta } from '../../registry/widgetRegistry';
 import './CommandPalette.css';
 
 const API_ROOT = API_BASE.replace(/\/+$/, '');
@@ -643,8 +644,14 @@ export default function CommandPalette() {
             }
         };
 
+        // plan 046 S2-8: CommandPill (and anything else) opens the palette via this event.
+        const onOpenEvt = () => openPalette();
         window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
+        window.addEventListener('dwellium:open-palette', onOpenEvt);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('dwellium:open-palette', onOpenEvt);
+        };
     }, [isOpen, openPalette, closePalette]);
 
     useEffect(() => {
@@ -794,7 +801,7 @@ export default function CommandPalette() {
                 score: match.score + (queryValue ? 0 : 8),
                 icon: match.item.icon,
                 title: match.item.label,
-                subtitle: match.item.group || 'Widget',
+                subtitle: getWidgetMeta(match.item.component)?.description ?? match.item.group ?? 'Widget',
                 meta: match.item.component,
                 reason: match.reason,
                 actionLabel: openComponents.has(match.item.component) ? 'Focus Widget' : 'Open Widget',
@@ -1093,9 +1100,11 @@ export default function CommandPalette() {
                 </div>
 
                 <div className="command-palette__footer">
+                    <span><kbd>⌘K</kbd> Toggle</span>
                     <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
                     <span><kbd>Enter</kbd> Open</span>
                     <span><kbd>Esc</kbd> Close</span>
+                    <span><kbd>?</kbd> Shortcuts</span>
                     {activeResult && <span className="command-palette__footer-active">{KIND_LABELS[activeResult.kind]} · {activeResult.actionLabel}</span>}
                 </div>
             </div>

@@ -11,6 +11,7 @@ import { useSyncExternalStore } from 'react';
 import { createLocalStorageStore } from '../../../utils/createLocalStorageStore';
 import { withSync } from '../../../lib/oneSaveStore';
 import { createEmptyDoc, newId, type Card, type IDoc } from './idocTypes';
+import type { CustomTheme } from './idocTypes';
 import {
     capHistoryBytes, normalizeHistory, pushSnapshot as pushHistory, undo as undoHistory, redo as redoHistory,
     restoreSnapshot as restoreHistory, type HistoryMap, type Snapshot,
@@ -24,9 +25,11 @@ export interface IdocsState {
     view: IdocsView;
     /** Wave 1: per-doc undo ring buffers (see idocsHistory.ts). Absent in pre-wave-1 payloads. */
     history: HistoryMap;
+    /** Wave 2: per-user saved custom themes (reusable across docs). */
+    customThemes: CustomTheme[];
 }
 
-const DEFAULT: IdocsState = { docs: [], activeId: null, view: 'library', history: {} };
+const DEFAULT: IdocsState = { docs: [], activeId: null, view: 'library', history: {}, customThemes: [] };
 
 /** Holder updated by the InteractiveDocs render path BEFORE useSyncExternalStore reads. */
 export const idocsUserIdHolder: { current: string | null } = { current: null };
@@ -48,7 +51,8 @@ function deserialize(raw: string | null): IdocsState {
         const docs = Array.isArray(p.docs) ? p.docs.filter(isDoc) : [];
         const activeId = typeof p.activeId === 'string' && docs.some((d) => d.id === p.activeId) ? p.activeId : null;
         const view: IdocsView = p.view === 'edit' || p.view === 'present' ? (activeId ? p.view : 'library') : 'library';
-        return { docs, activeId, view, history: normalizeHistory(p.history, isDoc) };
+        const customThemes = Array.isArray(p.customThemes) ? p.customThemes.filter((t): t is CustomTheme => !!t && typeof t === 'object' && typeof (t as CustomTheme).name === 'string' && !!(t as CustomTheme).vars) : [];
+        return { docs, activeId, view, history: normalizeHistory(p.history, isDoc), customThemes };
     } catch {
         return DEFAULT;
     }
@@ -92,7 +96,7 @@ export function deleteDoc(id: string): void {
     const docs = s.docs.filter((d) => d.id !== id);
     const activeId = s.activeId === id ? null : s.activeId;
     const history = { ...s.history }; delete history[id];
-    write({ docs, activeId, view: activeId ? s.view : 'library', history });
+    write({ ...s, docs, activeId, view: activeId ? s.view : 'library', history });
 }
 
 export function duplicateDoc(id: string): IDoc | null {
@@ -345,4 +349,15 @@ export function restoreSnapshot(docId: string, index: number): boolean {
 
 export function listSnapshots(docId: string): { snapshots: Snapshot[]; cursor: number } {
     return snap().history[docId] ?? { snapshots: [], cursor: -1 };
+}
+
+// ── Wave 2: custom themes ──
+export function saveCustomTheme(theme: CustomTheme): void {
+    const st = snap();
+    const rest = st.customThemes.filter((t) => t.name !== theme.name);
+    write({ ...st, customThemes: [...rest, theme] });
+}
+export function deleteCustomTheme(name: string): void {
+    const st = snap();
+    write({ ...st, customThemes: st.customThemes.filter((t) => t.name !== name) });
 }

@@ -78,7 +78,8 @@ const LAYOUT_HINTS = `Smart layouts: prefer "steps" for processes, "boxes" for p
 Cards may nest sub-cards via "children":[{"title":"…","layout":"default","blocks":[…]}] when a section has natural sub-sections (rare; ≤ 3 children).
 Cards may add "background":{"color":"#0b1020","overlay":"faded"} ONLY when a hero/section-break card benefits from it.`;
 
-function commonRules(opts: GenerateOpts): string {
+/** Shared per-card writing rules (amount/tone/audience/language + smart-layout hints). Used by idocsOutline too. */
+export function commonRules(opts: GenerateOpts): string {
     const amount = AMOUNT_HINT[opts.amount ?? 'medium'];
     return `- ${amount} Mix block types where they genuinely help; don't force every type.
 - Charts need 3-8 numeric data points with short labels. Tables ≤ 6 rows.

@@ -9,7 +9,7 @@
  *   import { DOC_AI_ACTIONS } from './idocsDocAi';
  *   DOC_AI_ACTIONS: readonly DocAiAction[]
  *   interface DocAiAction {
- *     id: 'translate' | 'summarize' | 'add-card' | 'restyle' | 'regenerate-card';
+ *     id: 'translate' | 'summarize' | 'add-card' | 'restyle' | 'regenerate-card' | 'remix';
  *     label: string;              // menu label
  *     needsInput?: boolean;       // true → prompt the user for a string first
  *     inputHint?: string;         // placeholder for that prompt
@@ -20,7 +20,7 @@
  */
 import { callLlm, hasActiveLlm } from '../../../lib/llmClient';
 import { BLOCK_CONTRACT, dirForLanguage, normalizeCard, parseJsonLoose, type CallLlmFn, type LlmBundle } from './idocsAi';
-import { CARD_LAYOUTS, type Block, type Card, type IDoc } from './idocTypes';
+import { CARD_LAYOUTS, IDOC_THEMES, type Block, type Card, type IDoc, type IDocThemeId } from './idocTypes';
 
 const BATCH = 8;
 
@@ -37,6 +37,14 @@ function cardText(c: Card): string {
 
 function docOutline(doc: IDoc): string {
     return `Title: ${doc.title}\n${doc.description ? `Description: ${doc.description}\n` : ''}Cards:\n${doc.cards.map((c, i) => `${i + 1}. ${c.title ?? `Card ${i + 1}`}\n${cardText(c)}`).join('\n\n')}`.slice(0, 20_000);
+}
+
+/** Compact doc context for chat prompts: title, per-card id/title/block-type counts + first `perCard` chars; capped at `cap`. */
+export function docContext(doc: IDoc, perCard = 400, cap = 6000): string {
+    const counts = (c: Card) => { const m: Record<string, number> = {}; for (const b of c.blocks) m[b.type] = (m[b.type] ?? 0) + 1; return Object.entries(m).map(([t, n]) => (n > 1 ? `${t}×${n}` : t)).join(', '); };
+    const head = `Title: ${doc.title}\n${doc.description ? `Description: ${doc.description}\n` : ''}${doc.language ? `Language: ${doc.language}\n` : ''}Theme: ${doc.theme} · ${doc.cards.length} cards\n`;
+    const cards = doc.cards.map((c, i) => `#${i + 1} id=${c.id} "${c.title ?? `Card ${i + 1}`}" [${counts(c) || 'empty'}]${c.blocks.length ? `\n  blocks: ${c.blocks.map((b) => `${b.id}:${b.type}`).join(' ')}` : ''}\n  ${cardText(c).slice(0, perCard).replace(/\n+/g, ' ')}`);
+    return (head + cards.join('\n')).slice(0, cap);
 }
 
 async function askJson(prompt: string, systemPrompt: string, llm: LlmBundle, callLlmFn: CallLlmFn, maxTokens = 6000): Promise<Record<string, unknown> | null> {
@@ -139,8 +147,58 @@ export async function regenerateCard(doc: IDoc, cardId: string, instruction: str
     return withCards(doc, cards);
 }
 
+export type RemixFormat = 'doc' | 'deck' | 'brief';
+export interface RemixOpts { theme?: IDocThemeId; format?: RemixFormat; instruction?: string }
+
+const REMIX_FORMAT_RULES: Record<RemixFormat, string> = {
+    doc: 'Keep roughly the same number of cards; regenerate every card with fresh wording and a better block mix.',
+    deck: 'Turn it into a slide DECK: one idea per card, headline-style titles, ≤ 4 blocks per card, ≤ 50 words of prose per card; prefer boxes/charts/steps over paragraphs. Same or slightly more cards.',
+    brief: 'Condense into a BRIEF of 1-3 cards total: the takeaway (callout), the key points (bullets or boxes), and next steps. Drop everything non-essential.',
+};
+
+/**
+ * Remix / regenerate the whole doc: `deck` → short cards, page size 16:9, ≤ 4 blocks/card; `brief` → 1-3 cards; `doc` →
+ * full regeneration. Card ids (and block ids by index) survive where titles match; theme is swapped when given.
+ */
+export async function remixDoc(doc: IDoc, { theme, format = 'doc', instruction }: RemixOpts, llm: LlmBundle, callLlmFn: CallLlmFn = callLlm): Promise<IDoc | null> {
+    if (!doc?.cards?.length || !hasActiveLlm(llm)) return null;
+    const rules = REMIX_FORMAT_RULES[format] ?? REMIX_FORMAT_RULES.doc;
+    const raw = await askJson(
+        `Remix this document. ${rules}${instruction?.trim() ? ` Instruction: ${instruction.trim()}.` : ''}${doc.language ? ` Language: ${doc.language}.` : ''} Keep card titles where the content stays the same.\n\nCurrent document:\n${docOutline(doc)}`,
+        `You are a document designer. Respond with STRICT JSON only: {"title":"…","description":"…","cards":[{"title":"…","layout":"default","blocks":[…]}]}. Layout is one of ${CARD_LAYOUTS.join('|')}. Markdown may use **bold**, lists, links; no HTML.\n${BLOCK_CONTRACT}`,
+        llm, callLlmFn, 8000,
+    );
+    if (!raw || !Array.isArray(raw.cards) || !raw.cards.length) return null;
+    const norm = (t: string | undefined) => (t ?? '').trim().toLowerCase();
+    const byTitle = new Map(doc.cards.map((c) => [norm(c.title), c] as const));
+    let cards = (raw.cards as unknown[]).map((c, i) => {
+        const next = normalizeCard(c, i);
+        const orig = byTitle.get(norm(next.title));
+        if (!orig) return next;
+        byTitle.delete(norm(next.title));
+        return keepIds(orig, next);
+    });
+    if (format === 'brief') cards = cards.slice(0, 3);
+    if (format === 'deck') cards = cards.map((c) => (c.blocks.length > 4 ? { ...c, blocks: c.blocks.slice(0, 4) } : c));
+    const isTheme = (t: unknown): t is IDocThemeId => IDOC_THEMES.some((x) => x.id === t);
+    return withCards(doc, cards, {
+        title: typeof raw.title === 'string' && raw.title.trim() ? raw.title : doc.title,
+        description: typeof raw.description === 'string' ? raw.description : doc.description,
+        ...(format === 'deck' ? { pageSize: '16:9' as const } : {}),
+        ...(isTheme(theme) ? { theme } : {}),
+    });
+}
+
+/** "deck" / "brief" / "doc" → format; anything else → free instruction (format doc). Used by the menu action. */
+export function parseRemixInput(input: string): RemixOpts {
+    const s = input.trim();
+    const m = /^(deck|brief|doc)\b[\s:,-]*(.*)$/i.exec(s);
+    if (m) return { format: m[1].toLowerCase() as RemixFormat, instruction: m[2].trim() || undefined };
+    return { format: 'doc', instruction: s || undefined };
+}
+
 export interface DocAiAction {
-    id: 'translate' | 'summarize' | 'add-card' | 'restyle' | 'regenerate-card';
+    id: 'translate' | 'summarize' | 'add-card' | 'restyle' | 'regenerate-card' | 'remix';
     label: string;
     needsInput?: boolean;
     inputHint?: string;
@@ -158,4 +216,5 @@ export const DOC_AI_ACTIONS: readonly DocAiAction[] = [
         id: 'regenerate-card', label: 'Regenerate this card', perCard: true, needsInput: false,
         run: (doc, input, llm, f) => { const [cardId, ...rest] = input.split('|'); return regenerateCard(doc, cardId.trim(), rest.join('|') || undefined, llm, f); },
     },
+    { id: 'remix', label: 'Remix / regenerate doc…', needsInput: true, inputHint: 'e.g. deck, brief, or an instruction', run: (doc, input, llm, f) => remixDoc(doc, parseRemixInput(input), llm, f) },
 ];

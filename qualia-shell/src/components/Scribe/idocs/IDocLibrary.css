@@ -8,3 +8,15 @@
 .scribe-idocs-lib__tpl .scribe-idocs__doccard { cursor: default; }
 .scribe-idocs-lib__toolbar { margin-top: 18px; }
 .scribe-idocs-lib__search.scribe-idocs-lib__search { width: 260px; max-width: 100%; }
+/* Wave 2B — "Create with Agent" outline flow. Tokens only. */
+.scribe-idocs-agent { display: flex; flex-direction: column; gap: 8px; }
+.scribe-idocs-agent input[type="url"] { flex: 1; min-width: 180px; }
+.scribe-idocs-agent__title { font-size: var(--fs-lg); font-family: var(--font-heading); font-weight: var(--fw-semibold); }
+.scribe-idocs-agent__cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; }
+.scribe-idocs-agent__card { display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface-elevated); }
+.scribe-idocs-agent__card textarea { font-size: var(--fs-sm); resize: vertical; }
+.scribe-idocs-agent__num { min-width: 22px; text-align: right; color: var(--text-tertiary); font-family: var(--font-mono); font-size: var(--fs-xs); }
+.scribe-idocs-agent__cardtitle { flex: 1; min-width: 0; font-weight: var(--fw-semibold); }
+.scribe-idocs-agent__source { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-subtle); background: var(--bg-surface-elevated); font-size: var(--fs-xs); color: var(--text-secondary); }
+.scribe-idocs-agent__source button { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; padding: 0 2px; }
+.scribe-idocs-agent__recent { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding-top: 6px; border-top: 1px solid var(--border-subtle); }

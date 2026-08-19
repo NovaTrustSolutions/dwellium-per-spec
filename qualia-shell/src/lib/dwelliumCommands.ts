@@ -247,6 +247,9 @@ function parseSingle(input: string): ParsedCommand | null {
     if (!l) return null;
     let m: RegExpMatchArray | null;
 
+    // keyboard shortcuts sheet (plan 046 S2-8) — ShortcutSheet listens for the event.
+    if (/^(keyboard )?shortcuts?$|^hotkeys?$|^show shortcuts$/.test(l)) return { label: 'Keyboard shortcuts', run: () => window.dispatchEvent(new CustomEvent('dwellium:open-shortcuts')) };
+
     // theme
     if (l === 'dark mode' || l === 'dark') return { label: 'Theme → dark', run: () => setTheme('dark') };
     if (l === 'light mode' || l === 'light') return { label: 'Theme → light', run: () => setTheme('light') };

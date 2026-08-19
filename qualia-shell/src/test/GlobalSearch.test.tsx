@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -49,9 +49,19 @@ describe('GlobalSearch', () => {
         vi.useRealTimers();
     });
 
-    it('renders the search input with ⌘K placeholder', () => {
+    it('renders the search input with ⌘⇧F placeholder', () => {
         render(<GlobalSearch />);
-        expect(screen.getByPlaceholderText('Search… ⌘K')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Search Strata… ⌘⇧F')).toBeInTheDocument();
+    });
+
+    // plan 046 S2-8c: ⌘K belongs to the shell palette; Strata search is ⌘⇧F.
+    it('⌘⇧F focuses the input; ⌘K does not', () => {
+        render(<GlobalSearch />);
+        const input = screen.getByPlaceholderText('Search Strata… ⌘⇧F');
+        fireEvent.keyDown(window, { key: 'k', metaKey: true });
+        expect(document.activeElement).not.toBe(input);
+        fireEvent.keyDown(window, { key: 'f', metaKey: true, shiftKey: true });
+        expect(document.activeElement).toBe(input);
     });
 
     it('renders facet filter chips', () => {
@@ -65,7 +75,7 @@ describe('GlobalSearch', () => {
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
         render(<GlobalSearch />);
 
-        const input = screen.getByPlaceholderText('Search… ⌘K');
+        const input = screen.getByPlaceholderText('Search Strata… ⌘⇧F');
         await user.type(input, 'river');
 
         // Advance past 300ms debounce
@@ -85,7 +95,7 @@ describe('GlobalSearch', () => {
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
         render(<GlobalSearch onNavigate={onNavigate} />);
 
-        await user.type(screen.getByPlaceholderText('Search… ⌘K'), 'river');
+        await user.type(screen.getByPlaceholderText('Search Strata… ⌘⇧F'), 'river');
         vi.advanceTimersByTime(350);
 
         const result = await screen.findByText('Riverwood');
@@ -98,7 +108,7 @@ describe('GlobalSearch', () => {
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
         render(<GlobalSearch />);
 
-        const input = screen.getByPlaceholderText('Search… ⌘K');
+        const input = screen.getByPlaceholderText('Search Strata… ⌘⇧F');
         await user.type(input, 'river');
         vi.advanceTimersByTime(350);
 
@@ -119,7 +129,7 @@ describe('GlobalSearch', () => {
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
         render(<GlobalSearch />);
 
-        await user.type(screen.getByPlaceholderText('Search… ⌘K'), 'zzz');
+        await user.type(screen.getByPlaceholderText('Search Strata… ⌘⇧F'), 'zzz');
         vi.advanceTimersByTime(350);
 
         await waitFor(() => {

@@ -10,7 +10,7 @@
  *   • Result count + facet counts footer
  *   • Index health indicator (green/yellow/red)
  *   • Keyboard nav (arrows + Enter + Escape)
- *   • ⌘K / Ctrl+K global shortcut to focus
+ *   • ⌘⇧F / Ctrl+Shift+F global shortcut to focus (⌘K belongs to the shell palette — plan 046 S2-8)
  *   • Deep-link onNavigate(type, id, module) callback
  */
 
@@ -106,10 +106,10 @@ export default function GlobalSearch({ onNavigate }: Props) {
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
     }, [query, doSearch]);
 
-    // ⌘K / Ctrl+K global shortcut
+    // ⌘⇧F / Ctrl+Shift+F global shortcut (⌘K is the shell palette — plan 046 S2-8 de-dup)
     useEffect(() => {
         const handleGlobalKey = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); inputRef.current?.focus(); }
+            if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); inputRef.current?.focus(); }
         };
         window.addEventListener('keydown', handleGlobalKey);
         return () => window.removeEventListener('keydown', handleGlobalKey);
@@ -185,7 +185,7 @@ export default function GlobalSearch({ onNavigate }: Props) {
             {/* Search input */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))', transition: 'all 0.2s ease', ...(isOpen ? { borderColor: 'var(--accent, #3b82f6)', boxShadow: '0 0 0 2px rgba(59,130,246,0.15)' } : {}) }}>
                 <Search size={16} style={{ color: 'var(--text-tertiary, #888)', flexShrink: 0 }} />
-                <input ref={inputRef} type="text" placeholder="Search… ⌘K" value={query}
+                <input ref={inputRef} type="text" placeholder="Search Strata… ⌘⇧F" value={query}
                     onChange={e => setQuery(e.target.value)}
                     onFocus={() => { if (results.length > 0) setIsOpen(true); }}
                     onKeyDown={handleKey}

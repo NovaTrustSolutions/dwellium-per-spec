@@ -23,6 +23,18 @@ describe('parseCommand (talk-to-customize)', () => {
         expect(parseCommand('turn animations off')?.label).toMatch(/Animations off/);
         expect(parseCommand('animations on')?.label).toMatch(/Animations on/);
     });
+    // plan 046 S2-8: ⌘K row that opens the global ShortcutSheet.
+    it('parses "shortcuts" → Keyboard shortcuts', () => {
+        expect(parseCommand('shortcuts')?.label).toBe('Keyboard shortcuts');
+        expect(parseCommand('keyboard shortcuts')?.label).toBe('Keyboard shortcuts');
+        expect(parseCommand('hotkeys')?.label).toBe('Keyboard shortcuts');
+        const seen: string[] = [];
+        const onOpen = (e: Event) => seen.push(e.type);
+        window.addEventListener('dwellium:open-shortcuts', onOpen);
+        parseCommand('show shortcuts')?.run();
+        window.removeEventListener('dwellium:open-shortcuts', onOpen);
+        expect(seen).toEqual(['dwellium:open-shortcuts']);
+    });
     it('parses save space', () => {
         expect(parseCommand('save space Morning')?.label).toMatch(/Save Space/);
     });

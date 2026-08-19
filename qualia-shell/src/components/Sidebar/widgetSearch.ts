@@ -1,4 +1,5 @@
 import { DockItem } from '../../data/types';
+import { getWidgetMeta } from '../../registry/widgetRegistry';
 
 interface WidgetSearchProfile {
     summary: string;
@@ -233,7 +234,8 @@ export function rankWidgetSearchResults(
             const keywordTokens = tokenize(profile?.keywords.join(' ') || '');
             const contextTokens = tokenize(profile?.contexts.join(' ') || '');
             const aliasTokens = tokenize(profile?.aliases?.join(' ') || '');
-            const summaryTokens = tokenize(profile?.summary || '');
+            // plan 046 S2-6: the registry one-liner is searchable too ("what merges pdfs" → PDF Gear).
+            const summaryTokens = tokenize([profile?.summary, getWidgetMeta(item.component)?.description].filter(Boolean).join(' '));
             const componentTokens = tokenize(item.component.replace(/-/g, ' '));
 
             const reasons: string[] = [];

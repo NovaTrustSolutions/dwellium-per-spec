@@ -8,6 +8,7 @@ import {
     Download, ExternalLink, Link2
 } from 'lucide-react';
 import { strataGet } from '../strataApi';
+import { NotYet } from '../../common/NotYet';
 import type { Workitem } from '../strataTypes';
 import { LoadingState, ErrorState } from '../StateView';
 import { useUser, getAuthToken } from '../../../context/UserContext';
@@ -351,9 +352,7 @@ export default function CalendarModule() {
                             </div>
                             <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-secondary)' }}>Microsoft Outlook</h3>
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                                    Coming soon — Use the .ics download above for manual import in the meantime.
-                                </p>
+                                <NotYet reason="Microsoft Outlook sync — use the .ics download above meanwhile." />
                             </div>
                             <span className="s-badge" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-tertiary)' }}>Planned</span>
                         </div>

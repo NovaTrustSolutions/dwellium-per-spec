@@ -283,7 +283,7 @@ describe('tenant portal parity — Task 3.9 GR-13 retrofit (render layer)', () =
 
         // (b) Banner surfaces with the static-mode message.
         expect(await screen.findByTestId('tenant-portal-static-banner')).toBeInTheDocument();
-        expect(await screen.findByText(/send message requires backend mode/i)).toBeInTheDocument();
+        expect(await screen.findByText(/send message is not available/i)).toBeInTheDocument();
 
         // (d) Negative: no .sent breadcrumb fired — write-path was
         // short-circuited cleanly. Sentry.addBreadcrumb is also called

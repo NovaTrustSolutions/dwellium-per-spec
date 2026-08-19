@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { API_BASE } from '../../config';
+import { strataGet, strataPost } from '../StrataDashboard/strataApi';
 import { sanitizeHtml } from '../../utils/safeMarkdown';
 import {
     Send, FileText, ArrowUpRight, ArrowDownLeft, ChevronRight,
@@ -64,8 +65,8 @@ export default function AstraWorkspace() {
     // Fetch workitems needing review
     const fetchWorkitems = useCallback(async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/dwellium/workitems?status=open&limit=50`);
-            const data = await res.json();
+            // Plan 046 D1: through strataApi so the demo workspace never reaches the backend.
+            const data = await strataGet<unknown>('/workitems', { status: 'open', limit: '50' });
             setWorkitems(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch workitems:', err);
@@ -160,18 +161,14 @@ export default function AstraWorkspace() {
 
             // ── Auto-log to communication_log ──
             try {
-                await fetch(`${API_BASE}/api/dwellium/comms`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        workitemId: selectedItem?.id || null,
-                        channel: 'email',
-                        direction: 'outbound',
-                        fromAddress: 'workspace@dwellium.com',
-                        toAddress: sendTo,
-                        subject: sendSubject,
-                        body: sendBody,
-                    }),
+                await strataPost('/comms', {
+                    workitemId: selectedItem?.id || null,
+                    channel: 'email',
+                    direction: 'outbound',
+                    fromAddress: 'workspace@dwellium.com',
+                    toAddress: sendTo,
+                    subject: sendSubject,
+                    body: sendBody,
                 });
             } catch { /* best-effort log */ }
 
@@ -212,10 +209,7 @@ export default function AstraWorkspace() {
     const promoteToStrata = async () => {
         if (!selectedItem) return;
         try {
-            await fetch(`${API_BASE}/api/dwellium/workitems/${selectedItem.id}/promote`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
+            await strataPost(`/workitems/${selectedItem.id}/promote`, {});
             showFeedback(<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Rocket size={14} aria-hidden /> Promoted to Strata</span>);
             setWorkitems(prev => prev.filter(w => w.id !== selectedItem.id));
             setSelectedItem(null);
@@ -228,12 +222,8 @@ export default function AstraWorkspace() {
     const unPromote = async () => {
         if (!selectedItem) return;
         try {
-            const res = await fetch(`${API_BASE}/api/dwellium/workitems/${selectedItem.id}/unpromote`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-            const data = await res.json();
-            if (data.unpromoted) {
+            const data = await strataPost<{ unpromoted?: boolean }>(`/workitems/${selectedItem.id}/unpromote`, {});
+            if (data?.unpromoted) {
                 showFeedback('↩ Returned to Astra queue');
                 fetchWorkitems();
             }

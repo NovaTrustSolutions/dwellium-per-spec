@@ -15,6 +15,7 @@ import GoogleDriveSection from './GoogleDriveSection';
 import GoogleAccountsSection from './GoogleAccountsSection';
 import SystemUpdateSection from './SystemUpdateSection';
 import AuditLogSection from './AuditLogSection';
+import { setDemoWorkspace, useDemoWorkspace } from '../../lib/demoWorkspaceStore';
 import ScribeSettings from '../Scribe/ScribeSettings';
 import './ControlPanel.css';
 
@@ -72,6 +73,7 @@ export default function ControlPanel() {
     const [editMsg, setEditMsg] = useState('');
     const { windows, minimizeWindow, restoreWindow, closeWindow, saveLayout, resetLayout } = useWindows();
     const { settings: layoutSettings, updateSettings, resetSettings, fontPresets } = useLayout();
+    const demoWorkspace = useDemoWorkspace();
     const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus | null>(null);
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [integrationLoading, setIntegrationLoading] = useState(false);
@@ -595,6 +597,26 @@ export default function ControlPanel() {
 
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />
+
+            {/* Plan 046 D1 — Demo workspace: per-user runtime flag that routes
+                Strata + Astra through the static data layer. Reload is the
+                cache-invalidation (react-query + module state). */}
+            <section className="cp-section">
+                <h3 className="cp-section__title">Data</h3>
+                <div className="cp-field">
+                    <span className="cp-label" id="cp-demo-workspace-label">Demo workspace</span>
+                    <div className={`cp-toggle ${demoWorkspace ? '' : 'cp-toggle--off'}`} role="group" aria-labelledby="cp-demo-workspace-label">
+                        <button className={`cp-toggle__option ${!demoWorkspace ? 'cp-toggle__option--active' : ''}`}
+                            onClick={() => { setDemoWorkspace(false); window.location.reload(); }}>Off</button>
+                        <button className={`cp-toggle__option ${demoWorkspace ? 'cp-toggle__option--active' : ''}`}
+                            onClick={() => { setDemoWorkspace(true); window.location.reload(); }}>On</button>
+                    </div>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '4px 2px 0', lineHeight: 1.5 }}>
+                    On: Strata and Astra show a sample portfolio you can click around and edit (edits stay on this device).
+                    Off: your live data. Tasks, Inbox and Files always show your real data.
+                </p>
+            </section>
 
             {/* Activation Center — activate-any-time capabilities (assessment
                 sweep 2026-06-12): live AppFolio sync, security mode, cloud

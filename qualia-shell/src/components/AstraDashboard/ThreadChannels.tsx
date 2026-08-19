@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { API_BASE } from '../../config';
+import { strataGet } from '../StrataDashboard/strataApi';
 import {
     Building, Users, UserCircle, Layers,
     Send, Clock, ChevronRight, RefreshCw, MessageSquare,
@@ -55,8 +56,8 @@ export default function ThreadChannels() {
     // Fetch real comms from backend (merge with demos)
     const fetchComms = useCallback(async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/dwellium/comms?limit=50`);
-            const data = await res.json();
+            // Plan 046 D1: through strataApi so the demo workspace never reaches the backend.
+            const data = await strataGet<unknown>('/comms', { limit: '50' });
             if (Array.isArray(data)) {
                 setComms(data);
             }

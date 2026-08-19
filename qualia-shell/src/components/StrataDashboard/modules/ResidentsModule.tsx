@@ -17,6 +17,7 @@ import {
 import { useUser } from '../../../context/UserContext';
 import { API_BASE } from '../../../config';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
+import { NotYet } from '../../common/NotYet';
 import ProfileSpaces from './ProfileSpaces';
 import { LoadingState, ErrorState } from '../StateView';
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
@@ -154,9 +155,7 @@ function BlockSection({
 // ── Block 1 (Task 3.1): FolioGuard Smart Ensure upsell — stub per v1 L168 ──
 export function BlockFolioGuardUpsell(_props: { tenant: EntityProfile }) {
     return (
-        <div data-testid="tenant-block-folioguard" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-            FolioGuard Smart Ensure — automated insurance requirement tracking. Coming soon — Phase-5 wires the Compliance-module Insurance tab as the Strata equivalent of AppFolio's tenant-side upsell card.
-        </div>
+        <NotYet testId="tenant-block-folioguard" reason="FolioGuard Smart Ensure — automated insurance tracking." />
     );
 }
 
@@ -187,9 +186,7 @@ export function BlockEmergencyContact({ tenant }: { tenant: EntityProfile }) {
 // ── Block 3 (Task 3.1): Upcoming Activities — stub per v1 L168 ──
 export function BlockUpcomingActivities(_props: { tenant: EntityProfile }) {
     return (
-        <div data-testid="tenant-block-upcoming-activities" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-            Upcoming activities not yet captured. Coming soon — Phase-5 wires per-tenant scheduled events (lease renewal, inspection, rent increase) once the activity-feed pipeline lands.
-        </div>
+        <NotYet testId="tenant-block-upcoming-activities" reason="Upcoming activities not yet captured — renewals, inspections, rent changes." />
     );
 }
 

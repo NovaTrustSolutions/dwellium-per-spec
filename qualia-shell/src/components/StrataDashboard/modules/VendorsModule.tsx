@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Truck, Search, RefreshCw, Plus, X, Shield, AlertTriangle, CheckCircle, Mail, Phone, DollarSign, FileText, Link2, Trash2, Tag, Filter, Building2, Unlink, Upload, Award, BarChart3, UserCheck, UserX, Clock, Settings2, ChevronUp, ChevronDown, ExternalLink, Star } from 'lucide-react';
 import { strataGet, strataPost, strataPut, strataDelete } from '../strataApi';
+import { NotYet } from '../../common/NotYet';
 import type { EntityProfile, Workitem, VendorFederalTax, VendorAccountingInfo, VendorCompliance } from '../strataTypes';
 import { useUser } from '../../../context/UserContext';
 import ProfileSpaces from './ProfileSpaces';
@@ -249,9 +250,7 @@ export function BlockCompliance({
 // ── Block 8: Survey (stub per v1 L168 — no schema fields) ──
 export function BlockSurvey(_props: { vendor: EntityProfile }) {
     return (
-        <div data-testid="vendor-block-survey" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-            Survey responses not yet captured. Coming soon — Phase-5 wires vendor satisfaction survey responses (NPS, response rate, last-completed timestamp) once the survey-collection pipeline lands.
-        </div>
+        <NotYet testId="vendor-block-survey" reason="Survey responses not yet captured." />
     );
 }
 
@@ -291,9 +290,7 @@ export function BlockNotes({ vendor }: { vendor: EntityProfile }) {
 // ── Block 10: Activity (stub per v1 L168 — no schema fields) ──
 export function BlockActivity(_props: { vendor: EntityProfile }) {
     return (
-        <div data-testid="vendor-block-activity" style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-            Activity log not yet captured. Coming soon — Phase-5 wires per-vendor audit log (timestamp + actor + event + detail) once the audit-pipeline lands.
-        </div>
+        <NotYet testId="vendor-block-activity" reason="Activity log not yet captured." />
     );
 }
 

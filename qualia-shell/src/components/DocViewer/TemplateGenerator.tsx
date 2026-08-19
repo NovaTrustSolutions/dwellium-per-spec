@@ -15,6 +15,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { BarChart3, ClipboardList, FileText, Files, Globe, Pencil, Settings, Trash2 } from 'lucide-react';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { NotYet } from '../common/NotYet';
 import './TemplateGenerator.css';
 
 // ---- Template Types ----
@@ -406,11 +407,12 @@ export default function TemplateGenerator() {
                             <p className="tg-docx__upload-hint">
                                 Supports setValue, cloneBlock, deleteBlock, and cloneRow operations
                             </p>
-                            <label className="tg-action-btn tg-action-btn--primary tg-docx__upload-btn">
+                            <label className="tg-action-btn tg-action-btn--primary tg-docx__upload-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                                 Browse Files
-                                <input type="file" accept=".docx" hidden onChange={() => showToast('DOCX template loaded — variable extraction coming soon')} />
+                                <input type="file" accept=".docx" hidden disabled />
                             </label>
                         </div>
+                        <NotYet reason="DOCX variable extraction." />
                         <div className="tg-docx__features">
                             <div className="tg-docx__feature">
                                 <span className="tg-docx__feature-icon"><Pencil size={14} /></span>

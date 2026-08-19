@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowRightLeft, Building2, CheckCircle2, ChevronDown, ChevronUp, Clock, FolderKanban, GitBranch, Home, Layers, LayoutGrid, List, Plus, RefreshCw, Search, StickyNote, Tag, Truck, Users, XCircle } from 'lucide-react';
 import { strataGet, strataPost, strataPut, isStaticMode } from '../strataApi';
+import { notYetMessage } from '../../common/NotYet';
 import type { Workitem, Property } from '../strataTypes';
 import { useStrataNav } from '../StrataNavContext';
 import { LoadingState, ErrorState } from '../StateView';
@@ -90,7 +91,7 @@ function ProjectsModuleInner() {
         // an inline import.meta.env check to avoid divergence with the
         // router's routing decision. Mirrors SentimentModule.tsx:89-100.
         if (isStaticMode) {
-            setStatusFeedback('Status updates require backend mode (static deck is read-only).');
+            setStatusFeedback(notYetMessage('Status updates'));
             try {
                 Sentry.addBreadcrumb({
                     category: 'ui.submit',

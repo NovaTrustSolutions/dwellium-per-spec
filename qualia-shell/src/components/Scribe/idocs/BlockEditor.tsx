@@ -4,16 +4,29 @@
  *
  * Card-level editors exported for the editor's card header bar (mounted by IDocEditor):
  *   <CardBackgroundEditor card={card} onChange={(patch: Partial<Card>) => …} />
- *     — color / image URL+upload / overlay (none|frosted|faded|clear) / intensity 0–100 / align (top|center|bottom).
+ *     — color / image (URL · Upload · AI · Stock · Placeholder) / overlay / intensity 0–100 / align.
  *       Emits `{ background: CardBackground | undefined }` patches (undefined when everything is cleared).
  *   <CardFootnotesEditor card={card} onChange={(patch: Partial<Card>) => …} />
  *     — ordered footnote list; reference from any markdown block with `[^n]` (1-based).
  *       Emits `{ footnotes: Footnote[] }` patches.
+ *   <CardHeaderImageEditor card={card} onChange={(patch: Partial<Card>) => …} />   (Wave 2)
+ *     — the full ImagePicker for `card.headerImage` (hero / split / image-top). Emits `{ headerImage: string | undefined }`.
+ *   <ImagePicker value={src} onChange={(src, meta?) => …} />                          (Wave 2, exported)
+ *     — tabs URL / Upload / AI (DALL·E · Gemini via the user's keys) / Stock (Openverse; Unsplash + Giphy once a key
+ *       is saved to localStorage['scribe-idocs:media-keys']) / Placeholder (picsum). `meta` = { title?, attribution? }.
+ *
+ * Wave 2 image options live in `block.imgOpts?: { fit?: 'cover'|'contain'; focal?: string; ratio?: '16:9'|'4:3'|'1:1' }`
+ * (inline-cast — idocTypes.ts is not touched; the renderer/export read it defensively). Chart `autoSync?: boolean` likewise.
  */
-import { useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import { useState, type ChangeEvent, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { fileToDataUrl, downscaleImageDataUrl } from '../../../lib/imageDownscale';
+import { useIntegrations } from '../../../hooks/useIntegrations';
 import { embedSrcFor } from './idocsAi';
 import { newId, type Block, type BlockTone, type Card, type CardBackground, type ChartKind } from './idocTypes';
+import { IMAGE_SIZES, IMAGE_STYLES, generateImageDataUrl, hasImageGenKey, type ImageSize, type ImageStyle } from './blocks/aiImage';
+import { attributionFor, loadMediaKeys, picsumUrl, saveMediaKeys, searchGiphy, searchOpenverse, searchUnsplash, type MediaKeys, type StockImage, type StockSource } from './blocks/imageSources';
+import { fetchChartData } from './blocks/chartData';
+import type { ChartBlockW2, ImageBlockW2, ImgOpts } from './blocks/imageOpts';
 
 interface Props { block: Block; onChange: (b: Block) => void }
 
@@ -21,6 +34,7 @@ const TONES: BlockTone[] = ['info', 'success', 'warning', 'danger'];
 const KINDS: ChartKind[] = ['bar', 'line', 'area', 'pie', 'donut'];
 const OVERLAYS: NonNullable<CardBackground['overlay']>[] = ['none', 'frosted', 'faded', 'clear'];
 const ALIGNS: NonNullable<CardBackground['align']>[] = ['top', 'center', 'bottom'];
+const RATIOS: NonNullable<ImgOpts['ratio']>[] = ['16:9', '4:3', '1:1'];
 
 /** Image file → downscaled data URL (bounded payload for localStorage). */
 async function fileToImageSrc(file: File): Promise<string> {
@@ -28,7 +42,12 @@ async function fileToImageSrc(file: File): Promise<string> {
     try { return await downscaleImageDataUrl(raw, 1280, 0.85); } catch { return raw; }
 }
 
-function ImagePicker({ value, onChange }: { value: string; onChange: (src: string) => void }) {
+export interface PickMeta { title?: string; attribution?: string }
+type PickTab = 'url' | 'upload' | 'ai' | 'stock' | 'placeholder';
+const PICK_TABS: { id: PickTab; label: string }[] = [{ id: 'url', label: 'URL' }, { id: 'upload', label: 'Upload' }, { id: 'ai', label: 'AI ✨' }, { id: 'stock', label: 'Stock' }, { id: 'placeholder', label: 'Placeholder' }];
+
+export function ImagePicker({ value, onChange }: { value: string; onChange: (src: string, meta?: PickMeta) => void }) {
+    const [tab, setTab] = useState<PickTab>(value.startsWith('data:') ? 'upload' : 'url');
     const [busy, setBusy] = useState(false);
     const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0];
@@ -37,9 +56,181 @@ function ImagePicker({ value, onChange }: { value: string; onChange: (src: strin
         try { onChange(await fileToImageSrc(f)); } finally { setBusy(false); e.target.value = ''; }
     };
     return (
+        <div className="scribe-idocs__picker" role="group" aria-label="Image source">
+            <div className="scribe-idocs__row scribe-idocs__picker-tabs" role="tablist">
+                {PICK_TABS.map((t) => <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`scribe-idocs__chip${tab === t.id ? ' is-active' : ''}`} onClick={() => setTab(t.id)}>{t.label}</button>)}
+                {value && <button type="button" className="scribe-idocs__minibtn" onClick={() => onChange('')} aria-label="Clear image">clear</button>}
+            </div>
+            {tab === 'url' && <input type="url" placeholder="https://… image URL" value={value.startsWith('data:') ? '' : value} onChange={(e) => onChange(e.target.value)} aria-label="Image URL" />}
+            {tab === 'upload' && (
+                <div className="scribe-idocs__row">
+                    <label className="scribe-idocs__filebtn">{busy ? '…' : value.startsWith('data:') ? 'Replace file' : 'Upload'}<input type="file" accept="image/*" onChange={(e) => void onFile(e)} hidden /></label>
+                    {value.startsWith('data:') && <small className="scribe-idocs__hint">Stored inline (downscaled to ≤1280px).</small>}
+                </div>
+            )}
+            {tab === 'ai' && <AiImageTab onPick={onChange} />}
+            {tab === 'stock' && <StockTab onPick={onChange} />}
+            {tab === 'placeholder' && <PlaceholderTab onPick={onChange} />}
+        </div>
+    );
+}
+
+function AiImageTab({ onPick }: { onPick: (src: string, meta?: PickMeta) => void }) {
+    const { integrations } = useIntegrations();
+    const [prompt, setPrompt] = useState('');
+    const [style, setStyle] = useState<ImageStyle>('photo');
+    const [size, setSize] = useState<ImageSize>('wide');
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState('');
+    const ready = hasImageGenKey(integrations.llm);
+    const go = async () => {
+        setBusy(true); setErr('');
+        try { onPick(await generateImageDataUrl(prompt, { style, size, llm: integrations.llm }), { title: prompt.trim() }); }
+        catch (e) { setErr((e as Error)?.message || String(e)); }
+        finally { setBusy(false); }
+    };
+    return (
+        <div className="scribe-idocs__picker-pane">
+            <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe the image…" aria-label="Image prompt" onKeyDown={(e) => { if (e.key === 'Enter' && ready && !busy) void go(); }} />
+            <div className="scribe-idocs__row">
+                <select value={style} onChange={(e) => setStyle(e.target.value as ImageStyle)} aria-label="Style">{IMAGE_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
+                <select value={size} onChange={(e) => setSize(e.target.value as ImageSize)} aria-label="Size">{IMAGE_SIZES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
+                <button type="button" className="scribe-idocs__minibtn" disabled={!ready || busy || !prompt.trim()} onClick={() => void go()}>{busy ? 'Generating…' : 'Generate with AI'}</button>
+            </div>
+            {!ready && <small className="scribe-idocs__hint">Needs an OpenAI (DALL·E 3) or Gemini key — Control Panel → API Keys.</small>}
+            {err && <small className="scribe-idocs__hint scribe-idocs__hint--err" role="alert">{err}</small>}
+        </div>
+    );
+}
+
+const STOCK_SOURCES: { id: StockSource; label: string; keyed: boolean }[] = [{ id: 'openverse', label: 'Openverse', keyed: false }, { id: 'unsplash', label: 'Unsplash', keyed: true }, { id: 'giphy', label: 'Giphy', keyed: true }];
+
+function StockTab({ onPick }: { onPick: (src: string, meta?: PickMeta) => void }) {
+    const [keys, setKeys] = useState<MediaKeys>(() => loadMediaKeys());
+    const [source, setSource] = useState<StockSource>('openverse');
+    const [q, setQ] = useState('');
+    const [keyDraft, setKeyDraft] = useState('');
+    const [items, setItems] = useState<StockImage[]>([]);
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState('');
+    const keyFor = (s: StockSource) => (s === 'unsplash' ? keys.unsplash : s === 'giphy' ? keys.giphy : 'x');
+    const needsKey = !keyFor(source);
+    const search = async () => {
+        if (!q.trim()) return;
+        setBusy(true); setErr('');
+        try {
+            const res = source === 'openverse' ? await searchOpenverse(q) : source === 'unsplash' ? await searchUnsplash(q, keys.unsplash ?? '') : await searchGiphy(q, keys.giphy ?? '');
+            setItems(res);
+            if (!res.length) setErr('No results.');
+        } catch (e) { setItems([]); setErr((e as Error)?.message || String(e)); }
+        finally { setBusy(false); }
+    };
+    const saveKey = () => {
+        const next = { ...keys, [source]: keyDraft.trim() || undefined } as MediaKeys;
+        saveMediaKeys(next); setKeys(next); setKeyDraft('');
+    };
+    return (
+        <div className="scribe-idocs__picker-pane">
+            <div className="scribe-idocs__row">
+                {STOCK_SOURCES.map((s) => <button key={s.id} type="button" className={`scribe-idocs__chip${source === s.id ? ' is-active' : ''}`} onClick={() => { setSource(s.id); setItems([]); setErr(''); }}>{s.label}{s.keyed && !keyFor(s.id) ? ' 🔑' : ''}</button>)}
+            </div>
+            {needsKey ? (
+                <div className="scribe-idocs__row">
+                    <input type="password" value={keyDraft} onChange={(e) => setKeyDraft(e.target.value)} placeholder={`${source === 'unsplash' ? 'Unsplash access key' : 'Giphy API key'} (stored in this browser only)`} aria-label={`${source} key`} />
+                    <button type="button" className="scribe-idocs__minibtn" disabled={!keyDraft.trim()} onClick={saveKey}>Save key</button>
+                </div>
+            ) : (
+                <div className="scribe-idocs__row">
+                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={source === 'giphy' ? 'Search GIFs…' : 'Search photos…'} aria-label="Stock search" onKeyDown={(e) => { if (e.key === 'Enter') void search(); }} />
+                    <button type="button" className="scribe-idocs__minibtn" disabled={busy || !q.trim()} onClick={() => void search()}>{busy ? '…' : 'Search'}</button>
+                    {source !== 'openverse' && <button type="button" className="scribe-idocs__minibtn" onClick={() => { const next = { ...keys, [source]: undefined } as MediaKeys; saveMediaKeys(next); setKeys(next); }} title="Forget key">forget key</button>}
+                </div>
+            )}
+            {err && <small className="scribe-idocs__hint" role="status">{err}</small>}
+            {items.length > 0 && (
+                <div className="scribe-idocs__stockgrid">
+                    {items.map((im, i) => (
+                        <button key={`${im.source}-${i}`} type="button" className="scribe-idocs__stockitem" onClick={() => onPick(im.url, { title: im.title, attribution: attributionFor(im) })} title={`${im.title || 'Untitled'} — ${attributionFor(im)}`}>
+                            <img src={im.thumb} alt={im.title || ''} loading="lazy" />
+                            <span>{im.creator || im.title || im.license}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+            <small className="scribe-idocs__hint">{source === 'openverse' ? 'CC-licensed images from Openverse (no key needed). Attribution is written into the caption.' : source === 'unsplash' ? 'Unsplash License — credit is written into the caption.' : 'GIFs via GIPHY.'}</small>
+        </div>
+    );
+}
+
+function PlaceholderTab({ onPick }: { onPick: (src: string, meta?: PickMeta) => void }) {
+    const [w, setW] = useState(1200); const [h, setH] = useState(675); const [seed, setSeed] = useState('');
+    return (
         <div className="scribe-idocs__row">
-            <input type="url" placeholder="https://… image URL" value={value.startsWith('data:') ? '' : value} onChange={(e) => onChange(e.target.value)} />
-            <label className="scribe-idocs__filebtn">{busy ? '…' : value.startsWith('data:') ? 'Replace file' : 'Upload'}<input type="file" accept="image/*" onChange={(e) => void onFile(e)} hidden /></label>
+            <input type="number" value={w} min={16} onChange={(e) => setW(Number(e.target.value) || 800)} aria-label="Width" style={{ maxWidth: 90 }} />
+            <span>×</span>
+            <input type="number" value={h} min={16} onChange={(e) => setH(Number(e.target.value) || 450)} aria-label="Height" style={{ maxWidth: 90 }} />
+            <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="seed (optional)" aria-label="Seed" style={{ maxWidth: 140 }} />
+            <button type="button" className="scribe-idocs__minibtn" onClick={() => onPick(picsumUrl(w, h, seed || undefined), { title: 'Placeholder' })}>Use placeholder</button>
+        </div>
+    );
+}
+
+/** Wave 2: fill/fit toggle + crop ratio + click-to-set focal point. */
+function ImageOptsEditor({ src, opts, onChange }: { src: string; opts: ImgOpts; onChange: (o: ImgOpts | undefined) => void }) {
+    const set = (patch: Partial<ImgOpts>) => {
+        const next: ImgOpts = { ...opts, ...patch };
+        (Object.keys(next) as (keyof ImgOpts)[]).forEach((k) => { if (next[k] === undefined) delete next[k]; });
+        onChange(Object.keys(next).length ? next : undefined);
+    };
+    const onFocal = (e: MouseEvent<HTMLButtonElement>) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const x = Math.round(Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)));
+        const y = Math.round(Math.max(0, Math.min(100, ((e.clientY - r.top) / r.height) * 100)));
+        set({ focal: `${x}% ${y}%` });
+    };
+    if (!src) return null;
+    return (
+        <div className="scribe-idocs__imgopts">
+            <div className="scribe-idocs__row">
+                <span className="scribe-idocs__hint">Crop</span>
+                <button type="button" className={`scribe-idocs__chip${!opts.ratio ? ' is-active' : ''}`} onClick={() => set({ ratio: undefined })}>free</button>
+                {RATIOS.map((r) => <button key={r} type="button" className={`scribe-idocs__chip${opts.ratio === r ? ' is-active' : ''}`} onClick={() => set({ ratio: r })}>{r}</button>)}
+                <span className="scribe-idocs__hint">·</span>
+                <button type="button" className={`scribe-idocs__chip${(opts.fit ?? 'cover') === 'cover' ? ' is-active' : ''}`} onClick={() => set({ fit: 'cover' })} disabled={!opts.ratio}>fill</button>
+                <button type="button" className={`scribe-idocs__chip${opts.fit === 'contain' ? ' is-active' : ''}`} onClick={() => set({ fit: 'contain' })} disabled={!opts.ratio}>fit</button>
+                {opts.focal && <button type="button" className="scribe-idocs__minibtn" onClick={() => set({ focal: undefined })}>reset focal</button>}
+            </div>
+            <button type="button" className="scribe-idocs__focal" title="Click to set the focal point" aria-label="Set focal point (click on the image)" onClick={onFocal}>
+                <img src={src} alt="" />
+                <i style={{ left: opts.focal?.split(' ')[0] ?? '50%', top: opts.focal?.split(' ')[1] ?? '50%' }} aria-hidden="true" />
+            </button>
+            <small className="scribe-idocs__hint">Click the preview to set the focal point{opts.focal ? ` (${opts.focal})` : ''}. Crop ratios frame the image; “fill” crops around the focal point, “fit” letterboxes.</small>
+        </div>
+    );
+}
+
+/** Wave 2 chart data source (CSV / Google Sheet URL) + sync + auto-refresh. */
+function ChartSourceEditor({ block, onChange }: { block: ChartBlockW2; onChange: (patch: Partial<ChartBlockW2>) => void }) {
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState('');
+    const sync = async () => {
+        if (!block.sourceUrl) return;
+        setBusy(true); setErr('');
+        try { onChange({ data: await fetchChartData(block.sourceUrl), syncedAt: new Date().toISOString() }); }
+        catch (e) { setErr((e as Error)?.message || String(e)); }
+        finally { setBusy(false); }
+    };
+    return (
+        <div className="scribe-idocs__chartsrc">
+            <div className="scribe-idocs__row">
+                <input type="url" value={block.sourceUrl ?? ''} onChange={(e) => onChange({ sourceUrl: e.target.value || undefined })} placeholder="Data source URL — raw CSV or Google Sheet link" aria-label="Data source URL" />
+                <button type="button" className="scribe-idocs__minibtn" disabled={busy || !block.sourceUrl} onClick={() => void sync()}>{busy ? 'Syncing…' : 'Sync now'}</button>
+                <label className="scribe-idocs__inline"><input type="checkbox" checked={!!block.autoSync} disabled={!block.sourceUrl} onChange={(e) => onChange({ autoSync: e.target.checked || undefined })} /> Auto-refresh on open</label>
+            </div>
+            <small className={`scribe-idocs__hint${err ? ' scribe-idocs__hint--err' : ''}`} role={err ? 'alert' : undefined}>
+                {err || (block.syncedAt ? `Synced ${new Date(block.syncedAt).toLocaleString()}` : 'First text column → label, first numeric column → value. Google Sheets: share “Anyone with the link” or Publish to web.')}
+            </small>
         </div>
     );
 }
@@ -93,20 +284,24 @@ export default function BlockEditor({ block, onChange }: Props) {
                 <input value={block.cite ?? ''} onChange={(e) => up({ cite: e.target.value })} placeholder="Attribution (optional)" aria-label="Attribution" />
             </>
         );
-        case 'image': return (
-            <>
-                <ImagePicker value={block.src} onChange={(src) => up({ src })} />
-                <div className="scribe-idocs__row">
-                    <input value={block.alt ?? ''} onChange={(e) => up({ alt: e.target.value })} placeholder="Alt text" aria-label="Alt text" />
-                    <input value={block.caption ?? ''} onChange={(e) => up({ caption: e.target.value })} placeholder="Caption" aria-label="Caption" />
-                </div>
-            </>
-        );
+        case 'image': {
+            const b = block as ImageBlockW2;
+            return (
+                <>
+                    <ImagePicker value={b.src} onChange={(src, meta) => onChange({ ...b, src, alt: b.alt || meta?.title || b.alt, caption: b.caption || meta?.attribution || b.caption } as Block)} />
+                    <div className="scribe-idocs__row">
+                        <input value={b.alt ?? ''} onChange={(e) => up({ alt: e.target.value })} placeholder="Alt text" aria-label="Alt text" />
+                        <input value={b.caption ?? ''} onChange={(e) => up({ caption: e.target.value })} placeholder="Caption" aria-label="Caption" />
+                    </div>
+                    <ImageOptsEditor src={b.src} opts={b.imgOpts ?? {}} onChange={(imgOpts) => onChange({ ...b, imgOpts } as Block)} />
+                </>
+            );
+        }
         case 'gallery': return (
             <ItemList items={block.images} onChange={(images) => up({ images })} blank={{ src: '', alt: '' }} label="image"
                 render={(im, set) => (
                     <>
-                        <ImagePicker value={im.src} onChange={(src) => set({ src })} />
+                        <ImagePicker value={im.src} onChange={(src, meta) => set({ src, alt: im.alt || meta?.title || im.alt })} />
                         <input value={im.alt ?? ''} onChange={(e) => set({ alt: e.target.value })} placeholder="Alt text" aria-label="Alt text" />
                     </>
                 )} />
@@ -126,6 +321,7 @@ export default function BlockEditor({ block, onChange }: Props) {
                     {KINDS.map((k) => <button key={k} type="button" className={`scribe-idocs__chip${block.kind === k ? ' is-active' : ''}`} onClick={() => up({ kind: k })}>{k}</button>)}
                     <input value={block.title ?? ''} onChange={(e) => up({ title: e.target.value })} placeholder="Chart title" aria-label="Chart title" />
                 </div>
+                <ChartSourceEditor block={block as ChartBlockW2} onChange={(patch) => onChange({ ...block, ...patch } as Block)} />
                 <ItemList items={block.data} onChange={(data) => up({ data })} blank={{ label: '', value: 0 }} label="data point"
                     render={(d, set) => (
                         <div className="scribe-idocs__row">
@@ -317,6 +513,15 @@ export function CardBackgroundEditor({ card, onChange }: { card: Card; onChange:
                     </select>
                 </div>
             )}
+        </div>
+    );
+}
+
+/** Card header image editor (Wave 2) — see the file header for the contract. */
+export function CardHeaderImageEditor({ card, onChange }: { card: Card; onChange: (patch: Partial<Card>) => void }) {
+    return (
+        <div className="scribe-idocs__cardbg" role="group" aria-label="Card header image">
+            <ImagePicker value={card.headerImage ?? ''} onChange={(headerImage) => onChange({ headerImage: headerImage || undefined })} />
         </div>
     );
 }

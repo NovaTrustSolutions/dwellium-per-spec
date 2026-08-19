@@ -18,9 +18,11 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { enhancePreview } from '../previewEnhance';
 import { embedSrcFor } from './idocsAi';
-import { themeById, type Block, type Card, type IDoc } from './idocTypes';
+import { themeVarsFor, type Block, type Card, type CustomTheme, type IDoc } from './idocTypes';
 import { ChartBlock } from './blocks/ChartBlock';
 import { qrPath } from './blocks/qr';
+import { fetchChartData } from './blocks/chartData';
+import { imgOptsOf, imgOptsStyle, type ChartBlockW2 } from './blocks/imageOpts';
 
 export interface IDocRendererProps {
     doc: IDoc;
@@ -49,9 +51,21 @@ export const PAGE_PRINT_SIZE: Record<NonNullable<IDoc['pageSize']>, string> = {
 };
 
 export function themeStyle(doc: IDoc): CSSProperties {
-    const vars = { ...themeById(doc.theme).vars } as Record<string, string>;
+    const vars = themeVarsFor(doc);
     vars['--idoc-aspect'] = PAGE_ASPECT[doc.pageSize ?? 'fluid'];
     return vars as CSSProperties;
+}
+
+/**
+ * Wave 2: `@font-face` rules for a custom theme's uploaded fonts (data URLs).
+ * Shared by the renderer (inline <style>) and exportHtml. Family names are
+ * quoted + stripped of quotes/backslashes; only `data:` URLs are emitted.
+ */
+export function fontFaceCss(fontFaces: CustomTheme['fontFaces'] | undefined): string {
+    return (fontFaces ?? [])
+        .filter((f) => f && typeof f.family === 'string' && f.family.trim() && typeof f.dataUrl === 'string' && /^data:(font|application)\//i.test(f.dataUrl))
+        .map((f) => `@font-face{font-family:"${f.family.replace(/["\\]/g, '')}";src:url("${f.dataUrl.replace(/["\\)]/g, '')}");font-weight:${(f.weight || 'normal').replace(/[^\w\s-]/g, '') || 'normal'};font-display:swap}`)
+        .join('\n');
 }
 
 /** Card id for footnote anchors — provided by CardView, consumed by Md. */
@@ -157,7 +171,9 @@ export default function IDocRenderer(props: IDocRendererProps) {
     const pageSize = doc.pageSize ?? 'fluid';
     const rootClass = `scribe-idocs__doc scribe-idocs__doc--${mode} scribe-idocs__theme-${doc.theme} scribe-idocs__doc--ps-${pageSize.replace(':', 'x')}${className ? ` ${className}` : ''}`;
     const printSize = PAGE_PRINT_SIZE[pageSize];
-    const pageStyle = printSize ? <style>{`@media print{@page{size:${printSize}}}`}</style> : null;
+    const fontCss = doc.theme === 'custom' ? fontFaceCss(doc.customTheme?.fontFaces) : '';
+    const styleText = `${printSize ? `@media print{@page{size:${printSize}}}` : ''}${fontCss ? `\n${fontCss}` : ''}`;
+    const pageStyle = styleText ? <style data-idoc-style="">{styleText}</style> : null;
 
     if (mode === 'present') {
         const card = doc.cards[idx];
@@ -281,7 +297,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: RenderCtx }) {
         case 'quote': return <blockquote className="scribe-idocs__quote"><Md md={block.md} />{block.cite && <cite>— {block.cite}</cite>}</blockquote>;
         case 'image': return block.src ? (
             <figure className="scribe-idocs__figure">
-                <img src={block.src} alt={block.alt || ''} loading="lazy" />
+                <img src={block.src} alt={block.alt || ''} loading="lazy" style={imgOptsStyle(imgOptsOf(block))} />
                 {block.caption && <figcaption>{block.caption}</figcaption>}
             </figure>
         ) : <div className="scribe-idocs__placeholder">Image (no source)</div>;
@@ -292,7 +308,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: RenderCtx }) {
             </div>
         );
         case 'embed': return <EmbedView url={block.url} />;
-        case 'chart': return <ChartBlock block={block} />;
+        case 'chart': return <ChartAuto block={block as ChartBlockW2} />;
         case 'table': return (
             <div className="scribe-idocs__table-wrap">
                 <table className="scribe-idocs__table">
@@ -371,6 +387,23 @@ export function BlockView({ block, ctx }: { block: Block; ctx: RenderCtx }) {
         case 'diagram': return <Enhanced kind="diagram" src={block.mermaid} />;
         case 'qr': return <QrView url={block.url} caption={block.caption} />;
     }
+}
+
+/**
+ * Wave 2: chart with `autoSync && sourceUrl` refreshes its data once on mount
+ * (fail-safe: any error keeps the stored data; the persisted block is NOT
+ * mutated here — "Sync now" in the editor is what writes `data`/`syncedAt`).
+ */
+function ChartAuto({ block }: { block: ChartBlockW2 }) {
+    const [live, setLive] = useState<ChartBlockW2['data'] | null>(null);
+    const src = block.autoSync && block.sourceUrl ? block.sourceUrl : '';
+    useEffect(() => {
+        if (!src) return;
+        let alive = true;
+        fetchChartData(src).then((d) => { if (alive) setLive(d); }).catch(() => { /* keep stored data */ });
+        return () => { alive = false; };
+    }, [src]);
+    return <ChartBlock block={live ? { ...block, data: live } : block} />;
 }
 
 function TocList({ cards, ctx }: { cards: Card[]; ctx: RenderCtx }) {

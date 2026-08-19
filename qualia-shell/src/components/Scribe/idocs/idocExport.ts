@@ -5,13 +5,24 @@
  * exportHtml emits ZERO <script> tags: accordions are <details>, tabs degrade
  * to stacked sections, quiz answers hide behind <details>, bar/pie charts are
  * inline SVG, line charts fall back to a table, embeds are sandboxed iframes.
+ *
+ * ── Wave 2 seam for the Export menu (IDocEditor maps this into its menu) ──
+ *   EXPORT_ACTIONS: { id, label, hint?, run(doc, ctx) }[]
+ *     ctx = { activeCardEl?: HTMLElement | null; docEl?: HTMLElement | null }
+ *       activeCardEl → the rendered `.scribe-idocs__card` for "PNG (this card)"
+ *       docEl        → root that contains the rendered cards for "PNG (all cards)"; falls back to document
+ *   ids: html · markdown · pdf-text · pdf-styled · print · png-card · png-all
+ *   (JSON stays in the editor — it needs idocsStore.exportDoc.)
+ *   exportStyledPdf(doc)          — hidden same-origin <iframe srcdoc=exportHtml(doc)> → contentWindow.print()
+ *   exportCardPng(cardEl, opts?)  — DOM → SVG <foreignObject> → canvas → PNG download (limitations in the JSDoc)
  */
 import { markdownToPdfBytes, downloadPdf } from '../pdfExport';
 import { renderSafeMarkdown } from '../../../utils/safeMarkdown';
 import { embedSrcFor } from './idocsAi';
-import { themeById, type Block, type Card, type IDoc } from './idocTypes';
+import { themeById, themeVarsFor, type Block, type Card, type IDoc } from './idocTypes';
 import { qrSvg } from './blocks/qr';
-import { PAGE_ASPECT, PAGE_PRINT_SIZE, cardLinkId } from './IDocRenderer';
+import { imgOptsCss, imgOptsOf } from './blocks/imageOpts';
+import { PAGE_ASPECT, PAGE_PRINT_SIZE, cardLinkId, fontFaceCss } from './IDocRenderer';
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /** Sanitized markdown; `[^n]` (which survives sanitizing as literal text) becomes a superscript footnote link. */
@@ -78,7 +89,11 @@ export function blockToHtml(b: Block, doc: IDoc, cardId = ''): string {
         case 'text': return `<div class="idoc-md">${md(b.md, cardId)}</div>`;
         case 'callout': return `<div class="idoc-callout idoc-callout--${b.tone}">${md(b.md, cardId)}</div>`;
         case 'quote': return `<blockquote class="idoc-quote">${md(b.md, cardId)}${b.cite ? `<cite>— ${esc(b.cite)}</cite>` : ''}</blockquote>`;
-        case 'image': return safeUrl(b.src) ? `<figure class="idoc-figure"><img src="${safeUrl(b.src)}" alt="${esc(b.alt || '')}"/>${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ''}</figure>` : '';
+        case 'image': {
+            if (!safeUrl(b.src)) return '';
+            const css = imgOptsCss(imgOptsOf(b));
+            return `<figure class="idoc-figure"><img src="${safeUrl(b.src)}" alt="${esc(b.alt || '')}"${css ? ` style="${css}"` : ''}/>${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ''}</figure>`;
+        }
         case 'gallery': return `<div class="idoc-gallery">${b.images.filter((i) => safeUrl(i.src)).map((i) => `<img src="${safeUrl(i.src)}" alt="${esc(i.alt || '')}"/>`).join('')}</div>`;
         case 'embed': {
             const info = embedSrcFor(b.url);
@@ -206,20 +221,27 @@ hr{border:0;border-top:1px solid var(--idoc-border);margin:16px 0}
 `;
 
 /** Standalone HTML document — no scripts, inline CSS, theme vars on :root. */
+/** Theme vars for a standalone document: `inherit` app tokens don't exist outside the app → paper base. */
+export function exportThemeVars(doc: IDoc): Record<string, string> {
+    const paper = themeById('paper').vars;
+    if (doc.theme === 'custom' && doc.customTheme) return { ...paper, ...doc.customTheme.vars };
+    return doc.theme === 'inherit' ? { ...paper } : themeVarsFor(doc);
+}
+
 export function exportHtml(doc: IDoc): string {
-    const theme = themeById(doc.theme);
-    // `inherit` references app tokens that don't exist outside the app — fall back to paper for the export.
-    const vars = theme.id === 'inherit' ? themeById('paper').vars : theme.vars;
+    const vars = exportThemeVars(doc);
     const pageSize = doc.pageSize ?? 'fluid';
-    const rootVars = Object.entries({ ...vars, '--idoc-aspect': PAGE_ASPECT[pageSize] }).map(([k, v]) => `${k}:${v}`).join(';');
+    // Strip anything that could break out of the style block; values are theme strings, not user HTML.
+    const rootVars = Object.entries({ ...vars, '--idoc-aspect': PAGE_ASPECT[pageSize] }).map(([k, v]) => `${k}:${String(v).replace(/[<>{}]/g, '')}`).join(';');
     const pageCss = PAGE_PRINT_SIZE[pageSize] ? `@media print{@page{size:${PAGE_PRINT_SIZE[pageSize]}}}` : '';
+    const fontCss = doc.theme === 'custom' ? fontFaceCss(doc.customTheme?.fontFaces) : '';
     return `<!doctype html>
 <html lang="${esc(doc.language || 'en')}"${doc.dir ? ` dir="${esc(doc.dir)}"` : ''}>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${esc(doc.title)}</title>
-<style>:root{${rootVars}}${EXPORT_CSS}${pageCss}</style>
+<style>${fontCss}:root{${rootVars}}${EXPORT_CSS}${pageCss}</style>
 </head>
 <body>
 <main class="idoc-wrap">
@@ -302,3 +324,149 @@ export async function exportPdf(doc: IDoc): Promise<void> {
 export function printDoc(): void {
     try { window.print(); } catch { /* sandboxed */ }
 }
+
+// ── Wave 2: styled PDF (print-to-PDF of the export HTML) ─────────────────
+
+/**
+ * Styled PDF: the script-free export HTML is loaded into a hidden same-origin
+ * <iframe srcdoc> (theme vars, @font-face, per-card `break-after: page`,
+ * `@page{margin:12mm}`), then `contentWindow.print()` opens the browser's print
+ * dialog where "Save as PDF" keeps every style. Resolves once the dialog closes
+ * (afterprint) or after a timeout; the iframe is removed either way.
+ * Limitations: needs a browser print dialog (no headless/silent save); iframes
+ * (embeds) are hidden by the print CSS; remote images print only if reachable.
+ */
+export function exportStyledPdf(doc: IDoc, opts: { timeoutMs?: number } = {}): Promise<void> {
+    return new Promise((resolve) => {
+        const html = exportHtml(doc).replace('</head>', `<style>@page{margin:12mm}.idoc-card{break-after:page;page-break-after:always}</style></head>`);
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.title = 'PDF export';
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none';
+        let done = false;
+        const finish = () => { if (done) return; done = true; iframe.remove(); resolve(); };
+        const timer = setTimeout(finish, opts.timeoutMs ?? 120_000);
+        iframe.onload = () => {
+            const win = iframe.contentWindow;
+            if (!win) { clearTimeout(timer); finish(); return; }
+            win.addEventListener('afterprint', () => { clearTimeout(timer); setTimeout(finish, 50); });
+            const go = () => { try { win.focus(); win.print(); } catch { clearTimeout(timer); finish(); } };
+            const fonts = (win.document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
+            if (fonts?.ready) fonts.ready.then(go, go); else setTimeout(go, 50);
+        };
+        iframe.srcdoc = html;
+        document.body.appendChild(iframe);
+    });
+}
+
+// ── Wave 2: PNG per card (DOM → SVG foreignObject → canvas) ──────────────
+
+const SKIP_TAGS = new Set(['IFRAME', 'EMBED', 'OBJECT', 'VIDEO', 'AUDIO', 'SCRIPT', 'STYLE', 'CANVAS']);
+
+async function toDataUrl(src: string): Promise<string | null> {
+    if (src.startsWith('data:')) return src;
+    try {
+        const res = await fetch(src, { mode: 'cors' });
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return await new Promise<string | null>((resolve) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = () => resolve(null); r.readAsDataURL(blob); });
+    } catch { return null; }
+}
+
+/** Deep-clone `src` inlining computed styles; media that can't be rasterized becomes a placeholder box. */
+async function cloneWithStyles(src: Element): Promise<HTMLElement> {
+    const dst = src.cloneNode(false) as HTMLElement;
+    const cs = getComputedStyle(src);
+    let css = '';
+    for (let i = 0; i < cs.length; i++) { const p = cs[i]; css += `${p}:${cs.getPropertyValue(p)};`; }
+    dst.setAttribute('style', css);
+    if (src instanceof HTMLImageElement) {
+        const url = await toDataUrl(src.currentSrc || src.src);
+        if (url) (dst as HTMLImageElement).src = url;
+        else { const ph = document.createElement('div'); ph.setAttribute('style', `${css}display:flex;align-items:center;justify-content:center;background:#e5e7eb;color:#6b7280;font:12px sans-serif`); ph.textContent = 'image'; return ph; }
+        return dst;
+    }
+    for (const child of Array.from(src.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) dst.appendChild(child.cloneNode());
+        else if (child.nodeType === Node.ELEMENT_NODE) {
+            const el = child as Element;
+            if (SKIP_TAGS.has(el.tagName)) {
+                const r = el.getBoundingClientRect();
+                const ph = document.createElement('div');
+                ph.setAttribute('style', `width:${r.width}px;height:${r.height}px;display:flex;align-items:center;justify-content:center;background:#e5e7eb;color:#6b7280;font:12px sans-serif;border-radius:6px`);
+                ph.textContent = el.tagName === 'IFRAME' ? 'embed' : el.tagName.toLowerCase();
+                dst.appendChild(ph);
+            } else dst.appendChild(await cloneWithStyles(el));
+        }
+    }
+    return dst;
+}
+
+/**
+ * Rasterize a rendered card element to PNG and download it.
+ * How: deep-clone the card with computed styles inlined → wrap in
+ * `<svg><foreignObject>` → draw the SVG onto a canvas (× `scale`) → toBlob.
+ * Limitations (by construction of foreignObject rasterization):
+ *  - remote images are fetched and inlined as data URLs; CORS-blocked ones become a grey "image" box
+ *  - iframes/embeds/videos/canvas (recharts SVG survives; the ResponsiveContainer sizes are frozen) → placeholder box
+ *  - ::before/::after (card background overlays) and web fonts that aren't installed locally are not captured
+ *  - CSS `background-image: url(remote)` is not inlined (renders empty); data-URL backgrounds work
+ */
+export async function exportCardPng(cardEl: HTMLElement, opts: { filename?: string; scale?: number; background?: string } = {}): Promise<Blob | null> {
+    const rect = cardEl.getBoundingClientRect();
+    const w = Math.max(1, Math.ceil(rect.width)), h = Math.max(1, Math.ceil(cardEl.scrollHeight || rect.height));
+    const clone = await cloneWithStyles(cardEl);
+    clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    clone.style.margin = '0';
+    const bg = opts.background ?? getComputedStyle(cardEl).backgroundColor;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(clone)}</foreignObject></svg>`;
+    const scale = opts.scale ?? Math.min(3, Math.max(1, window.devicePixelRatio || 1) * 2);
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('SVG rasterization failed')); img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`; });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    if (bg && bg !== 'rgba(0, 0, 0, 0)') { ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (blob && opts.filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = opts.filename; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    return blob;
+}
+
+/** Top-level rendered cards inside `root` (nested cards are part of their parent's PNG). */
+export function renderedCardEls(root: ParentNode = document): HTMLElement[] {
+    return Array.from(root.querySelectorAll<HTMLElement>('.scribe-idocs__card')).filter((el) => !el.classList.contains('scribe-idocs__card--nested'));
+}
+
+/** Sequential per-card PNG downloads (`<name>-01.png`, …). ponytail: no zip lib — sequential downloads with a small gap. */
+export async function exportAllCardsPng(doc: IDoc, root: ParentNode = document): Promise<number> {
+    const els = renderedCardEls(root);
+    const base = safeFilename(doc.title);
+    let n = 0;
+    for (const el of els) {
+        n++;
+        try { await exportCardPng(el, { filename: `${base}-${String(n).padStart(2, '0')}.png` }); } catch { /* skip card */ }
+        await new Promise((r) => setTimeout(r, 250));
+    }
+    return n;
+}
+
+export interface ExportActionCtx { activeCardEl?: HTMLElement | null; docEl?: HTMLElement | null }
+export interface ExportAction { id: string; label: string; hint?: string; run: (doc: IDoc, ctx: ExportActionCtx) => void | Promise<void> }
+
+/** Export menu entries — see the file header. IDocEditor maps these into its Export menu (JSON stays there). */
+export const EXPORT_ACTIONS: readonly ExportAction[] = [
+    { id: 'html', label: 'HTML (standalone)', run: (doc) => download(`${safeFilename(doc.title)}.html`, 'text/html', exportHtml(doc)) },
+    { id: 'markdown', label: 'Markdown', run: (doc) => download(`${safeFilename(doc.title)}.md`, 'text/markdown', exportMarkdown(doc)) },
+    { id: 'pdf-styled', label: 'PDF (styled)', hint: 'Opens the print dialog — choose “Save as PDF”', run: (doc) => exportStyledPdf(doc) },
+    { id: 'pdf-text', label: 'PDF (text)', run: (doc) => exportPdf(doc) },
+    { id: 'print', label: 'Print…', hint: 'Show all cards first, then print', run: () => printDoc() },
+    { id: 'png-card', label: 'PNG (this card)', run: async (doc, ctx) => { if (ctx.activeCardEl) await exportCardPng(ctx.activeCardEl, { filename: `${safeFilename(doc.title)}-card.png` }); } },
+    { id: 'png-all', label: 'PNG (all cards)', hint: 'One download per card', run: async (doc, ctx) => { await exportAllCardsPng(doc, ctx.docEl ?? document); } },
+];

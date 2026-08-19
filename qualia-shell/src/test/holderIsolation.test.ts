@@ -13,6 +13,7 @@ import {
     subscriptionsUserIdHolder,
     halocronKnowledgeGraphUserIdHolder,
     scribeKbUserIdHolder,
+    firstRunUserIdHolder,
 } from '../lib/perUserIdentity';
 import { llmUsageStore } from '../lib/llmUsageStore';
 import { tagsStore } from '../lib/tagsStore';
@@ -29,7 +30,7 @@ vi.mock('../lib/oneSaveClient', () => ({
     },
 }));
 
-// The 12 per-user identity holders that perUserIdentity.ts owns. Structural
+// The 13 per-user identity holders that perUserIdentity.ts owns. Structural
 // regression guard for the dbcfe00 React #185 incident: these used to ALIAS one
 // shared object (integrationsUserIdHolder), so a second render-time writer with
 // a different value invalidated every dynamic-key store's cache on each
@@ -48,6 +49,7 @@ const ALL_HOLDERS = [
     subscriptionsUserIdHolder,
     halocronKnowledgeGraphUserIdHolder,
     scribeKbUserIdHolder,
+    firstRunUserIdHolder,
 ];
 
 describe('perUserIdentity — decoupled holders (#185 loop guard)', () => {
@@ -58,12 +60,12 @@ describe('perUserIdentity — decoupled holders (#185 loop guard)', () => {
         setPerUserIdentity(null);
     });
 
-    it('exports exactly 12 holders, all distinct object references', () => {
-        expect(ALL_HOLDERS).toHaveLength(12);
+    it('exports exactly 13 holders, all distinct object references', () => {
+        expect(ALL_HOLDERS).toHaveLength(13);
         const unique = new Set(ALL_HOLDERS);
         // Distinctness is what makes cross-store churn impossible — no two
         // exports may be the same object.
-        expect(unique.size).toBe(12);
+        expect(unique.size).toBe(13);
     });
 
     it('setPerUserIdentity(userId) assigns the SAME value to every holder from one call', () => {

@@ -1,7 +1,7 @@
 /**
  * LoginScreen — local account authority for Dwellium.
  *
- * Flow: splash "Click to login" → shared access password → email + password
+ * Flow: splash (name + promise + "Sign in" / Google) → shared access password → email + password
  * (045-D2: the Andy / Lisa / Archi picker is gone; the email resolves the
  * account against LOCAL_ACCOUNTS + overrides). Validated client-side, then a
  * REAL backend session via `login`; `loginLocal` only on the explicit offline
@@ -25,6 +25,10 @@ const GATE_PASSWORD = 'Comet2878!';
 
 /** Google login is kept in the code but hidden unless explicitly enabled. */
 const GOOGLE_LOGIN_ENABLED = (import.meta.env.VITE_GOOGLE_LOGIN as string | undefined) === 'true';
+
+/** 046-F3 front door: product name + one-line promise on the FIRST paint. */
+const PRODUCT_NAME = 'Dwellium';
+const VALUE_STATEMENT = 'Your properties, your inbox, your AI — one screen.';
 
 type Stage = 'gate' | 'credential';
 
@@ -121,7 +125,23 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                 className={`login-start-overlay ${hasClicked ? 'is-hidden' : ''}`}
                 onClick={() => setHasClicked(true)}
             >
-                <div className="login-start-text">Click to Login</div>
+                {!hasClicked && (
+                    <div className="login-front">
+                        <h1 className="login-front__name">{PRODUCT_NAME}</h1>
+                        <p className="login-front__value">{VALUE_STATEMENT}</p>
+                        <button type="button" className="login-primary-btn" onClick={() => setHasClicked(true)}>Sign in</button>
+                        {GOOGLE_LOGIN_ENABLED && (
+                            <div className="login-front__google">
+                                <GoogleSignInButton onCredential={loginWithGoogle} />
+                            </div>
+                        )}
+                        {onTenantMode && (
+                            <button type="button" className="login-tenant-link" onClick={e => { e.stopPropagation(); onTenantMode(); }}>
+                                Resident? Sign in here
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className={`login-backdrop ${hasClicked ? 'is-active' : ''}`}>

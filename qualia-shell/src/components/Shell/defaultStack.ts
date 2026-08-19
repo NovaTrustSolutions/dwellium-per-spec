@@ -22,6 +22,13 @@ export const DEFAULT_STACK_KEY = 'dwellium:default-stack:v1';
 /** Value written once the auto-open has fired. */
 export const DEFAULT_STACK_DONE = 'done';
 
+/** Per-user key (046-F1): new users only — an existing browser flag stays valid for its user. */
+export const defaultStackKey = (userId: string | null): string => userId ? `${DEFAULT_STACK_KEY}:${userId}` : DEFAULT_STACK_KEY;
+
+/** 046-F1 critic rule: the legacy per-browser 'done' counts for EVERY user (read both, write only per-user, no migration). */
+export const readDefaultStackFlag = (read: (key: string) => string | null, userId: string | null): string | null =>
+    read(DEFAULT_STACK_KEY) === DEFAULT_STACK_DONE ? DEFAULT_STACK_DONE : read(defaultStackKey(userId));
+
 export interface PinnedWidget {
     component: string;
     label: string;

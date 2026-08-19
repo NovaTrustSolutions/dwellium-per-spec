@@ -12,6 +12,7 @@ import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce, h
 import { useGridLock } from '../../hooks/useGridLock';
 import { backendStatusStore } from '../../lib/backendStatusStore';
 import { PINNED_WIDGETS } from '../Shell/defaultStack';
+import { mottoFor } from './mottoFor';
 import { Check, CloudFog, CloudRain, CloudSnow, CloudSun, FolderOpen, Lock, Search, Settings, Sun, Unlock, X, Zap, type LucideIcon } from 'lucide-react';
 import './Sidebar.css';
 import React from 'react';
@@ -497,19 +498,6 @@ export default function Sidebar() {
 
 
     /* ── Personalized greeting + weather ──────────────── */
-    const GREETING_MESSAGES: Record<string, string> = {
-        'Andy': "Let's build the future",
-        'Lisa': "Command the empire",
-        'Wendy': "Leading the way forward",
-        'Candace': "Excellence in motion",
-        'Grieve': "Wise counsel, sharp moves",
-        'Baldwin': "Strategy meets precision",
-        'Leo': "Vision without limits",
-        'Lee': "Keeping it all running",
-        'Jose': "Hands that build greatness",
-        'Marcus Johnson': "Welcome home",
-    };
-
     const getTimeGreeting = () => {
         const h = new Date().getHours();
         if (h < 12) return 'Good morning';
@@ -575,7 +563,7 @@ export default function Sidebar() {
     }, []);
 
     const userName = user?.name || 'there';
-    const personalMessage = GREETING_MESSAGES[userName] || "Let's get things done";
+    const personalMessage = mottoFor(user?.role);
     const timeGreeting = getTimeGreeting();
 
     return (

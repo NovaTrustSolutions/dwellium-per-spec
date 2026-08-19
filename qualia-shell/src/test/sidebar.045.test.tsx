@@ -42,8 +42,9 @@ vi.mock('../context/HierarchyContext', () => ({
         collapseAll: vi.fn(),
     }),
 }));
+const mockUser = vi.hoisted(() => ({ current: { id: 'u1', name: 'Ilya' } as { id: string; name: string; role?: string } }));
 vi.mock('../context/UserContext', () => ({
-    useUser: () => ({ user: { id: 'u1', name: 'Ilya' }, logout: vi.fn(), hasMinRole: () => true }),
+    useUser: () => ({ user: mockUser.current, logout: vi.fn(), hasMinRole: () => true }),
 }));
 vi.mock('../context/PermissionsContext', () => ({
     usePermissions: () => ({ can: () => true }),
@@ -51,6 +52,7 @@ vi.mock('../context/PermissionsContext', () => ({
 vi.mock('../components/Sidebar/SpacesSwitcher', () => ({ default: () => null }));
 
 import Sidebar, { iconOnlyStore, sidebarGroupsStore } from '../components/Sidebar/Sidebar';
+import { mottoFor } from '../components/Sidebar/mottoFor';
 
 beforeEach(() => {
     windows = [];
@@ -108,5 +110,17 @@ describe('A3 — clicking an open widget focuses, never closes', () => {
         fireEvent.click(screen.getByText('Strata'));
         expect(restoreWindow).toHaveBeenCalledWith('w-min');
         expect(closeWindow).not.toHaveBeenCalled();
+    });
+});
+
+describe('046-F2 — motto is role-driven, not a per-person map', () => {
+    it('a non-roster user with role management sees mottoFor("management")', () => {
+        mockUser.current = { id: 'u-zed', name: 'Zed', role: 'management' };
+        try {
+            render(<Sidebar />);
+            expect(document.querySelector('.sidebar__greeting-msg')?.textContent).toBe(mottoFor('management'));
+        } finally {
+            mockUser.current = { id: 'u1', name: 'Ilya' };
+        }
     });
 });

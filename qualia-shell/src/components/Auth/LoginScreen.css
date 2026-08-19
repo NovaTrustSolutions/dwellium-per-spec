@@ -48,14 +48,29 @@
     pointer-events: none;
 }
 
-.login-start-text {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
+.login-front {
+    display: grid;
+    gap: 14px;
+    justify-items: center;
+    text-align: center;
+    padding: 24px;
+    max-width: 420px;
     font-family: var(--font-primary, 'Hanken Grotesk', -apple-system, sans-serif);
+}
+
+.login-front__name {
+    margin: 0;
+    font-size: 40px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #fff;
     font-weight: 500;
-    animation: flashText 3s infinite ease-in-out;
+}
+
+.login-front__value {
+    margin: 0;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 @keyframes flashText {

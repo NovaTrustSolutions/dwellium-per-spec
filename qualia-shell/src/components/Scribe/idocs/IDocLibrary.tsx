@@ -17,6 +17,7 @@ import {
     STYLE_PRESETS, canResearch, generateFromOutline, generateOutline, loadRecentOutlines, researchTopic, saveLastOutline,
     type DocOutline, type OutlineCard, type ResearchResult, type StylePreset,
 } from './idocsOutline';
+import { getSharedDoc, listShared, type IdocsApiDeps, type SharedListItem } from './idocsApi';
 import { createDoc, deleteDoc, duplicateDoc, exportDoc, importDoc, replaceDoc, setActive, setView, updateDoc, type IdocsState } from './idocsStore';
 import { BUILTIN_TEMPLATES, docFromTemplate } from './idocsTemplates';
 import { themeById, type IDoc } from './idocTypes';
@@ -48,7 +49,7 @@ function loadOpts(): ComposerOpts {
 type Tab = 'ai' | 'paste' | 'url' | 'agent' | null;
 type SortKey = 'updated' | 'title';
 
-export default function IDocLibrary({ state, initialPrompt }: { state: IdocsState; initialPrompt?: string | null }) {
+export default function IDocLibrary({ state, initialPrompt, api }: { state: IdocsState; initialPrompt?: string | null; api?: IdocsApiDeps }) {
     const { integrations } = useIntegrations();
     const llmReady = hasActiveLlm(integrations.llm);
     const [tab, setTab] = useState<Tab>(initialPrompt ? 'ai' : null);
@@ -66,6 +67,23 @@ export default function IDocLibrary({ state, initialPrompt }: { state: IdocsStat
     // A widget-action prompt that couldn't auto-generate (no LLM) lands in the composer.
     useEffect(() => { if (initialPrompt) { setPrompt(initialPrompt); setTab('ai'); } }, [initialPrompt]);
     useEffect(() => { try { localStorage.setItem(COMPOSER_KEY, JSON.stringify(opts)); } catch { /* sandboxed */ } }, [opts]);
+
+    // Wave 3B: docs shared WITH me (server). Failure = section hidden; never affects the local library.
+    const [shared, setShared] = useState<SharedListItem[]>([]);
+    const [sharedErr, setSharedErr] = useState<string | null>(null);
+    useEffect(() => {
+        let on = true;
+        listShared(api).then((items) => { if (on) setShared(items.filter((i) => i.role !== 'owner')); }).catch(() => { if (on) setShared([]); });
+        return () => { on = false; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- once per library mount
+    }, []);
+    const openShared = (item: SharedListItem) => run(async () => {
+        try {
+            const r = await getSharedDoc(item.docId, api);
+            replaceDoc({ ...r.doc, id: item.docId, analytics: r.doc.analytics ?? { views: 0, cardSeconds: {} }, shared: { version: r.version, updatedAt: r.updatedAt, role: r.role, ownerId: r.owner?.id, ownerName: r.owner?.name } });
+            setActive(item.docId); setView('edit');
+        } catch (e) { setSharedErr(`Couldn't open “${item.title}”: ${(e as Error).message}`); }
+    });
 
     const genOpts: GenerateOpts = { cards: opts.cards, amount: opts.amount, tone: opts.tone || undefined, audience: opts.audience.trim() || undefined, language: opts.language.trim() || undefined };
     const patch = (p: Partial<ComposerOpts>) => setOpts((o) => ({ ...o, ...p }));
@@ -213,6 +231,24 @@ export default function IDocLibrary({ state, initialPrompt }: { state: IdocsStat
                 </section>
             )}
 
+            {shared.length > 0 && (
+                <section className="scribe-idocs-lib__section" aria-label="Shared with me" data-testid="idoc-shared-with-me">
+                    <h2>Shared with me</h2>
+                    {sharedErr && <p className="scribe-idocs__warn" role="alert">{sharedErr}</p>}
+                    <ul className="scribe-idocs__grid">
+                        {shared.map((it) => (
+                            <li key={it.docId} className="scribe-idocs__docitem">
+                                <button type="button" className="scribe-idocs__doccard" onClick={() => void openShared(it)} disabled={busy} title={`Open (${it.role})`}>
+                                    <span className="scribe-idocs__docswatch" />
+                                    <strong>{it.title || 'Untitled'}</strong>
+                                    <small className="scribe-idocs__docmeta">{it.owner?.name || 'Owner'} · {it.role} · v{it.version} · {new Date(it.updatedAt).toLocaleDateString()}</small>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
             {state.docs.length > 0 && (
                 <div className="scribe-idocs__row scribe-idocs-lib__toolbar">
                     <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search docs…" aria-label="Search docs" className="scribe-idocs-lib__search" />
@@ -233,7 +269,7 @@ export default function IDocLibrary({ state, initialPrompt }: { state: IdocsStat
                                 <span className="scribe-idocs__docswatch" style={{ background: themeById(d.theme).swatch }} />
                                 <strong>{d.title || 'Untitled'}</strong>
                                 {d.description && <small>{d.description}</small>}
-                                <small className="scribe-idocs__docmeta">{d.cards.length} cards · {d.analytics?.views ?? 0} views · {new Date(d.updatedAt).toLocaleDateString()}{d.language ? ` · ${d.language}` : ''}</small>
+                                <small className="scribe-idocs__docmeta">{d.cards.length} cards · {d.analytics?.views ?? 0} views · {new Date(d.updatedAt).toLocaleDateString()}{d.language ? ` · ${d.language}` : ''}{d.shared ? (d.shared.role === 'owner' ? ' · shared' : ` · shared by ${d.shared.ownerName || 'owner'} (${d.shared.role})`) : ''}{d.publication ? ' · published' : ''}</small>
                             </button>
                             <div className="scribe-idocs__doctools">
                                 <button type="button" onClick={() => { setActive(d.id); setView('present'); }} title="Present">▶</button>

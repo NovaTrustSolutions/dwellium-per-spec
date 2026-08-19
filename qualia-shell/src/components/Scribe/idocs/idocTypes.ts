@@ -120,6 +120,10 @@ export interface IDoc {
     dir?: 'ltr' | 'rtl';
     /** Wave 2: used when theme === 'custom' (renderer merges vars over 'inherit'). */
     customTheme?: CustomTheme;
+    /** Wave 3B: server publication record (`/p/<slug>`); absent = not published. */
+    publication?: { slug: string; url: string; publishedAt: string };
+    /** Wave 3B: workspace share record. `role: 'owner'` = I shared it; else the role granted to me (`ownerId` set). */
+    shared?: { version: number; updatedAt?: string; role: 'owner' | 'view' | 'comment' | 'edit'; ownerId?: string; ownerName?: string };
 }
 
 /** CSS custom properties applied on the doc root via inline style. */

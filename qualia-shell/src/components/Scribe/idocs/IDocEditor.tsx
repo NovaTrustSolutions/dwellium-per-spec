@@ -5,6 +5,9 @@
  * page size, Doc settings, Present, Export, Share, Analytics, AI, History, ?).
  * Every change goes straight to the store (autosave); a debounced snapshot
  * feeds per-doc undo/redo (idocsHistory.ts).
+ * Wave 3B: Publish ▾ (PublishDialog), Share ▾ → "Share with people…"
+ * (ShareDialog), server analytics section, live-lite sync banner + presence
+ * chips when `doc.shared` (useSharedDocSync).
  */
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type DragEvent, type ReactNode, type SyntheticEvent } from 'react';
 import { UserContext } from '../../../context/UserContext';
@@ -18,6 +21,11 @@ import * as ExportModule from './idocExport';
 import { download, exportHtml, exportMarkdown, exportPdf, printDoc, safeFilename } from './idocExport';
 import { rewriteBlockMd, type LlmBundle, type RewriteInstruction } from './idocsAi';
 import { createSnapshotDebouncer, relativeTime } from './idocsHistory';
+import { publicationAnalytics, publicUrlFor, type PublicationAnalytics } from './idocsApi';
+import PublishDialog from './PublishDialog';
+import ShareDialog from './ShareDialog';
+import { PresenceChips, SyncBanner } from './SharedDocViewer';
+import { useSharedDocSync } from './useSharedDocSync';
 import {
     cloneCard, deleteCustomTheme, exportDoc, findCard, findCardParent, flattenCards, idocsStore, insertCardsAt, isCard, listSnapshots, mapCard,
     pushSnapshot, redo, relocateCards, removeCards, replaceDoc, restoreSnapshot, saveCustomTheme, setView, undo, unnestCard, unresolvedCount, updateCard, updateDoc, useIdocs,
@@ -81,6 +89,27 @@ function setTextareaValue(el: HTMLTextAreaElement, value: string, caret: number)
     el.dispatchEvent(new Event('input', { bubbles: true }));
     try { el.setSelectionRange(caret, caret); } catch { /* detached */ }
 }
+/** Wave 3B: "Published (server)" section of the Analytics popover — fetched when the popover opens. */
+function ServerAnalytics({ slug, doc }: { slug: string; doc: IDoc }) {
+    const [a, setA] = useState<PublicationAnalytics | null | 'error'>(null);
+    useEffect(() => { let on = true; publicationAnalytics(slug).then((r) => { if (on) setA(r); }).catch(() => { if (on) setA('error'); }); return () => { on = false; }; }, [slug]);
+    return (
+        <div className="scribe-idocs-ed__srv-analytics" data-testid="idoc-server-analytics">
+            <h4>Published (server)</h4>
+            {a === null ? <small className="scribe-idocs__hint">Loading…</small> : a === 'error' ? <small className="scribe-idocs__hint">Unavailable (backend offline?)</small> : (
+                <>
+                    <div><strong>{a.views}</strong> views · <strong>{a.uniqueViewers30d}</strong> unique (30 d){a.lastViewedAt ? ` · last ${new Date(a.lastViewedAt).toLocaleString()}` : ''}</div>
+                    {a.perCard.length > 0 && (
+                        <table className="scribe-idocs-ed__srv-table"><thead><tr><th>Card</th><th>Views</th><th>Avg s</th><th>% viewers</th></tr></thead>
+                            <tbody>{a.perCard.map((c) => <tr key={c.cardId}><td>{findCard(doc.cards, c.cardId)?.title || c.cardId}</td><td>{c.views}</td><td>{Math.round(c.avgSeconds)}</td><td>{Math.round(c.pctOfViewers)}%</td></tr>)}</tbody>
+                        </table>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
+
 /** In-memory card clipboard (survives clipboard permission denials). */
 let memClipboard: Card[] = [];
 
@@ -279,6 +308,7 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
         window.addEventListener('keydown', onKey, { capture: true });
         return () => window.removeEventListener('keydown', onKey, { capture: true });
     }, [drawer]);
+    const [dialog, setDialog] = useState<'publish' | 'share' | null>(null);
     const [find, setFind] = useState<string | null>(null);
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     const [ThemeEditor, setThemeEditor] = useState<ThemeEditorComponent | null>(null);
@@ -305,6 +335,8 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
 
     const activeCard = findCard(doc.cards, activeCardId) ?? doc.cards[0];
     useEffect(() => { if (!findCard(doc.cards, activeCardId)) setActiveCardId(doc.cards[0]?.id ?? ''); }, [doc.cards, activeCardId]);
+    // Wave 3B live-lite: no-op until `doc.shared` exists (ShareDialog / "Shared with me" set it).
+    const sync = useSharedDocSync(doc, { activeCardId });
     const flat = useMemo(() => flattenCards(doc.cards), [doc.cards]);
     // Outline rows: hide descendants of collapsed groups.
     const visibleFlat = useMemo(() => {
@@ -578,6 +610,8 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                         <label className="scribe-idocs-ed__check"><input type="checkbox" checked={!!doc.isTemplate} onChange={(e) => save({ isTemplate: e.target.checked || undefined })} /> Save as template</label>
                     </div>
                 )}</Menu>
+                {doc.shared && <span className="scribe-idocs-sync__badge" title={doc.shared.role === 'owner' ? 'You shared this doc' : `Shared by ${doc.shared.ownerName || 'owner'}`}>{doc.shared.role === 'owner' ? 'Shared' : `Shared · ${doc.shared.role}`}{sync.saving ? ' · saving…' : ''}</span>}
+                <PresenceChips others={sync.others} />
                 <span className="scribe-idocs__spacer" />
                 <button type="button" className={`scribe-idocs__btn${previewAll ? ' is-active' : ''}`} onClick={() => setPreviewAll((p) => !p)} title="Toggle full-doc preview">{previewAll ? 'Edit' : 'Preview'}</button>
                 <button type="button" className="scribe-idocs__btn scribe-idocs__btn--primary" onClick={() => setView('present')} title="⌘⏎">▶ Present</button>
@@ -626,8 +660,18 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                         ))}
                     </>
                 )}</Menu>
+                <Menu label="Publish" title={doc.publication ? `Published at /p/${doc.publication.slug}` : 'Publish to the web'}>{(close) => (
+                    <>
+                        <button type="button" role="menuitem" onClick={() => { setDialog('publish'); close(); }}>{doc.publication ? 'Publish settings…' : 'Publish to the web…'}</button>
+                        {doc.publication && <>
+                            <button type="button" role="menuitem" onClick={() => { void navigator.clipboard?.writeText(publicUrlFor(doc.publication!.slug)).then(() => flash('Link copied'), () => flash('Clipboard blocked')); close(); }}>Copy public link</button>
+                            <button type="button" role="menuitem" onClick={() => { window.open(publicUrlFor(doc.publication!.slug), '_blank', 'noopener'); close(); }}>Open public page</button>
+                        </>}
+                    </>
+                )}</Menu>
                 <Menu label="Share">{(close) => (
                     <>
+                        <button type="button" role="menuitem" onClick={() => { setDialog('share'); close(); }}>{doc.shared?.role === 'owner' ? 'Manage sharing…' : 'Share with people…'}</button>
                         <button type="button" role="menuitem" onClick={() => { void shareCopy(); close(); }}>Copy JSON</button>
                         <button type="button" role="menuitem" onClick={() => { saveArtifact(); close(); }}>Save to Artifact Gallery</button>
                     </>
@@ -637,12 +681,16 @@ export default function IDocEditor({ doc }: { doc: IDoc }) {
                         <div><strong>{doc.analytics?.views ?? 0}</strong> views{doc.analytics?.lastViewedAt ? ` · last ${new Date(doc.analytics.lastViewedAt).toLocaleString()}` : ''}</div>
                         {topCards.length ? <ol>{topCards.map((c, i) => <li key={i}>{c.title} — {fmtSecs(c.s)}</li>)}</ol> : <small>No card time yet — present the doc to collect it.</small>}
                         <small className="scribe-idocs__hint">Local-only analytics (this browser).</small>
+                        {doc.publication && <ServerAnalytics slug={doc.publication.slug} doc={doc} />}
                     </div>
                 )}</Menu>
                 <button type="button" className="scribe-idocs__btn scribe-idocs__btn--ghost" onClick={() => setShowShortcuts((s) => !s)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
                 {toast && <span className="scribe-idocs__toast" role="status">{toast}</span>}
                 <span className="scribe-idocs-ed__sr" aria-live="polite">{live}</span>
             </div>
+            <SyncBanner sync={sync} />
+            {dialog === 'publish' && <PublishDialog doc={doc} onClose={() => setDialog(null)} onToast={flash} />}
+            {dialog === 'share' && <ShareDialog doc={doc} onClose={() => setDialog(null)} onToast={flash} />}
             {aiPrompt && (
                 <form className="scribe-idocs-ed__aiprompt" onSubmit={(e) => { e.preventDefault(); void runDocAi(aiPrompt.action, aiPrompt.input); }}>
                     <span>{aiPrompt.action.label}{aiPrompt.action.perCard && activeCard ? ` — “${activeCard.title || 'this card'}”` : ''}:</span>

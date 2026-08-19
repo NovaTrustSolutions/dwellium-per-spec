@@ -13,7 +13,10 @@ if (rawTarget) {
     const target = rawTarget.replace(/\/+$/, '');
     lines.push(`/health ${target}/health 200!`);
     lines.push(`/api/* ${target}/api/:splat 200!`);
-    console.log(`[netlify] Emitting /health and /api/* proxy redirects to ${target}`);
+    // Interactive Docs public pages: https://<site>/p/<slug> → backend `/api/idocs/p/:slug`
+    // (Docs/idocs-wave3-api.md §1b). Must sit before the SPA catch-all.
+    lines.push(`/p/* ${target}/api/idocs/p/:splat 200!`);
+    console.log(`[netlify] Emitting /health, /api/* and /p/* proxy redirects to ${target}`);
 } else {
     console.warn('[netlify] NETLIFY_API_PROXY_TARGET is not set; backend-backed features will use offline/reconnect handling until an API target is configured.');
 }

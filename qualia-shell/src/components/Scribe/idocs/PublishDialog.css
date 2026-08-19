@@ -1,0 +1,32 @@
+/* PublishDialog / ShareDialog — wave-3B modal sheets. Reuse the editor's sheet backdrop; block prefix .scribe-idocs-pub. Tokens only. */
+.scribe-idocs-pub { min-width: 340px; max-width: 520px; width: min(520px, 92vw); display: flex; flex-direction: column; gap: 10px; }
+.scribe-idocs-pub h3 { margin: 0; font-family: var(--font-heading); }
+.scribe-idocs-pub label.scribe-idocs__field { margin-top: 0; }
+.scribe-idocs-pub input[type="text"], .scribe-idocs-pub input[type="password"], .scribe-idocs-pub input[type="email"], .scribe-idocs-pub textarea, .scribe-idocs-pub select { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-primary); font: inherit; font-size: var(--fs-sm); }
+.scribe-idocs-pub input[aria-invalid="true"] { border-color: var(--danger); }
+.scribe-idocs-pub__slug { display: flex; align-items: center; gap: 4px; }
+.scribe-idocs-pub__slug > span { color: var(--text-tertiary); font-family: var(--font-mono); font-size: var(--fs-xs); white-space: nowrap; }
+.scribe-idocs-pub__code { display: block; padding: 6px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); font-family: var(--font-mono); font-size: var(--fs-xs); word-break: break-all; user-select: all; }
+.scribe-idocs-pub__ok { color: var(--success, var(--accent-text)); font-size: var(--fs-sm); }
+.scribe-idocs-pub__foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.scribe-idocs-pub__foot .scribe-idocs__btn { margin-top: 0; }
+.scribe-idocs-pub table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.scribe-idocs-pub td, .scribe-idocs-pub th { padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--border-default); }
+.scribe-idocs-pub td select { width: auto; }
+.scribe-idocs-pub__member-add { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; }
+
+/* Live-lite: conflict banner + presence chips (editor header) */
+.scribe-idocs-sync__banner { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 12px; background: var(--accent-subtle); border-bottom: 1px solid var(--accent); color: var(--accent-text); font-size: var(--fs-sm); }
+.scribe-idocs-sync__banner .scribe-idocs__btn { margin-top: 0; }
+.scribe-idocs-sync__err { padding: 4px 12px; color: var(--warning); font-size: var(--fs-xs); }
+.scribe-idocs-sync__presence { display: inline-flex; gap: 2px; align-items: center; }
+.scribe-idocs-sync__chip { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--text-inverse); font-size: var(--fs-xs); font-weight: var(--fw-semibold); border: 2px solid var(--bg-surface); margin-left: -6px; cursor: default; }
+.scribe-idocs-sync__chip:first-child { margin-left: 0; }
+.scribe-idocs-sync__badge { font-size: var(--fs-xs); color: var(--text-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 1px 6px; white-space: nowrap; }
+
+/* Analytics popover: "Published (server)" section */
+.scribe-idocs-ed__srv-analytics { border-top: 1px solid var(--border-default); padding-top: 6px; margin-top: 4px; display: flex; flex-direction: column; gap: 4px; }
+.scribe-idocs-ed__srv-analytics h4 { margin: 0; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
+.scribe-idocs-ed__srv-table { border-collapse: collapse; font-size: var(--fs-xs); }
+.scribe-idocs-ed__srv-table th, .scribe-idocs-ed__srv-table td { padding: 2px 6px; text-align: left; border-bottom: 1px solid var(--border-default); }
+.scribe-idocs-ed__srv-table td:not(:first-child), .scribe-idocs-ed__srv-table th:not(:first-child) { text-align: right; }

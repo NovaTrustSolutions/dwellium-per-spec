@@ -14,6 +14,7 @@ import IDocEditor from './IDocEditor';
 import IDocLibrary from './IDocLibrary';
 import IDocRenderer from './IDocRenderer';
 import PresenterHost from './PresenterView';
+import SharedDocViewer from './SharedDocViewer';
 import { generateDocFromPrompt } from './idocsAi';
 import { addCardSeconds, idocsUserIdHolder, recordView, replaceDoc, setActive, setView, useIdocs } from './idocsStore';
 import './InteractiveDocs.css';
@@ -97,7 +98,10 @@ export default function InteractiveDocs() {
         <div className="scribe-idocs">
             {genBusy && <div className="scribe-idocs__genbar" role="status">✦ Generating your Interactive Doc…</div>}
             {state.view === 'edit' && active
-                ? <IDocEditor key={active.id} doc={active} />
+                // Wave 3B role gating: view/comment members get the renderer (no editor chrome); owner/edit get the editor.
+                ? (active.shared && (active.shared.role === 'view' || active.shared.role === 'comment')
+                    ? <SharedDocViewer key={active.id} doc={active} />
+                    : <IDocEditor key={active.id} doc={active} />)
                 : <IDocLibrary state={state} initialPrompt={pendingPrompt} />}
             {presenting && active && (
                 <div className="scribe-idocs__present-overlay">

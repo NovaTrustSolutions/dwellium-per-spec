@@ -11,6 +11,7 @@ import SpacesSwitcher from './SpacesSwitcher';
 import { useHiddenWidgets, hideWidget, unhideWidget, foldStandaloneAgentsOnce, hideTerminalOnce } from '../../lib/hiddenWidgetsStore';
 import { useGridLock } from '../../hooks/useGridLock';
 import { backendStatusStore } from '../../lib/backendStatusStore';
+import { useMorningBrief } from '../../lib/morningBriefStore';
 import { PINNED_WIDGETS } from '../Shell/defaultStack';
 import { mottoFor } from './mottoFor';
 import { Check, CloudFog, CloudRain, CloudSnow, CloudSun, FolderOpen, Lock, Search, Settings, Sun, Unlock, X, Zap, type LucideIcon } from 'lucide-react';
@@ -307,6 +308,8 @@ export default function Sidebar() {
         backendStatusStore.getSnapshot,
         backendStatusStore.getServerSnapshot,
     ).state;
+    // Plan 046 B4: unread-brief badge on the ARA entry (one store, three surfaces: banner / rail / notification).
+    const briefUnread = useMorningBrief().today?.seen === false;
 
     // Icon-only collapsed mode
     const iconOnly = useSyncExternalStore(
@@ -637,6 +640,7 @@ export default function Sidebar() {
                                 title={withDesc(item)}
                             >
                                 <span className="sidebar__icon-rail-icon"><SidebarIcon iconKey={item.icon} size={18} /></span>
+                                {item.component === 'ara-console' && briefUnread && <span className="sidebar-widget__badge sidebar-widget__badge--rail" aria-label="1 unread brief">1</span>}
                                 {isOpen && <span className="sidebar__icon-rail-dot" />}
                             </button>
                         );
@@ -919,6 +923,7 @@ export default function Sidebar() {
                                                     >
                                                         <span className="sidebar-widget__icon"><SidebarIcon iconKey={p.icon} size={18} /></span>
                                                         {!collapsed && <span className="sidebar-widget__label">{p.label}</span>}
+                                                        {p.component === 'ara-console' && briefUnread && <span className="sidebar-widget__badge" aria-label="1 unread brief">1</span>}
                                                         {isOpen && <span className="sidebar-widget__dot" />}
                                                     </button>
                                                 );

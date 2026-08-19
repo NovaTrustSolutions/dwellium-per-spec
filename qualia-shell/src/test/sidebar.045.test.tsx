@@ -43,9 +43,14 @@ vi.mock('../context/HierarchyContext', () => ({
     }),
 }));
 const mockUser = vi.hoisted(() => ({ current: { id: 'u1', name: 'Ilya' } as { id: string; name: string; role?: string } }));
-vi.mock('../context/UserContext', () => ({
-    useUser: () => ({ user: mockUser.current, logout: vi.fn(), hasMinRole: () => true }),
-}));
+vi.mock('../context/UserContext', async () => {
+    const React = await import('react');
+    return {
+        // 046-B4: Sidebar now reads useMorningBrief() → usePerUserIdentity() → useContext(UserContext).
+        UserContext: React.createContext({ user: mockUser.current }),
+        useUser: () => ({ user: mockUser.current, logout: vi.fn(), hasMinRole: () => true }),
+    };
+});
 vi.mock('../context/PermissionsContext', () => ({
     usePermissions: () => ({ can: () => true }),
 }));
@@ -53,6 +58,8 @@ vi.mock('../components/Sidebar/SpacesSwitcher', () => ({ default: () => null }))
 
 import Sidebar, { iconOnlyStore, sidebarGroupsStore } from '../components/Sidebar/Sidebar';
 import { mottoFor } from '../components/Sidebar/mottoFor';
+import { morningBriefUserIdHolder, upsertBrief, markBriefSeen, resetMorningBriefs } from '../lib/morningBriefStore';
+import { dayKey } from '../lib/dailySynthesis';
 
 beforeEach(() => {
     windows = [];
@@ -122,5 +129,33 @@ describe('046-F2 — motto is role-driven, not a per-person map', () => {
         } finally {
             mockUser.current = { id: 'u1', name: 'Ilya' };
         }
+    });
+});
+
+describe('046-B4 — unread morning-brief badge on the ARA entry', () => {
+    it('shows "1 unread brief" on the pinned ARA row and clears on markBriefSeen', () => {
+        morningBriefUserIdHolder.current = 'u1';
+        resetMorningBriefs();
+        render(<Sidebar />);
+        expect(screen.queryByLabelText('1 unread brief')).toBeNull();
+        const date = dayKey();
+        act(() => { upsertBrief({ date, insights: [], suggestions: [], dataLines: ['Goals: x 50%'] }); });
+        const badge = screen.getByLabelText('1 unread brief');
+        expect(badge.closest('.sidebar-widget--pinned')).not.toBeNull();
+        act(() => { markBriefSeen(date); });
+        expect(screen.queryByLabelText('1 unread brief')).toBeNull();
+        resetMorningBriefs();
+    });
+
+    it('icon-rail mode: the badge sits on the ARA rail button', () => {
+        morningBriefUserIdHolder.current = 'u1';
+        resetMorningBriefs();
+        upsertBrief({ date: dayKey(), insights: [], suggestions: [], dataLines: ['x'] });
+        localStorage.setItem('qualia_sidebar_icon_only', 'true');
+        iconOnlyStore.reset();
+        render(<Sidebar />);
+        const badge = screen.getByLabelText('1 unread brief');
+        expect(badge.closest('.sidebar__icon-rail-btn')).not.toBeNull();
+        resetMorningBriefs();
     });
 });

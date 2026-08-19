@@ -10,6 +10,7 @@
  */
 import { useActivation } from '../../hooks/useActivation';
 import { capabilityStatuses } from '../../lib/activationStore';
+import { requestBriefNotificationPermission } from '../../lib/briefNotifier';
 import { secretsPostureLabel } from '../../lib/secretsAdapter';
 import './ActivationCenter.css';
 
@@ -137,7 +138,7 @@ export default function ActivationCenter() {
                 <Toggle
                     label="Enable notifications"
                     checked={config.notifications.enabled}
-                    onChange={(v) => update((c) => ({ ...c, notifications: { ...c.notifications, enabled: v } }))}
+                    onChange={(v) => { if (v) requestBriefNotificationPermission(); update((c) => ({ ...c, notifications: { ...c.notifications, enabled: v } })); }}
                 />
                 <Toggle
                     label="Morning brief as a notification"

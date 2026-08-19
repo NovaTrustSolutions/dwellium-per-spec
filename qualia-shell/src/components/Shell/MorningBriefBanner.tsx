@@ -27,6 +27,7 @@ export default function MorningBriefBanner() {
     return (
         <div className="mbrief-banner" role="status">
             <span className="mbrief-banner-sun" aria-hidden><Sunrise size={14} /></span>
+            <span className="mbrief-banner-badge" aria-label="1 unread brief">1</span>
             <span className="mbrief-banner-text">
                 Your morning brief is ready{today.insights.length > 0 ? ` — ${today.insights[0].title}` : ''}.
             </span>

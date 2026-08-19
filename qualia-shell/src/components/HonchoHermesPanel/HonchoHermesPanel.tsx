@@ -44,6 +44,8 @@ import { agentWikiUserIdHolder, buildWikiContext } from './agentWikiStore';
 import { runHermes } from './hermesRunner';
 import { buildReactLoopFn, mergedToolNames } from './hermesReact';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { useAIAvailability } from '../../hooks/useAIAvailability';
+import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { runSkillForInput, describeSkillsForPrompt, AGENT_SKILLS } from '../../lib/agents/skills';
 import CostAdvisorPanel from '../AiSpend/CostAdvisorPanel';
@@ -112,6 +114,7 @@ export type TabId = 'memory' | 'dreams' | 'hermes' | 'wiki' | 'agents' | 'graph'
 export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTab?: TabId } = {}) {
     const { user, authFetch } = useUser();
     const { integrations } = useIntegrations();
+    const ai = useAIAvailability();
 
     /* ─── DREAMS TAB STATE (per-user dream/reflection abilities) ─── */
     // Update the dynamic-key holder DURING render before the store read, so the
@@ -684,6 +687,7 @@ export default function HonchoHermesPanel({ initialTab = 'memory' }: { initialTa
                                     : hermesVia === 'llm' ? 'Backend Ollama is down — runs route through your API key + browser-side skills.'
                                     : 'No backend Ollama and no API key. Add a key in Control Panel → API Keys to bring Hermes up.'}
                             </p>
+                            {hermesVia === 'offline' && <AIDegradedState availability={ai} needsKey ctaLabel="Add a key" reason="No backend Ollama and no API key — add a key to bring Hermes up." />}
                         </div>
                     </div>
 

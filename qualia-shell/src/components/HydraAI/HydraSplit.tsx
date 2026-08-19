@@ -9,6 +9,8 @@
  */
 import { useMemo, useState, useCallback } from 'react';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { useAIAvailability } from '../../hooks/useAIAvailability';
+import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm } from '../../lib/llmClient';
 import { PROVIDER_LABELS, type LlmProvider, type IntegrationsBundle } from '../../types/integrations';
 import { renderSafeMarkdown } from '../../utils/safeMarkdown';
@@ -36,6 +38,7 @@ interface PaneState { status: 'idle' | 'loading' | 'done' | 'error'; content: st
 
 export default function HydraSplit() {
     const { integrations: bundle } = useIntegrations();
+    const ai = useAIAvailability();
     const llm = bundle.llm;
     const heads = useMemo(() => configuredHeads(llm), [llm]);
     const [prompt, setPrompt] = useState('');
@@ -81,10 +84,7 @@ export default function HydraSplit() {
             </div>
 
             {heads.length === 0 ? (
-                <div className="hyd__empty">
-                    No LLM providers are configured. Open <b>Control Panel → API Keys</b> and add at least one
-                    provider key (Anthropic, OpenAI, Gemini, Local, or Custom). Each enabled key becomes a Hydra head here.
-                </div>
+                <AIDegradedState availability={ai} needsKey ctaLabel="Add a key" reason="No LLM providers configured — each enabled key becomes a Hydra head." />
             ) : (
                 <div className="hyd__grid" style={{ gridTemplateColumns: `repeat(${Math.min(heads.length, 3)}, minmax(0, 1fr))` }}>
                     {heads.map((h) => {

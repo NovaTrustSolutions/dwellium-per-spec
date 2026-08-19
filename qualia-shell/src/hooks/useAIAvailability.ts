@@ -15,7 +15,8 @@
  *   'unavailable'  — no key AND backend offline (no model path at all)
  *
  * Widgets render <AIDegradedState> for anything ≠ 'ready' — never their own
- * ad-hoc banner. `configure()` deep-links to Control Panel via the typed bus.
+ * ad-hoc banner. `configure()` deep-links to Control Panel → API Keys window
+ * via the typed bus.
  */
 
 import { useContext, useSyncExternalStore } from 'react';
@@ -39,12 +40,12 @@ export interface AiAvailability {
     canCall: boolean;
     /** Human-readable reason for any non-'ready' status. */
     reason: string | null;
-    /** Deep-link to Control Panel → API Keys. */
+    /** Deep-link to Control Panel → API Keys window. */
     configure: () => void;
 }
 
 function configure(): void {
-    openWidgetBus.emit({ widgetId: 'control-panel' });
+    openWidgetBus.emit({ widgetId: 'api-keys', label: 'API Keys' });
 }
 
 export function useAIAvailability(): AiAvailability {

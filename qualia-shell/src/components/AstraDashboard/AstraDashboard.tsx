@@ -18,6 +18,8 @@ import {
     Mail, FileText, Trash2, Check, Zap,
 } from 'lucide-react';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { useAIAvailability } from '../../hooks/useAIAvailability';
+import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm } from '../../lib/llmClient';
 import { openStrataModule } from '../StrataDashboard/strataDeepLink';
 import AstraWorkspace from './AstraWorkspace';
@@ -821,6 +823,7 @@ function ResearchFeedPanel({
     runLlm?: (prompt: string, llm: ReturnType<typeof useIntegrations>['integrations']['llm']) => Promise<string | null>;
 }) {
     const { integrations } = useIntegrations();
+    const ai = useAIAvailability();
     const llmReady = hasActiveLlm(integrations.llm);
     const [topic, setTopic] = useState('');
     const [result, setResult] = useState<string | null>(null);
@@ -864,8 +867,7 @@ function ResearchFeedPanel({
             {!llmReady ? (
                 <div className="a-research-nokey">
                     <Settings size={20} />
-                    <p>Connect your own AI provider to run market &amp; regulatory research.</p>
-                    <p className="a-research-hint">Open <strong>Settings → API Keys</strong> and enable a provider (Anthropic, OpenAI, Gemini, or a local model).</p>
+                    <AIDegradedState availability={ai} needsKey ctaLabel="Add a key" reason="Connect your own AI provider to run market & regulatory research." />
                 </div>
             ) : (
                 <>

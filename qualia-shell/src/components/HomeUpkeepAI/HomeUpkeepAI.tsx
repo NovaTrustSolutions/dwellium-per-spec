@@ -234,7 +234,7 @@ export default function HomeUpkeepAI() {
             });
             const data = await res.json();
             setAnalysisResult(data.analysis || 'No analysis returned.');
-        } catch (err) { setAnalysisResult('Analysis failed. Check API key.'); }
+        } catch (err) { setAnalysisResult('Photo analysis unavailable — the server’s vision model didn’t respond.'); }
         setAnalyzing(false);
     };
 

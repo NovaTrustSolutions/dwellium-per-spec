@@ -3,6 +3,8 @@ import { Mic, Square, Volume2, VolumeX, Sparkles, UserRound, SlidersHorizontal, 
 import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
+import { useAIAvailability } from '../../hooks/useAIAvailability';
+import AIDegradedState from '../Shell/AIDegradedState';
 import { callLlm, hasActiveLlm, applyModelPreference } from '../../lib/llmClient';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
 import { parseCommand, stripPoliteness, resolveWidget, openWidget as openWidgetCmd, widgetLabel } from '../../lib/dwelliumCommands';
@@ -419,6 +421,7 @@ export default function ARAConsole() {
     const { user, authFetch, isAuthenticated } = useUser();
     const { selectedId, getSelectedItem, getBreadcrumb } = useHierarchy();
     const { integrations } = useIntegrations();
+    const ai = useAIAvailability();
     // OpenAI key from per-user integrations (set in Settings → API Keys).
     // When present, ARA TTS routes through OpenAI's /audio/speech instead of
     // dropping to the robotic browser SpeechSynthesis fallback.
@@ -2533,6 +2536,7 @@ export default function ARAConsole() {
             )}
 
             {/* Input Bar */}
+            {ai.status !== 'backend-only' && <AIDegradedState availability={ai} />}
             <div className="ara-input-bar">
                 <button
                     className={`ara-mic-btn ${micActive ? 'ara-mic-btn--active' : ''} ${micTranscribing ? 'ara-mic-btn--transcribing' : ''}`}

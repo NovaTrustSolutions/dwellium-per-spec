@@ -360,9 +360,43 @@ export function retryBudget(requested: number | undefined): number {
     return Math.max(4096, (requested ?? 1024) * 4);
 }
 
+// Anthropic: Claude Opus 4.7+ / Opus 5 / Sonnet 5 / Fable 5 / Mythos reject `temperature`
+// (HTTP 400 — swallowed by callers as a blank reply); Opus 5 / Sonnet 5 / Fable 5 think by
+// default, so `content[0]` is a `thinking` block and a small `max_tokens` is spent before
+// any text (`stop_reason: "max_tokens"`, no text block). Older Claude 4.x still accept
+// temperature and put the text in content[0].
+
+/** Claude models that reject sampling params and support `output_config.effort`. */
+export function isAnthropicNoSamplingModel(model: string): boolean {
+    return /^claude-(fable|mythos|opus-5|sonnet-5|haiku-5|opus-4-[789]|sonnet-4-[789])/i.test(model.trim());
+}
+
+/** Build the Anthropic /v1/messages body for ANY current Claude model. Pure. */
+export function buildAnthropicBody(req: LlmRequest, model: string, maxTokensOverride?: number, forceNoSampling = false): Record<string, unknown> {
+    const maxTokens = maxTokensOverride ?? req.maxTokens ?? 1024;
+    const noSampling = forceNoSampling || isAnthropicNoSamplingModel(model);
+    const body: Record<string, unknown> = {
+        model,
+        max_tokens: maxTokens,
+        messages: [{ role: 'user', content: req.prompt }],
+    };
+    if (req.systemPrompt) body.system = req.systemPrompt;
+    if (!noSampling) body.temperature = req.temperature ?? 0.3;
+    // Keep short answers short on thinking-by-default models (mirrors OpenAI reasoning_effort).
+    if (noSampling && maxTokens <= 256) body.output_config = { effort: 'low' };
+    return body;
+}
+
+/** Text from an Anthropic messages response — joins all text blocks, skips thinking. */
+export function parseAnthropicText(json: any): { text: string; truncated: boolean; refused: boolean } {
+    const blocks: any[] = Array.isArray(json?.content) ? json.content : [];
+    const text = blocks.filter((b) => b && b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('');
+    return { text, truncated: json?.stop_reason === 'max_tokens', refused: json?.stop_reason === 'refusal' };
+}
+
 // ── Provider implementations ──────────────────────────────────────────
 
-async function callAnthropic(req: LlmRequest, apiKey: string, model: string): Promise<LlmResponse> {
+async function callAnthropic(req: LlmRequest, apiKey: string, model: string, maxTokensOverride?: number, forceNoSampling = false): Promise<LlmResponse> {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -371,20 +405,28 @@ async function callAnthropic(req: LlmRequest, apiKey: string, model: string): Pr
             'anthropic-version': '2023-06-01',
             'anthropic-dangerous-direct-browser-access': 'true',
         },
-        body: JSON.stringify({
-            model,
-            max_tokens: req.maxTokens ?? 1024,
-            temperature: req.temperature ?? 0.3,
-            system: req.systemPrompt,
-            messages: [{ role: 'user', content: req.prompt }],
-        }),
+        body: JSON.stringify(buildAnthropicBody(req, model, maxTokensOverride, forceNoSampling)),
     });
     if (!res.ok) {
         const errText = await res.text().catch(() => '');
+        // A model id we did not recognise as "no sampling" (future release) → retry once without temperature.
+        if (res.status === 400 && !forceNoSampling && /temperature/i.test(errText)) {
+            return callAnthropic(req, apiKey, model, maxTokensOverride, true);
+        }
         throw new LlmError('anthropic', res.status, errText || `HTTP ${res.status}`);
     }
     const json = await res.json();
-    const text = json?.content?.[0]?.text ?? '';
+    const { text, truncated, refused } = parseAnthropicText(json);
+    if (refused && !text) {
+        throw new LlmError('anthropic', 200, `${model} declined this request (stop_reason: refusal${json?.stop_details?.category ? `, ${json.stop_details.category}` : ''})`);
+    }
+    // Thinking spent the whole budget → retry ONCE with a real budget.
+    if (!text && truncated && maxTokensOverride === undefined) {
+        return callAnthropic(req, apiKey, model, retryBudget(req.maxTokens), forceNoSampling);
+    }
+    if (!text && truncated) {
+        throw new LlmError('anthropic', 200, `${model} returned no text (token budget exhausted by thinking) — raise maxTokens`);
+    }
     return { text, provider: 'anthropic', model };
 }
 

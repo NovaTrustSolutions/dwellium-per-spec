@@ -38,6 +38,26 @@ export function parseSseBlock(block: string): SseEvent | null {
     return data.length ? { event, data: data.join('\n') } : null;
 }
 
+/**
+ * Pump one SSE body to completion, dispatching each complete event block.
+ * Shared by readSse (backend event streams) and the LLM token streams.
+ */
+export async function pumpSseBody(body: ReadableStream<Uint8Array>, onEvent: (e: SseEvent) => void): Promise<void> {
+    const reader = body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = '';
+    for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += value.replace(/\r\n?/g, '\n');
+        let sep: number;
+        while ((sep = buf.indexOf('\n\n')) !== -1) {
+            const ev = parseSseBlock(buf.slice(0, sep));
+            buf = buf.slice(sep + 2);
+            if (ev) onEvent(ev);
+        }
+    }
+}
+
 export function readSse(url: string, opts: ReadSseOptions): AbortController {
     const ctrl = new AbortController();
     const backoff = opts.backoffMs ?? [1_000, 2_000, 5_000, 15_000];
@@ -50,19 +70,7 @@ export function readSse(url: string, opts: ReadSseOptions): AbortController {
                 const res = await doFetch(url, { headers: { Accept: 'text/event-stream' }, signal: ctrl.signal });
                 if (!res.ok || !res.body) throw new Error(`SSE ${res.status}`);
                 attempt = 0;
-                const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-                let buf = '';
-                for (;;) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    buf += value.replace(/\r\n?/g, '\n');
-                    let sep: number;
-                    while ((sep = buf.indexOf('\n\n')) !== -1) {
-                        const ev = parseSseBlock(buf.slice(0, sep));
-                        buf = buf.slice(sep + 2);
-                        if (ev) opts.onEvent(ev);
-                    }
-                }
+                await pumpSseBody(res.body, opts.onEvent);
             } catch (err) {
                 if (ctrl.signal.aborted) return;
                 opts.onError?.(err);

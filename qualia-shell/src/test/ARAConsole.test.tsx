@@ -15,6 +15,23 @@ vi.mock('../lib/llmClient', () => ({
     LlmError: class LlmError extends Error {},
 }));
 
+// 046-A3: the offline fallback streams when araPrefs.streamTokens (default ON).
+const streamLlmMock = vi.fn();
+vi.mock('../lib/llmStream', () => ({
+    streamLlm: (...args: any[]) => streamLlmMock(...args),
+    STREAMING_AVAILABLE: true,
+}));
+
+// 046-A2: real runDailyGlance/throttle, injectable assembler (null = silent).
+const assembleGlanceMock = vi.fn(async (): Promise<string | null> => null);
+vi.mock('../lib/araDailyGlance', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../lib/araDailyGlance')>();
+    return {
+        ...actual,
+        runDailyGlance: (uid: string | null, post: (c: string) => void) => actual.runDailyGlance(uid, post, assembleGlanceMock),
+    };
+});
+
 // Per-test switch: when true, the backend /chat endpoint throws (offline).
 let chatShouldThrow = false;
 
@@ -41,6 +58,25 @@ vi.mock('../context/HierarchyContext', () => ({
 }));
 
 import ARAConsole from '../components/ARAConsole/ARAConsole';
+import { araPrefsStore } from '../lib/araPrefsStore';
+import { resetAraGlance } from '../lib/araDailyGlance';
+
+async function* offlineStream() {
+    yield { delta: 'Offline ', text: 'Offline ', done: false };
+    yield { delta: 'LLM reply.', text: 'Offline LLM reply.', done: false };
+    yield { delta: '', text: 'Offline LLM reply.', done: true };
+    return 'Offline LLM reply.';
+}
+
+function sseBody(chunks: string[]): ReadableStream<Uint8Array> {
+    const enc = new TextEncoder();
+    return new ReadableStream({
+        start(c) {
+            for (const ch of chunks) c.enqueue(enc.encode(ch));
+            c.close();
+        },
+    });
+}
 
 function jsonResponse(data: any, ok = true, status = 200): Response {
     return {
@@ -57,6 +93,12 @@ describe('ARAConsole', () => {
         llmActive = false;
         chatShouldThrow = false;
         callLlmMock.mockReset();
+        streamLlmMock.mockReset();
+        streamLlmMock.mockImplementation(() => offlineStream());
+        assembleGlanceMock.mockReset();
+        assembleGlanceMock.mockResolvedValue(null);
+        araPrefsStore.reset();
+        resetAraGlance();
         localStorage.clear();
         localStorage.setItem('dwellium-ara-tts', 'false');
         Element.prototype.scrollIntoView = vi.fn();
@@ -279,10 +321,9 @@ describe('ARAConsole', () => {
         expect(callLlmMock).not.toHaveBeenCalled();
     });
 
-    it('falls back to the personal LLM key when the backend chat call fails (gap A1)', async () => {
+    it('falls back to the personal LLM key when the backend chat call fails (gap A1) — streamed (046-A3)', async () => {
         chatShouldThrow = true;
         llmActive = true;
-        callLlmMock.mockResolvedValue({ text: 'Offline LLM reply.', provider: 'anthropic', model: 'claude' });
         const user = userEvent.setup();
         render(<ARAConsole />);
 
@@ -294,7 +335,111 @@ describe('ARAConsole', () => {
         expect(await screen.findByText('Offline LLM reply.')).toBeInTheDocument();
         expect(await screen.findByText(/Backend offline — answered via your/)).toBeInTheDocument();
         expect(screen.queryByText(/Last request failed:/)).not.toBeInTheDocument();
+        expect(streamLlmMock).toHaveBeenCalledTimes(1);
+        expect(callLlmMock).not.toHaveBeenCalled();
+        // Exactly one assistant bubble for the streamed reply (placeholder finalized in place).
+        expect(screen.getAllByText('Offline LLM reply.')).toHaveLength(1);
+    });
+
+    it('offline fallback uses single-shot callLlm when streamTokens is OFF', async () => {
+        araPrefsStore.set('streamTokens', false);
+        chatShouldThrow = true;
+        llmActive = true;
+        callLlmMock.mockResolvedValue({ text: 'Offline LLM reply.', provider: 'anthropic', model: 'claude' });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+
+        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+        await user.type(textbox, 'What should I do next?');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+        expect(await screen.findByText('Offline LLM reply.')).toBeInTheDocument();
         expect(callLlmMock).toHaveBeenCalledTimes(1);
+        expect(streamLlmMock).not.toHaveBeenCalled();
+    });
+
+    // ── 046-A1: starter prompts ──────────────────────────────────────────
+    it('shows starter chips when empty; clicking one sends it and the chips go away', async () => {
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+
+        const chip = await screen.findByRole('button', { name: 'What should I focus on today?' });
+        expect(screen.getByRole('group', { name: 'Suggested prompts' })).toBeInTheDocument();
+        await user.click(chip);
+
+        await screen.findByText('I can help with that.');
+        const chatCall = authFetch.mock.calls.find((call: any[]) => String(call[0]).endsWith('/chat'));
+        expect(chatCall).toBeTruthy();
+        const payload = JSON.parse((chatCall?.[1] as RequestInit).body as string);
+        expect(payload.message).toContain('What should I focus on today?');
+        expect(screen.queryByRole('group', { name: 'Suggested prompts' })).not.toBeInTheDocument();
+    });
+
+    // ── 046-A2: today at a glance ────────────────────────────────────────
+    it('posts the daily glance on mount once per day (no second glance same day)', async () => {
+        assembleGlanceMock.mockResolvedValue('**Today at a glance — 1 thing worth doing**\n1. 2 leases need attention');
+        const first = render(<ARAConsole />);
+        expect(await screen.findByText(/Today at a glance/)).toBeInTheDocument();
+        expect(assembleGlanceMock).toHaveBeenCalledTimes(1);
+        first.unmount();
+
+        // Same day, fresh mount: throttled — assembler not consulted again, glance
+        // appears only via the restored session (exactly one bubble).
+        render(<ARAConsole />);
+        await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+        await waitFor(() => expect(screen.getAllByText(/Today at a glance/)).toHaveLength(1));
+        expect(assembleGlanceMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays silent when the glance assembler has nothing to say', async () => {
+        render(<ARAConsole />);
+        await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+        await waitFor(() => expect(assembleGlanceMock).toHaveBeenCalledTimes(1));
+        expect(screen.queryByText(/Today at a glance/)).not.toBeInTheDocument();
+    });
+
+    // ── 046-A4: backend SSE ──────────────────────────────────────────────
+    it('streams /chat/stream deltas into one bubble, then finalizes with the done payload', async () => {
+        const base = authFetch.getMockImplementation()!;
+        authFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            if (url.endsWith('/chat/stream')) {
+                expect(new Headers(opts?.headers).get('Accept')).toBe('text/event-stream');
+                return {
+                    ok: true, status: 200, headers: new Headers({ 'content-type': 'text/event-stream' }),
+                    body: sseBody([
+                        'data: {"delta":"Streamed "}\n\n',
+                        'data: {"delta":"answer."}\n\nevent: done\ndata: {"content":"Streamed answer.","mode":"chief-of-staff","entityGuardianActive":false,"contextSources":[],"observability":{"latencyMs":77,"contextBuildMs":1,"providerUsed":"gpt-4o-mini","retryCount":0}}\n\n',
+                    ]),
+                } as unknown as Response;
+            }
+            return base(url, opts);
+        });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+        await user.type(textbox, 'Stream please');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+        expect(await screen.findByText('Streamed answer.')).toBeInTheDocument();
+        expect(await screen.findByText('Latency 77ms')).toBeInTheDocument();
+        expect(screen.getAllByText('Streamed answer.')).toHaveLength(1);
+        expect(authFetch.mock.calls.some((c: any[]) => String(c[0]).endsWith('/chat'))).toBe(false);
+    });
+
+    it('falls back to the JSON /chat path when /chat/stream is 404 (older backend)', async () => {
+        const base = authFetch.getMockImplementation()!;
+        authFetch.mockImplementation(async (url: string, opts?: RequestInit) => {
+            if (url.endsWith('/chat/stream')) return jsonResponse({ success: false, error: 'Not found' }, false, 404);
+            return base(url, opts);
+        });
+        const user = userEvent.setup();
+        render(<ARAConsole />);
+        const textbox = await screen.findByPlaceholderText('Message ARA (Executive Assistant)');
+        await user.type(textbox, 'Hello');
+        await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+        expect(await screen.findByText('I can help with that.')).toBeInTheDocument();
+        expect(authFetch.mock.calls.some((c: any[]) => String(c[0]).endsWith('/chat'))).toBe(true);
     });
 
     it('exposes accessible names on icon-only control-bar buttons (Cycle 9 a11y)', async () => {

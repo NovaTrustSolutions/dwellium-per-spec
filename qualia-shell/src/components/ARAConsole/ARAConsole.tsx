@@ -4,6 +4,11 @@ import { useUser } from '../../context/UserContext';
 import { useHierarchy } from '../../context/HierarchyContext';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import { callLlm, hasActiveLlm, applyModelPreference } from '../../lib/llmClient';
+import { streamLlm } from '../../lib/llmStream';
+import { pumpSseBody } from '../../lib/readSse';
+import { araPrefsStore } from '../../lib/araPrefsStore';
+import { runDailyGlance } from '../../lib/araDailyGlance';
+import { starterPromptsFor } from './araStarterPrompts';
 import { detectWidgetHandoffs, openWidgetHandoff, composeAraPrompt } from './araLinkage';
 import { parseCommand, stripPoliteness, resolveWidget, openWidget as openWidgetCmd, widgetLabel } from '../../lib/dwelliumCommands';
 import { matchSkill, AGENT_SKILLS, runSkillForInput } from '../../lib/agents/skills';
@@ -1120,28 +1125,66 @@ export default function ARAConsole() {
             return true;
         };
 
+        const streamTokens = araPrefsStore.getSnapshot().streamTokens;
         try {
-            const res = await authFetch(`${API_ARA}/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    mode: modeToUse,
-                    message: outgoingMessage,
-                    sessionId: sessionId.current,
-                    humanize: humanizeEnabled,  // P11-10: now HONORED server-side
-                    // P11-10: per-user OpenAI key passthrough — backend uses
-                    // it instead of its env key when present.
-                    ...(integrations.llm.openai?.apiKey && integrations.llm.openai.enabled !== false
-                        ? { userLlmKey: { provider: 'openai', apiKey: integrations.llm.openai.apiKey, model: integrations.llm.openai.model } }
-                        : {}),
-                    ...(jurisdictionToUse ? { jurisdiction: jurisdictionToUse } : {}),
-                    ...(workspaceContextToUse ? { workspaceContext: workspaceContextToUse } : {}),
-                })
+            const chatBody = JSON.stringify({
+                mode: modeToUse,
+                message: outgoingMessage,
+                sessionId: sessionId.current,
+                humanize: humanizeEnabled,  // P11-10: now HONORED server-side
+                // P11-10: per-user OpenAI key passthrough — backend uses
+                // it instead of its env key when present.
+                ...(integrations.llm.openai?.apiKey && integrations.llm.openai.enabled !== false
+                    ? { userLlmKey: { provider: 'openai', apiKey: integrations.llm.openai.apiKey, model: integrations.llm.openai.model } }
+                    : {}),
+                ...(jurisdictionToUse ? { jurisdiction: jurisdictionToUse } : {}),
+                ...(workspaceContextToUse ? { workspaceContext: workspaceContextToUse } : {}),
             });
-            const data = await res.json().catch(() => ({}));
+            // ── 046-A4: SSE first (/chat/stream); 404 / no body / throw → JSON path.
+            let data: any = null;
+            let placeholderId: string | null = null;
+            if (streamTokens) {
+                const sres = await authFetch(`${API_ARA}/chat/stream`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+                    body: chatBody,
+                }).catch(() => null);
+                if (sres?.ok && sres.body) {
+                    const placeholder = createChatMessage({ role: 'assistant', content: '', mode: modeToUse });
+                    placeholderId = placeholder.id;
+                    setMessages(prev => [...prev, placeholder]);
+                    let acc = '';
+                    let errMsg: string | null = null;
+                    await pumpSseBody(sres.body, (ev) => {
+                        const payload = (() => { try { return JSON.parse(ev.data); } catch { return null; } })();
+                        if (!payload) return;
+                        if (ev.event === 'message' && typeof payload.delta === 'string') {
+                            acc += payload.delta;
+                            const content = acc;
+                            setMessages(prev => prev.map(m => (m.id === placeholderId ? { ...m, content } : m)));
+                        } else if (ev.event === 'done') {
+                            data = { success: true, data: payload };
+                        } else if (ev.event === 'error') {
+                            errMsg = typeof payload.error === 'string' ? payload.error : 'Chat failed';
+                        }
+                    }).catch((e: unknown) => { errMsg = e instanceof Error ? e.message : 'Chat stream failed'; });
+                    if (!data) {
+                        setMessages(prev => prev.filter(m => m.id !== placeholderId));
+                        throw new Error(errMsg || 'Chat stream ended early');
+                    }
+                }
+            }
+            if (!data) {
+                const res = await authFetch(`${API_ARA}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: chatBody,
+                });
+                data = await res.json().catch(() => ({}));
 
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || `Chat failed (${res.status})`);
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || `Chat failed (${res.status})`);
+                }
             }
 
             // Phase-10 A2: record the exchange into the per-user Hermes log
@@ -1159,7 +1202,11 @@ export default function ARAConsole() {
                 observability: data.data.observability,
                 hermesRunId: hermesRec.id,
             });
-            setMessages(prev => [...prev, araMsg]);
+            // Streamed: finalize the placeholder in place (keeps its position); else append.
+            const pid = placeholderId;
+            setMessages(prev => (pid
+                ? prev.map(m => (m.id === pid ? { ...araMsg, id: pid } : m))
+                : [...prev, araMsg]));
             fetchObservability();
 
             // Refusal → Hermes / tool proposal (see escalateIfRefusal above).
@@ -1192,8 +1239,9 @@ export default function ARAConsole() {
             // unreachable — unlike Stella, which routes LLM-first. This keeps the
             // rich backend path primary while still answering when it's down.
             if (hasActiveLlm(integrations.llm)) {
+                let streamedId: string | null = null;
                 try {
-                    const llmRes = await callLlm({
+                    const llmReq = {
                         systemPrompt:
                             `You are ARA, the human-feeling chief-of-staff inside the Dwellium property-management app, ` +
                             `currently operating in "${modeToUse}" mode${jurisdictionToUse ? ` (jurisdiction: ${jurisdictionToUse})` : ''}. ` +
@@ -1205,26 +1253,51 @@ export default function ARAConsole() {
                         prompt: humanizeEnabled ? HUMANIZE_PREFIX + text : text,
                         maxTokens: 1024,
                         temperature: 0.4,
-                    }, integrations.llm);
-                    if (llmRes) {
+                    };
+                    // 046-A3: stream token-by-token into a placeholder when the pref is on.
+                    let llmText: string | null = null;
+                    if (streamTokens) {
+                        const placeholder = createChatMessage({ role: 'assistant', content: '', mode: modeToUse });
+                        streamedId = placeholder.id;
+                        setMessages(prev => [...prev, placeholder]);
+                        let sawAny = false;
+                        for await (const ev of streamLlm(llmReq, integrations.llm)) {
+                            sawAny = true;
+                            llmText = ev.text;
+                            setMessages(prev => prev.map(m => (m.id === streamedId ? { ...m, content: ev.text } : m)));
+                        }
+                        if (!sawAny) { // no provider → drop placeholder, fall to error surface
+                            setMessages(prev => prev.filter(m => m.id !== streamedId));
+                            llmText = null;
+                        }
+                    } else {
+                        llmText = (await callLlm(llmReq, integrations.llm))?.text ?? null;
+                    }
+                    if (llmText !== null) {
                         setActionStatus({
                             kind: 'success',
                             message: `Backend offline — answered via your ${integrations.llm.active} key.`,
                         });
-                        const hermesRec = recordAraChat(text, llmRes.text);
-                        if (isSubstantialOutput(llmRes.text)) recordArtifact({ content: llmRes.text, source: 'ara' }); // P12-3
-                        setMessages(prev => [...prev, createChatMessage({
+                        const hermesRec = recordAraChat(text, llmText);
+                        if (isSubstantialOutput(llmText)) recordArtifact({ content: llmText, source: 'ara' }); // P12-3
+                        const final = createChatMessage({
                             role: 'assistant',
-                            content: llmRes.text,
+                            content: llmText,
                             mode: modeToUse,
                             hermesRunId: hermesRec.id,
-                        })]);
-                        await escalateIfRefusal(llmRes.text);
+                        });
+                        const sid = streamedId;
+                        setMessages(prev => (sid
+                            ? prev.map(m => (m.id === sid ? { ...final, id: sid } : m))
+                            : [...prev, final]));
+                        await escalateIfRefusal(llmText);
                         return;
                     }
                 } catch (llmErr) {
                     // Fall through to the standard error surface below.
                     console.warn('[ARA] LLM fallback failed:', llmErr);
+                    const sid = streamedId;
+                    if (sid) setMessages(prev => prev.filter(m => m.id !== sid));
                 }
             }
 
@@ -1714,6 +1787,13 @@ export default function ARAConsole() {
         return () => window.removeEventListener(MORNING_BRIEF_EVENT, grab);
     }, []);
 
+    // ── 046-A2: "Today at a glance" — once per day, real data, silent when empty.
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        void runDailyGlance(user?.id ?? null, (content) =>
+            setMessages(prev => [...prev, createChatMessage({ role: 'assistant', content, mode: 'executive-assistant' })]));
+    }, [isAuthenticated, user?.id]);
+
     // ── A2: suggest "open in <widget>" handoffs from ARA's latest reply ───
     // ARA can answer about the inbox / files / docs; these chips let the user
     // jump to the referenced widget via the shared `dwellium:open-widget` bus.
@@ -2179,6 +2259,12 @@ export default function ARAConsole() {
                     <div className="ara-hint-tags">
                         <span className="ara-hint-tag">{currentMode.voice.split('—')[0]?.trim()}</span>
                         <span className="ara-hint-tag">{currentMode.logic.split('—')[0]?.trim()}</span>
+                    </div>
+                    {/* 046-A1: starter prompts — routeUtterance so "Open Strata" runs as a command */}
+                    <div className="ara-starter-row" role="group" aria-label="Suggested prompts">
+                        {starterPromptsFor(currentMode.id).map(p => (
+                            <button key={p} type="button" className="ara-action-btn ara-handoff-btn" onClick={() => void routeUtterance(p)}>{p}</button>
+                        ))}
                     </div>
                 </div>
             )}

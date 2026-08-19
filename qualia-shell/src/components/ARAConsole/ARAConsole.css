@@ -587,6 +587,15 @@
     justify-content: center;
 }
 
+/* 046-A1: per-persona starter prompts (reuses .ara-handoff-btn pill) */
+.ara-starter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
 /* [D25] Tag pills with glass */
 .ara-hint-tag {
     font-size: 10px;

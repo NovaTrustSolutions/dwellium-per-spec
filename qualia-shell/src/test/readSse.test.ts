@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { parseSseBlock, readSse } from '../lib/readSse';
+import { parseSseBlock, pumpSseBody, readSse } from '../lib/readSse';
 
 function streamOf(chunks: string[]): ReadableStream<Uint8Array> {
     const enc = new TextEncoder();
@@ -16,6 +16,14 @@ describe('parseSseBlock', () => {
         expect(parseSseBlock('event: inbox:new\ndata: {"id":1}')).toEqual({ event: 'inbox:new', data: '{"id":1}' });
         expect(parseSseBlock(': keep-alive\ndata: a\ndata: b')).toEqual({ event: 'message', data: 'a\nb' });
         expect(parseSseBlock(': only a comment')).toBeNull();
+    });
+});
+
+describe('pumpSseBody', () => {
+    it('splits events across chunks and normalises CRLF', async () => {
+        const seen: Array<{ event: string; data: string }> = [];
+        await pumpSseBody(streamOf(['event: a\r\nda', 'ta: 1\r\n\r\ndata: {"x":', '2}\n\n']), e => seen.push(e));
+        expect(seen).toEqual([{ event: 'a', data: '1' }, { event: 'message', data: '{"x":2}' }]);
     });
 });
 

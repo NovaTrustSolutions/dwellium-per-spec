@@ -19,6 +19,8 @@ export interface AraPrefs {
     showToolActivity: boolean;
     holdToTalk: boolean;
     introSeen: boolean;
+    /** Migration marker — bump when a saved pref must be re-defaulted once. */
+    prefsVersion?: number;
 }
 
 export const DEFAULT_ARA_PREFS: AraPrefs = {
@@ -26,6 +28,7 @@ export const DEFAULT_ARA_PREFS: AraPrefs = {
     showToolActivity: false,
     holdToTalk: false,
     introSeen: false,
+    prefsVersion: 2,
 };
 
 const STORAGE_KEY = 'dwellium-ara-prefs';
@@ -34,7 +37,16 @@ function read(): AraPrefs {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return DEFAULT_ARA_PREFS;
-        return { ...DEFAULT_ARA_PREFS, ...(JSON.parse(raw) as Partial<AraPrefs>) };
+        const saved = JSON.parse(raw) as Partial<AraPrefs>;
+        // v2 (046-A3): streamTokens flipped default OFF→ON when real SSE landed.
+        // Prefs saved before the flip carry streamTokens:false the user never
+        // chose — re-default ONCE; later explicit toggles keep prefsVersion 2.
+        if ((saved.prefsVersion ?? 1) < 2) {
+            saved.streamTokens = true;
+            saved.prefsVersion = 2;
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch { /* quota */ }
+        }
+        return { ...DEFAULT_ARA_PREFS, ...saved };
     } catch {
         return DEFAULT_ARA_PREFS;
     }

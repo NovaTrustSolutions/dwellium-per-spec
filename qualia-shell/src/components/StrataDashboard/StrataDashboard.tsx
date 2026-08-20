@@ -601,46 +601,21 @@ function OverviewContent() {
                     <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, color: '#22c55e', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <ArrowUpRight size={14} />Upcoming Move-Ins
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead><tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                            {['Tenant', 'Unit', 'Date'].map(h => <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>)}
-                        </tr></thead>
-                        <tbody>
-                            {[
-                                { tenant: 'Marcus Johnson', unit: 'Woodland 2826-4', date: '2026-03-15' },
-                                { tenant: 'Sarah Chen', unit: 'Riverwood D11', date: '2026-03-20' },
-                                { tenant: 'James Williams', unit: 'Ski Country B3', date: '2026-04-01' },
-                            ].map((r, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                    <td style={{ padding: '6px 10px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.tenant}</td>
-                                    <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{r.unit}</td>
-                                    <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{r.date}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    {/* ponytail: honest empty state — no move-in data source yet; wire to lease moveInDate when Leasing exposes it */}
+                    <div style={{ padding: '18px 14px', fontSize: 12, color: 'var(--text-secondary)' }}>
+                        No move-ins scheduled
+                        <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>Signed leases with move-in dates will appear here.</div>
+                    </div>
                 </div>
                 <div className="s-glass-card">
                     <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600, color: '#ef4444', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <ArrowDownRight size={14} />Upcoming Move-Outs
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                        <thead><tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                            {['Tenant', 'Unit', 'Date'].map(h => <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>)}
-                        </tr></thead>
-                        <tbody>
-                            {[
-                                { tenant: 'Fletcher A. Glass', unit: 'Riverwood D09', date: '2026-03-31' },
-                                { tenant: 'Eumeko K. Fuller-Barrow', unit: 'Woodland 2782-6', date: '2026-04-15' },
-                            ].map((r, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                    <td style={{ padding: '6px 10px', color: 'var(--text-primary)', fontWeight: 600 }}>{r.tenant}</td>
-                                    <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{r.unit}</td>
-                                    <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{r.date}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    {/* ponytail: honest empty state — no move-out data source yet; wire to lease notices when Leasing exposes them */}
+                    <div style={{ padding: '18px 14px', fontSize: 12, color: 'var(--text-secondary)' }}>
+                        No move-outs scheduled
+                        <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>Lease notices with move-out dates will appear here.</div>
+                    </div>
                 </div>
             </div>
 
@@ -654,7 +629,6 @@ function OverviewContent() {
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Circle size={10} aria-hidden style={{ color: '#ef4444', fill: '#ef4444', flexShrink: 0 }} /><strong style={{ color: '#ef4444' }}>12 delinquent</strong> accounts ($19,050)</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Circle size={10} aria-hidden style={{ color: '#f59e0b', fill: '#f59e0b', flexShrink: 0 }} /><strong style={{ color: '#f59e0b' }}>7 leases</strong> expiring in 90 days</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Circle size={10} aria-hidden style={{ color: '#22c55e', fill: '#22c55e', flexShrink: 0 }} /><strong style={{ color: '#22c55e' }}>87%</strong> rent collected this month</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Circle size={10} aria-hidden style={{ color: '#0ea5e9', fill: '#0ea5e9', flexShrink: 0 }} /><strong style={{ color: '#0ea5e9' }}>3 new move-ins</strong> scheduled</span>
                 </div>
             </div>
 

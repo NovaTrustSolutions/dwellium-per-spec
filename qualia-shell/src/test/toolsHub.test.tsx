@@ -45,12 +45,14 @@ describe('data', () => {
         expect(resolveToolStatus(t, () => true, { VITE_DOCUMENSO_URL: 'https://sign.example' })).toBe('ready');
         const wb = TOOLS.find(x => x.id === 'whiteboard')!; // no env gate
         expect(resolveToolStatus(wb, () => true, {})).toBe('ready');
-        const fv = TOOLS.find(x => x.id === 'dictation')!; // companion install, never a widget
-        expect(resolveToolStatus(fv, () => true, {})).toBe('coming-soon');
+        const fv = TOOLS.find(x => x.id === 'dictation')!; // companion install, never a widget — ready since its setup card shipped (plan 047 phase 1)
+        expect(fv.companion).toBe(true);
+        expect(resolveToolStatus(fv, () => true, {})).toBe('ready');
+        expect(resolveToolStatus(fv, () => false, {})).toBe('ready');
     });
-    it('today: whiteboard is ready (feat/047-whiteboard); the rest have no widget yet', () => {
+    it('today: whiteboard (registry) + dictation (companion) are ready; the rest are coming-soon', () => {
         for (const { tool, status } of toolStatuses({})) {
-            expect(status, tool.id).toBe(tool.id === 'whiteboard' ? 'ready' : 'coming-soon');
+            expect(status, tool.id).toBe(tool.id === 'whiteboard' || tool.companion ? 'ready' : 'coming-soon');
         }
     });
 });
@@ -61,12 +63,19 @@ describe('window', () => {
         expect(document.querySelectorAll('tbody tr')).toHaveLength(10);
         // whiteboard shipped on feat/047-whiteboard → its row is 'Open', not 'Coming soon'.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(9);
+        expect(comingSoon).toHaveLength(8); // whiteboard + dictation are ready
         comingSoon.forEach(b => expect(b).toBeDisabled());
         expect(document.querySelector('tr[data-tool="whiteboard"]')?.getAttribute('data-status')).toBe('ready');
+        expect(document.querySelector('tr[data-tool="dictation"]')?.getAttribute('data-status')).toBe('ready');
         expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Guide' })).toBeInTheDocument();
         expect(onboardingStore.getSnapshot().unlockedTiers).toEqual(['tools']);
+    });
+    it('ready companion (dictation) opens the Control Panel — its setup card lives there', () => {
+        render(<ToolsHub />);
+        const row = document.querySelector('tr[data-tool="dictation"]')!;
+        fireEvent.click(row.querySelector('button')!);
+        expect(opened).toEqual(['control-panel']);
     });
     it('help rows: shortcuts dispatches dwellium:open-shortcuts; Guide opens the guide widget', () => {
         const sheet = vi.fn();

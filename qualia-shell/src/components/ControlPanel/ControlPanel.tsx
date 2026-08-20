@@ -8,6 +8,7 @@ import { useLayout } from '../../context/LayoutContext';
 import { API_BASE } from '../../config';
 import { APP_VERSION } from '../../appVersion';
 import LlmIntegrationsSection from './LlmIntegrationsSection';
+import DictationSection from './DictationSection';
 import AccountsSection from './AccountsSection';
 import ActivationCenter from './ActivationCenter';
 import DataFolderSection from './DataFolderSection';
@@ -597,6 +598,9 @@ export default function ControlPanel() {
 
             {/* Per-user LLM + Supabase configuration — 2026-05-26 */}
             <LlmIntegrationsSection />
+
+            {/* Plan 047 — FluidVoice companion: install + vocabulary seed card */}
+            <DictationSection />
 
             {/* Plan 046 D1 — Demo workspace: per-user runtime flag that routes
                 Strata + Astra through the static data layer. Reload is the

@@ -48,8 +48,10 @@ describe('data', () => {
         const fv = TOOLS.find(x => x.id === 'dictation')!; // companion install, never a widget
         expect(resolveToolStatus(fv, () => true, {})).toBe('coming-soon');
     });
-    it('today: none is ready (no tool widget registered yet)', () => {
-        expect(toolStatuses({}).every(r => r.status === 'coming-soon')).toBe(true);
+    it('today: whiteboard is ready (feat/047-whiteboard); the rest have no widget yet', () => {
+        for (const { tool, status } of toolStatuses({})) {
+            expect(status, tool.id).toBe(tool.id === 'whiteboard' ? 'ready' : 'coming-soon');
+        }
     });
 });
 
@@ -57,9 +59,11 @@ describe('window', () => {
     it('renders 10 rows, disables coming-soon, shows help rows, unlocks the tools tier', () => {
         render(<ToolsHub />);
         expect(document.querySelectorAll('tbody tr')).toHaveLength(10);
+        // whiteboard shipped on feat/047-whiteboard → its row is 'Open', not 'Coming soon'.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(10);
+        expect(comingSoon).toHaveLength(9);
         comingSoon.forEach(b => expect(b).toBeDisabled());
+        expect(document.querySelector('tr[data-tool="whiteboard"]')?.getAttribute('data-status')).toBe('ready');
         expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Guide' })).toBeInTheDocument();
         expect(onboardingStore.getSnapshot().unlockedTiers).toEqual(['tools']);

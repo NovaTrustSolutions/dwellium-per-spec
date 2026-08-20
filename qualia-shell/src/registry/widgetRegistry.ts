@@ -662,6 +662,18 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         component: lazyWithReload(() => import('../components/Scribe/Scribe')),
         category: 'tools',
     },
+    // Plan 047 phase 1 — Excalidraw (MIT) whiteboard, native React widget.
+    'whiteboard': {
+        id: 'whiteboard',
+        label: 'Whiteboard',
+        description: 'Hand-drawn whiteboard for floor plans, maintenance markup and doc diagrams.',
+        tip: { tryThis: 'Draw a quick floor plan of one unit — it saves as you go.', related: ['scribe', 'strata-dashboard'] },
+        icon: 'pen-tool',
+        component: lazyWithReload(() => import('../components/Whiteboard/Whiteboard')),
+        category: 'tools',
+        minWidth: 720,
+        minHeight: 480,
+    },
     'file-explorer': {
         id: 'file-explorer',
         label: 'File Explorer',

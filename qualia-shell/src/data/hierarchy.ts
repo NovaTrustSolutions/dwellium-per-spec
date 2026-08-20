@@ -19,6 +19,8 @@ export const defaultDockItems: DockItem[] = [
    // F-1 Universal Shell — Phase 3-E Option C ratified 2026-04-16. [CT-3H-HANDOFF-M4Q7]
    { id: 'dock-universal-shell', label: 'Universal Shell', icon: 'layout-grid', component: 'universal-shell', pinned: true, group: 'Property Management' },
    { id: 'dock-trello', label: 'Trello', icon: 'layout-list', component: 'trello-board', pinned: true, group: 'Property Management' },
+   // Plan 047 phase 1 — Excalidraw whiteboard (floor plans, maintenance markup).
+   { id: 'dock-whiteboard', label: 'Whiteboard', icon: 'pen-tool', component: 'whiteboard', pinned: true, group: 'Property Management' },
    { id: 'dock-task-board', label: 'Task Board', icon: 'layout-grid', component: 'task-board', pinned: true, group: 'Property Management' },
    { id: 'dock-inbox-zero', label: 'Inbox Zero', icon: 'mail-open', component: 'inbox', pinned: true, group: 'Property Management' },
    // API Keys (2026-06-15): per-user write-only LLM key panel — placed directly below Inbox Zero.

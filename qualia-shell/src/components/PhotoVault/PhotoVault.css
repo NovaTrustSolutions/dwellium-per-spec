@@ -1,0 +1,108 @@
+/* PhotoVault — plan 047 phase 2 (Immich). Theme tokens only; no new palette. */
+
+.pv {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.pv__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex: 0 0 auto;
+}
+
+.pv__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.pv__url {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.pv__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.pv__link:hover { text-decoration: underline; }
+
+.pv__btn {
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pv__btn:hover { background: rgba(255, 255, 255, 0.09); }
+
+.pv__btn--ghost { padding: 6px; color: var(--text-secondary); }
+
+.pv__frame-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+}
+
+.pv__frame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #fff;
+}
+
+.pv__empty {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    max-width: 420px;
+    padding: 32px 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.pv__empty h3 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.pv__empty p {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+}
+
+.pv__empty code {
+    font-size: 11.5px;
+}
+
+.pv__actions {
+    display: flex;
+    gap: 8px;
+}

@@ -798,6 +798,103 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 400,
         category: 'tools',
     },
+    // ═══════════════════════════════════════
+    //  PLAN 047 — External tools (phase 2 launcher/embed trio,
+    //  zero-cost addendum 2026-08-20: hosted free tiers, no Tools VM)
+    // ═══════════════════════════════════════
+    // Scheduling (hosted cal.com free plan). Registering flips the Tools-hub
+    // status to `needs-setup`; `ready` once VITE_CALCOM_URL (Andy's booking
+    // page) is set — the widget shows a connect card until then.
+    'scheduler': {
+        id: 'scheduler',
+        label: 'Scheduling',
+        description: 'Showings, maintenance windows and vendor visits — your cal.com booking page inside Dwellium.',
+        tip: { tryThis: 'Book a test slot on your own page, then check it landed in Google Calendar.', related: ['strata-dashboard', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'calendar-days',
+        component: lazyWithReload(() => import('../components/Scheduling/Scheduling')),
+        minWidth: 520,
+        minHeight: 600,
+        category: 'tools',
+    },
+    // Design Studio (Penpot free cloud, MPL-2.0). Launcher-only: the cloud
+    // sends X-Frame-Options SAMEORIGIN, so no iframe until the phase-3
+    // self-host. No env gate — `ready` as soon as this entry exists.
+    'penpot-studio': {
+        id: 'penpot-studio',
+        label: 'Design Studio',
+        description: 'Flyers, notices and a Dwellium design system in Penpot — opens in a new tab.',
+        tip: { tryThis: 'Open Penpot and rough out a listing flyer on a blank board.', related: ['whiteboard', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'palette',
+        component: lazyWithReload(() => import('../components/PenpotStudio/PenpotStudio')),
+        minWidth: 480,
+        minHeight: 400,
+        category: 'filing',
+    },
+    // Remote Support (RustDesk, AGPL stock clients). Launcher card: download
+    // links + the relay config from VITE_RUSTDESK_RELAY (`host:port,key`).
+    // Tools hub: `needs-setup` until that env is set (community relays until then).
+    'remote-support': {
+        id: 'remote-support',
+        label: 'Remote Support',
+        description: 'RustDesk remote control for office PCs, kiosks and resident tech support.',
+        tip: { tryThis: 'Install RustDesk on the office PC and copy the relay config into it.', related: ['two-brains', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'monitor',
+        component: lazyWithReload(() => import('../components/RemoteSupport/RemoteSupport')),
+        minWidth: 480,
+        minHeight: 360,
+        category: 'tools',
+    },
+    // ═══════════════════════════════════════
+    // Photo Vault (Immich, AGPL unmodified image) — zero-cost addendum: Immich
+    // runs on the always-on office Mac behind Tailscale; the widget iframes
+    // VITE_IMMICH_URL (`ts.net` HTTPS) with an "Open ↗" fallback. Registering
+    // this entry flips the Tools-hub status to `needs-setup`; it turns `ready`
+    // automatically once VITE_IMMICH_URL is set (data/toolsHub.ts::resolveToolStatus).
+    'photo-vault': {
+        id: 'photo-vault',
+        label: 'Photo Vault',
+        description: 'Inspection, move-in/out and before/after maintenance photos, searchable by unit.',
+        tip: { tryThis: 'Snap move-in condition photos and file them in a unit album.', related: ['strata-dashboard', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'image',
+        component: lazyWithReload(() => import('../components/PhotoVault/PhotoVault')),
+        minWidth: 520,
+        minHeight: 420,
+        category: 'filing',
+    },
+    // ═══════════════════════════════════════
+    // Broadcasts (listmonk, AGPL via API — free e2-micro, tools/listmonk/README).
+    // Registering flips the Tools-hub status to `needs-setup`; `ready` once
+    // VITE_LISTMONK_URL is set. The widget keys on the proxy's 503 until then.
+    'broadcasts': {
+        id: 'broadcasts',
+        label: 'Broadcasts',
+        description: 'Resident, owner and vendor mailing lists — draft notices and campaigns via listmonk.',
+        tip: { tryThis: 'Pick an audience and a template, then create a draft notice.', related: ['inbox', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'megaphone',
+        component: lazyWithReload(() => import('../components/Broadcasts/Broadcasts')),
+        minWidth: 720,
+        minHeight: 480,
+        category: 'tools',
+    },
+    // Links & QR (Dub hosted API, free plan). Same flip: `needs-setup` on
+    // registration, `ready` once VITE_DUB_URL is set (data/toolsHub.ts).
+    'short-links': {
+        id: 'short-links',
+        label: 'Links & QR',
+        description: 'Branded short links and QR codes with click counts, minted through the Dub API.',
+        tip: { tryThis: 'Shorten a Tenant Portal URL, then print its QR for a unit door.', related: ['broadcasts', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'qr-code',
+        component: lazyWithReload(() => import('../components/ShortLinks/ShortLinks')),
+        minWidth: 520,
+        minHeight: 420,
+        category: 'tools',
+    },
 };
 
 // ═══════════════════════════════════════════════

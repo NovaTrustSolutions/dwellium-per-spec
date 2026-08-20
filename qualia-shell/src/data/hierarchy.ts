@@ -29,6 +29,11 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-tenant-portal', label: 'Tenant Portal', icon: 'home', component: 'tenant-portal-mgmt', pinned: true, group: 'Property Management' },
    // Plan 047 phase 1: E-Sign (Documenso). The widget shows a needs-setup card until the backend DOCUMENSO_* env lands.
    { id: 'dock-esign', label: 'E-Sign', icon: 'pen-line', component: 'esign', pinned: true, group: 'Property Management' },
+   // Plan 047 phase 2: Scheduling (hosted cal.com free plan; needs-setup card until VITE_CALCOM_URL is set).
+   { id: 'dock-scheduler', label: 'Scheduling', icon: 'calendar-days', component: 'scheduler', pinned: true, group: 'Property Management' },
+   // Plan 047 phase 2 — listmonk broadcasts + Dub short links (backend proxies).
+   { id: 'dock-broadcasts', label: 'Broadcasts', icon: 'megaphone', component: 'broadcasts', pinned: true, group: 'Property Management' },
+   { id: 'dock-short-links', label: 'Links & QR', icon: 'qr-code', component: 'short-links', pinned: true, group: 'Property Management' },
    // ── AI Tools ──
    { id: 'dock-agent-lab', label: 'Agent Lab', icon: 'bot', component: 'agent-lab', pinned: true, group: 'AI Tools' },
    { id: 'dock-thought-weaver', label: 'Thought Weaver', icon: 'brain-circuit', component: 'thought-weaver', pinned: true, group: 'AI Tools' },
@@ -71,10 +76,17 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-file-explorer', label: 'File Explorer', icon: 'folder-tree', component: 'file-explorer', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-workspace', label: 'Workspace', icon: 'layers', component: 'workspace', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-cloud-browser', label: 'Cloud Browser', icon: 'globe', component: 'cloud-browser', pinned: true, group: 'Filing Cabinet' },
+   // Plan 047 phase 2: Photo Vault (Immich on the office Mac via Tailscale). Needs-setup card until VITE_IMMICH_URL lands.
+   { id: 'dock-photo-vault', label: 'Photo Vault', icon: 'image', component: 'photo-vault', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-docs', label: 'Docs', icon: 'file-text', component: 'doc-viewer', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-pdf-gear', label: 'PDF Gear', icon: 'file-stack', component: 'pdf-gear', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-terminal', label: 'Terminal', icon: 'terminal', component: 'terminal', pinned: true, group: 'Filing Cabinet' },
    // Plan 047 onboarding: Tools hub + Guide live inside Filing Cabinet (G11: no renames).
    { id: 'dock-tools-hub', label: 'Tools hub', icon: 'layout-grid', component: 'tools-hub', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-guide', label: 'Guide', icon: 'book-open', component: 'guide', pinned: true, group: 'Filing Cabinet' },
+   // Plan 047 phase 2 launchers (zero-cost addendum): plan L462 puts both in the
+   // Filing Cabinet/Tools group; unpinned so this already-large group doesn't
+   // grow its default face — both stay reachable via Tools hub + ⌘K.
+   { id: 'dock-penpot', label: 'Design Studio', icon: 'palette', component: 'penpot-studio', pinned: false, group: 'Filing Cabinet' },
+   { id: 'dock-remote-support', label: 'Remote Support', icon: 'monitor', component: 'remote-support', pinned: false, group: 'Filing Cabinet' },
 ];

@@ -1,0 +1,123 @@
+/* ShortLinks — plan 047 phase 2 (Dub). Theme tokens only; ESign.css shape. */
+
+.short-links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    padding: 16px;
+    overflow: auto;
+}
+
+.short-links__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.short-links__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.short-links__btn {
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.short-links__btn:hover { background: rgba(255, 255, 255, 0.09); }
+.short-links__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.short-links__btn--ghost { padding: 6px; color: var(--text-secondary); }
+
+.short-links__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: auto;
+    max-width: 360px;
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.short-links__empty h3 { margin: 0; font-size: 14px; color: var(--text-primary); }
+.short-links__empty p { margin: 0; font-size: 12px; line-height: 1.5; }
+
+.short-links__muted { color: var(--text-tertiary); font-size: 12px; }
+
+.short-links__composer {
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.short-links__form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.short-links__input {
+    flex: 2 1 220px;
+    min-width: 160px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.short-links__input--key { flex: 1 1 120px; min-width: 100px; }
+
+.short-links__notice { margin: 8px 0 0; font-size: 12px; color: var(--text-secondary); }
+
+.short-links__table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.short-links__table th {
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.short-links__table td {
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: top;
+}
+
+.short-links__short { font-weight: 600; word-break: break-all; }
+
+.short-links__dest {
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+.short-links__actions { display: flex; align-items: flex-start; gap: 4px; }
+
+.short-links__qr {
+    display: block;
+    border-radius: 6px;
+    background: #fff;
+    padding: 4px;
+}

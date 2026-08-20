@@ -50,9 +50,12 @@ describe('data', () => {
         expect(resolveToolStatus(fv, () => true, {})).toBe('ready');
         expect(resolveToolStatus(fv, () => false, {})).toBe('ready');
     });
-    it('today: whiteboard + dictation ready, esign needs-setup, the rest coming-soon', () => {
+    it('today: whiteboard + dictation ready; esign + broadcasts + links needs-setup; the rest coming-soon', () => {
         for (const { tool, status } of toolStatuses({})) {
-            const want = tool.id === 'whiteboard' || tool.companion ? 'ready' : tool.id === 'esign' ? 'needs-setup' : 'coming-soon';
+            // Phase 2: broadcasts (listmonk) + links (Dub) widgets registered → needs-setup until env lands.
+            const want = tool.id === 'whiteboard' || tool.companion
+                ? 'ready'
+                : ['esign', 'broadcasts', 'links'].includes(tool.id) ? 'needs-setup' : 'coming-soon';
             expect(status, tool.id).toBe(want);
         }
     });
@@ -63,18 +66,21 @@ describe('data', () => {
 });
 
 describe('window', () => {
-    it('renders 10 rows, disables coming-soon, offers Set up for esign, shows help rows, unlocks the tools tier', () => {
+    it('renders 10 rows, disables coming-soon, offers Set up for esign/broadcasts/links, shows help rows, unlocks the tools tier', () => {
         render(<ToolsHub />);
         expect(document.querySelectorAll('tbody tr')).toHaveLength(10);
-        // Phase 1: whiteboard + dictation ready, esign needs-setup ("Set up"), 7 still coming-soon.
+        // Phase 2: whiteboard + dictation ready; esign + broadcasts + links needs-setup ("Set up"); 5 still coming-soon.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(7);
+        expect(comingSoon).toHaveLength(5);
         comingSoon.forEach(b => expect(b).toBeDisabled());
         expect(document.querySelector('tr[data-tool="whiteboard"]')?.getAttribute('data-status')).toBe('ready');
         expect(document.querySelector('tr[data-tool="dictation"]')?.getAttribute('data-status')).toBe('ready');
-        const setUp = screen.getByRole('button', { name: 'Set up' });
-        expect(setUp).toBeEnabled();
-        fireEvent.click(setUp); // needs-setup → opens the Guide's setup notes
+        expect(document.querySelector('tr[data-tool="broadcasts"]')?.getAttribute('data-status')).toBe('needs-setup');
+        expect(document.querySelector('tr[data-tool="links"]')?.getAttribute('data-status')).toBe('needs-setup');
+        const setUps = screen.getAllByRole('button', { name: 'Set up' });
+        expect(setUps).toHaveLength(3); // esign + broadcasts + links, in TOOLS order
+        setUps.forEach(b => expect(b).toBeEnabled());
+        fireEvent.click(setUps[0]); // needs-setup → opens the Guide's setup notes
         expect(opened).toEqual(['guide']);
         expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Guide' })).toBeInTheDocument();

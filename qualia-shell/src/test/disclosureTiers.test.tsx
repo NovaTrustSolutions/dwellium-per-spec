@@ -104,7 +104,7 @@ describe('labs tier is hidden from the sidebar', () => {
 });
 
 describe('Show more', () => {
-    it('AI Tools previews 6 + "Show N more"; click reveals all + "Show less"; Property Management (7 since 047 phase 1) gets its own row', () => {
+    it('AI Tools previews 6 + "Show N more"; click reveals all + "Show less"; Property Management (9 since 047 phase 2) gets its own row', () => {
         render(<Sidebar />);
         act(() => setSidebarGroups(() => new Set(['Property Management', 'AI Tools', 'Filing Cabinet'])));
         const aiItems = defaultDockItems.filter(d => d.group === 'AI Tools' && !['ara-console'].includes(d.component) && !hiddenWidgetsStore.getSnapshot().includes(d.component) && tierOf(d.component) !== 'labs');
@@ -114,10 +114,11 @@ describe('Show more', () => {
         fireEvent.click(more);
         expect(document.querySelectorAll('.sidebar__widget-group-children')[1].querySelectorAll('.sidebar-widget:not(.sidebar-widget--more)')).toHaveLength(aiItems.length);
         expect(screen.getByText('Show less')).toBeInTheDocument();
-        // Property Management gained Whiteboard + E-Sign (047 phase 1) → 7 non-pinned items → its own row
+        // Property Management gained Whiteboard + E-Sign (047 phase 1) then
+        // Broadcasts + Links & QR (047 phase 2) → 9 non-pinned items → its own row
         const pm = document.querySelectorAll('.sidebar__widget-group-children')[0];
         expect(pm.querySelector('.sidebar-widget--more')).not.toBeNull();
-        expect(screen.getByText('Show 1 more')).toBeInTheDocument();
+        expect(screen.getByText('Show 3 more')).toBeInTheDocument();
         // Not persisted
         expect(localStorage.getItem('dwellium-sidebar-showall')).toBeNull();
     });

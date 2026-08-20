@@ -1,0 +1,772 @@
+diff --git a/ai-dashboard369-file-manager/deploy/cloud-run.sh b/ai-dashboard369-file-manager/deploy/cloud-run.sh
+index 10f3832..bcc3318 100755
+--- a/ai-dashboard369-file-manager/deploy/cloud-run.sh
++++ b/ai-dashboard369-file-manager/deploy/cloud-run.sh
+@@ -113,6 +113,8 @@ else
+     upsert_secret_from_env GOOGLE_OAUTH_CLIENT_SECRET dwellium-google-oauth-client-secret
+     upsert_secret_from_env DOCUMENSO_API_KEY dwellium-documenso-api-key
+     upsert_secret_from_env DOCUMENSO_WEBHOOK_SECRET dwellium-documenso-webhook-secret
++    upsert_secret_from_env LISTMONK_TOKEN dwellium-listmonk-token
++    upsert_secret_from_env DUB_API_KEY dwellium-dub-api-key
+ fi
+ 
+ env_file="$(mktemp)"
+@@ -157,6 +159,20 @@ if [[ -n "${GOOGLE_OAUTH_REDIRECT_URI:-}" ]]; then
+     printf 'GOOGLE_OAUTH_REDIRECT_URI: "%s"\n' "${GOOGLE_OAUTH_REDIRECT_URI}" >> "${env_file}"
+ fi
+ 
++# plan 047 p2 — listmonk + Dub non-secret env (URL/user/workspace); tokens ride
++# --set-secrets above. Unset vars fall through to the preserve-unknowns merge.
++if [[ -n "${LISTMONK_URL:-}" ]]; then
++    printf 'LISTMONK_URL: "%s"\n' "${LISTMONK_URL}" >> "${env_file}"
++fi
++
++if [[ -n "${LISTMONK_USER:-}" ]]; then
++    printf 'LISTMONK_USER: "%s"\n' "${LISTMONK_USER}" >> "${env_file}"
++fi
++
++if [[ -n "${DUB_WORKSPACE:-}" ]]; then
++    printf 'DUB_WORKSPACE: "%s"\n' "${DUB_WORKSPACE}" >> "${env_file}"
++fi
++
+ # Preserve-unknowns merge: the live service's literal env vars are the source of
+ # truth for anything this script doesn't already know about. `gcloud run deploy
+ # --env-vars-file` REPLACES the entire literal-env set, so any var set by hand
+diff --git a/ai-dashboard369-file-manager/src/app.ts b/ai-dashboard369-file-manager/src/app.ts
+index 3ed67af..755acd7 100644
+--- a/ai-dashboard369-file-manager/src/app.ts
++++ b/ai-dashboard369-file-manager/src/app.ts
+@@ -66,6 +66,8 @@ import fileExplorerRoutes from './routes/fileExplorerRoutes';
+ import idocsRoutes from './routes/idocsRoutes';
+ import briefRoutes from './routes/briefRoutes';
+ import esignRoutes from './routes/esignRoutes';
++import broadcastRoutes from './routes/broadcastRoutes';
++import linkRoutes from './routes/linkRoutes';
+ import { seedDefaultUsers } from './services/authService';
+ import { seedRecurringTasks, startScheduler } from './services/agentScheduler';
+ import { seedLessons } from './services/lessonsLearnedService';
+@@ -423,6 +425,8 @@ app.use('/api/calendar', createAuditMiddleware('/api/calendar'), calendarRoutes)
+ app.use('/api/terminal', createAuditMiddleware('/api/terminal'), terminalRoutes);
+ app.use('/api/cloud-browser', createAuditMiddleware('/api/cloud-browser'), cloudBrowserRoutes);
+ app.use('/api/esign', authenticate, esignRoutes); // plan 047 — Documenso e-sign proxy (503 until DOCUMENSO_* env is set)
++app.use('/api/broadcasts', createAuditMiddleware('/api/broadcasts'), authenticate, broadcastRoutes); // plan 047 p2 — listmonk proxy (503 until LISTMONK_* env is set); audit = who-sent-what log
++app.use('/api/links', createAuditMiddleware('/api/links'), authenticate, linkRoutes); // plan 047 p2 — Dub short-links proxy (503 until DUB_API_KEY is set)
+ 
+ // ── Proprietary Features (5 features AppFolio doesn't have) ──
+ app.use('/api/lease-coach', leaseCoachRoutes);
+diff --git a/ai-dashboard369-file-manager/src/routes/broadcastRoutes.ts b/ai-dashboard369-file-manager/src/routes/broadcastRoutes.ts
+new file mode 100644
+index 0000000..a9bf9be
+--- /dev/null
++++ b/ai-dashboard369-file-manager/src/routes/broadcastRoutes.ts
+@@ -0,0 +1,171 @@
++/**
++ * Broadcast Routes — listmonk backend proxy (plan 047, phase 2).
++ *
++ * Mounted at /api/broadcasts behind `authenticate` (app.ts). The browser never
++ * sees a listmonk credential: LISTMONK_URL + LISTMONK_USER + LISTMONK_TOKEN
++ * live here only (the listmonk itself runs on the free e2-micro —
++ * tools/listmonk/README.md in the frontend repo). While that env is unset,
++ * every route answers 503 with `needsSetup: true` so the frontend renders its
++ * "needs setup" card — never a crash.
++ *
++ *   GET  /api/broadcasts/lists                mailing lists (audiences)
++ *   GET  /api/broadcasts/templates            campaign templates
++ *   GET  /api/broadcasts/campaigns            recent campaigns with status
++ *   POST /api/broadcasts/campaigns            create a DRAFT campaign from a template + audience
++ *   POST /api/broadcasts/campaigns/:id/test   send the draft to test addresses
++ *
++ * All routes are management-gated. Only fixed listmonk paths are proxied —
++ * never a caller-supplied URL. Drafts are created, never auto-started;
++ * starting/scheduling a real send stays in the listmonk admin for now.
++ * listmonk auth: `Authorization: token api_user:token` (listmonk.app/docs/apis/apis/).
++ */
++import { Router, Request, Response } from 'express';
++import { requireRole } from '../services/authMiddleware';
++
++const router = Router();
++
++interface ListmonkConfig { baseUrl: string; user: string; token: string; }
++
++function listmonkConfig(): ListmonkConfig | null {
++    const baseUrl = process.env.LISTMONK_URL;
++    const user = process.env.LISTMONK_USER;
++    const token = process.env.LISTMONK_TOKEN;
++    if (!baseUrl || !user || !token) return null;
++    return { baseUrl: baseUrl.replace(/\/+$/, ''), user, token };
++}
++
++/** 503 body the frontend keys its needs-setup empty state on. */
++const NOT_CONFIGURED = {
++    success: false,
++    error: 'listmonk is not configured — set LISTMONK_URL, LISTMONK_USER and LISTMONK_TOKEN on the backend',
++    needsSetup: true,
++} as const;
++
++function listmonkFetch(cfg: ListmonkConfig, path: string, init?: RequestInit): Promise<globalThis.Response> {
++    return fetch(`${cfg.baseUrl}/api${path}`, {
++        ...init,
++        headers: {
++            Authorization: `token ${cfg.user}:${cfg.token}`,
++            'Content-Type': 'application/json',
++            ...((init?.headers as Record<string, string>) || {}),
++        },
++    });
++}
++
++/** listmonk paginated endpoints answer {data:{results:[…]}}; flat ones {data:[…]}. */
++function resultsOf(body: unknown): unknown[] {
++    const data = (body as Record<string, any> | null)?.data;
++    if (Array.isArray(data)) return data;
++    if (Array.isArray(data?.results)) return data.results;
++    return [];
++}
++
++router.get('/lists', requireRole('management'), async (_req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await listmonkFetch(cfg, '/lists?page=1&per_page=100');
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk lists failed (${upstream.status})` }); return; }
++        res.json({ success: true, data: resultsOf(await upstream.json().catch(() => null)) });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++router.get('/templates', requireRole('management'), async (_req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await listmonkFetch(cfg, '/templates');
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk templates failed (${upstream.status})` }); return; }
++        res.json({ success: true, data: resultsOf(await upstream.json().catch(() => null)) });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++router.get('/campaigns', requireRole('management'), async (_req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await listmonkFetch(cfg, '/campaigns?page=1&per_page=50&order_by=created_at&order=DESC');
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk campaigns failed (${upstream.status})` }); return; }
++        res.json({ success: true, data: resultsOf(await upstream.json().catch(() => null)) });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** Create a DRAFT campaign (never started here) from a template + audience. */
++router.post('/campaigns', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as {
++        name?: string; subject?: string; lists?: number[]; template_id?: number; body?: string; content_type?: string;
++    };
++    const lists = Array.isArray(body.lists) ? body.lists.filter(n => Number.isInteger(n)) : [];
++    const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
++    if (!subject || lists.length === 0) {
++        res.status(400).json({ success: false, error: 'subject and at least one list id are required' });
++        return;
++    }
++    try {
++        const upstream = await listmonkFetch(cfg, '/campaigns', {
++            method: 'POST',
++            body: JSON.stringify({
++                name: (typeof body.name === 'string' && body.name.trim()) || subject,
++                subject,
++                lists,
++                type: 'regular',
++                content_type: typeof body.content_type === 'string' ? body.content_type : 'richtext',
++                body: typeof body.body === 'string' ? body.body : '',
++                ...(Number.isInteger(body.template_id) ? { template_id: body.template_id } : {}),
++            }),
++        });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk campaign create failed (${upstream.status})` }); return; }
++        const created = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        res.status(201).json({ success: true, data: created.data ?? created });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** Send a draft to test addresses (listmonk POST /campaigns/:id/test wants the
++ *  campaign fields again alongside `subscribers` — re-read them upstream). */
++router.post('/campaigns/:id/test', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const id = Number.parseInt(req.params.id, 10);
++    if (!Number.isInteger(id)) { res.status(400).json({ success: false, error: 'Numeric campaign id required' }); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as { subscribers?: string[] };
++    const subscribers = (Array.isArray(body.subscribers) ? body.subscribers : [])
++        .filter(s => typeof s === 'string' && s.includes('@'));
++    if (subscribers.length === 0) {
++        res.status(400).json({ success: false, error: 'subscribers[] with at least one email is required' });
++        return;
++    }
++    try {
++        const getRes = await listmonkFetch(cfg, `/campaigns/${id}`);
++        if (!getRes.ok) { res.status(502).json({ success: false, error: `listmonk campaign fetch failed (${getRes.status})` }); return; }
++        const campaign = ((await getRes.json().catch(() => ({}))) as Record<string, any>).data ?? {};
++        const testRes = await listmonkFetch(cfg, `/campaigns/${id}/test`, {
++            method: 'POST',
++            body: JSON.stringify({
++                name: campaign.name,
++                subject: campaign.subject,
++                lists: Array.isArray(campaign.lists) ? campaign.lists.map((l: Record<string, any>) => l?.id ?? l) : [],
++                type: campaign.type || 'regular',
++                content_type: campaign.content_type || 'richtext',
++                body: campaign.body || '',
++                ...(campaign.template_id ? { template_id: campaign.template_id } : {}),
++                subscribers,
++            }),
++        });
++        if (!testRes.ok) { res.status(502).json({ success: false, error: `listmonk test send failed (${testRes.status})` }); return; }
++        res.json({ success: true, data: { sent: subscribers } });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++export default router;
+diff --git a/ai-dashboard369-file-manager/src/routes/linkRoutes.ts b/ai-dashboard369-file-manager/src/routes/linkRoutes.ts
+new file mode 100644
+index 0000000..46571cb
+--- /dev/null
++++ b/ai-dashboard369-file-manager/src/routes/linkRoutes.ts
+@@ -0,0 +1,155 @@
++/**
++ * Link Routes — Dub short-link backend proxy (plan 047, phase 2).
++ *
++ * Mounted at /api/links behind `authenticate` (app.ts). The browser never sees
++ * the Dub credential: DUB_API_KEY lives here only (dub.co free plan per the
++ * plan-047 addendum — ~25 links/mo, QR + API included). While the key is
++ * unset, every route answers 503 with `needsSetup: true`.
++ *
++ *   POST /api/links     create a short link (optional custom key) — returns shortLink + qrCode URL
++ *   GET  /api/links     list links with click counts
++ *
++ * Management-gated. Every created link is UPSERTed into the `external_links`
++ * SQLite table (dwelliumSchema.ts) keyed by UNIQUE(tool, external_type,
++ * external_id) — rows are never deleted (archive = soft flag in metadata).
++ * Dub API: Bearer auth against https://api.dub.co; QR PNG is served
++ * unauthenticated at GET {base}/qr?url=… (dub.co/docs/api-reference).
++ */
++import { Router, Request, Response } from 'express';
++import { randomUUID } from 'crypto';
++import { requireRole } from '../services/authMiddleware';
++import { database as db } from '../services/database';
++
++const router = Router();
++
++interface DubConfig { apiBase: string; apiKey: string; workspace?: string; }
++
++function dubConfig(): DubConfig | null {
++    const apiKey = process.env.DUB_API_KEY;
++    if (!apiKey) return null;
++    return {
++        apiBase: (process.env.DUB_API_BASE || 'https://api.dub.co').replace(/\/+$/, ''),
++        apiKey,
++        workspace: process.env.DUB_WORKSPACE || undefined,
++    };
++}
++
++/** 503 body the frontend keys its needs-setup empty state on. */
++const NOT_CONFIGURED = {
++    success: false,
++    error: 'Dub is not configured — set DUB_API_KEY (and optionally DUB_WORKSPACE) on the backend',
++    needsSetup: true,
++} as const;
++
++function dubFetch(cfg: DubConfig, path: string, init?: RequestInit): Promise<globalThis.Response> {
++    // Tokens are workspace-scoped; pass workspaceId explicitly when configured.
++    const sep = path.includes('?') ? '&' : '?';
++    const url = `${cfg.apiBase}${path}${cfg.workspace ? `${sep}workspaceId=${encodeURIComponent(cfg.workspace)}` : ''}`;
++    return fetch(url, {
++        ...init,
++        headers: {
++            Authorization: `Bearer ${cfg.apiKey}`,
++            'Content-Type': 'application/json',
++            ...((init?.headers as Record<string, string>) || {}),
++        },
++    });
++}
++
++interface LinkRow {
++    id: string;
++    shortLink: string;
++    url: string;
++    key: string;
++    clicks: number;
++    qrCode: string;
++    entityType?: string | null;
++    entityId?: string | null;
++}
++
++function toLinkRow(cfg: DubConfig, raw: Record<string, any>): LinkRow {
++    const shortLink = raw.shortLink || '';
++    return {
++        id: String(raw.id ?? ''),
++        shortLink,
++        url: raw.url || '',
++        key: raw.key || '',
++        clicks: typeof raw.clicks === 'number' ? raw.clicks : 0,
++        // Dub returns a hosted qrCode URL on the link object; fall back to the
++        // unauthenticated QR endpoint for older shapes.
++        qrCode: raw.qrCode || `${cfg.apiBase}/qr?url=${encodeURIComponent(shortLink)}`,
++    };
++}
++
++const ENTITY_TYPES = new Set(['property', 'unit', 'resident', 'lease', 'vendor', 'workitem', 'doc']);
++
++/** UPSERT-only mirror into external_links — never DELETE (repo data rule). */
++function upsertExternalLink(row: LinkRow, entityType?: string, entityId?: string): void {
++    db.prepare(`
++        INSERT INTO external_links (id, tool, entity_type, entity_id, external_type, external_id, external_url, metadata)
++        VALUES (?, 'dub', ?, ?, 'link', ?, ?, ?)
++        ON CONFLICT(tool, external_type, external_id) DO UPDATE SET
++            external_url = excluded.external_url,
++            entity_type = COALESCE(excluded.entity_type, external_links.entity_type),
++            entity_id = COALESCE(excluded.entity_id, external_links.entity_id),
++            metadata = excluded.metadata,
++            updated_at = datetime('now')
++    `).run(
++        randomUUID(),
++        entityType && ENTITY_TYPES.has(entityType) ? entityType : null,
++        entityId || null,
++        row.id,
++        row.shortLink,
++        JSON.stringify({ url: row.url, key: row.key, clicks: row.clicks, qrCode: row.qrCode }),
++    );
++}
++
++router.post('/', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as {
++        url?: string; key?: string; entityType?: string; entityId?: string;
++    };
++    const url = typeof body.url === 'string' ? body.url.trim() : '';
++    if (!/^https?:\/\/\S+$/i.test(url)) {
++        res.status(400).json({ success: false, error: 'A valid http(s) url is required' });
++        return;
++    }
++    try {
++        const upstream = await dubFetch(cfg, '/links', {
++            method: 'POST',
++            body: JSON.stringify({
++                url,
++                ...(typeof body.key === 'string' && body.key.trim() ? { key: body.key.trim() } : {}),
++                ...(body.entityType && body.entityId ? { externalId: `${body.entityType}:${body.entityId}` } : {}),
++            }),
++        });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub link create failed (${upstream.status})` }); return; }
++        const raw = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        if (!raw.id) { res.status(502).json({ success: false, error: 'Dub link create returned no id' }); return; }
++        const row = toLinkRow(cfg, raw);
++        upsertExternalLink(row, body.entityType, body.entityId);
++        res.status(201).json({ success: true, data: row });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
++router.get('/', requireRole('management'), async (_req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await dubFetch(cfg, '/links?page=1&pageSize=100');
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub link list failed (${upstream.status})` }); return; }
++        const body = (await upstream.json().catch(() => null)) as unknown;
++        const rawLinks: Record<string, any>[] = Array.isArray(body)
++            ? body
++            : Array.isArray((body as Record<string, any> | null)?.links) ? (body as Record<string, any>).links : [];
++        const rows = rawLinks.filter(l => l && l.id).map(l => toLinkRow(cfg, l));
++        for (const row of rows) upsertExternalLink(row); // keep click counts mirrored, upsert-only
++        res.json({ success: true, data: rows });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
++export default router;
+diff --git a/ai-dashboard369-file-manager/src/services/dwelliumSchema.ts b/ai-dashboard369-file-manager/src/services/dwelliumSchema.ts
+index 6b08b96..0d94cda 100644
+--- a/ai-dashboard369-file-manager/src/services/dwelliumSchema.ts
++++ b/ai-dashboard369-file-manager/src/services/dwelliumSchema.ts
+@@ -348,5 +348,28 @@ export function initDwelliumSchema(db: BetterSqlite3.Database): void {
+     });
+     seedPerms();
+ 
++    // plan 047 phase 2 — ONE mapping table for external-tool objects (Dub short
++    // links first; Documenso envelopes / listmonk lists join via the tools
++    // bridge). UPSERT-only by repo rule: rows are never deleted — archiving is a
++    // soft flag inside metadata.
++    db.exec(`
++        CREATE TABLE IF NOT EXISTS external_links (
++            id TEXT PRIMARY KEY,
++            tool TEXT NOT NULL,
++            entity_type TEXT
++                CHECK(entity_type IN ('property','unit','resident','lease','vendor','workitem','doc')),
++            entity_id TEXT,
++            external_type TEXT NOT NULL,
++            external_id TEXT NOT NULL,
++            external_url TEXT,
++            metadata TEXT DEFAULT '{}',
++            created_at TEXT NOT NULL DEFAULT (datetime('now')),
++            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
++            UNIQUE(tool, external_type, external_id)
++        );
++        CREATE INDEX IF NOT EXISTS idx_external_links_entity
++            ON external_links(entity_type, entity_id);
++    `);
++
+     console.log('[DwelliumSchema] 11 tables initialized with indexes and field permissions');
+ }
+diff --git a/ai-dashboard369-file-manager/tests/broadcastRoutes.test.ts b/ai-dashboard369-file-manager/tests/broadcastRoutes.test.ts
+new file mode 100644
+index 0000000..5a81ed1
+--- /dev/null
++++ b/ai-dashboard369-file-manager/tests/broadcastRoutes.test.ts
+@@ -0,0 +1,172 @@
++/**
++ * /api/broadcasts — listmonk proxy (plan 047 phase 2).
++ *
++ * Env unset → 503 with needsSetup:true everywhere (never a crash); 401 without
++ * a session; 403 for tenants (management-gated). With env set + fetch mocked:
++ * lists/campaigns proxy with `Authorization: token user:token`, POST creates a
++ * DRAFT campaign, test-send re-reads the campaign then posts subscribers.
++ */
++import { makeApp, createTestUser, TestUser } from './helpers/harness';
++
++const ENV_KEYS = ['LISTMONK_URL', 'LISTMONK_USER', 'LISTMONK_TOKEN'] as const;
++const savedEnv: Record<string, string | undefined> = {};
++beforeAll(() => { for (const k of ENV_KEYS) savedEnv[k] = process.env[k]; });
++beforeEach(() => { for (const k of ENV_KEYS) delete process.env[k]; });
++afterAll(() => {
++    for (const k of ENV_KEYS) {
++        if (savedEnv[k] === undefined) delete process.env[k]; else process.env[k] = savedEnv[k];
++    }
++});
++
++function setListmonkEnv() {
++    process.env.LISTMONK_URL = 'https://lists.test';
++    process.env.LISTMONK_USER = 'dwellium';
++    process.env.LISTMONK_TOKEN = 'tok_test';
++}
++
++/** Minimal fetch stub — response-shaped objects (esignRoutes.test.ts pattern). */
++function jsonResponse(body: unknown, status = 200) {
++    return {
++        ok: status >= 200 && status < 300,
++        status,
++        json: async () => body,
++        headers: { get: () => 'application/json' },
++    };
++}
++
++describe('/api/broadcasts env gate (listmonk not configured)', () => {
++    let mgmt: TestUser;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++
++    it('503 with needsSetup:true on every route when LISTMONK_* env is unset', async () => {
++        const calls = [
++            () => makeApp().get('/api/broadcasts/lists').set('Authorization', mgmt.authHeader),
++            () => makeApp().get('/api/broadcasts/templates').set('Authorization', mgmt.authHeader),
++            () => makeApp().get('/api/broadcasts/campaigns').set('Authorization', mgmt.authHeader),
++            () => makeApp().post('/api/broadcasts/campaigns').set('Authorization', mgmt.authHeader).send({ subject: 'Hi', lists: [1] }),
++            () => makeApp().post('/api/broadcasts/campaigns/1/test').set('Authorization', mgmt.authHeader).send({ subscribers: ['a@example.com'] }),
++        ];
++        for (const call of calls) {
++            const r = await call();
++            expect(r.status).toBe(503);
++            expect(r.body.success).toBe(false);
++            expect(r.body.needsSetup).toBe(true);
++            expect(r.body.error).toMatch(/LISTMONK_URL/);
++        }
++    });
++
++    it('401 without a session (authenticate runs before the env gate)', async () => {
++        const r = await makeApp().get('/api/broadcasts/lists');
++        expect(r.status).toBe(401);
++    });
++
++    it('403 for a tenant session (management-gated) — role checked before env', async () => {
++        const tenant = await createTestUser({ role: 'tenant' });
++        const r = await makeApp().get('/api/broadcasts/lists').set('Authorization', tenant.authHeader);
++        expect(r.status).toBe(403);
++    });
++});
++
++describe('/api/broadcasts (listmonk mocked)', () => {
++    let mgmt: TestUser;
++    const realFetch = (global as any).fetch;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++    afterEach(() => { (global as any).fetch = realFetch; });
++
++    it('GET /lists proxies with the token header and unwraps paginated results', async () => {
++        setListmonkEnv();
++        const seen: Array<{ url: string; auth: string }> = [];
++        (global as any).fetch = async (url: unknown, init?: { headers?: Record<string, string> }) => {
++            seen.push({ url: String(url), auth: init?.headers?.Authorization || '' });
++            return jsonResponse({ data: { results: [{ id: 1, name: 'Oakridge residents' }] } });
++        };
++        const r = await makeApp().get('/api/broadcasts/lists').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.body.data).toEqual([{ id: 1, name: 'Oakridge residents' }]);
++        expect(seen).toHaveLength(1);
++        expect(seen[0].url).toBe('https://lists.test/api/lists?page=1&per_page=100');
++        expect(seen[0].auth).toBe('token dwellium:tok_test');
++    });
++
++    it('GET /campaigns unwraps results; GET /templates handles flat data arrays', async () => {
++        setListmonkEnv();
++        (global as any).fetch = async (url: unknown) =>
++            String(url).includes('/templates')
++                ? jsonResponse({ data: [{ id: 2, name: 'Notice' }] })
++                : jsonResponse({ data: { results: [{ id: 7, name: 'August notice', status: 'draft' }] } });
++        const camps = await makeApp().get('/api/broadcasts/campaigns').set('Authorization', mgmt.authHeader);
++        expect(camps.status).toBe(200);
++        expect(camps.body.data[0]).toMatchObject({ id: 7, status: 'draft' });
++        const tpls = await makeApp().get('/api/broadcasts/templates').set('Authorization', mgmt.authHeader);
++        expect(tpls.status).toBe(200);
++        expect(tpls.body.data).toEqual([{ id: 2, name: 'Notice' }]);
++    });
++
++    it('POST /campaigns creates a DRAFT from template + audience (201, type regular)', async () => {
++        setListmonkEnv();
++        const bodies: Record<string, any>[] = [];
++        (global as any).fetch = async (_url: unknown, init?: { body?: string }) => {
++            bodies.push(JSON.parse(init?.body || '{}'));
++            return jsonResponse({ data: { id: 42, name: 'Pool closure', status: 'draft' } });
++        };
++        const r = await makeApp().post('/api/broadcasts/campaigns').set('Authorization', mgmt.authHeader)
++            .send({ name: 'Pool closure', subject: 'Pool closed Friday', lists: [1, 3], template_id: 2 });
++        expect(r.status).toBe(201);
++        expect(r.body.data).toMatchObject({ id: 42, status: 'draft' });
++        expect(bodies).toHaveLength(1);
++        expect(bodies[0]).toMatchObject({
++            name: 'Pool closure',
++            subject: 'Pool closed Friday',
++            lists: [1, 3],
++            type: 'regular',
++            template_id: 2,
++        });
++    });
++
++    it('POST /campaigns without subject or lists → 400, listmonk never called', async () => {
++        setListmonkEnv();
++        let called = 0;
++        (global as any).fetch = async () => { called += 1; return jsonResponse({}); };
++        const noSubject = await makeApp().post('/api/broadcasts/campaigns').set('Authorization', mgmt.authHeader).send({ lists: [1] });
++        expect(noSubject.status).toBe(400);
++        const noLists = await makeApp().post('/api/broadcasts/campaigns').set('Authorization', mgmt.authHeader).send({ subject: 'Hi', lists: [] });
++        expect(noLists.status).toBe(400);
++        expect(called).toBe(0);
++    });
++
++    it('POST /campaigns/:id/test re-reads the campaign, then posts subscribers to /test', async () => {
++        setListmonkEnv();
++        const posts: Array<{ url: string; body: Record<string, any> }> = [];
++        (global as any).fetch = async (url: unknown, init?: { method?: string; body?: string }) => {
++            if ((init?.method || 'GET') === 'POST') {
++                posts.push({ url: String(url), body: JSON.parse(init?.body || '{}') });
++                return jsonResponse({ data: true });
++            }
++            return jsonResponse({ data: { id: 42, name: 'Pool closure', subject: 'Pool closed Friday', lists: [{ id: 1 }], type: 'regular', content_type: 'richtext', body: '', template_id: 2 } });
++        };
++        const r = await makeApp().post('/api/broadcasts/campaigns/42/test').set('Authorization', mgmt.authHeader)
++            .send({ subscribers: ['andy@example.com'] });
++        expect(r.status).toBe(200);
++        expect(r.body.data).toEqual({ sent: ['andy@example.com'] });
++        expect(posts).toHaveLength(1);
++        expect(posts[0].url).toBe('https://lists.test/api/campaigns/42/test');
++        expect(posts[0].body).toMatchObject({ subscribers: ['andy@example.com'], lists: [1], template_id: 2 });
++    });
++
++    it('POST /campaigns/:id/test without valid emails → 400; listmonk 500 → 502', async () => {
++        setListmonkEnv();
++        const bad = await makeApp().post('/api/broadcasts/campaigns/42/test').set('Authorization', mgmt.authHeader).send({ subscribers: ['nope'] });
++        expect(bad.status).toBe(400);
++        (global as any).fetch = async () => jsonResponse({ error: 'boom' }, 500);
++        const down = await makeApp().get('/api/broadcasts/lists').set('Authorization', mgmt.authHeader);
++        expect(down.status).toBe(502);
++    });
++
++    it('listmonk unreachable (fetch throws) → 502, never a crash', async () => {
++        setListmonkEnv();
++        (global as any).fetch = async () => { throw new Error('ECONNREFUSED'); };
++        const r = await makeApp().get('/api/broadcasts/campaigns').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(502);
++        expect(r.body.error).toMatch(/unreachable/);
++    });
++});
+diff --git a/ai-dashboard369-file-manager/tests/linkRoutes.test.ts b/ai-dashboard369-file-manager/tests/linkRoutes.test.ts
+new file mode 100644
+index 0000000..a4e20f8
+--- /dev/null
++++ b/ai-dashboard369-file-manager/tests/linkRoutes.test.ts
+@@ -0,0 +1,161 @@
++/**
++ * /api/links — Dub short-link proxy (plan 047 phase 2).
++ *
++ * Env unset → 503 with needsSetup:true (never a crash); 401 without a session;
++ * 403 for tenants (management-gated). With DUB_API_KEY set + fetch mocked:
++ * POST creates a link with Bearer auth and UPSERTs it into external_links
++ * (UNIQUE(tool, external_type, external_id) — re-create updates, never
++ * duplicates, never deletes); GET lists links with click counts.
++ */
++import { makeApp, createTestUser, TestUser } from './helpers/harness';
++
++// Require AFTER harness so the DB opens in the isolated temp dir.
++// eslint-disable-next-line @typescript-eslint/no-var-requires
++const { database: db } = require('../src/services/database');
++
++const ENV_KEYS = ['DUB_API_KEY', 'DUB_WORKSPACE', 'DUB_API_BASE'] as const;
++const savedEnv: Record<string, string | undefined> = {};
++beforeAll(() => { for (const k of ENV_KEYS) savedEnv[k] = process.env[k]; });
++beforeEach(() => { for (const k of ENV_KEYS) delete process.env[k]; });
++afterAll(() => {
++    for (const k of ENV_KEYS) {
++        if (savedEnv[k] === undefined) delete process.env[k]; else process.env[k] = savedEnv[k];
++    }
++});
++
++function setDubEnv() {
++    process.env.DUB_API_KEY = 'dub_test_key';
++    process.env.DUB_API_BASE = 'https://dub.test';
++}
++
++function jsonResponse(body: unknown, status = 200) {
++    return {
++        ok: status >= 200 && status < 300,
++        status,
++        json: async () => body,
++        headers: { get: () => 'application/json' },
++    };
++}
++
++function externalLinkRows(externalId: string): Array<Record<string, any>> {
++    return db.prepare(
++        "SELECT * FROM external_links WHERE tool = 'dub' AND external_type = 'link' AND external_id = ?",
++    ).all(externalId);
++}
++
++describe('/api/links env gate (Dub not configured)', () => {
++    let mgmt: TestUser;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++
++    it('503 with needsSetup:true on both routes when DUB_API_KEY is unset', async () => {
++        const calls = [
++            () => makeApp().get('/api/links').set('Authorization', mgmt.authHeader),
++            () => makeApp().post('/api/links').set('Authorization', mgmt.authHeader).send({ url: 'https://example.com' }),
++        ];
++        for (const call of calls) {
++            const r = await call();
++            expect(r.status).toBe(503);
++            expect(r.body.success).toBe(false);
++            expect(r.body.needsSetup).toBe(true);
++            expect(r.body.error).toMatch(/DUB_API_KEY/);
++        }
++    });
++
++    it('401 without a session (authenticate runs before the env gate)', async () => {
++        const r = await makeApp().get('/api/links');
++        expect(r.status).toBe(401);
++    });
++
++    it('403 for a tenant session (management-gated) — role checked before env', async () => {
++        const tenant = await createTestUser({ role: 'tenant' });
++        const r = await makeApp().get('/api/links').set('Authorization', tenant.authHeader);
++        expect(r.status).toBe(403);
++    });
++});
++
++describe('/api/links (Dub mocked)', () => {
++    let mgmt: TestUser;
++    const realFetch = (global as any).fetch;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++    afterEach(() => { (global as any).fetch = realFetch; });
++
++    it('POST / creates a short link with Bearer auth and UPSERTs into external_links', async () => {
++        setDubEnv();
++        const seen: Array<{ url: string; auth: string; body: Record<string, any> }> = [];
++        (global as any).fetch = async (url: unknown, init?: { headers?: Record<string, string>; body?: string }) => {
++            seen.push({ url: String(url), auth: init?.headers?.Authorization || '', body: JSON.parse(init?.body || '{}') });
++            return jsonResponse({ id: 'link_abc', shortLink: 'https://dub.sh/notice1', url: 'https://example.com/notice', key: 'notice1', clicks: 0, qrCode: 'https://api.dub.co/qr?url=https%3A%2F%2Fdub.sh%2Fnotice1' });
++        };
++        const r = await makeApp().post('/api/links').set('Authorization', mgmt.authHeader)
++            .send({ url: 'https://example.com/notice', key: 'notice1', entityType: 'unit', entityId: '2B' });
++        expect(r.status).toBe(201);
++        expect(r.body.data).toMatchObject({ id: 'link_abc', shortLink: 'https://dub.sh/notice1', clicks: 0 });
++        expect(r.body.data.qrCode).toMatch(/\/qr\?url=/);
++        expect(seen).toHaveLength(1);
++        expect(seen[0].url).toBe('https://dub.test/links');
++        expect(seen[0].auth).toBe('Bearer dub_test_key');
++        expect(seen[0].body).toMatchObject({ url: 'https://example.com/notice', key: 'notice1', externalId: 'unit:2B' });
++
++        const rows = externalLinkRows('link_abc');
++        expect(rows).toHaveLength(1);
++        expect(rows[0]).toMatchObject({ tool: 'dub', entity_type: 'unit', entity_id: '2B', external_url: 'https://dub.sh/notice1' });
++
++        // Same Dub id again → UPSERT updates the one row (never a duplicate).
++        const again = await makeApp().post('/api/links').set('Authorization', mgmt.authHeader)
++            .send({ url: 'https://example.com/notice', key: 'notice1' });
++        expect(again.status).toBe(201);
++        expect(externalLinkRows('link_abc')).toHaveLength(1);
++    });
++
++    it('POST / appends workspaceId when DUB_WORKSPACE is set', async () => {
++        setDubEnv();
++        process.env.DUB_WORKSPACE = 'ws_dwellium';
++        const urls: string[] = [];
++        (global as any).fetch = async (url: unknown) => {
++            urls.push(String(url));
++            return jsonResponse({ id: 'link_ws', shortLink: 'https://dub.sh/x', url: 'https://example.com', key: 'x', clicks: 0 });
++        };
++        const r = await makeApp().post('/api/links').set('Authorization', mgmt.authHeader).send({ url: 'https://example.com' });
++        expect(r.status).toBe(201);
++        expect(urls[0]).toBe('https://dub.test/links?workspaceId=ws_dwellium');
++    });
++
++    it('POST / with a bad url → 400, Dub never called', async () => {
++        setDubEnv();
++        let called = 0;
++        (global as any).fetch = async () => { called += 1; return jsonResponse({}); };
++        const r = await makeApp().post('/api/links').set('Authorization', mgmt.authHeader).send({ url: 'notaurl' });
++        expect(r.status).toBe(400);
++        expect(called).toBe(0);
++    });
++
++    it('GET / lists links with click counts (array and {links:[…]} shapes)', async () => {
++        setDubEnv();
++        (global as any).fetch = async () => jsonResponse([
++            { id: 'link_1', shortLink: 'https://dub.sh/a', url: 'https://example.com/a', key: 'a', clicks: 12 },
++            { id: 'link_2', shortLink: 'https://dub.sh/b', url: 'https://example.com/b', key: 'b', clicks: 3 },
++        ]);
++        const r = await makeApp().get('/api/links').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.body.data).toHaveLength(2);
++        expect(r.body.data[0]).toMatchObject({ id: 'link_1', clicks: 12 });
++        expect(r.body.data[0].qrCode).toContain('/qr?url=');
++        // Mirrored upsert-only — the listed links land in external_links too.
++        expect(externalLinkRows('link_1')).toHaveLength(1);
++
++        (global as any).fetch = async () => jsonResponse({ links: [{ id: 'link_3', shortLink: 'https://dub.sh/c', url: 'https://example.com/c', key: 'c', clicks: 1 }] });
++        const wrapped = await makeApp().get('/api/links').set('Authorization', mgmt.authHeader);
++        expect(wrapped.status).toBe(200);
++        expect(wrapped.body.data).toEqual([expect.objectContaining({ id: 'link_3', clicks: 1 })]);
++    });
++
++    it('Dub 500 → 502; unreachable (fetch throws) → 502', async () => {
++        setDubEnv();
++        (global as any).fetch = async () => jsonResponse({ error: 'boom' }, 500);
++        expect((await makeApp().get('/api/links').set('Authorization', mgmt.authHeader)).status).toBe(502);
++        (global as any).fetch = async () => { throw new Error('ECONNREFUSED'); };
++        const r = await makeApp().post('/api/links').set('Authorization', mgmt.authHeader).send({ url: 'https://example.com' });
++        expect(r.status).toBe(502);
++        expect(r.body.error).toMatch(/unreachable/);
++    });
++});

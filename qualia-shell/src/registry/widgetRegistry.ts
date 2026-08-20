@@ -798,6 +798,38 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 400,
         category: 'tools',
     },
+    // ═══════════════════════════════════════
+    //  PLAN 047 — External tools (phase 2)
+    // ═══════════════════════════════════════
+    // Broadcasts (listmonk, AGPL via API — free e2-micro, tools/listmonk/README).
+    // Registering flips the Tools-hub status to `needs-setup`; `ready` once
+    // VITE_LISTMONK_URL is set. The widget keys on the proxy's 503 until then.
+    'broadcasts': {
+        id: 'broadcasts',
+        label: 'Broadcasts',
+        description: 'Resident, owner and vendor mailing lists — draft notices and campaigns via listmonk.',
+        tip: { tryThis: 'Pick an audience and a template, then create a draft notice.', related: ['inbox', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'megaphone',
+        component: lazyWithReload(() => import('../components/Broadcasts/Broadcasts')),
+        minWidth: 720,
+        minHeight: 480,
+        category: 'tools',
+    },
+    // Links & QR (Dub hosted API, free plan). Same flip: `needs-setup` on
+    // registration, `ready` once VITE_DUB_URL is set (data/toolsHub.ts).
+    'short-links': {
+        id: 'short-links',
+        label: 'Links & QR',
+        description: 'Branded short links and QR codes with click counts, minted through the Dub API.',
+        tip: { tryThis: 'Shorten a Tenant Portal URL, then print its QR for a unit door.', related: ['broadcasts', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'qr-code',
+        component: lazyWithReload(() => import('../components/ShortLinks/ShortLinks')),
+        minWidth: 520,
+        minHeight: 420,
+        category: 'tools',
+    },
 };
 
 // ═══════════════════════════════════════════════

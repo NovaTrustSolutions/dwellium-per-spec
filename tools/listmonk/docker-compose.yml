@@ -1,0 +1,66 @@
+# listmonk + Postgres, sized for the GCP Always-Free e2-micro (plan 047
+# addendum 2026-08-20 — zero-cost topology). 1 GB RAM total on the VM, so both
+# containers carry mem limits and Postgres is tuned small. AGPL rule: run the
+# stock listmonk image UNMODIFIED — all customization via env/admin/API.
+#
+# Usage (on the VM, in this directory):
+#   cp .env.example .env   # then fill the two passwords (chmod 600 .env)
+#   docker compose up -d
+#   docker compose logs -f app   # first boot runs --install --idempotent
+#
+# The admin/API port binds to 127.0.0.1 only — Caddy (on the host) terminates
+# TLS at lists.dwellium.com and reverse-proxies to localhost:9000. Never
+# expose 9000 on 0.0.0.0.
+#
+# SMTP is Brevo's free relay (300 mails/day — verified 2026-08-20). Configure
+# it in the listmonk admin UI (Settings → SMTP) with the values in README.md;
+# SMTP credentials live in the admin DB, not in this file.
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: listmonk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: listmonk
+    command:
+      # e2-micro tuning: keep Postgres' memory footprint small.
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=30
+    volumes:
+      - listmonk-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U listmonk']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    mem_limit: 256m
+
+  app:
+    image: listmonk/listmonk:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:9000:9000' # private — Caddy proxies TLS from :443
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__host: db
+      LISTMONK_db__port: 5432
+      LISTMONK_db__user: listmonk
+      LISTMONK_db__password: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      LISTMONK_db__database: listmonk
+      LISTMONK_db__ssl_mode: disable
+      # First-boot admin credentials (change the password after first login).
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-admin}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:?set LISTMONK_ADMIN_PASSWORD in .env}
+    command: [sh, -c, './listmonk --install --idempotent --yes && ./listmonk --upgrade --yes && ./listmonk']
+    mem_limit: 512m
+
+volumes:
+  listmonk-db:

@@ -43,7 +43,8 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   + tools-hub + guide (plan 047 onboarding surface) → 57.
         //   + whiteboard (plan 047 phase 1 — Excalidraw, feat/047-whiteboard) → 58.
         //   + esign (plan 047 phase 1 — Documenso e-sign widget) → 59.
-        expect(ids.length).toBe(59);
+        //   + broadcasts + short-links (plan 047 phase 2 — listmonk + Dub proxies) → 61.
+        expect(ids.length).toBe(61);
     });
 
     // Plan 047: every widget carries a first-open tip whose related ids resolve.

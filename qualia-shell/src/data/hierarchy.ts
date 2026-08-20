@@ -29,6 +29,9 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-tenant-portal', label: 'Tenant Portal', icon: 'home', component: 'tenant-portal-mgmt', pinned: true, group: 'Property Management' },
    // Plan 047 phase 1: E-Sign (Documenso). The widget shows a needs-setup card until the backend DOCUMENSO_* env lands.
    { id: 'dock-esign', label: 'E-Sign', icon: 'pen-line', component: 'esign', pinned: true, group: 'Property Management' },
+   // Plan 047 phase 2 — listmonk broadcasts + Dub short links (backend proxies).
+   { id: 'dock-broadcasts', label: 'Broadcasts', icon: 'megaphone', component: 'broadcasts', pinned: true, group: 'Property Management' },
+   { id: 'dock-short-links', label: 'Links & QR', icon: 'qr-code', component: 'short-links', pinned: true, group: 'Property Management' },
    // ── AI Tools ──
    { id: 'dock-agent-lab', label: 'Agent Lab', icon: 'bot', component: 'agent-lab', pinned: true, group: 'AI Tools' },
    { id: 'dock-thought-weaver', label: 'Thought Weaver', icon: 'brain-circuit', component: 'thought-weaver', pinned: true, group: 'AI Tools' },

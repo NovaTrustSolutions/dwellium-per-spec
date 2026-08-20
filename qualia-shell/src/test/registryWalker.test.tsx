@@ -43,7 +43,10 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   + tools-hub + guide (plan 047 onboarding surface) → 57.
         //   + whiteboard (plan 047 phase 1 — Excalidraw, feat/047-whiteboard) → 58.
         //   + esign (plan 047 phase 1 — Documenso e-sign widget) → 59.
-        expect(ids.length).toBe(59);
+        //   + scheduler + penpot-studio + remote-support (plan 047 phase 2
+        //     launcher/embed trio — cal.com embed, Penpot launcher, RustDesk
+        //     launcher; feat/047-launchers) → 62.
+        expect(ids.length).toBe(62);
     });
 
     // Plan 047: every widget carries a first-open tip whose related ids resolve.

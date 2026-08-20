@@ -1,0 +1,33 @@
+# RustDesk hbbs (ID/rendezvous) + hbbr (relay) — plan 047 phase 2,
+# zero-cost addendum 2026-08-20: runs on the Always-Free e2-micro
+# (`dwellium-free-1`, us-central1) — see README.md in this directory
+# for the exact gcloud commands Ilya runs.
+#
+# Mirrors the official OSS compose (https://rustdesk.com/oss.yml, fetched
+# 2026-08-20; image rustdesk/rustdesk-server, AGPL-3.0 run UNMODIFIED per the
+# plan's license rules) with one addition: `-k _` so only clients that present
+# our public key (./data/id_ed25519.pub, generated on first start) may connect.
+#
+# Ports (host networking): hbbs TCP 21115/21116/21118 + UDP 21116;
+# hbbr TCP 21117/21119. TCP 21114 is the Pro web console (unused by OSS but
+# kept in the firewall range to match the plan).
+services:
+  hbbs:
+    container_name: hbbs
+    image: rustdesk/rustdesk-server:latest
+    command: hbbs -k _
+    volumes:
+      - ./data:/root
+    network_mode: "host"
+    depends_on:
+      - hbbr
+    restart: unless-stopped
+
+  hbbr:
+    container_name: hbbr
+    image: rustdesk/rustdesk-server:latest
+    command: hbbr -k _
+    volumes:
+      - ./data:/root
+    network_mode: "host"
+    restart: unless-stopped

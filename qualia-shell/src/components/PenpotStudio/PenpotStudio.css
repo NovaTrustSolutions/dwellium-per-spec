@@ -1,0 +1,61 @@
+/* PenpotStudio — plan 047 phase 2 (Penpot launcher). Theme tokens only. */
+
+.penpot-studio {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    padding: 16px;
+    overflow: auto;
+}
+
+.penpot-studio__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.penpot-studio__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.penpot-studio__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: auto;
+    max-width: 400px;
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.penpot-studio__card h3 { margin: 0; font-size: 14px; color: var(--text-primary); }
+.penpot-studio__card p { margin: 0; font-size: 12px; line-height: 1.5; }
+
+.penpot-studio__muted { color: var(--text-tertiary); }
+
+.penpot-studio__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.penpot-studio__btn:hover { background: rgba(255, 255, 255, 0.09); }

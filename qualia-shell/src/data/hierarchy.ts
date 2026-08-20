@@ -19,12 +19,16 @@ export const defaultDockItems: DockItem[] = [
    // F-1 Universal Shell — Phase 3-E Option C ratified 2026-04-16. [CT-3H-HANDOFF-M4Q7]
    { id: 'dock-universal-shell', label: 'Universal Shell', icon: 'layout-grid', component: 'universal-shell', pinned: true, group: 'Property Management' },
    { id: 'dock-trello', label: 'Trello', icon: 'layout-list', component: 'trello-board', pinned: true, group: 'Property Management' },
+   // Plan 047 phase 1 — Excalidraw whiteboard (floor plans, maintenance markup).
+   { id: 'dock-whiteboard', label: 'Whiteboard', icon: 'pen-tool', component: 'whiteboard', pinned: true, group: 'Property Management' },
    { id: 'dock-task-board', label: 'Task Board', icon: 'layout-grid', component: 'task-board', pinned: true, group: 'Property Management' },
    { id: 'dock-inbox-zero', label: 'Inbox Zero', icon: 'mail-open', component: 'inbox', pinned: true, group: 'Property Management' },
    // API Keys (2026-06-15): per-user write-only LLM key panel — placed directly below Inbox Zero.
    { id: 'dock-api-keys', label: 'API Keys', icon: 'settings', component: 'api-keys', pinned: true, group: 'Property Management' },
    // dock-settings removed 2026-05-26 — Settings is now opened from the inline gear button next to the Domains header in Sidebar.tsx. Filter at Sidebar.tsx::permittedItems (component !== 'control-panel') also drops it for existing installs that have it in their saved layout.
    { id: 'dock-tenant-portal', label: 'Tenant Portal', icon: 'home', component: 'tenant-portal-mgmt', pinned: true, group: 'Property Management' },
+   // Plan 047 phase 1: E-Sign (Documenso). The widget shows a needs-setup card until the backend DOCUMENSO_* env lands.
+   { id: 'dock-esign', label: 'E-Sign', icon: 'pen-line', component: 'esign', pinned: true, group: 'Property Management' },
    // ── AI Tools ──
    { id: 'dock-agent-lab', label: 'Agent Lab', icon: 'bot', component: 'agent-lab', pinned: true, group: 'AI Tools' },
    { id: 'dock-thought-weaver', label: 'Thought Weaver', icon: 'brain-circuit', component: 'thought-weaver', pinned: true, group: 'AI Tools' },

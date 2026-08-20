@@ -45,24 +45,46 @@ describe('data', () => {
         expect(resolveToolStatus(t, () => true, { VITE_DOCUMENSO_URL: 'https://sign.example' })).toBe('ready');
         const wb = TOOLS.find(x => x.id === 'whiteboard')!; // no env gate
         expect(resolveToolStatus(wb, () => true, {})).toBe('ready');
-        const fv = TOOLS.find(x => x.id === 'dictation')!; // companion install, never a widget
-        expect(resolveToolStatus(fv, () => true, {})).toBe('coming-soon');
+        const fv = TOOLS.find(x => x.id === 'dictation')!; // companion install, never a widget — ready since its setup card shipped (plan 047 phase 1)
+        expect(fv.companion).toBe(true);
+        expect(resolveToolStatus(fv, () => true, {})).toBe('ready');
+        expect(resolveToolStatus(fv, () => false, {})).toBe('ready');
     });
-    it('today: none is ready (no tool widget registered yet)', () => {
-        expect(toolStatuses({}).every(r => r.status === 'coming-soon')).toBe(true);
+    it('today: whiteboard + dictation ready, esign needs-setup, the rest coming-soon', () => {
+        for (const { tool, status } of toolStatuses({})) {
+            const want = tool.id === 'whiteboard' || tool.companion ? 'ready' : tool.id === 'esign' ? 'needs-setup' : 'coming-soon';
+            expect(status, tool.id).toBe(want);
+        }
+    });
+    it('esign flips to ready once VITE_DOCUMENSO_URL is set (no code change)', () => {
+        const esign = toolStatuses({ VITE_DOCUMENSO_URL: 'https://sign.example' }).find(r => r.tool.id === 'esign')!;
+        expect(esign.status).toBe('ready');
     });
 });
 
 describe('window', () => {
-    it('renders 10 rows, disables coming-soon, shows help rows, unlocks the tools tier', () => {
+    it('renders 10 rows, disables coming-soon, offers Set up for esign, shows help rows, unlocks the tools tier', () => {
         render(<ToolsHub />);
         expect(document.querySelectorAll('tbody tr')).toHaveLength(10);
+        // Phase 1: whiteboard + dictation ready, esign needs-setup ("Set up"), 7 still coming-soon.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(10);
+        expect(comingSoon).toHaveLength(7);
         comingSoon.forEach(b => expect(b).toBeDisabled());
+        expect(document.querySelector('tr[data-tool="whiteboard"]')?.getAttribute('data-status')).toBe('ready');
+        expect(document.querySelector('tr[data-tool="dictation"]')?.getAttribute('data-status')).toBe('ready');
+        const setUp = screen.getByRole('button', { name: 'Set up' });
+        expect(setUp).toBeEnabled();
+        fireEvent.click(setUp); // needs-setup → opens the Guide's setup notes
+        expect(opened).toEqual(['guide']);
         expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Guide' })).toBeInTheDocument();
         expect(onboardingStore.getSnapshot().unlockedTiers).toEqual(['tools']);
+    });
+    it('ready companion (dictation) opens the Control Panel — its setup card lives there', () => {
+        render(<ToolsHub />);
+        const row = document.querySelector('tr[data-tool="dictation"]')!;
+        fireEvent.click(row.querySelector('button')!);
+        expect(opened).toEqual(['control-panel']);
     });
     it('help rows: shortcuts dispatches dwellium:open-shortcuts; Guide opens the guide widget', () => {
         const sheet = vi.fn();

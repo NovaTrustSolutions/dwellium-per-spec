@@ -37,6 +37,8 @@ const CURATED_ALIASES: Record<string, string> = {
     terminal: 'terminal', automation: 'automation-hub', automations: 'automation-hub', 'universal shell': 'universal-shell', shell: 'universal-shell',
     'file manager': 'file-manager', files: 'file-explorer', 'file explorer': 'file-explorer', pdf: 'pdf-gear', 'pdf gear': 'pdf-gear',
     workspace: 'workspace', 'control panel': 'control-panel', settings: 'control-panel',
+    // Plan 047: hyphenated label "E-Sign" normalizes to "e-sign", which the derived aliases miss.
+    'e-sign': 'esign', esignature: 'esign', 'e signature': 'esign',
 };
 
 /**

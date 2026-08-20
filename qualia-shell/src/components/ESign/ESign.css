@@ -1,0 +1,117 @@
+/* ESign — plan 047 phase 1 (Documenso). Theme tokens only; no new palette. */
+
+.esign {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    padding: 16px;
+    overflow: auto;
+}
+
+.esign__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.esign__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.esign__head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.esign__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.esign__link:hover { text-decoration: underline; }
+
+.esign__btn {
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.esign__btn:hover { background: rgba(255, 255, 255, 0.09); }
+
+.esign__btn--ghost { padding: 6px; color: var(--text-secondary); }
+
+.esign__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: auto;
+    max-width: 360px;
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.esign__empty h3 { margin: 0; font-size: 14px; color: var(--text-primary); }
+.esign__empty p { margin: 0; font-size: 12px; line-height: 1.5; }
+
+.esign__muted { color: var(--text-tertiary); font-size: 12px; }
+
+.esign__table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.esign__table th {
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.esign__table td {
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: top;
+}
+
+.esign__doc-title { font-weight: 600; }
+
+.esign__chip {
+    display: inline-block;
+    margin: 0 4px 4px 0;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 11px;
+}
+
+.esign__status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+}
+
+.esign__status--sent { color: #0ea5e9; background: rgba(14, 165, 233, 0.12); }
+.esign__status--signed,
+.esign__status--countersigned { color: #d6fe51; background: rgba(214, 254, 81, 0.10); }

@@ -662,6 +662,18 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         component: lazyWithReload(() => import('../components/Scribe/Scribe')),
         category: 'tools',
     },
+    // Plan 047 phase 1 — Excalidraw (MIT) whiteboard, native React widget.
+    'whiteboard': {
+        id: 'whiteboard',
+        label: 'Whiteboard',
+        description: 'Hand-drawn whiteboard for floor plans, maintenance markup and doc diagrams.',
+        tip: { tryThis: 'Draw a quick floor plan of one unit — it saves as you go.', related: ['scribe', 'strata-dashboard'] },
+        icon: 'pen-tool',
+        component: lazyWithReload(() => import('../components/Whiteboard/Whiteboard')),
+        category: 'tools',
+        minWidth: 720,
+        minHeight: 480,
+    },
     'file-explorer': {
         id: 'file-explorer',
         label: 'File Explorer',
@@ -764,6 +776,25 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         icon: 'book-open',
         component: lazyWithReload(() => import('../components/Guide/Guide')),
         minWidth: 480,
+        minHeight: 400,
+        category: 'tools',
+    },
+    // ═══════════════════════════════════════
+    //  PLAN 047 — External tools (phase 1)
+    // ═══════════════════════════════════════
+    // E-Sign (Documenso, AGPL unmodified image). Registering this entry flips
+    // the Tools-hub status to `needs-setup`; it turns `ready` automatically
+    // once VITE_DOCUMENSO_URL is set (data/toolsHub.ts::resolveToolStatus).
+    // The widget itself keys on the backend proxy's 503 until DOCUMENSO_* env lands.
+    'esign': {
+        id: 'esign',
+        label: 'E-Sign',
+        description: 'Send leases and agreements for e-signature via Documenso; track who signed.',
+        tip: { tryThis: 'Approve a lease in Strata → Leasing, then hit “Send for e-signature”.', related: ['strata-dashboard', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'pen-line',
+        component: lazyWithReload(() => import('../components/ESign/ESign')),
+        minWidth: 520,
         minHeight: 400,
         category: 'tools',
     },

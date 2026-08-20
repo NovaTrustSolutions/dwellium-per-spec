@@ -1,500 +1,479 @@
 /**
- * FluidOS — the "Fluid OS" alternate interface layout for Dwellium (2026-07-04).
+ * FluidOS — the "Cockpit" alternate interface layout for Dwellium (2026-08-20).
  *
- * Third interchangeable layout over the SAME Dwellium features (Classic
- * windowed desktop + Holocron OS launcher shell being the other two). Fluid
- * OS is navigated through fluid, physics-driven motion — full-bleed "swap
- * stream" focus cards, drag-to-swap with inertia, liquid canvas backdrop —
- * inspired by the MOTION LANGUAGE of EverSwap (built by Lusion): no assets,
- * text, or code copied from that site, this is an original implementation.
+ * REDESIGN (plan 049): the physics-driven "swap stream" launcher (2026-07-04)
+ * is REPLACED by a fixed, calm, IDE-like four-pane cockpit modeled on the
+ * Claude Code desktop app layout: left nav (260px, resizable) · center chat
+ * (the real ARA Console) · work column (Terminal + Background tasks) · right
+ * preview (URL → iframe, collapsible). No floating windows, no springs, no
+ * canvas — a static CSS grid built on the app's existing design tokens, so
+ * `prefers-reduced-motion` needs no special casing.
  *
- * 🔴 ALL WIDGETS ACCESSIBLE: the catalog is driven directly by WIDGET_REGISTRY
- * (same pattern as HalocronOS.tsx:245-260) — every registered widget appears,
- * and `restrictedToEmails` entries (e.g. the Andy-only Audit Log) are hidden
- * from non-matching accounts. Cosmetic filtering only; the widget itself
- * still hard-gates server-side.
+ * Entry/exit contract is unchanged from the swap-stream era: `fluidOsStore`
+ * is the layout toggle, the FluidLauncher droplet reopens the shell, and
+ * Escape / the Home pill collapse back to the classic desktop.
  *
- * Navigation model: widgets are grouped into CATEGORY "streams" (core / ai /
- * filing / tools / other). One category is in focus at a time as a full-bleed
- * band. Horizontal drag/wheel/arrow-left-right flows between APPS within the
- * focused category (inertial spring). Vertical drag/arrow-up-down swaps
- * CATEGORIES. Click/Enter opens the focused app via the shared `openWindow`
- * contract and collapses the shell (open=false), exactly like Holocron.
+ * 🔴 ALL WIDGETS ACCESSIBLE: the left-nav "All widgets" section is driven
+ * directly by WIDGET_REGISTRY grouped by disclosure tier (`tierOf`), and ⌘K
+ * still works above the cockpit — the overlay's z-index (4000) deliberately
+ * sits BELOW CommandPalette's 5000 so the palette wins. `restrictedToEmails`
+ * entries (e.g. the Andy-only Audit Log) are hidden from non-matching
+ * accounts — cosmetic only; the widget itself still hard-gates server-side.
  *
- * A11y: full keyboard nav (arrows + Enter + `/` search + Escape), aria-labels
- * on every card, and `prefers-reduced-motion: reduce` degrades springs to
- * instant snaps + a static canvas gradient (see useReducedMotion + the canvas
- * effect below).
+ * Background tasks pane reads the per-user Hermes persona task queue
+ * (`personaWorkStore` — the same durable store `useHermesAutonomousRunner`
+ * claims work from), rendered read-only; "Clear finished" is a user-initiated
+ * UI deletion via the store's own `deleteTask`.
+ *
+ * A11y: the four panes are labeled `role="region"`s, every nav row is a real
+ * <button> with an aria-label, and Escape is ignored while focus is in an
+ * input/textarea/iframe/contenteditable.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useContext } from 'react';
-import { WIDGET_REGISTRY } from '../../registry/widgetRegistry';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useContext, Suspense } from 'react';
+import {
+    ChevronLeft, ChevronRight, ExternalLink, Package, Plus, RotateCw, Settings as SettingsIcon, Wrench,
+} from 'lucide-react';
+import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
+import { tierOf, type WidgetTier } from '../../lib/onboardingStore';
 import { getIcon } from '../Sidebar/iconMap';
 import { fluidOsStore } from '../../lib/fluidOsStore';
 import { useWindows } from '../../context/WindowContext';
 import { UserContext } from '../../context/UserContext';
+import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import {
+    personaWorkStore, personaWorkUserIdHolder, deleteTask, formatDuration, type PersonaTask,
+} from '../../lib/agents/personaWorkStore';
+import { TOOLS, resolveToolStatus } from '../../data/toolsHub';
+import { APP_VERSION } from '../../appVersion';
+import AppSuspenseFallback from './AppSuspenseFallback';
 import './FluidOS.css';
 
-type CategoryId = 'core' | 'ai' | 'filing' | 'tools' | 'other';
-const CATEGORY_ORDER: CategoryId[] = ['core', 'ai', 'filing', 'tools', 'other'];
-const CATEGORY_LABEL: Record<CategoryId, string> = {
-    core: 'Core', ai: 'AI Tools', filing: 'Filing Cabinet', tools: 'Tools & Utilities', other: 'Archive',
+/* ── Per-user cockpit prefs (column widths + right-pane collapse + last URL) ── */
+
+interface CockpitPrefs {
+    navW: number;
+    workW: number;
+    rightW: number;
+    rightCollapsed: boolean;
+    lastUrl: string;
+}
+const DEFAULT_PREFS: CockpitPrefs = { navW: 260, workW: 420, rightW: 380, rightCollapsed: false, lastUrl: '' };
+
+export const cockpitPrefsUserIdHolder: { current: string | null } = { current: null };
+function prefsKey(): string {
+    const uid = cockpitPrefsUserIdHolder.current;
+    return uid ? `dwellium-cockpit:${uid}` : 'dwellium-cockpit:_anonymous';
+}
+function deserializePrefs(raw: string | null): CockpitPrefs {
+    if (!raw) return { ...DEFAULT_PREFS };
+    try {
+        const p = JSON.parse(raw) as Partial<CockpitPrefs> | null;
+        if (!p || typeof p !== 'object') return { ...DEFAULT_PREFS };
+        return {
+            navW: typeof p.navW === 'number' ? p.navW : DEFAULT_PREFS.navW,
+            workW: typeof p.workW === 'number' ? p.workW : DEFAULT_PREFS.workW,
+            rightW: typeof p.rightW === 'number' ? p.rightW : DEFAULT_PREFS.rightW,
+            rightCollapsed: Boolean(p.rightCollapsed),
+            lastUrl: typeof p.lastUrl === 'string' ? p.lastUrl : '',
+        };
+    } catch {
+        return { ...DEFAULT_PREFS };
+    }
+}
+/** Exported for tests (`.reset()` in beforeEach — repo standing convention). */
+export const cockpitPrefsStore = createLocalStorageStore<CockpitPrefs>({
+    key: prefsKey,
+    deserializer: deserializePrefs,
+    defaultValue: { ...DEFAULT_PREFS },
+});
+function savePrefs(patch: Partial<CockpitPrefs>): void {
+    const next = { ...cockpitPrefsStore.getSnapshot(), ...patch };
+    cockpitPrefsStore.set(next, () => {
+        try { localStorage.setItem(prefsKey(), JSON.stringify(next)); } catch { /* sandboxed */ }
+    });
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/* ── Left-nav widget grouping ─────────────────────────────────────────────── */
+
+const TIER_ORDER: readonly WidgetTier[] = ['core', 'daily', 'ai', 'tools', 'labs'];
+const TIER_LABEL: Record<WidgetTier, string> = {
+    core: 'Core', daily: 'Daily', ai: 'AI', tools: 'Tools', labs: 'Labs',
 };
 
-interface FluidCard {
-    id: string;
-    label: string;
-    icon: string;
-    category: CategoryId;
+interface NavWidget { id: string; label: string; icon: string }
+
+/* ── Preview quick links (Tools hub `ready` tools with a URL + Argyle) ────── */
+
+function buildQuickLinks(): Array<{ id: string; label: string; url: string }> {
+    const env = import.meta.env as Record<string, string | undefined>;
+    const links: Array<{ id: string; label: string; url: string }> = [];
+    TOOLS.forEach((t) => {
+        if (resolveToolStatus(t, (id) => Boolean(WIDGET_REGISTRY[id]), env) !== 'ready') return;
+        // Only iframe-able tools (a URL exists): env-gated tools use their env
+        // URL; Penpot defaults to its free cloud (same default the widget uses).
+        const url = t.envVar ? env[t.envVar] : t.id === 'design-studio' ? 'https://design.penpot.app' : undefined;
+        if (url) links.push({ id: t.id, label: t.label, url });
+    });
+    links.push({ id: 'argyle-holocron', label: 'Argyle Holocron', url: 'https://argyleholocron.netlify.app' });
+    return links;
 }
 
-/** Critically-damped spring integrator (rAF-driven). No framer-motion — a
- *  tiny, dependency-free physics util tuned for a "liquid" swap feel: fast
- *  settle, minimal overshoot. `stiffness`/`damping` picked empirically for a
- *  ~280ms perceived settle at the drag-release velocities this UI produces. */
-class Spring {
-    value: number;
-    velocity: number;
-    target: number;
-    stiffness: number;
-    damping: number;
-    constructor(initial: number, stiffness = 210, damping = 26) {
-        this.value = initial;
-        this.velocity = 0;
-        this.target = initial;
-        this.stiffness = stiffness;
-        this.damping = damping;
-    }
-    set(target: number, velocity = 0): void {
-        this.target = target;
-        this.velocity += velocity;
-    }
-    /** Snap immediately (reduced-motion path). */
-    snap(target: number): void {
-        this.value = target;
-        this.target = target;
-        this.velocity = 0;
-    }
-    /** Advance by dt seconds. Returns true while still settling. */
-    step(dt: number): boolean {
-        const dtClamped = Math.min(dt, 1 / 30);
-        const force = -this.stiffness * (this.value - this.target);
-        const damping = -this.damping * this.velocity;
-        const accel = force + damping;
-        this.velocity += accel * dtClamped;
-        this.value += this.velocity * dtClamped;
-        return Math.abs(this.velocity) > 0.02 || Math.abs(this.value - this.target) > 0.02;
-    }
-}
-
-function useReducedMotion(): boolean {
-    const [reduced, setReduced] = useState(() =>
-        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-            ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-            : false);
-    useEffect(() => {
-        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-        const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
-        const onChange = () => setReduced(mql.matches);
-        mql.addEventListener?.('change', onChange);
-        return () => mql.removeEventListener?.('change', onChange);
-    }, []);
-    return reduced;
-}
-
-/** Lightweight canvas "liquid" backdrop: a handful of soft radial blobs drift
- *  and react to pointer velocity + a "kick" fired on every swap. 2D canvas
- *  only (no WebGL/shader, no new deps). Pauses entirely when `active` is
- *  false (shell closed / tab hidden) — no leaked rAF loop. Reduced-motion
- *  renders one static frame and never starts the loop. */
-function useLiquidCanvas(
-    canvasRef: React.RefObject<HTMLCanvasElement | null>,
-    active: boolean,
-    reducedMotion: boolean,
-    kickRef: React.MutableRefObject<number>,
-) {
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas || !active) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        let raf = 0;
-        let alive = true;
-        const blobs = Array.from({ length: 5 }, (_, i) => ({
-            x: Math.random(),
-            y: Math.random(),
-            r: 0.18 + Math.random() * 0.16,
-            vx: (Math.random() - 0.5) * 0.02,
-            vy: (Math.random() - 0.5) * 0.02,
-            hue: i % 2 === 0 ? 74 : 210, // acid-lime-ish vs cool accent
-        }));
-        let pointerVx = 0;
-        let pointerVy = 0;
-        let lastPX = 0.5;
-        let lastPY = 0.5;
-
-        const resize = () => {
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            canvas.width = canvas.clientWidth * dpr;
-            canvas.height = canvas.clientHeight * dpr;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        };
-        resize();
-        window.addEventListener('resize', resize);
-
-        const onPointerMove = (e: PointerEvent) => {
-            const rect = canvas.getBoundingClientRect();
-            if (!rect.width || !rect.height) return;
-            const px = (e.clientX - rect.left) / rect.width;
-            const py = (e.clientY - rect.top) / rect.height;
-            pointerVx = px - lastPX;
-            pointerVy = py - lastPY;
-            lastPX = px;
-            lastPY = py;
-        };
-        window.addEventListener('pointermove', onPointerMove);
-
-        const draw = (w: number, h: number) => {
-            ctx.clearRect(0, 0, w, h);
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, w, h);
-            for (const b of blobs) {
-                const cx = b.x * w;
-                const cy = b.y * h;
-                const r = b.r * Math.max(w, h) * (1 + Math.min(kickRef.current, 0.4));
-                const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-                const alpha = 0.14 + Math.min(kickRef.current, 0.3);
-                grad.addColorStop(0, `hsla(${b.hue}, 90%, 60%, ${alpha})`);
-                grad.addColorStop(1, 'hsla(0, 0%, 0%, 0)');
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        };
-
-        if (reducedMotion) {
-            // Static single frame — no loop, no pointer reactivity.
-            draw(canvas.clientWidth, canvas.clientHeight);
-            return () => {
-                window.removeEventListener('resize', resize);
-                window.removeEventListener('pointermove', onPointerMove);
-            };
-        }
-
-        let last = performance.now();
-        const loop = (now: number) => {
-            if (!alive) return;
-            const dt = Math.min((now - last) / 1000, 1 / 30);
-            last = now;
-            kickRef.current = Math.max(0, kickRef.current - dt * 0.6);
-            for (const b of blobs) {
-                b.x += b.vx * dt + pointerVx * 0.03;
-                b.y += b.vy * dt + pointerVy * 0.03;
-                if (b.x < -0.2 || b.x > 1.2) b.vx *= -1;
-                if (b.y < -0.2 || b.y > 1.2) b.vy *= -1;
-                b.x = Math.min(1.2, Math.max(-0.2, b.x));
-                b.y = Math.min(1.2, Math.max(-0.2, b.y));
-            }
-            pointerVx *= 0.9;
-            pointerVy *= 0.9;
-            draw(canvas.clientWidth, canvas.clientHeight);
-            raf = requestAnimationFrame(loop);
-        };
-        raf = requestAnimationFrame(loop);
-
-        return () => {
-            alive = false;
-            if (raf) cancelAnimationFrame(raf);
-            window.removeEventListener('resize', resize);
-            window.removeEventListener('pointermove', onPointerMove);
-        };
-    }, [canvasRef, active, reducedMotion, kickRef]);
-}
-
-/** Drives a single numeric value toward `target` via the Spring integrator on
- *  an rAF loop — this IS the "liquid" swap feel (fast settle, tiny overshoot)
- *  instead of a canned CSS easing curve. The loop only runs while unsettled
- *  and tears itself down completely when either the value has settled or
- *  `active` goes false (shell closed) — no leaked rAF after unmount/close.
- *  Reduced-motion snaps instantly and never starts the loop. */
-function useSpringValue(target: number, active: boolean, reducedMotion: boolean): number {
-    const springRef = useRef<Spring | null>(null);
-    if (!springRef.current) springRef.current = new Spring(target);
-    const [value, setValue] = useState(() => springRef.current!.value);
-
-    useEffect(() => {
-        const spring = springRef.current!;
-        if (reducedMotion || !active) {
-            spring.snap(target);
-            setValue(spring.value);
-            return;
-        }
-        spring.set(target);
-        let raf = 0;
-        let last = performance.now();
-        const loop = (now: number) => {
-            const dt = (now - last) / 1000;
-            last = now;
-            const stillMoving = spring.step(dt);
-            setValue(spring.value);
-            if (stillMoving) raf = requestAnimationFrame(loop);
-        };
-        raf = requestAnimationFrame(loop);
-        return () => { if (raf) cancelAnimationFrame(raf); };
-    }, [target, active, reducedMotion]);
-
-    return value;
-}
+/* ── Component ────────────────────────────────────────────────────────────── */
 
 export default function FluidOS() {
     const state = useSyncExternalStore(fluidOsStore.subscribe, fluidOsStore.getSnapshot, fluidOsStore.getServerSnapshot);
-    const { openWindow } = useWindows();
-    const reducedMotion = useReducedMotion();
+    const { windows, openWindow, focusWindow, restoreWindow } = useWindows();
 
-    // Signed-in email for catalog visibility (restricted widgets — e.g. the
-    // Andy-only Audit Log — are hidden from everyone else's stream), same
-    // gating pattern as HalocronOS.tsx:245-260.
     const catalogUser = useContext(UserContext)?.user;
     const catalogEmail = catalogUser?.email?.trim().toLowerCase() ?? '';
 
-    const cardsByCategory = useMemo(() => {
-        const out: Record<CategoryId, FluidCard[]> = { core: [], ai: [], filing: [], tools: [], other: [] };
+    // Holder-before-useSyncExternalStore pattern (WindowContext savedLayouts
+    // sister-shape): resolve per-user keys during render.
+    cockpitPrefsUserIdHolder.current = catalogUser?.id ?? null;
+    personaWorkUserIdHolder.current = catalogUser?.id ?? null;
+
+    const prefs = useSyncExternalStore(cockpitPrefsStore.subscribe, cockpitPrefsStore.getSnapshot, cockpitPrefsStore.getServerSnapshot);
+    const personaWork = useSyncExternalStore(personaWorkStore.subscribe, personaWorkStore.getSnapshot, personaWorkStore.getServerSnapshot);
+
+    /* Widget catalog, restricted-filtered + tier-grouped. */
+    const widgetsByTier = useMemo(() => {
+        const out = new Map<WidgetTier, NavWidget[]>();
         Object.values(WIDGET_REGISTRY).forEach((w) => {
             if (w.restrictedToEmails && !w.restrictedToEmails.includes(catalogEmail)) return;
-            const cat: CategoryId = (w.category && (CATEGORY_ORDER as string[]).includes(w.category)) ? (w.category as CategoryId) : 'other';
-            out[cat].push({ id: w.id, label: w.label, icon: w.icon, category: cat });
+            const tier = tierOf(w.id);
+            if (!out.has(tier)) out.set(tier, []);
+            out.get(tier)!.push({ id: w.id, label: w.label, icon: w.icon });
         });
-        (Object.keys(out) as CategoryId[]).forEach((cat) => out[cat].sort((a, b) => a.label.localeCompare(b.label)));
+        out.forEach((list) => list.sort((a, b) => a.label.localeCompare(b.label)));
         return out;
     }, [catalogEmail]);
 
-    const activeCategories = useMemo(() => CATEGORY_ORDER.filter((c) => cardsByCategory[c].length > 0), [cardsByCategory]);
-    const totalWidgets = useMemo(() => activeCategories.reduce((n, c) => n + cardsByCategory[c].length, 0), [activeCategories, cardsByCategory]);
+    /* Background tasks, flattened across personas. */
+    const tasks = useMemo(() => {
+        const rows: Array<{ personaId: string; task: PersonaTask }> = [];
+        Object.entries(personaWork).forEach(([personaId, w]) => {
+            (w?.tasks ?? []).forEach((task) => rows.push({ personaId, task }));
+        });
+        return rows;
+    }, [personaWork]);
+    const runningTasks = tasks.filter((r) => r.task.status === 'running' || r.task.status === 'todo');
+    const finishedTasks = tasks.filter((r) => r.task.status === 'done' || r.task.status === 'failed');
+    const [finishedOpen, setFinishedOpen] = useState(false);
 
-    const [categoryIdx, setCategoryIdx] = useState(0);
-    const [appIdx, setAppIdx] = useState(0);
-    const [query, setQuery] = useState('');
-    const searchRef = useRef<HTMLInputElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const kickRef = useRef(0);
+    /* Preview pane. */
+    const [draftUrl, setDraftUrl] = useState('');
+    const [reach, setReach] = useState<'checking' | 'up' | 'down'>('checking');
+    const [iframeKey, setIframeKey] = useState(0);
+    const previewUrl = prefs.lastUrl;
+    useEffect(() => { setDraftUrl(previewUrl); }, [previewUrl]);
 
-    // Flat filtered view for search mode; otherwise the swap-stream view.
-    const q = query.trim().toLowerCase();
-    const searching = q.length > 0;
-    const flatFiltered = useMemo(() => {
-        if (!searching) return [];
-        const flat: FluidCard[] = [];
-        activeCategories.forEach((c) => flat.push(...cardsByCategory[c]));
-        return flat.filter((c) => c.label.toLowerCase().includes(q));
-    }, [searching, q, activeCategories, cardsByCategory]);
+    // Best-effort reachability (LangFlowPanel pattern): a no-cors fetch
+    // resolves if the server answers at all, rejects on connection errors.
+    useEffect(() => {
+        if (!state.enabled || !state.open || !previewUrl) return;
+        let alive = true;
+        setReach('checking');
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 4000);
+        fetch(previewUrl, { mode: 'no-cors', signal: ctrl.signal })
+            .then(() => { if (alive) setReach('up'); })
+            .catch(() => { if (alive) setReach('down'); })
+            .finally(() => clearTimeout(t));
+        return () => { alive = false; ctrl.abort(); };
+    }, [state.enabled, state.open, previewUrl, iframeKey]);
 
-    const currentCategory = activeCategories[Math.min(categoryIdx, Math.max(activeCategories.length - 1, 0))];
-    const currentApps = currentCategory ? cardsByCategory[currentCategory] : [];
-    const clampedAppIdx = currentApps.length ? Math.min(appIdx, currentApps.length - 1) : 0;
-    const focusedCard = currentApps[clampedAppIdx];
+    const loadUrl = useCallback((raw: string) => {
+        const trimmed = raw.trim();
+        if (!trimmed) { savePrefs({ lastUrl: '' }); return; }
+        const url = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+        savePrefs({ lastUrl: url });
+        setIframeKey((k) => k + 1);
+    }, []);
 
-    useLiquidCanvas(canvasRef, state.enabled && state.open, reducedMotion, kickRef);
-    // The spring settles toward the discrete focused index — the visible
-    // "melt/flow" between cards is this continuous value catching up to the
-    // target, not a CSS transition on the index jump.
-    const springAppIdx = useSpringValue(clampedAppIdx, state.enabled && state.open, reducedMotion);
+    const quickLinks = useMemo(buildQuickLinks, []);
 
-    const collapseToWindow = useCallback((id: string, label: string) => {
-        const w = WIDGET_REGISTRY[id];
-        openWindow(id, label, w?.icon ?? '');
+    /* Shared open-in-desktop path: same `openWindow` contract as before, then
+       collapse the shell so the classic desktop (and the new window) show. */
+    const openInDesktop = useCallback((id: string, label: string, icon: string) => {
+        openWindow(id, label, icon);
         fluidOsStore.setOpen(false);
     }, [openWindow]);
 
-    const swapApp = useCallback((delta: 1 | -1) => {
-        if (!currentApps.length) return;
-        kickRef.current = Math.min(1, kickRef.current + 0.5);
-        setAppIdx((i) => (i + delta + currentApps.length) % currentApps.length);
-    }, [currentApps.length]);
+    const focusInDesktop = useCallback((id: string, minimized: boolean) => {
+        if (minimized) restoreWindow(id);
+        focusWindow(id);
+        fluidOsStore.setOpen(false);
+    }, [focusWindow, restoreWindow]);
 
-    const swapCategory = useCallback((delta: 1 | -1) => {
-        if (!activeCategories.length) return;
-        kickRef.current = Math.min(1, kickRef.current + 0.5);
-        setCategoryIdx((i) => (i + delta + activeCategories.length) % activeCategories.length);
-        setAppIdx(0);
-    }, [activeCategories.length]);
+    /* Splitters (Sidebar resize-handle pattern: mousedown → window listeners). */
+    const startDrag = useCallback((which: 'nav' | 'work' | 'right') => (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const snap = cockpitPrefsStore.getSnapshot();
+        const startW = which === 'nav' ? snap.navW : which === 'work' ? snap.workW : snap.rightW;
+        const onMove = (ev: MouseEvent) => {
+            const dx = ev.clientX - startX;
+            if (which === 'nav') savePrefs({ navW: clamp(startW + dx, 220, 360) });
+            else if (which === 'work') savePrefs({ workW: clamp(startW - dx, 300, 640) });
+            else savePrefs({ rightW: clamp(startW - dx, 260, 640) });
+        };
+        const onUp = () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        document.body.style.cursor = 'col-resize';
+    }, []);
 
-    // Drag/pointer inertial swap: horizontal drag = app swap, vertical = category swap.
-    const dragRef = useRef<{ startX: number; startY: number; dragging: boolean } | null>(null);
-    const onPointerDown = (e: React.PointerEvent) => {
-        dragRef.current = { startX: e.clientX, startY: e.clientY, dragging: true };
-    };
-    const onPointerUp = (e: React.PointerEvent) => {
-        const d = dragRef.current;
-        dragRef.current = null;
-        if (!d || !d.dragging) return;
-        const dx = e.clientX - d.startX;
-        const dy = e.clientY - d.startY;
-        const THRESHOLD = 60;
-        if (Math.abs(dx) > Math.abs(dy)) {
-            if (dx > THRESHOLD) swapApp(-1);
-            else if (dx < -THRESHOLD) swapApp(1);
-        } else {
-            if (dy > THRESHOLD) swapCategory(-1);
-            else if (dy < -THRESHOLD) swapCategory(1);
-        }
-    };
-
-    const wheelAccumRef = useRef(0);
-    const onWheel = (e: React.WheelEvent) => {
-        wheelAccumRef.current += e.deltaX !== 0 ? e.deltaX : e.deltaY;
-        const WHEEL_THRESHOLD = 80;
-        if (wheelAccumRef.current > WHEEL_THRESHOLD) {
-            wheelAccumRef.current = 0;
-            if (e.deltaX !== 0) swapApp(1); else swapCategory(1);
-        } else if (wheelAccumRef.current < -WHEEL_THRESHOLD) {
-            wheelAccumRef.current = 0;
-            if (e.deltaX !== 0) swapApp(-1); else swapCategory(-1);
-        }
-    };
-
-    // Keyboard nav: arrows swap, Enter opens the focused card, `/` focuses
-    // search, Escape closes the shell (search first, then the whole shell).
+    /* Escape closes the cockpit — unless focus is in an editable/iframe. ⌘K is
+       untouched: CommandPalette owns its own global listener and overlays us. */
     useEffect(() => {
         if (!state.enabled || !state.open) return;
         const onKey = (e: KeyboardEvent) => {
-            const isSearchFocused = document.activeElement === searchRef.current;
-            if (e.key === '/' && !isSearchFocused) {
-                e.preventDefault();
-                searchRef.current?.focus();
-                return;
-            }
-            if (e.key === 'Escape') {
-                if (isSearchFocused && query) {
-                    setQuery('');
-                    return;
-                }
-                if (isSearchFocused) {
-                    searchRef.current?.blur();
-                    return;
-                }
-                fluidOsStore.setOpen(false);
-                return;
-            }
-            if (isSearchFocused) return;
-            if (e.key === 'ArrowRight') { e.preventDefault(); swapApp(1); }
-            else if (e.key === 'ArrowLeft') { e.preventDefault(); swapApp(-1); }
-            else if (e.key === 'ArrowDown') { e.preventDefault(); swapCategory(1); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); swapCategory(-1); }
-            else if (e.key === 'Enter' && focusedCard) { e.preventDefault(); collapseToWindow(focusedCard.id, focusedCard.label); }
+            if (e.key !== 'Escape') return;
+            const el = document.activeElement as HTMLElement | null;
+            const tag = el?.tagName ?? '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'IFRAME' || el?.isContentEditable) return;
+            fluidOsStore.setOpen(false);
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [state.enabled, state.open, query, focusedCard, swapApp, swapCategory, collapseToWindow]);
+    }, [state.enabled, state.open]);
 
     if (!state.enabled || !state.open) return null;
 
-    const greeting = (() => {
-        const h = new Date().getHours();
-        return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-    })();
-    const greetingName = (() => {
-        const rawName = catalogUser?.name?.trim() ?? '';
-        const first = rawName.split(/\s+/).filter(Boolean)[0];
-        if (first) return first;
-        const emailName = catalogEmail.split('@')[0]?.split(/[._+-]/).filter(Boolean)[0];
-        return emailName ? emailName.charAt(0).toUpperCase() + emailName.slice(1) : 'there';
-    })();
+    const AraConsole = WINDOW_COMPONENTS['ara-console'];
+    const Terminal = WINDOW_COMPONENTS['terminal'];
+
+    const focusedWindowId = windows
+        .filter((w) => !w.minimized)
+        .reduce<{ id: string; z: number } | null>((top, w) => (!top || w.zIndex > top.z ? { id: w.id, z: w.zIndex } : top), null)?.id;
+
+    const workspaceLabel = (catalogUser?.name?.trim() || catalogEmail.split('@')[0] || 'dwellium')
+        .toLowerCase().replace(/\s+/g, '-');
+    const initials = (catalogUser?.name?.trim() || catalogEmail || 'D')
+        .split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s.charAt(0).toUpperCase()).join('') || 'D';
+
+    const gridColumns = [
+        `${prefs.navW}px`, '5px', 'minmax(480px, 1fr)', '5px', `${prefs.workW}px`,
+        ...(prefs.rightCollapsed ? ['0px', '28px'] : ['5px', `${prefs.rightW}px`]),
+    ].join(' ');
 
     return (
-        <div
-            className={`fos ${reducedMotion ? 'fos--reduced-motion' : ''}`}
-            role="dialog"
-            aria-label="Fluid OS"
-            onPointerDown={onPointerDown}
-            onPointerUp={onPointerUp}
-            onWheel={onWheel}
-        >
-            <canvas ref={canvasRef} className="fos-canvas" aria-hidden="true" />
-
-            <header className="fos-head">
-                <div className="fos-brand"><span className="fos-brand__drop" aria-hidden="true" /> Fluid OS</div>
-                <h1 className="fos-greet">{greeting}, {greetingName}.</h1>
-                <p className="fos-sub">{totalWidgets} apps · {activeCategories.length} streams</p>
-                <div className="fos-search-wrap">
-                    <input
-                        ref={searchRef}
-                        className="fos-search"
-                        placeholder="Search everything… ( / )"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        aria-label="Search widgets"
-                    />
+        <div className="fos" role="dialog" aria-label="Cockpit" style={{ gridTemplateColumns: gridColumns }}>
+            {/* ── Pane 1: left nav ─────────────────────────────────────── */}
+            <div className="fos-nav" role="region" aria-label="Navigation">
+                <div className="fos-nav__pill" role="group" aria-label="Layout">
+                    <button type="button" className="fos-nav__pill-btn" aria-pressed="false"
+                        onClick={() => fluidOsStore.setOpen(false)}>Home</button>
+                    <button type="button" className="fos-nav__pill-btn fos-nav__pill-btn--on" aria-pressed="true">Cockpit</button>
                 </div>
-                <button
-                    type="button"
-                    className="fos-min"
-                    onClick={() => fluidOsStore.setOpen(false)}
-                    aria-label="Minimize Fluid OS"
-                >
-                    Minimize
-                </button>
-            </header>
 
-            {searching ? (
-                <div className="fos-search-results">
-                    {flatFiltered.length === 0 && <p className="fos-sub">No matches.</p>}
-                    <div className="fos-grid">
-                        {flatFiltered.map((w) => {
+                <div className="fos-nav__actions">
+                    <button type="button" className="fos-nav__action" aria-label="New (command palette)"
+                        onClick={() => window.dispatchEvent(new CustomEvent('dwellium:open-palette'))}>
+                        <Plus size={14} aria-hidden /> New
+                    </button>
+                    <button type="button" className="fos-nav__action" aria-label="Open Artifacts"
+                        onClick={() => openInDesktop('artifact-gallery', WIDGET_REGISTRY['artifact-gallery']?.label ?? 'Artifacts', WIDGET_REGISTRY['artifact-gallery']?.icon ?? '')}>
+                        <Package size={14} aria-hidden /> Artifacts
+                    </button>
+                    <button type="button" className="fos-nav__action" aria-label="Open Tools hub"
+                        onClick={() => openInDesktop('tools-hub', WIDGET_REGISTRY['tools-hub']?.label ?? 'Tools hub', WIDGET_REGISTRY['tools-hub']?.icon ?? '')}>
+                        <Wrench size={14} aria-hidden /> Tools hub
+                    </button>
+                    <button type="button" className="fos-nav__action" aria-label="Open Settings"
+                        onClick={() => openInDesktop('control-panel', WIDGET_REGISTRY['control-panel']?.label ?? 'Settings', WIDGET_REGISTRY['control-panel']?.icon ?? '')}>
+                        <SettingsIcon size={14} aria-hidden /> Settings
+                    </button>
+                </div>
+
+                <div className="fos-nav__scroll">
+                    <div className="fos-nav__section">
+                        <div className="fos-nav__section-head">{workspaceLabel}</div>
+                        {windows.length === 0 && <div className="fos-nav__hint">No open windows.</div>}
+                        {windows.map((w) => {
                             const Icon = getIcon(w.icon);
                             return (
-                                <button
-                                    key={w.id}
-                                    type="button"
-                                    className="fos-card fos-card--grid"
-                                    onClick={() => collapseToWindow(w.id, w.label)}
-                                    aria-label={`Open ${w.label}`}
-                                >
-                                    <span className="fos-card__icon">{Icon ? <Icon size={22} /> : '◈'}</span>
-                                    <span className="fos-card__label">{w.label}</span>
-                                    <span className="fos-card__chip">{CATEGORY_LABEL[w.category]}</span>
+                                <button key={w.id} type="button" className="fos-nav__row"
+                                    aria-label={`Focus ${w.title}`}
+                                    onClick={() => focusInDesktop(w.id, w.minimized)}>
+                                    <span className="fos-nav__row-icon">{Icon ? <Icon size={14} aria-hidden /> : '◈'}</span>
+                                    <span className="fos-nav__row-label">{w.title}</span>
+                                    {w.id === focusedWindowId && <span className="fos-nav__row-dot" aria-label="Focused">·</span>}
                                 </button>
                             );
                         })}
                     </div>
+
+                    <div className="fos-nav__section" aria-label="All widgets">
+                        <div className="fos-nav__section-head">All widgets</div>
+                        {TIER_ORDER.filter((t) => widgetsByTier.has(t)).map((tier) => (
+                            <div key={tier} className="fos-nav__tier">
+                                <div className="fos-nav__tier-head">{TIER_LABEL[tier]}</div>
+                                {widgetsByTier.get(tier)!.map((w) => {
+                                    const Icon = getIcon(w.icon);
+                                    return (
+                                        <button key={w.id} type="button" className="fos-nav__row"
+                                            aria-label={`Open ${w.label}`}
+                                            onClick={() => openInDesktop(w.id, w.label, w.icon)}>
+                                            <span className="fos-nav__row-icon">{Icon ? <Icon size={14} aria-hidden /> : '◈'}</span>
+                                            <span className="fos-nav__row-label">{w.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="fos-nav__user">
+                    <span className="fos-nav__avatar" aria-hidden>{initials}</span>
+                    <span className="fos-nav__user-name">{catalogUser?.name ?? 'Guest'}</span>
+                    <span className="fos-nav__version">v{APP_VERSION}</span>
+                </div>
+            </div>
+
+            {/* role="presentation" + mousedown = the repo's Sidebar resize-handle pattern */}
+            <div className="fos-splitter" role="presentation" onMouseDown={startDrag('nav')} />
+
+            {/* ── Pane 2: center chat (the REAL ARA Console) ───────────── */}
+            <div className="fos-chat" role="region" aria-label="Chat">
+                {AraConsole ? (
+                    <Suspense fallback={<AppSuspenseFallback variant="popup" label="Loading ARA Console…" />}>
+                        <AraConsole />
+                    </Suspense>
+                ) : (
+                    <div className="fos-missing">ARA Console isn’t registered.</div>
+                )}
+            </div>
+
+            <div className="fos-splitter" role="presentation" onMouseDown={startDrag('work')} />
+
+            {/* ── Pane 3: work column (Terminal over Background tasks) ─── */}
+            <div className="fos-work" role="region" aria-label="Work">
+                {/* ponytail: fixed 55/45 split — a draggable row splitter is overkill here */}
+                <div className="fos-work__terminal">
+                    {Terminal ? (
+                        <Suspense fallback={<AppSuspenseFallback variant="popup" label="Loading Terminal…" />}>
+                            <Terminal />
+                        </Suspense>
+                    ) : (
+                        <div className="fos-missing">Terminal isn’t registered.</div>
+                    )}
+                </div>
+                <div className="fos-tasks">
+                    <div className="fos-tasks__head">
+                        <span className="fos-tasks__title">Background tasks</span>
+                        <button type="button" className="fos-tasks__btn"
+                            aria-label={finishedOpen ? 'Collapse finished tasks' : 'Expand finished tasks'}
+                            onClick={() => setFinishedOpen((v) => !v)}>
+                            Finished {finishedTasks.length}
+                        </button>
+                        {finishedTasks.length > 0 && (
+                            <button type="button" className="fos-tasks__btn" aria-label="Clear finished tasks"
+                                onClick={() => finishedTasks.forEach((r) => deleteTask(r.personaId, r.task.id))}>
+                                Clear
+                            </button>
+                        )}
+                    </div>
+                    <div className="fos-tasks__list">
+                        {tasks.length === 0 && (
+                            <div className="fos-tasks__empty">No background tasks yet — Hermes runs will appear here.</div>
+                        )}
+                        {runningTasks.map(({ personaId, task }) => (
+                            <div key={`${personaId}-${task.id}`} className="fos-tasks__row">
+                                <span className={`fos-tasks__status fos-tasks__status--${task.status}`}>{task.status === 'running' ? 'Running' : 'Queued'}</span>
+                                <span className="fos-tasks__name" title={task.title}>{task.title}</span>
+                                <span className="fos-tasks__age">{formatDuration(Date.now() - (task.startedAt ?? task.createdAt))} ago</span>
+                            </div>
+                        ))}
+                        {finishedOpen && finishedTasks.map(({ personaId, task }) => (
+                            <div key={`${personaId}-${task.id}`} className="fos-tasks__row fos-tasks__row--dim">
+                                <span className={`fos-tasks__status fos-tasks__status--${task.status}`}>{task.status === 'done' ? 'Done' : 'Failed'}</span>
+                                <span className="fos-tasks__name" title={task.title}>{task.title}</span>
+                                <span className="fos-tasks__age">{formatDuration(Date.now() - (task.completedAt ?? task.createdAt))} ago</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {!prefs.rightCollapsed && (
+                <div className="fos-splitter" role="presentation" onMouseDown={startDrag('right')} />
+            )}
+            {prefs.rightCollapsed && <div aria-hidden />}
+
+            {/* ── Pane 4: right preview ────────────────────────────────── */}
+            {prefs.rightCollapsed ? (
+                <div className="fos-rail" role="region" aria-label="Preview">
+                    <button type="button" className="fos-rail__btn" aria-label="Expand preview"
+                        onClick={() => savePrefs({ rightCollapsed: false })}>
+                        <ChevronLeft size={15} aria-hidden />
+                    </button>
                 </div>
             ) : (
-                <div className="fos-stream" data-testid="fluid-stream" data-category={currentCategory ?? ''}>
-                    <div className="fos-stream__chip">{currentCategory ? CATEGORY_LABEL[currentCategory] : 'Archive'}</div>
-                    <div className="fos-stream__track">
-                        {currentApps.map((w, i) => {
-                            const Icon = getIcon(w.icon);
-                            const offset = i - springAppIdx;
-                            const isFocused = i === clampedAppIdx;
-                            if (Math.abs(offset) > 2.5) return null;
-                            return (
-                                <button
-                                    key={w.id}
-                                    type="button"
-                                    className={`fos-card ${isFocused ? 'fos-card--focus' : 'fos-card--side'}`}
-                                    style={{ '--fos-offset': offset } as React.CSSProperties}
-                                    onClick={() => (isFocused ? collapseToWindow(w.id, w.label) : setAppIdx(i))}
-                                    aria-label={isFocused ? `Open ${w.label}` : `Focus ${w.label}`}
-                                    aria-current={isFocused}
-                                >
-                                    <span className="fos-card__icon">{Icon ? <Icon size={28} /> : '◈'}</span>
-                                    <span className="fos-card__label">{w.label}</span>
-                                </button>
-                            );
-                        })}
+                <div className="fos-preview" role="region" aria-label="Preview">
+                    <div className="fos-preview__bar">
+                        <input
+                            className="fos-preview__url"
+                            aria-label="Preview URL"
+                            placeholder="Type a URL"
+                            value={draftUrl}
+                            onChange={(e) => setDraftUrl(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') loadUrl(draftUrl); }}
+                        />
+                        {previewUrl && (
+                            <>
+                                <button type="button" className="fos-preview__btn" aria-label="Reload preview"
+                                    onClick={() => setIframeKey((k) => k + 1)}><RotateCw size={13} aria-hidden /></button>
+                                <button type="button" className="fos-preview__btn" aria-label="Open in a new window"
+                                    onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}><ExternalLink size={13} aria-hidden /></button>
+                            </>
+                        )}
+                        <button type="button" className="fos-preview__btn" aria-label="Collapse preview"
+                            onClick={() => savePrefs({ rightCollapsed: true })}>
+                            <ChevronRight size={15} aria-hidden />
+                        </button>
                     </div>
-                    <div className="fos-stream__dots" role="tablist" aria-label="Streams">
-                        {activeCategories.map((c, i) => (
-                            <button
-                                key={c}
-                                type="button"
-                                className={`fos-dot ${i === categoryIdx ? 'on' : ''}`}
-                                onClick={() => { setCategoryIdx(i); setAppIdx(0); }}
-                                aria-label={`Switch to ${CATEGORY_LABEL[c]} stream`}
-                                aria-selected={i === categoryIdx}
-                                role="tab"
+                    <div className="fos-preview__body">
+                        {!previewUrl ? (
+                            <div className="fos-preview__hint">
+                                <p className="fos-preview__hint-title">Open a server below, or enter a URL above</p>
+                                <div className="fos-quick">
+                                    {quickLinks.map((l) => (
+                                        <button key={l.id} type="button" className="fos-quick__row"
+                                            aria-label={`Preview ${l.label}`}
+                                            onClick={() => loadUrl(l.url)}>
+                                            <span className="fos-quick__label">{l.label}</span>
+                                            <span className="fos-quick__url">{l.url}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : reach === 'down' ? (
+                            <div className="fos-preview__hint">
+                                <p className="fos-preview__hint-title">Not reachable at {previewUrl}</p>
+                                <div className="fos-preview__hint-actions">
+                                    <button type="button" className="fos-preview__btn fos-preview__btn--wide"
+                                        onClick={() => setIframeKey((k) => k + 1)}>Re-check</button>
+                                    <button type="button" className="fos-preview__btn fos-preview__btn--wide"
+                                        onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}>Open ↗</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <iframe
+                                key={iframeKey}
+                                className="fos-preview__frame"
+                                src={previewUrl}
+                                title="Preview"
+                                allow="clipboard-read; clipboard-write"
                             />
-                        ))}
+                        )}
                     </div>
                 </div>
             )}

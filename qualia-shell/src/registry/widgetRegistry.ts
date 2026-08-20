@@ -864,7 +864,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 520,
         minHeight: 420,
         category: 'filing',
-    //  PLAN 047 — External tools (phase 2)
+    },
     // ═══════════════════════════════════════
     // Broadcasts (listmonk, AGPL via API — free e2-micro, tools/listmonk/README).
     // Registering flips the Tools-hub status to `needs-setup`; `ready` once

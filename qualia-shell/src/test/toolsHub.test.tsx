@@ -79,6 +79,8 @@ describe('data', () => {
 });
 
 describe('window', () => {
+    it('lists all 10 tools with live statuses; Set up opens the Guide; help rows present', () => {
+        render(<ToolsHub />);
         // Phase 2 complete: 3 ready, 6 needs-setup ("Set up"), only AppFlowy coming-soon.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
         expect(comingSoon).toHaveLength(1);

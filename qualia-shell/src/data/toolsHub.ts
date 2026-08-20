@@ -6,7 +6,9 @@
  * Status rule (plan 047 §0): a tool is `ready` only when its widget is in the
  * registry AND (no env gate, or the `VITE_<TOOL>_URL` env is set);
  * `needs-setup` when the widget exists but the env gate is missing;
- * `coming-soon` otherwise (today: all ten).
+ * `coming-soon` otherwise. Companion tools (no widget by design — FluidVoice)
+ * are `ready` once their Dwellium-side setup card ships (plan 047 tier table:
+ * "GPL-3 companion install, no widget — a setup card in Control Panel").
  */
 
 export type ToolStatus = 'ready' | 'needs-setup' | 'coming-soon';
@@ -20,6 +22,8 @@ export interface ToolEntry {
     blurb: string;
     /** Registry widget id once shipped (plan 047 per-tool sections). */
     widgetId?: string;
+    /** Companion install (never a widget) — `ready` once its setup card ships. */
+    companion?: boolean;
     /** Vite env var that must be set before an iframe/proxy tool counts as ready. */
     envVar?: string;
     /** Anchor in the Guide (getting-started.md) for setup notes. */
@@ -29,7 +33,7 @@ export interface ToolEntry {
 export const TOOLS: ReadonlyArray<ToolEntry> = [
     { id: 'whiteboard', label: 'Whiteboard', license: 'MIT (Excalidraw, embedded)', phase: 1, blurb: 'Hand-drawn whiteboard for floor plans, maintenance markup and doc diagrams.', widgetId: 'whiteboard', setupDoc: 'whiteboard' },
     { id: 'esign', label: 'E-Sign', license: 'AGPL-3.0-only (Documenso, unmodified image)', phase: 1, blurb: 'Send leases, renewals and vendor agreements for signature; track who signed.', widgetId: 'esign', envVar: 'VITE_DOCUMENSO_URL', setupDoc: 'e-sign' },
-    { id: 'dictation', label: 'Dictation', license: 'GPL-3.0 (FluidVoice, Mac companion install)', phase: 1, blurb: 'System-wide voice dictation into any Dwellium text field (macOS 15+).', setupDoc: 'dictation' },
+    { id: 'dictation', label: 'Dictation', license: 'GPL-3.0 (FluidVoice, Mac companion install)', phase: 1, blurb: 'System-wide voice dictation into any Dwellium text field (macOS 15+).', companion: true, setupDoc: 'dictation' },
     { id: 'scheduling', label: 'Scheduling', license: 'MIT (cal.diy, self-hosted)', phase: 2, blurb: 'Showings, maintenance windows and vendor visits — bookable links inside Dwellium.', widgetId: 'scheduler', envVar: 'VITE_CAL_URL', setupDoc: 'scheduling' },
     { id: 'broadcasts', label: 'Broadcasts', license: 'AGPL-3.0-only (listmonk, via API)', phase: 2, blurb: 'Resident, owner and vendor mailing lists plus transactional email.', widgetId: 'broadcasts', envVar: 'VITE_LISTMONK_URL', setupDoc: 'broadcasts' },
     { id: 'links', label: 'Links & QR', license: 'AGPL-3.0-only (Dub, hosted API)', phase: 2, blurb: 'Branded short links and QR codes for notices, unit signage and work orders.', widgetId: 'short-links', envVar: 'VITE_DUB_URL', setupDoc: 'links-qr' },
@@ -45,6 +49,7 @@ export function resolveToolStatus(
     hasWidget: (widgetId: string) => boolean,
     env: Record<string, string | undefined>,
 ): ToolStatus {
+    if (tool.companion) return 'ready'; // companion install — setup card in Control Panel, no widget/env gate
     if (!tool.widgetId || !hasWidget(tool.widgetId)) return 'coming-soon';
     if (tool.envVar && !env[tool.envVar]) return 'needs-setup';
     return 'ready';

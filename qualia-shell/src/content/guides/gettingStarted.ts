@@ -46,7 +46,7 @@ Open *Tools hub* (Filing Cabinet or \`help: tools\`). Every tool shows a status:
 
 - **Whiteboard** (Excalidraw, MIT) — no server; ships as a native widget.
 - **E-Sign** (Documenso, AGPL unmodified image) — self-host; set \`VITE_DOCUMENSO_URL\`. Leases and renewals get a *Send for signature* button.
-- **Dictation** (FluidVoice, GPL-3) — Mac companion app; install it and dictate into any Dwellium field. No server.
+- **Dictation** (FluidVoice, GPL-3) — Mac companion app; \`brew install --cask fluidvoice\`, then seed the property-management vocabulary from *Control Panel → Dictation* (one **Copy vocabulary** click). Dictates into any Dwellium field. No server.
 - **Scheduling** (cal.diy, MIT) — self-host; set \`VITE_CAL_URL\`.
 - **Broadcasts** (listmonk, AGPL via API) — self-host; set \`VITE_LISTMONK_URL\`; pick an email provider and DNS first (SPF/DKIM/DMARC).
 - **Links & QR** (Dub, hosted API) — needs a Dub workspace; set \`VITE_DUB_URL\`.

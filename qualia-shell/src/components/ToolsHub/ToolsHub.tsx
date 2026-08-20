@@ -29,6 +29,7 @@ export default function ToolsHub() {
     const open = (tool: ToolEntry, status: ToolStatus) => {
         logActivity('tools-hub', 'Tools hub', 'tools-hub:open', { toolId: tool.id, status });
         if (status === 'ready' && tool.widgetId) openWidget(tool.widgetId);
+        else if (status === 'ready' && tool.companion) openWidget('control-panel'); // companion setup card lives there
         else openWidget('guide');
     };
 

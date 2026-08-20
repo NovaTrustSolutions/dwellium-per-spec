@@ -48,18 +48,29 @@ describe('data', () => {
         const fv = TOOLS.find(x => x.id === 'dictation')!; // companion install, never a widget
         expect(resolveToolStatus(fv, () => true, {})).toBe('coming-soon');
     });
-    it('today: none is ready (no tool widget registered yet)', () => {
-        expect(toolStatuses({}).every(r => r.status === 'coming-soon')).toBe(true);
+    it('today: esign is needs-setup (widget shipped, env gate unset); the rest coming-soon', () => {
+        for (const { tool, status } of toolStatuses({})) {
+            expect(status, tool.id).toBe(tool.id === 'esign' ? 'needs-setup' : 'coming-soon');
+        }
+    });
+    it('esign flips to ready once VITE_DOCUMENSO_URL is set (no code change)', () => {
+        const esign = toolStatuses({ VITE_DOCUMENSO_URL: 'https://sign.example' }).find(r => r.tool.id === 'esign')!;
+        expect(esign.status).toBe('ready');
     });
 });
 
 describe('window', () => {
-    it('renders 10 rows, disables coming-soon, shows help rows, unlocks the tools tier', () => {
+    it('renders 10 rows, disables coming-soon, offers Set up for esign, shows help rows, unlocks the tools tier', () => {
         render(<ToolsHub />);
         expect(document.querySelectorAll('tbody tr')).toHaveLength(10);
+        // Plan 047 phase 1: the esign widget is registered → its row is "Set up", the other 9 stay disabled.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(10);
+        expect(comingSoon).toHaveLength(9);
         comingSoon.forEach(b => expect(b).toBeDisabled());
+        const setUp = screen.getByRole('button', { name: 'Set up' });
+        expect(setUp).toBeEnabled();
+        fireEvent.click(setUp); // needs-setup → opens the Guide's setup notes
+        expect(opened).toEqual(['guide']);
         expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Guide' })).toBeInTheDocument();
         expect(onboardingStore.getSnapshot().unlockedTiers).toEqual(['tools']);

@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertTriangle, ArrowRight, ArrowUpDown, BarChart3, Building2, Calendar, Check, CheckSquare, ChevronDown, ChevronUp, Clock, Columns3, Droplets, Eye, FileKey2, FileText, Filter, Flame, Globe, Home, Link2, List, Mail, MessageSquare, PenTool, Percent, Phone, Plus, RefreshCw, RotateCw, Search, Send, Shield, Tag, Trash2, TrendingUp, UserCheck, UserPlus, Wifi, X, Zap } from 'lucide-react';
 import { strataGet, strataPut, strataPost } from '../strataApi';
+import { sendForEsign } from '../../ESign/esignApi'; // plan 047 — Documenso proxy client
 import type { Workitem, Property, Unit } from '../strataTypes';
 import ProfileSpaces from './ProfileSpaces';
 import { useUser } from '../../../context/UserContext';
@@ -251,6 +252,24 @@ export default function LeasingModule() {
             }
         } catch (err: any) {
             showToast(err?.response?.data?.error || 'Failed to update doc status', 'error');
+        }
+    };
+
+    // Plan 047: real e-signature via the Documenso backend proxy. While the
+    // backend has no DOCUMENSO_* env it answers 503 → point at the Tools hub.
+    const sendForSignature = async (lease: Workitem) => {
+        const r = await sendForEsign(lease.id);
+        if (r.kind === 'ok') {
+            showToast('Sent for e-signature', 'success');
+            fetchLeases();
+            if (selectedLease?.id === lease.id) {
+                const updated = await strataGet<Workitem>(`/workitems/${lease.id}`);
+                setSelectedLease(updated);
+            }
+        } else if (r.kind === 'needs-setup') {
+            showToast('Documenso is not connected yet — see Tools hub → E-Sign', 'error');
+        } else {
+            showToast(r.message, 'error');
         }
     };
 
@@ -1058,6 +1077,19 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                     style={{ padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
                                     {next.label}
                                 </button>
+                            ))}
+                            {/* Plan 047: real send via Documenso (only from `approved`, mirrors backend gate) */}
+                            {selectedLease.metadata.docStatus === 'approved' && (
+                                <button onClick={() => sendForSignature(selectedLease)}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
+                                    <PenTool size={10} /> Send for e-signature
+                                </button>
+                            )}
+                            {Array.isArray(selectedLease.metadata.esign?.recipients) && (selectedLease.metadata.esign.recipients as Array<{ email: string; role?: string; status?: string }>).map((r) => (
+                                <span key={r.email} title={r.status || r.role || 'signer'}
+                                    style={{ fontSize: 10, padding: '1px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
+                                    {r.email}
+                                </span>
                             ))}
                             {selectedLease.metadata.docHistory && (
                                 <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>

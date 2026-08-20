@@ -41,7 +41,8 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   − ui-editor DISABLED (2026-07-06 Andy: activating it blanked the
         //     screen; registry entry removed, component kept on disk) → 55.
         //   + tools-hub + guide (plan 047 onboarding surface) → 57.
-        expect(ids.length).toBe(57);
+        //   + esign (plan 047 phase 1 — Documenso e-sign widget) → 58.
+        expect(ids.length).toBe(58);
     });
 
     // Plan 047: every widget carries a first-open tip whose related ids resolve.

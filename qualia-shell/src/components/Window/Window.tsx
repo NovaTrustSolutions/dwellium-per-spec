@@ -299,24 +299,25 @@ export default function Window({ state, children, regionRect, containerStyle }: 
             ref={windowRef}
             className={`window ${state.maximized ? 'window--maximized' : ''} ${classicFocusedFrame ? 'window--classic-focus-frame' : ''} ${isTopWindow ? 'window--focused' : ''} ${tearoffActive ? 'window--tearoff' : ''} ${locked ? 'window--locked' : ''}`}
             style={{ ...style, ...containerStyle }}
+            role="presentation"
             onMouseDown={() => focusWindow(state.id)}
         >
-            {/* Resize handles */}
+            {/* Resize handles — pointer-only affordances (keyboard path: titlebar buttons) */}
             {!state.maximized && !locked && (
                 <>
-                    <div className="resize-handle resize-n" onMouseDown={e => onResizeMouseDown(e, 'n')} />
-                    <div className="resize-handle resize-s" onMouseDown={e => onResizeMouseDown(e, 's')} />
-                    <div className="resize-handle resize-e" onMouseDown={e => onResizeMouseDown(e, 'e')} />
-                    <div className="resize-handle resize-w" onMouseDown={e => onResizeMouseDown(e, 'w')} />
-                    <div className="resize-handle resize-ne" onMouseDown={e => onResizeMouseDown(e, 'ne')} />
-                    <div className="resize-handle resize-nw" onMouseDown={e => onResizeMouseDown(e, 'nw')} />
-                    <div className="resize-handle resize-se" onMouseDown={e => onResizeMouseDown(e, 'se')} />
-                    <div className="resize-handle resize-sw" onMouseDown={e => onResizeMouseDown(e, 'sw')} />
+                    <div role="presentation" className="resize-handle resize-n" onMouseDown={e => onResizeMouseDown(e, 'n')} />
+                    <div role="presentation" className="resize-handle resize-s" onMouseDown={e => onResizeMouseDown(e, 's')} />
+                    <div role="presentation" className="resize-handle resize-e" onMouseDown={e => onResizeMouseDown(e, 'e')} />
+                    <div role="presentation" className="resize-handle resize-w" onMouseDown={e => onResizeMouseDown(e, 'w')} />
+                    <div role="presentation" className="resize-handle resize-ne" onMouseDown={e => onResizeMouseDown(e, 'ne')} />
+                    <div role="presentation" className="resize-handle resize-nw" onMouseDown={e => onResizeMouseDown(e, 'nw')} />
+                    <div role="presentation" className="resize-handle resize-se" onMouseDown={e => onResizeMouseDown(e, 'se')} />
+                    <div role="presentation" className="resize-handle resize-sw" onMouseDown={e => onResizeMouseDown(e, 'sw')} />
                 </>
             )}
 
-            {/* Title bar */}
-            <div className="window__titlebar" onMouseDown={onTitleMouseDown} onDoubleClick={() => maximizeWindow(state.id)}>
+            {/* Title bar — drag/double-click are pointer conveniences; maximize button is the keyboard path */}
+            <div role="presentation" className="window__titlebar" onMouseDown={onTitleMouseDown} onDoubleClick={() => maximizeWindow(state.id)}>
                 {/* Controls — LEFT side (macOS style) */}
                 <div className="window__controls">
                     <button className="window__btn window__btn--close" onClick={e => { e.stopPropagation(); closeWindow(state.id); }} title="Close" aria-label="Close">
@@ -340,6 +341,7 @@ export default function Window({ state, children, regionRect, containerStyle }: 
                     <span className="window__title" title={getWidgetMeta(String(state.component))?.description}>{state.title}</span>
                     {/* Drag-grip — drag into Scribe to insert a markdown reference (Phase D DnD bridge) */}
                     <span
+                        role="presentation"
                         className="window__drag-grip"
                         draggable
                         onMouseDown={(e) => e.stopPropagation()}

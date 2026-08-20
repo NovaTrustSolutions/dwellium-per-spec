@@ -24,6 +24,9 @@ import { sidebarGroupsStore, SIDEBAR_GROUPS_KEY } from './sidebarGroupsStore';
 // plan 046 S2-6: hover tooltip = "Label — one-line description" (registry is the single source).
 const withDesc = (i: { label: string; component: string }) => { const d = getWidgetMeta(i.component)?.description; return d ? `${i.label} — ${d}` : i.label; };
 
+// a11y: stable callback ref replacing the autoFocus prop (jsx-a11y/no-autofocus) — same behavior, focus once on mount.
+const focusOnMount = (el: HTMLInputElement | null) => el?.focus();
+
 /**
  * Renders a Lucide SVG icon if the key is recognized, otherwise falls back to text/emoji.
  * Used everywhere an icon string needs to be displayed.
@@ -180,6 +183,16 @@ function TreeNode({ item, depth = 0 }: { item: HierarchyItem; depth?: number }) 
             <div
                 className={`tree-node__row ${isSelected ? 'tree-node__row--selected' : ''}`}
                 style={{ paddingLeft: depth * 16 + 8 }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => {
+                    if (e.target !== e.currentTarget) return; // ignore keys from the inline rename input
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectItem(item.id);
+                        if (hasChildren || (item.children && item.children.length === 0)) toggleExpand(item.id);
+                    }
+                }}
                 onClick={() => {
                     selectItem(item.id);
                     if (hasChildren || (item.children && item.children.length === 0)) toggleExpand(item.id);
@@ -750,7 +763,7 @@ export default function Sidebar() {
                     </div>
 
                     {/* ---- DRAGGABLE DIVIDER ---- */}
-                    <div className="sidebar__split-divider" onMouseDown={onSplitResizeStart}>
+                    <div role="presentation" className="sidebar__split-divider" onMouseDown={onSplitResizeStart}>
                         <div className="sidebar__split-divider-handle" />
                     </div>
 
@@ -877,10 +890,12 @@ export default function Sidebar() {
                                             {!collapsed && !searchActive && (
                                                 <span
                                                     role="button"
+                                                    tabIndex={0}
                                                     aria-label={`Remove ${item.label} from sidebar`}
                                                     title="Remove from sidebar (closes it)"
                                                     className="sidebar-widget__remove"
                                                     onClick={e => { e.stopPropagation(); removeWidget(item.component); }}
+                                                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); removeWidget(item.component); } }}
                                                 >
                                                     ×
                                                 </span>
@@ -1074,7 +1089,7 @@ export default function Sidebar() {
                                     onChange={e => setSaveName(e.target.value)}
                                     placeholder="Layout name..."
                                     className="sidebar__popover-input"
-                                    autoFocus
+                                    ref={focusOnMount}
                                     onKeyDown={e => {
                                         if (e.key === 'Enter' && saveName.trim()) {
                                             saveNamedLayout(saveName.trim());
@@ -1135,12 +1150,13 @@ export default function Sidebar() {
             </div>
 
             {/* Resize Handle (horizontal width) — hidden in icon-only mode */}
-            {!iconOnly && <div className="sidebar__resize-handle" onMouseDown={onResizeStart} />}
+            {!iconOnly && <div role="presentation" className="sidebar__resize-handle" onMouseDown={onResizeStart} />}
 
             {/* Add / remove widgets gallery */}
             {galleryOpen && (
-                <div className="widget-gallery-overlay" onClick={() => setGalleryOpen(false)}>
-                    <div className="widget-gallery" onClick={e => e.stopPropagation()}>
+                // Backdrop close is a mouse convenience — the keyboard path is the Close button.
+                <div role="presentation" className="widget-gallery-overlay" onClick={() => setGalleryOpen(false)}>
+                    <div role="presentation" className="widget-gallery" onClick={e => e.stopPropagation()}>
                         <div className="widget-gallery__head">
                             <span className="widget-gallery__title">Widgets</span>
                             <button className="widget-gallery__close" onClick={() => setGalleryOpen(false)} aria-label="Close">×</button>

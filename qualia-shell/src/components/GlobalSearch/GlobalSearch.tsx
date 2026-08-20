@@ -222,7 +222,10 @@ export default function GlobalSearch({ onNavigate }: Props) {
                 <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--bg-secondary, #1e1e2e)', border: '1px solid var(--border-subtle)', borderRadius: 8, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxHeight: 200, overflowY: 'auto', zIndex: 9999, padding: 4 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><Star size={11} aria-hidden /> Saved Searches</div>
                     {savedSearches.map(s => (
+                        // role over <button>: row contains a nested delete button (invalid inside <button>)
                         <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)' }}
+                            role="button" tabIndex={0}
+                            onKeyDown={e => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLoadSaved(s); } }}
                             onClick={() => handleLoadSaved(s)}>
                             <span style={{ flex: 1 }}>{s.name}</span>
                             <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{s.query}</span>

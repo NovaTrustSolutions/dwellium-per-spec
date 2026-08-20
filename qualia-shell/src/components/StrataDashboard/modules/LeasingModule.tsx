@@ -562,7 +562,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                     <tr key={gc.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: selectedGCs.has(gc.id) ? 'color-mix(in srgb, var(--accent) 6%, transparent)' : 'transparent' }}>
                                         <td style={{ padding: '8px 12px' }}>
                                             <input type="checkbox" checked={selectedGCs.has(gc.id)}
-                                                onChange={() => setSelectedGCs(prev => { const n = new Set(prev); n.has(gc.id) ? n.delete(gc.id) : n.add(gc.id); return n; })}
+                                                onChange={() => setSelectedGCs(prev => { const n = new Set(prev); if (n.has(gc.id)) n.delete(gc.id); else n.add(gc.id); return n; })}
                                                 style={{ accentColor: '#D6FE51' }} />
                                         </td>
                                         <td style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' }}>{gc.name}</td>
@@ -652,7 +652,11 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                         </div>
                                         <div className="s-kanban-cards">
                                             {stageLeases.map(lease => (
-                                                <div key={lease.id} className={`s-kanban-card ${selectedLease?.id === lease.id ? 'active' : ''}`} onClick={() => setSelectedLease(lease)}>
+                                                // role over <button>: card contains a nested "Move" button (invalid inside <button>)
+                                                <div key={lease.id} className={`s-kanban-card ${selectedLease?.id === lease.id ? 'active' : ''}`}
+                                                    role="button" tabIndex={0}
+                                                    onKeyDown={e => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedLease(lease); } }}
+                                                    onClick={() => setSelectedLease(lease)}>
                                                     <h4>{lease.metadata?.applicantName || lease.title}</h4>
                                                     <div className="s-kanban-card-meta">
                                                         <span>Unit {lease.metadata?.requestedUnit || '—'}</span>
@@ -1057,13 +1061,14 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                         <button className="s-btn-icon" onClick={() => setSelectedLease(null)}>×</button>
                     </div>
                     <div className="s-vetting-body">
-                        <div className="s-vetting-row"><label>Name</label><span>{selectedLease.metadata?.applicantName}</span></div>
-                        <div className="s-vetting-row"><label>Email</label><span>{selectedLease.metadata?.applicantEmail}</span></div>
-                        <div className="s-vetting-row"><label>Unit</label><span>{selectedLease.metadata?.requestedUnit}</span></div>
-                        <div className="s-vetting-row"><label>Monthly Rent</label><span>${(selectedLease.metadata?.monthlyRent || 0).toLocaleString()}</span></div>
-                        <div className="s-vetting-row"><label>Lease Term</label><span>{selectedLease.metadata?.leaseTermMonths || 12} months</span></div>
-                        <div className="s-vetting-row"><label>Move-In Date</label><span>{selectedLease.metadata?.moveInDate || '—'}</span></div>
-                        <div className="s-vetting-row"><label>Current Stage</label><span className={`s-badge ${getStage(selectedLease)}`}>{getStage(selectedLease)}</span></div>
+                        {/* Read-only key/value rows, not form controls — spans, not labels (jsx-a11y/label-has-associated-control) */}
+                        <div className="s-vetting-row"><span className="s-vetting-label">Name</span><span>{selectedLease.metadata?.applicantName}</span></div>
+                        <div className="s-vetting-row"><span className="s-vetting-label">Email</span><span>{selectedLease.metadata?.applicantEmail}</span></div>
+                        <div className="s-vetting-row"><span className="s-vetting-label">Unit</span><span>{selectedLease.metadata?.requestedUnit}</span></div>
+                        <div className="s-vetting-row"><span className="s-vetting-label">Monthly Rent</span><span>${(selectedLease.metadata?.monthlyRent || 0).toLocaleString()}</span></div>
+                        <div className="s-vetting-row"><span className="s-vetting-label">Lease Term</span><span>{selectedLease.metadata?.leaseTermMonths || 12} months</span></div>
+                        <div className="s-vetting-row"><span className="s-vetting-label">Move-In Date</span><span>{selectedLease.metadata?.moveInDate || '—'}</span></div>
+                        <div className="s-vetting-row"><span className="s-vetting-label">Current Stage</span><span className={`s-badge ${getStage(selectedLease)}`}>{getStage(selectedLease)}</span></div>
                     </div>
                     {/* Doc Status Badge */}
                     {selectedLease.metadata?.docStatus && (
@@ -1213,8 +1218,9 @@ DRAFT — This document must be reviewed by legal counsel before execution.
 
             {/* Add Application Modal */}
             {showAddForm && (
-                <div className="s-modal-overlay" onClick={() => setShowAddForm(false)}>
-                    <div className="s-modal" onClick={e => e.stopPropagation()}>
+                // Backdrop close is a mouse convenience — the keyboard path is the Cancel/× buttons.
+                <div role="presentation" className="s-modal-overlay" onClick={() => setShowAddForm(false)}>
+                    <div role="presentation" className="s-modal" onClick={e => e.stopPropagation()}>
                         <div className="s-modal-header">
                             <h3>Add Lease Application</h3>
                             <button className="s-btn-icon" onClick={() => setShowAddForm(false)}><X size={18} /></button>
@@ -1245,13 +1251,13 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                             } catch (err) { console.error(err); showToast('Failed to create application', 'error'); }
                         }}>
                             <div className="s-form-group">
-                                <label>Applicant Name</label>
-                                <input name="applicantName" required placeholder="e.g. John Smith" className="s-input" />
+                                <label htmlFor="lease-add-applicant-name">Applicant Name</label>
+                                <input id="lease-add-applicant-name" name="applicantName" required placeholder="e.g. John Smith" className="s-input" />
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Property</label>
-                                    <select name="propertyId" className="s-input">
+                                    <label htmlFor="lease-add-property">Property</label>
+                                    <select id="lease-add-property" name="propertyId" className="s-input">
                                         <option value="">Select property…</option>
                                         {properties.map(p => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
@@ -1259,23 +1265,23 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                     </select>
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Requested Unit</label>
-                                    <input name="requestedUnit" placeholder="e.g. A-101" className="s-input" />
+                                    <label htmlFor="lease-add-unit">Requested Unit</label>
+                                    <input id="lease-add-unit" name="requestedUnit" placeholder="e.g. A-101" className="s-input" />
                                 </div>
                             </div>
                             <div className="s-form-row">
                                 <div className="s-form-group">
-                                    <label>Monthly Rent</label>
-                                    <input name="monthlyRent" type="number" min="0" placeholder="1200" className="s-input" />
+                                    <label htmlFor="lease-add-rent">Monthly Rent</label>
+                                    <input id="lease-add-rent" name="monthlyRent" type="number" min="0" placeholder="1200" className="s-input" />
                                 </div>
                                 <div className="s-form-group">
-                                    <label>Lease Term (Months)</label>
-                                    <input name="leaseTermMonths" type="number" min="1" defaultValue="12" className="s-input" />
+                                    <label htmlFor="lease-add-term">Lease Term (Months)</label>
+                                    <input id="lease-add-term" name="leaseTermMonths" type="number" min="1" defaultValue="12" className="s-input" />
                                 </div>
                             </div>
                             <div className="s-form-group">
-                                <label>Desired Move-In Date</label>
-                                <input name="moveInDate" type="date" className="s-input" />
+                                <label htmlFor="lease-add-movein">Desired Move-In Date</label>
+                                <input id="lease-add-movein" name="moveInDate" type="date" className="s-input" />
                             </div>
                             <div className="s-modal-footer">
                                 <button type="button" className="s-btn s-btn-ghost" onClick={() => setShowAddForm(false)}>Cancel</button>

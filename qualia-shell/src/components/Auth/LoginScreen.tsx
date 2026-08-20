@@ -121,7 +121,9 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
                 {hasClicked && <source src="/assets/nebula-bg-1280.mp4" type="video/mp4" />}
             </video>
 
+            {/* Mouse-convenience backdrop — the accessible control is the Sign in button inside. */}
             <div
+                role="presentation"
                 className={`login-start-overlay ${hasClicked ? 'is-hidden' : ''}`}
                 onClick={() => setHasClicked(true)}
             >

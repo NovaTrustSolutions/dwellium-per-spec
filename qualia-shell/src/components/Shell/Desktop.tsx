@@ -411,8 +411,14 @@ function HierarchyBrowser() {
                                 className={`detail-child-row detail-child-row--file${focusedFileIdx === idx ? ' detail-child-row--focused' : ''}`}
                                 role="option"
                                 aria-selected={focusedFileIdx === idx}
+                                tabIndex={-1}
                                 onClick={() => setFocusedFileIdx(idx)}
                                 onDoubleClick={() => openFileInWindow(file)}
+                                onKeyDown={e => {
+                                    if (e.target !== e.currentTarget) return;
+                                    if (e.key === 'Enter') openFileInWindow(file);
+                                    else if (e.key === ' ') { e.preventDefault(); setFocusedFileIdx(idx); }
+                                }}
                             >
                                 <span className="detail-child-row__icon"><FileIcon type={file.type} /></span>
                                 <span className="detail-child-row__label">{file.name}</span>
@@ -1403,6 +1409,7 @@ export default function Desktop() {
                                     {/* × Close button inside the tab */}
                                     <span
                                         role="button"
+                                        tabIndex={0}
                                         aria-label={`Close ${win.title}`}
                                         className="region-tabs__close"
                                         onClick={e => {
@@ -1410,6 +1417,13 @@ export default function Desktop() {
                                             // Browser behavior: closing a tab reveals the one behind it.
                                             // Remove it from the region FIRST so the array shifts and the
                                             // next tab takes the active (index-0) slot, then close it.
+                                            clearWindowRegion(win.id);
+                                            closeWindow(win.id);
+                                        }}
+                                        onKeyDown={e => {
+                                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                                            e.preventDefault();
+                                            e.stopPropagation();
                                             clearWindowRegion(win.id);
                                             closeWindow(win.id);
                                         }}
@@ -1536,8 +1550,10 @@ export default function Desktop() {
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{win.title}</span>
                                     <span
                                         role="button"
+                                        tabIndex={0}
                                         aria-label={`Close ${win.title}`}
                                         onClick={e => { e.stopPropagation(); closeWindow(wid); }}
+                                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); closeWindow(wid); } }}
                                         style={{ flexShrink: 0, marginLeft: 2, width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: 10, lineHeight: 1, cursor: 'pointer' }}
                                     >×</span>
                                 </button>

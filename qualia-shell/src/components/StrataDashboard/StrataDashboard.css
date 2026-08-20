@@ -1828,7 +1828,7 @@ body.animations-off .strata-dashboard .s-animate-fade-in { animation: none !impo
     border-bottom: 1px solid var(--s-row-border);
 }
 
-.strata-dashboard .s-vetting-row label {
+.strata-dashboard .s-vetting-row .s-vetting-label {
     font-size: 0.78rem;
     color: var(--s-text-tertiary);
     font-weight: 600;

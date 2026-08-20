@@ -496,3 +496,22 @@ One component `src/components/ExternalTool/ExternalToolFrame.tsx` (generalize La
 - No VM, DNS, OAuth-client, or Cloud Run changes without the specific `gcloud` command pasted to Ilya and his go (G10).
 - If an iframe login fails under third-party-cookie restrictions, ship the "Open ↗ in new tab" fallback — never a blank iframe.
 - Do not retire Notepad / Task Board / Wiki in favour of AppFlowy (phase 3, Andy's call after trial).
+
+---
+
+## Addendum 2026-08-20 — Zero-cost topology (Ilya-locked, supersedes the hosting table above)
+
+Ilya's decisions: **no new monthly spend**. G3 (paid Tools VM) is dead. G1 was never a cost (dwellium.com is owned; subdomains/DNS/LE-TLS free). Free-tier numbers below are to be **re-verified by each executor via WebFetch at build time** — vendor plans drift.
+
+| Tool | $0 hosting | Notes |
+|---|---|---|
+| Documenso | **Documenso Cloud free plan** (~5 docs/mo) — Ilya creates the account + API key; env `DOCUMENSO_API_URL/KEY` + webhook secret → phase-1 code goes live unchanged | Upgrade path: paid Cloud or self-host on Cloud Run scale-to-zero + Supabase free Postgres (option B, documented, not built) |
+| Cal.com (cal.diy) | **Hosted cal.com free individual plan** (Andy, 1 seat) — booking-page embed in a Scheduling widget | Verify embed + webhook availability on free tier; API-dependent bridges deferred |
+| Penpot | **penpot.app free cloud** — launcher widget only | Self-host = phase 3 |
+| Dub | **dub.co free plan** (~25 links/mo + QR) via `/api/links` proxy | Cap is fine for notices/QR trials |
+| RustDesk | Launcher widget + **hbbs/hbbr on the free e2-micro** (fallback: community relays) | TCP 21114-21119/UDP 21116 firewall rules |
+| listmonk | **GCP Always-Free e2-micro** (us-central1) + bundled Postgres in compose + **Brevo free SMTP** (~300/day) | SPF/DKIM DNS records = Ilya (G5) |
+| Immich | **Office Mac** (always-on): Docker Desktop compose + external library on Mac disk + **Tailscale** for remote access; widget reads `VITE_IMMICH_URL` | Use Tailscale `ts.net` HTTPS certs — an http:// LAN URL cannot be iframed/fetched from the https app (mixed content). ML container optional on Apple Silicon |
+| e2-micro VM | `dwellium-free-1`: e2-micro, us-central1, 30 GB standard disk (Always Free), static IP | Hosts listmonk + rustdesk relay only; compose files in `tools/` in this repo |
+
+Executor rules unchanged: AGPL tools self-hosted unmodified; upsert-only bridges; nothing deployed/DNS'd without Ilya running the command.

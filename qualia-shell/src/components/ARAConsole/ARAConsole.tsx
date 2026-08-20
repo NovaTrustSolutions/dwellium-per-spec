@@ -46,6 +46,9 @@ import AgentEta from '../common/AgentEta';
 import AraSidePanel, { type AraSidePanelView } from './AraSidePanel';
 import AvatarHarness, { type AvatarHarnessHandle } from '../AvatarHarness/AvatarHarness';
 
+// a11y: stable callback ref replacing the autoFocus prop (jsx-a11y/no-autofocus) — same behavior, focus once on mount.
+const focusOnMount = (el: HTMLInputElement | null) => el?.focus();
+
 // ── TTS voice catalog (Cycle 1 of ARA voice arc — 2026-05-28) ────────────
 // Two tiers: OpenAI TTS (high quality, 6 voices, requires the user's OpenAI
 // key) and browser SpeechSynthesis enhanced macOS voices (fallback when no
@@ -2100,6 +2103,7 @@ export default function ARAConsole() {
                         <>
                             {/* Overlay to catch outside clicks and block events below */}
                             <div
+                                role="presentation"
                                 className="ara-dropdown-overlay"
                                 onClick={() => { setModePickerOpen(false); setExpandedTooltipId(null); }}
                             />
@@ -2875,6 +2879,9 @@ export default function ARAConsole() {
                                 onChange={e => setVoiceUploadName(e.target.value)}
                             />
                             <div
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); voiceFileRef.current?.click(); } }}
                                 className={`ara-voice-dropzone ${voiceUploadDrag ? 'ara-voice-dropzone--drag' : ''}`}
                                 onDragOver={e => { e.preventDefault(); setVoiceUploadDrag(true); }}
                                 onDragLeave={() => setVoiceUploadDrag(false)}
@@ -2947,8 +2954,9 @@ export default function ARAConsole() {
 
             {/* Avatar Password Modal */}
             {avatarPasswordModal && (
-                <div className="ara-avatar-modal-overlay" onClick={() => setAvatarPasswordModal(false)}>
-                    <div className="ara-avatar-modal" onClick={e => e.stopPropagation()}>
+                // Backdrop close is a mouse convenience — the keyboard path is the Cancel button.
+                <div role="presentation" className="ara-avatar-modal-overlay" onClick={() => setAvatarPasswordModal(false)}>
+                    <div role="presentation" className="ara-avatar-modal" onClick={e => e.stopPropagation()}>
                         <div className="ara-avatar-modal-header">
                             <span className="ara-avatar-modal-icon"><Lock size={18} aria-hidden="true" /></span>
                             <h4>Enable AI Avatar</h4>
@@ -2963,7 +2971,7 @@ export default function ARAConsole() {
                             onChange={e => { setAvatarPasswordInput(e.target.value); setAvatarPasswordError(false); }}
                             onKeyDown={e => { if (e.key === 'Enter') submitAvatarPassword(); }}
                             placeholder="Enter password"
-                            autoFocus
+                            ref={focusOnMount}
                         />
                         {avatarPasswordError && (
                             <span className="ara-avatar-modal-error">Incorrect password. Try again.</span>

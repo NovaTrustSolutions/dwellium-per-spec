@@ -296,7 +296,7 @@ export default function ControlPanel() {
                 </div>
 
                 <div className="cp-field">
-                    <label className="cp-label">Accent Color</label>
+                    <span className="cp-label">Accent Color</span>
                     <div className="cp-colors">
                         {/* P11-11: theme-default reset — custom accents silently
                             fought themed looks (e.g. Terminal·BL4). */}
@@ -350,8 +350,9 @@ export default function ControlPanel() {
 
                 {/* Font Family */}
                 <div className="cp-field">
-                    <label className="cp-label">Font Family</label>
+                    <label className="cp-label" htmlFor="cp-font-family">Font Family</label>
                     <select
+                        id="cp-font-family"
                         className="cp-select"
                         value={layoutSettings.fontFamily}
                         onChange={e => updateSettings({ fontFamily: e.target.value })}
@@ -387,7 +388,7 @@ export default function ControlPanel() {
 
                 {/* Snap Master Toggle */}
                 <div className="cp-field">
-                    <label className="cp-label">Snap System</label>
+                    <span className="cp-label">Snap System</span>
                     <button
                         className={`cp-toggle cp-toggle--snap ${layoutSettings.snapEnabled ? '' : 'cp-toggle--off'}`}
                         onClick={() => updateSettings({ snapEnabled: !layoutSettings.snapEnabled })}
@@ -443,7 +444,7 @@ export default function ControlPanel() {
 
                 {/* Desktop Regions */}
                 <div className="cp-field">
-                    <label className="cp-label">Desktop Regions</label>
+                    <span className="cp-label">Desktop Regions</span>
                     <div className={`cp-toggle ${layoutSettings.regionsEnabled ? '' : 'cp-toggle--off'}`}>
                         <button className={`cp-toggle__option ${!layoutSettings.regionsEnabled ? 'cp-toggle__option--active' : ''}`}
                             onClick={() => updateSettings({ regionsEnabled: false })}>Off</button>
@@ -459,7 +460,7 @@ export default function ControlPanel() {
                 )}
                 {layoutSettings.regionsEnabled && (
                     <div className="cp-field cp-field--nested">
-                        <label className="cp-label">Region Layout</label>
+                        <span className="cp-label">Region Layout</span>
                         <div className="cp-region-selector">
                             {([
                                 { value: 'none', label: 'None (default)' },
@@ -515,7 +516,7 @@ export default function ControlPanel() {
 
                 {/* Desktop Margins */}
                 <div className="cp-field">
-                    <label className="cp-label">Desktop Margins</label>
+                    <span className="cp-label">Desktop Margins</span>
                     <div className="cp-margins">
                         <div className="cp-margins__preview">
                             <div className="cp-margins__box"
@@ -550,7 +551,7 @@ export default function ControlPanel() {
 
                 {/* Action buttons */}
                 <div className="cp-field">
-                    <label className="cp-label">Window Actions</label>
+                    <span className="cp-label">Window Actions</span>
                     <div className="cp-actions">
                         <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === false && minimizeWindow(w.id))}><Sparkles size={14} aria-hidden /> Desktop</button>
                         <button className="cp-btn" onClick={() => windows.forEach(w => w.minimized === true && restoreWindow(w.id))}><Undo2 size={14} aria-hidden /> Restore</button>

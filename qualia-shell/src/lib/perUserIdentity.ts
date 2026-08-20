@@ -68,6 +68,8 @@ export const firstRunUserIdHolder: UserIdHolder = makeHolder();
 export const onboardingUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 046-A2 — per-user "Today at a glance" once-per-day throttle (araDailyGlance). */
 export const araGlanceUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 047 phase 1 — per-user Excalidraw whiteboard scene (whiteboardStore). */
+export const whiteboardUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -88,6 +90,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     firstRunUserIdHolder,
     onboardingUserIdHolder,
     araGlanceUserIdHolder,
+    whiteboardUserIdHolder,
 ];
 
 /**

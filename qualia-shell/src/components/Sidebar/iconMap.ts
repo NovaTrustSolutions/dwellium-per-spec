@@ -13,6 +13,7 @@
 import {
     Building2,
     Building,
+    CalendarDays,
     LayoutList,
     ScrollText,
     MailOpen,
@@ -53,6 +54,8 @@ import {
     Layers,
     Tag,
     History,
+    Monitor,
+    Palette,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -69,6 +72,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'mail-open':      MailOpen,
     'settings':       Settings,
     'home':           Home,
+    'calendar-days':  CalendarDays, // plan 047 phase 2: Scheduling (cal.com)
 
     // ── AI Tools ──
     'brain-circuit':  BrainCircuit,
@@ -106,6 +110,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'terminal':       Terminal,
     'tag':            Tag,
     'history':        History,
+    'palette':        Palette,        // plan 047 phase 2: Design Studio (Penpot)
+    'monitor':        Monitor,        // plan 047 phase 2: Remote Support (RustDesk)
 
     // ── Group Headers ──
     'building':       Building,

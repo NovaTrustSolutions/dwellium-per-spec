@@ -50,9 +50,14 @@ describe('data', () => {
         expect(resolveToolStatus(fv, () => true, {})).toBe('ready');
         expect(resolveToolStatus(fv, () => false, {})).toBe('ready');
     });
-    it('today: whiteboard + dictation ready, esign needs-setup, the rest coming-soon', () => {
+    it('today: whiteboard + dictation + design-studio ready; esign + scheduling + remote-support needs-setup; the rest coming-soon', () => {
+        // Phase 2 launcher trio: design-studio has no env gate (launcher defaults to
+        // Penpot's free cloud) so registering it alone makes it ready; scheduling +
+        // remote-support wait on VITE_CALCOM_URL / VITE_RUSTDESK_RELAY.
+        const READY = new Set(['whiteboard', 'dictation', 'design-studio']);
+        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'remote-support']);
         for (const { tool, status } of toolStatuses({})) {
-            const want = tool.id === 'whiteboard' || tool.companion ? 'ready' : tool.id === 'esign' ? 'needs-setup' : 'coming-soon';
+            const want = READY.has(tool.id) ? 'ready' : NEEDS_SETUP.has(tool.id) ? 'needs-setup' : 'coming-soon';
             expect(status, tool.id).toBe(want);
         }
     });
@@ -60,21 +65,31 @@ describe('data', () => {
         const esign = toolStatuses({ VITE_DOCUMENSO_URL: 'https://sign.example' }).find(r => r.tool.id === 'esign')!;
         expect(esign.status).toBe('ready');
     });
+    it('scheduling + remote-support flip to ready off their envs (no code change)', () => {
+        const rows = toolStatuses({ VITE_CALCOM_URL: 'https://cal.com/andy', VITE_RUSTDESK_RELAY: 'remote.example.com:21116,KEY' });
+        expect(rows.find(r => r.tool.id === 'scheduling')!.status).toBe('ready');
+        expect(rows.find(r => r.tool.id === 'remote-support')!.status).toBe('ready');
+    });
 });
 
 describe('window', () => {
-    it('renders 10 rows, disables coming-soon, offers Set up for esign, shows help rows, unlocks the tools tier', () => {
+    it('renders 10 rows, disables coming-soon, offers Set up for the env-gated tools, shows help rows, unlocks the tools tier', () => {
         render(<ToolsHub />);
         expect(document.querySelectorAll('tbody tr')).toHaveLength(10);
-        // Phase 1: whiteboard + dictation ready, esign needs-setup ("Set up"), 7 still coming-soon.
+        // Phase 2: whiteboard + dictation + design-studio ready, esign + scheduling
+        // + remote-support needs-setup ("Set up"), 4 still coming-soon.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(7);
+        expect(comingSoon).toHaveLength(4);
         comingSoon.forEach(b => expect(b).toBeDisabled());
         expect(document.querySelector('tr[data-tool="whiteboard"]')?.getAttribute('data-status')).toBe('ready');
         expect(document.querySelector('tr[data-tool="dictation"]')?.getAttribute('data-status')).toBe('ready');
-        const setUp = screen.getByRole('button', { name: 'Set up' });
-        expect(setUp).toBeEnabled();
-        fireEvent.click(setUp); // needs-setup → opens the Guide's setup notes
+        expect(document.querySelector('tr[data-tool="design-studio"]')?.getAttribute('data-status')).toBe('ready');
+        expect(document.querySelector('tr[data-tool="scheduling"]')?.getAttribute('data-status')).toBe('needs-setup');
+        expect(document.querySelector('tr[data-tool="remote-support"]')?.getAttribute('data-status')).toBe('needs-setup');
+        const setUp = screen.getAllByRole('button', { name: 'Set up' });
+        expect(setUp).toHaveLength(3); // esign + scheduling + remote-support
+        setUp.forEach(b => expect(b).toBeEnabled());
+        fireEvent.click(setUp[0]); // needs-setup → opens the Guide's setup notes
         expect(opened).toEqual(['guide']);
         expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Guide' })).toBeInTheDocument();

@@ -1,0 +1,102 @@
+/* RemoteSupport — plan 047 phase 2 (RustDesk launcher). Theme tokens only. */
+
+.remote-support {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: 100%;
+    padding: 16px;
+    overflow: auto;
+}
+
+.remote-support__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.remote-support__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.remote-support__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.remote-support__link:hover { text-decoration: underline; }
+
+.remote-support__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+}
+
+.remote-support__panel h3 { margin: 0; font-size: 12px; color: var(--text-primary); }
+.remote-support__panel p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+
+.remote-support__downloads {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+}
+
+.remote-support__config { margin: 4px 0 0; }
+
+.remote-support__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.remote-support__row dt {
+    min-width: 110px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+.remote-support__row dd {
+    margin: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.remote-support__row code { font-size: 11px; }
+
+.remote-support__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.remote-support__btn:hover { background: rgba(255, 255, 255, 0.09); }
+
+.remote-support__muted { margin: 0; color: var(--text-tertiary); font-size: 11px; line-height: 1.5; }
+.remote-support__muted code { font-size: 10px; }

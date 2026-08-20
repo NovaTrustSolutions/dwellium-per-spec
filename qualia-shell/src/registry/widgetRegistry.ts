@@ -798,6 +798,55 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 400,
         category: 'tools',
     },
+    // ═══════════════════════════════════════
+    //  PLAN 047 — External tools (phase 2 launcher/embed trio,
+    //  zero-cost addendum 2026-08-20: hosted free tiers, no Tools VM)
+    // ═══════════════════════════════════════
+    // Scheduling (hosted cal.com free plan). Registering flips the Tools-hub
+    // status to `needs-setup`; `ready` once VITE_CALCOM_URL (Andy's booking
+    // page) is set — the widget shows a connect card until then.
+    'scheduler': {
+        id: 'scheduler',
+        label: 'Scheduling',
+        description: 'Showings, maintenance windows and vendor visits — your cal.com booking page inside Dwellium.',
+        tip: { tryThis: 'Book a test slot on your own page, then check it landed in Google Calendar.', related: ['strata-dashboard', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'calendar-days',
+        component: lazyWithReload(() => import('../components/Scheduling/Scheduling')),
+        minWidth: 520,
+        minHeight: 600,
+        category: 'tools',
+    },
+    // Design Studio (Penpot free cloud, MPL-2.0). Launcher-only: the cloud
+    // sends X-Frame-Options SAMEORIGIN, so no iframe until the phase-3
+    // self-host. No env gate — `ready` as soon as this entry exists.
+    'penpot-studio': {
+        id: 'penpot-studio',
+        label: 'Design Studio',
+        description: 'Flyers, notices and a Dwellium design system in Penpot — opens in a new tab.',
+        tip: { tryThis: 'Open Penpot and rough out a listing flyer on a blank board.', related: ['whiteboard', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'palette',
+        component: lazyWithReload(() => import('../components/PenpotStudio/PenpotStudio')),
+        minWidth: 480,
+        minHeight: 400,
+        category: 'filing',
+    },
+    // Remote Support (RustDesk, AGPL stock clients). Launcher card: download
+    // links + the relay config from VITE_RUSTDESK_RELAY (`host:port,key`).
+    // Tools hub: `needs-setup` until that env is set (community relays until then).
+    'remote-support': {
+        id: 'remote-support',
+        label: 'Remote Support',
+        description: 'RustDesk remote control for office PCs, kiosks and resident tech support.',
+        tip: { tryThis: 'Install RustDesk on the office PC and copy the relay config into it.', related: ['two-brains', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'monitor',
+        component: lazyWithReload(() => import('../components/RemoteSupport/RemoteSupport')),
+        minWidth: 480,
+        minHeight: 360,
+        category: 'tools',
+    },
 };
 
 // ═══════════════════════════════════════════════

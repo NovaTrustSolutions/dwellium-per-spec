@@ -56,6 +56,8 @@ import {
     History,
     Monitor,
     Palette,
+    Megaphone,
+    QrCode,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -85,6 +87,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'code':           Code,
     'bar-chart-3':    BarChart3,
     'pen-line':       PenLine,
+    'megaphone':      Megaphone,
+    'qr-code':        QrCode,
     'wrench':         Wrench,
     'zap':            Zap,
     'brain':          Brain,

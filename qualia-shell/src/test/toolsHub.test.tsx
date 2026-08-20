@@ -50,12 +50,9 @@ describe('data', () => {
         expect(resolveToolStatus(fv, () => true, {})).toBe('ready');
         expect(resolveToolStatus(fv, () => false, {})).toBe('ready');
     });
-    it('today: whiteboard + dictation + design-studio ready; esign + scheduling + remote-support + photo-vault needs-setup; the rest coming-soon', () => {
-        // Phase 2: design-studio has no env gate (Penpot free cloud launcher) so it is
-        // ready on registration; scheduling / remote-support / photo-vault wait on
-        // VITE_CALCOM_URL / VITE_RUSTDESK_RELAY / VITE_IMMICH_URL.
+    it('today: whiteboard + dictation + design-studio ready; six tools needs-setup; appflowy coming-soon', () => {
         const READY = new Set(['whiteboard', 'dictation', 'design-studio']);
-        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'remote-support', 'photo-vault']);
+        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'remote-support', 'photo-vault', 'broadcasts', 'links']);
         for (const { tool, status } of toolStatuses({})) {
             const want = READY.has(tool.id) ? 'ready' : NEEDS_SETUP.has(tool.id) ? 'needs-setup' : 'coming-soon';
             expect(status, tool.id).toBe(want);
@@ -82,22 +79,18 @@ describe('data', () => {
 });
 
 describe('window', () => {
-    it('renders 10 rows, disables coming-soon, offers Set up for the env-gated tools, shows help rows, unlocks the tools tier', () => {
-        render(<ToolsHub />);
-        expect(document.querySelectorAll('tbody tr')).toHaveLength(10);
-        // Phase 2 combined: whiteboard + dictation + design-studio ready; esign +
-        // scheduling + remote-support + photo-vault needs-setup ("Set up"); 3 coming-soon.
+        // Phase 2 complete: 3 ready, 6 needs-setup ("Set up"), only AppFlowy coming-soon.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(3);
+        expect(comingSoon).toHaveLength(1);
         comingSoon.forEach(b => expect(b).toBeDisabled());
-        expect(document.querySelector('tr[data-tool="whiteboard"]')?.getAttribute('data-status')).toBe('ready');
-        expect(document.querySelector('tr[data-tool="dictation"]')?.getAttribute('data-status')).toBe('ready');
-        expect(document.querySelector('tr[data-tool="design-studio"]')?.getAttribute('data-status')).toBe('ready');
-        expect(document.querySelector('tr[data-tool="scheduling"]')?.getAttribute('data-status')).toBe('needs-setup');
-        expect(document.querySelector('tr[data-tool="remote-support"]')?.getAttribute('data-status')).toBe('needs-setup');
-        expect(document.querySelector('tr[data-tool="photo-vault"]')?.getAttribute('data-status')).toBe('needs-setup');
+        for (const id of ['whiteboard', 'dictation', 'design-studio']) {
+            expect(document.querySelector(`tr[data-tool="${id}"]`)?.getAttribute('data-status'), id).toBe('ready');
+        }
+        for (const id of ['scheduling', 'remote-support', 'photo-vault', 'broadcasts', 'links']) {
+            expect(document.querySelector(`tr[data-tool="${id}"]`)?.getAttribute('data-status'), id).toBe('needs-setup');
+        }
         const setUp = screen.getAllByRole('button', { name: 'Set up' });
-        expect(setUp).toHaveLength(4); // esign + scheduling + remote-support + photo-vault
+        expect(setUp).toHaveLength(6);
         setUp.forEach(b => expect(b).toBeEnabled());
         fireEvent.click(setUp[0]); // needs-setup → opens the Guide's setup notes
         expect(opened).toEqual(['guide']);

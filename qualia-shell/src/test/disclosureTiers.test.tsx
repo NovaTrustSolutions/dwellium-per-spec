@@ -116,10 +116,10 @@ describe('Show more', () => {
         expect(screen.getByText('Show less')).toBeInTheDocument();
         // Property Management gained Whiteboard + E-Sign (047 phase 1) and
         // Scheduling (047 phase 2, plan L271: pinned dock row) → 8 non-pinned
-        // items → its own "Show 2 more" row (preview cap stays 6).
+        // items → its own "Show 4 more" row (preview cap stays 6).
         const pm = document.querySelectorAll('.sidebar__widget-group-children')[0];
         expect(pm.querySelector('.sidebar-widget--more')).not.toBeNull();
-        expect(screen.getByText('Show 2 more')).toBeInTheDocument();
+        expect(screen.getByText('Show 4 more')).toBeInTheDocument();
         // Not persisted
         expect(localStorage.getItem('dwellium-sidebar-showall')).toBeNull();
     });

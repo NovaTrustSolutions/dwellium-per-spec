@@ -1,0 +1,144 @@
+/* Broadcasts — plan 047 phase 2 (listmonk). Theme tokens only; ESign.css shape. */
+
+.broadcasts {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    padding: 16px;
+    overflow: auto;
+}
+
+.broadcasts__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.broadcasts__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.broadcasts__head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.broadcasts__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.broadcasts__link:hover { text-decoration: underline; }
+
+.broadcasts__btn {
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.broadcasts__btn:hover { background: rgba(255, 255, 255, 0.09); }
+.broadcasts__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.broadcasts__btn--ghost { padding: 6px; color: var(--text-secondary); }
+
+.broadcasts__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: auto;
+    max-width: 360px;
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.broadcasts__empty h3 { margin: 0; font-size: 14px; color: var(--text-primary); }
+.broadcasts__empty p { margin: 0; font-size: 12px; line-height: 1.5; }
+
+.broadcasts__muted { color: var(--text-tertiary); font-size: 12px; }
+
+.broadcasts__section-title {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+}
+
+.broadcasts__composer {
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.broadcasts__form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.broadcasts__input {
+    flex: 1 1 160px;
+    min-width: 140px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.broadcasts__notice { margin: 8px 0 0; font-size: 12px; color: var(--text-secondary); }
+
+.broadcasts__table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.broadcasts__table th {
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.broadcasts__table td {
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: top;
+}
+
+.broadcasts__campaign-name { font-weight: 600; }
+
+.broadcasts__status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+}
+
+.broadcasts__status--draft { color: #0ea5e9; background: rgba(14, 165, 233, 0.12); }
+.broadcasts__status--running,
+.broadcasts__status--finished { color: #d6fe51; background: rgba(214, 254, 81, 0.10); }

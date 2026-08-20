@@ -31,6 +31,9 @@ export const defaultDockItems: DockItem[] = [
    { id: 'dock-esign', label: 'E-Sign', icon: 'pen-line', component: 'esign', pinned: true, group: 'Property Management' },
    // Plan 047 phase 2: Scheduling (hosted cal.com free plan; needs-setup card until VITE_CALCOM_URL is set).
    { id: 'dock-scheduler', label: 'Scheduling', icon: 'calendar-days', component: 'scheduler', pinned: true, group: 'Property Management' },
+   // Plan 047 phase 2 — listmonk broadcasts + Dub short links (backend proxies).
+   { id: 'dock-broadcasts', label: 'Broadcasts', icon: 'megaphone', component: 'broadcasts', pinned: true, group: 'Property Management' },
+   { id: 'dock-short-links', label: 'Links & QR', icon: 'qr-code', component: 'short-links', pinned: true, group: 'Property Management' },
    // ── AI Tools ──
    { id: 'dock-agent-lab', label: 'Agent Lab', icon: 'bot', component: 'agent-lab', pinned: true, group: 'AI Tools' },
    { id: 'dock-thought-weaver', label: 'Thought Weaver', icon: 'brain-circuit', component: 'thought-weaver', pinned: true, group: 'AI Tools' },

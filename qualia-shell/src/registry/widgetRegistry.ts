@@ -847,6 +847,24 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 360,
         category: 'tools',
     },
+    // ═══════════════════════════════════════
+    // Photo Vault (Immich, AGPL unmodified image) — zero-cost addendum: Immich
+    // runs on the always-on office Mac behind Tailscale; the widget iframes
+    // VITE_IMMICH_URL (`ts.net` HTTPS) with an "Open ↗" fallback. Registering
+    // this entry flips the Tools-hub status to `needs-setup`; it turns `ready`
+    // automatically once VITE_IMMICH_URL is set (data/toolsHub.ts::resolveToolStatus).
+    'photo-vault': {
+        id: 'photo-vault',
+        label: 'Photo Vault',
+        description: 'Inspection, move-in/out and before/after maintenance photos, searchable by unit.',
+        tip: { tryThis: 'Snap move-in condition photos and file them in a unit album.', related: ['strata-dashboard', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'image',
+        component: lazyWithReload(() => import('../components/PhotoVault/PhotoVault')),
+        minWidth: 520,
+        minHeight: 420,
+        category: 'filing',
+    },
 };
 
 // ═══════════════════════════════════════════════

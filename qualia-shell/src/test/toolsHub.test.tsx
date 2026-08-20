@@ -50,12 +50,12 @@ describe('data', () => {
         expect(resolveToolStatus(fv, () => true, {})).toBe('ready');
         expect(resolveToolStatus(fv, () => false, {})).toBe('ready');
     });
-    it('today: whiteboard + dictation + design-studio ready; esign + scheduling + remote-support needs-setup; the rest coming-soon', () => {
-        // Phase 2 launcher trio: design-studio has no env gate (launcher defaults to
-        // Penpot's free cloud) so registering it alone makes it ready; scheduling +
-        // remote-support wait on VITE_CALCOM_URL / VITE_RUSTDESK_RELAY.
+    it('today: whiteboard + dictation + design-studio ready; esign + scheduling + remote-support + photo-vault needs-setup; the rest coming-soon', () => {
+        // Phase 2: design-studio has no env gate (Penpot free cloud launcher) so it is
+        // ready on registration; scheduling / remote-support / photo-vault wait on
+        // VITE_CALCOM_URL / VITE_RUSTDESK_RELAY / VITE_IMMICH_URL.
         const READY = new Set(['whiteboard', 'dictation', 'design-studio']);
-        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'remote-support']);
+        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'remote-support', 'photo-vault']);
         for (const { tool, status } of toolStatuses({})) {
             const want = READY.has(tool.id) ? 'ready' : NEEDS_SETUP.has(tool.id) ? 'needs-setup' : 'coming-soon';
             expect(status, tool.id).toBe(want);
@@ -70,24 +70,34 @@ describe('data', () => {
         expect(rows.find(r => r.tool.id === 'scheduling')!.status).toBe('ready');
         expect(rows.find(r => r.tool.id === 'remote-support')!.status).toBe('ready');
     });
+    // Plan 047 phase 2 — Photo Vault (Immich on the office Mac via Tailscale).
+    it('photo-vault: widget registered without env → needs-setup; flips to ready once VITE_IMMICH_URL is set (no code change)', () => {
+        const t = TOOLS.find(x => x.id === 'photo-vault')!;
+        expect(t.envVar).toBe('VITE_IMMICH_URL');
+        expect(resolveToolStatus(t, () => true, {})).toBe('needs-setup');
+        expect(resolveToolStatus(t, () => true, { VITE_IMMICH_URL: 'https://office-mac.tailnet.ts.net' })).toBe('ready');
+        expect(toolStatuses({}).find(r => r.tool.id === 'photo-vault')!.status).toBe('needs-setup');
+        expect(toolStatuses({ VITE_IMMICH_URL: 'https://office-mac.tailnet.ts.net' }).find(r => r.tool.id === 'photo-vault')!.status).toBe('ready');
+    });
 });
 
 describe('window', () => {
     it('renders 10 rows, disables coming-soon, offers Set up for the env-gated tools, shows help rows, unlocks the tools tier', () => {
         render(<ToolsHub />);
         expect(document.querySelectorAll('tbody tr')).toHaveLength(10);
-        // Phase 2: whiteboard + dictation + design-studio ready, esign + scheduling
-        // + remote-support needs-setup ("Set up"), 4 still coming-soon.
+        // Phase 2 combined: whiteboard + dictation + design-studio ready; esign +
+        // scheduling + remote-support + photo-vault needs-setup ("Set up"); 3 coming-soon.
         const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(4);
+        expect(comingSoon).toHaveLength(3);
         comingSoon.forEach(b => expect(b).toBeDisabled());
         expect(document.querySelector('tr[data-tool="whiteboard"]')?.getAttribute('data-status')).toBe('ready');
         expect(document.querySelector('tr[data-tool="dictation"]')?.getAttribute('data-status')).toBe('ready');
         expect(document.querySelector('tr[data-tool="design-studio"]')?.getAttribute('data-status')).toBe('ready');
         expect(document.querySelector('tr[data-tool="scheduling"]')?.getAttribute('data-status')).toBe('needs-setup');
         expect(document.querySelector('tr[data-tool="remote-support"]')?.getAttribute('data-status')).toBe('needs-setup');
+        expect(document.querySelector('tr[data-tool="photo-vault"]')?.getAttribute('data-status')).toBe('needs-setup');
         const setUp = screen.getAllByRole('button', { name: 'Set up' });
-        expect(setUp).toHaveLength(3); // esign + scheduling + remote-support
+        expect(setUp).toHaveLength(4); // esign + scheduling + remote-support + photo-vault
         setUp.forEach(b => expect(b).toBeEnabled());
         fireEvent.click(setUp[0]); // needs-setup → opens the Guide's setup notes
         expect(opened).toEqual(['guide']);

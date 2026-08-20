@@ -46,7 +46,8 @@ describe('WIDGET_REGISTRY integrity', () => {
         //   + scheduler + penpot-studio + remote-support (plan 047 phase 2
         //     launcher/embed trio — cal.com embed, Penpot launcher, RustDesk
         //     launcher; feat/047-launchers) → 62.
-        expect(ids.length).toBe(62);
+        //   + photo-vault (plan 047 phase 2 — Immich on the office Mac via Tailscale) → 63.
+        expect(ids.length).toBe(63);
     });
 
     // Plan 047: every widget carries a first-open tip whose related ids resolve.

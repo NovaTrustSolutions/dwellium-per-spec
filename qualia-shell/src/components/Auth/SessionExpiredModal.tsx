@@ -13,7 +13,7 @@
 import { useState, type FormEvent } from 'react';
 import { useUser } from '../../context/UserContext';
 import GoogleSignInButton from './GoogleSignInButton';
-import { getEffectiveAccounts, isPasswordSet } from './localAccounts';
+import { getEffectiveAccounts, checkLocalPassword } from './localAccounts';
 
 /** Same gate as LoginScreen: Google sign-in is hidden unless explicitly enabled. */
 const GOOGLE_LOGIN_ENABLED = (import.meta.env.VITE_GOOGLE_LOGIN as string | undefined) === 'true';
@@ -97,7 +97,8 @@ export default function SessionExpiredModal({
         setError('');
         setOfflineOffer(false);
         const acct = resolveAccount();
-        if (!acct || !isPasswordSet(acct) || password !== acct.password) {
+        // Plan 014: shared check — DEV builds waive the empty-password block.
+        if (!acct || checkLocalPassword(acct, password) !== 'ok') {
             setError('Incorrect email or password.');
             return;
         }

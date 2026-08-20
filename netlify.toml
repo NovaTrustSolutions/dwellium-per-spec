@@ -17,6 +17,9 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Vite OOMs at Netlify's default ~2 GB heap since @excalidraw/excalidraw joined
+  # the bundle (047 phase 1) — build containers have 8 GB, give Node half.
+  NODE_OPTIONS = "--max-old-space-size=4096"
   # Real backend is hosted on Cloud Run; keep demo seeds off for production.
   VITE_APPFOLIO_SEEDS = "false"
   # One Save sync (encrypted per-account API keys, workspaces, etc.) so they

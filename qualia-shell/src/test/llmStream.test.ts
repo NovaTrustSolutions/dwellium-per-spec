@@ -180,3 +180,20 @@ describe('araPrefsStore', () => {
         expect(JSON.parse(localStorage.getItem('dwellium-ara-prefs')!).introSeen).toBe(true);
     });
 });
+
+// ── 048: one-time streamTokens re-default for pre-SSE saved prefs ──
+describe('araPrefs v2 migration', () => {
+    it('pre-v2 saved prefs with streamTokens:false get re-defaulted ON once; explicit v2 opt-out survives', async () => {
+        vi.resetModules();
+        localStorage.setItem('dwellium-ara-prefs', JSON.stringify({ streamTokens: false, introSeen: true }));
+        let mod = await import('../lib/araPrefsStore');
+        expect(mod.araPrefsStore.getSnapshot().streamTokens).toBe(true);
+        expect(mod.araPrefsStore.getSnapshot().introSeen).toBe(true); // untouched
+        // Explicit post-migration opt-out is respected on the next load.
+        vi.resetModules();
+        localStorage.setItem('dwellium-ara-prefs', JSON.stringify({ streamTokens: false, prefsVersion: 2 }));
+        mod = await import('../lib/araPrefsStore');
+        expect(mod.araPrefsStore.getSnapshot().streamTokens).toBe(false);
+        localStorage.removeItem('dwellium-ara-prefs');
+    });
+});

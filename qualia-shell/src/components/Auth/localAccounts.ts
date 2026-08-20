@@ -39,14 +39,17 @@ export const ROLE_LABELS: Record<string, string> = {
 
 /**
  * Base roster. Ids match data/users.json (Andy/Lisa) + the Architect id so
- * existing per-user data carries over. Lisa is enabled but ships with NO
- * password — the Architect sets it in Control Panel → Accounts before she can
- * sign in (sign-in is blocked while the effective password is empty).
+ * existing per-user data carries over. NO account ships with a password
+ * (plan 014 — committed god-password literals + personal email removed):
+ * passwords are set at RUNTIME by the Architect (Control Panel → Accounts,
+ * persisted in the override store below). Production sign-in is Google
+ * Identity Services with backend verification; this roster is the dev/offline
+ * path — see `checkLocalPassword` for the DEV-only bootstrap.
  */
 export const LOCAL_ACCOUNTS: LocalAccount[] = [
-    { id: '9a921527-84b0-497f-b682-45df315c13d1', name: 'Andy', email: 'andy@dwellium.com', password: 'Fm8#vP2!kR9$wL3q', backendPassword: 'admin123', role: 'god', color: 'var(--accent)', initials: 'A', enabled: true },
+    { id: '9a921527-84b0-497f-b682-45df315c13d1', name: 'Andy', email: 'andy@dwellium.com', password: '', backendPassword: 'admin123', role: 'god', color: 'var(--accent)', initials: 'A', enabled: true },
     { id: 'b5d3ac0c-f276-402d-b8ef-9a96fe42b570', name: 'Lisa', email: 'lisa@zpgroup.io', password: '', backendPassword: 'corp123', role: 'corporate', color: '#3b82f6', initials: 'L', enabled: true },
-    { id: 'architect-9a921527', name: 'Archi', email: 'iklipinitser@gmail.com', password: 'Jester2878!', role: 'god', color: 'var(--accent)', initials: 'AR', enabled: true },
+    { id: 'architect-9a921527', name: 'Archi', email: 'architect@dwellium.com', password: '', role: 'god', color: 'var(--accent)', initials: 'AR', enabled: true },
 ];
 
 /** Per-account override (only the fields the Architect can change). */
@@ -101,6 +104,28 @@ export function getEffectiveAccounts(): LocalAccount[] {
 /** True when the account has a usable (non-empty) effective password. */
 export function isPasswordSet(account: LocalAccount): boolean {
     return (account.password ?? '') !== '';
+}
+
+export type LocalPasswordCheck = 'ok' | 'not-set' | 'mismatch';
+
+/**
+ * Client-side password check shared by LoginScreen + SessionExpiredModal.
+ *
+ * DEV bootstrap (plan 014): no committed passwords ship in the roster, so on
+ * a fresh device every account starts empty — and nobody could sign in to set
+ * one. In DEV builds only, an empty-password account passes this gate with any
+ * typed password; the backend login (or the user's EXPLICIT offline choice)
+ * remains the real verifier. Production builds hard-block until the Architect
+ * sets a password at runtime (Control Panel → Accounts) — never a committed
+ * literal.
+ */
+export function checkLocalPassword(
+    account: LocalAccount,
+    typed: string,
+    dev: boolean = import.meta.env.DEV,
+): LocalPasswordCheck {
+    if (!isPasswordSet(account)) return dev ? 'ok' : 'not-set';
+    return typed === account.password ? 'ok' : 'mismatch';
 }
 
 /** Architect action: set/replace an account's sign-in password. */

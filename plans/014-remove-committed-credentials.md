@@ -15,6 +15,46 @@
 - **Depends on**: none
 - **Category**: security
 - **Planned at**: commit `a619279`, 2026-06-20
+- **Executed**: 2026-08-20 on branch `sec/014-credentials` — see resolution record below. **Operator TODO (Ilya): rotate the two burned god passwords AND the stage-1 gate passphrase (`LoginScreen.tsx:24`, still committed by design) anywhere they were reused — they remain in git history.**
+
+## Resolution record (2026-08-20)
+
+**Bootstrap STOP — resolved by the operator:** blank ALL committed god-account
+password literals (Lisa's `password: ''` pattern). Production sign-in is Google
+Identity Services with backend verification; the roster password path is
+dev/offline only.
+
+**What the auth surface actually looked like at execution (drift from `a619279`):**
+the Andy → Lisa → Architect quick-access *picker* is gone (plan 045-D one-form
+login; 046-F splash). Flow today: splash → shared gate passphrase
+(`LoginScreen.tsx:24`, committed) → one email+password form →
+`checkLocalPassword` client gate → REAL backend `login(email, backendPassword ??
+typed)`; offline entry only on explicit user choice. `SessionExpiredModal`
+mirrors the same check. Dev sign-in DID depend on a committed non-empty
+`password` literal (client-side compare before the backend call), so blanking
+alone would have made dev builds unloginnable on any fresh device.
+
+**Mechanism shipped:** shared `checkLocalPassword(account, typed, dev =
+import.meta.env.DEV)` in `localAccounts.ts`, used by both `LoginScreen` and
+`SessionExpiredModal`. An empty-password account is waived ONLY in DEV builds
+(statically dead-code-eliminated from production bundles); the backend login
+(or the explicit offline choice) remains the verifier. A runtime-set password
+is enforced in both modes. Production builds hard-block empty-password accounts
+until the Architect sets one at runtime (Control Panel → Accounts) — never a
+committed literal. Personal email replaced with `architect@dwellium.com`
+(matches the existing HalocronOS greeting map + e2e helper; account `id`
+unchanged so per-user stores carry over); the personal-email entry was also
+dropped from the HalocronOS greeting map (Google-derived first name covers it).
+
+**Guard:** `localAccounts.test.ts` now scans the roster module AND its source
+text — fails on any non-empty `password:` literal or personal-email/`@gmail.`
+match (patterns only; no secret values in fixtures).
+
+**Additional committed secrets found (locations + types only, per STOP #2):**
+- `qualia-shell/src/components/Auth/LoginScreen.tsx:24` — stage-1 shared gate passphrase (also mirrored in `LoginScreen.test.tsx`). Left in place: removing it bricks the gate stage; rotation is the operator action.
+- `qualia-shell/src/components/Auth/localAccounts.ts` — `backendPassword` dev-seed credentials for Andy/Lisa (pair with the backend's seeded users). Kept per the Lisa pattern; real fix is server-side verification.
+- `qualia-shell/public/data/users.json` — seeded `passwordHash` values shipped in the public bundle.
+- `qualia-shell/.env.example` documents `VITE_DEV_LOGIN`, which is consumed nowhere in `src/` (stale doc; the live flag is `VITE_GOOGLE_LOGIN`).
 
 ## Why this matters
 

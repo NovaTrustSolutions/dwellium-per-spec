@@ -764,7 +764,7 @@ export default function HalocronOS() {
                                 <div className="hos-seg">
                                     <button type="button" onClick={() => { halocronOsStore.setEnabled(false); fluidOsStore.setEnabled(false); }}>Classic desktop</button>
                                     <button type="button" className="on">Holocron OS</button>
-                                    <button type="button" onClick={() => { fluidOsStore.setEnabled(true); halocronOsStore.setEnabled(false); }}>Fluid OS</button>
+                                    <button type="button" onClick={() => { fluidOsStore.setEnabled(true); halocronOsStore.setEnabled(false); }}>Cockpit</button>
                                 </div>
                                 <p className="hos-note">Same windows, widgets, spaces and memory — reskinned and re-navigated. Toggle anytime; nothing is lost.</p>
                             </div>

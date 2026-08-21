@@ -1,10 +1,12 @@
 /**
- * FluidLauncher — the droplet that reopens the Fluid OS shell (2026-07-04).
- * Sister of HalocronLauncher.tsx.
+ * FluidLauncher — the droplet that reopens the Cockpit shell (2026-07-04;
+ * copy updated for the plan-049 cockpit redesign). Sister of
+ * HalocronLauncher.tsx.
  *
- * Visible only when the Fluid OS layout is enabled AND the shell is currently
- * collapsed (a widget is in use). Clicking it reopens the shell. Renders
- * nothing in Classic or Holocron layout, so it's zero-footprint there.
+ * Visible only when the Cockpit (Fluid OS) layout is enabled AND the shell is
+ * currently collapsed (the classic desktop is in use). Clicking it reopens
+ * the cockpit. Renders nothing in Classic or Holocron layout, so it's
+ * zero-footprint there.
  */
 import { useSyncExternalStore } from 'react';
 import { fluidOsStore } from '../../lib/fluidOsStore';
@@ -15,7 +17,7 @@ export default function FluidLauncher() {
     if (!state.enabled || state.open) return null;
     return (
         <button type="button" className="fos-launcher" onClick={() => fluidOsStore.setOpen(true)}
-            aria-label="Open Fluid OS" title="Fluid OS">
+            aria-label="Open Cockpit" title="Cockpit">
             <span className="fos-launcher__drop" aria-hidden="true" />
         </button>
     );

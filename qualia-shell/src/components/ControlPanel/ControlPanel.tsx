@@ -245,7 +245,7 @@ export default function ControlPanel() {
                 <h3 className="cp-section__title">Appearance</h3>
 
                 <div className="cp-field">
-                    <label className="cp-label">Interface Layout — {fosState.enabled ? 'Fluid OS' : hosState.enabled ? 'Holocron OS' : 'Classic desktop'}</label>
+                    <label className="cp-label">Interface Layout — {fosState.enabled ? 'Cockpit' : hosState.enabled ? 'Holocron OS' : 'Classic desktop'}</label>
                     <div style={{ display: 'inline-flex', border: '1px solid var(--border-default, rgba(255,255,255,0.12))', borderRadius: 9, overflow: 'hidden' }}>
                         <button
                             type="button"
@@ -261,7 +261,7 @@ export default function ControlPanel() {
                             type="button"
                             onClick={() => { fluidOsStore.setEnabled(true); halocronOsStore.setEnabled(false); }}
                             style={{ padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: fosState.enabled ? 600 : 400, background: fosState.enabled ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent', color: fosState.enabled ? 'var(--text-primary, #fff)' : 'var(--text-secondary)', border: 'none' }}
-                        >Fluid OS</button>
+                        >Cockpit</button>
                     </div>
                     <div style={{ fontSize: 11, opacity: 0.6, marginTop: 6 }}>Same widgets, spaces and memory — three layouts. Each shell launches every widget from one archive.</div>
                 </div>

@@ -6,7 +6,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SessionExpiredModal from '../components/Auth/SessionExpiredModal';
-import { LOCAL_ACCOUNTS, resetAccountOverrides, setAccountPassword } from '../components/Auth/localAccounts';
+import { LOCAL_ACCOUNTS } from '../components/Auth/localAccounts';
 
 const auth = vi.hoisted(() => ({
     user: { email: 'andy@dwellium.com', name: 'Andy' },
@@ -21,8 +21,6 @@ vi.mock('../components/Auth/GoogleSignInButton', () => ({
 }));
 
 const andy = LOCAL_ACCOUNTS.find(a => a.name === 'Andy')!;
-/** Plan 014: no committed roster passwords — set one at RUNTIME like the app does. */
-const RUNTIME_PW = 'Runtime-Set-1!';
 
 function fillAndSubmit(password: string, email = andy.email) {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: email } });
@@ -34,8 +32,6 @@ describe('SessionExpiredModal password re-auth', () => {
     beforeEach(() => {
         auth.login.mockReset().mockResolvedValue({ success: true });
         auth.loginLocal.mockReset();
-        resetAccountOverrides();
-        setAccountPassword(andy.id, RUNTIME_PW);
     });
 
     it('offers a password path (email prefilled) + Log out; Google hidden unless VITE_GOOGLE_LOGIN=true', () => {
@@ -47,10 +43,10 @@ describe('SessionExpiredModal password re-auth', () => {
         expect(screen.queryByText('Continue with Google')).toBeNull();
     });
 
-    it('correct local password (runtime-set) → backend login() with the account backend password', async () => {
+    it('correct local password → backend login() with the account backend password', async () => {
         render(<SessionExpiredModal />);
-        fillAndSubmit(RUNTIME_PW);
-        await waitFor(() => expect(auth.login).toHaveBeenCalledWith(andy.email, andy.backendPassword ?? RUNTIME_PW));
+        fillAndSubmit(andy.password);
+        await waitFor(() => expect(auth.login).toHaveBeenCalledWith(andy.email, andy.backendPassword ?? andy.password));
         expect(screen.queryByRole('alert')).toBeNull();
     });
 
@@ -64,7 +60,7 @@ describe('SessionExpiredModal password re-auth', () => {
     it('backend offline → explicit "Continue offline" → loginLocal (workspace kept)', async () => {
         auth.login.mockResolvedValue({ success: false, offline: true });
         render(<SessionExpiredModal />);
-        fillAndSubmit(RUNTIME_PW);
+        fillAndSubmit(andy.password);
         const offline = await screen.findByRole('button', { name: /continue offline/i });
         fireEvent.click(offline);
         expect(auth.loginLocal).toHaveBeenCalledWith(expect.objectContaining({ email: andy.email, role: andy.role }));

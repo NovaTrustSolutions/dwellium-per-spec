@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginScreen, { LOCAL_ACCOUNTS } from '../components/Auth/LoginScreen';
-import { resetAccountOverrides, setAccountPassword } from '../components/Auth/localAccounts';
 
 const auth = vi.hoisted(() => ({
     login: vi.fn(),
@@ -21,9 +20,6 @@ vi.mock('../components/Auth/GoogleSignInButton', () => ({
 
 const GATE = 'Comet2878!';
 const andy = LOCAL_ACCOUNTS.find((a) => a.name === 'Andy')!;
-/** Plan 014: no committed roster passwords — tests set one at RUNTIME via the
- *  override store, exactly like the Architect does in Control Panel → Accounts. */
-const RUNTIME_PW = 'Runtime-Set-1!';
 
 /** 046-F3: the splash is a real block now — enter it first (unmounts the splash buttons). */
 function enterSplash() {
@@ -43,8 +39,6 @@ describe('LoginScreen local multi-step login', () => {
         auth.login.mockResolvedValue({ success: true });
         auth.loginLocal.mockReset();
         auth.loginWithGoogle.mockReset();
-        resetAccountOverrides();
-        setAccountPassword(andy.id, RUNTIME_PW);
     });
 
     it('does not request the nebula video until the user clicks; poster shows first', () => {
@@ -112,7 +106,7 @@ describe('LoginScreen local multi-step login', () => {
 
         // Unknown email → same generic error, nothing called.
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'nobody@example.com' } });
-        fireEvent.change(screen.getByLabelText('Password'), { target: { value: RUNTIME_PW } });
+        fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
         fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
         expect(auth.login).not.toHaveBeenCalled();
         expect(screen.getByText(/incorrect email or password/i)).toBeInTheDocument();
@@ -125,9 +119,9 @@ describe('LoginScreen local multi-step login', () => {
         expect(auth.loginLocal).not.toHaveBeenCalled();
         expect(screen.getByText(/incorrect email or password/i)).toBeInTheDocument();
 
-        // Correct creds (runtime-set) → REAL backend session via login();
-        // loginLocal is NOT used on the happy path (F-016 hardening).
-        fireEvent.change(screen.getByLabelText('Password'), { target: { value: RUNTIME_PW } });
+        // Correct creds → REAL backend session via login(); loginLocal is NOT
+        // used on the happy path (F-016 hardening).
+        fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
         fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
         await vi.waitFor(() => {
             expect(auth.login).toHaveBeenCalledWith(andy.email, andy.backendPassword);
@@ -140,7 +134,7 @@ describe('LoginScreen local multi-step login', () => {
         render(<LoginScreen />);
         passGate();
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
-        fireEvent.change(screen.getByLabelText('Password'), { target: { value: RUNTIME_PW } });
+        fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
         fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
         // No silent session: loginLocal only fires after the explicit choice.
@@ -160,25 +154,10 @@ describe('LoginScreen local multi-step login', () => {
         render(<LoginScreen />);
         passGate();
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
-        fireEvent.change(screen.getByLabelText('Password'), { target: { value: RUNTIME_PW } });
+        fireEvent.change(screen.getByLabelText('Password'), { target: { value: andy.password } });
         fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
         expect(await screen.findByText(/server rejected/i)).toBeInTheDocument();
         expect(auth.loginLocal).not.toHaveBeenCalled();
         expect(screen.queryByRole('button', { name: /continue offline/i })).not.toBeInTheDocument();
-    });
-
-    it('plan 014 DEV bootstrap: with NO runtime password set, sign-in still reaches the backend verifier', async () => {
-        // Fresh-device state — nothing set yet. Vitest runs as a DEV build
-        // (import.meta.env.DEV), so the empty-password block is waived and the
-        // backend stays the real verifier. Production builds hard-block this.
-        resetAccountOverrides();
-        render(<LoginScreen />);
-        passGate();
-        fireEvent.change(screen.getByLabelText('Email'), { target: { value: andy.email } });
-        fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'anything-in-dev' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-        await vi.waitFor(() => {
-            expect(auth.login).toHaveBeenCalledWith(andy.email, andy.backendPassword);
-        });
     });
 });

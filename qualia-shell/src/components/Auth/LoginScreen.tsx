@@ -14,7 +14,7 @@ import { useState, type FormEvent } from 'react';
 import { useUser } from '../../context/UserContext';
 import { AlertCircle, Shield } from 'lucide-react';
 import GoogleSignInButton from './GoogleSignInButton';
-import { useEffectiveAccounts, checkLocalPassword } from './localAccounts';
+import { useEffectiveAccounts, isPasswordSet } from './localAccounts';
 import './LoginScreen.css';
 
 // Re-exported so tests (and any importer) can read the base roster.
@@ -74,14 +74,11 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
             setError('Incorrect email or password.');
             return;
         }
-        // Plan 014: shared check — DEV builds waive the empty-password block
-        // (no committed passwords ship; backend/offline-choice verifies).
-        const check = checkLocalPassword(acct, password);
-        if (check === 'not-set') {
+        if (!isPasswordSet(acct)) {
             setError('Password not set yet — ask the Architect to set it in Control Panel → Accounts.');
             return;
         }
-        if (check === 'mismatch') {
+        if (password !== acct.password) {
             setError('Incorrect email or password.');
             return;
         }

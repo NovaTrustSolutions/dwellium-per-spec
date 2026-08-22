@@ -432,3 +432,56 @@
 }
 
 .nlm-how-list strong { color: #e6edf3; }
+
+/* ── Library (plan 052 — NotebookLM mirror ARA reads) ── */
+.nlm-library {
+    padding: 16px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.nlm-library-head { display: flex; align-items: center; gap: 8px; color: #8b949e; }
+
+.nlm-library-pill { margin-left: auto; white-space: nowrap; }
+.nlm-library-pill--fresh { background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3); }
+.nlm-library-pill--stale { background: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.35); }
+.nlm-library-pill--never { background: rgba(139, 148, 158, 0.1); color: #8b949e; border: 1px solid rgba(139, 148, 158, 0.2); }
+
+.nlm-library-sub { margin: 6px 0 10px; font-size: 11px; color: #8b949e; line-height: 1.5; }
+
+.nlm-library .nlm-toast { margin: 0 0 8px; }
+
+.nlm-library-summary { font-size: 12px; color: #8b949e; margin-bottom: 8px; }
+.nlm-library-summary strong { color: #e6edf3; }
+
+.nlm-library-empty {
+    font-size: 12px; color: #8b949e; line-height: 1.5;
+    padding: 12px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;
+}
+.nlm-library-empty code, .nlm-library-howto code { color: var(--accent); }
+
+.nlm-library-collections, .nlm-library-sources { list-style: none; margin: 0; padding: 0; }
+.nlm-library-collection { border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.02); }
+
+.nlm-library-collection-toggle {
+    width: 100%; display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; background: none; border: none; color: #e6edf3;
+    font-size: 12px; text-align: left; cursor: pointer;
+}
+.nlm-library-collection-toggle:hover { background: rgba(79, 172, 254, 0.04); }
+.nlm-library-collection-name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nlm-library-collection-meta { font-size: 10px; color: #6e7681; white-space: nowrap; }
+
+.nlm-library-sources { border-top: 1px solid rgba(255,255,255,0.05); padding: 4px 8px 6px 24px; }
+.nlm-library-source { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 11px; }
+.nlm-library-source--empty { color: #6e7681; }
+.nlm-library-source-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e6edf3; }
+.nlm-library-source-meta { font-size: 10px; color: #6e7681; white-space: nowrap; }
+
+.nlm-library-howto { margin-top: 10px; font-size: 11px; color: #8b949e; }
+.nlm-library-howto summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.nlm-library-howto p { margin: 6px 0; line-height: 1.5; }
+.nlm-library-howto pre {
+    margin: 6px 0; padding: 8px 10px; border-radius: 6px;
+    background: rgba(255,255,255,0.04); color: #e6edf3;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; overflow-x: auto;
+}

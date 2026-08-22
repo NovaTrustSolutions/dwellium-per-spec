@@ -40,6 +40,7 @@ Everything autosaves — the **Saved ✓** pill near the bottom is your receipt.
 - **ARA** (pinned, opens on login) is the main assistant. Starter chips suggest first questions per persona; replies **stream in live**; the composer has voice input and file upload. Once a day ARA posts **Today at a glance** — up to three things worth doing, built from your real tasks, inbox and leases.
 - **The morning brief** arrives every day at 7 AM Eastern, generated server-side — you don't need the app open. Look for the badge on ARA's sidebar icon and the *Your morning brief is ready* banner. Want an OS notification too? **Control Panel → Activation Center** → toggle it on.
 - **Hermes** runs multi-step jobs in the background while you work (watch them in the Cockpit's *Background tasks* pane or the Honcho/Hermes panel).
+- ARA also reads your **Library** — a mirror of your NotebookLM notebooks (contracts, housing law, requirements) — and cites sources by title; the reply shows a *Library · N* chip. Synced from a Mac with \`tools/notebooklm/sync.sh\`; the NotebookLM widget shows what's in it and when it last synced.
 - No key yet? AI widgets show one **Add a key** button — they never fail silently.
 
 ## 5 · Run the properties

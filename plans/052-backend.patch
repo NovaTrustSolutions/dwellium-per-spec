@@ -1,0 +1,681 @@
+diff --git a/deploy/cloud-run.sh b/deploy/cloud-run.sh
+index 2d62c18..a69692e 100755
+--- a/deploy/cloud-run.sh
++++ b/deploy/cloud-run.sh
+@@ -112,6 +112,7 @@ if [[ "${DEPLOY_DRY_RUN:-false}" == "true" ]]; then
+ else
+     upsert_secret_from_env OPENAI_API_KEY dwellium-openai-api-key
+     upsert_secret_from_env BRIEF_RUN_SECRET dwellium-brief-run-secret
++    upsert_secret_from_env LIBRARY_SYNC_SECRET dwellium-library-sync-secret
+     upsert_secret_from_env TRELLO_API_KEY dwellium-trello-api-key
+     upsert_secret_from_env TRELLO_TOKEN dwellium-trello-token
+     upsert_secret_from_env GOOGLE_OAUTH_CLIENT_SECRET dwellium-google-oauth-client-secret
+diff --git a/src/agents/araChatEngine.ts b/src/agents/araChatEngine.ts
+index debf133..605d440 100644
+--- a/src/agents/araChatEngine.ts
++++ b/src/agents/araChatEngine.ts
+@@ -13,6 +13,8 @@ import { trelloService } from '../services/trelloService';
+ import { listProperties, listUnits, listEntities, listWorkitems } from '../stores/dwelliumStore';
+ import { searchGeorgiaCode, getStats as getLanceStats } from '../services/lanceVectorStore';
+ import { semanticSearch, isReady as isRuVectorReady } from '../services/ruVectorService';
++import { searchDocuments, SearchResult } from '../services/vectorStore';
++import { getLibrarySource } from '../services/database';
+ import { quickLegalCheck } from '../services/legalShieldService';
+ import {
+     assessPromptInjectionRisk,
+@@ -42,7 +44,7 @@ export interface WorkspaceContext {
+ 
+ export interface ContextSource {
+     name: string;
+-    type: 'inbox' | 'trello' | 'ruVector' | 'georgiaCode' | 'property' | 'workitem' | 'entity' | 'health' | 'workspace';
++    type: 'inbox' | 'trello' | 'ruVector' | 'georgiaCode' | 'property' | 'workitem' | 'entity' | 'health' | 'workspace' | 'library';
+     itemCount: number;
+     snippet?: string;
+ }
+@@ -280,6 +282,9 @@ export async function chatWithARA(
+         fullSystemPrompt += `\n\n---\n\n## Dwellium Knowledge (semantically relevant to your query)\n${wrapUntrustedPromptContent('live_dwellium_data', dwelliumContext, 4000)}`;
+     }
+ 
++    // plan 052: Library (NotebookLM mirror) — kicked off now so its embedding call overlaps Georgia Code's.
++    const libraryPromise = buildLibraryContext(sanitizedUserMessage || userMessage);
++
+     // Search Georgia Code vector DB for relevant statutes (ALL modes, not just legal)
+     // Every property management conversation should have Georgia law awareness
+     const georgiaCodeContext = await buildGeorgiaCodeContext(sanitizedUserMessage || userMessage);
+@@ -294,6 +299,12 @@ You have access to the Georgia Code of Law via vector search. The following stat
+ ${georgiaCodeContext}`;
+     }
+ 
++    const library = await libraryPromise;
++    if (library) {
++        fullSystemPrompt += `\n\n---\n\n${library.section}`;
++        for (const src of library.sources) contextSources.push({ name: src.name, type: 'library', itemCount: src.count });
++    }
++
+     // ── System Health Context — injected when user asks about system status, widget health, connectivity ──
+     const healthKeywords = /system.?(check|health|status)|connectiv|widget.?(status|check|health|online|scope)|all.?widget|diagnostic/i;
+     if (healthKeywords.test(sanitizedUserMessage || userMessage)) {
+@@ -767,6 +778,55 @@ async function buildGeorgiaCodeContext(userMessage: string): Promise<string | nu
+     }
+ }
+ 
++/**
++ * plan 052 — Library: NotebookLM-mirrored sources (contracts, housing law, requirements)
++ * retrieved from the SQLite embeddings table (file_id = library:*), grouped by source
++ * title, ~2500 chars total. Returns null (no section, no chips) when nothing matches or
++ * embeddings are unavailable; never throws into the chat path.
++ */
++export const LIBRARY_SECTION_TITLE = 'Library (mirrored from NotebookLM — contracts, housing law, requirements). Cite as [Title].';
++
++export async function buildLibraryContext(userMessage: string): Promise<{ section: string; sources: { name: string; count: number }[] } | null> {
++    try {
++        if (!process.env.OPENAI_API_KEY) return null;
++        // ponytail: brute-force cosine over the SQLite embeddings table — fine to ~10k chunks; upgrade path = a LanceDB table like Georgia Code.
++        const hits = (await searchDocuments(userMessage, 8, 'library:')).filter(h => h.similarity >= 0.25);
++        if (hits.length === 0) return null;
++
++        const bySource = new Map<string, { title: string; chunks: SearchResult[] }>();
++        for (const h of hits) {
++            const g = bySource.get(h.fileId) || { title: getLibrarySource(h.fileId)?.title || h.fileId, chunks: [] };
++            g.chunks.push(h);
++            bySource.set(h.fileId, g);
++        }
++
++        const MAX_CHARS = 2500;
++        let used = 0;
++        const blocks: string[] = [];
++        const sources: { name: string; count: number }[] = [];
++        for (const g of bySource.values()) {
++            const lines: string[] = [];
++            for (const c of g.chunks) {
++                const text = c.text.trim();
++                if (used > 0 && used + text.length > MAX_CHARS) break;
++                used += text.length;
++                lines.push(`- (${(c.similarity * 100).toFixed(0)}% match) ${text}`);
++            }
++            if (lines.length === 0) continue;
++            blocks.push(`### [${g.title}]\n${lines.join('\n')}`);
++            sources.push({ name: g.title, count: lines.length });
++        }
++        if (blocks.length === 0) return null;
++
++        console.log(`[ARA Library] ${hits.length} chunks from ${sources.length} sources`);
++        const section = `## ${LIBRARY_SECTION_TITLE}\n${wrapUntrustedPromptContent('library_sources', blocks.join('\n\n'), MAX_CHARS + 1000)}`;
++        return { section, sources };
++    } catch (err) {
++        console.warn('[ARA Library] context failed:', err);
++        return null;
++    }
++}
++
+ /**
+  * Build semantic context from ruVector — the smart replacement for brute-force dumps.
+  *
+diff --git a/src/app.ts b/src/app.ts
+index 755acd7..7c90699 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -65,6 +65,7 @@ import docsConvertRoutes from './routes/docsConvertRoutes';
+ import fileExplorerRoutes from './routes/fileExplorerRoutes';
+ import idocsRoutes from './routes/idocsRoutes';
+ import briefRoutes from './routes/briefRoutes';
++import libraryRoutes from './routes/libraryRoutes';
+ import esignRoutes from './routes/esignRoutes';
+ import broadcastRoutes from './routes/broadcastRoutes';
+ import linkRoutes from './routes/linkRoutes';
+@@ -283,6 +284,7 @@ app.use(assignRequestId);
+ app.use(setSecurityHeaders);
+ app.use(cors(corsOptions));
+ app.options('*', cors(corsOptions));
++app.use('/api/library/sources', express.json({ limit: '3mb' })); // plan 052 — one NotebookLM source's text may reach 2 MB; must precede the global 1mb parser
+ app.use(express.json({ limit: process.env.EXPRESS_JSON_LIMIT || '1mb' }));
+ app.use(express.urlencoded({
+     extended: true,
+@@ -384,6 +386,7 @@ app.use('/api/webhooks', webhookRoutes);
+ // blanket authenticate gate.
+ app.use('/api/ara/meeting', meetingRoutes);
+ app.use('/api/ara', araRoutes);
++app.use('/api/library', libraryRoutes); // plan 052 — NotebookLM mirror ARA reads from (session, or x-library-secret for the sync script)
+ 
+ // Month 3: Transcription
+ app.use('/api/transcribe', transcriptionRoutes);
+diff --git a/src/routes/libraryRoutes.ts b/src/routes/libraryRoutes.ts
+new file mode 100644
+index 0000000..5557c50
+--- /dev/null
++++ b/src/routes/libraryRoutes.ts
+@@ -0,0 +1,118 @@
++/**
++ * Library Routes — NotebookLM mirror for ARA (plan 052).
++ *
++ *   GET    /api/library/status            (session)
++ *   GET    /api/library/sources           (session)
++ *   POST   /api/library/sources           (corporate+ session OR x-library-secret = LIBRARY_SYNC_SECRET)
++ *   DELETE /api/library/sources/:id       (corporate+ session)
++ *
++ * A source = one NotebookLM source's raw text. id = library:<collection>:<sourceId>;
++ * metadata in library_sources, chunks in embeddings (file_id = id, behind a
++ * type:'library' files row for the FK). Upsert only; re-embeds only when the
++ * sha256 of the text changed. Deleting touches that one id's derived rows only.
++ */
++import { Router, Request, Response, NextFunction } from 'express';
++import * as crypto from 'crypto';
++import { authenticate, requireRole } from '../services/authMiddleware';
++import {
++    indexFile, upsertLibrarySource, getLibrarySource, listLibrarySources, deleteLibrarySource, LibrarySourceRow,
++} from '../services/database';
++import { indexText } from '../services/vectorStore';
++
++const router = Router();
++const MAX_TEXT = 2 * 1024 * 1024;
++
++function secretMatches(given: unknown, expected: string): boolean {
++    if (typeof given !== 'string') return false;
++    const a = Buffer.from(given);
++    const b = Buffer.from(expected);
++    return a.length === b.length && crypto.timingSafeEqual(a, b);
++}
++
++const requireCorporate = requireRole('corporate');
++
++/** Machine path (sync script) when x-library-secret is present — unset LIBRARY_SYNC_SECRET disables it; otherwise a corporate+ session. */
++function adminOrSyncSecret(req: Request, res: Response, next: NextFunction): void {
++    const given = req.headers['x-library-secret'];
++    if (given !== undefined) {
++        const expected = process.env.LIBRARY_SYNC_SECRET;
++        if (expected && secretMatches(given, expected)) return next();
++        res.status(401).json({ success: false, error: 'Unauthorized' });
++        return;
++    }
++    authenticate(req, res, (err?: unknown) => (err ? next(err) : requireCorporate(req, res, next)));
++}
++
++function toApi(r: LibrarySourceRow) {
++    return {
++        id: r.id, collection: r.collection, sourceId: r.source_id, notebookId: r.notebook_id,
++        notebookTitle: r.notebook_title, title: r.title, url: r.url, chars: r.chars, chunks: r.chunks,
++        contentHash: r.content_hash, updatedAt: r.updated_at,
++    };
++}
++
++router.get('/status', authenticate, (_req: Request, res: Response) => {
++    const rows = listLibrarySources();
++    const byCollection = new Map<string, { name: string; sources: number; lastSyncedAt: string | null }>();
++    for (const r of rows) {
++        const c = byCollection.get(r.collection) || { name: r.collection, sources: 0, lastSyncedAt: null };
++        c.sources++;
++        if (!c.lastSyncedAt || r.updated_at > c.lastSyncedAt) c.lastSyncedAt = r.updated_at;
++        byCollection.set(r.collection, c);
++    }
++    const collections = [...byCollection.values()];
++    const lastSyncedAt = collections.reduce<string | null>((m, c) => (!m || (c.lastSyncedAt && c.lastSyncedAt > m) ? c.lastSyncedAt : m), null);
++    res.json({ success: true, embeddingsConfigured: !!process.env.OPENAI_API_KEY, sources: rows.length, collections, lastSyncedAt });
++});
++
++router.get('/sources', authenticate, (_req: Request, res: Response) => {
++    res.json({ success: true, sources: listLibrarySources().map(toApi) });
++});
++
++async function upsertSource(req: Request, res: Response): Promise<void> {
++    const b = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, unknown>;
++    const { collection, sourceId, title, text } = b;
++    for (const [k, v] of Object.entries({ collection, sourceId, title, text })) {
++        if (typeof v !== 'string' || !v.trim()) { res.status(400).json({ success: false, error: `${k} is required` }); return; }
++    }
++    if ((text as string).length > MAX_TEXT) { res.status(400).json({ success: false, error: 'text exceeds 2 MB' }); return; }
++    if (!process.env.OPENAI_API_KEY) { res.status(503).json({ success: false, error: 'embeddings not configured' }); return; }
++
++    const id = `library:${collection}:${sourceId}`;
++    const contentHash = crypto.createHash('sha256').update(text as string).digest('hex');
++    const existing = getLibrarySource(id);
++    if (existing && existing.content_hash === contentHash) {
++        res.json({ success: true, id, chunks: existing.chunks, unchanged: true }); return;
++    }
++    const str = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
++    try {
++        // files row first — embeddings.file_id → files.id (FK ON). INSERT OR REPLACE is upsert-safe here:
++        // the REPLACE-cascade only drops this id's own chunks, which indexText rewrites anyway.
++        indexFile({
++            id, path: id, name: title as string, type: 'library', size: (text as string).length,
++            projectId: null, projectName: null, summary: str(b.url), embeddingId: null, syncedAt: new Date().toISOString(), syncSource: 'notebooklm',
++        });
++        const { chunksIndexed } = await indexText(id, title as string, text as string);
++        upsertLibrarySource({
++            id, collection: collection as string, source_id: sourceId as string, notebook_id: str(b.notebookId), notebook_title: str(b.notebookTitle),
++            title: title as string, url: str(b.url), chars: (text as string).length, chunks: chunksIndexed, content_hash: contentHash,
++        });
++        res.json({ success: true, id, chunks: chunksIndexed, unchanged: false });
++    } catch (err) {
++        const msg = (err as Error).message;
++        if (msg === 'embeddings not configured') { res.status(503).json({ success: false, error: msg }); return; }
++        console.error('[Library] upsert failed:', err);
++        res.status(500).json({ success: false, error: msg });
++    }
++}
++
++router.post('/sources', adminOrSyncSecret, upsertSource);
++
++router.delete('/sources/:id', authenticate, requireCorporate, (req: Request, res: Response) => {
++    const id = req.params.id;
++    if (!id.startsWith('library:')) { res.status(400).json({ success: false, error: 'not a library id' }); return; }
++    deleteLibrarySource(id);
++    res.json({ success: true });
++});
++
++export default router;
+diff --git a/src/services/database.ts b/src/services/database.ts
+index 2ca459e..c854836 100644
+--- a/src/services/database.ts
++++ b/src/services/database.ts
+@@ -160,6 +160,21 @@ db.exec(`
+         FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+     );
+ 
++    -- plan 052: NotebookLM mirror metadata; chunks live in embeddings (file_id = library:<collection>:<sourceId>)
++    CREATE TABLE IF NOT EXISTS library_sources (
++        id TEXT PRIMARY KEY,
++        collection TEXT NOT NULL,
++        source_id TEXT NOT NULL,
++        notebook_id TEXT,
++        notebook_title TEXT,
++        title TEXT NOT NULL,
++        url TEXT,
++        chars INTEGER NOT NULL DEFAULT 0,
++        chunks INTEGER NOT NULL DEFAULT 0,
++        content_hash TEXT NOT NULL,
++        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
++    );
++
+     CREATE TABLE IF NOT EXISTS notes (
+         id TEXT PRIMARY KEY,
+         title TEXT NOT NULL DEFAULT 'Untitled',
+@@ -478,6 +493,56 @@ export function deleteEmbeddingsByFile(fileId: string): void {
+     deleteEmbeddingsByFileStmt.run(fileId);
+ }
+ 
++// ============================================
++// LIBRARY SOURCES (plan 052 — NotebookLM mirror)
++// ============================================
++
++export interface LibrarySourceRow {
++    id: string;
++    collection: string;
++    source_id: string;
++    notebook_id: string | null;
++    notebook_title: string | null;
++    title: string;
++    url: string | null;
++    chars: number;
++    chunks: number;
++    content_hash: string;
++    updated_at: string;
++}
++
++const upsertLibrarySourceStmt = db.prepare(`
++    INSERT INTO library_sources (id, collection, source_id, notebook_id, notebook_title, title, url, chars, chunks, content_hash, updated_at)
++    VALUES (@id, @collection, @source_id, @notebook_id, @notebook_title, @title, @url, @chars, @chunks, @content_hash, datetime('now'))
++    ON CONFLICT(id) DO UPDATE SET
++        collection = excluded.collection, source_id = excluded.source_id,
++        notebook_id = excluded.notebook_id, notebook_title = excluded.notebook_title,
++        title = excluded.title, url = excluded.url, chars = excluded.chars, chunks = excluded.chunks,
++        content_hash = excluded.content_hash, updated_at = excluded.updated_at
++`);
++const getLibrarySourceStmt = db.prepare(`SELECT * FROM library_sources WHERE id = ?`);
++const listLibrarySourcesStmt = db.prepare(`SELECT * FROM library_sources ORDER BY collection, title`);
++const deleteLibrarySourceStmt = db.prepare(`DELETE FROM library_sources WHERE id = ?`);
++
++export function upsertLibrarySource(row: Omit<LibrarySourceRow, 'updated_at'>): void {
++    upsertLibrarySourceStmt.run(row);
++}
++
++export function getLibrarySource(id: string): LibrarySourceRow | null {
++    return (getLibrarySourceStmt.get(id) as LibrarySourceRow | undefined) ?? null;
++}
++
++export function listLibrarySources(): LibrarySourceRow[] {
++    return listLibrarySourcesStmt.all() as LibrarySourceRow[];
++}
++
++/** Removes ONE library source: its metadata row, its files row and (via FK cascade) its chunks. Derived index data only. */
++export function deleteLibrarySource(id: string): void {
++    deleteLibrarySourceStmt.run(id);
++    deleteEmbeddingsByFileStmt.run(id);
++    deleteFileStmt.run(id);
++}
++
+ // ============================================
+ // TRELLO VECTOR INDEX
+ // ============================================
+diff --git a/src/services/vectorStore.ts b/src/services/vectorStore.ts
+index 5fdd1e5..6e613f7 100644
+--- a/src/services/vectorStore.ts
++++ b/src/services/vectorStore.ts
+@@ -14,7 +14,8 @@ import {
+     storeEmbedding,
+     getAllEmbeddings,
+     deleteEmbeddingsByFile,
+-    getEmbeddingsByFile
++    getEmbeddingsByFile,
++    database
+ } from './database';
+ 
+ // ============================================
+@@ -200,6 +201,34 @@ export async function indexDocument(fileId: string, filePath: string): Promise<{
+     return { chunksIndexed: indexed, totalChars: text.length };
+ }
+ 
++/**
++ * Index already-extracted text (plan 052 Library): chunk, embed, then atomically
++ * replace this fileId's chunks. No filesystem. The caller owns the `files` row
++ * (embeddings.file_id → files.id FK). Throws when embeddings are unavailable so
++ * a bad key never leaves un-embedded chunks behind.
++ */
++export async function indexText(fileId: string, name: string, text: string): Promise<{
++    chunksIndexed: number;
++    totalChars: number;
++}> {
++    const chunks = chunkText(text);
++    const vectors: Buffer[] = [];
++    for (let i = 0; i < chunks.length; i++) {
++        const embedding = await generateEmbedding(chunks[i]);
++        if (!embedding) throw new Error('embeddings not configured');
++        vectors.push(embeddingToBuffer(embedding));
++        if (i > 0 && i % 50 === 0) await new Promise(resolve => setTimeout(resolve, 1000)); // same pacing as indexDocument
++    }
++    database.transaction(() => {
++        deleteEmbeddingsByFile(fileId);
++        chunks.forEach((textContent, chunkIndex) => storeEmbedding({
++            id: crypto.randomUUID(), fileId, chunkIndex, textContent, embedding: vectors[chunkIndex]
++        }));
++    })();
++    console.log(`[VectorStore] Indexed ${chunks.length} chunks for ${name} (${text.length} chars)`);
++    return { chunksIndexed: chunks.length, totalChars: text.length };
++}
++
+ // ============================================
+ // SEMANTIC SEARCH
+ // ============================================
+@@ -225,7 +254,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
+  * Search documents by semantic similarity.
+  * Generates an embedding for the query, then finds the top-K most similar chunks.
+  */
+-export async function searchDocuments(query: string, topK: number = 5): Promise<SearchResult[]> {
++export async function searchDocuments(query: string, topK: number = 5, fileIdPrefix?: string): Promise<SearchResult[]> {
+     // 1. Generate query embedding
+     const queryEmbedding = await generateEmbedding(query);
+     if (!queryEmbedding) {
+@@ -238,7 +267,7 @@ export async function searchDocuments(query: string, topK: number = 5): Promise<
+ 
+     // 3. Calculate similarity for each
+     const scored: SearchResult[] = allEmbeddings
+-        .filter((e: any) => e.embedding != null)
++        .filter((e: any) => e.embedding != null && (!fileIdPrefix || String(e.file_id).startsWith(fileIdPrefix)))
+         .map((e: any) => {
+             const stored = bufferToEmbedding(e.embedding);
+             const similarity = cosineSimilarity(queryEmbedding, stored);
+diff --git a/tests/araLibraryContext.test.ts b/tests/araLibraryContext.test.ts
+new file mode 100644
+index 0000000..bae4fa4
+--- /dev/null
++++ b/tests/araLibraryContext.test.ts
+@@ -0,0 +1,92 @@
++/**
++ * ARA ↔ Library (plan 052): buildLibraryContext() injects a "Library (mirrored from NotebookLM …)"
++ * section + per-source contextSources chips for a matching question, and stays silent (no section,
++ * no chips) when nothing matches or embeddings are unavailable.
++ * Isolated temp DWELLIUM_DATA_DIR (set before any src require); `openai` replaced by a deterministic fake.
++ */
++import * as fs from 'fs';
++import * as os from 'os';
++import * as path from 'path';
++
++jest.mock('openai', () => require('./helpers/fakeOpenAI').fakeOpenAIModule());
++
++const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'dwellium-library-'));
++process.env.DWELLIUM_DATA_DIR = TMP;
++process.env.QUALIA_DATA_DIR = TMP;
++process.env.ONE_SAVE_DATA_DIR = path.join(TMP, 'onesave');
++process.env.SEED_DEMO_DATA = 'false';
++process.env.OPENAI_API_KEY = 'sk-test-library';
++
++// eslint-disable-next-line @typescript-eslint/no-var-requires
++const { indexFile, upsertLibrarySource } = require('../src/services/database');
++// eslint-disable-next-line @typescript-eslint/no-var-requires
++const { indexText } = require('../src/services/vectorStore');
++// eslint-disable-next-line @typescript-eslint/no-var-requires
++const { buildLibraryContext, chatWithARA, LIBRARY_SECTION_TITLE } = require('../src/agents/araChatEngine');
++
++afterAll(() => { fs.rmSync(TMP, { recursive: true, force: true }); });
++
++async function seed(collection: string, sourceId: string, title: string, text: string) {
++    const id = `library:${collection}:${sourceId}`;
++    indexFile({ id, path: id, name: title, type: 'library', size: text.length, projectId: null, projectName: null, summary: null, embeddingId: null, syncedAt: null, syncSource: 'notebooklm' });
++    const { chunksIndexed } = await indexText(id, title, text);
++    upsertLibrarySource({ id, collection, source_id: sourceId, notebook_id: null, notebook_title: null, title, url: null, chars: text.length, chunks: chunksIndexed, content_hash: 'h-' + sourceId });
++}
++
++const LEASE_Q = 'What notice period does the Woodland Parc lease require for non-renewal?';
++
++beforeAll(async () => {
++    await seed('contracts', 'lease-1', 'Woodland Parc Lease',
++        'The Woodland Parc lease requires sixty (60) days written notice for non-renewal. Notice of renewal terms is delivered to the resident by mail.');
++    await seed('vendors', 'vendor-1', 'Vendor Insurance Requirements',
++        'Every HVAC contractor and vendor must carry general liability insurance of one million dollars before work begins; the contractor certificate is filed annually.');
++});
++
++describe('buildLibraryContext', () => {
++    it('returns the titled section, grouped by source with [Title] headings, and per-source counts', async () => {
++        const ctx = await buildLibraryContext(LEASE_Q);
++        expect(ctx).not.toBeNull();
++        expect(ctx.section.startsWith(`## ${LIBRARY_SECTION_TITLE}`)).toBe(true);
++        expect(ctx.section).toContain('### [Woodland Parc Lease]');
++        expect(ctx.section).toContain('sixty (60) days written notice');
++        expect(ctx.section).not.toContain('Vendor Insurance Requirements'); // no shared keywords → below the 0.25 floor
++        expect(ctx.sources).toEqual([{ name: 'Woodland Parc Lease', count: 1 }]);
++    });
++
++    it('is a no-op when nothing matches, and when embeddings are unavailable', async () => {
++        expect(await buildLibraryContext('zebra migration patterns in the serengeti')).toBeNull();
++        const saved = process.env.OPENAI_API_KEY;
++        delete process.env.OPENAI_API_KEY;
++        try { expect(await buildLibraryContext(LEASE_Q)).toBeNull(); } finally { process.env.OPENAI_API_KEY = saved; }
++    });
++});
++
++describe('chatWithARA', () => {
++    const realFetch = global.fetch;
++    let systemPrompts: string[] = [];
++    beforeEach(() => {
++        systemPrompts = [];
++        global.fetch = jest.fn(async (_url: any, init?: any) => {
++            const req = JSON.parse(String(init?.body || '{}'));
++            systemPrompts.push(req.messages?.[0]?.content || '');
++            return new Response(JSON.stringify({ choices: [{ message: { content: 'Sixty days, per the lease.' }, finish_reason: 'stop' }], usage: { total_tokens: 10 } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
++        }) as any;
++    });
++    afterEach(() => { global.fetch = realFetch; });
++
++    it('injects the Library section into the system prompt and pushes library chips', async () => {
++        const res = await chatWithARA('executive-assistant', LEASE_Q, `lib-${Date.now()}`);
++        expect(res.content).toBe('Sixty days, per the lease.');
++        expect(systemPrompts.length).toBeGreaterThan(0);
++        expect(systemPrompts[0]).toContain(`## ${LIBRARY_SECTION_TITLE}`);
++        expect(systemPrompts[0]).toContain('### [Woodland Parc Lease]');
++        expect(res.contextSources).toEqual(expect.arrayContaining([{ name: 'Woodland Parc Lease', type: 'library', itemCount: 1 }]));
++        expect(res.contextSources.filter((s: any) => s.type === 'library')).toHaveLength(1);
++    });
++
++    it('adds no section and no chips when nothing in the Library matches', async () => {
++        const res = await chatWithARA('executive-assistant', 'zebra migration patterns in the serengeti', `lib-none-${Date.now()}`);
++        expect(systemPrompts[0]).not.toContain(LIBRARY_SECTION_TITLE);
++        expect((res.contextSources || []).some((s: any) => s.type === 'library')).toBe(false);
++    });
++});
+diff --git a/tests/helpers/fakeOpenAI.ts b/tests/helpers/fakeOpenAI.ts
+new file mode 100644
+index 0000000..29bbb01
+--- /dev/null
++++ b/tests/helpers/fakeOpenAI.ts
+@@ -0,0 +1,28 @@
++/**
++ * Deterministic stand-in for the `openai` SDK (plan 052 tests).
++ *
++ *   jest.mock('openai', () => require('./helpers/fakeOpenAI').fakeOpenAIModule());
++ *
++ * Embeddings are tiny keyword-count vectors so cosine similarity behaves
++ * semantically enough for tests: texts sharing keywords score high, texts
++ * sharing none score 0 (below ARA's 0.25 floor), and a no-keyword query is
++ * the zero vector (matches nothing). Chat completions return a canned reply.
++ */
++const DIMS = ['lease', 'notice', 'renewal', 'woodland', 'vendor', 'insurance', 'hvac', 'contractor', 'deposit'];
++
++export function fakeEmbedding(text: string): number[] {
++    const lower = text.toLowerCase();
++    return DIMS.map(d => (lower.match(new RegExp(d, 'g')) || []).length);
++}
++
++export function fakeOpenAIModule() {
++    class OpenAI {
++        embeddings = {
++            create: async ({ input }: { input: string | string[] }) => ({
++                data: (Array.isArray(input) ? input : [input]).map((t, index) => ({ index, embedding: fakeEmbedding(t) })),
++            }),
++        };
++        chat = { completions: { create: async () => ({ choices: [{ message: { content: '{"results":[]}' } }] }) } };
++    }
++    return { __esModule: true, default: OpenAI, OpenAI };
++}
+diff --git a/tests/libraryRoutes.test.ts b/tests/libraryRoutes.test.ts
+new file mode 100644
+index 0000000..c285c2f
+--- /dev/null
++++ b/tests/libraryRoutes.test.ts
+@@ -0,0 +1,128 @@
++/**
++ * /api/library (plan 052) — NotebookLM mirror: upsert-by-hash indexing, secret-or-session auth,
++ * status/list/delete. Real app + isolated temp DB (harness); `openai` replaced by a deterministic fake.
++ */
++jest.mock('openai', () => require('./helpers/fakeOpenAI').fakeOpenAIModule());
++
++process.env.OPENAI_API_KEY = 'sk-test-library';
++
++import { makeApp, createTestUser, TestUser } from './helpers/harness';
++// Same module instance as the app's (harness set the data dir first) — lets us count chunk rows directly.
++import { database } from '../src/services/database';
++
++const SECRET = 'sync-secret-' + 'x'.repeat(20);
++const chunkRows = (id: string) => (database.prepare('SELECT COUNT(*) AS n FROM embeddings WHERE file_id = ?').get(id) as { n: number }).n;
++const LONG = 'Woodland Parc lease notice terms. '.repeat(80); // ~2.7k chars → 4 chunks
++const SHORT = 'The Woodland Parc lease requires sixty days written notice for non-renewal.';
++const body = (over: Record<string, unknown> = {}) => ({ collection: 'contracts', sourceId: 'src-1', title: 'Woodland Parc Lease', text: LONG, url: 'https://notebooklm.google.com/x', notebookId: 'nb1', notebookTitle: 'Contracts', ...over });
++
++describe('/api/library', () => {
++    let corporate: TestUser; let management: TestUser;
++    const savedSecret = process.env.LIBRARY_SYNC_SECRET;
++
++    beforeAll(async () => {
++        corporate = await createTestUser({ role: 'corporate' });
++        management = await createTestUser({ role: 'management' });
++    });
++    beforeEach(() => { process.env.LIBRARY_SYNC_SECRET = SECRET; process.env.OPENAI_API_KEY = 'sk-test-library'; });
++    afterAll(() => { if (savedSecret === undefined) delete process.env.LIBRARY_SYNC_SECRET; else process.env.LIBRARY_SYNC_SECRET = savedSecret; });
++
++    const post = (hdr: Record<string, string>, b: unknown = body()) => makeApp().post('/api/library/sources').set(hdr).send(b);
++
++    describe('auth', () => {
++        it('401 without a session or secret; 403 for a non-admin session', async () => {
++            expect((await post({})).status).toBe(401);
++            expect((await post({ Authorization: management.authHeader })).status).toBe(403);
++        });
++        it('401 on a wrong secret, and when LIBRARY_SYNC_SECRET is unset (header path disabled)', async () => {
++            expect((await post({ 'x-library-secret': 'nope' })).status).toBe(401);
++            expect((await post({ 'x-library-secret': SECRET.slice(0, -1) })).status).toBe(401);
++            delete process.env.LIBRARY_SYNC_SECRET;
++            expect((await post({ 'x-library-secret': SECRET })).status).toBe(401);
++            // a wrong header is not rescued by a valid admin bearer
++            expect((await post({ 'x-library-secret': 'nope', Authorization: corporate.authHeader })).status).toBe(401);
++        });
++        it('GET /status and /sources need a session (any role)', async () => {
++            expect((await makeApp().get('/api/library/status')).status).toBe(401);
++            expect((await makeApp().get('/api/library/sources').set('Authorization', management.authHeader)).status).toBe(200);
++        });
++    });
++
++    describe('POST /sources', () => {
++        it('400 on missing fields', async () => {
++            const r = await post({ 'x-library-secret': SECRET }, body({ text: '' }));
++            expect(r.status).toBe(400);
++            expect(r.body).toEqual({ success: false, error: 'text is required' });
++            expect((await post({ 'x-library-secret': SECRET }, { collection: 'c', sourceId: 's', text: 'hello world text' })).status).toBe(400);
++        });
++
++        it('503 when embeddings are not configured', async () => {
++            delete process.env.OPENAI_API_KEY;
++            const r = await post({ 'x-library-secret': SECRET });
++            expect(r.status).toBe(503);
++            expect(r.body).toEqual({ success: false, error: 'embeddings not configured' });
++        });
++
++        it('creates → unchanged on same hash → re-indexes (replacing chunks) on new text', async () => {
++            const id = 'library:contracts:src-1';
++            const created = await post({ 'x-library-secret': SECRET });
++            expect(created.status).toBe(200);
++            expect(created.body).toMatchObject({ success: true, id, unchanged: false });
++            expect(created.body.chunks).toBeGreaterThan(1);
++            expect(chunkRows(id)).toBe(created.body.chunks);
++
++            const again = await post({ Authorization: corporate.authHeader }); // admin session path, same text
++            expect(again.status).toBe(200);
++            expect(again.body).toEqual({ success: true, id, chunks: created.body.chunks, unchanged: true });
++            expect(chunkRows(id)).toBe(created.body.chunks);
++
++            const changed = await post({ 'x-library-secret': SECRET }, body({ text: SHORT, title: 'Woodland Parc Lease v2' }));
++            expect(changed.status).toBe(200);
++            expect(changed.body).toEqual({ success: true, id, chunks: 1, unchanged: false });
++            expect(chunkRows(id)).toBe(1); // old chunks replaced, not accumulated
++
++            const list = await makeApp().get('/api/library/sources').set('Authorization', management.authHeader);
++            expect(list.status).toBe(200);
++            expect(list.body.sources).toHaveLength(1);
++            expect(list.body.sources[0]).toMatchObject({
++                id, collection: 'contracts', sourceId: 'src-1', notebookId: 'nb1', notebookTitle: 'Contracts',
++                title: 'Woodland Parc Lease v2', url: 'https://notebooklm.google.com/x', chars: SHORT.length, chunks: 1,
++            });
++            expect(list.body.sources[0].contentHash).toMatch(/^[a-f0-9]{64}$/);
++            expect(list.body.sources[0].updatedAt).toBeTruthy();
++        });
++    });
++
++    describe('GET /status and DELETE /sources/:id', () => {
++        it('status aggregates per collection; delete removes one source and its chunks only', async () => {
++            await post({ 'x-library-secret': SECRET }, body({ collection: 'housing-law', sourceId: 'ga-1', title: 'GA Landlord Tenant Handbook', text: 'Security deposit must be returned within thirty days. '.repeat(10) }));
++            const status = await makeApp().get('/api/library/status').set('Authorization', management.authHeader);
++            expect(status.status).toBe(200);
++            expect(status.body).toMatchObject({ success: true, embeddingsConfigured: true, sources: 2 });
++            expect(status.body.collections).toEqual(expect.arrayContaining([
++                expect.objectContaining({ name: 'contracts', sources: 1 }),
++                expect.objectContaining({ name: 'housing-law', sources: 1 }),
++            ]));
++            expect(status.body.collections[0].lastSyncedAt).toBeTruthy();
++            expect(status.body.lastSyncedAt).toBeTruthy();
++
++            expect((await makeApp().delete('/api/library/sources/library:contracts:src-1').set('Authorization', management.authHeader)).status).toBe(403);
++            const del = await makeApp().delete('/api/library/sources/library:contracts:src-1').set('Authorization', corporate.authHeader);
++            expect(del.status).toBe(200);
++            expect(del.body).toEqual({ success: true });
++            expect(chunkRows('library:contracts:src-1')).toBe(0);
++            expect(chunkRows('library:housing-law:ga-1')).toBeGreaterThan(0);
++
++            const list = await makeApp().get('/api/library/sources').set('Authorization', corporate.authHeader);
++            expect(list.body.sources.map((s: any) => s.id)).toEqual(['library:housing-law:ga-1']);
++            const after = await makeApp().get('/api/library/status').set('Authorization', corporate.authHeader);
++            expect(after.body.sources).toBe(1);
++        });
++
++        it('status reports embeddingsConfigured:false without OPENAI_API_KEY', async () => {
++            delete process.env.OPENAI_API_KEY;
++            const r = await makeApp().get('/api/library/status').set('Authorization', management.authHeader);
++            expect(r.body.embeddingsConfigured).toBe(false);
++        });
++    });
++});

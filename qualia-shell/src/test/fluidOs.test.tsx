@@ -42,17 +42,20 @@ vi.mock('../components/Sidebar/iconMap', () => ({
 const openWindowMock = vi.fn();
 const focusWindowMock = vi.fn();
 const restoreWindowMock = vi.fn();
+// Mutable so tests can simulate a window opening while the cockpit is up.
+let windowsState: Array<{ id: string; component: string; title: string; icon: string; minimized: boolean; zIndex: number }> = [];
 vi.mock('../context/WindowContext', () => ({
     useWindows: () => ({
-        windows: [],
+        windows: windowsState,
         openWindow: openWindowMock,
         focusWindow: focusWindowMock,
         restoreWindow: restoreWindowMock,
     }),
 }));
 
-import FluidOS, { cockpitPrefsStore } from '../components/Shell/FluidOS';
+import FluidOS, { cockpitPrefsStore, isKnownFrameBlocked } from '../components/Shell/FluidOS';
 import FluidLauncher from '../components/Shell/FluidLauncher';
+import CommandPill from '../components/Shell/CommandPill';
 
 function makeUser(partial: Partial<DwelliumUser>): DwelliumUser {
     return {
@@ -100,6 +103,7 @@ beforeEach(() => {
     openWindowMock.mockClear();
     focusWindowMock.mockClear();
     restoreWindowMock.mockClear();
+    windowsState = [];
     // The preview pane's reachability probe fires a real fetch — stub it so
     // tests never touch the network.
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({} as Response)));
@@ -175,11 +179,55 @@ describe('FluidOS cockpit', () => {
         expect(screen.getByLabelText('Open Audit Log')).toBeInTheDocument();
     });
 
-    it('widget-row click calls openWindow with the widget id and collapses the shell', () => {
+    // 2026-08-22: rows open INSIDE the cockpit (center-pane tabs) — clicking a
+    // widget must never throw the user back to the classic desktop.
+    it('widget-row click opens the widget as a center-pane tab and keeps the cockpit open', () => {
+        const { container } = renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        expect(screen.queryByRole('tablist')).not.toBeInTheDocument(); // ARA alone → no strip
+        fireEvent.click(screen.getByLabelText('Open Alpha'));
+        expect(openWindowMock).not.toHaveBeenCalled();
+        expect(fluidOsStore.getSnapshot().open).toBe(true);
+        expect(container.querySelector('.alpha-widget')).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
+        // ARA stays mounted (hidden) so chat state survives tab switches.
+        expect(container.querySelector('.ara-widget')).toBeInTheDocument();
+        expect((container.querySelector('.ara-widget')!.closest('.fos-chat__body') as HTMLElement).hidden).toBe(true);
+        // Back to ARA, close Alpha → strip disappears.
+        fireEvent.click(screen.getByRole('tab', { name: 'ARA' }));
+        expect((container.querySelector('.ara-widget')!.closest('.fos-chat__body') as HTMLElement).hidden).toBe(false);
+        fireEvent.click(screen.getByLabelText('Close Alpha'));
+        expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    });
+
+    it('"Open on desktop" is the explicit way out: openWindow + collapse', () => {
+        openWindowMock.mockReturnValue('win-alpha');
         renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
         fireEvent.click(screen.getByLabelText('Open Alpha'));
+        fireEvent.click(screen.getByLabelText('Open Alpha on desktop'));
         expect(openWindowMock).toHaveBeenCalledWith('alpha', 'Alpha', 'layout-grid');
+        expect(focusWindowMock).toHaveBeenCalledWith('win-alpha');
         expect(fluidOsStore.getSnapshot().open).toBe(false);
+    });
+
+    it('adopts a desktop window opened while the cockpit is up (⌘K path) as a tab', () => {
+        const user = makeUser({ email: 'lisa@dwellium.com' });
+        const { rerender, container } = renderCockpitForUser(user);
+        windowsState = [{ id: 'w1', component: 'alpha', title: 'Alpha', icon: 'layout-grid', minimized: false, zIndex: 1 }];
+        rerender(
+            <UserContext.Provider value={{ user, isAuthenticated: true } as any}>
+                <FluidOS />
+            </UserContext.Provider>
+        );
+        expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
+        expect(container.querySelector('.alpha-widget')).toBeInTheDocument();
+        expect(fluidOsStore.getSnapshot().open).toBe(true);
+    });
+
+    it('nav actions (Settings) open in-cockpit too — no collapse', () => {
+        renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        fireEvent.click(screen.getByLabelText('Open Settings'));
+        expect(fluidOsStore.getSnapshot().open).toBe(true);
+        expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
     it('the Home pill collapses back to the classic desktop', () => {
@@ -251,5 +299,36 @@ describe('FluidLauncher', () => {
         render(<FluidLauncher />);
         fireEvent.click(screen.getByLabelText('Open Cockpit'));
         expect(fluidOsStore.getSnapshot().open).toBe(true);
+    });
+});
+
+describe('preview: sites that refuse framing (AppFolio etc.)', () => {
+    it('isKnownFrameBlocked recognises AppFolio + Google hosts, not arbitrary URLs', () => {
+        expect(isKnownFrameBlocked('https://zp.appfolio.com/dashboard')).toBe(true);
+        expect(isKnownFrameBlocked('https://www.appfolio.com/')).toBe(true);
+        expect(isKnownFrameBlocked('https://mail.google.com/')).toBe(true);
+        expect(isKnownFrameBlocked('https://argyleholocron.netlify.app')).toBe(false);
+        expect(isKnownFrameBlocked('not a url')).toBe(false);
+    });
+
+    it('shows the "doesn’t allow embedding → Open ↗" card instead of a blank iframe', () => {
+        renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        const url = screen.getByLabelText('Preview URL');
+        fireEvent.change(url, { target: { value: 'zp.appfolio.com' } });
+        fireEvent.keyDown(url, { key: 'Enter' });
+        expect(screen.getByText('zp.appfolio.com doesn’t allow embedding')).toBeInTheDocument();
+        expect(screen.queryByTitle('Preview')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Open ↗' })).toBeInTheDocument();
+    });
+});
+
+describe('CommandPill × Cockpit', () => {
+    it('the ⌘K pill is hidden while the cockpit is open (it overlapped the header) and back afterwards', () => {
+        fluidOsStore.setEnabled(true);
+        const { container, rerender } = render(<CommandPill />);
+        expect(container.querySelector('.cmd-pill')).not.toBeInTheDocument();
+        fluidOsStore.setOpen(false);
+        rerender(<CommandPill />);
+        expect(container.querySelector('.cmd-pill')).toBeInTheDocument();
     });
 });

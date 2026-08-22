@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, Check, Circle, Hourglass, Mail, Moon, Search, Timer, TriangleAlert, X } from 'lucide-react';
+import { API_BASE } from '../../config';
 
 interface TrackedReply {
     id: string;
@@ -51,7 +52,7 @@ interface Stats {
 
 type SubView = 'overview' | 'awaiting' | 'track' | 'config';
 
-const BASE = () => (window as any).__QUALIA_API__ || 'http://localhost:3000';
+const BASE = () => (window as any).__QUALIA_API__ || API_BASE; // was hard-coded localhost:3000 — dead in prod (2026-08-22)
 
 export default function ReplyTracker() {
     const [view, setView] = useState<SubView>('overview');

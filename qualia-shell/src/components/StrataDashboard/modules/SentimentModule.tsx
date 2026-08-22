@@ -11,8 +11,9 @@ import EntityLink from '../EntityLink';
 // try/catch-wrapped so missing DSN is silent in test/local builds.
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
+import { API_BASE } from '../../../config';
 
-const API = 'http://localhost:3000';
+const API = API_BASE; // was hard-coded localhost:3000 — dead in prod (2026-08-22)
 
 const SCORE_COLORS = ['', '#ef4444', '#f97316', '#eab308', '#22c55e', '#16a34a'];
 const SCORE_LABELS = ['', 'Very Unsatisfied', 'Unsatisfied', 'Neutral', 'Satisfied', 'Very Satisfied'];

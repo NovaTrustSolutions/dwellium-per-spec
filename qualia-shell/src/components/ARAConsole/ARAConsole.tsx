@@ -97,7 +97,7 @@ interface ARAMode {
 
 interface ContextSource {
     name: string;
-    type: 'inbox' | 'trello' | 'ruVector' | 'georgiaCode' | 'property' | 'workitem' | 'entity' | 'health' | 'workspace' | 'decisions' | 'auditLog' | 'commLog' | 'calendar' | 'scheduler';
+    type: 'inbox' | 'trello' | 'ruVector' | 'georgiaCode' | 'property' | 'workitem' | 'entity' | 'health' | 'workspace' | 'decisions' | 'auditLog' | 'commLog' | 'calendar' | 'scheduler' | 'library';
     itemCount: number;
     snippet?: string;
 }

@@ -73,6 +73,7 @@ Cloud Run env wipe, OAuth origin_mismatch, consent-screen 403). Selected by Ilya
 | 035 | `deploy/cloud-run.sh`: preserve-unknowns env merge + DEPLOY_DRY_RUN (kills the wipe class) | P1 | S–M | backend | — | DONE — APPROVED; branch `advisor/035-env-preserve` @ `e2d353e`; dry-run verified against live service (6 vars preserved, secrets skipped, revision untouched); NOT merged — awaiting Ilya |
 | 036 | Checked Netlify deploy wrapper + scheduled env-drift workflow | P1 | S | frontend | 031 (DONE) | DONE — APPROVED; branch `advisor/036-deploy-wrapper` @ `5fac7c8` (2 commits); dry-run gates PASS, YAML valid; operator follow-up: dispatch "Env Drift Check" once after merge; NOT merged — awaiting Ilya |
 | 034 | Audit widget: render locations + capability-based access | P2 | M | frontend | soft: 033 (degrades gracefully without it) | DONE — APPROVED; branch `advisor/034-audit-widget-access` @ `fb33437` (2 commits), worktree `.advisor-worktrees/034`; full vitest 1635 green + build green; lint gate not met at REPO level (741 pre-existing errors, ZERO in touched files — documented deviation, accepted); NOT merged/pushed — awaiting Ilya |
+| 052 | NotebookLM → ARA Library (mirror notebook sources into the document vector store; ARA cites them) | P1 | M | backend + tools + frontend | 022, 046-A | PROPOSED (2026-08-22; awaiting go + §5 decisions) |
 
 **Parallel dispatch guide (one wave, 3–5 agents):**
 

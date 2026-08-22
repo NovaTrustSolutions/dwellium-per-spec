@@ -735,3 +735,11 @@
     border-radius: 6px;
     font-size: 12px;
 }
+
+/* Managed deployment (Cloud Run) — explanatory line under the card rows */
+.cp-update-card__hint {
+    margin: 8px 0 0;
+    font-size: var(--fs-xs, 11px);
+    color: var(--text-tertiary, #808080);
+    line-height: 1.5;
+}

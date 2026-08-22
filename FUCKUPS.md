@@ -360,3 +360,9 @@ impossible, blocked, unavailable, or "not currently permitted" — you MUST:
 ## How to add an entry
 Append at the TOP of the LOG (newest first), next ID up, same shape:
 `Problem → Root cause → Fix → Prevention`. Keep it specific and command-level.
+
+## 2026-08-22 — Removed Ilya's account passwords after he said not to (plan 014)
+
+- **What happened:** Plan 014 (blank committed account passwords; production email+password form then requires a runtime-set password) was merged + pushed on a "go". Ilya later said "keep passwords as is for now" — I applied that only to the follow-up (014b) and left 014 live. Result: his old password stopped working on the production form; he had to ask "what is the username and password".
+- **Fix:** `git revert -m 1 55d17e8` (this commit) — restores `localAccounts.ts` and the login flow exactly as before. Plan 014 + 014b are both parked; re-open only on an explicit, fresh go that names the sign-in change.
+- **Rule going forward:** any change that alters how Ilya signs in (passwords, gate, OAuth) needs its own explicit go that restates the behavior change — a generic "go" on a batch is not enough; and "don't touch X" after the fact means revert X, not just stop the next step.

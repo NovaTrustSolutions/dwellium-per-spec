@@ -21,6 +21,7 @@ import { API_BASE } from '../../config';
 import { useIntegrations } from '../../hooks/useIntegrations';
 import './NotebookLMContext.css';
 import OpenNotebookPanel from './OpenNotebookPanel';
+import LibrarySection from './LibrarySection';
 
 interface NLMNotebook {
     id: string;
@@ -287,7 +288,7 @@ export default function NotebookLMContext() {
                             onChange={(e) => setEmailInput(e.target.value)}
                             placeholder="you@gmail.com"
                             onKeyDown={(e) => { if (e.key === 'Enter') commitEmailOverride(); else if (e.key === 'Escape') { setEmailInput(googleEmail); setEmailEditing(false); } }}
-                            autoFocus
+                            ref={(el) => { el?.focus(); }}
                             style={{
                                 flex: 1, padding: '4px 8px', minWidth: 0,
                                 background: 'var(--bg-desktop)', color: 'var(--text-primary)',
@@ -437,8 +438,9 @@ export default function NotebookLMContext() {
                         </p>
 
                         <div className="nlm-form-group">
-                            <label className="nlm-form-label">Notebook URL or ID *</label>
+                            <label className="nlm-form-label" htmlFor="nlm-new-id">Notebook URL or ID *</label>
                             <input
+                                id="nlm-new-id"
                                 className="nlm-form-input"
                                 value={newId}
                                 onChange={(e) => setNewId(e.target.value)}
@@ -447,8 +449,9 @@ export default function NotebookLMContext() {
                             />
                         </div>
                         <div className="nlm-form-group">
-                            <label className="nlm-form-label">Display Name *</label>
+                            <label className="nlm-form-label" htmlFor="nlm-new-title">Display Name *</label>
                             <input
+                                id="nlm-new-title"
                                 className="nlm-form-input"
                                 value={newTitle}
                                 onChange={(e) => setNewTitle(e.target.value)}
@@ -457,8 +460,9 @@ export default function NotebookLMContext() {
                             />
                         </div>
                         <div className="nlm-form-group">
-                            <label className="nlm-form-label">Description (optional)</label>
+                            <label className="nlm-form-label" htmlFor="nlm-new-desc">Description (optional)</label>
                             <input
+                                id="nlm-new-desc"
                                 className="nlm-form-input"
                                 value={newDesc}
                                 onChange={(e) => setNewDesc(e.target.value)}
@@ -475,6 +479,9 @@ export default function NotebookLMContext() {
                     </form>
                 )}
             </div>
+
+            {/* Library — what tools/notebooklm/sync.sh mirrored for ARA (plan 052) */}
+            <LibrarySection />
 
             {/* How it works */}
             <div className="nlm-how-section">

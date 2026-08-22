@@ -13,6 +13,14 @@
  * is the layout toggle, the FluidLauncher droplet reopens the shell, and
  * Escape / the Home pill collapse back to the classic desktop.
  *
+ * 2026-08-22 follow-ups (Ilya): nav rows used to `openWindow` + collapse the
+ * cockpit — every click threw you back to the classic desktop. Widgets now
+ * open as TABS in the center pane (ARA is the permanent first tab); desktop
+ * windows opened while the cockpit is up (e.g. from ⌘K) are adopted as tabs
+ * too, and "Open on desktop ↗" is the explicit way out. Sites whose CSP
+ * `frame-ancestors` forbids embedding (AppFolio, Google, …) get an honest
+ * "can't embed → Open ↗" card instead of a blank iframe.
+ *
  * 🔴 ALL WIDGETS ACCESSIBLE: the left-nav "All widgets" section is driven
  * directly by WIDGET_REGISTRY grouped by disclosure tier (`tierOf`), and ⌘K
  * still works above the cockpit — the overlay's z-index (4000) deliberately
@@ -29,9 +37,9 @@
  * <button> with an aria-label, and Escape is ignored while focus is in an
  * input/textarea/iframe/contenteditable.
  */
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useContext, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useContext, Suspense } from 'react';
 import {
-    ChevronLeft, ChevronRight, ExternalLink, Package, Plus, RotateCw, Settings as SettingsIcon, Wrench,
+    ChevronLeft, ChevronRight, ExternalLink, Package, Plus, RotateCw, Settings as SettingsIcon, Wrench, X,
 } from 'lucide-react';
 import { WIDGET_REGISTRY, WINDOW_COMPONENTS } from '../../registry/widgetRegistry';
 import { tierOf, type WidgetTier } from '../../lib/onboardingStore';
@@ -120,6 +128,27 @@ function buildQuickLinks(): Array<{ id: string; label: string; url: string }> {
     return links;
 }
 
+/* ── Preview: sites that refuse to be framed ────────────────────────────── */
+
+// ponytail: a static list of hosts whose CSP frame-ancestors / X-Frame-Options
+// forbid embedding (verified 2026-08-22: www.appfolio.com sends
+// `frame-ancestors 'self' *.appfolio.com …`). A no-cors fetch can't read those
+// headers, so this is the cheapest honest signal; upgrade path = a backend
+// HEAD probe (`/api/preview/probe`) if the list ever gets long.
+const FRAME_BLOCKED_HOSTS = [
+    'appfolio.com', 'google.com', 'gmail.com', 'youtube.com', 'office.com', 'live.com',
+    'microsoft.com', 'github.com', 'linkedin.com', 'facebook.com', 'instagram.com', 'x.com',
+    'twitter.com', 'dropbox.com', 'apple.com', 'icloud.com',
+];
+export function isKnownFrameBlocked(url: string): boolean {
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+        return FRAME_BLOCKED_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+    } catch {
+        return false;
+    }
+}
+
 /* ── Component ────────────────────────────────────────────────────────────── */
 
 export default function FluidOS() {
@@ -194,18 +223,42 @@ export default function FluidOS() {
 
     const quickLinks = useMemo(buildQuickLinks, []);
 
-    /* Shared open-in-desktop path: same `openWindow` contract as before, then
-       collapse the shell so the classic desktop (and the new window) show. */
-    const openInDesktop = useCallback((id: string, label: string, icon: string) => {
-        openWindow(id, label, icon);
+    /* Center-pane tabs: ARA is permanent; every other widget opens as a tab
+       here instead of kicking the user back to the classic desktop. Session
+       state only (not persisted) — reopening the cockpit starts on ARA. */
+    const [tabs, setTabs] = useState<NavWidget[]>([]);
+    const [activeTab, setActiveTab] = useState<string>('ara-console');
+    const openInCockpit = useCallback((id: string, label: string, icon: string) => {
+        if (id !== 'ara-console') {
+            setTabs((prev) => (prev.some((t) => t.id === id) ? prev : [...prev, { id, label, icon }]));
+        }
+        setActiveTab(id);
+    }, []);
+    const closeTab = useCallback((id: string) => {
+        setTabs((prev) => prev.filter((t) => t.id !== id));
+        setActiveTab((cur) => (cur === id ? 'ara-console' : cur));
+    }, []);
+    /* The explicit way OUT: pop the active tab onto the classic desktop. */
+    const popOut = useCallback((id: string, label: string, icon: string) => {
+        const winId = openWindow(id, label, icon);
+        if (winId) { restoreWindow(winId); focusWindow(winId); }
         fluidOsStore.setOpen(false);
-    }, [openWindow]);
+    }, [openWindow, restoreWindow, focusWindow]);
 
-    const focusInDesktop = useCallback((id: string, minimized: boolean) => {
-        if (minimized) restoreWindow(id);
-        focusWindow(id);
-        fluidOsStore.setOpen(false);
-    }, [focusWindow, restoreWindow]);
+    /* Adopt desktop windows opened while the cockpit is up (⌘K, deep links)
+       as tabs — otherwise they'd land invisibly behind the overlay. */
+    const seenWindowIds = useRef<Set<string>>(new Set(windows.map((w) => w.id)));
+    useEffect(() => {
+        if (!state.enabled || !state.open) {
+            seenWindowIds.current = new Set(windows.map((w) => w.id));
+            return;
+        }
+        windows.forEach((w) => {
+            if (seenWindowIds.current.has(w.id)) return;
+            seenWindowIds.current.add(w.id);
+            openInCockpit(w.component, w.title, w.icon);
+        });
+    }, [windows, state.enabled, state.open, openInCockpit]);
 
     /* Splitters (Sidebar resize-handle pattern: mousedown → window listeners). */
     const startDrag = useCallback((which: 'nav' | 'work' | 'right') => (e: React.MouseEvent) => {
@@ -248,6 +301,8 @@ export default function FluidOS() {
 
     const AraConsole = WINDOW_COMPONENTS['ara-console'];
     const Terminal = WINDOW_COMPONENTS['terminal'];
+    const activeTabWidget = activeTab === 'ara-console' ? null : (tabs.find((t) => t.id === activeTab) ?? null);
+    const ActiveTabComponent = activeTabWidget ? WINDOW_COMPONENTS[activeTabWidget.id] : null;
 
     const focusedWindowId = windows
         .filter((w) => !w.minimized)
@@ -279,15 +334,15 @@ export default function FluidOS() {
                         <Plus size={14} aria-hidden /> New
                     </button>
                     <button type="button" className="fos-nav__action" aria-label="Open Artifacts"
-                        onClick={() => openInDesktop('artifact-gallery', WIDGET_REGISTRY['artifact-gallery']?.label ?? 'Artifacts', WIDGET_REGISTRY['artifact-gallery']?.icon ?? '')}>
+                        onClick={() => openInCockpit('artifact-gallery', WIDGET_REGISTRY['artifact-gallery']?.label ?? 'Artifacts', WIDGET_REGISTRY['artifact-gallery']?.icon ?? '')}>
                         <Package size={14} aria-hidden /> Artifacts
                     </button>
                     <button type="button" className="fos-nav__action" aria-label="Open Tools hub"
-                        onClick={() => openInDesktop('tools-hub', WIDGET_REGISTRY['tools-hub']?.label ?? 'Tools hub', WIDGET_REGISTRY['tools-hub']?.icon ?? '')}>
+                        onClick={() => openInCockpit('tools-hub', WIDGET_REGISTRY['tools-hub']?.label ?? 'Tools hub', WIDGET_REGISTRY['tools-hub']?.icon ?? '')}>
                         <Wrench size={14} aria-hidden /> Tools hub
                     </button>
                     <button type="button" className="fos-nav__action" aria-label="Open Settings"
-                        onClick={() => openInDesktop('control-panel', WIDGET_REGISTRY['control-panel']?.label ?? 'Settings', WIDGET_REGISTRY['control-panel']?.icon ?? '')}>
+                        onClick={() => openInCockpit('control-panel', WIDGET_REGISTRY['control-panel']?.label ?? 'Settings', WIDGET_REGISTRY['control-panel']?.icon ?? '')}>
                         <SettingsIcon size={14} aria-hidden /> Settings
                     </button>
                 </div>
@@ -301,7 +356,7 @@ export default function FluidOS() {
                             return (
                                 <button key={w.id} type="button" className="fos-nav__row"
                                     aria-label={`Focus ${w.title}`}
-                                    onClick={() => focusInDesktop(w.id, w.minimized)}>
+                                    onClick={() => openInCockpit(w.component, w.title, w.icon)}>
                                     <span className="fos-nav__row-icon">{Icon ? <Icon size={14} aria-hidden /> : '◈'}</span>
                                     <span className="fos-nav__row-label">{w.title}</span>
                                     {w.id === focusedWindowId && <span className="fos-nav__row-dot" aria-label="Focused">·</span>}
@@ -320,7 +375,7 @@ export default function FluidOS() {
                                     return (
                                         <button key={w.id} type="button" className="fos-nav__row"
                                             aria-label={`Open ${w.label}`}
-                                            onClick={() => openInDesktop(w.id, w.label, w.icon)}>
+                                            onClick={() => openInCockpit(w.id, w.label, w.icon)}>
                                             <span className="fos-nav__row-icon">{Icon ? <Icon size={14} aria-hidden /> : '◈'}</span>
                                             <span className="fos-nav__row-label">{w.label}</span>
                                         </button>
@@ -341,14 +396,51 @@ export default function FluidOS() {
             {/* role="presentation" + mousedown = the repo's Sidebar resize-handle pattern */}
             <div className="fos-splitter" role="presentation" onMouseDown={startDrag('nav')} />
 
-            {/* ── Pane 2: center chat (the REAL ARA Console) ───────────── */}
+            {/* ── Pane 2: center — ARA Console + widget tabs ───────────── */}
             <div className="fos-chat" role="region" aria-label="Chat">
-                {AraConsole ? (
-                    <Suspense fallback={<AppSuspenseFallback variant="popup" label="Loading ARA Console…" />}>
-                        <AraConsole />
-                    </Suspense>
-                ) : (
-                    <div className="fos-missing">ARA Console isn’t registered.</div>
+                {tabs.length > 0 && (
+                    <div className="fos-tabs" role="tablist" aria-label="Open in cockpit">
+                        <button type="button" role="tab" aria-selected={activeTab === 'ara-console'}
+                            className={`fos-tab${activeTab === 'ara-console' ? ' fos-tab--on' : ''}`}
+                            onClick={() => setActiveTab('ara-console')}>ARA</button>
+                        {tabs.map((t) => (
+                            <span key={t.id} className={`fos-tab-wrap${activeTab === t.id ? ' fos-tab-wrap--on' : ''}`}>
+                                <button type="button" role="tab" aria-selected={activeTab === t.id}
+                                    className={`fos-tab${activeTab === t.id ? ' fos-tab--on' : ''}`}
+                                    onClick={() => setActiveTab(t.id)}>{t.label}</button>
+                                <button type="button" className="fos-tab__close" aria-label={`Close ${t.label}`}
+                                    onClick={() => closeTab(t.id)}><X size={11} aria-hidden /></button>
+                            </span>
+                        ))}
+                        {activeTabWidget && (
+                            <button type="button" className="fos-tab__pop" aria-label={`Open ${activeTabWidget.label} on desktop`}
+                                title="Open on the classic desktop"
+                                onClick={() => popOut(activeTabWidget.id, activeTabWidget.label, activeTabWidget.icon)}>
+                                <ExternalLink size={12} aria-hidden />
+                            </button>
+                        )}
+                    </div>
+                )}
+                {/* ARA stays mounted (hidden) behind other tabs so the chat keeps its state. */}
+                <div className="fos-chat__body" hidden={activeTab !== 'ara-console'}>
+                    {AraConsole ? (
+                        <Suspense fallback={<AppSuspenseFallback variant="popup" label="Loading ARA Console…" />}>
+                            <AraConsole />
+                        </Suspense>
+                    ) : (
+                        <div className="fos-missing">ARA Console isn’t registered.</div>
+                    )}
+                </div>
+                {activeTabWidget && (
+                    <div className="fos-chat__body" data-tab={activeTabWidget.id}>
+                        {ActiveTabComponent ? (
+                            <Suspense fallback={<AppSuspenseFallback variant="popup" label={`Loading ${activeTabWidget.label}…`} />}>
+                                <ActiveTabComponent />
+                            </Suspense>
+                        ) : (
+                            <div className="fos-missing">{activeTabWidget.label} isn’t registered.</div>
+                        )}
+                    </div>
                 )}
             </div>
 
@@ -453,6 +545,17 @@ export default function FluidOS() {
                                             <span className="fos-quick__url">{l.url}</span>
                                         </button>
                                     ))}
+                                </div>
+                            </div>
+                        ) : isKnownFrameBlocked(previewUrl) ? (
+                            <div className="fos-preview__hint" data-frame-blocked>
+                                <p className="fos-preview__hint-title">{new URL(previewUrl).hostname} doesn’t allow embedding</p>
+                                <p className="fos-preview__hint-sub">Its security policy (frame-ancestors) blocks other sites from framing it — that’s on their side, not a Dwellium bug. Open it in its own window instead.</p>
+                                <div className="fos-preview__hint-actions">
+                                    <button type="button" className="fos-preview__btn fos-preview__btn--wide"
+                                        onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}>Open ↗</button>
+                                    <button type="button" className="fos-preview__btn fos-preview__btn--wide"
+                                        onClick={() => loadUrl('')}>Change URL</button>
                                 </div>
                             </div>
                         ) : reach === 'down' ? (

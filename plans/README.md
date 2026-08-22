@@ -29,7 +29,7 @@ and **do not push or open a PR without Ilya's explicit go.**
 | 003 | Add ESLint (non-blocking gate) | P1 | M | — | DONE — fea6104 + typescript-eslint fix 991452e (gate GREEN, pushed) |
 | 004 | Archive stale root docs + launch scripts | P2 | S | — | PARTIAL — shipped 19d0f3b (13 docs archived); 9 launch scripts kept at root (referenced by AutonomousRuns.tsx) — follow-up: relocate + repoint |
 | 013 | Strengthen at-rest secret encryption (opt. passphrase) | P2 | S/M | — | TODO |
-| 014 | Remove committed account creds + PII | P2 | M | — | DONE 2026-08-20 (branch `sec/014-credentials`) — all roster `password` literals blanked + personal email replaced by `architect@dwellium.com` (also dropped from HalocronOS greeting map); DEV-only bootstrap via `checkLocalPassword` (`import.meta.env.DEV` waives the empty-password block; backend/offline-choice verifies); guard test blocks re-committing secrets. **Operator TODO: rotate the two burned god passwords + the stage-1 gate passphrase (still committed at `LoginScreen.tsx`) anywhere reused — removal from HEAD does not unburn git history.** Follow-ups: server-side credential verification (backend repo); `backendPassword` dev seeds + `public/data/users.json` passwordHash seeds still committed (reported, out of scope). |
+| 014 | Remove committed account creds + PII | P2 | M | — | TODO |
 | 021 | Gmail/Calendar OAuth (original) | P2 | M | — | SUPERSEDED by 027 (OAuth largely wired 2026-07-02) |
 
 ### Round 2 — audited 2026-07-02 against `730c82a` (frontend) / `6695bd4` (backend), `standard` depth

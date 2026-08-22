@@ -182,6 +182,7 @@ const KNOWN_GREETING_NAMES: Record<string, string> = {
     'lisa@dwellium.com': 'Lisa',
     'lisa@zpgroup.io': 'Lisa',
     'architect@dwellium.com': 'Ilya',
+    'iklipinitser@gmail.com': 'Ilya',
 };
 
 function accountGreetingName(user: DwelliumUser | null | undefined): string {

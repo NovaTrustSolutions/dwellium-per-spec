@@ -18,10 +18,13 @@ import { useUser, getAuthToken } from '../../../context/UserContext';
 // precedent).
 import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
+import { API_BASE } from '../../../config';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const API = 'http://localhost:3000';
+// Same-origin on deployed hosts (Netlify → Cloud Run proxy); localhost only in dev.
+// Was a hard-coded http://localhost:3000 → Google Calendar card silently dead in prod (2026-08-22).
+const API = API_BASE;
 
 type Tab = 'calendar' | 'integrations';
 

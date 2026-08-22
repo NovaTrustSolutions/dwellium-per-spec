@@ -11,8 +11,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { BarChart3, Circle, Mail, RefreshCw, Settings, TriangleAlert, Users, VolumeX, Zap } from 'lucide-react';
+import { API_BASE } from '../../config';
 
-const API = 'http://localhost:3000/api/v1/inbox/nif';
+const API = `${API_BASE}/api/v1/inbox/nif`; // was hard-coded localhost:3000 — dead in prod (2026-08-22)
 
 interface FeedbackEntry {
     id: string;

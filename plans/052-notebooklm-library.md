@@ -1,6 +1,6 @@
 # Plan 052 — NotebookLM → ARA "Library" (contracts, housing law, requirements)
 
-> Drafted 2026-08-22 for Ilya: "I want NotebookLM as part of the library ARA has access to — it contains contract requirements, housing laws, etc." Status: **PROPOSED — awaiting go + two decisions (§5).**
+> Drafted 2026-08-22 for Ilya: "I want NotebookLM as part of the library ARA has access to — it contains contract requirements, housing laws, etc." Status: **APPROVED 2026-08-22 — in build.** Ilya's decisions: (1) Andy's account → ALL notebooks; Ilya's account → ONLY the notebooks he names (initial: b35010cd-43f4-4269-8e31-07a93100c327, 060d1323-4eaf-4860-911e-9e287e985124, c56e2b37-1f5f-4f55-ab4d-80779dde5125, 1653a2ee-3fda-47c6-8101-24ece4d23b8c); two `nlm` profiles `andy`/`ilya` (`tools/notebooklm/notebooks.conf`). (2) Sync from Ilya's laptop on demand; office Mac later. Sync auth: `x-library-secret` = `LIBRARY_SYNC_SECRET` (Secret Manager `dwellium-library-sync-secret`), same pattern as the morning brief. Was: PROPOSED — awaiting go + two decisions (§5).**
 
 ## 1 · Verified facts (this machine + repos, 2026-08-22)
 

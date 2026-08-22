@@ -11,9 +11,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Search, Download, Hourglass } from 'lucide-react';
 import { API_BASE } from '../../config';
 import { getAuthToken } from '../../context/UserContext';
+import { APP_VERSION } from '../../appVersion';
 
 interface StatusResp {
     success: boolean;
+    /** Managed deployment (Cloud Run): no git checkout — updates ship via deploys (2026-08-22). */
+    managed?: boolean;
+    reason?: string;
+    service?: string;
+    revision?: string;
+    backendVersion?: string;
     repoRoot?: string;
     branch?: string;
     sha?: string;
@@ -153,6 +160,32 @@ export default function SystemUpdateSection() {
     const branch = status?.branch || '—';
     const sha = status?.sha || '—';
     const lastCommit = status?.lastCommit;
+
+    if (status?.managed) {
+        return (
+            <section className="cp-section">
+                <h3 className="cp-section__title">App Updates</h3>
+                <div className="cp-update-card" data-managed>
+                    <div className="cp-update-card__row">
+                        <span className="cp-update-card__label">Frontend</span>
+                        <span className="cp-update-card__value">v{APP_VERSION}</span>
+                    </div>
+                    <div className="cp-update-card__row">
+                        <span className="cp-update-card__label">Backend</span>
+                        <span className="cp-update-card__value">
+                            {status.revision || status.service || '—'}
+                            {status.backendVersion && <span className="cp-update-card__age"> (v{status.backendVersion})</span>}
+                        </span>
+                    </div>
+                    <div className="cp-update-card__row">
+                        <span className="cp-update-card__label">Status</span>
+                        <span className="cp-update-card__value"><span className="cp-update-pill cp-update-pill--ok">Managed deployment</span></span>
+                    </div>
+                    <p className="cp-update-card__hint">{status.reason}</p>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="cp-section">

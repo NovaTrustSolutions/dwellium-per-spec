@@ -25,6 +25,7 @@ import ResidentAvailabilityCard from './__maintenance/ResidentAvailabilityCard';
 import ActionsLogList from './__maintenance/ActionsLogList';
 import LaborTable from './__maintenance/LaborTable';
 import PurchaseOrderLinks from './__maintenance/PurchaseOrderLinks';
+import { openPhotoVaultForUnit, unitFromTags } from '../../PhotoVault/photoVaultBridge'; // plan 053 — Photo Vault bridge
 
 /* ── Sub-tab types ── */
 type MaintTab = 'work-orders' | 'recurring' | 'inspections' | 'unit-turns' | 'projects' | 'purchase-orders' | 'inventory' | 'fixed-assets' | 'history';
@@ -1002,6 +1003,14 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
 
             {/* ── Action Buttons ── */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                {/* Plan 053 — Photo Vault bridge: opens the unit's Immich album ("<Property> — <Unit>")
+                    with Upload preset to it. Covers work orders AND inspections (shared DetailPanel). */}
+                <button
+                    data-testid="wo-photos-action"
+                    onClick={() => openPhotoVaultForUnit({ property: propName !== '—' ? propName : undefined, unit: unitFromTags(item.tags) })}
+                    style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Camera size={12} /> Photos
+                </button>
                 {(item.status === 'open' || item.status === 'pending') && (
                     <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Send size={12} /> Dispatch

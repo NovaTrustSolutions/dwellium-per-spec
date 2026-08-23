@@ -1,0 +1,35 @@
+# Caddy config for the self-hosted Penpot behind Dwellium (plan 053).
+# Host-level Caddy, same shape as the listmonk VM (tools/listmonk/README.md §3):
+# drop it into /etc/caddy/Caddyfile (or import it), `sudo systemctl reload caddy`.
+#
+# Purpose: Penpot's frontend answers on 127.0.0.1:9001 (see
+# docker-compose.override.yml). Caddy terminates TLS at design.dwellium.com
+# AND rewrites the frame headers so the Dwellium shell can iframe the editor:
+#   - `X-Frame-Options` is DELETED (Penpot's cloud sends SAMEORIGIN; a
+#     self-host behind our own proxy is allowed to drop it — this is exactly
+#     why the in-window embed needs the self-host).
+#   - `Content-Security-Policy: frame-ancestors …` is SET to allow only the
+#     Dwellium production shell and localhost dev. frame-ancestors supersedes
+#     X-Frame-Options in every current browser, so this pair is both belt and
+#     suspenders.
+#
+# After this is live, set VITE_PENPOT_URL=https://design.dwellium.com on
+# Netlify — the Design Studio widget switches from launcher to in-window
+# iframe automatically.
+
+design.dwellium.com {
+	reverse_proxy 127.0.0.1:9001 {
+		# Strip whatever frame headers the upstream sets; we own framing policy.
+		header_down -X-Frame-Options
+		header_down -Content-Security-Policy
+	}
+
+	header {
+		Content-Security-Policy "frame-ancestors 'self' https://argyleholocron.netlify.app http://localhost:*"
+		# defer so the header applies to proxied responses too
+		defer
+	}
+
+	# Penpot uses websockets (notifications / realtime) — Caddy's reverse_proxy
+	# passes Upgrade requests through by default; nothing extra needed.
+}

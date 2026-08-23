@@ -1,0 +1,44 @@
+# Dwellium overrides for Penpot's OFFICIAL docker-compose.yml (plan 053).
+#
+# docker-compose.yml in this directory is Penpot's own deploy file, copied
+# byte-for-byte from
+#   https://raw.githubusercontent.com/penpot/penpot/main/docker/images/docker-compose.yaml
+# (fetched 2026-08-23, sha256
+#   79330b4445d6c6dba6918d222d342a365710ba90b6bb8a8eae3d333155b0cf5e).
+# Official images only, unmodified. Everything Dwellium-specific lives HERE —
+# `docker compose up -d` merges this file automatically, so the base file can
+# be re-synced from upstream at any time without losing our config.
+#
+# What this override does:
+#   1. Binds the web UI to 127.0.0.1 only — Caddy (see ./Caddyfile) is the sole
+#      public entry; it terminates TLS and rewrites the frame headers so the
+#      Dwellium shell may iframe the editor.
+#   2. Points PENPOT_PUBLIC_URI at the real public URL (from .env).
+#   3. Replaces the insecure default PENPOT_SECRET_KEY with one from .env.
+#
+# .env in this directory (chmod 600):
+#   PENPOT_PUBLIC_URI=https://design.dwellium.com
+#   PENPOT_SECRET_KEY=<python3 -c "import secrets; print(secrets.token_urlsafe(64))">
+
+services:
+  penpot-frontend:
+    ports: !override
+      - '127.0.0.1:9001:8080' # private — Caddy proxies TLS from :443
+    environment:
+      PENPOT_PUBLIC_URI: ${PENPOT_PUBLIC_URI:?set PENPOT_PUBLIC_URI in .env}
+
+  penpot-backend:
+    environment:
+      PENPOT_PUBLIC_URI: ${PENPOT_PUBLIC_URI:?set PENPOT_PUBLIC_URI in .env}
+      PENPOT_SECRET_KEY: ${PENPOT_SECRET_KEY:?set PENPOT_SECRET_KEY in .env}
+
+  penpot-exporter:
+    environment:
+      PENPOT_PUBLIC_URI: ${PENPOT_PUBLIC_URI:?set PENPOT_PUBLIC_URI in .env}
+      PENPOT_SECRET_KEY: ${PENPOT_SECRET_KEY:?set PENPOT_SECRET_KEY in .env}
+
+  # Mailcatch is a dev-only SMTP trap in the official file; don't expose its
+  # web UI publicly.
+  penpot-mailcatch:
+    ports: !override
+      - '127.0.0.1:1080:1080'

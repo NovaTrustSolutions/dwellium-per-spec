@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="816" height="1056" viewBox="0 0 816 1056" font-family="Hanken Grotesk, Arial, sans-serif">
+  <!-- Dwellium template: Property listing flyer — US Letter (8.5x11in @96dpi).
+       Screen + print. Example text is marked "EXAMPLE — replace". -->
+  <rect width="816" height="1056" fill="#ffffff"/>
+
+  <!-- Header band -->
+  <rect x="0" y="0" width="816" height="120" fill="#0c0c0c"/>
+  <rect x="48" y="34" width="10" height="52" fill="#D6FE51"/>
+  <text x="74" y="64" fill="#ffffff" font-size="34" font-weight="700">FOR RENT</text>
+  <text x="74" y="94" fill="#D6FE51" font-size="16" font-weight="600" letter-spacing="2">WOODLAND PARC TOWNHOMES</text>
+  <text x="768" y="94" fill="#9a9a9a" font-size="11" text-anchor="end">example — replace</text>
+
+  <!-- Photo slot -->
+  <rect x="48" y="152" width="720" height="330" fill="#f4f4f4" stroke="#bbbbbb" stroke-width="2" stroke-dasharray="10 8"/>
+  <text x="408" y="308" fill="#888888" font-size="18" text-anchor="middle">PHOTO SLOT — drop a property photo here</text>
+  <text x="408" y="334" fill="#aaaaaa" font-size="12" text-anchor="middle">(delete this placeholder rectangle after placing the image)</text>
+
+  <!-- Unit + rent row -->
+  <text x="48" y="540" fill="#111111" font-size="28" font-weight="700">3 bed · 2.5 bath townhome</text>
+  <text x="48" y="568" fill="#555555" font-size="15">1,480 sq ft · attached garage · fenced patio &#160;&#160;(example — replace)</text>
+  <rect x="560" y="508" width="208" height="72" fill="#D6FE51"/>
+  <text x="664" y="538" fill="#0c0c0c" font-size="26" font-weight="800" text-anchor="middle">$1,650/mo</text>
+  <text x="664" y="562" fill="#0c0c0c" font-size="12" text-anchor="middle">example — replace</text>
+
+  <!-- Amenities -->
+  <text x="48" y="640" fill="#111111" font-size="17" font-weight="700" letter-spacing="1">AMENITIES</text>
+  <line x1="48" y1="652" x2="768" y2="652" stroke="#dddddd" stroke-width="2"/>
+  <g fill="#333333" font-size="15">
+    <circle cx="56" cy="682" r="4" fill="#0c0c0c"/><text x="72" y="687">In-unit washer &amp; dryer</text>
+    <circle cx="56" cy="714" r="4" fill="#0c0c0c"/><text x="72" y="719">Stainless appliances</text>
+    <circle cx="56" cy="746" r="4" fill="#0c0c0c"/><text x="72" y="751">Community pool &amp; gym</text>
+    <circle cx="416" cy="682" r="4" fill="#0c0c0c"/><text x="432" y="687">Pet friendly (breed limits apply)</text>
+    <circle cx="416" cy="714" r="4" fill="#0c0c0c"/><text x="432" y="719">Assigned parking</text>
+    <circle cx="416" cy="746" r="4" fill="#0c0c0c"/><text x="432" y="751">Minutes to I-85 &#160;(example — replace)</text>
+  </g>
+
+  <!-- Contact / QR block -->
+  <rect x="48" y="812" width="720" height="150" fill="#0c0c0c"/>
+  <text x="80" y="862" fill="#ffffff" font-size="20" font-weight="700">Schedule a showing today</text>
+  <text x="80" y="892" fill="#cccccc" font-size="14">(555) 555-0134 · leasing@woodlandparc.example — replace with office line</text>
+  <text x="80" y="918" fill="#D6FE51" font-size="14" font-weight="600">woodlandparc.example/apply — replace with Links &amp; QR short link</text>
+  <rect x="656" y="836" width="96" height="96" fill="#ffffff"/>
+  <text x="704" y="880" fill="#888888" font-size="10" text-anchor="middle">QR SLOT</text>
+  <text x="704" y="894" fill="#aaaaaa" font-size="8" text-anchor="middle">paste QR from</text>
+  <text x="704" y="905" fill="#aaaaaa" font-size="8" text-anchor="middle">Links &amp; QR widget</text>
+
+  <!-- Footer -->
+  <text x="48" y="1006" fill="#999999" font-size="10">Managed by AstraStrata · Equal Housing Opportunity</text>
+  <text x="768" y="1006" fill="#bbbbbb" font-size="10" text-anchor="end">Dwellium template — property-flyer v1</text>
+</svg>

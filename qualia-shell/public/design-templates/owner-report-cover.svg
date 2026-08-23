@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="816" height="1056" viewBox="0 0 816 1056" font-family="Hanken Grotesk, Arial, sans-serif">
+  <!-- Dwellium template: Monthly owner report cover — US Letter, dark Dwellium
+       look (#0c0c0c ground, #D6FE51 accent). Screen-first; prints fine on a
+       color printer. Example text marked "example — replace". -->
+  <rect width="816" height="1056" fill="#0c0c0c"/>
+
+  <!-- Accent geometry -->
+  <rect x="0" y="0" width="816" height="8" fill="#D6FE51"/>
+  <rect x="48" y="120" width="64" height="64" fill="#D6FE51"/>
+  <text x="80" y="163" fill="#0c0c0c" font-size="34" font-weight="900" text-anchor="middle">A</text>
+  <text x="132" y="148" fill="#ffffff" font-size="20" font-weight="800" letter-spacing="3">ASTRASTRATA</text>
+  <text x="132" y="172" fill="#8a8a8a" font-size="12" letter-spacing="2">PROPERTY MANAGEMENT · GEORGIA</text>
+
+  <!-- Title block -->
+  <text x="48" y="420" fill="#ffffff" font-size="56" font-weight="900">Monthly</text>
+  <text x="48" y="484" fill="#ffffff" font-size="56" font-weight="900">Owner Report</text>
+  <rect x="48" y="516" width="220" height="6" fill="#D6FE51"/>
+
+  <text x="48" y="580" fill="#D6FE51" font-size="24" font-weight="700">Woodland Parc Townhomes</text>
+  <text x="48" y="608" fill="#9a9a9a" font-size="14">example — replace with the property (or portfolio) name</text>
+
+  <!-- Period / prepared-for panel -->
+  <g font-size="14">
+    <text x="48" y="680" fill="#8a8a8a" letter-spacing="2" font-size="11">REPORTING PERIOD</text>
+    <text x="48" y="706" fill="#ffffff" font-weight="700">August 2026 &#160;(example — replace)</text>
+    <text x="48" y="756" fill="#8a8a8a" letter-spacing="2" font-size="11">PREPARED FOR</text>
+    <text x="48" y="782" fill="#ffffff" font-weight="700">Owner / investor name &#160;(example — replace)</text>
+    <text x="48" y="832" fill="#8a8a8a" letter-spacing="2" font-size="11">PREPARED BY</text>
+    <text x="48" y="858" fill="#ffffff" font-weight="700">Andy · AstraStrata &#160;(example — replace)</text>
+  </g>
+
+  <!-- Contents chips -->
+  <g font-size="12">
+    <rect x="480" y="664" width="288" height="34" fill="none" stroke="#2a2a2a"/>
+    <text x="496" y="686" fill="#cccccc">01 · Occupancy &amp; leasing activity</text>
+    <rect x="480" y="706" width="288" height="34" fill="none" stroke="#2a2a2a"/>
+    <text x="496" y="728" fill="#cccccc">02 · Income &amp; expense summary</text>
+    <rect x="480" y="748" width="288" height="34" fill="none" stroke="#2a2a2a"/>
+    <text x="496" y="770" fill="#cccccc">03 · Maintenance &amp; capital items</text>
+    <rect x="480" y="790" width="288" height="34" fill="none" stroke="#2a2a2a"/>
+    <text x="496" y="812" fill="#cccccc">04 · Delinquency &amp; renewals</text>
+    <rect x="480" y="832" width="288" height="34" fill="none" stroke="#2a2a2a"/>
+    <text x="496" y="854" fill="#cccccc">05 · Photos &amp; site notes</text>
+  </g>
+
+  <!-- Footer -->
+  <rect x="0" y="984" width="816" height="72" fill="#111111"/>
+  <rect x="0" y="984" width="816" height="2" fill="#D6FE51"/>
+  <text x="48" y="1026" fill="#8a8a8a" font-size="11">AstraStrata · office@astrastrata.example — replace · (555) 555-0134</text>
+  <text x="768" y="1026" fill="#555555" font-size="10" text-anchor="end">Dwellium template — owner-report-cover v1</text>
+</svg>

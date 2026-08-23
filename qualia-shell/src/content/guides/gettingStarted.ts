@@ -65,9 +65,9 @@ Open **Tools hub** (Filing Cabinet, or \`help: tools\`). Ten open-source tools l
 | **Links & QR** (Dub) | Short links + QR codes for notices and unit doors | A Dub workspace + \`VITE_DUB_URL\` |
 | **Photo Vault** (Immich) | Inspection and move-in/out photos, searchable | The office-Mac Immich (tools/immich) + \`VITE_IMMICH_URL\` — viewing needs Tailscale on your device |
 | **Remote Support** (RustDesk) | Take over the office PC or a kiosk to help | Install the client; relay config appears once \`VITE_RUSTDESK_RELAY\` is set |
+| **AppFlowy Workspace** (AppFlowy) | Notion-style docs, grids and kanban — lease tracker, vendor board, SOPs (templates in tools/appflowy) | A free AppFlowy account (appflowy.com/app) or self-host (tools/appflowy) + \`VITE_APPFLOWY_URL\` |
 
 - **Dictation** (FluidVoice, Mac): *Control Panel → Dictation* → install with one brew command, click **Copy vocabulary** to teach it your property terms, then talk into any Dwellium field.
-- **Coming soon** — AppFlowy Workspace (phase 3 trial).
 
 All AGPL tools run **unmodified**; every customisation lives inside Dwellium.
 

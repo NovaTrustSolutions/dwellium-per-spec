@@ -895,6 +895,23 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 420,
         category: 'tools',
     },
+    // AppFlowy Workspace (AppFlowy-Cloud, AGPL unmodified) — plan 047 phase 3 /
+    // plan 053. The hosted web client appflowy.com/app sends no X-Frame-Options
+    // (verified 2026-08-23 via curl) so it embeds; a self-host embeds via
+    // tools/appflowy (nginx adds frame-ancestors). Registering flips the
+    // Tools-hub row to `needs-setup`; `ready` once VITE_APPFLOWY_URL is set.
+    'appflowy': {
+        id: 'appflowy',
+        label: 'AppFlowy Workspace',
+        description: 'Notion-style docs, grids and kanban — lease tracker, vendor board and SOPs in AppFlowy.',
+        tip: { tryThis: 'Import the lease tracker from tools/appflowy/templates (IMPORT.md has the steps).', related: ['task-board', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'book-open',
+        component: lazyWithReload(() => import('../components/AppFlowy/AppFlowy')),
+        minWidth: 640,
+        minHeight: 480,
+        category: 'filing',
+    },
 };
 
 // ═══════════════════════════════════════════════

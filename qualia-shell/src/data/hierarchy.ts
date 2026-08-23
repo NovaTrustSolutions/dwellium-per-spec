@@ -89,4 +89,6 @@ export const defaultDockItems: DockItem[] = [
    // grow its default face — both stay reachable via Tools hub + ⌘K.
    { id: 'dock-penpot', label: 'Design Studio', icon: 'palette', component: 'penpot-studio', pinned: false, group: 'Filing Cabinet' },
    { id: 'dock-remote-support', label: 'Remote Support', icon: 'monitor', component: 'remote-support', pinned: false, group: 'Filing Cabinet' },
+   // Plan 047 phase 3 / plan 053: AppFlowy Workspace — unpinned like the other launchers; reachable via Tools hub + ⌘K.
+   { id: 'dock-appflowy', label: 'AppFlowy Workspace', icon: 'book-open', component: 'appflowy', pinned: false, group: 'Filing Cabinet' },
 ];

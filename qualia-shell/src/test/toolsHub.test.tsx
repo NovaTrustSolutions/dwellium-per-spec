@@ -50,9 +50,9 @@ describe('data', () => {
         expect(resolveToolStatus(fv, () => true, {})).toBe('ready');
         expect(resolveToolStatus(fv, () => false, {})).toBe('ready');
     });
-    it('today: whiteboard + dictation + design-studio ready; six tools needs-setup; appflowy coming-soon', () => {
+    it('today: whiteboard + dictation + design-studio ready; seven tools needs-setup; nothing coming-soon (plan 053: appflowy widget shipped)', () => {
         const READY = new Set(['whiteboard', 'dictation', 'design-studio']);
-        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'remote-support', 'photo-vault', 'broadcasts', 'links']);
+        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'remote-support', 'photo-vault', 'broadcasts', 'links', 'appflowy']);
         for (const { tool, status } of toolStatuses({})) {
             const want = READY.has(tool.id) ? 'ready' : NEEDS_SETUP.has(tool.id) ? 'needs-setup' : 'coming-soon';
             expect(status, tool.id).toBe(want);
@@ -81,18 +81,16 @@ describe('data', () => {
 describe('window', () => {
     it('lists all 10 tools with live statuses; Set up opens the Guide; help rows present', () => {
         render(<ToolsHub />);
-        // Phase 2 complete: 3 ready, 6 needs-setup ("Set up"), only AppFlowy coming-soon.
-        const comingSoon = screen.getAllByRole('button', { name: 'Coming soon' });
-        expect(comingSoon).toHaveLength(1);
-        comingSoon.forEach(b => expect(b).toBeDisabled());
+        // Plan 053: 3 ready, 7 needs-setup ("Set up"), nothing coming-soon (AppFlowy shipped).
+        expect(screen.queryAllByRole('button', { name: 'Coming soon' })).toHaveLength(0);
         for (const id of ['whiteboard', 'dictation', 'design-studio']) {
             expect(document.querySelector(`tr[data-tool="${id}"]`)?.getAttribute('data-status'), id).toBe('ready');
         }
-        for (const id of ['scheduling', 'remote-support', 'photo-vault', 'broadcasts', 'links']) {
+        for (const id of ['scheduling', 'remote-support', 'photo-vault', 'broadcasts', 'links', 'appflowy']) {
             expect(document.querySelector(`tr[data-tool="${id}"]`)?.getAttribute('data-status'), id).toBe('needs-setup');
         }
         const setUp = screen.getAllByRole('button', { name: 'Set up' });
-        expect(setUp).toHaveLength(6);
+        expect(setUp).toHaveLength(7);
         setUp.forEach(b => expect(b).toBeEnabled());
         fireEvent.click(setUp[0]); // needs-setup → opens the Guide's setup notes
         expect(opened).toEqual(['guide']);

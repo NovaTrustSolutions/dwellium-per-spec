@@ -877,8 +877,8 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         tier: 'tools',
         icon: 'megaphone',
         component: lazyWithReload(() => import('../components/Broadcasts/Broadcasts')),
-        minWidth: 720,
-        minHeight: 480,
+        minWidth: 880,
+        minHeight: 560,
         category: 'tools',
     },
     // Links & QR (Dub hosted API, free plan). Same flip: `needs-setup` on

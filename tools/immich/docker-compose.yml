@@ -26,6 +26,11 @@ services:
       # Do not edit the next line. If you want to change the media storage location on your system, edit the value of UPLOAD_LOCATION in the .env file
       - ${UPLOAD_LOCATION}:/data
       - /etc/localtime:/etc/localtime:ro
+      # ── External library (optional, plan 053): index an existing photo folder
+      # READ-ONLY without importing it. Uncomment (adjust the Mac path), then
+      # register the container path in Immich Admin → External Libraries.
+      # See README.md §External libraries + https://docs.immich.app/features/libraries/
+      # - /Users/andy/OldUnitPhotos:/mnt/media/old-unit-photos:ro
     env_file:
       - .env
     ports:

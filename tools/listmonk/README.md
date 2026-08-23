@@ -83,7 +83,11 @@ sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 caddy
 sudo usermod -aG docker "$USER" && exit   # re-ssh so the group applies
 
 mkdir -p ~/listmonk && cd ~/listmonk
-# copy tools/listmonk/docker-compose.yml from this repo onto the VM, then:
+# copy tools/listmonk/docker-compose.yml AND tools/listmonk/Caddyfile from
+# this repo onto the VM (the compose runs a Caddy sidecar that fronts
+# listmonk on 127.0.0.1:9000 and adds the `frame-ancestors` header the
+# Dwellium Broadcasts Admin tab needs — listmonk itself has no such setting,
+# verified against listmonk.app/docs/configuration/ 2026-08-23), then:
 cat > .env <<'EOF'
 POSTGRES_PASSWORD=<long alphanumeric>
 LISTMONK_ADMIN_USER=admin
@@ -102,7 +106,9 @@ lists.dwellium.com {
 ```
 
 `sudo systemctl reload caddy`, then `https://lists.dwellium.com` serves the
-admin login.
+admin login. (The host Caddyfile is unchanged from before — it still proxies
+to 127.0.0.1:9000; that port is now the compose `proxy` sidecar instead of
+listmonk directly.)
 
 ## 4. Brevo free SMTP (300/day)
 
@@ -124,14 +130,30 @@ admin login.
    - `LISTMONK_USER=dwellium` (literal env)
    - `LISTMONK_TOKEN=<api token>` (Secret Manager: `dwellium-listmonk-token`)
 3. Optional, frontend: Netlify env `VITE_LISTMONK_URL=https://lists.dwellium.com`
-   adds the "Open listmonk ↗" link and flips the Tools-hub row to Ready.
-4. Create lists per audience (e.g. "Oakridge residents", "Owners", "Vendors")
-   and at least one campaign template.
+   adds the "Open listmonk ↗" link, flips the Tools-hub row to Ready, and
+   enables the widget's **Admin tab** — the full listmonk admin embedded
+   in-window (the compose Caddy sidecar sends the `frame-ancestors` header
+   that allows the Dwellium origin to frame it).
+4. Seed Andy's audiences + notice templates (idempotent, UPSERT-only — safe
+   to re-run, never deletes or overwrites admin edits):
+
+   ```bash
+   LISTMONK_URL=https://lists.dwellium.com LISTMONK_USER=dwellium \
+     LISTMONK_TOKEN=<api token> ./seed.sh
+   ```
+
+   Creates lists "Woodland Parc Townhomes — residents", "Riverwood Club
+   Apartments — residents", "All residents", "Owners", "Vendors" and the
+   four notice templates (Rent reminder, Inspection notice, Maintenance
+   window, Community update). Then fill them from the widget: Broadcasts →
+   Audiences → **Import from Strata** (per-row consent checkboxes;
+   unconfirmed by default).
 
 ## 6. Verify
 
 ```bash
 curl -sI https://lists.dwellium.com | head -1                     # HTTP/2 200
+curl -sI https://lists.dwellium.com | grep -i content-security    # frame-ancestors … netlify.app …
 curl -su dwellium:$TOKEN https://lists.dwellium.com/api/lists | head -c 200
 # through the Dwellium proxy (must be 401 without a session):
 curl -s -o /dev/null -w '%{http_code}\n' https://argyleholocron.netlify.app/api/broadcasts/lists

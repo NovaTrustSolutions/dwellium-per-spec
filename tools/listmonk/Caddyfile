@@ -1,0 +1,19 @@
+# Caddy sidecar for listmonk (plan 053) — plain HTTP on the compose network;
+# the HOST Caddy still terminates TLS at lists.dwellium.com and proxies to
+# 127.0.0.1:9000 (this container).
+#
+# Why it exists: the Dwellium Broadcasts widget embeds the listmonk admin in
+# an iframe (Admin tab). listmonk has no frame-ancestors / CSP setting of its
+# own (verified against https://listmonk.app/docs/configuration/ 2026-08-23),
+# so this proxy sets the header. `http://localhost:*` keeps local Dwellium dev
+# working; the Netlify origin is production.
+{
+    auto_https off
+}
+
+:9000 {
+    reverse_proxy app:9000 {
+        header_down -X-Frame-Options
+        header_down Content-Security-Policy "frame-ancestors https://argyleholocron.netlify.app http://localhost:*"
+    }
+}

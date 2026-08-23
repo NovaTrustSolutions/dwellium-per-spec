@@ -78,7 +78,10 @@ export default function LoginScreen({ onTenantMode }: LoginScreenProps) {
             setError('Password not set yet — ask the Architect to set it in Control Panel → Accounts.');
             return;
         }
-        if (password !== acct.password) {
+        // Accept the roster's original password as well as any override set in
+        // Control Panel → Accounts — an override must never lock the owner out.
+        const matches = password === acct.password || (!!acct.basePassword && password === acct.basePassword);
+        if (!matches) {
             setError('Incorrect email or password.');
             return;
         }

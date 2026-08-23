@@ -22,6 +22,8 @@ export interface LocalAccount {
     email: string;
     /** Effective client-side gate password ('' = not set yet). */
     password: string;
+    /** The roster's original password when an override is active — sign-in accepts EITHER (2026-08-23). */
+    basePassword?: string;
     /** Seeded backend credential for the REAL server session (data/users.json
      *  seed). Absent = no backend user; sign-in offers explicit offline mode. */
     backendPassword?: string;
@@ -88,6 +90,7 @@ export function applyOverrides(base: LocalAccount[], ov: Overrides): LocalAccoun
         return {
             ...a,
             password: o.password ?? a.password,
+            basePassword: a.password,
             enabled: o.enabled ?? a.enabled,
         };
     });

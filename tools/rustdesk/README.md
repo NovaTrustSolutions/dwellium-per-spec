@@ -91,3 +91,56 @@ nc -zv <static-ip> 21117   # hbbr TCP
 Then: install the client on the office PC → Settings → Network → ID/Relay
 server = the values above → note the machine's ID → connect from another
 RustDesk. Never share a permanent password over chat.
+
+## 6 · Relay status in the widget (plan 053)
+
+The Remote Support widget shows a **Relay Up/Down pill** backed by
+`GET /api/remote/relay-status` (backend `src/routes/remoteRoutes.ts`), which
+TCP-probes `RUSTDESK_RELAY_HOST` on the hbbs/hbbr ports. Port meanings
+(rustdesk-server README + the OSS install doc at
+<https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/>):
+
+| Port | Owner | Purpose | Gates "up"? |
+|---|---|---|---|
+| TCP 21115 | hbbs | NAT type test | no (reported only) |
+| TCP 21116 | hbbs | ID/rendezvous — TCP hole punching + connection (UDP 21116 = ID registration/heartbeat) | **yes** |
+| TCP 21117 | hbbr | relay | **yes** |
+
+Pill meanings: **Relay up** = 21116 AND 21117 accept TCP · **Relay down** =
+the VM/firewall/compose needs a look (§5 `nc -zv` checks) · **Relay not
+configured** = `RUSTDESK_RELAY_HOST` unset on the backend (503 needsSetup) ·
+**Backend offline** = Dwellium's backend itself is unreachable (RustDesk
+sessions are unaffected).
+
+**Ilya deploy steps** (after §1-4 above, which stay unchanged):
+
+```bash
+# Backend env for the probe (Cloud Run; deploy/cloud-run.sh picks it up):
+RUSTDESK_RELAY_HOST=<static-ip-or-dns> ./deploy/cloud-run.sh
+```
+
+The frontend needs no new env — `VITE_RUSTDESK_RELAY` (§4) already flips the
+Tools hub to Ready.
+
+## 7 · Mass-config: point every office PC at the relay
+
+Verified against the client docs (client-configuration + client pages at
+<https://rustdesk.com/docs/en/self-host/client-configuration/>):
+
+1. Configure ONE machine by hand: Settings → Network → unlock → set
+   **ID Server** = `<static-ip-or-dns>` and **Key** = the `id_ed25519.pub`
+   contents (the widget's Setup tab has copy buttons for both). Relay/API
+   can stay blank — RustDesk deduces the relay (hbbr, port 21117).
+2. On that machine: Settings → Network → **Export Server Config** — this
+   copies an encoded config string.
+3. On every other office PC / kiosk, either:
+   - Settings → Network → **Import Server Config** (paste, Apply), or
+   - non-interactive: `rustdesk.exe --config <config-string>` right after a
+     silent install (`rustdesk-…-x86_64.exe --silent-install` on Windows).
+4. Save each machine's ID into the widget's **Connect tab** address book
+   (name, ID, location, tag Office/Kiosk/Resident) — the book is per-user
+   and syncs via One Save; Export/Import JSON backs it up.
+
+Resident machines get the same §7.3 treatment during a support call, or just
+run the stock client against the community servers — one-off sessions don't
+need the relay config.

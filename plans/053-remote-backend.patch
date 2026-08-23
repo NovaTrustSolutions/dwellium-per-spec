@@ -1,0 +1,234 @@
+diff --git a/deploy/cloud-run.sh b/deploy/cloud-run.sh
+index a69692e..3c5f497 100755
+--- a/deploy/cloud-run.sh
++++ b/deploy/cloud-run.sh
+@@ -178,6 +178,12 @@ if [[ -n "${DUB_WORKSPACE:-}" ]]; then
+     printf 'DUB_WORKSPACE: "%s"\n' "${DUB_WORKSPACE}" >> "${env_file}"
+ fi
+ 
++# plan 053 — RustDesk relay host (non-secret; the /api/remote/relay-status TCP
++# probe targets it). Static IP or DNS of the e2-micro running tools/rustdesk.
++if [[ -n "${RUSTDESK_RELAY_HOST:-}" ]]; then
++    printf 'RUSTDESK_RELAY_HOST: "%s"\n' "${RUSTDESK_RELAY_HOST}" >> "${env_file}"
++fi
++
+ # Preserve-unknowns merge: the live service's literal env vars are the source of
+ # truth for anything this script doesn't already know about. `gcloud run deploy
+ # --env-vars-file` REPLACES the entire literal-env set, so any var set by hand
+diff --git a/src/app.ts b/src/app.ts
+index 7c90699..3b6b4dd 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -69,6 +69,7 @@ import libraryRoutes from './routes/libraryRoutes';
+ import esignRoutes from './routes/esignRoutes';
+ import broadcastRoutes from './routes/broadcastRoutes';
+ import linkRoutes from './routes/linkRoutes';
++import remoteRoutes from './routes/remoteRoutes';
+ import { seedDefaultUsers } from './services/authService';
+ import { seedRecurringTasks, startScheduler } from './services/agentScheduler';
+ import { seedLessons } from './services/lessonsLearnedService';
+@@ -430,6 +431,7 @@ app.use('/api/cloud-browser', createAuditMiddleware('/api/cloud-browser'), cloud
+ app.use('/api/esign', authenticate, esignRoutes); // plan 047 — Documenso e-sign proxy (503 until DOCUMENSO_* env is set)
+ app.use('/api/broadcasts', createAuditMiddleware('/api/broadcasts'), authenticate, broadcastRoutes); // plan 047 p2 — listmonk proxy (503 until LISTMONK_* env is set); audit = who-sent-what log
+ app.use('/api/links', createAuditMiddleware('/api/links'), authenticate, linkRoutes); // plan 047 p2 — Dub short-links proxy (503 until DUB_API_KEY is set)
++app.use('/api/remote', authenticate, remoteRoutes); // plan 053 — RustDesk relay TCP probe (503 until RUSTDESK_RELAY_HOST is set)
+ 
+ // ── Proprietary Features (5 features AppFolio doesn't have) ──
+ app.use('/api/lease-coach', leaseCoachRoutes);
+diff --git a/src/routes/remoteRoutes.ts b/src/routes/remoteRoutes.ts
+new file mode 100644
+index 0000000..295f59d
+--- /dev/null
++++ b/src/routes/remoteRoutes.ts
+@@ -0,0 +1,86 @@
++/**
++ * Remote Routes — RustDesk relay reachability probe (plan 053).
++ *
++ * Mounted at /api/remote behind `authenticate` (app.ts). The Remote Support
++ * widget's Relay Up/Down pill reads GET /api/remote/relay-status. While
++ * `RUSTDESK_RELAY_HOST` is unset the route answers 503 with `needsSetup: true`
++ * (same contract as the listmonk/Dub proxies — never a crash).
++ *
++ * Port meanings (verified 2026-08-23):
++ *  - rustdesk-server README (github.com/rustdesk/rustdesk-server): hbbs =
++ *    "RustDesk ID/Rendezvous server" (default port 21116), hbbr = "RustDesk
++ *    relay server" (default port 21117).
++ *  - OSS install doc (rustdesk.com/docs/en/self-host/rustdesk-server-oss/,
++ *    read from the doc.rustdesk.com GitHub source): open TCP 21114-21119 +
++ *    UDP 21116; hbbs listens TCP 21115 (NAT type test), 21116 (TCP hole
++ *    punching / connection; UDP 21116 = ID registration + heartbeat), 21118
++ *    (web-client WebSocket); hbbr listens 21117 (relay), 21119 (web-client
++ *    WebSocket). 21114 is Pro-console-only.
++ *
++ * We TCP-probe 21115 + 21116 (hbbs) and 21117 (hbbr). `up` means the
++ * functional pair is reachable: 21116 (rendezvous) AND 21117 (relay) — 21115
++ * is reported in `ports` but doesn't gate `up` (a NAT-test failure degrades,
++ * it doesn't kill connections). `RUSTDESK_RELAY_PORTS` (comma list) overrides
++ * the probed ports for tests / non-standard deployments; with an override,
++ * `up` = every probed port open.
++ */
++import { Router, Request, Response } from 'express';
++import * as net from 'net';
++
++const router = Router();
++
++const HBBS_RENDEZVOUS_PORT = 21116;
++const HBBR_RELAY_PORT = 21117;
++const DEFAULT_PORTS = [21115, HBBS_RENDEZVOUS_PORT, HBBR_RELAY_PORT];
++const PROBE_TIMEOUT_MS = 1500;
++
++/** True iff a TCP connection to host:port succeeds within timeoutMs. Exported for tests. */
++export function probeTcp(host: string, port: number, timeoutMs = PROBE_TIMEOUT_MS): Promise<boolean> {
++    return new Promise((resolve) => {
++        const socket = new net.Socket();
++        let settled = false;
++        const finish = (ok: boolean) => {
++            if (settled) return;
++            settled = true;
++            socket.destroy();
++            resolve(ok);
++        };
++        socket.setTimeout(timeoutMs);
++        socket.once('connect', () => finish(true));
++        socket.once('timeout', () => finish(false));
++        socket.once('error', () => finish(false));
++        socket.connect(port, host);
++    });
++}
++
++function probePorts(): number[] {
++    const raw = process.env.RUSTDESK_RELAY_PORTS;
++    if (!raw) return DEFAULT_PORTS;
++    const ports = raw.split(',')
++        .map(p => Number.parseInt(p.trim(), 10))
++        .filter(p => Number.isInteger(p) && p > 0 && p < 65536);
++    return ports.length > 0 ? ports : DEFAULT_PORTS;
++}
++
++router.get('/relay-status', async (_req: Request, res: Response) => {
++    const host = (process.env.RUSTDESK_RELAY_HOST || '').trim();
++    if (!host) {
++        res.status(503).json({
++            success: false,
++            needsSetup: true,
++            error: 'RustDesk relay is not configured — deploy tools/rustdesk (hbbs/hbbr on the free e2-micro) and set RUSTDESK_RELAY_HOST on the backend',
++        });
++        return;
++    }
++    const ports = probePorts();
++    const results = await Promise.all(ports.map(p => probeTcp(host, p)));
++    const portMap: Record<string, boolean> = {};
++    ports.forEach((p, i) => { portMap[String(p)] = results[i]; });
++    const usingDefaults = !process.env.RUSTDESK_RELAY_PORTS;
++    const up = usingDefaults
++        ? portMap[String(HBBS_RENDEZVOUS_PORT)] === true && portMap[String(HBBR_RELAY_PORT)] === true
++        : results.every(Boolean);
++    res.json({ success: true, up, host, ports: portMap, checkedAt: new Date().toISOString() });
++});
++
++export default router;
+diff --git a/tests/remoteRoutes.test.ts b/tests/remoteRoutes.test.ts
+new file mode 100644
+index 0000000..7b9e174
+--- /dev/null
++++ b/tests/remoteRoutes.test.ts
+@@ -0,0 +1,99 @@
++/**
++ * /api/remote/relay-status — RustDesk relay TCP probe (plan 053).
++ *
++ * Env unset → 503 needsSetup:true; 401 without a session; with
++ * RUSTDESK_RELAY_HOST set, the route TCP-probes the relay ports (default
++ * 21115/21116 hbbs + 21117 hbbr; RUSTDESK_RELAY_PORTS overrides — used here
++ * to point the probe at local net servers) and reports { up, ports,
++ * checkedAt }. probeTcp is also unit-tested directly.
++ */
++import * as net from 'net';
++import { makeApp, createTestUser, TestUser } from './helpers/harness';
++import { probeTcp } from '../src/routes/remoteRoutes';
++
++const ENV_KEYS = ['RUSTDESK_RELAY_HOST', 'RUSTDESK_RELAY_PORTS'] as const;
++const savedEnv: Record<string, string | undefined> = {};
++beforeAll(() => { for (const k of ENV_KEYS) savedEnv[k] = process.env[k]; });
++beforeEach(() => { for (const k of ENV_KEYS) delete process.env[k]; });
++afterAll(() => {
++    for (const k of ENV_KEYS) {
++        if (savedEnv[k] === undefined) delete process.env[k]; else process.env[k] = savedEnv[k];
++    }
++});
++
++/** Start a throwaway TCP server on an ephemeral 127.0.0.1 port. */
++function listen(): Promise<{ server: net.Server; port: number }> {
++    return new Promise((resolve, reject) => {
++        const server = net.createServer();
++        server.once('error', reject);
++        server.listen(0, '127.0.0.1', () => {
++            resolve({ server, port: (server.address() as net.AddressInfo).port });
++        });
++    });
++}
++
++function close(server: net.Server): Promise<void> {
++    return new Promise((resolve) => server.close(() => resolve()));
++}
++
++describe('probeTcp', () => {
++    it('true for a listening port, false for a closed one', async () => {
++        const { server, port } = await listen();
++        await expect(probeTcp('127.0.0.1', port)).resolves.toBe(true);
++        await close(server);
++        await expect(probeTcp('127.0.0.1', port, 500)).resolves.toBe(false);
++    });
++});
++
++describe('/api/remote/relay-status', () => {
++    let user: TestUser;
++    beforeAll(async () => { user = await createTestUser({ role: 'management' }); });
++
++    it('401 without a session (authenticate runs before the env gate)', async () => {
++        const r = await makeApp().get('/api/remote/relay-status');
++        expect(r.status).toBe(401);
++    });
++
++    it('503 needsSetup:true while RUSTDESK_RELAY_HOST is unset', async () => {
++        const r = await makeApp().get('/api/remote/relay-status').set('Authorization', user.authHeader);
++        expect(r.status).toBe(503);
++        expect(r.body.success).toBe(false);
++        expect(r.body.needsSetup).toBe(true);
++        expect(r.body.error).toMatch(/RUSTDESK_RELAY_HOST/);
++    });
++
++    it('up:true with per-port detail when every probed port accepts TCP', async () => {
++        const a = await listen();
++        const b = await listen();
++        process.env.RUSTDESK_RELAY_HOST = '127.0.0.1';
++        process.env.RUSTDESK_RELAY_PORTS = `${a.port},${b.port}`;
++        try {
++            const r = await makeApp().get('/api/remote/relay-status').set('Authorization', user.authHeader);
++            expect(r.status).toBe(200);
++            expect(r.body.success).toBe(true);
++            expect(r.body.up).toBe(true);
++            expect(r.body.ports).toEqual({ [String(a.port)]: true, [String(b.port)]: true });
++            expect(new Date(r.body.checkedAt).getTime()).toBeGreaterThan(0);
++        } finally {
++            await close(a.server);
++            await close(b.server);
++        }
++    });
++
++    it('up:false when any probed port is closed', async () => {
++        const a = await listen();
++        const dead = await listen();
++        await close(dead.server); // port now guaranteed closed
++        process.env.RUSTDESK_RELAY_HOST = '127.0.0.1';
++        process.env.RUSTDESK_RELAY_PORTS = `${a.port},${dead.port}`;
++        try {
++            const r = await makeApp().get('/api/remote/relay-status').set('Authorization', user.authHeader);
++            expect(r.status).toBe(200);
++            expect(r.body.up).toBe(false);
++            expect(r.body.ports[String(a.port)]).toBe(true);
++            expect(r.body.ports[String(dead.port)]).toBe(false);
++        } finally {
++            await close(a.server);
++        }
++    });
++});

@@ -151,36 +151,35 @@ Source D = README, https://github.com/rustdesk/rustdesk ("Yet another remote des
 
 | Upstream feature | In Dwellium today | How | Gap / note |
 |---|---|---|---|
-| 1 Remote desktop control | ✅ | native client only (launcher links → stock RustDesk) | Nothing in-window; user leaves Dwellium to connect. Deep-link "Connect" (plan step 4c) not built. |
-| 2 Works out of the box with public servers | ✅ | native client; widget explains it (`RemoteSupport.tsx:104-113`) | This is the only path that works in production today (env unset). Shared/slower per the card. |
-| 3 Self-hosted hbbs/hbbr | 🟡 | runbook + compose in `tools/rustdesk/` | Not deployed/evidenced (prod env unset → "Set up"). Blocked on Ilya running the gcloud commands. |
-| 4 Key-based auth (`-k`) | 🟡 | compose `-k _` (`docker-compose.yml:18,30`); widget shows key + Copy (`RemoteSupport.tsx:93-101`) | Depends on row 3. Key optional in the env format "while testing" (`README.md:79`). |
-| 5 File transfer | ✅ | native client only | Not mentioned anywhere in Dwellium (grep "file transfer" in `tools/rustdesk/README.md` = 0). |
-| 6 TCP tunneling | ✅ | native client only | Not surfaced. |
-| 7 Cross-platform clients | 🟡 | 3 direct links (macOS arm/x86, Windows x64) + "All releases" | Linux/Android/iOS (resident devices) only via the generic releases page; links hard-pinned to 1.4.9 (still latest today, will drift). |
-| 8 Web client | ❌ | — | Deferred to a phase-3 spike (`RemoteSupport.tsx:3-4`; plan l.365). Relay compose exposes no reverse-proxied 21118/21119 WebSocket (upstream requires one). |
-| 9 Unattended access / permanent pw / OTP / permissions | ✅ | native client only | Dwellium adds only the "never share the permanent password by chat" note (`RemoteSupport.tsx:116-119`). |
+| 1 Remote desktop control | ✅ | one-click from the in-widget address book → native client (`rustdesk://connect/<ID>` deep link) | **Plan 053: BUILT.** Connect button on every saved machine (`remoteMachinesStore.ts::buildRustdeskLink`); URI scheme verified from source — `src/core_main.rs` builds `{uri_prefix}{authority}/{id}?{params}`, `get_uri_prefix()` = `rustdesk://` (`src/common.rs:1015`), parser `flutter/lib/common.dart::urlLinkToCmdArgs` accepts `connect/play/file-transfer/view-camera/port-forward/rdp/terminal` + legacy `connection/new` (all fetched 2026-08-23). Session runs in the stock client — no OSS web client exists to embed (row 8). |
+| 2 Works out of the box with public servers | ✅ | native client; widget explains it (Setup tab community note) | Still the zero-config path; the Connect tab says so honestly when the relay is unconfigured. |
+| 3 Self-hosted hbbs/hbbr | 🟡 (human deploy only — plan 053 rule 5) | runbook + compose in `tools/rustdesk/`; live **Relay Up/Down pill** in-widget via backend `GET /api/remote/relay-status` (TCP probe: 21115/21116 hbbs + 21117 hbbr) | **Plan 053: all code shipped** (probe route + jest 5/5, pill + vitest, README §6). Remaining human step: Ilya runs README §1-5, sets `RUSTDESK_RELAY_HOST` on Cloud Run + `VITE_RUSTDESK_RELAY` on Netlify. |
+| 4 Key-based auth (`-k`) | 🟡 (human deploy only) | compose `-k _`; widget shows key + Copy; README §7 mass-config distributes it | Depends on row 3's deploy — no code gap. |
+| 5 File transfer | ✅ | one-click "Files" button per machine → native client (`rustdesk://file-transfer/<ID>`) | **Plan 053: BUILT** (same verified scheme, `file-transfer` authority). |
+| 6 TCP tunneling | ✅ | native client only | A `port-forward` deep-link authority exists but needs port args the URI can't carry usefully — start it in the client. |
+| 7 Cross-platform clients | ✅ | 5 direct links in Setup tab: macOS arm/x86, Windows x64, Linux `.deb` x86_64, Android APK (all curl-verified 302 on 2026-08-23) + "All releases" | **Plan 053: CLOSED.** iOS controller installs from the App Store (no GitHub asset). Version-pinned by necessity — asset filenames embed the version so `releases/latest/download/…` cannot work; "All releases" covers drift. |
+| 8 Web client | ➖ | — (structurally unavailable for OSS embedding; deep links shipped instead) | **Plan 053: investigated, evidence (2026-08-23):** `web.rustdesk.com` does not resolve (curl exit 6); the hosted web client `https://rustdesk.com/web/` answers `x-frame-options: SAMEORIGIN` → cannot be iframed cross-origin; no self-hostable artifact — v1.4.9 release assets contain no web build (api.github.com asset list), the repo has no `flutter/web` dir (API 404), and doc.rustdesk.com has no web-client self-host page (the OSS install doc links "web client" only to the hosted rustdesk.com/web, behind WS 21118/21119 + reverse proxy). In-window becomes possible only if upstream publishes the web build. |
+| 9 Unattended access / permanent pw / OTP / permissions | ✅ | native client only | Safety note retained in the widget. |
 | 10 Clipboard / audio / codec / recording / display | ✅ | native client only | — |
-| 11 Custom server settings in client | ✅ once configured | inside widget: values + Copy + "Settings → Network → ID/Relay server" (`RemoteSupport.tsx:84-102`) | The one feature the widget materially helps with; inert until env is set. |
-| 12 Pro-only (API server, web console, custom client generator, OIDC) | ➖ | — | Out of scope by plan: OSS stock images/clients only, zero-cost, no Pro purchase (plan l.343-346; `toolsHub.ts:46` "stock build"). |
-| 13 Data control via own relay + key | 🟡 | native client + own relay | Until row 3 ships, sessions ride the community servers (still RustDesk-encrypted, but not "your own" infrastructure). |
-| 14 Mobile clients (Android / iOS controller) | ✅ | native client only | Not linked from the card (see row 7). |
+| 11 Custom server settings in client | ✅ once configured | inside widget (Setup tab): values + Copy + instructions; `tools/rustdesk/README.md` §7 mass-config (Export/Import Server Config + `rustdesk --config <string>` + `--silent-install`, per rustdesk.com/docs/en/self-host/client-configuration/) | **Plan 053: extended** with the documented mass-deployment path for the office PCs. |
+| 12 Pro-only (API server, web console, custom client generator, OIDC) | ➖ | — | Out of scope by plan: OSS stock images/clients only, zero-cost, no Pro purchase. |
+| 13 Data control via own relay + key | 🟡 (human deploy only) | native client + own relay; relay pill proves it live once deployed | Same single human step as row 3. |
+| 14 Mobile clients (Android / iOS controller) | ✅ | Android APK linked in Setup tab; iOS via App Store | **Plan 053: linked** (row 7). |
 
-## 4. Parity numbers (N = 14 features)
+## 4. Parity numbers (N = 14 features) — updated 2026-08-23 (plan 053)
 
-- ✅ = 8 (rows 1, 2, 5, 6, 9, 10, 11, 14) · 🟡 = 4 (3, 4, 7, 13) · ❌ = 1 (8) · ➖ = 1 (12).
-- (a) **Feature coverage once configured**: full ✅ = 8/14 = **57 %**; reachable in some form (✅+🟡) = 12/14 = **86 %** (12/13 = 92 % if the ➖ Pro row is excluded).
-  - Inside the Dwellium widget: row 11 only (config display/copy) → 1/14 = **7 %**; the download links are a gateway, not a feature.
-  - Only via native client (launcher → stock RustDesk): rows 1, 2, 5, 6, 9, 10, 14 → 7/14 = **50 %**.
-- (b) **Native in Dwellium**: **0/14 = 0 %** — `parseRustdeskRelay` + copy buttons display config; no RustDesk capability is reimplemented.
-- **Today in production**: Tools hub routes to the Guide, but anyone who opens the widget from the dock can reach rows 1, 2, 5, 6, 9, 10, 14 via community servers (7/14 = 50 % via native client, 0 % in-widget).
+- ✅ = 9 (rows 1, 2, 5, 6, 7, 9, 10, 11, 14) · 🟡 = 3 (3, 4, 13 — a single human deploy step, allowed by plan 053 rule 5) · ❌ = **0** · ➖ = 2 (8 — structurally unavailable upstream, 12 — Pro-only).
+- (a) **Feature coverage once configured**: full ✅ = 9/12 non-➖ = **75 %**; reachable in some form (✅+🟡) = **12/12 = 100 %** of the non-➖ rows. Every ❌ is closed; the three 🟡 are one ops step (relay deploy + two env values).
+  - Started from inside the Dwellium widget (address book Connect/Files buttons, config copy, downloads): rows 1, 5, 7, 11, 14.
+  - Native client carries the session itself for rows 1, 2, 5, 6, 9, 10, 14 — structural for OSS RustDesk (row 8 evidence).
+- (b) **Native in Dwellium**: address book (add/edit/remove/tags/notes), per-user One Save persistence, JSON import/export, deep-link builder, and the relay-status probe are Dwellium-native code (widget + `remoteMachinesStore.ts` + backend `remoteRoutes.ts`); the remote-desktop capability itself is intentionally the stock client (AGPL unmodified per plan).
+- **Production after Ilya's two env values**: Tools hub Ready + Connect tab with live relay pill; until then the widget still works (community servers + honest unconfigured states).
 
-## 5. What it would take to close each ❌/🟡
+## 5. What remains (plan 053 close-out)
 
-- Rows 3/4/13 (own relay + key): **S ops** — Ilya runs `tools/rustdesk/README.md` §1-5 (VM, firewall, compose, `cat data/id_ed25519.pub`), sets `VITE_RUSTDESK_RELAY=<ip>:21116,<key>` in Netlify, redeploys; widget + hub flip to Ready with no code change (`toolsHub.test.tsx:65-68`).
-- Row 7 (platforms / drift): **S** — add Linux `.deb`/Android `.apk` links or link the client docs page; replace hard-pinned 1.4.9 URLs with `releases/latest/download/<asset>` pattern or a periodic check.
-- Row 8 (web client in-window): **L** — phase-3 spike per plan l.365: TLS reverse proxy for 21118/21119 WebSocket (upstream says hbbs/hbbr trust `X-Real-IP`/`X-Forwarded-For`, so the proxy must validate headers), confirm the web client's embeddability/frame headers and source status, then an iframe widget on the LangFlowPanel reachability pattern.
-- Plan leftovers (not upstream features but parity with the plan): saved machines + `rustdesk://` deep link **M**; Two Brains "Escalate to full control" button **S**; backend `/api/remote-support/config` **S** (only needed if the config should stop living in a Vite env).
+- Rows 3/4/13: **S ops, human-only** — `tools/rustdesk/README.md` §1-5 (VM, firewall, compose, `cat data/id_ed25519.pub`), then env: Netlify `VITE_RUSTDESK_RELAY=<ip>:21116,<key>`, Cloud Run `RUSTDESK_RELAY_HOST=<ip>` (README §6). Widget + hub flip to Ready with no code change; the relay pill turns Up.
+- Row 8: nothing actionable until upstream publishes a self-hostable web client; re-check `rustdesk.com/web/` headers + release assets if that ever ships.
+- Cross-tool plan leftovers NOT in this builder's ownership: Two Brains "Escalate to full control" button (Two Brains' files), Scribe "Get remote help" doc (Scribe's files).
 
 ## 6. Verification
 
@@ -189,3 +188,4 @@ Source D = README, https://github.com/rustdesk/rustdesk ("Yet another remote des
 - Tests: `cd R/qualia-shell && npx vitest run src/test/remoteSupportWidget.test.tsx src/test/toolsHub.test.tsx`.
 - Upstream: https://github.com/rustdesk/rustdesk, https://github.com/rustdesk/rustdesk-server, the two doc.rustdesk.com raw pages above; `curl -sI https://github.com/rustdesk/rustdesk/releases/latest` → `/tag/1.4.9`; `curl -sI https://github.com/rustdesk/rustdesk/releases/download/1.4.9/rustdesk-1.4.9-aarch64.dmg` → 302 (asset exists).
 - Prod: `curl -sI https://argyleholocron.netlify.app` → 200; Tools hub → Remote Support row "Set up". After relay deploy: `nc -zv <static-ip> 21116` and `21117`; in a client, Settings → Network → paste the widget's values → connect.
+- Plan 053 build verification (2026-08-23): frontend `npx tsc -b` ✓, `npx eslint` (5 touched files) ✓, `npx vitest run src/test/remoteSupportMachines.test.ts src/test/remoteSupportWidget.test.tsx src/test/toolsHub.test.tsx src/test/holderIsolation.test.ts` → 33 passed ✓, `NETLIFY=1 npx react-router build` ✓; backend scratch `npx tsc --noEmit` ✓ + `OPENAI_API_KEY=sk-dummy npx jest --forceExit` → 39 suites / 301 tests passed ✓; patch `plans/053-remote-backend.patch` (+193 lines, 4 files) passes `git apply --check` against a pristine copy of `ai-dashboard369-file-manager`. Embeddability evidence: `curl -s -o /dev/null -D - https://rustdesk.com/web/` → `x-frame-options: SAMEORIGIN`; `curl -sI https://web.rustdesk.com/` → exit 6 (host not found).

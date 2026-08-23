@@ -1,0 +1,5 @@
+Unit,Resident,Monthly Rent,Lease Start,Lease End,Status,Renewal Date
+WP-101 (Woodland Parc),EXAMPLE — replace with real resident,1450,2026-01-01,2026-12-31,Active,2026-10-01
+WP-104 (Woodland Parc),EXAMPLE — replace with real resident,1495,2025-09-01,2026-08-31,Expiring soon,2026-06-01
+RC-2203 (Riverwood Club),EXAMPLE — replace with real resident,1275,2025-06-15,2026-06-14,Month-to-month,2026-09-01
+RC-2210 (Riverwood Club),—,1300,,,Vacant,

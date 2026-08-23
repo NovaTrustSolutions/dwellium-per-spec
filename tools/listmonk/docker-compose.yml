@@ -8,9 +8,14 @@
 #   docker compose up -d
 #   docker compose logs -f app   # first boot runs --install --idempotent
 #
-# The admin/API port binds to 127.0.0.1 only — Caddy (on the host) terminates
-# TLS at lists.dwellium.com and reverse-proxies to localhost:9000. Never
-# expose 9000 on 0.0.0.0.
+# Topology (plan 053): listmonk itself publishes NO port. A Caddy sidecar
+# (`proxy`) fronts it inside the compose network, adds the
+# `Content-Security-Policy: frame-ancestors …` header (so the Dwellium
+# Broadcasts widget can embed the admin — listmonk has no native
+# frame-ancestors setting; verified against listmonk.app/docs/configuration/
+# 2026-08-23) and binds to 127.0.0.1:9000 only. The host Caddy still
+# terminates TLS at lists.dwellium.com and reverse-proxies to
+# localhost:9000 exactly as before. Never expose 9000 on 0.0.0.0.
 #
 # SMTP is Brevo's free relay (300 mails/day — verified 2026-08-20). Configure
 # it in the listmonk admin UI (Settings → SMTP) with the values in README.md;
@@ -46,8 +51,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - '127.0.0.1:9000:9000' # private — Caddy proxies TLS from :443
+    # No published port — only the `proxy` sidecar reaches app:9000 on the
+    # compose network (it adds the frame-ancestors header the widget needs).
+    expose:
+      - '9000'
     environment:
       LISTMONK_app__address: 0.0.0.0:9000
       LISTMONK_db__host: db
@@ -62,5 +69,24 @@ services:
     command: [sh, -c, './listmonk --install --idempotent --yes && ./listmonk --upgrade --yes && ./listmonk']
     mem_limit: 512m
 
+  # Caddy sidecar (plan 053): reverse-proxies listmonk and sets
+  # `Content-Security-Policy: frame-ancestors …` so the Dwellium Broadcasts
+  # widget's Admin tab can iframe the admin. listmonk stays UNMODIFIED (AGPL
+  # rule) — the header lives here, not in listmonk.
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - '127.0.0.1:9000:9000' # private — host Caddy proxies TLS from :443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 64m
+
 volumes:
   listmonk-db:
+  caddy-data:
+  caddy-config:

@@ -817,13 +817,14 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 600,
         category: 'tools',
     },
-    // Design Studio (Penpot free cloud, MPL-2.0). Launcher-only: the cloud
-    // sends X-Frame-Options SAMEORIGIN, so no iframe until the phase-3
-    // self-host. No env gate — `ready` as soon as this entry exists.
+    // Design Studio (Penpot, MPL-2.0; plan 053). Cloud URL → launcher (the
+    // cloud sends X-Frame-Options SAMEORIGIN); VITE_PENPOT_URL self-host →
+    // in-window iframe. Plus Templates (Andy's brand kit) + Files (/api/design)
+    // tabs. No env gate — `ready` as soon as this entry exists.
     'penpot-studio': {
         id: 'penpot-studio',
         label: 'Design Studio',
-        description: 'Flyers, notices and a Dwellium design system in Penpot — opens in a new tab.',
+        description: 'Penpot design studio: flyers, notices and the Dwellium brand kit — templates, files and the editor.',
         tip: { tryThis: 'Open Penpot and rough out a listing flyer on a blank board.', related: ['whiteboard', 'tools-hub'] },
         tier: 'tools',
         icon: 'palette',

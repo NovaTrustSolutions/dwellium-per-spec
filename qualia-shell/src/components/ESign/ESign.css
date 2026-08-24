@@ -115,3 +115,76 @@
 .esign__status--sent { color: #0ea5e9; background: rgba(14, 165, 233, 0.12); }
 .esign__status--signed,
 .esign__status--countersigned { color: #d6fe51; background: rgba(214, 254, 81, 0.10); }
+
+/* ── plan 053: full workflow additions ─────────────────────────────────── */
+
+.esign__notice {
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    font-size: 12px;
+    word-break: break-all;
+}
+
+.esign__subtitle { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--text-primary); }
+
+.esign__send { display: flex; flex-direction: column; gap: 8px; }
+
+.esign__field-row { display: flex; align-items: center; gap: 8px; }
+
+.esign__label { min-width: 72px; font-size: 11px; font-weight: 600; color: var(--text-tertiary); }
+
+.esign__input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.esign__recipient-row { display: flex; align-items: center; gap: 6px; }
+
+.esign__order { width: 18px; font-size: 11px; color: var(--text-tertiary); }
+
+.esign__send-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.esign__sent-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.esign__sent-row { display: flex; align-items: center; gap: 8px; }
+
+.esign__chip--copy { border: none; cursor: pointer; color: var(--accent); }
+.esign__chip--copy:hover { background: rgba(255, 255, 255, 0.10); }
+
+.esign__actions { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+.esign__btn--danger { color: #f87171; }
+
+/* Upstream Documenso status pills (DRAFT/PENDING/COMPLETED/REJECTED/CANCELLED) */
+.esign__status--draft { color: var(--text-tertiary); }
+.esign__status--pending { color: #0ea5e9; background: rgba(14, 165, 233, 0.12); }
+.esign__status--completed { color: #d6fe51; background: rgba(214, 254, 81, 0.10); }
+.esign__status--rejected,
+.esign__status--cancelled { color: #f87171; background: rgba(248, 113, 113, 0.10); }
+
+/* Tenant portal "Review & sign" prompt (TenantSignPrompt.tsx) */
+.esign-tenant-prompt__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+}

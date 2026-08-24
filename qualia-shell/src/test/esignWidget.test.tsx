@@ -73,7 +73,8 @@ describe('ESign widget', () => {
         render(<ESign />);
         await waitFor(() => expect(screen.getByText('Lease — Unit 2B')).toBeInTheDocument());
         expect(screen.getByText('tenant@example.com')).toBeInTheDocument();
-        expect(screen.getByText('sent')).toBeInTheDocument();
+        // plan 053: the pill is the upstream Documenso status; docStatus 'sent' → PENDING.
+        expect(screen.getByText('PENDING')).toBeInTheDocument();
     });
 
     it('renders the error state with Retry when the backend is unreachable', async () => {

@@ -24,6 +24,7 @@ import {
     Hand,
 } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
+import TenantSignPrompt from '../ESign/TenantSignPrompt'; // plan 053 — Documenso "Review & sign" links
 import './TenantPortal.css';
 import { API_BASE } from '../../config';
 
@@ -402,6 +403,9 @@ export default function TenantPortal() {
                     <h1>Lease Details</h1>
                     <p>Your current lease information</p>
                 </div>
+
+                {/* plan 053 — renders only when Documenso has a signing token for this resident */}
+                <TenantSignPrompt />
 
                 <div className="tp-card">
                     <h3><FileKey2 size={16} /> Current Lease</h3>

@@ -1,4 +1,4 @@
-/* PenpotStudio — plan 047 phase 2 (Penpot launcher). Theme tokens only. */
+/* PenpotStudio — plan 053 (Studio / Templates / Files tabs). Theme tokens only. */
 
 .penpot-studio {
     display: flex;
@@ -25,13 +25,34 @@
     font-weight: 700;
 }
 
+.penpot-studio__tabs {
+    display: flex;
+    gap: 4px;
+}
+
+.penpot-studio__tab {
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.penpot-studio__tab--active {
+    background: rgba(255, 255, 255, 0.09);
+    color: var(--text-primary);
+}
+
 .penpot-studio__card {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
     margin: auto;
-    max-width: 400px;
+    max-width: 440px;
     padding: 24px;
     text-align: center;
     color: var(--text-secondary);
@@ -59,3 +80,128 @@
 }
 
 .penpot-studio__btn:hover { background: rgba(255, 255, 255, 0.09); }
+
+.penpot-studio__btn--ghost { margin-top: 0; padding: 4px 8px; }
+
+.penpot-studio__actions { display: flex; gap: 8px; }
+
+/* ── Studio embed (self-host iframe, PhotoVault pattern) ─────────────────── */
+
+.penpot-studio__embed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+}
+
+.penpot-studio__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.penpot-studio__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+.penpot-studio__url {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.penpot-studio__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.penpot-studio__frame {
+    flex: 1;
+    width: 100%;
+    min-height: 320px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: #fff;
+}
+
+/* ── Templates tab ───────────────────────────────────────────────────────── */
+
+.penpot-studio__templates { display: flex; flex-direction: column; gap: 12px; }
+.penpot-studio__templates-intro { margin: 0; font-size: 12px; line-height: 1.5; }
+
+.penpot-studio__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.penpot-studio__tpl {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.penpot-studio__tpl h4 { margin: 4px 0 0; font-size: 13px; color: var(--text-primary); }
+.penpot-studio__tpl-size { margin: 0; font-size: 11px; color: var(--text-tertiary); }
+.penpot-studio__tpl-use { margin: 0; font-size: 11px; line-height: 1.45; color: var(--text-secondary); }
+
+.penpot-studio__tpl-preview {
+    width: 100%;
+    aspect-ratio: 816 / 1056;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.penpot-studio__import h4 { margin: 0 0 4px; font-size: 12px; color: var(--text-primary); }
+.penpot-studio__import ol { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+
+/* ── Files tab ───────────────────────────────────────────────────────────── */
+
+.penpot-studio__files { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+
+.penpot-studio__projects { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.penpot-studio__project-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.penpot-studio__project-row:hover { background: rgba(255, 255, 255, 0.07); }
+.penpot-studio__project-name { font-weight: 600; }
+.penpot-studio__project-team { font-size: 11px; color: var(--text-tertiary); }
+
+.penpot-studio__file-list { display: flex; flex-direction: column; gap: 4px; padding: 6px 4px 4px 16px; }
+
+.penpot-studio__file {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.penpot-studio__export-note { margin: 0; font-size: 11px; }

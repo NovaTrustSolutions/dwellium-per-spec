@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="816" height="1056" viewBox="0 0 816 1056" font-family="Hanken Grotesk, Arial, sans-serif">
+  <!-- Dwellium template: Notice of entry / inspection — US Letter, print-friendly.
+       Georgia has no statutory entry-notice period; leases typically promise
+       reasonable notice (commonly 24-48 hours) — the blank below points at the
+       lease clause. Neutral placeholder wording; review before use. -->
+  <rect width="816" height="1056" fill="#ffffff"/>
+
+  <!-- Letterhead -->
+  <rect x="48" y="48" width="10" height="44" fill="#D6FE51"/>
+  <text x="74" y="74" fill="#0c0c0c" font-size="22" font-weight="800">WOODLAND PARC TOWNHOMES</text>
+  <text x="74" y="94" fill="#777777" font-size="12">Managed by AstraStrata · example — replace with office address and phone</text>
+  <line x1="48" y1="116" x2="768" y2="116" stroke="#0c0c0c" stroke-width="3"/>
+
+  <text x="48" y="168" fill="#0c0c0c" font-size="26" font-weight="800" letter-spacing="1">NOTICE OF SCHEDULED INSPECTION</text>
+  <text x="768" y="168" fill="#999999" font-size="12" text-anchor="end">Date: ____________</text>
+
+  <g fill="#333333" font-size="14">
+    <text x="48" y="216" font-weight="700">To (resident):</text>
+    <text x="170" y="216">________________________________________ &#160;(example — replace)</text>
+    <text x="48" y="244" font-weight="700">Unit:</text>
+    <text x="170" y="244">Woodland Parc Townhomes, Unit ______ &#160;(example — replace)</text>
+  </g>
+  <line x1="48" y1="268" x2="768" y2="268" stroke="#dddddd" stroke-width="1"/>
+
+  <g fill="#222222" font-size="14">
+    <text x="48" y="308">In accordance with the notice provision of your lease (§____), we are writing to let</text>
+    <text x="48" y="330">you know that management and/or its vendors will need access to your unit:</text>
+  </g>
+
+  <!-- When / why panel -->
+  <rect x="48" y="356" width="720" height="150" fill="#f7f7f7"/>
+  <g fill="#333333" font-size="14">
+    <text x="72" y="392" font-weight="700">Date:</text><text x="180" y="392">_______________________</text>
+    <text x="420" y="392" font-weight="700">Window:</text><text x="510" y="392">________ – ________</text>
+    <text x="72" y="428" font-weight="700">Purpose:</text>
+    <text x="180" y="428">☐ Routine inspection &#160;&#160;☐ Preventive maintenance &#160;&#160;☐ Filter / smoke-alarm check</text>
+    <text x="180" y="456">☐ Repair follow-up &#160;&#160;☐ Pest control &#160;&#160;☐ Other: ______________________</text>
+    <text x="72" y="490" font-weight="700">Vendor:</text><text x="180" y="490">_________________________________ (if applicable)</text>
+  </g>
+
+  <g fill="#222222" font-size="14">
+    <text x="48" y="548">You do not need to be present. Our staff will knock and announce before entering,</text>
+    <text x="48" y="570">use the management key only if no one answers, and leave a door tag confirming</text>
+    <text x="48" y="592">the visit. Please secure pets for the duration of the window.</text>
+    <text x="48" y="632">If the date or window does not work for you, contact the office at least 24 hours</text>
+    <text x="48" y="654">in advance and we will reschedule.</text>
+  </g>
+
+  <!-- Contact strip -->
+  <rect x="48" y="700" width="720" height="64" fill="#0c0c0c"/>
+  <text x="72" y="732" fill="#ffffff" font-size="15" font-weight="700">Questions?</text>
+  <text x="180" y="732" fill="#cccccc" font-size="14">(555) 555-0134 · office@woodlandparc.example &#160;— example, replace</text>
+  <rect x="640" y="712" width="104" height="40" fill="#D6FE51"/>
+  <text x="692" y="737" fill="#0c0c0c" font-size="13" font-weight="700" text-anchor="middle">Thank you</text>
+
+  <!-- Signature -->
+  <g fill="#333333" font-size="14">
+    <line x1="48" y1="850" x2="330" y2="850" stroke="#333333" stroke-width="1"/>
+    <text x="48" y="872">Property manager (sign)</text>
+    <line x1="470" y1="850" x2="640" y2="850" stroke="#333333" stroke-width="1"/>
+    <text x="470" y="872">Date</text>
+  </g>
+
+  <rect x="48" y="908" width="720" height="60" fill="#f4f4f4"/>
+  <text x="64" y="936" fill="#666666" font-size="12" font-weight="700">TEMPLATE PLACEHOLDER — REVIEW BEFORE USE</text>
+  <text x="64" y="954" fill="#777777" font-size="11">Match the notice period and entry terms to the lease before sending.</text>
+
+  <text x="48" y="1006" fill="#999999" font-size="10">AstraStrata · Equal Housing Opportunity</text>
+  <text x="768" y="1006" fill="#bbbbbb" font-size="10" text-anchor="end">Dwellium template — inspection-notice v1</text>
+</svg>

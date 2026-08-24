@@ -1,0 +1,438 @@
+diff --git a/deploy/cloud-run.sh b/deploy/cloud-run.sh
+index 021cbd5..7a85d91 100755
+--- a/deploy/cloud-run.sh
++++ b/deploy/cloud-run.sh
+@@ -121,6 +121,7 @@ else
+     upsert_secret_from_env LISTMONK_TOKEN dwellium-listmonk-token
+     upsert_secret_from_env DUB_API_KEY dwellium-dub-api-key
+     upsert_secret_from_env IMMICH_API_KEY dwellium-immich-api-key
++    upsert_secret_from_env PENPOT_ACCESS_TOKEN dwellium-penpot-access-token
+ fi
+ 
+ env_file="$(mktemp)"
+@@ -192,6 +193,14 @@ if [[ -n "${RUSTDESK_RELAY_HOST:-}" ]]; then
+     printf 'RUSTDESK_RELAY_HOST: "%s"\n' "${RUSTDESK_RELAY_HOST}" >> "${env_file}"
+ fi
+ 
++# plan 053 — Penpot API base (non-secret). Unset = Penpot's free cloud
++# (https://design.penpot.app); set it to the self-host from tools/penpot/.
++# PENPOT_ACCESS_TOKEN rides --update-secrets above.
++if [[ -n "${PENPOT_API_URL:-}" ]]; then
++    printf 'PENPOT_API_URL: "%s"\n' "${PENPOT_API_URL}" >> "${env_file}"
++fi
++
++
+ # Preserve-unknowns merge: the live service's literal env vars are the source of
+ # truth for anything this script doesn't already know about. `gcloud run deploy
+ # --env-vars-file` REPLACES the entire literal-env set, so any var set by hand
+diff --git a/src/app.ts b/src/app.ts
+index bf4073b..acfcac0 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -70,6 +70,7 @@ import esignRoutes from './routes/esignRoutes';
+ import photoRoutes from './routes/photoRoutes';
+ import broadcastRoutes from './routes/broadcastRoutes';
+ import linkRoutes from './routes/linkRoutes';
++import designRoutes from './routes/designRoutes';
+ import remoteRoutes from './routes/remoteRoutes';
+ import { seedDefaultUsers } from './services/authService';
+ import { seedRecurringTasks, startScheduler } from './services/agentScheduler';
+@@ -434,6 +435,7 @@ app.use('/api/photos', authenticate, photoRoutes); // plan 053 — Immich Photo
+ app.use('/api/broadcasts', createAuditMiddleware('/api/broadcasts'), authenticate, broadcastRoutes); // plan 047 p2 — listmonk proxy (503 until LISTMONK_* env is set); audit = who-sent-what log
+ app.use('/api/links', createAuditMiddleware('/api/links'), authenticate, linkRoutes); // plan 047 p2 — Dub short-links proxy (503 until DUB_API_KEY is set)
+ app.use('/api/remote', authenticate, remoteRoutes); // plan 053 — RustDesk relay TCP probe (503 until RUSTDESK_RELAY_HOST is set)
++app.use('/api/design', authenticate, designRoutes); // plan 053 — Penpot RPC proxy, read-only (503 until PENPOT_ACCESS_TOKEN is set)
+ 
+ // ── Proprietary Features (5 features AppFolio doesn't have) ──
+ app.use('/api/lease-coach', leaseCoachRoutes);
+diff --git a/src/routes/designRoutes.ts b/src/routes/designRoutes.ts
+new file mode 100644
+index 0000000..6fc557e
+--- /dev/null
++++ b/src/routes/designRoutes.ts
+@@ -0,0 +1,162 @@
++/**
++ * Design Routes — Penpot backend proxy (plan 053).
++ *
++ * Mounted at /api/design behind `authenticate` (app.ts). The browser never
++ * sees a Penpot credential: PENPOT_API_URL + PENPOT_ACCESS_TOKEN live here
++ * only. While PENPOT_ACCESS_TOKEN is unset, every route answers 503 with
++ * `needsSetup: true` so the Design Studio widget renders its setup card —
++ * never a crash.
++ *
++ *   GET /api/design/projects                    Penpot projects across the user's teams
++ *   GET /api/design/projects/:projectId/files   files in one project
++ *   GET /api/design/files/:fileId/export        proxy the portable `.penpot` binary
++ *
++ * Upstream = Penpot's documented RPC API. Auth is a personal access token in
++ * `Authorization: Token <token>` (help.penpot.app/technical-guide/integration/
++ * #access-tokens). Calls are POST to `{base}/api/rpc/command/<name>` with a
++ * JSON body; `Accept: application/json` is REQUIRED because Penpot's default
++ * encoding is application/transit+json (documented under "Content Negotiation"
++ * at https://design.penpot.app/api/main/doc).
++ *
++ * Commands used (snapshot in tests/fixtures/penpot-rpc-commands.json; the
++ * drift-guard test fails if any disappears from that snapshot):
++ *   get-teams          {}                                            → [Team]
++ *   get-projects       {teamId}                                      → [Project]
++ *   get-project-files  {projectId}                                   → [File]
++ *   export-binfile     {fileId, includeLibraries, embedAssets}       → .penpot binary
++ *
++ * NOT proxied on purpose: PNG/PDF/SVG *render* export is done by the separate
++ * `penpot-exporter` service, whose HTTP endpoint is an internal implementation
++ * detail rather than a documented API surface
++ * (help.penpot.app/technical-guide/developer/architecture/exporter/). Render
++ * exports stay in Penpot's own UI. No endpoint here is written from memory.
++ *
++ * Management-gated, read-only: this proxy never creates, mutates or deletes
++ * anything in Penpot.
++ */
++import { Router, Request, Response } from 'express';
++import { requireRole } from '../services/authMiddleware';
++
++const router = Router();
++
++/** Every upstream RPC command this proxy calls — asserted by tests/designRoutes.test.ts. */
++export const PENPOT_COMMANDS_USED = [
++    'get-teams',
++    'get-projects',
++    'get-project-files',
++    'export-binfile',
++] as const;
++
++/** Penpot's free cloud — the proxy works against it; the self-host is only needed for the iframe. */
++export const PENPOT_DEFAULT_API_URL = 'https://design.penpot.app';
++
++interface PenpotConfig { baseUrl: string; token: string; }
++
++function penpotConfig(): PenpotConfig | null {
++    const token = process.env.PENPOT_ACCESS_TOKEN;
++    if (!token) return null;
++    return {
++        baseUrl: (process.env.PENPOT_API_URL || PENPOT_DEFAULT_API_URL).replace(/\/+$/, ''),
++        token,
++    };
++}
++
++/** 503 body the frontend keys its needs-setup empty state on. */
++const NOT_CONFIGURED = {
++    success: false,
++    error: 'Penpot is not configured — set PENPOT_ACCESS_TOKEN (and optionally PENPOT_API_URL) on the backend',
++    needsSetup: true,
++} as const;
++
++/**
++ * One RPC call. `Authorization: Token <token>` (no "Bearer"); Accept forces
++ * JSON over Penpot's default transit encoding.
++ */
++function penpotRpc(cfg: PenpotConfig, command: string, params: Record<string, unknown>): Promise<globalThis.Response> {
++    return fetch(`${cfg.baseUrl}/api/rpc/command/${command}`, {
++        method: 'POST',
++        headers: {
++            Authorization: `Token ${cfg.token}`,
++            'Content-Type': 'application/json',
++            Accept: 'application/json',
++        },
++        body: JSON.stringify(params),
++    });
++}
++
++/** RPC returning JSON; null on any upstream failure (callers turn that into a 502). */
++async function rpcJson(cfg: PenpotConfig, command: string, params: Record<string, unknown>): Promise<any | null> {
++    const res = await penpotRpc(cfg, command, params);
++    if (!res.ok) return null;
++    return await res.json().catch(() => null);
++}
++
++router.get('/projects', requireRole('management'), async (_req: Request, res: Response) => {
++    const cfg = penpotConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const teams = await rpcJson(cfg, 'get-teams', {});
++        if (!Array.isArray(teams)) { res.status(502).json({ success: false, error: 'Penpot get-teams failed' }); return; }
++        const out: Array<{ id: string; name: string; teamId: string; teamName: string }> = [];
++        for (const team of teams) {
++            const teamId = String(team?.id ?? '');
++            if (!teamId) continue;
++            const projects = await rpcJson(cfg, 'get-projects', { teamId });
++            if (!Array.isArray(projects)) continue;
++            for (const p of projects) {
++                out.push({
++                    id: String(p?.id ?? ''),
++                    name: String(p?.name ?? 'Untitled'),
++                    teamId,
++                    teamName: String(team?.name ?? 'Team'),
++                });
++            }
++        }
++        res.json({ success: true, data: out });
++    } catch {
++        res.status(502).json({ success: false, error: 'Penpot is unreachable' });
++    }
++});
++
++router.get('/projects/:projectId/files', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = penpotConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const files = await rpcJson(cfg, 'get-project-files', { projectId: req.params.projectId });
++        if (!Array.isArray(files)) { res.status(502).json({ success: false, error: 'Penpot get-project-files failed' }); return; }
++        res.json({
++            success: true,
++            data: files.map((f: any) => ({
++                id: String(f?.id ?? ''),
++                name: String(f?.name ?? 'Untitled'),
++                modifiedAt: f?.modifiedAt ? String(f.modifiedAt) : null,
++            })),
++        });
++    } catch {
++        res.status(502).json({ success: false, error: 'Penpot is unreachable' });
++    }
++});
++
++router.get('/files/:fileId/export', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = penpotConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        // export-binfile returns the portable `.penpot` archive (importable into
++        // any Penpot instance). includeLibraries/embedAssets keep the download
++        // self-contained so a restore needs nothing else.
++        const upstream = await penpotRpc(cfg, 'export-binfile', {
++            fileId: req.params.fileId,
++            includeLibraries: true,
++            embedAssets: true,
++        });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Penpot export failed (${upstream.status})` }); return; }
++        const buf = Buffer.from(await upstream.arrayBuffer());
++        res.setHeader('Content-Type', 'application/octet-stream');
++        res.setHeader('Content-Disposition', `attachment; filename="${req.params.fileId}.penpot"`);
++        res.send(buf);
++    } catch {
++        res.status(502).json({ success: false, error: 'Penpot is unreachable' });
++    }
++});
++
++export default router;
+diff --git a/tests/designRoutes.test.ts b/tests/designRoutes.test.ts
+new file mode 100644
+index 0000000..ef1627b
+--- /dev/null
++++ b/tests/designRoutes.test.ts
+@@ -0,0 +1,159 @@
++/**
++ * /api/design — Penpot RPC proxy (plan 053).
++ *
++ * Env unset → 503 needsSetup:true everywhere (never a crash); token set +
++ * mocked Penpot → projects fan out over teams, files list, export streams the
++ * `.penpot` binary. Drift guard pins every RPC command + the auth header
++ * format to the snapshot of Penpot's published API doc.
++ */
++import { makeApp, createTestUser, TestUser } from './helpers/harness';
++
++const ENV_KEYS = ['PENPOT_API_URL', 'PENPOT_ACCESS_TOKEN'] as const;
++const savedEnv: Record<string, string | undefined> = {};
++beforeAll(() => { for (const k of ENV_KEYS) savedEnv[k] = process.env[k]; });
++beforeEach(() => { for (const k of ENV_KEYS) delete process.env[k]; });
++afterAll(() => {
++    for (const k of ENV_KEYS) {
++        if (savedEnv[k] === undefined) delete process.env[k]; else process.env[k] = savedEnv[k];
++    }
++});
++
++function jsonResponse(body: unknown, status = 200) {
++    return {
++        ok: status >= 200 && status < 300,
++        status,
++        json: async () => body,
++        arrayBuffer: async () => new ArrayBuffer(0),
++        headers: { get: () => 'application/json' },
++    };
++}
++
++describe('/api/design env gate (Penpot not configured)', () => {
++    let mgmt: TestUser;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++
++    it('503 with needsSetup:true on every route when PENPOT_ACCESS_TOKEN is unset', async () => {
++        const calls = [
++            () => makeApp().get('/api/design/projects').set('Authorization', mgmt.authHeader),
++            () => makeApp().get('/api/design/projects/p1/files').set('Authorization', mgmt.authHeader),
++            () => makeApp().get('/api/design/files/f1/export').set('Authorization', mgmt.authHeader),
++        ];
++        for (const call of calls) {
++            const r = await call();
++            expect(r.status).toBe(503);
++            expect(r.body.success).toBe(false);
++            expect(r.body.needsSetup).toBe(true);
++            expect(r.body.error).toMatch(/PENPOT_ACCESS_TOKEN/);
++        }
++    });
++
++    it('401 without a session (authenticate runs before the env gate)', async () => {
++        const r = await makeApp().get('/api/design/projects');
++        expect(r.status).toBe(401);
++    });
++
++    it('403 for a tenant session (management-gated) — role checked before env', async () => {
++        const tenant = await createTestUser({ role: 'tenant' });
++        const r = await makeApp().get('/api/design/projects').set('Authorization', tenant.authHeader);
++        expect(r.status).toBe(403);
++    });
++});
++
++describe('/api/design with Penpot mocked', () => {
++    let mgmt: TestUser;
++    const realFetch = (global as any).fetch;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++    afterEach(() => { (global as any).fetch = realFetch; });
++
++    it('GET /projects fans get-projects out over every team from get-teams; Token auth + Accept: application/json', async () => {
++        process.env.PENPOT_ACCESS_TOKEN = 'penpot_tok';
++        const calls: Array<{ url: string; headers: any; body: any }> = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            const u = String(url);
++            calls.push({ url: u, headers: init?.headers, body: init?.body ? JSON.parse(init.body) : null });
++            if (u.endsWith('/api/rpc/command/get-teams')) return jsonResponse([{ id: 't1', name: 'Dwellium' }]);
++            if (u.endsWith('/api/rpc/command/get-projects')) return jsonResponse([{ id: 'p1', name: 'Marketing' }]);
++            return jsonResponse({}, 404);
++        };
++        const r = await makeApp().get('/api/design/projects').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.body.data).toEqual([{ id: 'p1', name: 'Marketing', teamId: 't1', teamName: 'Dwellium' }]);
++        // default base is the free cloud; auth + content negotiation per the docs
++        expect(calls[0].url).toBe('https://design.penpot.app/api/rpc/command/get-teams');
++        expect(calls[0].headers.Authorization).toBe('Token penpot_tok');
++        expect(calls[0].headers.Accept).toBe('application/json');
++        expect(calls[1].body).toEqual({ teamId: 't1' });
++    });
++
++    it('PENPOT_API_URL re-points the proxy at a self-host (trailing slash trimmed)', async () => {
++        process.env.PENPOT_ACCESS_TOKEN = 'penpot_tok';
++        process.env.PENPOT_API_URL = 'https://design.dwellium.com/';
++        const urls: string[] = [];
++        (global as any).fetch = async (url: unknown) => { urls.push(String(url)); return jsonResponse([]); };
++        await makeApp().get('/api/design/projects').set('Authorization', mgmt.authHeader);
++        expect(urls[0]).toBe('https://design.dwellium.com/api/rpc/command/get-teams');
++    });
++
++    it('GET /projects/:id/files maps get-project-files onto id/name/modifiedAt', async () => {
++        process.env.PENPOT_ACCESS_TOKEN = 'penpot_tok';
++        let sentBody: any = null;
++        (global as any).fetch = async (_url: unknown, init?: any) => {
++            sentBody = JSON.parse(init.body);
++            return jsonResponse([{ id: 'f1', name: 'August flyer', modifiedAt: '2026-08-20T00:00:00Z', revn: 3 }]);
++        };
++        const r = await makeApp().get('/api/design/projects/p1/files').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(sentBody).toEqual({ projectId: 'p1' });
++        expect(r.body.data).toEqual([{ id: 'f1', name: 'August flyer', modifiedAt: '2026-08-20T00:00:00Z' }]);
++    });
++
++    it('GET /files/:id/export proxies the .penpot binary as an attachment', async () => {
++        process.env.PENPOT_ACCESS_TOKEN = 'penpot_tok';
++        let sentBody: any = null;
++        (global as any).fetch = async (_url: unknown, init?: any) => {
++            sentBody = JSON.parse(init.body);
++            return { ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('PENPOTBIN').buffer, json: async () => ({}), headers: { get: () => 'application/octet-stream' } };
++        };
++        const r = await makeApp().get('/api/design/files/f1/export').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(sentBody).toEqual({ fileId: 'f1', includeLibraries: true, embedAssets: true });
++        expect(r.headers['content-disposition']).toContain('f1.penpot');
++    });
++
++    it('upstream failure → 502, never a crash or a partial body', async () => {
++        process.env.PENPOT_ACCESS_TOKEN = 'penpot_tok';
++        (global as any).fetch = async () => jsonResponse({ error: 'nope' }, 401);
++        const r = await makeApp().get('/api/design/projects').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(502);
++        expect(r.body.success).toBe(false);
++    });
++
++    it('Penpot unreachable (fetch throws) → 502', async () => {
++        process.env.PENPOT_ACCESS_TOKEN = 'penpot_tok';
++        (global as any).fetch = async () => { throw new Error('ECONNREFUSED'); };
++        const r = await makeApp().get('/api/design/projects').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(502);
++        expect(r.body.error).toMatch(/unreachable/i);
++    });
++});
++
++describe('Penpot RPC drift guard', () => {
++    it('every RPC command the proxy calls exists in the published API-doc snapshot (tests/fixtures)', () => {
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const { PENPOT_COMMANDS_USED, PENPOT_DEFAULT_API_URL } = require('../src/routes/designRoutes');
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const spec = require('./fixtures/penpot-rpc-commands.json');
++        expect(spec.source).toBe('https://design.penpot.app/api/main/doc');
++        expect(spec.authScheme).toMatchObject({ header: 'Authorization', format: 'Token <access-token>' });
++        expect(spec.rpcPathTemplate).toBe('/api/rpc/command/{command}');
++        expect(PENPOT_DEFAULT_API_URL).toBe('https://design.penpot.app');
++        for (const c of PENPOT_COMMANDS_USED) expect(Object.keys(spec.commands)).toContain(c);
++        // param shapes we actually send, as published
++        expect(spec.commands['get-projects'].params).toContain('teamId: uuid');
++        expect(spec.commands['get-project-files'].params).toContain('projectId: uuid');
++        expect(spec.commands['export-binfile'].params).toContain('includeLibraries: boolean');
++        // rendered exports are deliberately NOT proxied — that surface is undocumented
++        expect(Object.keys(spec.commands)).not.toContain('export-shapes');
++        expect(spec.notProxied.renderExport.formats).toContain('PDF');
++    });
++});
+diff --git a/tests/fixtures/penpot-rpc-commands.json b/tests/fixtures/penpot-rpc-commands.json
+new file mode 100644
+index 0000000..c13d162
+--- /dev/null
++++ b/tests/fixtures/penpot-rpc-commands.json
+@@ -0,0 +1,52 @@
++{
++ "source": "https://design.penpot.app/api/main/doc",
++ "note": "Penpot's backend API documentation, generated automatically from source code and linked from the Integration Guide. /api/_doc and /api/doc both 308-redirect here. There is no OpenAPI/Swagger JSON: https://design.penpot.app/api/openapi.json returns HTTP 404 (checked 2026-08-23), so this snapshot is extracted from the published HTML doc page rather than a machine spec.",
++ "docPages": [
++  "https://help.penpot.app/technical-guide/integration/",
++  "https://design.penpot.app/api/main/doc"
++ ],
++ "fetchedAt": "2026-08-23",
++ "authScheme": {
++  "header": "Authorization",
++  "format": "Token <access-token>",
++  "source": "https://help.penpot.app/technical-guide/integration/#access-tokens",
++  "curlExample": "curl -H \"Authorization: Token <replace-this-with-token>\" https://design.penpot.app/api/rpc/command/get-profile"
++ },
++ "rpcPathTemplate": "/api/rpc/command/{command}",
++ "contentNegotiation": {
++  "accepts": ["application/json", "application/transit+json"],
++  "default": "application/transit+json",
++  "note": "The doc's Content Negotiation section: specify the desired content-type on the Accept header; transit encoding is used by default. The proxy therefore sends Accept: application/json explicitly."
++ },
++ "commands": {
++  "get-teams": {
++   "params": "type GetTeams { }",
++   "addedIn": "v1.17",
++   "labels": ["AUTH", "SCHEMA"]
++  },
++  "get-projects": {
++   "params": "type GetProjects { teamId: uuid }",
++   "addedIn": "v1.18",
++   "labels": ["AUTH", "SCHEMA"]
++  },
++  "get-project-files": {
++   "params": "type GetProjectFiles { projectId: uuid }",
++   "addedIn": "v1.17",
++   "docstring": "Get all files for the specified project.",
++   "labels": ["AUTH", "SCHEMA"]
++  },
++  "export-binfile": {
++   "params": "type ExportBinfile { fileId: uuid, includeLibraries: boolean, embedAssets: boolean }",
++   "addedIn": "v1.15",
++   "docstring": "Export a penpot file in a binary format.",
++   "labels": ["AUTH", "WEBHOOK", "SCHEMA"]
++  }
++ },
++ "notProxied": {
++  "renderExport": {
++   "formats": ["PNG", "JPEG", "WEBP", "SVG", "PDF"],
++   "reason": "Rendered exports are produced by the separate penpot-exporter service; its HTTP endpoints are an internal implementation detail, not part of the documented RPC surface. Not proxied rather than invented.",
++   "source": "https://help.penpot.app/technical-guide/developer/architecture/exporter/"
++  }
++ }
++}

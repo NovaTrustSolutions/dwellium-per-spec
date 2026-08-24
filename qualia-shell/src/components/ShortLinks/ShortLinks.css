@@ -121,3 +121,97 @@
     background: #fff;
     padding: 4px;
 }
+
+/* ── plan 053 additions ─────────────────────────────────────────────── */
+
+.short-links__head-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.short-links__head-actions a.short-links__btn { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+
+.short-links__presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.short-links__form--extras { margin-top: 8px; }
+
+.short-links__details { font-size: 12px; color: var(--text-secondary); }
+.short-links__details summary { cursor: pointer; font-weight: 600; }
+
+.short-links__tag-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; align-items: center; }
+.short-links__tag-option { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+.short-links__tag-new { display: inline-flex; align-items: center; gap: 4px; }
+
+.short-links__filters { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.short-links__chip {
+    display: inline-block;
+    margin: 0 4px 2px 0;
+    padding: 1px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.short-links__clicks { white-space: nowrap; }
+.short-links__spark { display: block; margin-top: 2px; color: var(--accent); }
+
+.short-links__confirm { display: inline-flex; align-items: center; gap: 4px; }
+
+.short-links__table tr[data-archived] td { opacity: 0.55; }
+
+.short-links__edit {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* ── QR door sheet ─────────────────────────────────────────────────── */
+
+.qr-door-sheet { display: flex; flex-direction: column; gap: 12px; }
+.qr-door-sheet__controls { display: flex; flex-direction: column; gap: 8px; }
+.qr-door-sheet__field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+.qr-door-sheet__field--wide { width: 100%; }
+.qr-door-sheet__units { font-family: inherit; resize: vertical; }
+.qr-door-sheet__actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.qr-door-sheet__title { margin: 0; font-size: 14px; }
+.qr-door-sheet__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+.qr-door-sheet__cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: #fff;
+    color: #000;
+    text-align: center;
+    font-size: 12px;
+}
+.qr-door-sheet__cell figcaption { display: flex; flex-direction: column; gap: 2px; }
+.qr-door-sheet__url { font-size: 9px; word-break: break-all; color: #444; }
+
+/* Print: only the generated sheet, black on white, page-break-safe cells. */
+@media print {
+    body * { visibility: hidden; }
+    .qr-door-sheet__print, .qr-door-sheet__print * { visibility: visible; }
+    .qr-door-sheet__print {
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        background: #fff;
+        color: #000;
+        padding: 16px;
+    }
+    .qr-door-sheet__cell { border: 1px solid #000; break-inside: avoid; }
+}

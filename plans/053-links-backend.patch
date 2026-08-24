@@ -1,0 +1,861 @@
+diff --git a/deploy/cloud-run.sh b/deploy/cloud-run.sh
+index d4f2a70..7bda4f5 100755
+--- a/deploy/cloud-run.sh
++++ b/deploy/cloud-run.sh
+@@ -179,6 +179,11 @@ if [[ -n "${DUB_WORKSPACE:-}" ]]; then
+     printf 'DUB_WORKSPACE: "%s"\n' "${DUB_WORKSPACE}" >> "${env_file}"
+ fi
+ 
++# plan 053 — optional default short-link domain (e.g. go.dwellium.com, added in the Dub dashboard).
++if [[ -n "${DUB_DOMAIN:-}" ]]; then
++    printf 'DUB_DOMAIN: "%s"\n' "${DUB_DOMAIN}" >> "${env_file}"
++fi
++
+ # plan 053 — Immich Photo Vault proxy base URL (public via Tailscale Funnel, or
+ # tailnet ts.net URL if the backend can reach the tailnet). API key rides
+ # --update-secrets above. Unset falls through to the preserve-unknowns merge.
+diff --git a/src/routes/linkRoutes.ts b/src/routes/linkRoutes.ts
+index 46571cb..4ba9116 100644
+--- a/src/routes/linkRoutes.ts
++++ b/src/routes/linkRoutes.ts
+@@ -1,19 +1,33 @@
+ /**
+- * Link Routes — Dub short-link backend proxy (plan 047, phase 2).
++ * Link Routes — Dub short-link backend proxy (plan 047 phase 2; plan 053 full sweep).
+  *
+  * Mounted at /api/links behind `authenticate` (app.ts). The browser never sees
+- * the Dub credential: DUB_API_KEY lives here only (dub.co free plan per the
+- * plan-047 addendum — ~25 links/mo, QR + API included). While the key is
+- * unset, every route answers 503 with `needsSetup: true`.
++ * the Dub credential: DUB_API_KEY lives here only. While the key is unset,
++ * every route answers 503 with `needsSetup: true`. NOTE (2026-08-23): the Dub
++ * pricing page lists no free plan — a paid workspace may be required; the
++ * frontend surfaces this honestly in its unconfigured state.
+  *
+- *   POST /api/links     create a short link (optional custom key) — returns shortLink + qrCode URL
+- *   GET  /api/links     list links with click counts
++ *   POST   /api/links            create a short link (key/domain/tags/UTM/expiry)
++ *   GET    /api/links            list links (tags + archived mirrored)
++ *   POST   /api/links/bulk       bulk create (≤100 links per call)
++ *   GET    /api/links/tags       list workspace tags
++ *   POST   /api/links/tags       create a tag
++ *   GET    /api/links/domains    list workspace domains
++ *   GET    /api/links/analytics  clicks analytics (groupBy=count|timeseries|top_links, optional linkId)
++ *   PATCH  /api/links/:id        update a link (url/key/tags/expiry/UTM/archived)
++ *   DELETE /api/links/:id        delete the link at Dub (the external_links mirror row is kept)
+  *
+- * Management-gated. Every created link is UPSERTed into the `external_links`
+- * SQLite table (dwelliumSchema.ts) keyed by UNIQUE(tool, external_type,
+- * external_id) — rows are never deleted (archive = soft flag in metadata).
+- * Dub API: Bearer auth against https://api.dub.co; QR PNG is served
+- * unauthenticated at GET {base}/qr?url=… (dub.co/docs/api-reference).
++ * Management-gated. Every created/updated link is UPSERTed into the
++ * `external_links` SQLite table (dwelliumSchema.ts) keyed by UNIQUE(tool,
++ * external_type, external_id) — rows are never deleted (repo data rule).
++ *
++ * Built against the PUBLISHED Dub OpenAPI (fetched 2026-08-23, HTTP 200):
++ *   https://dub.co/openapi.json   — "Dub API" v0.0.1, OpenAPI 3.0.3, 41 paths
++ * (byte-identical to the `openapi` reference in dubinc/docs docs.json,
++ * https://spec.speakeasy.com/dub/dub/dub-with-code-samples; note that
++ * https://spec.dub.co is a dead Vercel deployment / 404 on the fetch date).
++ * Snapshot: tests/fixtures/dub-openapi-paths.json; drift guard in
++ * tests/linkRoutes.test.ts keeps DUB_PATHS_USED honest.
+  */
+ import { Router, Request, Response } from 'express';
+ import { randomUUID } from 'crypto';
+@@ -22,7 +36,18 @@ import { database as db } from '../services/database';
+ 
+ const router = Router();
+ 
+-interface DubConfig { apiBase: string; apiKey: string; workspace?: string; }
++/** Every upstream path this proxy touches — asserted against the OpenAPI snapshot. */
++export const DUB_PATHS_USED = [
++    '/links',
++    '/links/{linkId}',
++    '/links/bulk',
++    '/tags',
++    '/domains',
++    '/analytics',
++    '/qr',
++] as const;
++
++interface DubConfig { apiBase: string; apiKey: string; workspace?: string; defaultDomain?: string; }
+ 
+ function dubConfig(): DubConfig | null {
+     const apiKey = process.env.DUB_API_KEY;
+@@ -31,13 +56,14 @@ function dubConfig(): DubConfig | null {
+         apiBase: (process.env.DUB_API_BASE || 'https://api.dub.co').replace(/\/+$/, ''),
+         apiKey,
+         workspace: process.env.DUB_WORKSPACE || undefined,
++        defaultDomain: process.env.DUB_DOMAIN || undefined,
+     };
+ }
+ 
+ /** 503 body the frontend keys its needs-setup empty state on. */
+ const NOT_CONFIGURED = {
+     success: false,
+-    error: 'Dub is not configured — set DUB_API_KEY (and optionally DUB_WORKSPACE) on the backend',
++    error: 'Dub is not configured — set DUB_API_KEY (and optionally DUB_WORKSPACE / DUB_DOMAIN) on the backend',
+     needsSetup: true,
+ } as const;
+ 
+@@ -55,13 +81,20 @@ function dubFetch(cfg: DubConfig, path: string, init?: RequestInit): Promise<glo
+     });
+ }
+ 
++interface LinkTag { id: string; name: string; color: string; }
++
+ interface LinkRow {
+     id: string;
+     shortLink: string;
+     url: string;
+     key: string;
++    domain: string;
+     clicks: number;
+     qrCode: string;
++    archived: boolean;
++    expiresAt: string | null;
++    tags: LinkTag[];
++    comments: string | null;
+     entityType?: string | null;
+     entityId?: string | null;
+ }
+@@ -73,10 +106,19 @@ function toLinkRow(cfg: DubConfig, raw: Record<string, any>): LinkRow {
+         shortLink,
+         url: raw.url || '',
+         key: raw.key || '',
++        domain: raw.domain || '',
+         clicks: typeof raw.clicks === 'number' ? raw.clicks : 0,
+         // Dub returns a hosted qrCode URL on the link object; fall back to the
+         // unauthenticated QR endpoint for older shapes.
+         qrCode: raw.qrCode || `${cfg.apiBase}/qr?url=${encodeURIComponent(shortLink)}`,
++        archived: raw.archived === true,
++        expiresAt: typeof raw.expiresAt === 'string' ? raw.expiresAt : null,
++        tags: Array.isArray(raw.tags)
++            ? raw.tags
++                .filter((t: unknown) => t && typeof t === 'object')
++                .map((t: Record<string, any>) => ({ id: String(t.id ?? ''), name: String(t.name ?? ''), color: String(t.color ?? '') }))
++            : [],
++        comments: typeof raw.comments === 'string' ? raw.comments : null,
+     };
+ }
+ 
+@@ -99,18 +141,43 @@ function upsertExternalLink(row: LinkRow, entityType?: string, entityId?: string
+         entityId || null,
+         row.id,
+         row.shortLink,
+-        JSON.stringify({ url: row.url, key: row.key, clicks: row.clicks, qrCode: row.qrCode }),
++        JSON.stringify({
++            url: row.url, key: row.key, clicks: row.clicks, qrCode: row.qrCode,
++            archived: row.archived, expiresAt: row.expiresAt, tags: row.tags.map(t => t.name),
++        }),
+     );
+ }
+ 
++const URL_RE = /^https?:\/\/\S+$/i;
++const UTM_FIELDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const;
++
++/**
++ * Whitelist the writable Dub link fields from a request body. Used by
++ * create, bulk create and update so the three stay in lockstep.
++ */
++function pickLinkFields(body: Record<string, any>, cfg: DubConfig, forCreate: boolean): Record<string, unknown> {
++    const out: Record<string, unknown> = {};
++    if (typeof body.key === 'string' && body.key.trim()) out.key = body.key.trim();
++    const domain = typeof body.domain === 'string' && body.domain.trim() ? body.domain.trim() : (forCreate ? cfg.defaultDomain : undefined);
++    if (domain) out.domain = domain;
++    if (Array.isArray(body.tagNames)) {
++        const names = body.tagNames.filter((t: unknown) => typeof t === 'string' && (t as string).trim()).map((t: string) => t.trim());
++        if (names.length) out.tagNames = names;
++    }
++    if (typeof body.expiresAt === 'string' && body.expiresAt.trim()) out.expiresAt = body.expiresAt.trim();
++    if (body.expiresAt === null) out.expiresAt = null; // clear expiry on update
++    if (typeof body.archived === 'boolean') out.archived = body.archived;
++    if (typeof body.comments === 'string' && body.comments.trim()) out.comments = body.comments.trim();
++    for (const f of UTM_FIELDS) if (typeof body[f] === 'string' && body[f].trim()) out[f] = body[f].trim();
++    return out;
++}
++
+ router.post('/', requireRole('management'), async (req: Request, res: Response) => {
+     const cfg = dubConfig();
+     if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
+-    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as {
+-        url?: string; key?: string; entityType?: string; entityId?: string;
+-    };
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, any>;
+     const url = typeof body.url === 'string' ? body.url.trim() : '';
+-    if (!/^https?:\/\/\S+$/i.test(url)) {
++    if (!URL_RE.test(url)) {
+         res.status(400).json({ success: false, error: 'A valid http(s) url is required' });
+         return;
+     }
+@@ -119,7 +186,7 @@ router.post('/', requireRole('management'), async (req: Request, res: Response)
+             method: 'POST',
+             body: JSON.stringify({
+                 url,
+-                ...(typeof body.key === 'string' && body.key.trim() ? { key: body.key.trim() } : {}),
++                ...pickLinkFields(body, cfg, true),
+                 ...(body.entityType && body.entityId ? { externalId: `${body.entityType}:${body.entityId}` } : {}),
+             }),
+         });
+@@ -134,11 +201,12 @@ router.post('/', requireRole('management'), async (req: Request, res: Response)
+     }
+ });
+ 
+-router.get('/', requireRole('management'), async (_req: Request, res: Response) => {
++router.get('/', requireRole('management'), async (req: Request, res: Response) => {
+     const cfg = dubConfig();
+     if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
+     try {
+-        const upstream = await dubFetch(cfg, '/links?page=1&pageSize=100');
++        const showArchived = req.query.showArchived === 'true';
++        const upstream = await dubFetch(cfg, `/links?page=1&pageSize=100${showArchived ? '&showArchived=true' : ''}`);
+         if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub link list failed (${upstream.status})` }); return; }
+         const body = (await upstream.json().catch(() => null)) as unknown;
+         const rawLinks: Record<string, any>[] = Array.isArray(body)
+@@ -152,4 +220,167 @@ router.get('/', requireRole('management'), async (_req: Request, res: Response)
+     }
+ });
+ 
++/** Bulk create — Dub POST /links/bulk takes an ARRAY body, max 100 per call. */
++router.post('/bulk', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as { links?: unknown };
++    const links = Array.isArray(body.links) ? body.links : [];
++    if (links.length === 0 || links.length > 100) {
++        res.status(400).json({ success: false, error: 'links must be a non-empty array of at most 100 entries' });
++        return;
++    }
++    const payload: Record<string, unknown>[] = [];
++    for (const entry of links) {
++        const e = (entry && typeof entry === 'object' ? entry : {}) as Record<string, any>;
++        const url = typeof e.url === 'string' ? e.url.trim() : '';
++        if (!URL_RE.test(url)) {
++            res.status(400).json({ success: false, error: `Every bulk entry needs a valid http(s) url (bad: ${JSON.stringify(e.url ?? null)})` });
++            return;
++        }
++        payload.push({ url, ...pickLinkFields(e, cfg, true) });
++    }
++    try {
++        const upstream = await dubFetch(cfg, '/links/bulk', { method: 'POST', body: JSON.stringify(payload) });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub bulk create failed (${upstream.status})` }); return; }
++        const raw = (await upstream.json().catch(() => null)) as unknown;
++        const created: Record<string, any>[] = Array.isArray(raw)
++            ? raw
++            : Array.isArray((raw as Record<string, any> | null)?.created) ? (raw as Record<string, any>).created : [];
++        const rows = created.filter(l => l && l.id).map(l => toLinkRow(cfg, l));
++        for (const row of rows) upsertExternalLink(row);
++        res.status(201).json({ success: true, data: rows });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
++router.get('/tags', requireRole('management'), async (_req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await dubFetch(cfg, '/tags?pageSize=100');
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub tag list failed (${upstream.status})` }); return; }
++        const raw = (await upstream.json().catch(() => null)) as unknown;
++        const tags: LinkTag[] = (Array.isArray(raw) ? raw : [])
++            .filter((t: unknown) => t && typeof t === 'object' && (t as Record<string, any>).id)
++            .map((t: Record<string, any>) => ({ id: String(t.id), name: String(t.name ?? ''), color: String(t.color ?? '') }));
++        res.json({ success: true, data: tags });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
++router.post('/tags', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as { name?: string; color?: string };
++    const name = typeof body.name === 'string' ? body.name.trim() : '';
++    if (!name) { res.status(400).json({ success: false, error: 'A tag name is required' }); return; }
++    try {
++        const upstream = await dubFetch(cfg, '/tags', {
++            method: 'POST',
++            body: JSON.stringify({ name, ...(typeof body.color === 'string' && body.color ? { color: body.color } : {}) }),
++        });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub tag create failed (${upstream.status})` }); return; }
++        const raw = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        res.status(201).json({ success: true, data: { id: String(raw.id ?? ''), name: String(raw.name ?? name), color: String(raw.color ?? '') } });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
++router.get('/domains', requireRole('management'), async (_req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await dubFetch(cfg, '/domains?pageSize=50');
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub domain list failed (${upstream.status})` }); return; }
++        const raw = (await upstream.json().catch(() => null)) as unknown;
++        const domains = (Array.isArray(raw) ? raw : [])
++            .filter((d: unknown) => d && typeof d === 'object' && (d as Record<string, any>).slug)
++            .map((d: Record<string, any>) => ({
++                id: String(d.id ?? ''), slug: String(d.slug), verified: d.verified === true,
++                primary: d.primary === true, archived: d.archived === true,
++            }));
++        res.json({ success: true, data: domains, defaultDomain: cfg.defaultDomain ?? null });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
++const ANALYTICS_GROUP_BY = new Set(['count', 'timeseries', 'top_links']);
++const ANALYTICS_INTERVALS = new Set(['24h', '7d', '30d', '90d', '1y', 'mtd', 'qtd', 'ytd', 'all']);
++
++/**
++ * Clicks analytics — Dub GET /analytics with event=clicks.
++ *   ?groupBy=count|timeseries|top_links (default timeseries)
++ *   ?linkId=…  scope to one link        ?interval=24h|7d|30d|90d|1y|mtd|qtd|ytd|all (default 30d)
++ */
++router.get('/analytics', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const groupBy = typeof req.query.groupBy === 'string' ? req.query.groupBy : 'timeseries';
++    const interval = typeof req.query.interval === 'string' ? req.query.interval : '30d';
++    if (!ANALYTICS_GROUP_BY.has(groupBy)) { res.status(400).json({ success: false, error: `groupBy must be one of ${[...ANALYTICS_GROUP_BY].join(', ')}` }); return; }
++    if (!ANALYTICS_INTERVALS.has(interval)) { res.status(400).json({ success: false, error: `interval must be one of ${[...ANALYTICS_INTERVALS].join(', ')}` }); return; }
++    const qs = new URLSearchParams({ event: 'clicks', groupBy, interval });
++    if (typeof req.query.linkId === 'string' && req.query.linkId) qs.set('linkId', req.query.linkId);
++    try {
++        const upstream = await dubFetch(cfg, `/analytics?${qs.toString()}`);
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub analytics failed (${upstream.status})` }); return; }
++        const raw = (await upstream.json().catch(() => null)) as unknown;
++        res.json({ success: true, groupBy, interval, data: raw ?? (groupBy === 'count' ? { clicks: 0 } : []) });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** Update a link — url / key / domain / tags / expiry / UTM / archived (soft archive lives here). */
++router.patch('/:id', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, any>;
++    const patch: Record<string, unknown> = pickLinkFields(body, cfg, false);
++    if (typeof body.url === 'string') {
++        const url = body.url.trim();
++        if (!URL_RE.test(url)) { res.status(400).json({ success: false, error: 'A valid http(s) url is required' }); return; }
++        patch.url = url;
++    }
++    if (Object.keys(patch).length === 0) { res.status(400).json({ success: false, error: 'Nothing to update' }); return; }
++    try {
++        const upstream = await dubFetch(cfg, `/links/${encodeURIComponent(req.params.id)}`, {
++            method: 'PATCH',
++            body: JSON.stringify(patch),
++        });
++        if (upstream.status === 404) { res.status(404).json({ success: false, error: 'Link not found at Dub' }); return; }
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub link update failed (${upstream.status})` }); return; }
++        const raw = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        if (!raw.id) { res.status(502).json({ success: false, error: 'Dub link update returned no id' }); return; }
++        const row = toLinkRow(cfg, raw);
++        upsertExternalLink(row);
++        res.json({ success: true, data: row });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
++/**
++ * Delete a link at Dub. The external_links mirror row is deliberately KEPT
++ * (upsert-only repo rule) — it simply stops being refreshed. The widget's
++ * default flow is archive (PATCH archived:true); delete is for cleanup.
++ */
++router.delete('/:id', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = dubConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const upstream = await dubFetch(cfg, `/links/${encodeURIComponent(req.params.id)}`, { method: 'DELETE' });
++        if (upstream.status === 404) { res.status(404).json({ success: false, error: 'Link not found at Dub' }); return; }
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Dub link delete failed (${upstream.status})` }); return; }
++        res.json({ success: true, deleted: req.params.id });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Dub unreachable: ${(err as Error).message}` });
++    }
++});
++
+ export default router;
+diff --git a/tests/fixtures/dub-openapi-paths.json b/tests/fixtures/dub-openapi-paths.json
+new file mode 100644
+index 0000000..e323c26
+--- /dev/null
++++ b/tests/fixtures/dub-openapi-paths.json
+@@ -0,0 +1,209 @@
++{
++ "source": "https://dub.co/openapi.json",
++ "sourceNote": "Dub published OpenAPI, fetched with curl (HTTP 200, 396500 bytes). Identical document to the openapi reference in dubinc/docs docs.json (https://spec.speakeasy.com/dub/dub/dub-with-code-samples). NOTE: https://spec.dub.co is a dead Vercel deployment (404 DEPLOYMENT_NOT_FOUND) as of this fetch date.",
++ "fetchedAt": "2026-08-23",
++ "title": "Dub API",
++ "version": "0.0.1",
++ "openapi": "3.0.3",
++ "servers": [
++  {
++   "url": "https://api.dub.co",
++   "description": "Production API"
++  }
++ ],
++ "securityScheme": {
++  "token": {
++   "type": "http",
++   "scheme": "bearer"
++  }
++ },
++ "analytics": {
++  "eventEnum": [
++   "clicks",
++   "leads",
++   "sales",
++   "composite"
++  ],
++  "groupByEnum": [
++   "count",
++   "timeseries",
++   "continents",
++   "regions",
++   "countries",
++   "cities",
++   "devices",
++   "browsers",
++   "os",
++   "trigger",
++   "triggers",
++   "referers",
++   "referer_urls",
++   "top_folders",
++   "top_link_tags",
++   "top_domains",
++   "top_links",
++   "top_urls",
++   "top_base_urls",
++   "top_partners",
++   "top_groups",
++   "top_partner_tags",
++   "utm_sources",
++   "utm_mediums",
++   "utm_campaigns",
++   "utm_terms",
++   "utm_contents"
++  ],
++  "intervalEnum": [
++   "24h",
++   "7d",
++   "30d",
++   "90d",
++   "1y",
++   "mtd",
++   "qtd",
++   "ytd",
++   "all"
++  ]
++ },
++ "paths": {
++  "/links": [
++   "GET",
++   "POST"
++  ],
++  "/links/count": [
++   "GET"
++  ],
++  "/links/info": [
++   "GET"
++  ],
++  "/links/{linkId}": [
++   "PATCH",
++   "DELETE"
++  ],
++  "/links/bulk": [
++   "POST",
++   "PATCH",
++   "DELETE"
++  ],
++  "/links/upsert": [
++   "PUT"
++  ],
++  "/analytics": [
++   "GET"
++  ],
++  "/events": [
++   "GET"
++  ],
++  "/tags": [
++   "GET",
++   "POST"
++  ],
++  "/tags/{id}": [
++   "PATCH",
++   "DELETE"
++  ],
++  "/folders": [
++   "GET",
++   "POST"
++  ],
++  "/folders/{id}": [
++   "PATCH",
++   "DELETE"
++  ],
++  "/domains": [
++   "GET",
++   "POST"
++  ],
++  "/domains/{slug}": [
++   "PATCH",
++   "DELETE"
++  ],
++  "/domains/register": [
++   "POST"
++  ],
++  "/domains/status": [
++   "GET"
++  ],
++  "/track/lead": [
++   "POST"
++  ],
++  "/track/sale": [
++   "POST"
++  ],
++  "/track/open": [
++   "POST"
++  ],
++  "/customers": [
++   "GET"
++  ],
++  "/customers/{id}": [
++   "GET",
++   "PATCH",
++   "DELETE"
++  ],
++  "/partners": [
++   "GET",
++   "POST"
++  ],
++  "/partners/applications": [
++   "GET"
++  ],
++  "/partners/links": [
++   "GET",
++   "POST"
++  ],
++  "/partners/links/upsert": [
++   "PUT"
++  ],
++  "/partners/analytics": [
++   "GET"
++  ],
++  "/partners/applications/approve": [
++   "POST"
++  ],
++  "/partners/applications/reject": [
++   "POST"
++  ],
++  "/partners/ban": [
++   "POST"
++  ],
++  "/partners/deactivate": [
++   "POST"
++  ],
++  "/discount-codes": [
++   "GET",
++   "POST"
++  ],
++  "/discount-codes/{idOrCode}": [
++   "DELETE"
++  ],
++  "/commissions": [
++   "GET",
++   "POST"
++  ],
++  "/commissions/{id}": [
++   "PATCH"
++  ],
++  "/commissions/bulk": [
++   "PATCH"
++  ],
++  "/payouts": [
++   "GET"
++  ],
++  "/tokens/embed/referrals": [
++   "POST"
++  ],
++  "/qr": [
++   "GET"
++  ],
++  "/bounties/{bountyId}/submissions": [
++   "GET"
++  ],
++  "/bounties/{bountyId}/submissions/{submissionId}/approve": [
++   "POST"
++  ],
++  "/bounties/{bountyId}/submissions/{submissionId}/reject": [
++   "POST"
++  ]
++ }
++}
+diff --git a/tests/linkRoutes.test.ts b/tests/linkRoutes.test.ts
+index a4e20f8..b3a326b 100644
+--- a/tests/linkRoutes.test.ts
++++ b/tests/linkRoutes.test.ts
+@@ -13,7 +13,7 @@ import { makeApp, createTestUser, TestUser } from './helpers/harness';
+ // eslint-disable-next-line @typescript-eslint/no-var-requires
+ const { database: db } = require('../src/services/database');
+ 
+-const ENV_KEYS = ['DUB_API_KEY', 'DUB_WORKSPACE', 'DUB_API_BASE'] as const;
++const ENV_KEYS = ['DUB_API_KEY', 'DUB_WORKSPACE', 'DUB_API_BASE', 'DUB_DOMAIN'] as const;
+ const savedEnv: Record<string, string | undefined> = {};
+ beforeAll(() => { for (const k of ENV_KEYS) savedEnv[k] = process.env[k]; });
+ beforeEach(() => { for (const k of ENV_KEYS) delete process.env[k]; });
+@@ -51,6 +51,13 @@ describe('/api/links env gate (Dub not configured)', () => {
+         const calls = [
+             () => makeApp().get('/api/links').set('Authorization', mgmt.authHeader),
+             () => makeApp().post('/api/links').set('Authorization', mgmt.authHeader).send({ url: 'https://example.com' }),
++            () => makeApp().post('/api/links/bulk').set('Authorization', mgmt.authHeader).send({ links: [{ url: 'https://example.com' }] }),
++            () => makeApp().get('/api/links/tags').set('Authorization', mgmt.authHeader),
++            () => makeApp().post('/api/links/tags').set('Authorization', mgmt.authHeader).send({ name: 'woodland-parc' }),
++            () => makeApp().get('/api/links/domains').set('Authorization', mgmt.authHeader),
++            () => makeApp().get('/api/links/analytics').set('Authorization', mgmt.authHeader),
++            () => makeApp().patch('/api/links/link_1').set('Authorization', mgmt.authHeader).send({ archived: true }),
++            () => makeApp().delete('/api/links/link_1').set('Authorization', mgmt.authHeader),
+         ];
+         for (const call of calls) {
+             const r = await call();
+@@ -159,3 +166,235 @@ describe('/api/links (Dub mocked)', () => {
+         expect(r.body.error).toMatch(/unreachable/);
+     });
+ });
++
++describe('/api/links extended routes (Dub mocked) — plan 053', () => {
++    let mgmt: TestUser;
++    const realFetch = (global as any).fetch;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++    afterEach(() => { (global as any).fetch = realFetch; });
++
++    it('POST / passes domain (DUB_DOMAIN default), tagNames, expiresAt and UTM fields through', async () => {
++        setDubEnv();
++        process.env.DUB_DOMAIN = 'go.dwellium.com';
++        const bodies: Record<string, any>[] = [];
++        (global as any).fetch = async (_url: unknown, init?: { body?: string }) => {
++            bodies.push(JSON.parse(init?.body || '{}'));
++            return jsonResponse({ id: 'link_full', shortLink: 'https://go.dwellium.com/wp-portal', url: 'https://portal.example.com', key: 'wp-portal', domain: 'go.dwellium.com', clicks: 0, tags: [{ id: 'tag_1', name: 'woodland-parc', color: 'green' }], archived: false, expiresAt: '2027-01-01T00:00:00.000Z' });
++        };
++        const r = await makeApp().post('/api/links').set('Authorization', mgmt.authHeader).send({
++            url: 'https://portal.example.com',
++            key: 'wp-portal',
++            tagNames: ['woodland-parc', 'resident-portal'],
++            expiresAt: '2027-01-01T00:00:00.000Z',
++            utm_source: 'door-qr',
++            utm_campaign: 'unit-signage',
++        });
++        expect(r.status).toBe(201);
++        expect(bodies[0]).toMatchObject({
++            url: 'https://portal.example.com',
++            key: 'wp-portal',
++            domain: 'go.dwellium.com', // DUB_DOMAIN default applied
++            tagNames: ['woodland-parc', 'resident-portal'],
++            expiresAt: '2027-01-01T00:00:00.000Z',
++            utm_source: 'door-qr',
++            utm_campaign: 'unit-signage',
++        });
++        expect(r.body.data).toMatchObject({ domain: 'go.dwellium.com', archived: false, expiresAt: '2027-01-01T00:00:00.000Z' });
++        expect(r.body.data.tags).toEqual([{ id: 'tag_1', name: 'woodland-parc', color: 'green' }]);
++    });
++
++    it('PATCH /:id updates url/tags/expiry against Dub PATCH /links/{linkId} and re-mirrors the row', async () => {
++        setDubEnv();
++        const seen: Array<{ url: string; method: string; body: Record<string, any> }> = [];
++        (global as any).fetch = async (url: unknown, init?: { method?: string; body?: string }) => {
++            seen.push({ url: String(url), method: init?.method || 'GET', body: JSON.parse(init?.body || '{}') });
++            return jsonResponse({ id: 'link_upd', shortLink: 'https://dub.sh/upd', url: 'https://example.com/new', key: 'upd', clicks: 4, tags: [{ id: 't1', name: 'riverwood', color: 'blue' }] });
++        };
++        const r = await makeApp().patch('/api/links/link_upd').set('Authorization', mgmt.authHeader)
++            .send({ url: 'https://example.com/new', tagNames: ['riverwood'], expiresAt: null });
++        expect(r.status).toBe(200);
++        expect(seen[0].url).toBe('https://dub.test/links/link_upd');
++        expect(seen[0].method).toBe('PATCH');
++        expect(seen[0].body).toEqual({ url: 'https://example.com/new', tagNames: ['riverwood'], expiresAt: null });
++        expect(r.body.data).toMatchObject({ id: 'link_upd', url: 'https://example.com/new' });
++        expect(externalLinkRows('link_upd')).toHaveLength(1);
++    });
++
++    it('PATCH /:id with archived:true is the soft-archive path; bad url → 400; empty patch → 400', async () => {
++        setDubEnv();
++        const bodies: Record<string, any>[] = [];
++        (global as any).fetch = async (_url: unknown, init?: { body?: string }) => {
++            bodies.push(JSON.parse(init?.body || '{}'));
++            return jsonResponse({ id: 'link_arch', shortLink: 'https://dub.sh/arch', url: 'https://example.com', key: 'arch', clicks: 9, archived: true });
++        };
++        const r = await makeApp().patch('/api/links/link_arch').set('Authorization', mgmt.authHeader).send({ archived: true });
++        expect(r.status).toBe(200);
++        expect(bodies[0]).toEqual({ archived: true });
++        expect(r.body.data.archived).toBe(true);
++
++        expect((await makeApp().patch('/api/links/link_arch').set('Authorization', mgmt.authHeader).send({ url: 'nope' })).status).toBe(400);
++        expect((await makeApp().patch('/api/links/link_arch').set('Authorization', mgmt.authHeader).send({})).status).toBe(400);
++        expect(bodies).toHaveLength(1); // Dub called exactly once
++    });
++
++    it('DELETE /:id deletes at Dub but KEEPS the external_links mirror row; Dub 404 → 404', async () => {
++        setDubEnv();
++        // Seed a mirror row via POST first.
++        (global as any).fetch = async () => jsonResponse({ id: 'link_del', shortLink: 'https://dub.sh/del', url: 'https://example.com/del', key: 'del', clicks: 0 });
++        await makeApp().post('/api/links').set('Authorization', mgmt.authHeader).send({ url: 'https://example.com/del' });
++        expect(externalLinkRows('link_del')).toHaveLength(1);
++
++        const seen: Array<{ url: string; method: string }> = [];
++        (global as any).fetch = async (url: unknown, init?: { method?: string }) => {
++            seen.push({ url: String(url), method: init?.method || 'GET' });
++            return jsonResponse({ id: 'link_del' });
++        };
++        const r = await makeApp().delete('/api/links/link_del').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.body).toEqual({ success: true, deleted: 'link_del' });
++        expect(seen[0]).toEqual({ url: 'https://dub.test/links/link_del', method: 'DELETE' });
++        expect(externalLinkRows('link_del')).toHaveLength(1); // mirror row never deleted
++
++        (global as any).fetch = async () => jsonResponse({ error: 'not found' }, 404);
++        expect((await makeApp().delete('/api/links/link_gone').set('Authorization', mgmt.authHeader)).status).toBe(404);
++    });
++
++    it('GET /tags lists and POST /tags creates (name required)', async () => {
++        setDubEnv();
++        const seen: Array<{ url: string; method: string }> = [];
++        (global as any).fetch = async (url: unknown, init?: { method?: string }) => {
++            seen.push({ url: String(url), method: init?.method || 'GET' });
++            if (init?.method === 'POST') return jsonResponse({ id: 'tag_new', name: 'rent-payment', color: 'red' });
++            return jsonResponse([{ id: 'tag_1', name: 'woodland-parc', color: 'green' }, { id: 'tag_2', name: 'riverwood', color: 'blue' }]);
++        };
++        const list = await makeApp().get('/api/links/tags').set('Authorization', mgmt.authHeader);
++        expect(list.status).toBe(200);
++        expect(list.body.data).toEqual([
++            { id: 'tag_1', name: 'woodland-parc', color: 'green' },
++            { id: 'tag_2', name: 'riverwood', color: 'blue' },
++        ]);
++        expect(seen[0].url).toBe('https://dub.test/tags?pageSize=100');
++
++        const created = await makeApp().post('/api/links/tags').set('Authorization', mgmt.authHeader).send({ name: 'rent-payment', color: 'red' });
++        expect(created.status).toBe(201);
++        expect(created.body.data).toEqual({ id: 'tag_new', name: 'rent-payment', color: 'red' });
++        expect(seen[1]).toEqual({ url: 'https://dub.test/tags', method: 'POST' });
++
++        expect((await makeApp().post('/api/links/tags').set('Authorization', mgmt.authHeader).send({})).status).toBe(400);
++    });
++
++    it('GET /domains lists workspace domains and reports the DUB_DOMAIN default', async () => {
++        setDubEnv();
++        process.env.DUB_DOMAIN = 'go.dwellium.com';
++        const urls: string[] = [];
++        (global as any).fetch = async (url: unknown) => {
++            urls.push(String(url));
++            return jsonResponse([
++                { id: 'dom_1', slug: 'go.dwellium.com', verified: true, primary: true, archived: false },
++                { id: 'dom_2', slug: 'dub.sh', verified: true, primary: false, archived: false },
++            ]);
++        };
++        const r = await makeApp().get('/api/links/domains').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(urls[0]).toBe('https://dub.test/domains?pageSize=50');
++        expect(r.body.defaultDomain).toBe('go.dwellium.com');
++        expect(r.body.data).toEqual([
++            { id: 'dom_1', slug: 'go.dwellium.com', verified: true, primary: true, archived: false },
++            { id: 'dom_2', slug: 'dub.sh', verified: true, primary: false, archived: false },
++        ]);
++    });
++
++    it('GET /analytics proxies clicks timeseries / top_links / count with allow-listed params', async () => {
++        setDubEnv();
++        const urls: string[] = [];
++        (global as any).fetch = async (url: unknown) => {
++            urls.push(String(url));
++            if (String(url).includes('groupBy=timeseries')) return jsonResponse([{ start: '2026-08-01T00:00:00.000Z', clicks: 3 }, { start: '2026-08-02T00:00:00.000Z', clicks: 7 }]);
++            if (String(url).includes('groupBy=top_links')) return jsonResponse([{ id: 'link_1', shortLink: 'https://dub.sh/a', clicks: 12 }]);
++            return jsonResponse({ clicks: 42 });
++        };
++        const ts = await makeApp().get('/api/links/analytics?groupBy=timeseries&linkId=link_1&interval=7d').set('Authorization', mgmt.authHeader);
++        expect(ts.status).toBe(200);
++        expect(urls[0]).toBe('https://dub.test/analytics?event=clicks&groupBy=timeseries&interval=7d&linkId=link_1');
++        expect(ts.body).toMatchObject({ groupBy: 'timeseries', interval: '7d' });
++        expect(ts.body.data).toHaveLength(2);
++
++        const top = await makeApp().get('/api/links/analytics?groupBy=top_links').set('Authorization', mgmt.authHeader);
++        expect(top.status).toBe(200);
++        expect(urls[1]).toBe('https://dub.test/analytics?event=clicks&groupBy=top_links&interval=30d');
++        expect(top.body.data[0]).toMatchObject({ id: 'link_1', clicks: 12 });
++
++        const count = await makeApp().get('/api/links/analytics?groupBy=count&interval=all').set('Authorization', mgmt.authHeader);
++        expect(count.status).toBe(200);
++        expect(count.body.data).toEqual({ clicks: 42 });
++
++        expect((await makeApp().get('/api/links/analytics?groupBy=devices').set('Authorization', mgmt.authHeader)).status).toBe(400);
++        expect((await makeApp().get('/api/links/analytics?interval=2h').set('Authorization', mgmt.authHeader)).status).toBe(400);
++        expect(urls).toHaveLength(3); // invalid params never reach Dub
++    });
++
++    it('POST /bulk sends an ARRAY body to /links/bulk, mirrors created rows, validates entries', async () => {
++        setDubEnv();
++        const seen: Array<{ url: string; body: unknown }> = [];
++        (global as any).fetch = async (url: unknown, init?: { body?: string }) => {
++            seen.push({ url: String(url), body: JSON.parse(init?.body || 'null') });
++            return jsonResponse([
++                { id: 'blk_1', shortLink: 'https://dub.sh/u-101', url: 'https://example.com/maint?unit=101', key: 'u-101', clicks: 0 },
++                { id: 'blk_2', shortLink: 'https://dub.sh/u-102', url: 'https://example.com/maint?unit=102', key: 'u-102', clicks: 0 },
++            ]);
++        };
++        const r = await makeApp().post('/api/links/bulk').set('Authorization', mgmt.authHeader).send({
++            links: [
++                { url: 'https://example.com/maint?unit=101', key: 'u-101', tagNames: ['woodland-parc'] },
++                { url: 'https://example.com/maint?unit=102', key: 'u-102', tagNames: ['woodland-parc'] },
++            ],
++        });
++        expect(r.status).toBe(201);
++        expect(seen[0].url).toBe('https://dub.test/links/bulk');
++        expect(seen[0].body).toEqual([
++            { url: 'https://example.com/maint?unit=101', key: 'u-101', tagNames: ['woodland-parc'] },
++            { url: 'https://example.com/maint?unit=102', key: 'u-102', tagNames: ['woodland-parc'] },
++        ]);
++        expect(r.body.data).toHaveLength(2);
++        expect(externalLinkRows('blk_1')).toHaveLength(1);
++        expect(externalLinkRows('blk_2')).toHaveLength(1);
++
++        expect((await makeApp().post('/api/links/bulk').set('Authorization', mgmt.authHeader).send({ links: [] })).status).toBe(400);
++        expect((await makeApp().post('/api/links/bulk').set('Authorization', mgmt.authHeader)
++            .send({ links: [{ url: 'notaurl' }] })).status).toBe(400);
++        expect((await makeApp().post('/api/links/bulk').set('Authorization', mgmt.authHeader)
++            .send({ links: Array.from({ length: 101 }, (_, i) => ({ url: `https://example.com/${i}` })) })).status).toBe(400);
++        expect(seen).toHaveLength(1); // invalid payloads never reach Dub
++    });
++});
++
++describe('Dub OpenAPI drift guard', () => {
++    it('every upstream path the proxy uses exists in the published OpenAPI snapshot (tests/fixtures)', () => {
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const { DUB_PATHS_USED } = require('../src/routes/linkRoutes');
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const spec = require('./fixtures/dub-openapi-paths.json');
++        expect(spec.source).toBe('https://dub.co/openapi.json');
++        expect(spec.title).toBe('Dub API');
++        expect(spec.version).toBe('0.0.1');
++        expect(spec.servers[0].url).toBe('https://api.dub.co');
++        expect(spec.securityScheme.token).toMatchObject({ type: 'http', scheme: 'bearer' });
++        for (const p of DUB_PATHS_USED) expect(Object.keys(spec.paths)).toContain(p);
++        // The methods the proxy calls must exist on those paths.
++        expect(spec.paths['/links']).toEqual(expect.arrayContaining(['GET', 'POST']));
++        expect(spec.paths['/links/{linkId}']).toEqual(expect.arrayContaining(['PATCH', 'DELETE']));
++        expect(spec.paths['/links/bulk']).toEqual(expect.arrayContaining(['POST']));
++        expect(spec.paths['/tags']).toEqual(expect.arrayContaining(['GET', 'POST']));
++        expect(spec.paths['/domains']).toEqual(expect.arrayContaining(['GET']));
++        expect(spec.paths['/analytics']).toEqual(['GET']);
++        expect(spec.paths['/qr']).toEqual(['GET']);
++        // The analytics params the proxy sends are in the published enums.
++        expect(spec.analytics.eventEnum).toContain('clicks');
++        for (const g of ['count', 'timeseries', 'top_links']) expect(spec.analytics.groupByEnum).toContain(g);
++        for (const i of ['24h', '7d', '30d', '90d', '1y', 'mtd', 'qtd', 'ytd', 'all']) expect(spec.analytics.intervalEnum).toContain(i);
++        // Endpoints that do NOT exist upstream must never be reintroduced.
++        for (const bad of ['/links/{linkId}/qr', '/links/{linkId}/archive', '/tags/attach']) {
++            expect(Object.keys(spec.paths)).not.toContain(bad);
++        }
++    });
++});

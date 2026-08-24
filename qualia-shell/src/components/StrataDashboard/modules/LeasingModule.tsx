@@ -257,8 +257,15 @@ export default function LeasingModule() {
 
     // Plan 047: real e-signature via the Documenso backend proxy. While the
     // backend has no DOCUMENSO_* env it answers 503 → point at the Tools hub.
+    // Plan 053: recipients prefilled from the lease (applicant + co-applicant);
+    // the lease template default (DOCUMENSO_TEMPLATE_LEASE) stays backend-side.
     const sendForSignature = async (lease: Workitem) => {
-        const r = await sendForEsign(lease.id);
+        const md = (lease.metadata || {}) as Record<string, any>;
+        const recipients = [
+            { email: md.applicantEmail || md.tenantEmail, name: md.applicantName || md.tenantName || lease.title, role: 'SIGNER' },
+            ...(md.coApplicantEmail ? [{ email: md.coApplicantEmail, name: md.coApplicantName || md.coApplicantEmail, role: 'SIGNER' }] : []),
+        ].filter(r => typeof r.email === 'string' && r.email.includes('@'));
+        const r = await sendForEsign(lease.id, recipients.length > 0 ? { recipients } : undefined);
         if (r.kind === 'ok') {
             showToast('Sent for e-signature', 'success');
             fetchLeases();

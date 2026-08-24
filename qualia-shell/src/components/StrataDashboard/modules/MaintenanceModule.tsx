@@ -26,6 +26,8 @@ import ActionsLogList from './__maintenance/ActionsLogList';
 import LaborTable from './__maintenance/LaborTable';
 import PurchaseOrderLinks from './__maintenance/PurchaseOrderLinks';
 import { openPhotoVaultForUnit, unitFromTags } from '../../PhotoVault/photoVaultBridge'; // plan 053 — Photo Vault bridge
+// Plan 053 Whiteboard bridge — single import + single JSX line (see whiteboardBridge.tsx).
+import { WhiteboardAction } from '../../Whiteboard/whiteboardBridge';
 
 /* ── Sub-tab types ── */
 type MaintTab = 'work-orders' | 'recurring' | 'inspections' | 'unit-turns' | 'projects' | 'purchase-orders' | 'inventory' | 'fixed-assets' | 'history';
@@ -1024,6 +1026,8 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         <PenTool size={12} /> Sign Off
                     </button>
                 )}
+                {/* Plan 053: work-order whiteboard (boardId strata:maintenance:<id>) */}
+                <WhiteboardAction kind="maintenance" id={item.id} title={item.title} />
             </div>
 
             {/* ── Tags ── */}

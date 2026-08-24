@@ -1,0 +1,23 @@
+# excalidraw-room — official upstream image, unmodified (plan 053 #6).
+# Sized for a GCP e2-micro (2 vCPU burst / 1 GB RAM); the room server is a
+# stateless socket.io relay — scenes stay end-to-end encrypted in the clients,
+# nothing is persisted here.
+services:
+  excalidraw-room:
+    image: excalidraw/excalidraw-room:latest
+    container_name: excalidraw-room
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"   # bind loopback; Caddy/nginx terminates TLS in front
+    environment:
+      PORT: "80"
+    # e2-micro guard rails: one container must not OOM the box.
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

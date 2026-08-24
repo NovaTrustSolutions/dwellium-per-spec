@@ -1,11 +1,13 @@
 /**
- * Whiteboard widget — plan 047 phase 1 smoke suite (Excalidraw mocked; the
- * real canvas is not jsdom-safe). Covers: registry + dock + Tools hub wiring,
- * self-hosted asset path, theme prop mapping, initialData hydration from the
- * per-user store, and the debounced onChange → localStorage persist.
+ * Whiteboard widget — plan 047 phase 1 + plan 053 (Excalidraw mocked; the real
+ * canvas is not jsdom-safe). Covers: registry + dock + Tools hub wiring,
+ * self-hosted asset path, theme prop mapping, per-board initialData hydration,
+ * debounced onChange persist, unmount flush, boards list switching, library
+ * seeding/persistence, import (.excalidraw/.excalidrawlib), PNG/SVG/JSON
+ * export, notices, langCode and the honest collab states.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('../lib/oneSaveClient', () => ({
     ONE_SAVE_ENABLED: false,
@@ -17,38 +19,94 @@ vi.mock('../lib/oneSaveClient', () => ({
     },
 }));
 
-// jsdom-safe Excalidraw stub: records props, fires one onChange on mount.
-const captured = vi.hoisted(() => ({ props: [] as Array<Record<string, unknown>> }));
+// jsdom-safe Excalidraw stub: records props, exposes a fake imperative api,
+// fires one onChange on mount. Package utils are spies the tests assert on.
+const captured = vi.hoisted(() => ({
+    props: [] as Array<Record<string, unknown>>,
+    api: {
+        getSceneElements: vi.fn(() => [] as unknown[]),
+        getAppState: vi.fn(() => ({ viewBackgroundColor: '#111' })),
+        getFiles: vi.fn(() => ({})),
+        updateScene: vi.fn(),
+        addFiles: vi.fn(),
+        updateLibrary: vi.fn().mockResolvedValue([]),
+    },
+    exportToBlob: vi.fn(async (_opts: Record<string, unknown>) => new Blob(['png'], { type: 'image/png' })),
+    exportToSvg: vi.fn(async (_opts: Record<string, unknown>) => ({ outerHTML: '<svg xmlns="http://www.w3.org/2000/svg"/>' })),
+    serializeAsJSON: vi.fn((..._args: unknown[]) => '{"type":"excalidraw"}'),
+    loadSceneOrLibraryFromBlob: vi.fn(),
+}));
 vi.mock('@excalidraw/excalidraw', async () => {
     const React = await import('react');
     return {
-        Excalidraw: (props: Record<string, unknown> & { theme?: string; onChange?: (e: unknown[], s: unknown, f: unknown) => void }) => {
+        Excalidraw: (props: Record<string, unknown> & {
+            theme?: string;
+            excalidrawAPI?: (api: unknown) => void;
+            onChange?: (e: unknown[], s: unknown, f: unknown) => void;
+        }) => {
             captured.props.push(props);
-            const { onChange } = props;
+            const { onChange, excalidrawAPI } = props;
+            React.useEffect(() => { excalidrawAPI?.(captured.api); }, [excalidrawAPI]);
             React.useEffect(() => { onChange?.([{ id: 'e1' }], {}, {}); }, [onChange]);
             return React.createElement('div', { 'data-testid': 'excalidraw-stub', 'data-theme': props.theme });
         },
+        MIME_TYPES: {
+            excalidraw: 'application/vnd.excalidraw+json',
+            excalidrawlib: 'application/vnd.excalidrawlib+json',
+        },
+        languages: [{ code: 'en' }, { code: 'de-DE' }, { code: 'es-ES' }],
+        exportToBlob: captured.exportToBlob,
+        exportToSvg: captured.exportToSvg,
+        serializeAsJSON: captured.serializeAsJSON,
+        loadSceneOrLibraryFromBlob: captured.loadSceneOrLibraryFromBlob,
+        convertToExcalidrawElements: (skeletons: unknown[]) => skeletons,
     };
 });
 
-import Whiteboard from '../components/Whiteboard/Whiteboard';
+import Whiteboard, { collabState, pickLangCode } from '../components/Whiteboard/Whiteboard';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
 import { defaultDockItems } from '../data/hierarchy';
 import { TOOLS, resolveToolStatus } from '../data/toolsHub';
 import { themeStore } from '../context/ThemeContext';
-import { whiteboardStore, resetWhiteboard, EMPTY_SCENE, WHITEBOARD_SAVE_DEBOUNCE_MS } from '../lib/whiteboardStore';
+import {
+    whiteboardNoticeStore,
+    getWhiteboardDoc,
+    openBoard,
+    resetWhiteboard,
+    saveLibraryItems,
+    EMPTY_DOC,
+    EMPTY_SCENE,
+    DEFAULT_BOARD_ID,
+    WHITEBOARD_SAVE_DEBOUNCE_MS,
+} from '../lib/whiteboardStore';
+import { ANDY_LIBRARY_SPECS } from '../data/whiteboard/andyLibrary';
 
 // No UserProvider in these renders → usePerUserIdentity resolves _anonymous.
 const KEY = 'whiteboard:_anonymous';
+const lastProps = () => captured.props[captured.props.length - 1];
 
 beforeEach(() => {
     localStorage.clear();
     captured.props.length = 0;
+    Object.values(captured.api).forEach((fn) => fn.mockClear());
+    // Re-assert defaults: mockClear keeps return values, and an empty scene is
+    // what makes import skip the "replace current board?" confirm.
+    captured.api.getSceneElements.mockReturnValue([]);
+    captured.api.getAppState.mockReturnValue({ viewBackgroundColor: '#111' });
+    captured.api.getFiles.mockReturnValue({});
+    captured.api.updateLibrary.mockResolvedValue([]);
+    captured.exportToBlob.mockClear();
+    captured.exportToSvg.mockClear();
+    captured.serializeAsJSON.mockClear();
+    captured.loadSceneOrLibraryFromBlob.mockReset();
     resetWhiteboard();
     themeStore.reset();
+    URL.createObjectURL = vi.fn(() => 'blob:mock');
+    URL.revokeObjectURL = vi.fn();
 });
 afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
     themeStore.reset();
 });
 
@@ -78,7 +136,7 @@ describe('render (Excalidraw mocked)', () => {
         render(<Whiteboard />);
         expect(screen.getByTestId('excalidraw-stub').getAttribute('data-theme')).toBe('dark');
         expect(window.EXCALIDRAW_ASSET_PATH).toBe('/excalidraw-fonts/');
-        const props = captured.props[captured.props.length - 1];
+        const props = lastProps();
         expect((props.UIOptions as { canvasActions: { loadScene: boolean } }).canvasActions.loadScene).toBe(false);
     });
     it('light picker themes map to Excalidraw theme="light"', () => {
@@ -86,30 +144,196 @@ describe('render (Excalidraw mocked)', () => {
         render(<Whiteboard />);
         expect(screen.getByTestId('excalidraw-stub').getAttribute('data-theme')).toBe('light');
     });
-    it('hydrates initialData from the per-user saved scene', () => {
-        localStorage.setItem(KEY, JSON.stringify({ ...EMPTY_SCENE, elements: [{ id: 'saved' }] }));
+    it('hydrates initialData from the active board of the saved doc', () => {
+        localStorage.setItem(KEY, JSON.stringify({
+            ...EMPTY_DOC,
+            boards: { [DEFAULT_BOARD_ID]: { id: DEFAULT_BOARD_ID, title: 'My whiteboard', scene: { ...EMPTY_SCENE, elements: [{ id: 'saved' }] }, updatedAt: 1 } },
+        }));
         render(<Whiteboard />);
-        const initial = captured.props[captured.props.length - 1].initialData as { elements: Array<{ id: string }> };
+        const initial = lastProps().initialData as { elements: Array<{ id: string }> };
         expect(initial.elements).toEqual([{ id: 'saved' }]);
     });
-    it('persists exactly one debounced write after onChange', () => {
+    it('still hydrates a plan-047 legacy single-scene payload (migration)', () => {
+        localStorage.setItem(KEY, JSON.stringify({ ...EMPTY_SCENE, elements: [{ id: 'legacy' }] }));
+        render(<Whiteboard />);
+        const initial = lastProps().initialData as { elements: Array<{ id: string }> };
+        expect(initial.elements).toEqual([{ id: 'legacy' }]);
+    });
+    it('persists exactly one debounced write into the active board after onChange', () => {
         vi.useFakeTimers();
-        let persists = 0; // one store notify per persist (localStorage is a jsdom Proxy — unspyable)
-        const unsub = whiteboardStore.subscribe(() => { persists += 1; });
         const { unmount } = render(<Whiteboard />); // stub fires onChange once on mount
         expect(localStorage.getItem(KEY)).toBeNull(); // debounced, not yet
         act(() => { vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS); });
-        expect(persists).toBe(1);
-        expect(JSON.parse(localStorage.getItem(KEY)!).elements).toHaveLength(1);
-        expect(whiteboardStore.getSnapshot().elements).toEqual([{ id: 'e1' }]);
+        const doc = JSON.parse(localStorage.getItem(KEY)!);
+        expect(doc.boards[DEFAULT_BOARD_ID].scene.elements).toEqual([{ id: 'e1' }]);
+        expect(getWhiteboardDoc().boards[DEFAULT_BOARD_ID].scene.elements).toEqual([{ id: 'e1' }]);
         unmount();
-        unsub();
     });
-    it('unmount cancels a pending save (no write after close)', () => {
+    it('unmount FLUSHES a pending save — closing the widget loses no strokes', () => {
         vi.useFakeTimers();
         const { unmount } = render(<Whiteboard />);
-        unmount(); // pending debounce dropped by the effect cleanup
-        vi.advanceTimersByTime(WHITEBOARD_SAVE_DEBOUNCE_MS * 2);
         expect(localStorage.getItem(KEY)).toBeNull();
+        unmount(); // pending debounce flushed by the effect cleanup
+        const doc = JSON.parse(localStorage.getItem(KEY)!);
+        expect(doc.boards[DEFAULT_BOARD_ID].scene.elements).toEqual([{ id: 'e1' }]);
+    });
+    it('wires langCode from the browser locale against the package language list', () => {
+        render(<Whiteboard />);
+        // jsdom navigator.language is 'en-US' → base-match 'en'.
+        expect(lastProps().langCode).toBe('en');
+    });
+});
+
+describe('boards list (plan 053 #5)', () => {
+    it('lists boards (default first) and switches the canvas to the picked board', () => {
+        openBoard('strata:maintenance:wo-9', 'WO: Broken window');
+        openBoard(DEFAULT_BOARD_ID, 'My whiteboard');
+        render(<Whiteboard />);
+        const select = screen.getByLabelText('Board') as HTMLSelectElement;
+        expect(Array.from(select.options).map(o => o.textContent)).toEqual(['My whiteboard', 'WO: Broken window']);
+        act(() => { fireEvent.change(select, { target: { value: 'strata:maintenance:wo-9' } }); });
+        expect(getWhiteboardDoc().activeBoardId).toBe('strata:maintenance:wo-9');
+        // Excalidraw remounts (key change) with the picked board's scene.
+        const initial = lastProps().initialData as { elements: unknown[] };
+        expect(initial.elements).toEqual([]);
+        expect(select.value).toBe('strata:maintenance:wo-9');
+    });
+});
+
+describe('shape library (plan 053 #1 + #4)', () => {
+    it('seeds the Andy library on first-ever open (libraryItems undefined)', () => {
+        render(<Whiteboard />);
+        const initial = lastProps().initialData as { libraryItems: Array<{ id: string }> };
+        expect(initial.libraryItems.map(i => i.id)).toEqual(ANDY_LIBRARY_SPECS.map(s => s.id));
+    });
+    it('does NOT re-seed once the library was persisted (even as [])', () => {
+        saveLibraryItems([]);
+        render(<Whiteboard />);
+        const initial = lastProps().initialData as { libraryItems: unknown[] };
+        expect(initial.libraryItems).toEqual([]);
+    });
+    it('onLibraryChange persists the library through the store', () => {
+        render(<Whiteboard />);
+        const onLibraryChange = lastProps().onLibraryChange as (items: unknown[]) => void;
+        act(() => { onLibraryChange([{ id: 'user-item', status: 'unpublished' }]); });
+        expect(getWhiteboardDoc().libraryItems).toEqual([{ id: 'user-item', status: 'unpublished' }]);
+    });
+    it('"Dwellium shapes" button re-adds the Andy library via updateLibrary(merge)', () => {
+        render(<Whiteboard />);
+        fireEvent.click(screen.getByText('Dwellium shapes'));
+        expect(captured.api.updateLibrary).toHaveBeenCalledTimes(1);
+        const arg = captured.api.updateLibrary.mock.calls[0][0] as { libraryItems: Array<{ id: string }>; merge: boolean };
+        expect(arg.merge).toBe(true);
+        expect(arg.libraryItems.map(i => i.id)).toEqual(ANDY_LIBRARY_SPECS.map(s => s.id));
+    });
+});
+
+describe('import/export (plan 053 #3)', () => {
+    it('Save as PNG exports the live scene via exportToBlob and downloads it', async () => {
+        captured.api.getSceneElements.mockReturnValue([{ id: 'el' }]);
+        render(<Whiteboard />);
+        fireEvent.click(screen.getByText('Save as PNG'));
+        await waitFor(() => expect(captured.exportToBlob).toHaveBeenCalledTimes(1));
+        expect(captured.exportToBlob.mock.calls[0][0]).toMatchObject({ elements: [{ id: 'el' }], mimeType: 'image/png' });
+        expect(URL.createObjectURL).toHaveBeenCalled();
+    });
+    it('SVG and .excalidraw exports call exportToSvg / serializeAsJSON', async () => {
+        render(<Whiteboard />);
+        fireEvent.click(screen.getByText('SVG'));
+        await waitFor(() => expect(captured.exportToSvg).toHaveBeenCalledTimes(1));
+        fireEvent.click(screen.getByText('.excalidraw'));
+        await waitFor(() => expect(captured.serializeAsJSON).toHaveBeenCalledTimes(1));
+        expect(captured.serializeAsJSON.mock.calls[0][3]).toBe('local');
+    });
+    it('importing a .excalidraw file replaces the scene and persists it', async () => {
+        captured.loadSceneOrLibraryFromBlob.mockResolvedValue({
+            type: 'application/vnd.excalidraw+json',
+            data: { elements: [{ id: 'imp' }], appState: { viewBackgroundColor: '#abc' }, files: { f1: { id: 'f1' } } },
+        });
+        render(<Whiteboard />);
+        const input = screen.getByLabelText('Import whiteboard file') as HTMLInputElement;
+        const file = new File(['{}'], 'plan.excalidraw', { type: 'application/json' });
+        await act(async () => { fireEvent.change(input, { target: { files: [file] } }); });
+        await waitFor(() => expect(captured.api.updateScene).toHaveBeenCalled());
+        expect(captured.api.updateScene.mock.calls[0][0]).toMatchObject({ elements: [{ id: 'imp' }] });
+        expect(captured.api.addFiles).toHaveBeenCalledWith([{ id: 'f1' }]);
+    });
+    it('importing a .excalidrawlib merges it into the library', async () => {
+        captured.loadSceneOrLibraryFromBlob.mockResolvedValue({
+            type: 'application/vnd.excalidrawlib+json',
+            data: { libraryItems: [{ id: 'lib-imp' }] },
+        });
+        render(<Whiteboard />);
+        const input = screen.getByLabelText('Import whiteboard file') as HTMLInputElement;
+        const file = new File(['{}'], 'shapes.excalidrawlib', { type: 'application/json' });
+        await act(async () => { fireEvent.change(input, { target: { files: [file] } }); });
+        await waitFor(() => expect(captured.api.updateLibrary).toHaveBeenCalled());
+        expect(captured.api.updateLibrary.mock.calls[0][0]).toMatchObject({ libraryItems: [{ id: 'lib-imp' }], merge: true });
+    });
+    it('drag-dropping a .excalidraw file routes into the import path', async () => {
+        captured.loadSceneOrLibraryFromBlob.mockResolvedValue({
+            type: 'application/vnd.excalidraw+json',
+            data: { elements: [], appState: {}, files: {} },
+        });
+        const { container } = render(<Whiteboard />);
+        const file = new File(['{}'], 'drop.excalidraw', { type: 'application/json' });
+        await act(async () => {
+            fireEvent.drop(container.firstElementChild!, { dataTransfer: { files: [file] } });
+        });
+        await waitFor(() => expect(captured.loadSceneOrLibraryFromBlob).toHaveBeenCalledTimes(1));
+    });
+    it('a broken import file surfaces a visible notice — never silent', async () => {
+        captured.loadSceneOrLibraryFromBlob.mockRejectedValue(new Error('bad file'));
+        render(<Whiteboard />);
+        const input = screen.getByLabelText('Import whiteboard file') as HTMLInputElement;
+        const file = new File(['nope'], 'broken.excalidraw', { type: 'application/json' });
+        await act(async () => { fireEvent.change(input, { target: { files: [file] } }); });
+        await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/Could not import/));
+    });
+});
+
+describe('notices (plan 053 #2)', () => {
+    it('renders a dismissible banner when the store pushes a notice', () => {
+        render(<Whiteboard />);
+        act(() => { whiteboardNoticeStore.push('downscaled', '2 images downscaled to 2048px…'); });
+        expect(screen.getByRole('status').textContent).toContain('2 images downscaled');
+        fireEvent.click(screen.getByLabelText('Dismiss notice'));
+        expect(screen.queryByRole('status')).toBeNull();
+    });
+});
+
+describe('collab (plan 053 #6 — honest states)', () => {
+    it('collabState() parses the env var', () => {
+        expect(collabState(undefined)).toEqual({ configured: false, url: null });
+        expect(collabState('   ')).toEqual({ configured: false, url: null });
+        expect(collabState('wss://room.example')).toEqual({ configured: true, url: 'wss://room.example' });
+    });
+    it('unconfigured: the Collab panel says exactly that + points at the runbook', () => {
+        render(<Whiteboard />);
+        fireEvent.click(screen.getByText('Collab'));
+        const note = screen.getByRole('note');
+        expect(note.textContent).toContain('Collab server not configured');
+        expect(note.textContent).toContain('VITE_EXCALIDRAW_COLLAB_URL');
+        expect(note.textContent).toContain('tools/excalidraw-room/');
+        expect(note.textContent).toContain('ships no room client');
+    });
+    it('configured: shows the room URL and the honest embed limitation', () => {
+        vi.stubEnv('VITE_EXCALIDRAW_COLLAB_URL', 'wss://room.dwellium.example');
+        render(<Whiteboard />);
+        fireEvent.click(screen.getByText('Collab'));
+        const note = screen.getByRole('note');
+        expect(note.textContent).toContain('wss://room.dwellium.example');
+        expect(note.textContent).toContain('ships no room client');
+    });
+});
+
+describe('pickLangCode (gap E8)', () => {
+    it('exact, base and no-match behavior', () => {
+        const langs = [{ code: 'en' }, { code: 'de-DE' }, { code: 'es-ES' }];
+        expect(pickLangCode('de-DE', langs)).toBe('de-DE');
+        expect(pickLangCode('de', langs)).toBe('de-DE');
+        expect(pickLangCode('es-MX', langs)).toBe('es-ES');
+        expect(pickLangCode('fr-FR', langs)).toBeUndefined();
+        expect(pickLangCode(undefined, langs)).toBeUndefined();
     });
 });

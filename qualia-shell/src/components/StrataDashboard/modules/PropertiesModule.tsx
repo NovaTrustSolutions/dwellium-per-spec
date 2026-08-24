@@ -16,6 +16,8 @@ import { ErrorBoundary } from '../../ErrorBoundary/ErrorBoundary';
 import { Sentry } from '../../../services/sentry';
 import FixedAssetsTable from './__properties/FixedAssetsTable';
 import { useStrataNav } from '../StrataNavContext';
+// Plan 053 Whiteboard bridge — single import + single JSX line (see whiteboardBridge.tsx).
+import { WhiteboardAction } from '../../Whiteboard/whiteboardBridge';
 
 interface LinkedData {
     workitems: Workitem[];
@@ -1088,6 +1090,8 @@ export default function PropertiesModule({ searchNavTarget, onNavComplete }: Pro
                                                 }}>
                                                     <Trash2 size={10} /> Delete
                                                 </button>
+                                                {/* Plan 053: property whiteboard (boardId strata:property:<id>) */}
+                                                <WhiteboardAction kind="property" id={selected.id} title={selected.name} />
                                             </div>
                                         </div>
                                     </div>

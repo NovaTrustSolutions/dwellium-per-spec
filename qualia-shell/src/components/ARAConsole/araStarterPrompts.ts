@@ -9,7 +9,7 @@ export const STARTER_PROMPTS: Record<string, string[]> = {
         'Which leases end in the next 60 days?',
         'Open Strata',
         'Draft a late-rent reminder for unit 4B',
-        'Summarize my open work orders',
+        'Give me a prefilled showing link for this guest card', // plan 053 — cal.com
     ],
     'chief-of-staff': [
         'Turn my open goals into a plan for this week',

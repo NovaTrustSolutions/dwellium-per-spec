@@ -12,6 +12,7 @@ import {
     Plus, X, History, PenTool, Upload
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
+import { bookingLinkFor } from '../../Scheduling/calcomLinks'; // plan 053 — cal.com maintenance-window bridge
 import { NotYet } from '../../common/NotYet';
 import type { Workitem } from '../strataTypes';
 import { LoadingState, EmptyState, ErrorState } from '../StateView';
@@ -1007,6 +1008,15 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         <Send size={12} /> Dispatch
                     </button>
                 )}
+                {/* ── plan 053 cal.com bridge (Scheduling builder) — prefilled maintenance window ── */}
+                <button onClick={() => {
+                    const link = bookingLinkFor('maintenance-window-2h', { name: item.title, notes: `${propName} · WO ${meta.appfolioWorkOrderId ?? item.id}` });
+                    if (!link) { window.alert('Set VITE_CALCOM_URL to enable maintenance-window booking links.'); return; }
+                    window.open(link, '_blank', 'noopener');
+                }} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CalendarDays size={12} /> Book maintenance window
+                </button>
+                {/* ── end plan 053 bridge ── */}
                 {(item.status === 'in_progress' || item.status === 'pending') && (
                     <button onClick={() => {
                         const notes = window.prompt('Completion notes (optional):');

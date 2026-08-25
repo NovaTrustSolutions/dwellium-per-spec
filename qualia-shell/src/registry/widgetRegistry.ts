@@ -680,7 +680,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
     'advisory-board': {
         id: 'advisory-board',
         label: 'Advisory Board',
-        description: 'Stress-test one important decision through five strategic lenses — interview first, then a decision brief.',
+        description: 'Stress-test a decision through five strategic lenses — interview first, then a decision brief.',
         tip: { tryThis: 'Type a real decision and let the board interview you before it advises.', related: ['ara-console', 'synthesis'] },
         icon: 'scale',
         component: lazyWithReload(() => import('../components/AdvisoryBoard/AdvisoryBoard')),

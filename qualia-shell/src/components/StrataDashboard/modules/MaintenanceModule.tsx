@@ -12,6 +12,7 @@ import {
     Plus, X, History, PenTool, Upload
 } from 'lucide-react';
 import { strataGet, strataPost, strataPut } from '../strataApi';
+import { bookingLinkFor } from '../../Scheduling/calcomLinks'; // plan 053 — cal.com maintenance-window bridge
 import { NotYet } from '../../common/NotYet';
 import type { Workitem } from '../strataTypes';
 import { LoadingState, EmptyState, ErrorState } from '../StateView';
@@ -25,6 +26,9 @@ import ResidentAvailabilityCard from './__maintenance/ResidentAvailabilityCard';
 import ActionsLogList from './__maintenance/ActionsLogList';
 import LaborTable from './__maintenance/LaborTable';
 import PurchaseOrderLinks from './__maintenance/PurchaseOrderLinks';
+import { openPhotoVaultForUnit, unitFromTags } from '../../PhotoVault/photoVaultBridge'; // plan 053 — Photo Vault bridge
+// Plan 053 Whiteboard bridge — single import + single JSX line (see whiteboardBridge.tsx).
+import { WhiteboardAction } from '../../Whiteboard/whiteboardBridge';
 
 /* ── Sub-tab types ── */
 type MaintTab = 'work-orders' | 'recurring' | 'inspections' | 'unit-turns' | 'projects' | 'purchase-orders' | 'inventory' | 'fixed-assets' | 'history';
@@ -1002,11 +1006,28 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
 
             {/* ── Action Buttons ── */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                {/* Plan 053 — Photo Vault bridge: opens the unit's Immich album ("<Property> — <Unit>")
+                    with Upload preset to it. Covers work orders AND inspections (shared DetailPanel). */}
+                <button
+                    data-testid="wo-photos-action"
+                    onClick={() => openPhotoVaultForUnit({ property: propName !== '—' ? propName : undefined, unit: unitFromTags(item.tags) })}
+                    style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Camera size={12} /> Photos
+                </button>
                 {(item.status === 'open' || item.status === 'pending') && (
                     <button onClick={onDispatch} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Send size={12} /> Dispatch
                     </button>
                 )}
+                {/* ── plan 053 cal.com bridge (Scheduling builder) — prefilled maintenance window ── */}
+                <button onClick={() => {
+                    const link = bookingLinkFor('maintenance-window-2h', { name: item.title, notes: `${propName} · WO ${meta.appfolioWorkOrderId ?? item.id}` });
+                    if (!link) { window.alert('Set VITE_CALCOM_URL to enable maintenance-window booking links.'); return; }
+                    window.open(link, '_blank', 'noopener');
+                }} style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CalendarDays size={12} /> Book maintenance window
+                </button>
+                {/* ── end plan 053 bridge ── */}
                 {(item.status === 'in_progress' || item.status === 'pending') && (
                     <button onClick={() => {
                         const notes = window.prompt('Completion notes (optional):');
@@ -1015,6 +1036,8 @@ function DetailPanel({ item, properties, onExpand, attachments, onDispatch, onSi
                         <PenTool size={12} /> Sign Off
                     </button>
                 )}
+                {/* Plan 053: work-order whiteboard (boardId strata:maintenance:<id>) */}
+                <WhiteboardAction kind="maintenance" id={item.id} title={item.title} />
             </div>
 
             {/* ── Tags ── */}

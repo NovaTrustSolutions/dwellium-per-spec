@@ -70,6 +70,10 @@ export const onboardingUserIdHolder: UserIdHolder = makeHolder();
 export const araGlanceUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 047 phase 1 — per-user Excalidraw whiteboard scene (whiteboardStore). */
 export const whiteboardUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 053 — per-user RustDesk address book (remoteMachinesStore). */
+export const remoteMachinesUserIdHolder: UserIdHolder = makeHolder();
+/** 5 Persona Advisory Board — per-user saved board sessions (advisoryBoardStore). */
+export const advisoryBoardUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -91,6 +95,8 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     onboardingUserIdHolder,
     araGlanceUserIdHolder,
     whiteboardUserIdHolder,
+    remoteMachinesUserIdHolder,
+    advisoryBoardUserIdHolder,
 ];
 
 /**

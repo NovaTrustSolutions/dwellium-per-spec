@@ -13,6 +13,7 @@ import { WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { openWidget } from '../../lib/dwelliumCommands';
 import { logActivity } from '../../lib/activityLogStore';
 import { unlockTier } from '../../lib/onboardingStore';
+import { useFluidVoiceStatus } from '../../lib/fluidVoiceLocalApi';
 import './ToolsHub.css';
 
 const STATUS_LABEL: Record<ToolStatus, string> = { ready: 'Ready', 'needs-setup': 'Needs setup', 'coming-soon': 'Coming soon' };
@@ -25,6 +26,8 @@ export function toolStatuses(env: Record<string, string | undefined> = (import.m
 export default function ToolsHub() {
     useEffect(() => { unlockTier('tools'); }, []);
     const rows = toolStatuses();
+    // Plan 053 (Dictation): live FluidVoice detection for the companion row — macOS only; 'unknown' elsewhere.
+    const { state: fluidVoiceState } = useFluidVoiceStatus();
 
     const open = (tool: ToolEntry, status: ToolStatus) => {
         logActivity('tools-hub', 'Tools hub', 'tools-hub:open', { toolId: tool.id, status });
@@ -51,7 +54,14 @@ export default function ToolsHub() {
                                 <td className="tools-hub__blurb">{tool.blurb}</td>
                                 <td className="tools-hub__license">{tool.license}</td>
                                 <td>{tool.phase}</td>
-                                <td><span className={`tools-hub__pill tools-hub__pill--${status}`}>{STATUS_LABEL[status]}</span></td>
+                                <td>
+                                    <span className={`tools-hub__pill tools-hub__pill--${status}`}>{STATUS_LABEL[status]}</span>
+                                    {tool.id === 'dictation' && (fluidVoiceState === 'running' || fluidVoiceState === 'not-detected') && (
+                                        <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                            FluidVoice: {fluidVoiceState === 'running' ? 'Running' : 'Not detected'}
+                                        </span>
+                                    )}
+                                </td>
                                 <td>
                                     <button
                                         type="button"

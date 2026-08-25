@@ -1,0 +1,838 @@
+diff --git a/.env.example b/.env.example
+index 3a9937d..c0c2e97 100644
+--- a/.env.example
++++ b/.env.example
+@@ -55,3 +55,10 @@ TRELLO_TOKEN=
+ # ENTITY_GUARDIAN_ENABLED=true
+ # TRIAGE_ENGINE_ENABLED=true
+ # TRUST_PROXY=false
++
++# ── E-Sign (Documenso, plan 047/053) ──
++# DOCUMENSO_API_URL=https://app.documenso.com      (self-host: your instance base URL)
++# DOCUMENSO_API_KEY=api_xxxxxxxx                   (Documenso → Settings → API Tokens; API access needs a paid tier)
++# DOCUMENSO_TEMPLATE_LEASE=42                      (numeric template id of the GA lease template)
++# DOCUMENSO_WEBHOOK_SECRET=whsec_xxxx              (same value as the webhook secret configured in Documenso)
++# DOCUMENSO_APP_URL=https://app.documenso.com      (optional; where signing/deep links open — defaults to DOCUMENSO_API_URL)
+diff --git a/deploy/cloud-run.sh b/deploy/cloud-run.sh
+index 021cbd5..d9fad04 100755
+--- a/deploy/cloud-run.sh
++++ b/deploy/cloud-run.sh
+@@ -179,6 +179,20 @@ if [[ -n "${DUB_WORKSPACE:-}" ]]; then
+     printf 'DUB_WORKSPACE: "%s"\n' "${DUB_WORKSPACE}" >> "${env_file}"
+ fi
+ 
++# plan 053 — Documenso non-secret env (API base / lease template id / app URL);
++# DOCUMENSO_API_KEY + DOCUMENSO_WEBHOOK_SECRET ride --update-secrets above.
++if [[ -n "${DOCUMENSO_API_URL:-}" ]]; then
++    printf 'DOCUMENSO_API_URL: "%s"\n' "${DOCUMENSO_API_URL}" >> "${env_file}"
++fi
++
++if [[ -n "${DOCUMENSO_TEMPLATE_LEASE:-}" ]]; then
++    printf 'DOCUMENSO_TEMPLATE_LEASE: "%s"\n' "${DOCUMENSO_TEMPLATE_LEASE}" >> "${env_file}"
++fi
++
++if [[ -n "${DOCUMENSO_APP_URL:-}" ]]; then
++    printf 'DOCUMENSO_APP_URL: "%s"\n' "${DOCUMENSO_APP_URL}" >> "${env_file}"
++fi
++
+ # plan 053 — Immich Photo Vault proxy base URL (public via Tailscale Funnel, or
+ # tailnet ts.net URL if the backend can reach the tailnet). API key rides
+ # --update-secrets above. Unset falls through to the preserve-unknowns merge.
+diff --git a/src/routes/esignRoutes.ts b/src/routes/esignRoutes.ts
+index 3e9f5d7..5b28dd1 100644
+--- a/src/routes/esignRoutes.ts
++++ b/src/routes/esignRoutes.ts
+@@ -1,5 +1,5 @@
+ /**
+- * E-Sign Routes — Documenso backend proxy (plan 047, phase 1).
++ * E-Sign Routes — Documenso backend proxy (plan 047 phase 1; extended plan 053).
+  *
+  * Mounted at /api/esign behind `authenticate` (app.ts). The browser never
+  * sees a Documenso credential: DOCUMENSO_API_URL + DOCUMENSO_API_KEY live
+@@ -7,7 +7,14 @@
+  * every route answers 503 with a clear JSON error (`needsSetup: true`) so
+  * the frontend renders its "needs setup" state — never a crash.
+  *
+- *   GET  /api/esign/documents                       list leases sent for e-signature
++ *   GET  /api/esign/documents                       list leases sent for e-signature (local metadata)
++ *   GET  /api/esign/envelopes                       list envelopes FROM Documenso (GET /envelope)
++ *   GET  /api/esign/templates                       list templates FROM Documenso (GET /template)
++ *   POST /api/esign/send                            generic send (template or fileId flow) — not lease-bound
++ *   POST /api/esign/cancel                          cancel an envelope ({workitemId|envelopeId|documentId})
++ *   POST /api/esign/resend                          re-send signing emails ({workitemId|envelopeId|documentId})
++ *   GET  /api/esign/audit-log                       audit-log PDF (?workitemId=|envelopeId=|documentId=)
++ *   GET  /api/esign/my-signing                      tenant-facing: my pending signing links (any auth'd role)
+  *   GET  /api/esign/leases/:workitemId/status       one lease's e-sign metadata (?live=1 refreshes from Documenso)
+  *   POST /api/esign/leases/:workitemId/send         create + send; docStatus approved→sent
+  *   GET  /api/esign/leases/:workitemId/signed-pdf   proxy the signed PDF from Documenso
+@@ -24,12 +31,16 @@
+  *   File flow (no template; body.fileId = a PDF in the Dwellium files store):
+  *     POST /envelope/create (multipart: payload JSON + files) → { id: envelopeId }
+  *     POST /envelope/distribute { envelopeId }                → sent
++ *   Lists:   GET /envelope | GET /template   (page/perPage passed through when given)
+  *   Status:  GET /envelope/{envelopeId} | GET /document/{documentId}   (status: DRAFT|PENDING|COMPLETED|REJECTED|CANCELLED)
++ *   Cancel:  POST /envelope/cancel { envelopeId }
++ *   Resend:  POST /document/redistribute { documentId } (template flow) | POST /envelope/redistribute { envelopeId }
+  *   Signed:  GET /document/{documentId}/download?version=signed
+  *            GET /envelope/item/{envelopeItemId}/download?version=signed   (item id from GET /envelope/{id}.envelopeItems[0])
++ *   Audit:   GET /envelope/{envelopeId}/audit-log/download
+  *
+  * Status updates flow back via POST /api/webhooks/documenso (webhookRoutes.ts).
+- * All routes are management-gated for phase 1.
++ * Management-gated except /my-signing (a tenant reads only their own links).
+  */
+ import { Router, Request, Response } from 'express';
+ import path from 'path';
+@@ -44,11 +55,17 @@ const router = Router();
+ export const DOCUMENSO_PATHS_USED = [
+     '/template/{templateId}',
+     '/template/use',
++    '/template',
++    '/envelope',
+     '/envelope/create',
+     '/envelope/distribute',
++    '/envelope/cancel',
++    '/envelope/redistribute',
+     '/envelope/{envelopeId}',
++    '/envelope/{envelopeId}/audit-log/download',
+     '/document/{documentId}',
+     '/document/{documentId}/download',
++    '/document/redistribute',
+     '/envelope/item/{envelopeItemId}/download',
+ ] as const;
+ 
+@@ -61,6 +78,11 @@ function documensoConfig(): DocumensoConfig | null {
+     return { baseUrl: baseUrl.replace(/\/+$/, ''), apiKey };
+ }
+ 
++/** Where signers/managers open Documenso in a browser (self-host aware). */
++function documensoAppUrl(cfg: DocumensoConfig): string {
++    return (process.env.DOCUMENSO_APP_URL || cfg.baseUrl).replace(/\/+$/, '');
++}
++
+ /** 503 body the frontend keys its needs-setup empty state on. */
+ const NOT_CONFIGURED = {
+     success: false,
+@@ -104,6 +126,136 @@ async function readLeasePdf(fileId: string): Promise<{ name: string; buf: Buffer
+     return null;
+ }
+ 
++type SendOk = { ok: true; esign: Record<string, any> };
++type SendErr = { ok: false; status: number; error: string };
++
++/**
++ * Shared create+distribute: template flow when templateId > 0, else file flow
++ * when fileId is set. Used by both the lease-bound send and the generic send.
++ */
++async function sendViaDocumenso(cfg: DocumensoConfig, opts: {
++    title: string;
++    externalId?: string;
++    recipients: ReturnType<typeof normaliseRecipients>;
++    templateId: number;
++    fileId?: string;
++    subject?: string;
++    message?: string;
++}): Promise<SendOk | SendErr> {
++    const { title, externalId, recipients, templateId, fileId } = opts;
++    if (Number.isFinite(templateId) && templateId > 0) {
++        // ── Template flow: GET /template/{id} → POST /template/use (distributeDocument sends) ──
++        const tplRes = await documensoJson(cfg, `/template/${templateId}`);
++        if (!tplRes.ok) return { ok: false, status: 502, error: `Documenso template ${templateId} fetch failed (${tplRes.status})` };
++        const tpl = (await tplRes.json().catch(() => ({}))) as Record<string, any>;
++        const tplRecipients: Array<{ id: number; signingOrder?: number }> = Array.isArray(tpl.recipients) ? tpl.recipients : [];
++        tplRecipients.sort((a, b) => (a.signingOrder ?? 0) - (b.signingOrder ?? 0));
++        if (tplRecipients.length === 0) return { ok: false, status: 502, error: `Documenso template ${templateId} has no recipient placeholders` };
++        const mapped = recipients.slice(0, tplRecipients.length).map((r, i) => ({ id: tplRecipients[i].id, email: r.email, name: r.name }));
++        const useRes = await documensoJson(cfg, '/template/use', {
++            method: 'POST',
++            body: JSON.stringify({ templateId, ...(externalId ? { externalId } : {}), recipients: mapped, distributeDocument: true }),
++        });
++        if (!useRes.ok) return { ok: false, status: 502, error: `Documenso template use failed (${useRes.status})` };
++        const doc = (await useRes.json().catch(() => ({}))) as Record<string, any>;
++        if (doc.id === undefined || doc.id === null) return { ok: false, status: 502, error: 'Documenso template use returned no document id' };
++        return {
++            ok: true,
++            esign: {
++                provider: 'documenso', flow: 'template', templateId,
++                documentId: doc.id, envelopeId: doc.envelopeId || null,
++                recipients: Array.isArray(doc.recipients) && doc.recipients.length ? doc.recipients : mapped,
++                status: doc.status || 'PENDING',
++            },
++        };
++    }
++    if (fileId) {
++        // ── File flow: POST /envelope/create (multipart) → POST /envelope/distribute ──
++        const pdf = await readLeasePdf(String(fileId));
++        if (!pdf) return { ok: false, status: 400, error: `Lease PDF not found in the files store (fileId ${fileId})` };
++        const form = new FormData();
++        form.append('payload', JSON.stringify({
++            title,
++            type: 'DOCUMENT',
++            ...(externalId ? { externalId } : {}),
++            recipients,
++            meta: { subject: opts.subject || `Please sign: ${title}`, message: opts.message || 'Sent from Dwellium.' },
++        }));
++        form.append('files', new Blob([Uint8Array.from(pdf.buf)], { type: 'application/pdf' }), pdf.name.toLowerCase().endsWith('.pdf') ? pdf.name : `${pdf.name}.pdf`);
++        const createRes = await documensoForm(cfg, '/envelope/create', form);
++        if (!createRes.ok) return { ok: false, status: 502, error: `Documenso envelope create failed (${createRes.status})` };
++        const env = (await createRes.json().catch(() => ({}))) as Record<string, any>;
++        if (!env.id) return { ok: false, status: 502, error: 'Documenso envelope create returned no id' };
++        const distRes = await documensoJson(cfg, '/envelope/distribute', { method: 'POST', body: JSON.stringify({ envelopeId: env.id }) });
++        if (!distRes.ok) return { ok: false, status: 502, error: `Documenso envelope distribute failed (${distRes.status})` };
++        const dist = (await distRes.json().catch(() => ({}))) as Record<string, any>;
++        return {
++            ok: true,
++            esign: {
++                provider: 'documenso', flow: 'envelope',
++                envelopeId: env.id, documentId: null, fileId: String(fileId),
++                recipients: Array.isArray(dist.recipients) && dist.recipients.length ? dist.recipients : recipients,
++                status: 'PENDING',
++            },
++        };
++    }
++    return { ok: false, status: 400, error: 'Nothing to send — set DOCUMENSO_TEMPLATE_LEASE (template id), pass templateId, or pass fileId of the lease PDF' };
++}
++
++/** Resolve the Documenso envelope id from a stored esign record or explicit ids (template-flow docs may only know documentId). */
++async function resolveEnvelopeId(cfg: DocumensoConfig, ref: { envelopeId?: unknown; documentId?: unknown }): Promise<string | null> {
++    if (ref.envelopeId) return String(ref.envelopeId);
++    if (ref.documentId === undefined || ref.documentId === null || ref.documentId === '') return null;
++    const r = await documensoJson(cfg, `/document/${encodeURIComponent(String(ref.documentId))}`);
++    if (!r.ok) return null;
++    const j = (await r.json().catch(() => ({}))) as Record<string, any>;
++    return j.envelopeId ? String(j.envelopeId) : null;
++}
++
++/** Body/query → the workitem (if any) plus envelope/document ids. */
++function resolveTarget(src: Record<string, any>): { w: ReturnType<typeof store.getWorkitem> | null; envelopeId?: string; documentId?: string } {
++    const workitemId = src.workitemId ? String(src.workitemId) : '';
++    if (workitemId) {
++        const w = store.getWorkitem(workitemId);
++        const esign = ((w?.metadata as Record<string, any> | undefined)?.esign || {}) as Record<string, any>;
++        return {
++            w: w || null,
++            envelopeId: esign.envelopeId ? String(esign.envelopeId) : undefined,
++            documentId: esign.documentId !== undefined && esign.documentId !== null ? String(esign.documentId) : undefined,
++        };
++    }
++    return {
++        w: null,
++        envelopeId: src.envelopeId ? String(src.envelopeId) : undefined,
++        documentId: src.documentId !== undefined && src.documentId !== null && src.documentId !== '' ? String(src.documentId) : undefined,
++    };
++}
++
++/** Stream a Documenso download (signed PDF / audit log). v2 answers JSON {downloadUrl} — follow it. */
++async function streamDocumensoDownload(cfg: DocumensoConfig, res: Response, downloadPath: string, fallbackType = 'application/pdf'): Promise<void> {
++    const upstream = await documensoJson(cfg, downloadPath);
++    if (!upstream.ok) { res.status(502).json({ success: false, error: `Documenso download failed (${upstream.status})` }); return; }
++    const ct = upstream.headers.get('content-type') || '';
++    if (ct.includes('application/json')) {
++        const j = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        const url = j.downloadUrl || j.url;
++        if (!url) { res.status(502).json({ success: false, error: 'Documenso download returned no URL' }); return; }
++        const file = await fetch(url);
++        if (!file.ok) { res.status(502).json({ success: false, error: `Documenso file fetch failed (${file.status})` }); return; }
++        res.setHeader('Content-Type', file.headers.get('content-type') || fallbackType);
++        res.send(Buffer.from(await file.arrayBuffer()));
++        return;
++    }
++    res.setHeader('Content-Type', ct || fallbackType);
++    res.send(Buffer.from(await upstream.arrayBuffer()));
++}
++
++/** Tolerant list normalisation — Documenso find endpoints answer { data: [...] } plus pagination. */
++function normaliseList(j: Record<string, any>): { data: any[]; totalPages?: number; currentPage?: number } {
++    const data = Array.isArray(j) ? j : Array.isArray(j.data) ? j.data : [];
++    return { data, totalPages: j.totalPages, currentPage: j.currentPage };
++}
++
+ router.get('/documents', requireRole('management'), (_req: Request, res: Response) => {
+     if (!documensoConfig()) { res.status(503).json(NOT_CONFIGURED); return; }
+     const docs = store.listWorkitems({ type: 'lease' })
+@@ -124,6 +276,181 @@ router.get('/documents', requireRole('management'), (_req: Request, res: Respons
+     res.json({ success: true, data: docs });
+ });
+ 
++// ── plan 053: live lists from Documenso ────────────────────────────────────
++
++router.get('/envelopes', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = documensoConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const qs = new URLSearchParams();
++        if (req.query.page) qs.set('page', String(req.query.page));
++        if (req.query.perPage) qs.set('perPage', String(req.query.perPage));
++        const upstream = await documensoJson(cfg, `/envelope${qs.toString() ? `?${qs.toString()}` : ''}`);
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Documenso envelope list failed (${upstream.status})` }); return; }
++        const j = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        res.json({ success: true, ...normaliseList(j) });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Documenso unreachable: ${(err as Error).message}` });
++    }
++});
++
++router.get('/templates', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = documensoConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    try {
++        const qs = new URLSearchParams();
++        if (req.query.page) qs.set('page', String(req.query.page));
++        if (req.query.perPage) qs.set('perPage', String(req.query.perPage));
++        const upstream = await documensoJson(cfg, `/template${qs.toString() ? `?${qs.toString()}` : ''}`);
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Documenso template list failed (${upstream.status})` }); return; }
++        const j = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        const leaseTemplateId = Number(process.env.DOCUMENSO_TEMPLATE_LEASE || '') || null;
++        res.json({ success: true, ...normaliseList(j), leaseTemplateId });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Documenso unreachable: ${(err as Error).message}` });
++    }
++});
++
++// ── plan 053: generic send (not lease-bound) — the E-Sign widget's send flow ──
++
++router.post('/send', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = documensoConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as {
++        title?: string; recipients?: Recipient[]; templateId?: number | string; fileId?: string; subject?: string; message?: string;
++    };
++    const wanted = normaliseRecipients(Array.isArray(body.recipients) ? body.recipients.filter(r => typeof r?.email === 'string' && r.email.includes('@')) : []);
++    if (wanted.length === 0) { res.status(400).json({ success: false, error: 'No recipient email — pass recipients[]' }); return; }
++    const title = String(body.title || '').trim() || 'Document from Dwellium';
++    const templateId = Number(body.templateId ?? NaN);
++    try {
++        const sent = await sendViaDocumenso(cfg, {
++            title,
++            recipients: wanted,
++            templateId,
++            fileId: body.fileId ? String(body.fileId) : undefined,
++            subject: body.subject,
++            message: body.message,
++        });
++        if (!sent.ok) { res.status(sent.status).json({ success: false, error: sent.error }); return; }
++        res.json({ success: true, data: { ...sent.esign, title, sentAt: new Date().toISOString() } });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Documenso unreachable: ${(err as Error).message}` });
++    }
++});
++
++// ── plan 053: cancel / resend ──────────────────────────────────────────────
++
++router.post('/cancel', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = documensoConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body || {}) as Record<string, any>;
++    const target = resolveTarget(body);
++    if (body.workitemId && !target.w) { res.status(404).json({ success: false, error: 'Workitem not found' }); return; }
++    try {
++        const envelopeId = await resolveEnvelopeId(cfg, target);
++        if (!envelopeId) { res.status(400).json({ success: false, error: 'No Documenso envelope to cancel — pass envelopeId, documentId or a workitemId with an esign record' }); return; }
++        const upstream = await documensoJson(cfg, '/envelope/cancel', { method: 'POST', body: JSON.stringify({ envelopeId }) });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Documenso cancel failed (${upstream.status})` }); return; }
++        if (target.w) {
++            // Mirror the DOCUMENT_CANCELLED webhook: back to draft, UPSERT metadata only.
++            const metadata = (target.w.metadata || {}) as Record<string, any>;
++            const now = new Date().toISOString();
++            const actor = req.user?.email || 'management';
++            const docHistory: any[] = Array.isArray(metadata.docHistory) ? metadata.docHistory : [];
++            docHistory.push({ from: metadata.docStatus || 'sent', to: 'draft', by: actor, at: now, notes: 'Cancelled in Documenso via Dwellium' });
++            store.updateWorkitem(target.w.id, {
++                metadata: {
++                    ...metadata,
++                    docStatus: 'draft',
++                    docStatusUpdatedAt: now,
++                    docStatusUpdatedBy: actor,
++                    docHistory,
++                    esign: { ...(metadata.esign || {}), status: 'CANCELLED', cancelledAt: now },
++                },
++            });
++        }
++        res.json({ success: true, data: { envelopeId, status: 'CANCELLED', workitemId: target.w?.id || null } });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Documenso unreachable: ${(err as Error).message}` });
++    }
++});
++
++router.post('/resend', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = documensoConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body || {}) as Record<string, any>;
++    const target = resolveTarget(body);
++    if (body.workitemId && !target.w) { res.status(404).json({ success: false, error: 'Workitem not found' }); return; }
++    try {
++        let upstream: globalThis.Response;
++        if (target.documentId) {
++            // Template flow created a document — redistribute by document id.
++            upstream = await documensoJson(cfg, '/document/redistribute', { method: 'POST', body: JSON.stringify({ documentId: Number(target.documentId) }) });
++        } else if (target.envelopeId) {
++            upstream = await documensoJson(cfg, '/envelope/redistribute', { method: 'POST', body: JSON.stringify({ envelopeId: target.envelopeId }) });
++        } else {
++            res.status(400).json({ success: false, error: 'Nothing to resend — pass envelopeId, documentId or a workitemId with an esign record' });
++            return;
++        }
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `Documenso resend failed (${upstream.status})` }); return; }
++        if (target.w) {
++            const metadata = (target.w.metadata || {}) as Record<string, any>;
++            store.updateWorkitem(target.w.id, { metadata: { ...metadata, esign: { ...(metadata.esign || {}), lastResentAt: new Date().toISOString() } } });
++        }
++        res.json({ success: true, data: { resent: true, workitemId: target.w?.id || null } });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Documenso unreachable: ${(err as Error).message}` });
++    }
++});
++
++// ── plan 053: audit-log download proxy ─────────────────────────────────────
++
++router.get('/audit-log', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = documensoConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const target = resolveTarget(req.query as Record<string, any>);
++    if (req.query.workitemId && !target.w) { res.status(404).json({ success: false, error: 'Workitem not found' }); return; }
++    try {
++        const envelopeId = await resolveEnvelopeId(cfg, target);
++        if (!envelopeId) { res.status(400).json({ success: false, error: 'No Documenso envelope — pass envelopeId, documentId or a workitemId with an esign record' }); return; }
++        await streamDocumensoDownload(cfg, res, `/envelope/${encodeURIComponent(envelopeId)}/audit-log/download`);
++    } catch (err) {
++        res.status(502).json({ success: false, error: `Documenso unreachable: ${(err as Error).message}` });
++    }
++});
++
++// ── plan 053: tenant-facing signing links ──────────────────────────────────
++
++/**
++ * GET /my-signing — the signing links waiting on the CURRENT user (matched by
++ * session email against esign.recipients[].email). requireRole('tenant') =
++ * every authenticated role; each caller sees only their own token.
++ */
++router.get('/my-signing', requireRole('tenant'), (req: Request, res: Response) => {
++    const cfg = documensoConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const email = String(req.user?.email || '').toLowerCase();
++    if (!email) { res.json({ success: true, data: [] }); return; }
++    const appUrl = documensoAppUrl(cfg);
++    const rows = store.listWorkitems({ type: 'lease' })
++        .filter(w => (w.metadata as Record<string, any> | undefined)?.docStatus === 'sent')
++        .flatMap(w => {
++            const md = w.metadata as Record<string, any>;
++            const recipients: Array<Record<string, any>> = Array.isArray(md.esign?.recipients) ? md.esign.recipients : [];
++            const mine = recipients.find(r => String(r.email || '').toLowerCase() === email && r.token);
++            if (!mine) return [];
++            return [{
++                workitemId: w.id,
++                title: w.title,
++                docStatus: md.docStatus,
++                status: md.esign?.status || null,
++                signingUrl: `${appUrl}/sign/${mine.token}`,
++            }];
++        });
++    res.json({ success: true, data: rows });
++});
++
+ router.get('/leases/:workitemId/status', requireRole('management'), async (req: Request, res: Response) => {
+     const cfg = documensoConfig();
+     if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
+@@ -140,6 +467,7 @@ router.get('/leases/:workitemId/status', requireRole('management'), async (req:
+                 const j = (await upstream.json().catch(() => ({}))) as Record<string, any>;
+                 const esign = { ...md.esign, status: j.status || md.esign.status || null, completedAt: j.completedAt || md.esign.completedAt || null, checkedAt: new Date().toISOString() };
+                 if (Array.isArray(j.envelopeItems) && j.envelopeItems[0]?.id) esign.envelopeItemId = j.envelopeItems[0].id;
++                if (Array.isArray(j.recipients) && j.recipients.length) esign.recipients = j.recipients;
+                 md = { ...md, esign };
+                 store.updateWorkitem(w.id, { metadata: md });
+             }
+@@ -160,7 +488,7 @@ router.post('/leases/:workitemId/send', requireRole('management'), async (req: R
+         res.status(400).json({ success: false, error: `Cannot send for e-signature from '${docStatus}' — approve the document first` });
+         return;
+     }
+-    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as { recipients?: Recipient[]; fileId?: string; subject?: string; message?: string };
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as { recipients?: Recipient[]; fileId?: string; templateId?: number | string; subject?: string; message?: string };
+     const fallback: Recipient[] = [{
+         email: metadata.applicantEmail || metadata.tenantEmail,
+         name: metadata.applicantName || metadata.tenantName || w.title,
+@@ -171,62 +499,21 @@ router.post('/leases/:workitemId/send', requireRole('management'), async (req: R
+         res.status(400).json({ success: false, error: 'No recipient email — pass recipients[] or set applicantEmail on the lease' });
+         return;
+     }
+-    const templateId = Number(process.env.DOCUMENSO_TEMPLATE_LEASE || '');
++    // body.templateId (widget/Leasing picker) overrides the env default.
++    const templateId = Number(body.templateId ?? process.env.DOCUMENSO_TEMPLATE_LEASE ?? '');
+     const fileId = body.fileId || metadata.leasePdfFileId || metadata.pdfFileId;
+     try {
+-        let esign: Record<string, any>;
+-        if (Number.isFinite(templateId) && templateId > 0) {
+-            // ── Template flow: GET /template/{id} → POST /template/use (distributeDocument sends) ──
+-            const tplRes = await documensoJson(cfg, `/template/${templateId}`);
+-            if (!tplRes.ok) { res.status(502).json({ success: false, error: `Documenso template ${templateId} fetch failed (${tplRes.status})` }); return; }
+-            const tpl = (await tplRes.json().catch(() => ({}))) as Record<string, any>;
+-            const tplRecipients: Array<{ id: number; signingOrder?: number }> = Array.isArray(tpl.recipients) ? tpl.recipients : [];
+-            tplRecipients.sort((a, b) => (a.signingOrder ?? 0) - (b.signingOrder ?? 0));
+-            if (tplRecipients.length === 0) { res.status(502).json({ success: false, error: `Documenso template ${templateId} has no recipient placeholders` }); return; }
+-            const mapped = wanted.slice(0, tplRecipients.length).map((r, i) => ({ id: tplRecipients[i].id, email: r.email, name: r.name }));
+-            const useRes = await documensoJson(cfg, '/template/use', {
+-                method: 'POST',
+-                body: JSON.stringify({ templateId, externalId: w.id, recipients: mapped, distributeDocument: true }),
+-            });
+-            if (!useRes.ok) { res.status(502).json({ success: false, error: `Documenso template use failed (${useRes.status})` }); return; }
+-            const doc = (await useRes.json().catch(() => ({}))) as Record<string, any>;
+-            if (doc.id === undefined || doc.id === null) { res.status(502).json({ success: false, error: 'Documenso template use returned no document id' }); return; }
+-            esign = {
+-                provider: 'documenso', flow: 'template', templateId,
+-                documentId: doc.id, envelopeId: doc.envelopeId || null,
+-                recipients: Array.isArray(doc.recipients) && doc.recipients.length ? doc.recipients : mapped,
+-                status: doc.status || 'PENDING',
+-            };
+-        } else if (fileId) {
+-            // ── File flow: POST /envelope/create (multipart) → POST /envelope/distribute ──
+-            const pdf = await readLeasePdf(String(fileId));
+-            if (!pdf) { res.status(400).json({ success: false, error: `Lease PDF not found in the files store (fileId ${fileId})` }); return; }
+-            const form = new FormData();
+-            form.append('payload', JSON.stringify({
+-                title: w.title,
+-                type: 'DOCUMENT',
+-                externalId: w.id,
+-                recipients: wanted,
+-                meta: { subject: body.subject || `Please sign: ${w.title}`, message: body.message || 'Sent from Dwellium.' },
+-            }));
+-            form.append('files', new Blob([Uint8Array.from(pdf.buf)], { type: 'application/pdf' }), pdf.name.toLowerCase().endsWith('.pdf') ? pdf.name : `${pdf.name}.pdf`);
+-            const createRes = await documensoForm(cfg, '/envelope/create', form);
+-            if (!createRes.ok) { res.status(502).json({ success: false, error: `Documenso envelope create failed (${createRes.status})` }); return; }
+-            const env = (await createRes.json().catch(() => ({}))) as Record<string, any>;
+-            if (!env.id) { res.status(502).json({ success: false, error: 'Documenso envelope create returned no id' }); return; }
+-            const distRes = await documensoJson(cfg, '/envelope/distribute', { method: 'POST', body: JSON.stringify({ envelopeId: env.id }) });
+-            if (!distRes.ok) { res.status(502).json({ success: false, error: `Documenso envelope distribute failed (${distRes.status})` }); return; }
+-            const dist = (await distRes.json().catch(() => ({}))) as Record<string, any>;
+-            esign = {
+-                provider: 'documenso', flow: 'envelope',
+-                envelopeId: env.id, documentId: null, fileId: String(fileId),
+-                recipients: Array.isArray(dist.recipients) && dist.recipients.length ? dist.recipients : wanted,
+-                status: 'PENDING',
+-            };
+-        } else {
+-            res.status(400).json({ success: false, error: 'Nothing to send — set DOCUMENSO_TEMPLATE_LEASE (template id) or pass fileId of the lease PDF' });
+-            return;
+-        }
++        const sent = await sendViaDocumenso(cfg, {
++            title: w.title,
++            externalId: w.id,
++            recipients: wanted,
++            templateId,
++            fileId: fileId ? String(fileId) : undefined,
++            subject: body.subject,
++            message: body.message,
++        });
++        if (!sent.ok) { res.status(sent.status).json({ success: false, error: sent.error }); return; }
++        const esign = sent.esign;
+ 
+         const actor = req.user?.email || 'management';
+         const now = new Date().toISOString();
+@@ -270,22 +557,7 @@ router.get('/leases/:workitemId/signed-pdf', requireRole('management'), async (r
+             }
+             downloadPath = `/envelope/item/${encodeURIComponent(itemId)}/download?version=signed`;
+         }
+-        const upstream = await documensoJson(cfg, downloadPath);
+-        if (!upstream.ok) { res.status(502).json({ success: false, error: `Documenso download failed (${upstream.status})` }); return; }
+-        const ct = upstream.headers.get('content-type') || '';
+-        if (ct.includes('application/json')) {
+-            // v2 download endpoints answer with a short-lived URL, not the bytes.
+-            const j = (await upstream.json().catch(() => ({}))) as Record<string, any>;
+-            const url = j.downloadUrl || j.url;
+-            if (!url) { res.status(502).json({ success: false, error: 'Documenso download returned no URL' }); return; }
+-            const file = await fetch(url);
+-            if (!file.ok) { res.status(502).json({ success: false, error: `Documenso file fetch failed (${file.status})` }); return; }
+-            res.setHeader('Content-Type', file.headers.get('content-type') || 'application/pdf');
+-            res.send(Buffer.from(await file.arrayBuffer()));
+-            return;
+-        }
+-        res.setHeader('Content-Type', ct || 'application/pdf');
+-        res.send(Buffer.from(await upstream.arrayBuffer()));
++        await streamDocumensoDownload(cfg, res, downloadPath);
+     } catch (err) {
+         res.status(502).json({ success: false, error: `Documenso unreachable: ${(err as Error).message}` });
+     }
+diff --git a/tests/esignRoutes.plan053.test.ts b/tests/esignRoutes.plan053.test.ts
+new file mode 100644
+index 0000000..0055fec
+--- /dev/null
++++ b/tests/esignRoutes.plan053.test.ts
+@@ -0,0 +1,281 @@
++/**
++ * /api/esign plan-053 additions: live lists from Documenso, generic send,
++ * cancel, resend, audit-log download, tenant signing links.
++ *
++ * Every upstream URL is asserted against the mocked fetch; paths come from
++ * the same OpenAPI snapshot the drift guard checks (tests/fixtures).
++ */
++import { makeApp, createTestUser, TestUser } from './helpers/harness';
++
++// Require AFTER harness so the store opens its isolated temp SQLite.
++// eslint-disable-next-line @typescript-eslint/no-var-requires
++const store = require('../src/stores/dwelliumStore');
++
++const ENV_KEYS = ['DOCUMENSO_API_URL', 'DOCUMENSO_API_KEY', 'DOCUMENSO_WEBHOOK_SECRET', 'DOCUMENSO_TEMPLATE_LEASE', 'DOCUMENSO_APP_URL'] as const;
++const savedEnv: Record<string, string | undefined> = {};
++beforeAll(() => { for (const k of ENV_KEYS) savedEnv[k] = process.env[k]; });
++beforeEach(() => { for (const k of ENV_KEYS) delete process.env[k]; });
++afterAll(() => {
++    for (const k of ENV_KEYS) {
++        if (savedEnv[k] === undefined) delete process.env[k]; else process.env[k] = savedEnv[k];
++    }
++});
++
++function makeLease(metadata: Record<string, unknown>) {
++    return store.createWorkitem({ type: 'lease', title: 'Lease — plan053 unit', metadata });
++}
++
++function setDocumensoEnv() {
++    process.env.DOCUMENSO_API_URL = 'https://esign.test';
++    process.env.DOCUMENSO_API_KEY = 'api_test_key';
++}
++
++/** Minimal fetch stub — response-shaped objects, no undici dependency. */
++function jsonResponse(body: unknown, status = 200) {
++    return {
++        ok: status >= 200 && status < 300,
++        status,
++        json: async () => body,
++        arrayBuffer: async () => new ArrayBuffer(0),
++        headers: { get: () => 'application/json' },
++    };
++}
++
++describe('plan 053 — lists / generic send / cancel / resend / audit-log / my-signing', () => {
++    let mgmt: TestUser;
++    const realFetch = (global as any).fetch;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++    afterEach(() => { (global as any).fetch = realFetch; });
++
++    it('503 with needsSetup:true on every new route while DOCUMENSO_* env is unset', async () => {
++        const calls = [
++            () => makeApp().get('/api/esign/envelopes').set('Authorization', mgmt.authHeader),
++            () => makeApp().get('/api/esign/templates').set('Authorization', mgmt.authHeader),
++            () => makeApp().post('/api/esign/send').set('Authorization', mgmt.authHeader).send({}),
++            () => makeApp().post('/api/esign/cancel').set('Authorization', mgmt.authHeader).send({}),
++            () => makeApp().post('/api/esign/resend').set('Authorization', mgmt.authHeader).send({}),
++            () => makeApp().get('/api/esign/audit-log').set('Authorization', mgmt.authHeader),
++            () => makeApp().get('/api/esign/my-signing').set('Authorization', mgmt.authHeader),
++        ];
++        for (const call of calls) {
++            const r = await call();
++            expect(r.status).toBe(503);
++            expect(r.body.needsSetup).toBe(true);
++        }
++    });
++
++    it('management gate on the new management routes (tenant → 403); my-signing allows a tenant', async () => {
++        setDocumensoEnv();
++        const tenant = await createTestUser({ role: 'tenant' });
++        expect((await makeApp().get('/api/esign/envelopes').set('Authorization', tenant.authHeader)).status).toBe(403);
++        expect((await makeApp().post('/api/esign/cancel').set('Authorization', tenant.authHeader).send({})).status).toBe(403);
++        const mine = await makeApp().get('/api/esign/my-signing').set('Authorization', tenant.authHeader);
++        expect(mine.status).toBe(200);
++        expect(mine.body.data).toEqual([]);
++    });
++
++    it('GET /envelopes proxies GET /api/v2/envelope and normalises {data:[…]} (page/perPage passed through)', async () => {
++        setDocumensoEnv();
++        const urls: string[] = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            urls.push(`${init?.method || 'GET'} ${String(url)}`);
++            return jsonResponse({ data: [{ id: 'envl_1', title: 'Lease — Woodland Parc 2B', status: 'PENDING' }], totalPages: 3, currentPage: 2 });
++        };
++        const r = await makeApp().get('/api/esign/envelopes?page=2&perPage=25').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(urls).toEqual(['GET https://esign.test/api/v2/envelope?page=2&perPage=25']);
++        expect(r.body).toMatchObject({ success: true, totalPages: 3, currentPage: 2 });
++        expect(r.body.data).toEqual([{ id: 'envl_1', title: 'Lease — Woodland Parc 2B', status: 'PENDING' }]);
++    });
++
++    it('GET /templates proxies GET /api/v2/template and reports leaseTemplateId from env', async () => {
++        setDocumensoEnv();
++        process.env.DOCUMENSO_TEMPLATE_LEASE = '42';
++        const urls: string[] = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            urls.push(`${init?.method || 'GET'} ${String(url)}`);
++            return jsonResponse({ data: [{ id: 42, title: 'GA Residential Lease' }, { id: 43, title: 'Renewal' }] });
++        };
++        const r = await makeApp().get('/api/esign/templates').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(urls).toEqual(['GET https://esign.test/api/v2/template']);
++        expect(r.body.leaseTemplateId).toBe(42);
++        expect(r.body.data.map((t: { id: number }) => t.id)).toEqual([42, 43]);
++    });
++
++    it('POST /send (generic, template flow): template/{id} → template/use WITHOUT externalId; 400 when no recipients', async () => {
++        setDocumensoEnv();
++        const calls: Array<{ url: string; method: string; body: any }> = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            const u = String(url);
++            calls.push({ url: u, method: init?.method || 'GET', body: init?.body ? JSON.parse(init.body) : null });
++            if (u.endsWith('/api/v2/template/7')) return jsonResponse({ id: 7, recipients: [{ id: 70, signingOrder: 1 }] });
++            if (u.endsWith('/api/v2/template/use')) return jsonResponse({ id: 900, envelopeId: 'envl_g', status: 'PENDING', recipients: [{ id: 70, email: 'v@example.com', token: 'tok_v' }] });
++            return jsonResponse({ error: 'unexpected ' + u }, 500);
++        };
++        const empty = await makeApp().post('/api/esign/send').set('Authorization', mgmt.authHeader).send({ templateId: 7 });
++        expect(empty.status).toBe(400);
++        expect(empty.body.error).toMatch(/recipient/i);
++
++        const r = await makeApp().post('/api/esign/send').set('Authorization', mgmt.authHeader)
++            .send({ templateId: 7, title: 'Vendor agreement', recipients: [{ email: 'v@example.com', name: 'Vendor' }] });
++        expect(r.status).toBe(200);
++        expect(calls.map(c => `${c.method} ${c.url}`)).toEqual([
++            'GET https://esign.test/api/v2/template/7',
++            'POST https://esign.test/api/v2/template/use',
++        ]);
++        expect(calls[1].body).toEqual({ templateId: 7, recipients: [{ id: 70, email: 'v@example.com', name: 'Vendor' }], distributeDocument: true });
++        expect(r.body.data).toMatchObject({ flow: 'template', documentId: 900, envelopeId: 'envl_g', title: 'Vendor agreement' });
++        expect(r.body.data.recipients[0].token).toBe('tok_v');
++    });
++
++    it('POST /send (generic, fileId flow): multipart envelope/create → envelope/distribute, no externalId', async () => {
++        setDocumensoEnv();
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const fs = require('fs');
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const os = require('os');
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const path = require('path');
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const db = require('../src/services/database');
++        const tmp = path.join(os.tmpdir(), `generic-${Date.now()}.pdf`);
++        fs.writeFileSync(tmp, Buffer.from('%PDF-1.4 generic'));
++        const fileId = `file-generic-${Date.now()}`;
++        db.indexFile({ id: fileId, path: tmp, name: 'agreement.pdf', type: 'pdf', size: 16 });
++        const calls: Array<{ url: string; method: string; init: any }> = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            const u = String(url); calls.push({ url: u, method: init?.method || 'GET', init });
++            if (u.endsWith('/api/v2/envelope/create')) return jsonResponse({ id: 'envl_gen' });
++            if (u.endsWith('/api/v2/envelope/distribute')) return jsonResponse({ id: 'envl_gen', recipients: [{ email: 'a@example.com', token: 'tok_a' }] });
++            return jsonResponse({ error: 'unexpected ' + u }, 500);
++        };
++        const r = await makeApp().post('/api/esign/send').set('Authorization', mgmt.authHeader)
++            .send({ fileId, title: 'Parking addendum', recipients: [{ email: 'a@example.com' }] });
++        expect(r.status).toBe(200);
++        expect(calls.map(c => `${c.method} ${c.url}`)).toEqual([
++            'POST https://esign.test/api/v2/envelope/create',
++            'POST https://esign.test/api/v2/envelope/distribute',
++        ]);
++        const payload = JSON.parse(String(calls[0].init.body.get('payload')));
++        expect(payload).toMatchObject({ title: 'Parking addendum', type: 'DOCUMENT', recipients: [{ email: 'a@example.com', role: 'SIGNER' }] });
++        expect(payload.externalId).toBeUndefined();
++        expect(r.body.data).toMatchObject({ flow: 'envelope', envelopeId: 'envl_gen' });
++        fs.unlinkSync(tmp);
++    });
++
++    it('POST /cancel by workitemId: POST /api/v2/envelope/cancel {envelopeId}; metadata → draft + CANCELLED', async () => {
++        setDocumensoEnv();
++        const calls: Array<{ url: string; method: string; body: any }> = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            calls.push({ url: String(url), method: init?.method || 'GET', body: init?.body ? JSON.parse(init.body) : null });
++            return jsonResponse({ success: true });
++        };
++        const lease = makeLease({ docStatus: 'sent', esign: { flow: 'envelope', envelopeId: 'envl_c1' } });
++        const r = await makeApp().post('/api/esign/cancel').set('Authorization', mgmt.authHeader).send({ workitemId: lease.id });
++        expect(r.status).toBe(200);
++        expect(calls).toEqual([{ url: 'https://esign.test/api/v2/envelope/cancel', method: 'POST', body: { envelopeId: 'envl_c1' } }]);
++        const after = store.getWorkitem(lease.id);
++        expect(after.metadata.docStatus).toBe('draft');
++        expect(after.metadata.esign.status).toBe('CANCELLED');
++        expect(after.metadata.docHistory[after.metadata.docHistory.length - 1]).toMatchObject({ from: 'sent', to: 'draft' });
++    });
++
++    it('POST /cancel with only a documentId resolves envelopeId via GET /document/{id} first', async () => {
++        setDocumensoEnv();
++        const calls: string[] = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            const u = String(url); calls.push(`${init?.method || 'GET'} ${u}`);
++            if (u.endsWith('/api/v2/document/321')) return jsonResponse({ id: 321, envelopeId: 'envl_from_doc' });
++            if (u.endsWith('/api/v2/envelope/cancel')) return jsonResponse({ success: true });
++            return jsonResponse({}, 500);
++        };
++        const r = await makeApp().post('/api/esign/cancel').set('Authorization', mgmt.authHeader).send({ documentId: 321 });
++        expect(r.status).toBe(200);
++        expect(calls).toEqual([
++            'GET https://esign.test/api/v2/document/321',
++            'POST https://esign.test/api/v2/envelope/cancel',
++        ]);
++        expect(r.body.data).toMatchObject({ envelopeId: 'envl_from_doc', status: 'CANCELLED' });
++    });
++
++    it('POST /resend: template flow → POST /document/redistribute {documentId}; envelope flow → POST /envelope/redistribute {envelopeId}', async () => {
++        setDocumensoEnv();
++        const calls: Array<{ url: string; body: any }> = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            calls.push({ url: `${init?.method || 'GET'} ${String(url)}`, body: init?.body ? JSON.parse(init.body) : null });
++            return jsonResponse({ success: true });
++        };
++        const tplLease = makeLease({ docStatus: 'sent', esign: { flow: 'template', documentId: 555 } });
++        const r1 = await makeApp().post('/api/esign/resend').set('Authorization', mgmt.authHeader).send({ workitemId: tplLease.id });
++        expect(r1.status).toBe(200);
++        expect(calls[0]).toEqual({ url: 'POST https://esign.test/api/v2/document/redistribute', body: { documentId: 555 } });
++        expect(store.getWorkitem(tplLease.id).metadata.esign.lastResentAt).toBeTruthy();
++
++        const r2 = await makeApp().post('/api/esign/resend').set('Authorization', mgmt.authHeader).send({ envelopeId: 'envl_r2' });
++        expect(r2.status).toBe(200);
++        expect(calls[1]).toEqual({ url: 'POST https://esign.test/api/v2/envelope/redistribute', body: { envelopeId: 'envl_r2' } });
++
++        const none = await makeApp().post('/api/esign/resend').set('Authorization', mgmt.authHeader).send({});
++        expect(none.status).toBe(400);
++    });
++
++    it('GET /audit-log?workitemId= proxies GET /envelope/{id}/audit-log/download and follows the downloadUrl', async () => {
++        setDocumensoEnv();
++        const urls: string[] = [];
++        (global as any).fetch = async (url: unknown) => {
++            const u = String(url); urls.push(u);
++            if (u.endsWith('/api/v2/envelope/envl_a1/audit-log/download')) return jsonResponse({ downloadUrl: 'https://files.test/audit.pdf' });
++            if (u === 'https://files.test/audit.pdf') return { ok: true, status: 200, headers: { get: () => 'application/pdf' }, arrayBuffer: async () => new TextEncoder().encode('%PDF-audit').buffer, json: async () => ({}) };
++            return jsonResponse({}, 500);
++        };
++        const lease = makeLease({ docStatus: 'countersigned', esign: { flow: 'envelope', envelopeId: 'envl_a1' } });
++        const r = await makeApp().get(`/api/esign/audit-log?workitemId=${lease.id}`).set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.headers['content-type']).toMatch(/application\/pdf/);
++        expect(urls).toEqual(['https://esign.test/api/v2/envelope/envl_a1/audit-log/download', 'https://files.test/audit.pdf']);
++    });
++
++    it('GET /my-signing: a tenant sees only their own pending signing link (built from DOCUMENSO_APP_URL)', async () => {
++        setDocumensoEnv();
++        process.env.DOCUMENSO_APP_URL = 'https://sign.dwellium.test';
++        const tenant = await createTestUser({ role: 'tenant', email: `sign-me-${Date.now()}@example.com` });
++        const other = await createTestUser({ role: 'tenant', email: `not-me-${Date.now()}@example.com` });
++        const lease = makeLease({
++            docStatus: 'sent',
++            esign: { flow: 'template', documentId: 61, recipients: [{ email: tenant.email, token: 'tok_mine' }, { email: 'someone-else@example.com', token: 'tok_theirs' }] },
++        });
++        makeLease({ docStatus: 'signed', esign: { flow: 'template', documentId: 62, recipients: [{ email: tenant.email, token: 'tok_done' }] } });
++
++        const r = await makeApp().get('/api/esign/my-signing').set('Authorization', tenant.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.body.data).toEqual([{
++            workitemId: lease.id,
++            title: lease.title,
++            docStatus: 'sent',
++            status: null,
++            signingUrl: 'https://sign.dwellium.test/sign/tok_mine',
++        }]);
++        // no token of anyone else ever leaks
++        expect(JSON.stringify(r.body)).not.toContain('tok_theirs');
++
++        const empty = await makeApp().get('/api/esign/my-signing').set('Authorization', other.authHeader);
++        expect(empty.body.data).toEqual([]);
++    });
++
++    it('lease send accepts body.templateId (overrides the env default)', async () => {
++        setDocumensoEnv();
++        process.env.DOCUMENSO_TEMPLATE_LEASE = '42';
++        const calls: string[] = [];
++        (global as any).fetch = async (url: unknown, init?: any) => {
++            const u = String(url); calls.push(`${init?.method || 'GET'} ${u}`);
++            if (u.endsWith('/api/v2/template/77')) return jsonResponse({ id: 77, recipients: [{ id: 700, signingOrder: 1 }] });
++            if (u.endsWith('/api/v2/template/use')) return jsonResponse({ id: 990, envelopeId: 'envl_o', status: 'PENDING' });
++            return jsonResponse({}, 500);
++        };
++        const lease = makeLease({ docStatus: 'approved', applicantEmail: 't@example.com' });
++        const r = await makeApp().post(`/api/esign/leases/${lease.id}/send`).set('Authorization', mgmt.authHeader).send({ templateId: 77 });
++        expect(r.status).toBe(200);
++        expect(calls[0]).toBe('GET https://esign.test/api/v2/template/77');
++    });
++});

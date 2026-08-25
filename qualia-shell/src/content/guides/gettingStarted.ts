@@ -65,17 +65,46 @@ Open **Tools hub** (Filing Cabinet, or \`help: tools\`). Ten open-source tools l
 | **Links & QR** (Dub) | Short links + QR codes for notices and unit doors | A Dub workspace + \`VITE_DUB_URL\` |
 | **Photo Vault** (Immich) | Inspection and move-in/out photos, searchable | The office-Mac Immich (tools/immich) + \`VITE_IMMICH_URL\` — viewing needs Tailscale on your device |
 | **Remote Support** (RustDesk) | Take over the office PC or a kiosk to help | Install the client; relay config appears once \`VITE_RUSTDESK_RELAY\` is set |
+| **AppFlowy Workspace** (AppFlowy) | Notion-style docs, grids and kanban — lease tracker, vendor board, SOPs (templates in tools/appflowy) | A free AppFlowy account (appflowy.com/app) or self-host (tools/appflowy) + \`VITE_APPFLOWY_URL\` |
 
 - **Dictation** (FluidVoice, Mac): *Control Panel → Dictation* → install with one brew command, click **Copy vocabulary** to teach it your property terms, then talk into any Dwellium field.
-- **Coming soon** — AppFlowy Workspace (phase 3 trial).
 
 All AGPL tools run **unmodified**; every customisation lives inside Dwellium.
 
-## 7 · It follows you everywhere
+## 7 · Stress-test a big decision (Advisory Board)
+
+Some calls are worth slowing down for: renewal pricing, hiring, taking on a property, changing an offer. The **5 Persona Advisory Board** on the Holocron **Home** page runs those through five strategic lenses that are made to disagree with each other, then gives you one decision brief.
+
+![The board on Holocron Home](/demo/advisory-board/01-diagram.png)
+
+**How it works — the CRIT loop:**
+
+1. **Context** — type the decision in one line ("Raise renewal rents 6% at Woodland Parc, or hold at 3%?").
+2. **Interview** — the board asks up to three focused questions *before* advising. Answer them; that is where the value comes from. (You can skip, and it will state its assumptions instead.)
+3. **Role** — five lenses read the same evidence: Product Clarity, Risk and Capital, Scale and Systems, Offer Strength, and your Future Self.
+4. **Task** — you get the disagreement between them, a Future Self check, and a final brief with a next action.
+
+Each lens argues its own corner. The risk lens does the arithmetic on downside:
+
+![Risk and Capital Lens](/demo/advisory-board/lens-risk.png)
+
+...while the offer lens pushes on whether the thing is even sellable:
+
+![Offer Strength Lens](/demo/advisory-board/lens-offer.png)
+
+Then it lands on one brief you can act on this week:
+
+![Final decision brief](/demo/advisory-board/08-final-brief.png)
+
+**To use it:** Holocron **Home** → click any persona (or **Open the Advisory Board →**), or press **⌘K** and type *Advisory Board*. It opens on a worked example — the Woodland Parc renewal decision — so you can see the shape before running your own; hit **Run your own decision** to start. It runs on your own AI key, and any single lens can be re-asked on its own with **Ask just this lens**.
+
+These are interpretive strategic lenses inspired by publicly documented principles — not impersonations of, or affiliated with, the people named.
+
+## 8 · It follows you everywhere
 
 Log in from any machine and everything is there: layouts, whiteboards, notes, tasks, your encrypted keys, even which tips you've seen. The only exception is Photo Vault, which is private to your Tailscale network by design — install Tailscale on the new machine to see photos.
 
-## 8 · Shortcuts worth keeping
+## 9 · Shortcuts worth keeping
 
 | Keys | Does |
 |---|---|

@@ -1,0 +1,683 @@
+diff --git a/src/routes/broadcastRoutes.ts b/src/routes/broadcastRoutes.ts
+index a9bf9be..45d7bfd 100644
+--- a/src/routes/broadcastRoutes.ts
++++ b/src/routes/broadcastRoutes.ts
+@@ -8,15 +8,26 @@
+  * every route answers 503 with `needsSetup: true` so the frontend renders its
+  * "needs setup" card — never a crash.
+  *
+- *   GET  /api/broadcasts/lists                mailing lists (audiences)
+- *   GET  /api/broadcasts/templates            campaign templates
+- *   GET  /api/broadcasts/campaigns            recent campaigns with status
+- *   POST /api/broadcasts/campaigns            create a DRAFT campaign from a template + audience
+- *   POST /api/broadcasts/campaigns/:id/test   send the draft to test addresses
++ *   GET  /api/broadcasts/lists                    mailing lists (audiences)
++ *   POST /api/broadcasts/lists                    create a list (private/single-optin defaults)
++ *   GET  /api/broadcasts/subscribers              browse subscribers (list_id / page / query)
++ *   POST /api/broadcasts/subscribers              UPSERT one subscriber (409 -> lookup + PUT merge)
++ *   POST /api/broadcasts/subscribers/import       bulk UPSERT (plan 053 — never deletes)
++ *   GET  /api/broadcasts/templates                campaign templates
++ *   GET  /api/broadcasts/templates/:id/preview    rendered HTML preview of a template
++ *   GET  /api/broadcasts/campaigns                recent campaigns with status
++ *   POST /api/broadcasts/campaigns                create a DRAFT campaign (template/body/audience)
++ *   PUT  /api/broadcasts/campaigns/:id            update a draft (subject/body/lists/send_at…)
++ *   PUT  /api/broadcasts/campaigns/:id/status     schedule/start/pause/cancel — `confirm:true`
++ *                                                 REQUIRED for 'scheduled'/'running' (real sends)
++ *   GET  /api/broadcasts/campaigns/:id/stats      sent/views/clicks/bounces for one campaign
++ *   POST /api/broadcasts/campaigns/:id/test       send the draft to test addresses
+  *
+  * All routes are management-gated. Only fixed listmonk paths are proxied —
+- * never a caller-supplied URL. Drafts are created, never auto-started;
+- * starting/scheduling a real send stays in the listmonk admin for now.
++ * never a caller-supplied URL. UPSERT-only: this proxy never calls a listmonk
++ * DELETE. Sending is gated behind an explicit `confirm:true` body flag so a UI
++ * bug can never mass-email (plan 053). Every upstream path is asserted against
++ * tests/fixtures/listmonk-api-paths.json (drift guard).
+  * listmonk auth: `Authorization: token api_user:token` (listmonk.app/docs/apis/apis/).
+  */
+ import { Router, Request, Response } from 'express';
+@@ -60,6 +71,80 @@ function resultsOf(body: unknown): unknown[] {
+     return [];
+ }
+ 
++/** Every listmonk endpoint this proxy calls, asserted against the snapshot in
++ *  tests/fixtures/listmonk-api-paths.json (drift guard — docs
++ *  https://listmonk.app/docs/apis/apis/). UPSERT-only: no DELETE anywhere. */
++export const LISTMONK_PATHS_USED = [
++    'GET /lists',
++    'POST /lists',
++    'GET /subscribers',
++    'POST /subscribers',
++    'PUT /subscribers/{subscriber_id}',
++    'GET /templates',
++    'GET /templates/{template_id}/preview',
++    'GET /campaigns',
++    'GET /campaigns/{campaign_id}',
++    'POST /campaigns',
++    'PUT /campaigns/{campaign_id}',
++    'PUT /campaigns/{campaign_id}/status',
++    'POST /campaigns/{campaign_id}/test',
++] as const;
++
++/** listmonk PUT /campaigns/{id}/status allowed values (docs/apis/campaigns/). */
++const CAMPAIGN_STATUSES = ['scheduled', 'running', 'paused', 'cancelled'];
++/** Statuses that make real mail go out — require an explicit `confirm:true`. */
++const SEND_STATUSES = ['scheduled', 'running'];
++
++const EMAIL_RE = /^[^\s'"\\]+@[^\s'"\\]+\.[^\s'"\\]+$/;
++
++/** Create-or-update one subscriber. listmonk POST /subscribers answers 409 on
++ *  a duplicate e-mail — then we look the row up by e-mail and PUT with MERGED
++ *  lists + attribs. Never deletes; a blocklisted subscriber stays blocklisted
++ *  (unsubscribes are honored, repo-wide upsert-only rule). */
++async function upsertSubscriber(
++    cfg: ListmonkConfig,
++    sub: { email: string; name: string; lists: number[]; attribs?: Record<string, unknown>; preconfirm?: boolean },
++): Promise<{ ok: true; action: 'created' | 'updated'; data: Record<string, any> } | { ok: false; error: string }> {
++    const createRes = await listmonkFetch(cfg, '/subscribers', {
++        method: 'POST',
++        body: JSON.stringify({
++            email: sub.email,
++            name: sub.name,
++            status: 'enabled',
++            lists: sub.lists,
++            attribs: sub.attribs || {},
++            preconfirm_subscriptions: sub.preconfirm === true,
++        }),
++    });
++    if (createRes.ok) {
++        const created = (await createRes.json().catch(() => ({}))) as Record<string, any>;
++        return { ok: true, action: 'created', data: created.data ?? created };
++    }
++    if (createRes.status !== 409) return { ok: false, error: `listmonk subscriber create failed (${createRes.status})` };
++    const q = encodeURIComponent(`subscribers.email='${sub.email.replace(/'/g, "''")}'`);
++    const findRes = await listmonkFetch(cfg, `/subscribers?page=1&per_page=1&query=${q}`);
++    if (!findRes.ok) return { ok: false, error: `listmonk subscriber lookup failed (${findRes.status})` };
++    const existing = resultsOf(await findRes.json().catch(() => null))[0] as Record<string, any> | undefined;
++    if (!existing?.id) return { ok: false, error: 'duplicate subscriber not found by e-mail' };
++    const existingLists = Array.isArray(existing.lists)
++        ? existing.lists.map((l: Record<string, any>) => l?.id).filter((n: unknown) => Number.isInteger(n))
++        : [];
++    const putRes = await listmonkFetch(cfg, `/subscribers/${existing.id}`, {
++        method: 'PUT',
++        body: JSON.stringify({
++            email: sub.email,
++            name: sub.name || existing.name,
++            status: existing.status === 'blocklisted' ? 'blocklisted' : 'enabled',
++            lists: [...new Set([...existingLists, ...sub.lists])],
++            attribs: { ...(existing.attribs || {}), ...(sub.attribs || {}) },
++            preconfirm_subscriptions: sub.preconfirm === true,
++        }),
++    });
++    if (!putRes.ok) return { ok: false, error: `listmonk subscriber update failed (${putRes.status})` };
++    const updated = (await putRes.json().catch(() => ({}))) as Record<string, any>;
++    return { ok: true, action: 'updated', data: updated.data ?? existing };
++}
++
+ router.get('/lists', requireRole('management'), async (_req: Request, res: Response) => {
+     const cfg = listmonkConfig();
+     if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
+@@ -168,4 +253,240 @@ router.post('/campaigns/:id/test', requireRole('management'), async (req: Reques
+     }
+ });
+ 
++/** Create a mailing list (audience). Defaults: private, single opt-in. */
++router.post('/lists', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as {
++        name?: string; type?: string; optin?: string; description?: string; tags?: string[];
++    };
++    const name = typeof body.name === 'string' ? body.name.trim() : '';
++    if (!name) { res.status(400).json({ success: false, error: 'name is required' }); return; }
++    try {
++        const upstream = await listmonkFetch(cfg, '/lists', {
++            method: 'POST',
++            body: JSON.stringify({
++                name,
++                type: body.type === 'public' ? 'public' : 'private',
++                optin: body.optin === 'double' ? 'double' : 'single',
++                ...(typeof body.description === 'string' ? { description: body.description } : {}),
++                ...(Array.isArray(body.tags) ? { tags: body.tags.filter(t => typeof t === 'string') } : {}),
++            }),
++        });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk list create failed (${upstream.status})` }); return; }
++        const created = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        res.status(201).json({ success: true, data: created.data ?? created });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** Browse subscribers — optional list_id filter, pagination, listmonk search query. */
++router.get('/subscribers', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const page = Math.max(1, Number.parseInt(String(req.query.page ?? '1'), 10) || 1);
++    const perPage = Math.min(100, Math.max(1, Number.parseInt(String(req.query.per_page ?? '50'), 10) || 50));
++    const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
++    const listId = Number.parseInt(String(req.query.list_id ?? ''), 10);
++    if (Number.isInteger(listId)) params.set('list_id', String(listId));
++    const query = typeof req.query.query === 'string' ? req.query.query.trim() : '';
++    if (query) params.set('query', query);
++    try {
++        const upstream = await listmonkFetch(cfg, `/subscribers?${params.toString()}`);
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk subscribers failed (${upstream.status})` }); return; }
++        const parsed = (await upstream.json().catch(() => null)) as Record<string, any> | null;
++        res.json({ success: true, data: resultsOf(parsed), total: parsed?.data?.total ?? resultsOf(parsed).length });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** UPSERT one subscriber into one or more lists (never deletes). */
++router.post('/subscribers', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as {
++        email?: string; name?: string; lists?: number[]; attribs?: Record<string, unknown>; preconfirm?: boolean;
++    };
++    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
++    const lists = Array.isArray(body.lists) ? body.lists.filter(n => Number.isInteger(n)) : [];
++    if (!EMAIL_RE.test(email) || lists.length === 0) {
++        res.status(400).json({ success: false, error: 'a valid email and at least one list id are required' });
++        return;
++    }
++    try {
++        const r = await upsertSubscriber(cfg, {
++            email,
++            name: (typeof body.name === 'string' && body.name.trim()) || email,
++            lists,
++            attribs: body.attribs && typeof body.attribs === 'object' ? body.attribs : {},
++            preconfirm: body.preconfirm === true,
++        });
++        if (!r.ok) { res.status(502).json({ success: false, error: r.error }); return; }
++        res.status(r.action === 'created' ? 201 : 200).json({ success: true, action: r.action, data: r.data });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** Bulk UPSERT — the Strata → listmonk import bridge (plan 053). Row-by-row
++ *  upsert via the listmonk API; a failed row never aborts the batch and
++ *  NOTHING is ever deleted. */
++router.post('/subscribers/import', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as {
++        subscribers?: Array<{ email?: string; name?: string; attribs?: Record<string, unknown> }>;
++        lists?: number[]; preconfirm?: boolean;
++    };
++    const subs = Array.isArray(body.subscribers) ? body.subscribers : [];
++    const lists = Array.isArray(body.lists) ? body.lists.filter(n => Number.isInteger(n)) : [];
++    if (subs.length === 0 || lists.length === 0) {
++        res.status(400).json({ success: false, error: 'subscribers[] and at least one list id are required' });
++        return;
++    }
++    if (subs.length > 500) {
++        res.status(400).json({ success: false, error: 'max 500 subscribers per import call' });
++        return;
++    }
++    const preconfirm = body.preconfirm === true;
++    const outcome = { created: 0, updated: 0, failed: [] as Array<{ email: string; error: string }> };
++    for (const raw of subs) {
++        const email = typeof raw?.email === 'string' ? raw.email.trim().toLowerCase() : '';
++        if (!EMAIL_RE.test(email)) { outcome.failed.push({ email: email || '(missing)', error: 'invalid e-mail' }); continue; }
++        try {
++            const r = await upsertSubscriber(cfg, {
++                email,
++                name: (typeof raw?.name === 'string' && raw.name.trim()) || email,
++                lists,
++                attribs: raw?.attribs && typeof raw.attribs === 'object' ? raw.attribs : {},
++                preconfirm,
++            });
++            if (r.ok) outcome[r.action === 'created' ? 'created' : 'updated'] += 1;
++            else outcome.failed.push({ email, error: r.error });
++        } catch (err) {
++            outcome.failed.push({ email, error: (err as Error).message });
++        }
++    }
++    res.json({ success: true, data: outcome });
++});
++
++/** Rendered HTML preview of a template (iframe-srcdoc'd by the widget). */
++router.get('/templates/:id/preview', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const id = Number.parseInt(req.params.id, 10);
++    if (!Number.isInteger(id)) { res.status(400).json({ success: false, error: 'Numeric template id required' }); return; }
++    try {
++        const upstream = await listmonkFetch(cfg, `/templates/${id}/preview`);
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk template preview failed (${upstream.status})` }); return; }
++        res.type('html').send(await upstream.text());
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** Update a draft campaign. listmonk PUT wants the full campaign back, so we
++ *  re-read it and merge only the fields the caller sent. */
++router.put('/campaigns/:id', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const id = Number.parseInt(req.params.id, 10);
++    if (!Number.isInteger(id)) { res.status(400).json({ success: false, error: 'Numeric campaign id required' }); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as {
++        name?: string; subject?: string; lists?: number[]; template_id?: number;
++        body?: string; content_type?: string; send_at?: string | null;
++    };
++    try {
++        const getRes = await listmonkFetch(cfg, `/campaigns/${id}`);
++        if (!getRes.ok) { res.status(502).json({ success: false, error: `listmonk campaign fetch failed (${getRes.status})` }); return; }
++        const campaign = ((await getRes.json().catch(() => ({}))) as Record<string, any>).data ?? {};
++        const lists = Array.isArray(body.lists)
++            ? body.lists.filter(n => Number.isInteger(n))
++            : (Array.isArray(campaign.lists) ? campaign.lists.map((l: Record<string, any>) => l?.id ?? l).filter((n: unknown) => Number.isInteger(n)) : []);
++        const sendAt = typeof body.send_at === 'string' && body.send_at ? body.send_at : (body.send_at === null ? null : campaign.send_at ?? null);
++        const upstream = await listmonkFetch(cfg, `/campaigns/${id}`, {
++            method: 'PUT',
++            body: JSON.stringify({
++                name: (typeof body.name === 'string' && body.name.trim()) || campaign.name,
++                subject: (typeof body.subject === 'string' && body.subject.trim()) || campaign.subject,
++                lists,
++                type: campaign.type || 'regular',
++                content_type: typeof body.content_type === 'string' ? body.content_type : (campaign.content_type || 'richtext'),
++                body: typeof body.body === 'string' ? body.body : (campaign.body || ''),
++                ...(Number.isInteger(body.template_id) ? { template_id: body.template_id } : (campaign.template_id ? { template_id: campaign.template_id } : {})),
++                ...(sendAt ? { send_at: sendAt } : {}),
++            }),
++        });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk campaign update failed (${upstream.status})` }); return; }
++        const updated = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        res.json({ success: true, data: updated.data ?? updated });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** Change campaign status. 'scheduled' and 'running' start REAL sends, so they
++ *  require an explicit `confirm:true` in the body — a UI bug can never
++ *  mass-email (plan 053). 'paused'/'cancelled' stop mail and need no confirm. */
++router.put('/campaigns/:id/status', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const id = Number.parseInt(req.params.id, 10);
++    if (!Number.isInteger(id)) { res.status(400).json({ success: false, error: 'Numeric campaign id required' }); return; }
++    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as { status?: string; confirm?: boolean };
++    const status = typeof body.status === 'string' ? body.status : '';
++    if (!CAMPAIGN_STATUSES.includes(status)) {
++        res.status(400).json({ success: false, error: `status must be one of: ${CAMPAIGN_STATUSES.join(', ')}` });
++        return;
++    }
++    if (SEND_STATUSES.includes(status) && body.confirm !== true) {
++        res.status(400).json({ success: false, error: `confirm:true is required to set status '${status}' — this starts a real send` });
++        return;
++    }
++    try {
++        const upstream = await listmonkFetch(cfg, `/campaigns/${id}/status`, {
++            method: 'PUT',
++            body: JSON.stringify({ status }),
++        });
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk status change failed (${upstream.status})` }); return; }
++        const updated = (await upstream.json().catch(() => ({}))) as Record<string, any>;
++        res.json({ success: true, data: updated.data ?? updated });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
++/** Delivery/engagement counters for one campaign (from GET /campaigns/{id}). */
++router.get('/campaigns/:id/stats', requireRole('management'), async (req: Request, res: Response) => {
++    const cfg = listmonkConfig();
++    if (!cfg) { res.status(503).json(NOT_CONFIGURED); return; }
++    const id = Number.parseInt(req.params.id, 10);
++    if (!Number.isInteger(id)) { res.status(400).json({ success: false, error: 'Numeric campaign id required' }); return; }
++    try {
++        const upstream = await listmonkFetch(cfg, `/campaigns/${id}`);
++        if (!upstream.ok) { res.status(502).json({ success: false, error: `listmonk campaign fetch failed (${upstream.status})` }); return; }
++        const c = ((await upstream.json().catch(() => ({}))) as Record<string, any>).data ?? {};
++        res.json({
++            success: true,
++            data: {
++                id: c.id ?? id,
++                name: c.name ?? '',
++                status: c.status ?? '',
++                sent: c.sent ?? 0,
++                to_send: c.to_send ?? 0,
++                views: c.views ?? 0,
++                clicks: c.clicks ?? 0,
++                bounces: c.bounces ?? 0,
++                started_at: c.started_at ?? null,
++                send_at: c.send_at ?? null,
++                updated_at: c.updated_at ?? null,
++            },
++        });
++    } catch (err) {
++        res.status(502).json({ success: false, error: `listmonk unreachable: ${(err as Error).message}` });
++    }
++});
++
+ export default router;
+diff --git a/tests/broadcastRoutes.test.ts b/tests/broadcastRoutes.test.ts
+index 5a81ed1..8267f3c 100644
+--- a/tests/broadcastRoutes.test.ts
++++ b/tests/broadcastRoutes.test.ts
+@@ -170,3 +170,262 @@ describe('/api/broadcasts (listmonk mocked)', () => {
+         expect(r.body.error).toMatch(/unreachable/);
+     });
+ });
++
++describe('/api/broadcasts plan-053 routes — env gate', () => {
++    let mgmt: TestUser;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++
++    it('503 with needsSetup:true on every plan-053 route when LISTMONK_* env is unset', async () => {
++        const calls = [
++            () => makeApp().post('/api/broadcasts/lists').set('Authorization', mgmt.authHeader).send({ name: 'Owners' }),
++            () => makeApp().get('/api/broadcasts/subscribers').set('Authorization', mgmt.authHeader),
++            () => makeApp().post('/api/broadcasts/subscribers').set('Authorization', mgmt.authHeader).send({ email: 'a@example.com', lists: [1] }),
++            () => makeApp().post('/api/broadcasts/subscribers/import').set('Authorization', mgmt.authHeader).send({ subscribers: [{ email: 'a@example.com' }], lists: [1] }),
++            () => makeApp().get('/api/broadcasts/templates/2/preview').set('Authorization', mgmt.authHeader),
++            () => makeApp().put('/api/broadcasts/campaigns/1').set('Authorization', mgmt.authHeader).send({ subject: 'Hi' }),
++            () => makeApp().put('/api/broadcasts/campaigns/1/status').set('Authorization', mgmt.authHeader).send({ status: 'paused' }),
++            () => makeApp().get('/api/broadcasts/campaigns/1/stats').set('Authorization', mgmt.authHeader),
++        ];
++        for (const call of calls) {
++            const r = await call();
++            expect(r.status).toBe(503);
++            expect(r.body.needsSetup).toBe(true);
++        }
++    });
++});
++
++describe('/api/broadcasts plan-053 routes (listmonk mocked)', () => {
++    let mgmt: TestUser;
++    const realFetch = (global as any).fetch;
++    beforeAll(async () => { mgmt = await createTestUser({ role: 'management' }); });
++    afterEach(() => { (global as any).fetch = realFetch; });
++
++    function textResponse(body: string, status = 200) {
++        return {
++            ok: status >= 200 && status < 300,
++            status,
++            json: async () => { throw new Error('not json'); },
++            text: async () => body,
++            headers: { get: () => 'text/html' },
++        };
++    }
++
++    it('POST /lists creates a private single-optin list by default (201); 400 without a name', async () => {
++        setListmonkEnv();
++        const bodies: Record<string, any>[] = [];
++        (global as any).fetch = async (_url: unknown, init?: { body?: string }) => {
++            bodies.push(JSON.parse(init?.body || '{}'));
++            return jsonResponse({ data: { id: 9, name: 'Woodland Parc Townhomes' } });
++        };
++        const r = await makeApp().post('/api/broadcasts/lists').set('Authorization', mgmt.authHeader)
++            .send({ name: 'Woodland Parc Townhomes' });
++        expect(r.status).toBe(201);
++        expect(r.body.data).toMatchObject({ id: 9 });
++        expect(bodies[0]).toEqual({ name: 'Woodland Parc Townhomes', type: 'private', optin: 'single' });
++
++        let called = 0;
++        (global as any).fetch = async () => { called += 1; return jsonResponse({}); };
++        const bad = await makeApp().post('/api/broadcasts/lists').set('Authorization', mgmt.authHeader).send({});
++        expect(bad.status).toBe(400);
++        expect(called).toBe(0);
++    });
++
++    it('GET /subscribers forwards list_id, pagination and the search query; unwraps results + total', async () => {
++        setListmonkEnv();
++        const urls: string[] = [];
++        (global as any).fetch = async (url: unknown) => {
++            urls.push(String(url));
++            return jsonResponse({ data: { results: [{ id: 5, email: 'r1@example.com' }], total: 1 } });
++        };
++        const r = await makeApp().get('/api/broadcasts/subscribers?list_id=3&page=2&per_page=25&query=subscribers.name LIKE \'%andy%\'')
++            .set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.body.data).toEqual([{ id: 5, email: 'r1@example.com' }]);
++        expect(r.body.total).toBe(1);
++        const u = new URL(urls[0]);
++        expect(u.pathname).toBe('/api/subscribers');
++        expect(u.searchParams.get('list_id')).toBe('3');
++        expect(u.searchParams.get('page')).toBe('2');
++        expect(u.searchParams.get('per_page')).toBe('25');
++        expect(u.searchParams.get('query')).toContain('%andy%');
++    });
++
++    it('POST /subscribers creates (201); on listmonk 409 it looks the row up and PUTs with MERGED lists (200, never deletes)', async () => {
++        setListmonkEnv();
++        // fresh create
++        (global as any).fetch = async (_url: unknown, init?: { method?: string; body?: string }) => {
++            expect(init?.method).toBe('POST');
++            const b = JSON.parse(init?.body || '{}');
++            expect(b).toMatchObject({ email: 'r1@example.com', status: 'enabled', lists: [3], preconfirm_subscriptions: false });
++            return jsonResponse({ data: { id: 11, email: 'r1@example.com' } });
++        };
++        const created = await makeApp().post('/api/broadcasts/subscribers').set('Authorization', mgmt.authHeader)
++            .send({ email: 'R1@Example.com', name: 'Resident One', lists: [3] });
++        expect(created.status).toBe(201);
++        expect(created.body.action).toBe('created');
++
++        // duplicate → upsert
++        const calls: Array<{ url: string; method: string; body: any }> = [];
++        (global as any).fetch = async (url: unknown, init?: { method?: string; body?: string }) => {
++            const method = init?.method || 'GET';
++            calls.push({ url: String(url), method, body: init?.body ? JSON.parse(init.body) : null });
++            if (method === 'POST') return jsonResponse({ error: 'exists' }, 409);
++            if (method === 'GET') return jsonResponse({ data: { results: [{ id: 11, email: 'r1@example.com', name: 'Old Name', status: 'enabled', lists: [{ id: 1 }], attribs: { unit: '2B' } }] } });
++            return jsonResponse({ data: { id: 11, email: 'r1@example.com', lists: [{ id: 1 }, { id: 3 }] } });
++        };
++        const upserted = await makeApp().post('/api/broadcasts/subscribers').set('Authorization', mgmt.authHeader)
++            .send({ email: 'r1@example.com', name: 'Resident One', lists: [3], attribs: { property: 'Woodland Parc' } });
++        expect(upserted.status).toBe(200);
++        expect(upserted.body.action).toBe('updated');
++        expect(calls.map(c => c.method)).toEqual(['POST', 'GET', 'PUT']);
++        expect(calls[1].url).toContain('/api/subscribers?');
++        expect(decodeURIComponent(calls[1].url)).toContain("subscribers.email='r1@example.com'");
++        expect(calls[2].url).toBe('https://lists.test/api/subscribers/11');
++        expect(calls[2].body.lists.sort()).toEqual([1, 3]); // merged, nothing dropped
++        expect(calls[2].body.attribs).toEqual({ unit: '2B', property: 'Woodland Parc' });
++
++        // invalid email → 400, listmonk never called
++        let called = 0;
++        (global as any).fetch = async () => { called += 1; return jsonResponse({}); };
++        const bad = await makeApp().post('/api/broadcasts/subscribers').set('Authorization', mgmt.authHeader)
++            .send({ email: 'nope', lists: [1] });
++        expect(bad.status).toBe(400);
++        expect(called).toBe(0);
++    });
++
++    it('POST /subscribers/import bulk-upserts row by row: created + updated counted, invalid rows failed, batch never aborts', async () => {
++        setListmonkEnv();
++        (global as any).fetch = async (url: unknown, init?: { method?: string; body?: string }) => {
++            const method = init?.method || 'GET';
++            const u = String(url);
++            if (method === 'POST') {
++                const b = JSON.parse(init?.body || '{}');
++                if (b.email === 'dupe@example.com') return jsonResponse({}, 409);
++                return jsonResponse({ data: { id: 21, email: b.email } });
++            }
++            if (method === 'GET' && u.includes('query=')) {
++                return jsonResponse({ data: { results: [{ id: 22, email: 'dupe@example.com', name: 'Dupe', status: 'enabled', lists: [], attribs: {} }] } });
++            }
++            return jsonResponse({ data: { id: 22 } });
++        };
++        const r = await makeApp().post('/api/broadcasts/subscribers/import').set('Authorization', mgmt.authHeader)
++            .send({
++                lists: [4],
++                preconfirm: false,
++                subscribers: [
++                    { email: 'new@example.com', name: 'New Resident', attribs: { property: 'Riverwood Club' } },
++                    { email: 'dupe@example.com', name: 'Dupe' },
++                    { email: 'not-an-email', name: 'Broken Row' },
++                ],
++            });
++        expect(r.status).toBe(200);
++        expect(r.body.data.created).toBe(1);
++        expect(r.body.data.updated).toBe(1);
++        expect(r.body.data.failed).toEqual([{ email: 'not-an-email', error: 'invalid e-mail' }]);
++
++        const noLists = await makeApp().post('/api/broadcasts/subscribers/import').set('Authorization', mgmt.authHeader)
++            .send({ subscribers: [{ email: 'a@example.com' }], lists: [] });
++        expect(noLists.status).toBe(400);
++    });
++
++    it('GET /templates/:id/preview passes the rendered HTML through', async () => {
++        setListmonkEnv();
++        (global as any).fetch = async (url: unknown) => {
++            expect(String(url)).toBe('https://lists.test/api/templates/2/preview');
++            return textResponse('<html><body>Rent reminder</body></html>');
++        };
++        const r = await makeApp().get('/api/broadcasts/templates/2/preview').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.headers['content-type']).toMatch(/text\/html/);
++        expect(r.text).toContain('Rent reminder');
++    });
++
++    it('PUT /campaigns/:id re-reads the campaign and merges only the sent fields (body editor flow)', async () => {
++        setListmonkEnv();
++        const puts: Array<{ url: string; body: any }> = [];
++        (global as any).fetch = async (url: unknown, init?: { method?: string; body?: string }) => {
++            if ((init?.method || 'GET') === 'GET') {
++                return jsonResponse({ data: { id: 42, name: 'Pool closure', subject: 'Pool closed Friday', lists: [{ id: 1 }], type: 'regular', content_type: 'richtext', body: '', template_id: 2 } });
++            }
++            puts.push({ url: String(url), body: JSON.parse(init?.body || '{}') });
++            return jsonResponse({ data: { id: 42, body: '<p>Updated</p>' } });
++        };
++        const r = await makeApp().put('/api/broadcasts/campaigns/42').set('Authorization', mgmt.authHeader)
++            .send({ body: '<p>Updated</p>' });
++        expect(r.status).toBe(200);
++        expect(puts).toHaveLength(1);
++        expect(puts[0].url).toBe('https://lists.test/api/campaigns/42');
++        expect(puts[0].body).toMatchObject({
++            name: 'Pool closure', subject: 'Pool closed Friday', lists: [1],
++            type: 'regular', content_type: 'richtext', body: '<p>Updated</p>', template_id: 2,
++        });
++    });
++
++    it("PUT /campaigns/:id/status REFUSES 'running'/'scheduled' without confirm:true (400, listmonk never called)", async () => {
++        setListmonkEnv();
++        let called = 0;
++        (global as any).fetch = async () => { called += 1; return jsonResponse({}); };
++        for (const status of ['running', 'scheduled']) {
++            const r = await makeApp().put('/api/broadcasts/campaigns/42/status').set('Authorization', mgmt.authHeader)
++                .send({ status });
++            expect(r.status).toBe(400);
++            expect(r.body.error).toMatch(/confirm:true/);
++        }
++        const badStatus = await makeApp().put('/api/broadcasts/campaigns/42/status').set('Authorization', mgmt.authHeader)
++            .send({ status: 'draft' });
++        expect(badStatus.status).toBe(400);
++        expect(called).toBe(0);
++    });
++
++    it("PUT /campaigns/:id/status with confirm:true PUTs the status to listmonk; 'paused' needs no confirm", async () => {
++        setListmonkEnv();
++        const puts: Array<{ url: string; body: any }> = [];
++        (global as any).fetch = async (url: unknown, init?: { method?: string; body?: string }) => {
++            puts.push({ url: String(url), body: JSON.parse(init?.body || '{}') });
++            return jsonResponse({ data: { id: 42, status: JSON.parse(init?.body || '{}').status } });
++        };
++        const send = await makeApp().put('/api/broadcasts/campaigns/42/status').set('Authorization', mgmt.authHeader)
++            .send({ status: 'running', confirm: true });
++        expect(send.status).toBe(200);
++        expect(send.body.data.status).toBe('running');
++        const pause = await makeApp().put('/api/broadcasts/campaigns/42/status').set('Authorization', mgmt.authHeader)
++            .send({ status: 'paused' });
++        expect(pause.status).toBe(200);
++        expect(puts.map(p2 => p2.url)).toEqual([
++            'https://lists.test/api/campaigns/42/status',
++            'https://lists.test/api/campaigns/42/status',
++        ]);
++        expect(puts.map(p2 => p2.body)).toEqual([{ status: 'running' }, { status: 'paused' }]);
++    });
++
++    it('GET /campaigns/:id/stats extracts sent/views/clicks/bounces from the campaign object', async () => {
++        setListmonkEnv();
++        (global as any).fetch = async (url: unknown) => {
++            expect(String(url)).toBe('https://lists.test/api/campaigns/42');
++            return jsonResponse({ data: { id: 42, name: 'August notice', status: 'finished', sent: 120, to_send: 120, views: 48, clicks: 9, bounces: 2, started_at: '2026-08-20T10:00:00Z' } });
++        };
++        const r = await makeApp().get('/api/broadcasts/campaigns/42/stats').set('Authorization', mgmt.authHeader);
++        expect(r.status).toBe(200);
++        expect(r.body.data).toMatchObject({ id: 42, status: 'finished', sent: 120, views: 48, clicks: 9, bounces: 2 });
++    });
++});
++
++describe('listmonk API drift guard', () => {
++    it('every upstream method+path the proxy uses exists in the docs snapshot (tests/fixtures/listmonk-api-paths.json)', () => {
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const { LISTMONK_PATHS_USED } = require('../src/routes/broadcastRoutes');
++        // eslint-disable-next-line @typescript-eslint/no-var-requires
++        const spec = require('./fixtures/listmonk-api-paths.json');
++        expect(spec.source).toBe('https://listmonk.app/docs/apis/apis/');
++        expect(spec.authScheme).toEqual({ header: 'Authorization', format: 'token api_user:token' });
++        for (const entry of LISTMONK_PATHS_USED) {
++            const [method, path] = (entry as string).split(' ');
++            expect(Object.keys(spec.paths)).toContain(path);
++            expect(spec.paths[path]).toContain(method);
++        }
++        // UPSERT-only rule: this proxy must never call a listmonk DELETE.
++        for (const entry of LISTMONK_PATHS_USED) expect(entry).not.toMatch(/^DELETE /);
++        // The send gate exists because these are the documented send statuses.
++        expect(spec.campaignStatusValues).toEqual(['scheduled', 'running', 'paused', 'cancelled']);
++    });
++});
+diff --git a/tests/fixtures/listmonk-api-paths.json b/tests/fixtures/listmonk-api-paths.json
+new file mode 100644
+index 0000000..5fc2430
+--- /dev/null
++++ b/tests/fixtures/listmonk-api-paths.json
+@@ -0,0 +1,50 @@
++{
++ "source": "https://listmonk.app/docs/apis/apis/",
++ "fetchedAt": "2026-08-23",
++ "docPages": [
++  "https://listmonk.app/docs/apis/lists/",
++  "https://listmonk.app/docs/apis/subscribers/",
++  "https://listmonk.app/docs/apis/campaigns/",
++  "https://listmonk.app/docs/apis/templates/",
++  "https://listmonk.app/docs/apis/import/"
++ ],
++ "authScheme": {
++  "header": "Authorization",
++  "format": "token api_user:token"
++ },
++ "campaignStatusValues": ["scheduled", "running", "paused", "cancelled"],
++ "campaignCreateRequired": ["name", "subject", "lists", "type", "content_type", "body"],
++ "listCreateRequired": ["name", "type", "optin"],
++ "subscriberCreateRequired": ["email", "name", "status"],
++ "paths": {
++  "/lists": ["GET", "POST", "DELETE"],
++  "/lists/{list_id}": ["GET", "PUT", "DELETE"],
++  "/public/lists": ["GET"],
++  "/subscribers": ["GET", "POST", "DELETE"],
++  "/subscribers/{subscriber_id}": ["GET", "PUT", "PATCH", "DELETE"],
++  "/subscribers/{subscriber_id}/export": ["GET"],
++  "/subscribers/{subscriber_id}/bounces": ["GET", "DELETE"],
++  "/subscribers/{subscribers_id}/optin": ["POST"],
++  "/subscribers/lists": ["PUT"],
++  "/subscribers/query/lists": ["PUT"],
++  "/subscribers/{subscriber_id}/blocklist": ["PUT"],
++  "/subscribers/blocklist": ["PUT"],
++  "/subscribers/query/blocklist": ["PUT"],
++  "/subscribers/query/delete": ["POST"],
++  "/public/subscription": ["POST"],
++  "/import/subscribers": ["GET", "POST", "DELETE"],
++  "/import/subscribers/logs": ["GET"],
++  "/campaigns": ["GET", "POST", "DELETE"],
++  "/campaigns/{campaign_id}": ["GET", "PUT", "DELETE"],
++  "/campaigns/{campaign_id}/preview": ["GET"],
++  "/campaigns/{campaign_id}/test": ["POST"],
++  "/campaigns/{campaign_id}/status": ["PUT"],
++  "/campaigns/{campaign_id}/archive": ["PUT"],
++  "/campaigns/running/stats": ["GET"],
++  "/campaigns/analytics/{type}": ["GET"],
++  "/templates": ["GET", "POST"],
++  "/templates/{template_id}": ["GET", "PUT", "DELETE"],
++  "/templates/{template_id}/preview": ["GET"],
++  "/templates/{template_id}/default": ["PUT"]
++ }
++}

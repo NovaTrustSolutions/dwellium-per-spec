@@ -52,10 +52,28 @@ export const FLUIDVOICE_VOCABULARY: ReadonlyArray<VocabularyEntry> = [
     { text: 'delinquency' },
     { text: 'make-ready', aliases: ['make ready'] },
     { text: 'turnover' },
+    // ── Leasing-desk jargon (plan 053; StrataDashboard LeasingModule/ResidentsModule)
+    { text: 'guest card' },
+    { text: 'countersign' },
+    { text: 'notice to vacate' },
+    { text: 'month-to-month', aliases: ['month to month'] },
+    { text: 'market rent' },
+    { text: "renter's insurance", aliases: ['renters insurance'] },
     // ── Seed community names (public/data seeds; communities, not people)
     { text: 'Woodland Parc Townhomes', aliases: ['Woodland Park Townhomes'] },
     { text: 'Riverwood Club Apartments' },
     { text: 'Buena Vista' },
+    // ── Andy's portfolio (plan 053; StrataDashboard/fixtures/appfolioDerived/properties.ts —
+    //    property/community names and Andy's business entity only, NEVER residents/vendors/people)
+    { text: 'Woodland Parc', aliases: ['Woodland Park'] },
+    { text: 'Azalea Drive' },
+    { text: 'Wayside Drive' },
+    { text: 'Harbor View Drive', aliases: ['Harborview Drive'] },
+    { text: 'Hilltop Drive' },
+    { text: 'St Andrews Drive', aliases: ['Saint Andrews Drive'] },
+    { text: 'Ski Country Chalet' },
+    { text: 'Dunedin', aliases: ['Duneden'] },
+    { text: 'ANZO', aliases: ['ANZO LLC'] },
 ];
 
 /** Payload for `/v1/dictionary/custom-words`. ALWAYS append; never replace. */

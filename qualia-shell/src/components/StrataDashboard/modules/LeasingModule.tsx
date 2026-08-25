@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertTriangle, ArrowRight, ArrowUpDown, BarChart3, Building2, Calendar, Check, CheckSquare, ChevronDown, ChevronUp, Clock, Columns3, Droplets, Eye, FileKey2, FileText, Filter, Flame, Globe, Home, Link2, List, Mail, MessageSquare, PenTool, Percent, Phone, Plus, RefreshCw, RotateCw, Search, Send, Shield, Tag, Trash2, TrendingUp, UserCheck, UserPlus, Wifi, X, Zap } from 'lucide-react';
 import { strataGet, strataPut, strataPost } from '../strataApi';
 import { sendForEsign } from '../../ESign/esignApi'; // plan 047 — Documenso proxy client
+import { bookingLinkFor } from '../../Scheduling/calcomLinks'; // plan 053 — cal.com showing bridge
 import type { Workitem, Property, Unit } from '../strataTypes';
 import ProfileSpaces from './ProfileSpaces';
 import { useUser } from '../../../context/UserContext';
@@ -257,8 +258,15 @@ export default function LeasingModule() {
 
     // Plan 047: real e-signature via the Documenso backend proxy. While the
     // backend has no DOCUMENSO_* env it answers 503 → point at the Tools hub.
+    // Plan 053: recipients prefilled from the lease (applicant + co-applicant);
+    // the lease template default (DOCUMENSO_TEMPLATE_LEASE) stays backend-side.
     const sendForSignature = async (lease: Workitem) => {
-        const r = await sendForEsign(lease.id);
+        const md = (lease.metadata || {}) as Record<string, any>;
+        const recipients = [
+            { email: md.applicantEmail || md.tenantEmail, name: md.applicantName || md.tenantName || lease.title, role: 'SIGNER' },
+            ...(md.coApplicantEmail ? [{ email: md.coApplicantEmail, name: md.coApplicantName || md.coApplicantEmail, role: 'SIGNER' }] : []),
+        ].filter(r => typeof r.email === 'string' && r.email.includes('@'));
+        const r = await sendForEsign(lease.id, recipients.length > 0 ? { recipients } : undefined);
         if (r.kind === 'ok') {
             showToast('Sent for e-signature', 'success');
             fetchLeases();
@@ -552,7 +560,7 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                             onChange={() => setSelectedGCs(prev => prev.size === MOCK_GUEST_CARDS.length ? new Set() : new Set(MOCK_GUEST_CARDS.map(gc => gc.id)))}
                                             style={{ accentColor: '#D6FE51' }} />
                                     </th>
-                                    {['Name', 'Interested In', 'Latest Interest', 'Most Recent Activity', 'Source', 'Status'].map(h => (
+                                    {['Name', 'Interested In', 'Latest Interest', 'Most Recent Activity', 'Source', 'Status', 'Schedule'].map(h => (
                                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-tertiary)', fontWeight: 500, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -578,6 +586,20 @@ DRAFT — This document must be reviewed by legal counsel before execution.
                                         <td style={{ padding: '8px 12px' }}>
                                             <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${gcStatusColor(gc.status)}15`, color: gcStatusColor(gc.status), fontWeight: 600, textTransform: 'capitalize' }}>{gc.status}</span>
                                         </td>
+                                        {/* ── plan 053 cal.com bridge (Scheduling builder) — prefilled showing link ── */}
+                                        <td style={{ padding: '8px 12px' }}>
+                                            <button
+                                                onClick={() => {
+                                                    const link = bookingLinkFor('showing-30min', { name: gc.name, email: gc.email, notes: gc.interestedIn });
+                                                    if (!link) { showToast('Set VITE_CALCOM_URL to enable showing links', 'info'); return; }
+                                                    window.open(link, '_blank', 'noopener');
+                                                }}
+                                                style={{ padding: '3px 8px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'var(--accent)', fontSize: 10, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                                            >
+                                                <Calendar size={10} /> Schedule showing
+                                            </button>
+                                        </td>
+                                        {/* ── end plan 053 bridge ── */}
                                     </tr>
                                 ))}
                             </tbody>

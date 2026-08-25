@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="816" height="1056" viewBox="0 0 816 1056" font-family="Hanken Grotesk, Arial, sans-serif">
+  <!-- Dwellium template: Move-in condition checklist — US Letter, print-friendly.
+       Georgia relevance: when a security deposit is taken, O.C.G.A. §44-7-33
+       requires a written move-in inspection list of existing damages — this
+       sheet is shaped for that use. Placeholder, review before use. -->
+  <rect width="816" height="1056" fill="#ffffff"/>
+
+  <!-- Letterhead -->
+  <rect x="48" y="40" width="10" height="40" fill="#D6FE51"/>
+  <text x="74" y="64" fill="#0c0c0c" font-size="20" font-weight="800">MOVE-IN CONDITION CHECKLIST</text>
+  <text x="74" y="84" fill="#777777" font-size="11">Riverwood Club Apartments · Managed by AstraStrata &#160;(example — replace)</text>
+  <line x1="48" y1="100" x2="768" y2="100" stroke="#0c0c0c" stroke-width="3"/>
+
+  <g fill="#333333" font-size="12">
+    <text x="48" y="128" font-weight="700">Resident:</text><text x="128" y="128">______________________________</text>
+    <text x="360" y="128" font-weight="700">Unit:</text><text x="404" y="128">___________</text>
+    <text x="520" y="128" font-weight="700">Move-in date:</text><text x="622" y="128">_____________</text>
+  </g>
+
+  <!-- Column headers -->
+  <rect x="48" y="148" width="720" height="30" fill="#0c0c0c"/>
+  <g fill="#ffffff" font-size="12" font-weight="700">
+    <text x="60" y="168">Area / item</text>
+    <text x="420" y="168">OK</text>
+    <text x="470" y="168">Damage noted (describe)</text>
+  </g>
+
+  <!-- Rows: generated grid -->
+  <g font-size="12" fill="#333333">
+    <!-- Section: Kitchen -->
+    <rect x="48" y="178" width="720" height="24" fill="#D6FE51"/>
+    <text x="60" y="195" fill="#0c0c0c" font-weight="800">KITCHEN</text>
+    <g>
+      <rect x="48" y="202" width="720" height="26" fill="#f7f7f7"/><text x="60" y="220">Range / oven</text><rect x="418" y="207" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="222" x2="756" y2="222" stroke="#cccccc"/>
+      <rect x="48" y="228" width="720" height="26" fill="#ffffff"/><text x="60" y="246">Refrigerator</text><rect x="418" y="233" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="248" x2="756" y2="248" stroke="#cccccc"/>
+      <rect x="48" y="254" width="720" height="26" fill="#f7f7f7"/><text x="60" y="272">Dishwasher / disposal</text><rect x="418" y="259" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="274" x2="756" y2="274" stroke="#cccccc"/>
+      <rect x="48" y="280" width="720" height="26" fill="#ffffff"/><text x="60" y="298">Counters / cabinets</text><rect x="418" y="285" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="300" x2="756" y2="300" stroke="#cccccc"/>
+      <rect x="48" y="306" width="720" height="26" fill="#f7f7f7"/><text x="60" y="324">Sink / faucet / plumbing</text><rect x="418" y="311" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="326" x2="756" y2="326" stroke="#cccccc"/>
+    </g>
+    <!-- Section: Living / dining -->
+    <rect x="48" y="336" width="720" height="24" fill="#D6FE51"/>
+    <text x="60" y="353" fill="#0c0c0c" font-weight="800">LIVING / DINING</text>
+    <g>
+      <rect x="48" y="360" width="720" height="26" fill="#f7f7f7"/><text x="60" y="378">Walls / ceiling / paint</text><rect x="418" y="365" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="380" x2="756" y2="380" stroke="#cccccc"/>
+      <rect x="48" y="386" width="720" height="26" fill="#ffffff"/><text x="60" y="404">Flooring / carpet</text><rect x="418" y="391" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="406" x2="756" y2="406" stroke="#cccccc"/>
+      <rect x="48" y="412" width="720" height="26" fill="#f7f7f7"/><text x="60" y="430">Windows / blinds / screens</text><rect x="418" y="417" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="432" x2="756" y2="432" stroke="#cccccc"/>
+      <rect x="48" y="438" width="720" height="26" fill="#ffffff"/><text x="60" y="456">Doors / locks / hardware</text><rect x="418" y="443" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="458" x2="756" y2="458" stroke="#cccccc"/>
+      <rect x="48" y="464" width="720" height="26" fill="#f7f7f7"/><text x="60" y="482">Lights / outlets / switches</text><rect x="418" y="469" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="484" x2="756" y2="484" stroke="#cccccc"/>
+    </g>
+    <!-- Section: Bedrooms -->
+    <rect x="48" y="494" width="720" height="24" fill="#D6FE51"/>
+    <text x="60" y="511" fill="#0c0c0c" font-weight="800">BEDROOM(S)</text>
+    <g>
+      <rect x="48" y="518" width="720" height="26" fill="#f7f7f7"/><text x="60" y="536">Walls / ceiling / paint</text><rect x="418" y="523" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="538" x2="756" y2="538" stroke="#cccccc"/>
+      <rect x="48" y="544" width="720" height="26" fill="#ffffff"/><text x="60" y="562">Flooring / carpet</text><rect x="418" y="549" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="564" x2="756" y2="564" stroke="#cccccc"/>
+      <rect x="48" y="570" width="720" height="26" fill="#f7f7f7"/><text x="60" y="588">Closets / doors</text><rect x="418" y="575" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="590" x2="756" y2="590" stroke="#cccccc"/>
+    </g>
+    <!-- Section: Bathrooms -->
+    <rect x="48" y="600" width="720" height="24" fill="#D6FE51"/>
+    <text x="60" y="617" fill="#0c0c0c" font-weight="800">BATHROOM(S)</text>
+    <g>
+      <rect x="48" y="624" width="720" height="26" fill="#f7f7f7"/><text x="60" y="642">Tub / shower / tile</text><rect x="418" y="629" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="644" x2="756" y2="644" stroke="#cccccc"/>
+      <rect x="48" y="650" width="720" height="26" fill="#ffffff"/><text x="60" y="668">Toilet / sink / vanity</text><rect x="418" y="655" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="670" x2="756" y2="670" stroke="#cccccc"/>
+      <rect x="48" y="676" width="720" height="26" fill="#f7f7f7"/><text x="60" y="694">Exhaust fan / caulking</text><rect x="418" y="681" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="696" x2="756" y2="696" stroke="#cccccc"/>
+    </g>
+    <!-- Section: Safety & systems -->
+    <rect x="48" y="706" width="720" height="24" fill="#D6FE51"/>
+    <text x="60" y="723" fill="#0c0c0c" font-weight="800">SAFETY &amp; SYSTEMS</text>
+    <g>
+      <rect x="48" y="730" width="720" height="26" fill="#f7f7f7"/><text x="60" y="748">Smoke / CO alarms present &amp; tested</text><rect x="418" y="735" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="750" x2="756" y2="750" stroke="#cccccc"/>
+      <rect x="48" y="756" width="720" height="26" fill="#ffffff"/><text x="60" y="774">HVAC heat / cool / filter</text><rect x="418" y="761" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="776" x2="756" y2="776" stroke="#cccccc"/>
+      <rect x="48" y="782" width="720" height="26" fill="#f7f7f7"/><text x="60" y="800">Water heater / laundry hookups</text><rect x="418" y="787" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="802" x2="756" y2="802" stroke="#cccccc"/>
+      <rect x="48" y="808" width="720" height="26" fill="#ffffff"/><text x="60" y="826">Keys / fobs / remotes issued: ______</text><rect x="418" y="813" width="14" height="14" fill="none" stroke="#333333"/><line x1="470" y1="828" x2="756" y2="828" stroke="#cccccc"/>
+    </g>
+  </g>
+
+  <!-- Acknowledgment -->
+  <g fill="#222222" font-size="12">
+    <text x="48" y="864">The resident and management acknowledge the unit's condition as recorded above at</text>
+    <text x="48" y="882">move-in. Attach photos (Photo Vault album: unit / move-in) where damage is noted.</text>
+  </g>
+  <g fill="#333333" font-size="12">
+    <line x1="48" y1="928" x2="300" y2="928" stroke="#333333"/><text x="48" y="946">Resident signature / date</text>
+    <line x1="460" y1="928" x2="712" y2="928" stroke="#333333"/><text x="460" y="946">Manager signature / date</text>
+  </g>
+
+  <text x="48" y="1006" fill="#999999" font-size="10">AstraStrata · Shaped for the O.C.G.A. §44-7-33 move-in list — review before use</text>
+  <text x="768" y="1006" fill="#bbbbbb" font-size="10" text-anchor="end">Dwellium template — move-in-checklist v1</text>
+</svg>

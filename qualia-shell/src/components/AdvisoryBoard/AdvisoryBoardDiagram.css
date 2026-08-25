@@ -1,0 +1,285 @@
+/*
+ * AdvisoryBoardDiagram — dark near-black/navy ground, serif display type,
+ * blue accent, thin connectors. The blue is scoped to this component
+ * (`--abd-blue`): the reference artwork is blue-specific and the app's
+ * `--accent` token is skin-dependent (acid lime in the default skin), so
+ * inheriting it would break the diagram's identity. Everything else
+ * (surfaces, text, borders) uses the app's own tokens.
+ */
+
+.abd {
+    --abd-blue: #3b82f6;
+    --abd-blue-dim: rgba(59, 130, 246, 0.45);
+    --abd-ground: #060910;
+    --abd-card: rgba(16, 22, 36, 0.72);
+    position: relative;
+    margin: 28px 0 8px;
+    padding: 30px 24px 18px;
+    border: 1px solid rgba(59, 130, 246, 0.16);
+    border-radius: 16px;
+    background:
+        radial-gradient(120% 90% at 50% 0%, rgba(59, 130, 246, 0.09), transparent 62%),
+        var(--abd-ground);
+    overflow: hidden;
+}
+
+.abd__title {
+    margin: 0;
+    font-family: var(--font-serif, Georgia, 'Times New Roman', serif);
+    font-weight: 400;
+    font-size: clamp(1.7rem, 3.4vw, 2.7rem);
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    text-align: center;
+    color: #f3f5f9;
+}
+
+.abd__sub {
+    margin: 10px 0 0;
+    font-family: var(--font-serif, Georgia, 'Times New Roman', serif);
+    font-size: clamp(0.85rem, 1.5vw, 1.05rem);
+    text-align: center;
+    color: rgba(226, 232, 240, 0.72);
+}
+
+.abd__accent { color: var(--abd-blue); }
+
+.abd__action { margin-top: 14px; text-align: center; }
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+
+.abd__grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 33% 34% 33%;
+    grid-template-rows: 34% 38% 28%;
+    grid-template-areas:
+        'tl hex tr'
+        'bl hex br'
+        '.  bc  .';
+    height: 460px;
+    margin: 18px auto 0;
+    max-width: 1000px;
+}
+
+.abd__card--tl { grid-area: tl; justify-self: start; }
+.abd__card--tr { grid-area: tr; justify-self: end; }
+.abd__card--bl { grid-area: bl; justify-self: start; }
+.abd__card--br { grid-area: br; justify-self: end; }
+.abd__card--bc { grid-area: bc; justify-self: center; align-self: end; }
+.abd__hex { grid-area: hex; }
+
+/* ── Connectors ─────────────────────────────────────────────────────── */
+
+.abd__wires {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.abd__wire {
+    stroke: var(--abd-blue-dim);
+    stroke-width: 1;
+    fill: none;
+}
+
+.abd__dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: var(--abd-blue);
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.8);
+    pointer-events: none;
+}
+
+/* ── CRIT hexagon ───────────────────────────────────────────────────── */
+
+.abd__hex {
+    position: relative;
+    place-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 210px;
+    height: 244px;
+}
+
+.abd__hex-shape {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.abd__hex-shape polygon {
+    fill: rgba(59, 130, 246, 0.05);
+    stroke: var(--abd-blue);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+}
+
+.abd__hex-rune { color: var(--abd-blue); line-height: 0; }
+
+.abd__hex-word {
+    font-weight: 700;
+    font-size: clamp(2rem, 4.4vw, 3.1rem);
+    letter-spacing: 0.1em;
+    line-height: 1;
+    color: #ffffff;
+}
+
+.abd__crit {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    color: rgba(226, 232, 240, 0.86);
+}
+
+.abd__crit-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--abd-blue);
+}
+
+.abd__crit--context { top: -22px; left: 50%; transform: translateX(-50%); flex-direction: column; gap: 3px; }
+.abd__crit--interview { bottom: -24px; left: 50%; transform: translateX(-50%); flex-direction: column-reverse; gap: 3px; }
+.abd__crit--task { top: 50%; right: calc(100% + 6px); transform: translateY(-50%); flex-direction: row; }
+.abd__crit--role { top: 50%; left: calc(100% + 6px); transform: translateY(-50%); flex-direction: row-reverse; }
+
+/* ── Persona cards ──────────────────────────────────────────────────── */
+
+.abd__card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: min(100%, 320px);
+    padding: 16px 18px;
+    text-align: left;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 14px;
+    background: var(--abd-card);
+    box-shadow: inset 0 0 26px rgba(59, 130, 246, 0.07);
+    color: inherit;
+    cursor: pointer;
+    transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.abd__card:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: inset 0 0 30px rgba(59, 130, 246, 0.14), 0 0 0 1px rgba(59, 130, 246, 0.18);
+}
+
+.abd__card:focus-visible {
+    outline: 2px solid var(--abd-blue);
+    outline-offset: 3px;
+}
+
+.abd__card-icon { color: var(--abd-blue); line-height: 0; flex: none; }
+
+.abd__card-rule {
+    flex: none;
+    align-self: stretch;
+    width: 1px;
+    background: rgba(148, 163, 184, 0.28);
+}
+
+.abd__card-text { display: flex; flex-direction: column; min-width: 0; }
+
+.abd__card-name {
+    font-family: var(--font-serif, Georgia, 'Times New Roman', serif);
+    font-size: 1.3rem;
+    line-height: 1.15;
+    color: #f3f5f9;
+}
+
+.abd__card-role {
+    font-size: 0.85rem;
+    color: var(--abd-blue);
+}
+
+.abd__card-lens {
+    margin-top: 4px;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.5);
+}
+
+.abd__disclaimer {
+    margin: 16px auto 0;
+    max-width: 760px;
+    font-size: 0.68rem;
+    line-height: 1.5;
+    text-align: center;
+    color: rgba(226, 232, 240, 0.42);
+}
+
+/* ── Phase-in ───────────────────────────────────────────────────────── */
+
+@keyframes abd-hex-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes abd-wire-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes abd-card-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.abd[data-motion='on'] .abd__hex { animation: abd-hex-in 380ms ease-out both; }
+.abd[data-motion='on'] .abd__wire,
+.abd[data-motion='on'] .abd__dot { animation: abd-wire-in 260ms ease-out both; }
+.abd[data-motion='on'] .abd__card { animation: abd-card-in 420ms ease-out both; }
+
+/* Reduced motion: nothing animates, everything renders immediately. Guarded in
+   CSS as well as by data-motion so the media query alone is sufficient. */
+@media (prefers-reduced-motion: reduce) {
+    .abd .abd__hex,
+    .abd .abd__wire,
+    .abd .abd__dot,
+    .abd .abd__card {
+        animation: none !important;
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ── Responsive: stack, drop the wires, never scroll sideways ───────── */
+
+@media (max-width: 860px) {
+    .abd__grid {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        height: auto;
+        max-width: 460px;
+    }
+
+    .abd__wires,
+    .abd__dot { display: none; }
+
+    .abd__card,
+    .abd__card--tl,
+    .abd__card--tr,
+    .abd__card--bl,
+    .abd__card--br,
+    .abd__card--bc {
+        width: 100%;
+        justify-self: stretch;
+        align-self: auto;
+        order: 2;
+    }
+
+    .abd__hex {
+        order: 1;
+        place-self: center;
+        margin: 8px 0 34px;
+        width: 168px;
+        height: 196px;
+    }
+}

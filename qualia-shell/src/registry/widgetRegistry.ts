@@ -674,6 +674,20 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 720,
         minHeight: 480,
     },
+    // 5 Persona Advisory Board — CRIT decision stress-test (MIT skill spec,
+    // github.com/harryvondiesel-web/5-persona-advisory-board). Interpretive
+    // strategic lenses, NOT impersonations of real people.
+    'advisory-board': {
+        id: 'advisory-board',
+        label: 'Advisory Board',
+        description: 'Stress-test a decision through five strategic lenses — interview first, then a decision brief.',
+        tip: { tryThis: 'Type a real decision and let the board interview you before it advises.', related: ['ara-console', 'synthesis'] },
+        icon: 'scale',
+        component: lazyWithReload(() => import('../components/AdvisoryBoard/AdvisoryBoard')),
+        category: 'ai',
+        minWidth: 520,
+        minHeight: 560,
+    },
     'file-explorer': {
         id: 'file-explorer',
         label: 'File Explorer',
@@ -817,13 +831,14 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minHeight: 600,
         category: 'tools',
     },
-    // Design Studio (Penpot free cloud, MPL-2.0). Launcher-only: the cloud
-    // sends X-Frame-Options SAMEORIGIN, so no iframe until the phase-3
-    // self-host. No env gate — `ready` as soon as this entry exists.
+    // Design Studio (Penpot, MPL-2.0; plan 053). Cloud URL → launcher (the
+    // cloud sends X-Frame-Options SAMEORIGIN); VITE_PENPOT_URL self-host →
+    // in-window iframe. Plus Templates (Andy's brand kit) + Files (/api/design)
+    // tabs. No env gate — `ready` as soon as this entry exists.
     'penpot-studio': {
         id: 'penpot-studio',
         label: 'Design Studio',
-        description: 'Flyers, notices and a Dwellium design system in Penpot — opens in a new tab.',
+        description: 'Penpot design studio: flyers, notices and the Dwellium brand kit — templates, files and the editor.',
         tip: { tryThis: 'Open Penpot and rough out a listing flyer on a blank board.', related: ['whiteboard', 'tools-hub'] },
         tier: 'tools',
         icon: 'palette',
@@ -877,8 +892,8 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         tier: 'tools',
         icon: 'megaphone',
         component: lazyWithReload(() => import('../components/Broadcasts/Broadcasts')),
-        minWidth: 720,
-        minHeight: 480,
+        minWidth: 880,
+        minHeight: 560,
         category: 'tools',
     },
     // Links & QR (Dub hosted API, free plan). Same flip: `needs-setup` on
@@ -894,6 +909,23 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 520,
         minHeight: 420,
         category: 'tools',
+    },
+    // AppFlowy Workspace (AppFlowy-Cloud, AGPL unmodified) — plan 047 phase 3 /
+    // plan 053. The hosted web client appflowy.com/app sends no X-Frame-Options
+    // (verified 2026-08-23 via curl) so it embeds; a self-host embeds via
+    // tools/appflowy (nginx adds frame-ancestors). Registering flips the
+    // Tools-hub row to `needs-setup`; `ready` once VITE_APPFLOWY_URL is set.
+    'appflowy': {
+        id: 'appflowy',
+        label: 'AppFlowy Workspace',
+        description: 'Notion-style docs, grids and kanban — lease tracker, vendor board and SOPs in AppFlowy.',
+        tip: { tryThis: 'Import the lease tracker from tools/appflowy/templates (IMPORT.md has the steps).', related: ['task-board', 'tools-hub'] },
+        tier: 'tools',
+        icon: 'book-open',
+        component: lazyWithReload(() => import('../components/AppFlowy/AppFlowy')),
+        minWidth: 640,
+        minHeight: 480,
+        category: 'filing',
     },
 };
 

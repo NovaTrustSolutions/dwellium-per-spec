@@ -65,6 +65,8 @@ export const defaultDockItems: DockItem[] = [
    // 'dock-ui-editor' REMOVED (2026-07-06 Andy): the UI editor blanked the
    // screen; its registry entry is disabled in widgetRegistry.ts.
    { id: 'dock-cognitive-harness', label: 'Harness', icon: 'brain-circuit', component: 'cognitive-harness', pinned: true, group: 'AI Tools' },
+   // 5 Persona Advisory Board — CRIT decision stress-test (interpretive lenses, not impersonations).
+   { id: 'dock-advisory-board', label: 'Advisory Board', icon: 'scale', component: 'advisory-board', pinned: true, group: 'AI Tools' },
    // ── Filing Cabinet ──
    { id: 'dock-hierarchy', label: 'Explorer', icon: 'folder-tree', component: 'hierarchy-browser', pinned: true, group: 'Filing Cabinet' },
    { id: 'dock-tasks', label: 'Tasks', icon: 'check-square', component: 'tasks', pinned: true, group: 'Filing Cabinet' },

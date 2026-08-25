@@ -674,6 +674,20 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistration> = {
         minWidth: 720,
         minHeight: 480,
     },
+    // 5 Persona Advisory Board — CRIT decision stress-test (MIT skill spec,
+    // github.com/harryvondiesel-web/5-persona-advisory-board). Interpretive
+    // strategic lenses, NOT impersonations of real people.
+    'advisory-board': {
+        id: 'advisory-board',
+        label: 'Advisory Board',
+        description: 'Stress-test one important decision through five strategic lenses — interview first, then a decision brief.',
+        tip: { tryThis: 'Type a real decision and let the board interview you before it advises.', related: ['ara-console', 'synthesis'] },
+        icon: 'scale',
+        component: lazyWithReload(() => import('../components/AdvisoryBoard/AdvisoryBoard')),
+        category: 'ai',
+        minWidth: 520,
+        minHeight: 560,
+    },
     'file-explorer': {
         id: 'file-explorer',
         label: 'File Explorer',

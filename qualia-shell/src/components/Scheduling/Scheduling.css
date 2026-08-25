@@ -80,3 +80,94 @@
     border-radius: 8px;
     background: #fff;
 }
+
+/* ── plan 053: tabs, bookings list, links + QR ── */
+
+.scheduling__tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.scheduling__tab {
+    padding: 6px 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.scheduling__tab.is-active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.scheduling__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.scheduling__listhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.scheduling__listhead select {
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    font-size: 12px;
+    text-transform: none;
+}
+
+.scheduling__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.scheduling__row--stack {
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.scheduling__rowtitle { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.scheduling__rowmeta { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+.scheduling__url {
+    display: block;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.scheduling__note { margin: 0; font-size: 12px; color: var(--text-secondary); }
+
+.scheduling__qr {
+    margin-top: 8px;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.scheduling__btn:disabled { opacity: 0.6; cursor: default; }

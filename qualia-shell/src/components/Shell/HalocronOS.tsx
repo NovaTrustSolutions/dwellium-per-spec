@@ -34,6 +34,9 @@ const HalocronWorkspaces = lazy(() => import('./HalocronWorkspaces'));
 const CloudBrowser = lazy(() => import('../CloudBrowser/CloudBrowser'));
 import ClaudePlaybook from './ClaudePlaybook';
 const CognitiveHarness = lazy(() => import('../CognitiveHarness/CognitiveHarness'));
+// 5 Persona Advisory Board diagram (Home). Sub-component altitude → bare React.lazy.
+const AdvisoryBoardDiagram = lazy(() => import('../AdvisoryBoard/AdvisoryBoardDiagram'));
+import { advisoryLensBus } from '../../lib/busChannels';
 import { useLlmUsage, lastNDays } from '../../lib/llmUsageStore';
 import { useSubscriptions, monthlyTotal, saveSubscriptions, subscriptionsStore } from '../../lib/subscriptionsStore';
 import { useIntegrations } from '../../hooks/useIntegrations';
@@ -668,6 +671,23 @@ export default function HalocronOS() {
                                     );
                                 })}
                             </div>
+
+                            {/* 5 Persona Advisory Board — clicking a persona opens
+                                the widget focused on that lens. */}
+                            <Suspense fallback={null}>
+                                <AdvisoryBoardDiagram
+                                    onSelectLens={(lensId) => {
+                                        advisoryLensBus.emit({ lensId });
+                                        openWidget('advisory-board', 'Advisory Board');
+                                    }}
+                                    action={(
+                                        <button type="button" className="hos-step"
+                                            onClick={() => openWidget('advisory-board', 'Advisory Board')}>
+                                            Open the Advisory Board →
+                                        </button>
+                                    )}
+                                />
+                            </Suspense>
 
                             <div className="hos-quick">
                                 <button className="hos-step" onClick={() => setNav('kg')}>Open the Knowledge Graph →</button>

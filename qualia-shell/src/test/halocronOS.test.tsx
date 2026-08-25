@@ -21,12 +21,14 @@ vi.mock('../registry/widgetRegistry', () => {
             beta: { id: 'beta', label: 'Beta', icon: 'layout-grid', category: 'core' },
             gamma: { id: 'gamma', label: 'Gamma', icon: 'layout-grid', category: 'core' },
             delta: { id: 'delta', label: 'Delta', icon: 'layout-grid', category: 'core' },
+            'advisory-board': { id: 'advisory-board', label: 'Advisory Board', icon: 'scale', category: 'ai' },
         },
         WINDOW_COMPONENTS: {
             alpha: AlphaWidget,
             beta: BetaWidget,
             gamma: GammaWidget,
             delta: DeltaWidget,
+            'advisory-board': makeWidget('Advisory Board', 'advisory-board-widget'),
         },
     };
 });
@@ -79,10 +81,12 @@ vi.mock('../hooks/useIntegrations', () => ({
 }));
 
 import HalocronOS from '../components/Shell/HalocronOS';
+import { advisoryLensBus } from '../lib/busChannels';
 
 beforeEach(() => {
     localStorage.clear();
     halocronOsStore.reset();
+    advisoryLensBus.clear();
 });
 
 function openHalocron() {
@@ -185,6 +189,19 @@ describe('Holocron OS smart tab shell', () => {
         renderHalocronForUser(makeUser({ id: 'lisa', email: 'lisa@dwellium.com', name: '' }));
 
         expect(screen.getByText(/Good (morning|afternoon|evening), Lisa\./)).toBeInTheDocument();
+    });
+
+    it('renders the 5 Persona Advisory Board diagram on Home and opens the widget on the clicked lens', async () => {
+        openHalocron();
+
+        // The diagram is React.lazy'd → await the Suspense boundary.
+        expect(await screen.findByTestId('advisory-board-diagram')).toBeInTheDocument();
+        expect(screen.getByTestId('advisory-board-crit')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Risk and Capital Lens/i }));
+
+        expect(advisoryLensBus.peek()).toEqual({ lensId: 'risk' });
+        expect(screen.getByText('Advisory Board content')).toBeInTheDocument();
     });
 
     it('renders hosted web tabs through Cloud Browser instead of a blocked embed launch card', async () => {

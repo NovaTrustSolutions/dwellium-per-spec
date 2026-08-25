@@ -101,9 +101,15 @@ export interface SpeakerRenamedPayload {
     name?: string;
 }
 
+/** 5 Persona Advisory Board — focus the widget on one lens (LensId). */
+export interface AdvisoryLensPayload {
+    lensId: string;
+}
+
 export const terminalRunBus = busChannel<TerminalRunPayload>('dwellium:terminal-run');
 export const openTranscriptionLogBus = busChannel<OpenTranscriptionLogPayload>('dwellium:open-transcription-log');
 export const taskmenuViewBus = busChannel<TaskmenuViewPayload>('dwellium:taskmenu-view');
 export const widgetActionBus = busChannel<WidgetActionPayload>('dwellium:widget-action');
 export const strataModuleBus = busChannel<StrataModulePayload>('dwellium:strata-module');
 export const speakerRenamedBus = busChannel<SpeakerRenamedPayload>('dwellium:speaker-renamed');
+export const advisoryLensBus = busChannel<AdvisoryLensPayload>('dwellium:advisory-lens');

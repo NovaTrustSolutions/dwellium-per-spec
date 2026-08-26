@@ -44,7 +44,7 @@ export const TOOLS: ReadonlyArray<ToolEntry> = [
     { id: 'design-studio', label: 'Design Studio', license: 'MPL-2.0 (Penpot, launcher)', phase: 2, blurb: 'Flyers, notices and a Dwellium design system — Figma-class, self-hostable.', widgetId: 'penpot-studio', setupDoc: 'design-studio' },
     // `ready` once VITE_RUSTDESK_RELAY (`host:port,key` — hbbs/hbbr on the free e2-micro, tools/rustdesk/) is set.
     { id: 'remote-support', label: 'Remote Support', license: 'AGPL-3.0-only (RustDesk, stock build)', phase: 2, blurb: 'Remote control for office PCs, kiosks and resident tech support.', widgetId: 'remote-support', envVar: 'VITE_RUSTDESK_RELAY', setupDoc: 'remote-support' },
-    { id: 'appflowy', label: 'AppFlowy Workspace', license: 'AGPL-3.0-only (AppFlowy-Cloud, unmodified)', phase: 3, blurb: 'Notion-style docs, databases and kanban — trial only, Andy’s call after.', widgetId: 'appflowy', envVar: 'VITE_APPFLOWY_URL', setupDoc: 'appflowy' },
+    { id: 'appflowy', label: 'AppFlowy Workspace', license: 'AGPL-3.0-only (AppFlowy-Cloud, unmodified)', phase: 3, blurb: 'Notion-style docs, databases and kanban — lease trackers, vendor boards, property wikis. Templates ship in tools/appflowy.', widgetId: 'appflowy', envVar: 'VITE_APPFLOWY_URL', setupDoc: 'appflowy' },
 ];
 
 /** Pure: resolve a tool's status from registry presence + env. */

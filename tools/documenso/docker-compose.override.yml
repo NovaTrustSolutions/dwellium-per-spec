@@ -1,0 +1,18 @@
+# Local/office-Mac overrides for the upstream-verbatim docker-compose.yml.
+# Host port 3140 (3000 = Dwellium backend, 3100 = paperclipai) → container 3000
+# (the image's internal listener). Cert mounted from this dir. mailpit catches
+# all outbound email locally — no SMTP account needed (UI: http://127.0.0.1:8025).
+services:
+  documenso:
+    ports: !override
+      - '127.0.0.1:3140:3000'
+    volumes: !override
+      - ./cert.p12:/opt/documenso/cert.p12:ro
+    depends_on:
+      mailpit:
+        condition: service_started
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8025:8025'

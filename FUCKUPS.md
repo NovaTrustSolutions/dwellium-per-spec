@@ -366,3 +366,10 @@ Append at the TOP of the LOG (newest first), next ID up, same shape:
 - **What happened:** Plan 014 (blank committed account passwords; production email+password form then requires a runtime-set password) was merged + pushed on a "go". Ilya later said "keep passwords as is for now" — I applied that only to the follow-up (014b) and left 014 live. Result: his old password stopped working on the production form; he had to ask "what is the username and password".
 - **Fix:** `git revert -m 1 55d17e8` (this commit) — restores `localAccounts.ts` and the login flow exactly as before. Plan 014 + 014b are both parked; re-open only on an explicit, fresh go that names the sign-in change.
 - **Rule going forward:** any change that alters how Ilya signs in (passwords, gate, OAuth) needs its own explicit go that restates the behavior change — a generic "go" on a batch is not enough; and "don't touch X" after the fact means revert X, not just stop the next step.
+
+## 2026-08-26 — Pushed with a red local suite because the gate was a grep
+
+- **What happened:** the pre-push "gate" piped vitest into `grep -E "Tests |FAIL"` and chained `&&` off grep's exit code — grep succeeds when it *finds* failures, so a 5-test-red run sailed through to `git push` (`5a1b4fd`).
+- **Root cause:** gating on text-matching instead of the test runner's exit code. Second grep-masking bug in one day (the `head -1` "VERIFIED" line was the first).
+- **Fix:** run `npx vitest run`, capture `$?`, refuse to commit/push unless 0 (done for `87e838c`). CI was green throughout because Actions runs with a clean env; the red was local-only (developer `.env` flipping env-derived statuses — those tests now derive expectations from the same env the code reads).
+- **Rule:** a gate is the runner's exit code, never a grep of its output.

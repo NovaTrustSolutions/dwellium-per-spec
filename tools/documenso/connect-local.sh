@@ -6,6 +6,9 @@
 # (paste the token when prompted; nothing lands in shell history)
 set -euo pipefail
 TOK=$(security find-generic-password -s dwellium-documenso-api -w)
+# Refuse to start an unconfigured backend on a bad token — validate first.
+code=$(/usr/bin/curl -s -o /dev/null -m 10 -w '%{http_code}' -H "Authorization: $TOK" "http://127.0.0.1:3140/api/v2/template")
+[ "$code" != "200" ] && { echo "Token in Keychain is INVALID against local Documenso (HTTP $code) — run ./store-token.sh"; exit 1; }
 SCR=${SCR:-/tmp}; cd "$(dirname "$0")/../../.." 2>/dev/null || true
 for p in $(lsof -nP -iTCP:3010 -sTCP:LISTEN -t 2>/dev/null); do kill "$p"; done; sleep 2
 cd ~/dwellium-backend/ai-dashboard369-file-manager

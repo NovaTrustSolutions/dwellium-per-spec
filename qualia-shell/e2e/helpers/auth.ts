@@ -61,6 +61,14 @@ export async function loginAs(
       // their clean-desktop baseline (its absence broke the axe-baseline
       // Overview spec on push run 27390457673).
       localStorage.setItem('dwellium:default-stack:v1', 'done');
+      // FirstRunCard (plan 046-F) floats over the desktop and intercepts
+      // pointer events — it broke every axe-baseline click from 2026-08-20 to
+      // 2026-08-26 (10 consecutive red Parity Gate runs). Dismiss it for this
+      // session, and mark the ARA intro as seen for the same overlay reason.
+      sessionStorage.setItem('dwellium:first-run:dismissed', '1');
+      localStorage.setItem('dwellium-ara-prefs', JSON.stringify({
+        streamTokens: true, showToolActivity: false, holdToTalk: false, introSeen: true, prefsVersion: 2,
+      }));
       // Offline session restore (UserContext.tsx: `static-` token skips the
       // backend validator; `dwellium-user` is restored optimistically).
       const now = new Date().toISOString();

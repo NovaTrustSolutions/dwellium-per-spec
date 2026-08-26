@@ -144,10 +144,22 @@ async function checkOAuthClientIdInBundle() {
       }
     }
 
-    const jsAssets = [...assetSet];
+    // The manifest lists each route's entry module but NOT its transitive
+    // static imports; a chunk-graph reshuffle (2026-08-26: the client ID moved
+    // into a shared chunk two hops deep) made the one-level scan a false
+    // negative while the ID was demonstrably in the live bundle. Crawl
+    // breadth-first through asset references found inside fetched bodies,
+    // bounded, stopping early on a hit — still a real FAIL if the ID is
+    // genuinely absent from the whole graph.
+    const queue = [...assetSet];
+    const visited = new Set();
+    const MAX_ASSETS = 400;
     let found = false;
     let scanned = 0;
-    for (const src of jsAssets) {
+    while (queue.length > 0 && scanned < MAX_ASSETS && !found) {
+      const src = queue.shift();
+      if (visited.has(src)) continue;
+      visited.add(src);
       const url = src.startsWith('http') ? src : new URL(src, SITE_ORIGIN).toString();
       try {
         const jsRes = await fetch(url, { method: 'GET' });
@@ -158,13 +170,17 @@ async function checkOAuthClientIdInBundle() {
           found = true;
           break;
         }
+        for (const m of body.matchAll(/["'`](?:\/?assets\/)?([A-Za-z0-9_-]+-[A-Za-z0-9_-]{8,}\.js)["'`]/g)) {
+          const ref = `/assets/${m[1]}`;
+          if (!visited.has(ref)) queue.push(ref);
+        }
       } catch {
         // ignore individual asset fetch failures, keep scanning others
       }
     }
 
     if (found) {
-      record(label, 'PASS', `client-ID prefix "${OAUTH_CLIENT_ID_PREFIX}" found in bundle (${scanned} asset(s) scanned, ${jsAssets.length} discovered via index.html + manifest)`);
+      record(label, 'PASS', `client-ID prefix "${OAUTH_CLIENT_ID_PREFIX}" found in bundle (${scanned} asset(s) scanned, ${visited.size} discovered via index.html + manifest + transitive crawl)`);
     } else {
       record(
         label,

@@ -60,8 +60,18 @@ vi.mock('@excalidraw/excalidraw', async () => {
         serializeAsJSON: captured.serializeAsJSON,
         loadSceneOrLibraryFromBlob: captured.loadSceneOrLibraryFromBlob,
         convertToExcalidrawElements: (skeletons: unknown[]) => skeletons,
+        // Collab-path utilities (vendored client imports these from the package).
+        getSceneVersion: (els: Array<{ version?: number }>) => els.reduce((acc, e) => acc + (e.version ?? 0), 0),
+        restoreElements: (els: unknown[]) => els,
+        reconcileElements: (_local: unknown[], remote: unknown[]) => remote,
+        isInvisiblySmallElement: () => false,
+        CaptureUpdateAction: { IMMEDIATELY: 'IMMEDIATELY', NEVER: 'NEVER', EVENTUALLY: 'EVENTUALLY' },
+        UserIdleState: { ACTIVE: 'active', AWAY: 'away', IDLE: 'idle' },
     };
 });
+// The vendored collab client statically imports socket.io-client; no test in
+// this file opens a session, but keep the transport inert regardless.
+vi.mock('socket.io-client', () => ({ io: vi.fn() }));
 
 import Whiteboard, { collabState, pickLangCode } from '../components/Whiteboard/Whiteboard';
 import { WIDGET_REGISTRY } from '../registry/widgetRegistry';
@@ -302,28 +312,27 @@ describe('notices (plan 053 #2)', () => {
     });
 });
 
-describe('collab (plan 053 #6 — honest states)', () => {
+describe('collab (vendored room client — env-gated states)', () => {
     it('collabState() parses the env var', () => {
         expect(collabState(undefined)).toEqual({ configured: false, url: null });
         expect(collabState('   ')).toEqual({ configured: false, url: null });
         expect(collabState('wss://room.example')).toEqual({ configured: true, url: 'wss://room.example' });
     });
-    it('unconfigured: the Collab panel says exactly that + points at the runbook', () => {
+    it('unconfigured: the Live collab panel names the env var + runbook (honest state)', () => {
         render(<Whiteboard />);
-        fireEvent.click(screen.getByText('Collab'));
+        fireEvent.click(screen.getByText('Live collab'));
         const note = screen.getByRole('note');
         expect(note.textContent).toContain('Collab server not configured');
         expect(note.textContent).toContain('VITE_EXCALIDRAW_COLLAB_URL');
         expect(note.textContent).toContain('tools/excalidraw-room/');
-        expect(note.textContent).toContain('ships no room client');
     });
-    it('configured: shows the room URL and the honest embed limitation', () => {
+    it('configured: offers Start session and Join with link (no session yet)', () => {
         vi.stubEnv('VITE_EXCALIDRAW_COLLAB_URL', 'wss://room.dwellium.example');
         render(<Whiteboard />);
-        fireEvent.click(screen.getByText('Collab'));
-        const note = screen.getByRole('note');
-        expect(note.textContent).toContain('wss://room.dwellium.example');
-        expect(note.textContent).toContain('ships no room client');
+        fireEvent.click(screen.getByText('Live collab'));
+        expect(screen.getByText('Start session')).toBeDefined();
+        expect(screen.getByLabelText('Join with link')).toBeDefined();
+        expect(screen.getByText('Join')).toBeDefined();
     });
 });
 

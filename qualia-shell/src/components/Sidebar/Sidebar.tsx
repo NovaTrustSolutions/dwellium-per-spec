@@ -842,18 +842,9 @@ export default function Sidebar() {
                                     const isDragOver = dragOverInfo?.group === item.group && dragOverInfo?.index === index && !isDragging;
 
                                     return (
-                                        <button
+                                        <div
                                             key={item.id}
                                             className={`sidebar-widget ${isOpen ? 'sidebar-widget--open' : ''} ${isMinimized ? 'sidebar-widget--minimized' : ''} ${isChild ? 'sidebar-widget--child' : ''} ${isDragging ? 'sidebar-widget--dragging' : ''} ${isDragOver ? 'sidebar-widget--dragover' : ''}`}
-                                            onClick={() => handleWidgetClick(item.component, item.label, item.icon)}
-                                            onAuxClick={e => {
-                                                if (e.button === 1 && isOpen) {
-                                                    e.preventDefault();
-                                                    const w = windows.find(win => win.component === item.component);
-                                                    if (w) closeWindow(w.id);
-                                                }
-                                            }}
-                                            title={`${withDesc(item)} (Middle-click to close)`}
                                             draggable={!searchActive}
                                             onDragStart={e => {
                                                 if (searchActive) return;
@@ -869,7 +860,23 @@ export default function Sidebar() {
                                             }}
                                             onDragEnd={searchActive ? undefined : onWidgetDragEnd}
                                         >
-                                            {!searchActive && <span className="sidebar-widget__drag-handle">≡</span>}
+                                            {!searchActive && <span className="sidebar-widget__drag-handle" aria-hidden="true">≡</span>}
+                                            {/* nested-interactive fix (2026-08-26): the row is a div; the main
+                                                action and the × remove are SIBLING buttons — axe flagged the old
+                                                role="button" span nested inside the row button on 18 rows. */}
+                                            <button
+                                                type="button"
+                                                className="sidebar-widget__main"
+                                                onClick={() => handleWidgetClick(item.component, item.label, item.icon)}
+                                                onAuxClick={e => {
+                                                    if (e.button === 1 && isOpen) {
+                                                        e.preventDefault();
+                                                        const w = windows.find(win => win.component === item.component);
+                                                        if (w) closeWindow(w.id);
+                                                    }
+                                                }}
+                                                title={`${withDesc(item)} (Middle-click to close)`}
+                                            >
                                             <span className="sidebar-widget__icon"><SidebarIcon iconKey={item.icon} size={16} /></span>
                                             {!collapsed && (
                                                 <div className="sidebar-widget__content">
@@ -887,20 +894,19 @@ export default function Sidebar() {
                                                 </span>
                                             )}
                                             {isOpen && <span className="sidebar-widget__dot" />}
+                                            </button>
                                             {!collapsed && !searchActive && (
-                                                <span
-                                                    role="button"
-                                                    tabIndex={0}
+                                                <button
+                                                    type="button"
                                                     aria-label={`Remove ${item.label} from sidebar`}
                                                     title="Remove from sidebar (closes it)"
                                                     className="sidebar-widget__remove"
                                                     onClick={e => { e.stopPropagation(); removeWidget(item.component); }}
-                                                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); removeWidget(item.component); } }}
                                                 >
                                                     ×
-                                                </span>
+                                                </button>
                                             )}
-                                        </button>
+                                        </div>
                                     );
                                 };
 

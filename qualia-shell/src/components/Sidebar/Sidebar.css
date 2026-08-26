@@ -1752,3 +1752,27 @@
 /* Plan 047 §3 — "Show N more" row inside a long group (local state, never persisted). */
 .sidebar-widget--more { color: var(--text-tertiary, #808080); font-style: italic; }
 .sidebar-widget--more:hover { color: var(--text-primary, #e8e8e8); }
+
+/* nested-interactive fix (2026-08-26): .sidebar-widget is now a DIV row; the
+   main action is this inner button. It inherits the row's look completely so
+   the restructure is invisible; the row keeps layout, hover and drag. */
+.sidebar-widget__main {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.sidebar-widget__main:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+

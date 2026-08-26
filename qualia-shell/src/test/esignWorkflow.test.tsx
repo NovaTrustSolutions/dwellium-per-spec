@@ -18,6 +18,10 @@ import {
     signingUrlFromToken,
 } from '../components/ESign/esignApi';
 
+// Deep-link base derived from the SAME env the code reads — a developer's local
+// .env (VITE_DOCUMENSO_URL → self-hosted Documenso) must not fail the suite.
+const DOCUMENSO_BASE = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_DOCUMENSO_URL || 'https://app.documenso.com').replace(/\/+$/, '');
+
 function jsonResponse(body: unknown, status = 200): Response {
     return { ok: status >= 200 && status < 300, status, json: async () => body } as unknown as Response;
 }
@@ -78,9 +82,9 @@ describe('esignMerge', () => {
 
 describe('esignApi deep links + action URLs', () => {
     it('builds Documenso document + signing deep links (never a bare homepage)', () => {
-        expect(documensoDocumentUrl({ documentId: 555 })).toBe('https://app.documenso.com/documents/555');
-        expect(documensoDocumentUrl({ documentId: null, envelopeId: 'envl_9' })).toBe('https://app.documenso.com/documents/envl_9');
-        expect(signingUrlFromToken('tok_1')).toBe('https://app.documenso.com/sign/tok_1');
+        expect(documensoDocumentUrl({ documentId: 555 })).toBe(`${DOCUMENSO_BASE}/documents/555`);
+        expect(documensoDocumentUrl({ documentId: null, envelopeId: 'envl_9' })).toBe(`${DOCUMENSO_BASE}/documents/envl_9`);
+        expect(signingUrlFromToken('tok_1')).toBe(`${DOCUMENSO_BASE}/sign/tok_1`);
     });
 
     it('cancel/resend/send post to the backend proxy with the right refs', async () => {
@@ -116,7 +120,7 @@ describe('ESign widget — documents list', () => {
         await waitFor(() => expect(screen.getByText('Lease — Woodland Parc 2B')).toBeInTheDocument());
         expect(screen.getByText('COMPLETED')).toBeInTheDocument();
         expect(screen.getByLabelText('Open Lease — Woodland Parc 2B in Documenso'))
-            .toHaveAttribute('href', 'https://app.documenso.com/documents/555');
+            .toHaveAttribute('href', `${DOCUMENSO_BASE}/documents/555`);
     });
 
     it('503 → needs-setup card; network failure → error state with Retry', async () => {
@@ -208,7 +212,7 @@ describe('ESign widget — per-document actions', () => {
         render(<ESign />);
         await waitFor(() => expect(screen.getByText('Lease — Woodland Parc 2B')).toBeInTheDocument());
         fireEvent.click(screen.getByLabelText('Copy signing link for tenant@example.com'));
-        await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://app.documenso.com/sign/tok_1'));
+        await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${DOCUMENSO_BASE}/sign/tok_1`));
     });
 });
 

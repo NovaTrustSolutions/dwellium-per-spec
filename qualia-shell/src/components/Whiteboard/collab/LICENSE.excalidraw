@@ -1,0 +1,48 @@
+Vendored Excalidraw collaboration client — provenance and license
+=================================================================
+
+The files in this directory (`encryption.ts`, `protocol.ts`, `Portal.ts`,
+`Collab.ts`) are vendored and adapted from the Excalidraw monorepo at tag
+v0.18.1 (matching the `@excalidraw/excalidraw@0.18.1` npm package this app
+embeds). The npm package ships no room client; the collab client lives only
+in the (unpublished, MIT-licensed) excalidraw-app. Sources:
+
+- https://github.com/excalidraw/excalidraw/blob/v0.18.1/excalidraw-app/collab/Collab.tsx
+- https://github.com/excalidraw/excalidraw/blob/v0.18.1/excalidraw-app/collab/Portal.tsx
+- https://github.com/excalidraw/excalidraw/blob/v0.18.1/excalidraw-app/data/index.ts
+- https://github.com/excalidraw/excalidraw/blob/v0.18.1/excalidraw-app/app_constants.ts
+- https://github.com/excalidraw/excalidraw/blob/v0.18.1/packages/excalidraw/data/encryption.ts
+- https://github.com/excalidraw/excalidraw/blob/v0.18.1/packages/excalidraw/utils.ts (bytesToHexString)
+- https://github.com/excalidraw/excalidraw/blob/v0.18.1/packages/excalidraw/constants.ts (IDLE/ACTIVE thresholds, ENCRYPTION_KEY_BITS)
+
+Adaptations (documented per-file in headers): Firebase scene/file persistence
+stripped (Dwellium persists via its own whiteboardStore + One Save), analytics
+stripped, jotai/React-component shell replaced by a framework-free session
+class, lodash.throttle replaced by a local throttle. The wire protocol
+(socket.io event names, message subtypes, AES-GCM end-to-end encryption, room
+link format `#room=<roomId>,<key>`) is kept byte-compatible with the official
+`excalidraw/excalidraw-room` server this era of the app targets.
+
+Upstream license (https://github.com/excalidraw/excalidraw/blob/v0.18.1/LICENSE):
+
+MIT License
+
+Copyright (c) 2020 Excalidraw
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

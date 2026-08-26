@@ -253,9 +253,8 @@ describe('portal message serialization over the socket', () => {
         socket.fire('first-in-room'); // room initialized (we are alone)
 
         session.syncElements(asElements(api.getSceneElementsIncludingDeleted()));
-        await flushAsync();
+        await waitFor(() => expect(socket.sent('server-broadcast').length).toBeGreaterThanOrEqual(1));
         const frames = socket.sent('server-broadcast');
-        expect(frames.length).toBeGreaterThanOrEqual(1);
         expect(frames[0].args[0]).toBe(session.portal.roomId);
         const payload = await decryptFrame(frames[0], session.portal.roomKey!);
         expect(payload.type).toBe(WS_SUBTYPES.UPDATE);
@@ -264,7 +263,7 @@ describe('portal message serialization over the socket', () => {
         // Same scene version again → the gate blocks a re-broadcast.
         const before = socket.sent('server-broadcast').length;
         session.syncElements(asElements(api.getSceneElementsIncludingDeleted()));
-        await flushAsync();
+        await act(() => new Promise<void>((r) => setTimeout(r, 50))); // real window for a would-be re-broadcast
         expect(socket.sent('server-broadcast')).toHaveLength(before);
         session.stop();
     });
@@ -273,9 +272,8 @@ describe('portal message serialization over the socket', () => {
         const { session, socket } = await startedSession(api);
         socket.fire('first-in-room');
         socket.fire('new-user', 'sock-remote');
-        await flushAsync();
+        await waitFor(() => expect(socket.sent('server-broadcast').length).toBeGreaterThanOrEqual(1));
         const frames = socket.sent('server-broadcast');
-        expect(frames.length).toBeGreaterThanOrEqual(1);
         const payload = await decryptFrame(frames[frames.length - 1], session.portal.roomKey!);
         expect(payload.type).toBe(WS_SUBTYPES.INIT);
         expect(payload.payload.elements.map((e: FakeElement) => e.id)).toEqual(['a']);
@@ -302,15 +300,15 @@ describe('reconciliation and the two-client broadcast→receive cycle', () => {
 
         // Server tells A someone joined → A broadcasts SCENE_INIT.
         sockA.fire('new-user', sockB.id);
-        await flushAsync();
+        await waitFor(() => expect(sockA.sent('server-broadcast').length).toBeGreaterThanOrEqual(1));
         const initFrame = sockA.sent('server-broadcast').pop()!;
 
         // Relay the encrypted frame to B (exactly what excalidraw-room does).
         sockB.fire('client-broadcast', initFrame.args[1], initFrame.args[2]);
-        await flushAsync();
-
-        // B reconciled the remote scene into its canvas.
-        expect(apiB.updateScene).toHaveBeenCalled();
+        // WebCrypto decrypt completes off-thread in Node — a single
+        // setTimeout(0) hop loses the race on slow CI runners (failed in CI
+        // 2026-08-26 while green locally). Poll with real timers instead.
+        await waitFor(() => expect(apiB.updateScene).toHaveBeenCalled());
         const applied = apiB.updateScene.mock.calls.find((c) => (c[0] as { elements?: unknown[] }).elements);
         expect(applied).toBeTruthy();
         expect((applied![0] as { elements: FakeElement[] }).elements.map((e) => e.id)).toContain('e1');
@@ -318,18 +316,16 @@ describe('reconciliation and the two-client broadcast→receive cycle', () => {
 
         // Received scene is version-bookmarked → B does NOT echo it back.
         b.syncElements(asElements(apiB.getSceneElementsIncludingDeleted()));
-        await flushAsync();
+        await act(() => new Promise<void>((r) => setTimeout(r, 50))); // real window for a would-be echo
         expect(sockB.sent('server-broadcast')).toHaveLength(0);
 
         // B draws a new element → broadcast → relay to A → A's scene gains it.
         apiB.setElements([...apiB.getSceneElementsIncludingDeleted(), el('e2', 1)]);
         b.syncElements(asElements(apiB.getSceneElementsIncludingDeleted()));
-        await flushAsync();
+        await waitFor(() => expect(sockB.sent('server-broadcast')[0]).toBeTruthy());
         const updateFrame = sockB.sent('server-broadcast')[0];
-        expect(updateFrame).toBeTruthy();
         sockA.fire('client-broadcast', updateFrame.args[1], updateFrame.args[2]);
-        await flushAsync();
-        expect(apiA.getSceneElementsIncludingDeleted().map((e) => e.id).sort()).toEqual(['e1', 'e2']);
+        await waitFor(() => expect(apiA.getSceneElementsIncludingDeleted().map((e) => e.id).sort()).toEqual(['e1', 'e2']));
 
         a.stop();
         b.stop();

@@ -8,13 +8,18 @@
  * Strata-attached boards `strata:<type>:<id>`), shape-library persistence with
  * the Andy starter library, import of `.excalidraw`/`.excalidrawlib` (picker +
  * drag-drop), PNG/SVG/.excalidraw export, ≥10 MB images with downscale
- * notices, browser-locale `langCode`, and an honest live-collab state.
+ * notices, browser-locale `langCode`, and REAL live collaboration via the
+ * vendored Excalidraw room client (`./collab/` — MIT, from the monorepo at
+ * v0.18.1) against a self-hosted excalidraw-room server
+ * (`VITE_EXCALIDRAW_COLLAB_URL`; runbook: tools/excalidraw-room/). Scenes are
+ * end-to-end encrypted; the AES-GCM key rides the `#room=<id>,<key>` URL
+ * fragment and never reaches any server.
  *
  * Fully self-contained for the Netlify CSP: the npm bundle ships in our chunk
  * and fonts are served same-origin from `public/excalidraw-fonts/`
  * (window.EXCALIDRAW_ASSET_PATH below — no CDN).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import {
     Excalidraw,
     MIME_TYPES,
@@ -33,10 +38,13 @@ import type {
     LibraryItems,
 } from '@excalidraw/excalidraw/types';
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types';
-import { FileUp, ImageDown, Shapes, Users, X } from 'lucide-react';
+import { Copy, FileUp, ImageDown, Shapes, Users, X } from 'lucide-react';
 import { themeStore } from '../../context/ThemeContext';
+import { UserContext } from '../../context/UserContext';
 import type { Theme } from '../../data/types';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { CollabSession } from './collab/Collab';
+import { getCollaborationLinkData } from './collab/protocol';
 import {
     DEFAULT_BOARD_ID,
     flushPendingSave,
@@ -70,11 +78,9 @@ if (typeof window !== 'undefined') {
 const LIGHT_THEMES: ReadonlySet<Theme> = new Set<Theme>(['latte', 'corporate']);
 
 /**
- * Plan 053 #6 — honest collab state. The 0.18.1 npm package ships collab UI
- * affordances only (`isCollaborating`, collaborator avatars); the room client
- * (socket transport) lives in the unpublished excalidraw-app, so the embed
- * cannot join a room in-app. Env-gated so a future room server is one env var
- * away (runbook: tools/excalidraw-room/).
+ * Live collab env gate. The 0.18.1 npm package ships no room client, so the
+ * transport is vendored from the MIT monorepo (`./collab/`); this only checks
+ * whether a room server is configured (runbook: tools/excalidraw-room/).
  */
 export function collabState(envUrl: string | undefined | null): { configured: boolean; url: string | null } {
     const url = typeof envUrl === 'string' && envUrl.trim() ? envUrl.trim() : null;
@@ -105,6 +111,10 @@ function downloadBlob(blob: Blob, filename: string): void {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Stable no-op store surface for useSyncExternalStore when no session runs. */
+const NOOP_SUBSCRIBE = () => () => {};
+const getNullSnapshot = () => null;
 
 const IMPORT_EXTENSIONS = ['.excalidraw', '.excalidrawlib'];
 
@@ -139,6 +149,117 @@ export default function Whiteboard() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [collabOpen, setCollabOpen] = useState(false);
 
+    /* ── live collaboration (vendored room client, ./collab/) ───────────── */
+    const collab = collabState(import.meta.env.VITE_EXCALIDRAW_COLLAB_URL as string | undefined);
+    const userCtx = useContext(UserContext);
+    const usernameRef = useRef('Dwellium user');
+    usernameRef.current = userCtx?.user?.name || 'Dwellium user';
+
+    const sessionRef = useRef<CollabSession | null>(null);
+    const [session, setSession] = useState<CollabSession | null>(null);
+    const [joinLink, setJoinLink] = useState('');
+    const sessionSnap = useSyncExternalStore(
+        session?.subscribe ?? NOOP_SUBSCRIBE,
+        session?.getSnapshot ?? getNullSnapshot,
+        getNullSnapshot,
+    );
+
+    const startSession = useCallback(async (existing: { roomId: string; roomKey: string } | null) => {
+        const api = apiRef.current;
+        const url = collabState(import.meta.env.VITE_EXCALIDRAW_COLLAB_URL as string | undefined).url;
+        if (!api || !url || sessionRef.current) return;
+        const s = new CollabSession({
+            excalidrawAPI: api,
+            serverUrl: url,
+            username: usernameRef.current,
+            onError: (message) => whiteboardNoticeStore.push('collab', message),
+        });
+        sessionRef.current = s;
+        setSession(s);
+        setCollabOpen(true);
+        await s.start(existing);
+        const link = s.getSnapshot().roomLink;
+        // Refresh-safe: put the room fragment in the URL (key never leaves it).
+        try { window.history.replaceState({}, '', link); } catch { /* sandboxed */ }
+        if (!existing) {
+            try {
+                await navigator.clipboard.writeText(link);
+                whiteboardNoticeStore.push('collab', 'Live session started — link copied to your clipboard.');
+            } catch {
+                whiteboardNoticeStore.push('collab', 'Live session started — use Copy link to share it.');
+            }
+        }
+    }, []);
+
+    const leaveSession = useCallback(() => {
+        const s = sessionRef.current;
+        if (!s) return;
+        // Persist the collaborative result before teardown (remote-echo saves
+        // are skipped during the session — see onChange).
+        const api = apiRef.current;
+        if (api) {
+            saveSceneDebounced(
+                boardIdRef.current,
+                sanitizeScene(api.getSceneElements(), api.getAppState(), api.getFiles()),
+            );
+        }
+        flushPendingSave();
+        s.stop();
+        sessionRef.current = null;
+        setSession(null);
+        if (typeof window !== 'undefined' && getCollaborationLinkData(window.location.href)) {
+            try {
+                window.history.replaceState({}, '', window.location.pathname + window.location.search);
+            } catch { /* sandboxed */ }
+        }
+    }, []);
+
+    const copyRoomLink = useCallback(async () => {
+        const link = sessionRef.current?.getSnapshot().roomLink;
+        if (!link) return;
+        try {
+            await navigator.clipboard.writeText(link);
+            whiteboardNoticeStore.push('collab', 'Room link copied — anyone with it joins this board live.');
+        } catch {
+            whiteboardNoticeStore.push('collab', `Copy failed — room link: ${link}`);
+        }
+    }, []);
+
+    const joinFromLink = useCallback(() => {
+        const data = getCollaborationLinkData(joinLink.trim());
+        if (!data) {
+            whiteboardNoticeStore.push('collab', 'That is not a valid room link — expected …#room=<id>,<key>.');
+            return;
+        }
+        setJoinLink('');
+        void startSession(data);
+    }, [joinLink, startSession]);
+
+    // Opening the app with a #room= fragment joins automatically once the
+    // canvas API is available (the api callback below calls this).
+    const maybeAutoJoin = useCallback(() => {
+        if (sessionRef.current || typeof window === 'undefined') return;
+        const data = getCollaborationLinkData(window.location.href);
+        if (data) void startSession(data);
+    }, [startSession]);
+
+    // Board switches remount the canvas (new imperative API) — a live session
+    // is bound to the old one, so leave honestly instead of desyncing.
+    const prevBoardRef = useRef(activeBoardId);
+    useEffect(() => {
+        if (prevBoardRef.current !== activeBoardId && sessionRef.current) {
+            leaveSession();
+            whiteboardNoticeStore.push('collab', 'Left the live session — sessions are per board.');
+        }
+        prevBoardRef.current = activeBoardId;
+    }, [activeBoardId, leaveSession]);
+
+    // Unmount: tear the socket down (flushPendingSave runs in its own effect).
+    useEffect(() => () => {
+        sessionRef.current?.stop();
+        sessionRef.current = null;
+    }, []);
+
     // Excalidraw only reads initialData on mount; the canvas remounts per board
     // (key={activeBoardId}), so compute mount data per board id. First-ever open
     // (libraryItems undefined) seeds the Andy property-management library.
@@ -153,7 +274,13 @@ export default function Whiteboard() {
 
     const onChange = useCallback(
         (elements: readonly OrderedExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
-            saveSceneDebounced(boardIdRef.current, sanitizeScene(elements, appState, files));
+            // In a live session, skip persisting remote-echo churn — the final
+            // scene is saved explicitly on Leave/board-switch (leaveSession).
+            if (!sessionRef.current?.isApplyingRemote()) {
+                saveSceneDebounced(boardIdRef.current, sanitizeScene(elements, appState, files));
+            }
+            // Version-gated inside: received scenes are never re-broadcast.
+            sessionRef.current?.syncElements(elements);
         },
         [],
     );
@@ -248,7 +375,6 @@ export default function Whiteboard() {
         ];
     }, [doc.boards]);
 
-    const collab = collabState(import.meta.env.VITE_EXCALIDRAW_COLLAB_URL as string | undefined);
     const langCode = pickLangCode(typeof navigator !== 'undefined' ? navigator.language : undefined, languages);
 
     return (
@@ -287,8 +413,8 @@ export default function Whiteboard() {
                 <button style={toolbarBtn} onClick={addDwelliumShapes} title="Add the Dwellium property-management shapes to your library">
                     <Shapes size={12} /> Dwellium shapes
                 </button>
-                <button style={toolbarBtn} onClick={() => setCollabOpen((v) => !v)} title="Live collaboration status" aria-expanded={collabOpen}>
-                    <Users size={12} /> Collab
+                <button style={toolbarBtn} onClick={() => setCollabOpen((v) => !v)} title="Live collaboration" aria-expanded={collabOpen}>
+                    <Users size={12} /> Live collab{session && sessionSnap ? ` (${sessionSnap.collaboratorCount})` : ''}
                 </button>
                 <input
                     ref={fileInputRef}
@@ -300,29 +426,53 @@ export default function Whiteboard() {
                 />
             </div>
 
-            {/* ── Honest collab state (plan 053 #6) ── */}
+            {/* ── Live collab panel (vendored room client, ./collab/) ── */}
             {collabOpen && (
                 <div role="note" style={{
+                    display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
                     padding: '8px 12px', fontSize: 11, lineHeight: 1.5, color: 'var(--text-secondary)',
                     borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)',
                 }}>
-                    {collab.configured ? (
+                    {!collab.configured ? (
+                        <span>
+                            Collab server not configured — set <code>VITE_EXCALIDRAW_COLLAB_URL</code> to your
+                            excalidraw-room server (runbook: <code>tools/excalidraw-room/</code>: <code>docker
+                            compose up</code>, then the env var). Once set, live collaboration runs right here —
+                            end-to-end encrypted, presence cursors and all.
+                        </span>
+                    ) : session && sessionSnap ? (
                         <>
-                            Room server configured: <code>{collab.url}</code>. The embedded Excalidraw (0.18.1) ships no
-                            room client, so in-app live sync is not supported — use the server with a self-hosted
-                            excalidraw-app (see <code>tools/excalidraw-room/</code>), or{' '}
-                            <a href="https://excalidraw.com" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
-                                open an excalidraw.com room ↗
-                            </a>{' '}for a quick shared session (export this board as .excalidraw and drop it in).
+                            <span>
+                                Live session — {sessionSnap.collaboratorCount} participant{sessionSnap.collaboratorCount === 1 ? '' : 's'}.
+                                Images are not synced live; they stay on the device that added them.
+                            </span>
+                            <button style={toolbarBtn} onClick={() => void copyRoomLink()} title="Copy the room link (the key stays in the URL fragment)">
+                                <Copy size={12} /> Copy link
+                            </button>
+                            <button style={toolbarBtn} onClick={leaveSession} title="Leave the live session (the board stays saved to your account)">
+                                Leave
+                            </button>
                         </>
                     ) : (
                         <>
-                            Collab server not configured — set <code>VITE_EXCALIDRAW_COLLAB_URL</code> (runbook:{' '}
-                            <code>tools/excalidraw-room/</code>). Note the embedded Excalidraw (0.18.1) ships no room
-                            client either way; for a live session today,{' '}
-                            <a href="https://excalidraw.com" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
-                                open an excalidraw.com room ↗
-                            </a>{' '}and import this board there (.excalidraw export).
+                            <button style={toolbarBtn} onClick={() => void startSession(null)} title="Create an end-to-end encrypted room and copy its link">
+                                Start session
+                            </button>
+                            <input
+                                aria-label="Join with link"
+                                placeholder="Paste a #room= link to join"
+                                value={joinLink}
+                                onChange={(e) => setJoinLink(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') joinFromLink(); }}
+                                style={{
+                                    flex: 1, minWidth: 180, padding: '4px 8px', borderRadius: 6, fontSize: 11,
+                                    fontFamily: 'inherit', background: 'rgba(255,255,255,0.04)',
+                                    color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.1)',
+                                }}
+                            />
+                            <button style={toolbarBtn} onClick={joinFromLink} title="Join the pasted room link">
+                                Join
+                            </button>
                         </>
                     )}
                 </div>
@@ -332,7 +482,7 @@ export default function Whiteboard() {
             {notice && (
                 <div role="status" style={{
                     display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', fontSize: 11,
-                    color: notice.kind === 'downscaled' ? 'var(--text-secondary)' : '#f59e0b',
+                    color: notice.kind === 'downscaled' || notice.kind === 'collab' ? 'var(--text-secondary)' : '#f59e0b',
                     background: 'rgba(245,158,11,0.06)', borderBottom: '1px solid rgba(245,158,11,0.15)',
                 }}>
                     <span style={{ flex: 1 }}>{notice.message}</span>
@@ -355,7 +505,9 @@ export default function Whiteboard() {
                     initialData={initialData}
                     onChange={onChange}
                     onLibraryChange={onLibraryChange}
-                    excalidrawAPI={(api) => { apiRef.current = api; }}
+                    excalidrawAPI={(api) => { apiRef.current = api; maybeAutoJoin(); }}
+                    isCollaborating={session !== null}
+                    onPointerUpdate={session ? session.onPointerUpdate : undefined}
                     UIOptions={{ canvasActions: { loadScene: false } }}
                 />
             </div>

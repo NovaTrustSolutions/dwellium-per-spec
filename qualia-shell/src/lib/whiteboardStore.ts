@@ -169,7 +169,7 @@ export function getWhiteboardDoc(): WhiteboardDoc {
 
 export interface WhiteboardNotice {
     id: number;
-    kind: 'downscaled' | 'dropped' | 'cache-quota';
+    kind: 'downscaled' | 'dropped' | 'cache-quota' | 'collab';
     message: string;
 }
 

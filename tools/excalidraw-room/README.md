@@ -1,46 +1,33 @@
 # excalidraw-room — live collaboration runbook (plan 053 #6)
 
-## Read this first: what the Dwellium widget can and cannot do
+## What this gives you
 
-**The embedded Excalidraw cannot join a collaboration room.** This is a
-limitation of the npm package, not of our integration, and it is the reason the
-Whiteboard widget shows an honest "not supported by the embed" state instead of
-a Collaborate button that does nothing.
+**Live collaboration IS built into Dwellium's Whiteboard widget.** The room
+client (socket transport, end-to-end encryption, presence cursors) is vendored
+from Excalidraw's MIT-licensed monorepo at tag v0.18.1 into
+`qualia-shell/src/components/Whiteboard/collab/` (see `LICENSE.excalidraw`
+there for provenance). It speaks the official `excalidraw/excalidraw-room`
+protocol — the exact server this compose file runs.
 
-Evidence, from the installed package (`@excalidraw/excalidraw@0.18.1`):
+Historical note: the `@excalidraw/excalidraw@0.18.1` npm package itself ships
+no room client (its bundle contains no socket code; `LiveCollaborationTrigger`
+is just a button). That used to mean "no in-app live sync". It no longer does —
+the client half is vendored in-app now. This runbook deploys the server half.
 
-- **Exports** (`dist/types/excalidraw/index.d.ts`) — the package exports the
-  editor, export helpers (`exportToBlob`, `exportToSvg`, `serializeAsJSON`),
-  library helpers and UI pieces such as `LiveCollaborationTrigger`. There is
-  **no room client, no socket transport and no `joinRoom`/collab API** in the
-  export surface. `LiveCollaborationTrigger` is a *button component* — the host
-  app must implement what it triggers.
-- **Props** (`dist/types/excalidraw/types.d.ts:409, 501`) — `isCollaborating`
-  is a boolean the host app sets, and `onPointerUpdate` / `collaborators` are
-  the hooks a host uses to *render* other people's cursors. Excalidraw draws
-  the presence UI; the host owns the network.
-- **Bundle** (`dist/prod/chunk-ZUYEQ4TG.js`) — `grep -c "new WebSocket"` → `0`,
-  `grep -c "socket.io-client"` → `0`. The only `excalidraw-room` occurrence is
-  inside a baked-in env-config blob naming excalidraw.com's own hosts
-  (`VITE_APP_WS_SERVER_URL:"https://oss-collab.excalidraw.com"`), which nothing
-  in the library dials.
+Once the server is up and `VITE_EXCALIDRAW_COLLAB_URL` is set:
 
-The socket client lives in the `excalidraw-app` (the excalidraw.com front end),
-which is **not published to npm**. Wiring live collab in-app therefore means
-writing a socket.io client against the room protocol and feeding
-`updateScene` / `onPointerUpdate` ourselves — a real project, not a config flag.
+1. **Start session** in the Whiteboard's *Live collab* panel creates an
+   end-to-end encrypted room and copies the share link
+   (`…#room=<roomId>,<key>` — the AES-GCM key rides the URL fragment and is
+   never sent to any server, including this one).
+2. Anyone opening that link (or pasting it into *Join with link*) draws on the
+   same board live, with named presence cursors and idle/active states.
+3. The room server only relays encrypted blobs; it stores nothing.
 
-**So this runbook deploys the server half.** With it running you can:
-
-1. host a private, self-hosted room server for a self-hosted excalidraw-app; and
-2. flip Dwellium's Whiteboard "Collab" panel from *"not configured"* to
-   *"configured — room server at &lt;url&gt;"* by setting
-   `VITE_EXCALIDRAW_COLLAB_URL`.
-
-What it does **not** do is make the in-widget canvas sync live. Until someone
-builds the room client, the widget's honest advice stands: export the board as
-`.excalidraw` and open a room on excalidraw.com (or your self-hosted app) for a
-shared session, then import the result back.
+Honest limitation that remains: **images are not synced in a live session**
+(upstream syncs collab image files through Firebase Storage, which Dwellium
+does not vendor). Images stay on the device that added them; the widget says
+so in the session panel.
 
 ## Deploy (GCP e2-micro, ~$0 on the free tier)
 
@@ -79,21 +66,37 @@ Verify:
 curl -I https://room.example.com          # expect 200
 ```
 
-## Wire it into Dwellium
+## Wire it into Dwellium — collab goes LIVE
 
 Netlify env (Site settings → Environment variables), then redeploy:
 
 ```
-VITE_EXCALIDRAW_COLLAB_URL=wss://room.example.com
+VITE_EXCALIDRAW_COLLAB_URL=https://room.example.com
 ```
 
-The Whiteboard's **Collab** panel then names the configured server, and keeps
-stating the embed limitation above. Unset the variable and it returns to
-"Collab server not configured".
+(An `https://` origin is correct — socket.io upgrades to `wss://` itself; a
+`wss://` origin also works.)
+
+That is the whole switch: the Whiteboard's **Live collab** panel flips from
+*"Collab server not configured"* to **Start session / Join with link**, and
+in-widget live sync works end to end. Unset the variable and the panel returns
+to the honest unconfigured state.
+
+## Local smoke test
+
+```bash
+cd tools/excalidraw-room && docker compose up -d
+cd ../../qualia-shell
+VITE_EXCALIDRAW_COLLAB_URL=http://127.0.0.1:8080 npx react-router dev
+# open the Whiteboard in two browser windows → Start session in one,
+# paste the copied link into "Join with link" in the other.
+```
 
 ## Cost and licence
 
 - `excalidraw/excalidraw-room` is MIT, run **unmodified**.
+- The vendored client is MIT (Copyright (c) 2020 Excalidraw) — full text and
+  provenance in `qualia-shell/src/components/Whiteboard/collab/LICENSE.excalidraw`.
 - e2-micro on the GCP always-free tier: $0 within the monthly limits; egress is
   the only meterable cost and a relay of cursor/scene deltas is tiny.
 - No other paid service is involved.

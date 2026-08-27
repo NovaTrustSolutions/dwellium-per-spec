@@ -37,13 +37,15 @@ export const TOOLS: ReadonlyArray<ToolEntry> = [
     // Zero-cost addendum 2026-08-20: hosted cal.com free plan (not self-hosted cal.diy); env renamed to match.
     { id: 'scheduling', label: 'Scheduling', license: 'MIT (Cal.com, hosted free plan)', phase: 2, blurb: 'Showings, maintenance windows and vendor visits — bookable links inside Dwellium.', widgetId: 'scheduler', envVar: 'VITE_CALCOM_URL', setupDoc: 'scheduling' },
     { id: 'broadcasts', label: 'Broadcasts', license: 'AGPL-3.0-only (listmonk, via API)', phase: 2, blurb: 'Resident, owner and vendor mailing lists plus transactional email.', widgetId: 'broadcasts', envVar: 'VITE_LISTMONK_URL', setupDoc: 'broadcasts' },
-    { id: 'links', label: 'Links & QR', license: 'AGPL-3.0-only (Dub, hosted API)', phase: 2, blurb: 'Branded short links and QR codes for notices, unit signage and work orders.', widgetId: 'short-links', envVar: 'VITE_DUB_URL', setupDoc: 'links-qr' },
+    { id: 'links', label: 'Links & QR', license: 'AGPL-3.0-only (Dub, hosted API)', phase: 2, blurb: 'QR door sheets with no account; short links via the built-in Dwellium shortener or optional Dub.', widgetId: 'short-links', setupDoc: 'links-qr' },
     { id: 'photo-vault', label: 'Photo Vault', license: 'AGPL-3.0-only (Immich, unmodified image)', phase: 2, blurb: 'Inspection, move-in/out and before/after photos, searchable by unit.', widgetId: 'photo-vault', envVar: 'VITE_IMMICH_URL', setupDoc: 'photo-vault' },
     // No envVar: the launcher defaults to Penpot's free cloud (design.penpot.app) — nothing to set up, so
     // registering the widget alone makes it `ready`. VITE_PENPOT_URL only re-points it (phase-3 self-host).
     { id: 'design-studio', label: 'Design Studio', license: 'MPL-2.0 (Penpot, launcher)', phase: 2, blurb: 'Flyers, notices and a Dwellium design system — Figma-class, self-hostable.', widgetId: 'penpot-studio', setupDoc: 'design-studio' },
-    // `ready` once VITE_RUSTDESK_RELAY (`host:port,key` — hbbs/hbbr on the free e2-micro, tools/rustdesk/) is set.
-    { id: 'remote-support', label: 'Remote Support', license: 'AGPL-3.0-only (RustDesk, stock build)', phase: 2, blurb: 'Remote control for office PCs, kiosks and resident tech support.', widgetId: 'remote-support', envVar: 'VITE_RUSTDESK_RELAY', setupDoc: 'remote-support' },
+    // Live on open (2026-08-27, Ilya: no paid tiers, no setup walls): RustDesk's own default is its free
+    // community servers — deep-link Connect works with ZERO config. VITE_RUSTDESK_RELAY only re-points to a
+    // private relay (tools/rustdesk/), exactly like VITE_PENPOT_URL for Design Studio.
+    { id: 'remote-support', label: 'Remote Support', license: 'AGPL-3.0-only (RustDesk, stock build)', phase: 2, blurb: 'Remote control for office PCs, kiosks and resident tech support.', widgetId: 'remote-support', setupDoc: 'remote-support' },
     { id: 'appflowy', label: 'AppFlowy Workspace', license: 'AGPL-3.0-only (AppFlowy-Cloud, unmodified)', phase: 3, blurb: 'Notion-style docs, databases and kanban — lease trackers, vendor boards, property wikis. Templates ship in tools/appflowy.', widgetId: 'appflowy', envVar: 'VITE_APPFLOWY_URL', setupDoc: 'appflowy' },
 ];
 

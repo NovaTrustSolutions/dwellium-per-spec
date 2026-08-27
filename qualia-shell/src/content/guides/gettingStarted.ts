@@ -54,7 +54,7 @@ Everything autosaves — the **Saved ✓** pill near the bottom is your receipt.
 
 Open **Tools hub** (Filing Cabinet, or \`help: tools\`). Ten open-source tools live here; every row shows its live status:
 
-- **Ready** — opens right now: **Whiteboard**, **Design Studio** (Penpot's free cloud, opens in a new tab), **Dictation** (see below).
+- **Ready** — opens right now: **Whiteboard**, **Design Studio** (Penpot's free cloud, opens in a new tab), **Dictation** (see below), **Remote Support** (RustDesk's free community servers by default — a private relay is optional), and **Links & QR** (QR door sheets need no account; hosted Dub is optional).
 - **Set up** — the widget is shipped and turns on the moment its one setting exists; the button opens the setup notes:
 
 | Tool | What it does for you | What turns it on |
@@ -62,9 +62,7 @@ Open **Tools hub** (Filing Cabinet, or \`help: tools\`). Ten open-source tools l
 | **E-Sign** (Documenso) | Leases and renewals signed online, tracked | A free Documenso account + \`VITE_DOCUMENSO_URL\` |
 | **Scheduling** (Cal.com) | Showings and vendor visits booked from a link | A free cal.com booking page + \`VITE_CALCOM_URL\` |
 | **Broadcasts** (listmonk) | Resident/owner mailing lists and notices | The listmonk server (tools/listmonk) + \`VITE_LISTMONK_URL\` |
-| **Links & QR** (Dub) | Short links + QR codes for notices and unit doors | A Dub workspace + \`VITE_DUB_URL\` |
 | **Photo Vault** (Immich) | Inspection and move-in/out photos, searchable | The office-Mac Immich (tools/immich) + \`VITE_IMMICH_URL\` — viewing needs Tailscale on your device |
-| **Remote Support** (RustDesk) | Take over the office PC or a kiosk to help | Install the client; relay config appears once \`VITE_RUSTDESK_RELAY\` is set |
 | **AppFlowy Workspace** (AppFlowy) | Notion-style docs, grids and kanban — lease tracker, vendor board, SOPs (templates in tools/appflowy) | A free AppFlowy account (appflowy.com/app) or self-host (tools/appflowy) + \`VITE_APPFLOWY_URL\` |
 
 - **Dictation** (FluidVoice, Mac): *Control Panel → Dictation* → install with one brew command, click **Copy vocabulary** to teach it your property terms, then talk into any Dwellium field.

@@ -50,9 +50,9 @@ describe('data', () => {
         expect(resolveToolStatus(fv, () => true, {})).toBe('ready');
         expect(resolveToolStatus(fv, () => false, {})).toBe('ready');
     });
-    it('today: whiteboard + dictation + design-studio ready; seven tools needs-setup; nothing coming-soon (plan 053: appflowy widget shipped)', () => {
-        const READY = new Set(['whiteboard', 'dictation', 'design-studio']);
-        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'remote-support', 'photo-vault', 'broadcasts', 'links', 'appflowy']);
+    it('today: five tools ready with zero env (no paid tier, live on open); four need one free setup; nothing coming-soon', () => {
+        const READY = new Set(['whiteboard', 'dictation', 'design-studio', 'remote-support', 'links']);
+        const NEEDS_SETUP = new Set(['esign', 'scheduling', 'photo-vault', 'broadcasts', 'appflowy']);
         for (const { tool, status } of toolStatuses({})) {
             const want = READY.has(tool.id) ? 'ready' : NEEDS_SETUP.has(tool.id) ? 'needs-setup' : 'coming-soon';
             expect(status, tool.id).toBe(want);
@@ -62,10 +62,13 @@ describe('data', () => {
         const esign = toolStatuses({ VITE_DOCUMENSO_URL: 'https://sign.example' }).find(r => r.tool.id === 'esign')!;
         expect(esign.status).toBe('ready');
     });
-    it('scheduling + remote-support flip to ready off their envs (no code change)', () => {
-        const rows = toolStatuses({ VITE_CALCOM_URL: 'https://cal.com/andy', VITE_RUSTDESK_RELAY: 'remote.example.com:21116,KEY' });
+    it('scheduling flips to ready off its env; remote-support + links are ready with NO env (community servers / built-in QR)', () => {
+        const rows = toolStatuses({ VITE_CALCOM_URL: 'https://cal.com/andy' });
         expect(rows.find(r => r.tool.id === 'scheduling')!.status).toBe('ready');
         expect(rows.find(r => r.tool.id === 'remote-support')!.status).toBe('ready');
+        expect(rows.find(r => r.tool.id === 'links')!.status).toBe('ready');
+        expect(toolStatuses({}).find(r => r.tool.id === 'remote-support')!.status).toBe('ready');
+        expect(toolStatuses({}).find(r => r.tool.id === 'links')!.status).toBe('ready');
     });
     // Plan 047 phase 2 — Photo Vault (Immich on the office Mac via Tailscale).
     it('photo-vault: widget registered without env → needs-setup; flips to ready once VITE_IMMICH_URL is set (no code change)', () => {

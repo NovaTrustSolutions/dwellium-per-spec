@@ -28,6 +28,7 @@ import {
     type ShortLink,
 } from './shortLinksApi';
 import { ANDY_LINK_PRESETS, ANDY_PROPERTIES, presetKey } from './andyLinkPresets';
+import { qrDataUri } from '../Scheduling/qr'; // client-side QR — builtin-mode links carry no hosted qrCode URL
 import QrDoorSheet from './QrDoorSheet';
 import { openWidget } from '../../lib/dwelliumCommands';
 import './ShortLinks.css';
@@ -289,16 +290,16 @@ export default function ShortLinks() {
             {state.kind === 'needs-setup' && (
                 <div className="short-links__empty" data-state="needs-setup">
                     <QrCode size={28} aria-hidden />
-                    <h3>Connect Dub</h3>
+                    <h3>QR codes work now — no account needed</h3>
                     <p>
-                        Links &amp; QR mints branded short links and QR codes through the Dub API.
-                        Set DUB_API_KEY on the backend (see tools/dub/README.md). Heads-up: Dub&apos;s
-                        pricing page currently lists no free plan — check current pricing at
-                        dub.co/pricing before creating a workspace.
+                        The <b>QR door sheet</b> prints per-unit QR codes for any destination with
+                        zero setup, right here. Hosted short links are optional extras: the built-in
+                        Dwellium shortener activates with the next backend deploy, or connect Dub
+                        (DUB_API_KEY — heads-up: dub.co/pricing currently lists no free plan).
                     </p>
                     <div className="short-links__head-actions">
-                        <button className="short-links__btn" onClick={() => openWidget('tools-hub')}>Open Tools hub</button>
-                        <button className="short-links__btn" onClick={() => setMode('sheet')}>QR door sheet (works without Dub)</button>
+                        <button className="short-links__btn" onClick={() => setMode('sheet')}>Open the QR door sheet</button>
+                        <button className="short-links__btn short-links__btn--ghost" onClick={() => openWidget('tools-hub')}>Tools hub</button>
                     </div>
                 </div>
             )}
@@ -525,7 +526,8 @@ export default function ShortLinks() {
                                                             </button>
                                                         )}
                                                 {qrFor === l.id && (
-                                                    <img className="short-links__qr" src={l.qrCode} alt={`QR code for ${l.shortLink}`} width={120} height={120} />
+                                                    // Builtin-mode rows carry no hosted qrCode URL — render the same client-side QR the door sheet uses.
+                                                    <img className="short-links__qr" src={l.qrCode || qrDataUri(l.shortLink) || undefined} alt={`QR code for ${l.shortLink}`} width={120} height={120} />
                                                 )}
                                                 {editingId === l.id && (
                                                     <div className="short-links__edit" aria-label={`Edit form for ${l.shortLink}`}>

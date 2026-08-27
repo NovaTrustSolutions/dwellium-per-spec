@@ -3,7 +3,7 @@
  * (plan 047 phase 2, extended for plan 053).
  *
  * Backend 503 (DUB_API_KEY unset) → typed needs-setup result and an honest
- * "Connect Dub" card (no free plan claimed) whose button opens the Tools hub;
+ * 'QR codes work now — no account needed' card (no free plan claimed) whose button opens the Tools hub;
  * 200 → link table with click counts, tags, clicks sparkline (/analytics
  * timeseries), QR toggle, inline edit (PATCH), confirm-gated archive, tag
  * filter; Andy presets POST tagged links; the QR door sheet renders one cell
@@ -156,19 +156,19 @@ describe('ShortLinks widget — unconfigured and error states', () => {
     it('renders an HONEST needs-setup card (no free-plan claim); its button opens the Tools hub', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, needsSetup: true }, 503)));
         render(<ShortLinks />);
-        await waitFor(() => expect(screen.getByText('Connect Dub')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText('QR codes work now — no account needed')).toBeInTheDocument());
         expect(screen.getByText(/DUB_API_KEY/)).toBeInTheDocument();
         expect(screen.getByText(/no free plan/i)).toBeInTheDocument();
-        expect(screen.getByText(/check current pricing/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: 'Open Tools hub' }));
+        expect(screen.getByText(/lists no free plan/i)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Tools hub' }));
         expect(opened).toEqual(['tools-hub']);
     });
 
     it('offers the QR door sheet even while Dub is unconfigured', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: false, needsSetup: true }, 503)));
         render(<ShortLinks />);
-        await waitFor(() => expect(screen.getByText('Connect Dub')).toBeInTheDocument());
-        fireEvent.click(screen.getByRole('button', { name: 'QR door sheet (works without Dub)' }));
+        await waitFor(() => expect(screen.getByText('QR codes work now — no account needed')).toBeInTheDocument());
+        fireEvent.click(screen.getByRole('button', { name: 'Open the QR door sheet' }));
         expect(screen.getByLabelText('Property')).toBeInTheDocument();
     });
 

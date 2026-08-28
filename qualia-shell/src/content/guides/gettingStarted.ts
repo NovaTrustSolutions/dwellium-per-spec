@@ -31,7 +31,7 @@ Want to see the app full before importing anything? **Settings → Data → Demo
 | 2 | **?** (anywhere, not while typing) | The shortcut sheet: every key, plus *Getting started*, *Tools hub* and *Replay first-run*. |
 | 3 | **Sidebar tiers** | Pinned five on top (ARA · Strata · Scribe · Inbox Zero · Task Board), then Property Management, AI Tools, Filing Cabinet. Long groups say *Show N more*. Hover anything for a one-line description. |
 | 4 | **First-open tips** | The first time you open a widget: what it does, one thing to try, related widgets. *Got it* dismisses; the titlebar **?** brings it back. |
-| 5 | **Layouts** | *Control Panel → Interface Layout*: **Classic desktop** (floating windows), **Holocron OS** (launcher), or **Cockpit** — a four-pane IDE view: navigation · ARA chat · terminal + background tasks · browser preview. Escape returns to Classic. |
+| 5 | **Layouts** | *Control Panel → Interface Layout*: **Classic desktop** (floating windows), **Holocron OS** (launcher), or **Cockpit** — a four-pane IDE view: navigation · ARA chat · terminal + background tasks · browser preview. Escape returns to Classic. In every layout, any tab or window can pop out into its own browser window (drag it out of the tab strip, or click its **⧉**) and be dragged to another monitor. |
 
 Everything autosaves — the **Saved ✓** pill near the bottom is your receipt. If it says *Offline — will retry*, keep working; it syncs when the connection returns.
 

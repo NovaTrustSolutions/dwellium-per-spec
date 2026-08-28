@@ -317,12 +317,12 @@
     border-left: 1px solid var(--border-subtle, #1a1a1a);
 }
 
+/* Height comes inline from the per-user workSplit pref (default 55%). */
 .fos-work__terminal {
-    height: 55%;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    border-bottom: 1px solid var(--border-default, #222);
+    flex-shrink: 0;
 }
 
 .fos-work__terminal>* {
@@ -330,8 +330,25 @@
     min-height: 0;
 }
 
+/* Draggable row splitter between Terminal and Background tasks. */
+.fos-work__rowsplit {
+    flex: 0 0 5px;
+    cursor: row-resize;
+    background: transparent;
+    border-top: 1px solid var(--border-default, #222);
+}
+
+.fos-work__rowsplit:hover {
+    background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.fos-work__rowsplit:focus-visible {
+    outline: 2px solid var(--accent-primary, #D6FE51);
+    outline-offset: -2px;
+}
+
 .fos-tasks {
-    height: 45%;
+    flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;

@@ -47,6 +47,7 @@ import { getIcon } from '../Sidebar/iconMap';
 import { fluidOsStore } from '../../lib/fluidOsStore';
 import { useWindows } from '../../context/WindowContext';
 import { UserContext } from '../../context/UserContext';
+import { usePerUserIdentity, cockpitPrefsUserIdHolder } from '../../lib/perUserIdentity';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
 import {
     personaWorkStore, personaWorkUserIdHolder, deleteTask, formatDuration, type PersonaTask,
@@ -56,18 +57,23 @@ import { APP_VERSION } from '../../appVersion';
 import AppSuspenseFallback from './AppSuspenseFallback';
 import './FluidOS.css';
 
-/* ── Per-user cockpit prefs (column widths + right-pane collapse + last URL) ── */
+/* ── Per-user cockpit prefs (column widths + work-row split + right-pane collapse + last URL) ── */
 
 interface CockpitPrefs {
     navW: number;
     workW: number;
     rightW: number;
+    /** Terminal's share of the work column (0.25–0.75); tasks get the rest. */
+    workSplit: number;
     rightCollapsed: boolean;
     lastUrl: string;
 }
-const DEFAULT_PREFS: CockpitPrefs = { navW: 260, workW: 420, rightW: 380, rightCollapsed: false, lastUrl: '' };
+const DEFAULT_WORK_SPLIT = 0.55;
+const WORK_SPLIT_MIN = 0.25;
+const WORK_SPLIT_MAX = 0.75;
+const DEFAULT_PREFS: CockpitPrefs = { navW: 260, workW: 420, rightW: 380, workSplit: DEFAULT_WORK_SPLIT, rightCollapsed: false, lastUrl: '' };
 
-export const cockpitPrefsUserIdHolder: { current: string | null } = { current: null };
+export { cockpitPrefsUserIdHolder };
 function prefsKey(): string {
     const uid = cockpitPrefsUserIdHolder.current;
     return uid ? `dwellium-cockpit:${uid}` : 'dwellium-cockpit:_anonymous';
@@ -81,6 +87,9 @@ function deserializePrefs(raw: string | null): CockpitPrefs {
             navW: typeof p.navW === 'number' ? p.navW : DEFAULT_PREFS.navW,
             workW: typeof p.workW === 'number' ? p.workW : DEFAULT_PREFS.workW,
             rightW: typeof p.rightW === 'number' ? p.rightW : DEFAULT_PREFS.rightW,
+            workSplit: typeof p.workSplit === 'number' && Number.isFinite(p.workSplit)
+                ? clamp(p.workSplit, WORK_SPLIT_MIN, WORK_SPLIT_MAX)
+                : DEFAULT_WORK_SPLIT,
             rightCollapsed: Boolean(p.rightCollapsed),
             lastUrl: typeof p.lastUrl === 'string' ? p.lastUrl : '',
         };
@@ -158,9 +167,10 @@ export default function FluidOS() {
     const catalogUser = useContext(UserContext)?.user;
     const catalogEmail = catalogUser?.email?.trim().toLowerCase() ?? '';
 
-    // Holder-before-useSyncExternalStore pattern (WindowContext savedLayouts
-    // sister-shape): resolve per-user keys during render.
-    cockpitPrefsUserIdHolder.current = catalogUser?.id ?? null;
+    // Holder-before-useSyncExternalStore pattern: cockpit prefs ride the
+    // perUserIdentity single writer (plan 054 phase 6); personaWork keeps its
+    // own store-local holder, resolved during render as before.
+    usePerUserIdentity();
     personaWorkUserIdHolder.current = catalogUser?.id ?? null;
 
     const prefs = useSyncExternalStore(cockpitPrefsStore.subscribe, cockpitPrefsStore.getSnapshot, cockpitPrefsStore.getServerSnapshot);
@@ -281,6 +291,35 @@ export default function FluidOS() {
         window.addEventListener('mouseup', onUp);
         document.body.style.cursor = 'col-resize';
     }, []);
+
+    /* Work-column row splitter (Terminal over Background tasks). Same
+       mousedown → window-listener pattern as the column splitters; no
+       animation anywhere, so prefers-reduced-motion needs no special casing. */
+    const workRef = useRef<HTMLDivElement>(null);
+    const setWorkSplit = useCallback((v: number) => {
+        savePrefs({ workSplit: Math.round(clamp(v, WORK_SPLIT_MIN, WORK_SPLIT_MAX) * 1000) / 1000 });
+    }, []);
+    const startRowDrag = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        const rect = workRef.current?.getBoundingClientRect();
+        if (!rect || rect.height <= 0) return;
+        const onMove = (ev: MouseEvent) => setWorkSplit((ev.clientY - rect.top) / rect.height);
+        const onUp = () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        document.body.style.cursor = 'row-resize';
+    }, [setWorkSplit]);
+    const onRowSplitKeyDown = useCallback((e: React.KeyboardEvent) => {
+        const step = e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -0.05
+            : e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 0.05 : 0;
+        if (!step) return;
+        e.preventDefault();
+        setWorkSplit(cockpitPrefsStore.getSnapshot().workSplit + step);
+    }, [setWorkSplit]);
 
     /* Escape closes the cockpit — unless focus is in an editable/iframe. ⌘K is
        untouched: CommandPalette owns its own global listener and overlays us. */
@@ -447,9 +486,8 @@ export default function FluidOS() {
             <div className="fos-splitter" role="presentation" onMouseDown={startDrag('work')} />
 
             {/* ── Pane 3: work column (Terminal over Background tasks) ─── */}
-            <div className="fos-work" role="region" aria-label="Work">
-                {/* ponytail: fixed 55/45 split — a draggable row splitter is overkill here */}
-                <div className="fos-work__terminal">
+            <div className="fos-work" role="region" aria-label="Work" ref={workRef}>
+                <div className="fos-work__terminal" style={{ height: `${Math.round(prefs.workSplit * 1000) / 10}%` }}>
                     {Terminal ? (
                         <Suspense fallback={<AppSuspenseFallback variant="popup" label="Loading Terminal…" />}>
                             <Terminal />
@@ -458,6 +496,23 @@ export default function FluidOS() {
                         <div className="fos-missing">Terminal isn’t registered.</div>
                     )}
                 </div>
+                {/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex --
+                    a focusable role="separator" is the ARIA "window splitter" widget pattern (WAI-ARIA APG); it IS interactive. */}
+                <div
+                    className="fos-work__rowsplit"
+                    role="separator"
+                    aria-orientation="horizontal"
+                    aria-label="Resize terminal and background tasks"
+                    aria-valuemin={WORK_SPLIT_MIN * 100}
+                    aria-valuemax={WORK_SPLIT_MAX * 100}
+                    aria-valuenow={Math.round(prefs.workSplit * 100)}
+                    tabIndex={0}
+                    title="Drag to resize · double-click to reset"
+                    onMouseDown={startRowDrag}
+                    onDoubleClick={() => savePrefs({ workSplit: DEFAULT_WORK_SPLIT })}
+                    onKeyDown={onRowSplitKeyDown}
+                />
+                {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
                 <div className="fos-tasks">
                     <div className="fos-tasks__head">
                         <span className="fos-tasks__title">Background tasks</span>

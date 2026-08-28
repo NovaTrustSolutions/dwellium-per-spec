@@ -10,11 +10,44 @@
 
 export interface ChartPoint { label: string; value: number }
 
+/** Occurrences of `d` in `line`, ignoring anything inside double quotes. */
+function countDelims(line: string, d: string): number {
+    let n = 0, quoted = false;
+    for (const ch of line) {
+        if (ch === '"') quoted = !quoted;
+        else if (ch === d && !quoted) n++;
+    }
+    return n;
+}
+
+/**
+ * Sample up to the first 10 non-empty lines and pick the delimiter
+ * (comma / tab / semicolon) whose per-line count is most consistently ≥ 1
+ * (mode frequency across the sample); ties — including "no delimiter at
+ * all" — go to comma. Quote-aware, so a semicolon CSV with commas inside
+ * quoted values sniffs as semicolon, and a TSV whose first line happens to
+ * contain a comma sniffs as tab.
+ */
+function sniffDelimiter(src: string): string {
+    const lines = src.split(/\r?\n/).filter((l) => l.trim() !== '').slice(0, 10);
+    let best = ',';
+    let bestScore = 0;
+    for (const d of [',', '\t', ';']) {
+        const freq = new Map<number, number>();
+        for (const line of lines) {
+            const c = countDelims(line, d);
+            if (c >= 1) freq.set(c, (freq.get(c) ?? 0) + 1);
+        }
+        let score = 0;
+        freq.forEach((n) => { if (n > score) score = n; });
+        if (score > bestScore) { bestScore = score; best = d; }
+    }
+    return best;
+}
+
 export function parseCsv(text: string): string[][] {
     const src = text.replace(/^﻿/, '');
-    const firstLine = src.split(/\r?\n/, 1)[0] ?? '';
-    // ponytail: delimiter sniff on the first line only — comma unless it has none and a tab/semicolon.
-    const delim = firstLine.includes(',') ? ',' : firstLine.includes('\t') ? '\t' : firstLine.includes(';') ? ';' : ',';
+    const delim = sniffDelimiter(src);
     const rows: string[][] = [];
     let row: string[] = [];
     let cell = '';

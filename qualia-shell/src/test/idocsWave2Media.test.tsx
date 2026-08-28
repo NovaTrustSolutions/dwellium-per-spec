@@ -32,6 +32,19 @@ describe('chartData', () => {
         expect(parseCsv('a;b\n1;2')).toEqual([['a', 'b'], ['1', '2']]);
         expect(parseCsv('a\tb\n1\t2')).toEqual([['a', 'b'], ['1', '2']]);
     });
+    it('parseCsv sniff: semicolon CSV with commas inside quoted values picks ;', () => {
+        expect(parseCsv('name;note\n"Smith, J";5\n"Doe, A";7')).toEqual([
+            ['name', 'note'], ['Smith, J', '5'], ['Doe, A', '7'],
+        ]);
+    });
+    it('parseCsv sniff: TSV whose first line carries a comma still picks tab (old first-line sniff got this wrong)', () => {
+        expect(parseCsv('Name\tNotes, extra\nA\t1\nB\t2')).toEqual([
+            ['Name', 'Notes, extra'], ['A', '1'], ['B', '2'],
+        ]);
+    });
+    it('parseCsv sniff: no delimiter at all falls back to comma (single-column rows)', () => {
+        expect(parseCsv('alpha\nbeta')).toEqual([['alpha'], ['beta']]);
+    });
     it('chartDataFromCsv: header detection, first text col = label, first numeric col = value, currency/percent/thousands', () => {
         expect(chartDataFromCsv('Region,Notes,Sales\nWest,foo,"1,200"\nEast,bar,$800\nSouth,baz,45%')).toEqual([
             { label: 'West', value: 1200 }, { label: 'East', value: 800 }, { label: 'South', value: 45 },

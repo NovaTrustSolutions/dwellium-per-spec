@@ -280,6 +280,95 @@ describe('FluidOS cockpit', () => {
     });
 });
 
+describe('work column row splitter (plan 054 phase 6)', () => {
+    const SEP = 'Resize terminal and background tasks';
+    /** jsdom rects are all-zero — give .fos-work a real geometry for drag math. */
+    function mockWorkRect(container: HTMLElement, top = 0, height = 400) {
+        const work = container.querySelector('.fos-work') as HTMLElement;
+        work.getBoundingClientRect = () => ({
+            top, height, bottom: top + height, left: 0, right: 300, width: 300, x: 0, y: top, toJSON: () => ({}),
+        } as DOMRect);
+    }
+
+    it('renders as an accessible horizontal separator at the 55/45 default', () => {
+        const { container } = renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        const sep = screen.getByRole('separator', { name: SEP });
+        expect(sep).toHaveAttribute('aria-orientation', 'horizontal');
+        expect(sep).toHaveAttribute('aria-valuenow', '55');
+        expect(sep).toHaveAttribute('tabindex', '0');
+        expect((container.querySelector('.fos-work__terminal') as HTMLElement).style.height).toBe('55%');
+    });
+
+    it('drag updates the ratio, resizes the terminal, and persists per user', () => {
+        const user = makeUser({ id: 'user-1', email: 'lisa@dwellium.com' });
+        const { container } = renderCockpitForUser(user);
+        mockWorkRect(container);
+        const sep = screen.getByRole('separator', { name: SEP });
+        fireEvent.mouseDown(sep, { clientY: 220 });
+        fireEvent.mouseMove(window, { clientY: 260 }); // 260/400 = 0.65
+        fireEvent.mouseUp(window);
+        expect(cockpitPrefsStore.getSnapshot().workSplit).toBe(0.65);
+        expect((container.querySelector('.fos-work__terminal') as HTMLElement).style.height).toBe('65%');
+        expect(localStorage.getItem('dwellium-cockpit:user-1')).toContain('"workSplit":0.65');
+    });
+
+    it('drag clamps to the 25% / 75% band', () => {
+        const { container } = renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        mockWorkRect(container);
+        const sep = screen.getByRole('separator', { name: SEP });
+        fireEvent.mouseDown(sep, { clientY: 220 });
+        fireEvent.mouseMove(window, { clientY: 20 }); // 0.05 → clamp 0.25
+        expect(cockpitPrefsStore.getSnapshot().workSplit).toBe(0.25);
+        fireEvent.mouseMove(window, { clientY: 390 }); // 0.975 → clamp 0.75
+        fireEvent.mouseUp(window);
+        expect(cockpitPrefsStore.getSnapshot().workSplit).toBe(0.75);
+    });
+
+    it('double-click resets to the 55/45 default', () => {
+        const { container } = renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        mockWorkRect(container);
+        const sep = screen.getByRole('separator', { name: SEP });
+        fireEvent.mouseDown(sep, { clientY: 220 });
+        fireEvent.mouseMove(window, { clientY: 120 });
+        fireEvent.mouseUp(window);
+        expect(cockpitPrefsStore.getSnapshot().workSplit).not.toBe(0.55);
+        fireEvent.doubleClick(sep);
+        expect(cockpitPrefsStore.getSnapshot().workSplit).toBe(0.55);
+        expect(sep).toHaveAttribute('aria-valuenow', '55');
+    });
+
+    it('arrow keys nudge the split ±5% and clamp at the band edges', () => {
+        renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        const sep = screen.getByRole('separator', { name: SEP });
+        fireEvent.keyDown(sep, { key: 'ArrowUp' });
+        expect(cockpitPrefsStore.getSnapshot().workSplit).toBe(0.5);
+        expect(sep).toHaveAttribute('aria-valuenow', '50');
+        fireEvent.keyDown(sep, { key: 'ArrowDown' });
+        fireEvent.keyDown(sep, { key: 'ArrowDown' });
+        expect(cockpitPrefsStore.getSnapshot().workSplit).toBe(0.6);
+        for (let i = 0; i < 10; i++) fireEvent.keyDown(sep, { key: 'ArrowDown' });
+        expect(cockpitPrefsStore.getSnapshot().workSplit).toBe(0.75); // clamped
+        for (let i = 0; i < 20; i++) fireEvent.keyDown(sep, { key: 'ArrowUp' });
+        expect(cockpitPrefsStore.getSnapshot().workSplit).toBe(0.25); // clamped
+    });
+
+    it('the ratio is isolated per user (Andy ≠ Lisa)', () => {
+        const andy = makeUser({ id: 'andy-id', email: 'andy@dwellium.com' });
+        const lisa = makeUser({ id: 'lisa-id', email: 'lisa@dwellium.com' });
+        const first = renderCockpitForUser(andy);
+        fireEvent.keyDown(screen.getByRole('separator', { name: SEP }), { key: 'ArrowUp' });
+        expect(localStorage.getItem('dwellium-cockpit:andy-id')).toContain('"workSplit":0.5');
+        first.unmount();
+        const second = renderCockpitForUser(lisa);
+        expect(screen.getByRole('separator', { name: SEP })).toHaveAttribute('aria-valuenow', '55'); // Lisa unaffected
+        fireEvent.keyDown(screen.getByRole('separator', { name: SEP }), { key: 'ArrowDown' });
+        expect(localStorage.getItem('dwellium-cockpit:lisa-id')).toContain('"workSplit":0.6');
+        second.unmount();
+        renderCockpitForUser(andy);
+        expect(screen.getByRole('separator', { name: SEP })).toHaveAttribute('aria-valuenow', '50'); // Andy's survives
+    });
+});
+
 describe('FluidLauncher', () => {
     it('renders nothing when the Cockpit layout is disabled', () => {
         fluidOsStore.reset();

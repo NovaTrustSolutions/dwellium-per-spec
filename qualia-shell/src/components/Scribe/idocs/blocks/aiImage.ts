@@ -24,7 +24,7 @@ export const IMAGE_STYLES: { id: ImageStyle; label: string; hint: string }[] = [
     { id: 'abstract', label: 'Abstract', hint: 'abstract geometric composition, bold shapes, harmonious colors' },
 ];
 
-// ponytail: the skill always requests 1024×1024; "size" steers composition via the prompt and the downscale cap.
+// ponytail: the skill always requests 1024×1024; "size" steers composition via the prompt and the downscale cap; trigger: an image block ships at a size where the 1024 downscale visibly softens.
 export const IMAGE_SIZES: { id: ImageSize; label: string; hint: string; maxEdge: number }[] = [
     { id: 'square', label: 'Square', hint: 'square composition', maxEdge: 1024 },
     { id: 'wide', label: 'Wide 16:9', hint: 'wide 16:9 landscape composition with room at the sides', maxEdge: 1280 },

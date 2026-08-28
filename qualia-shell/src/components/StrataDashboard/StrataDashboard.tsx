@@ -624,7 +624,7 @@ function OverviewContent() {
                     <AlertTriangle size={16} style={{ color: '#f59e0b' }} />
                     <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>Financial Health Alert</span>
                 </div>
-                {/* ponytail: honest hint — delinquency/collections/expiry live in QuickBooks; no invented numbers */}
+                {/* ponytail: honest hint — delinquency/collections/expiry live in QuickBooks; no invented numbers; trigger: Ilya green-lights a QuickBooks integration (plan TBD) */}
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     Connect QuickBooks to surface delinquency, rent collection and expiring-lease alerts here.
                 </div>

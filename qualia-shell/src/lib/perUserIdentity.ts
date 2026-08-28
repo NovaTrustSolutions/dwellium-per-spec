@@ -74,6 +74,8 @@ export const whiteboardUserIdHolder: UserIdHolder = makeHolder();
 export const remoteMachinesUserIdHolder: UserIdHolder = makeHolder();
 /** 5 Persona Advisory Board — per-user saved board sessions (advisoryBoardStore). */
 export const advisoryBoardUserIdHolder: UserIdHolder = makeHolder();
+/** Plan 054 phase 6 — per-user Cockpit prefs (column widths + work-row split; FluidOS cockpitPrefsStore). */
+export const cockpitPrefsUserIdHolder: UserIdHolder = makeHolder();
 
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
@@ -97,6 +99,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     whiteboardUserIdHolder,
     remoteMachinesUserIdHolder,
     advisoryBoardUserIdHolder,
+    cockpitPrefsUserIdHolder,
 ];
 
 /**

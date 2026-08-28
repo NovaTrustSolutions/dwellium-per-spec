@@ -49,6 +49,7 @@ import { useWindows } from '../../context/WindowContext';
 import { UserContext } from '../../context/UserContext';
 import { usePerUserIdentity, cockpitPrefsUserIdHolder } from '../../lib/perUserIdentity';
 import { createLocalStorageStore } from '../../utils/createLocalStorageStore';
+import { openWidgetPopout, notifyPopoutBlocked } from '../../lib/popoutWindow';
 import {
     personaWorkStore, personaWorkUserIdHolder, deleteTask, formatDuration, type PersonaTask,
 } from '../../lib/agents/personaWorkStore';
@@ -248,6 +249,11 @@ export default function FluidOS() {
         setTabs((prev) => prev.filter((t) => t.id !== id));
         setActiveTab((cur) => (cur === id ? 'ara-console' : cur));
     }, []);
+    /* Tear-off: the active tab becomes its own real browser window. */
+    const popOutOwnWindow = useCallback((id: string, label: string) => {
+        if (openWidgetPopout(id, { title: label })) closeTab(id);
+        else notifyPopoutBlocked();
+    }, [closeTab]);
     /* The explicit way OUT: pop the active tab onto the classic desktop. */
     const popOut = useCallback((id: string, label: string, icon: string) => {
         const winId = openWindow(id, label, icon);
@@ -452,11 +458,18 @@ export default function FluidOS() {
                             </span>
                         ))}
                         {activeTabWidget && (
-                            <button type="button" className="fos-tab__pop" aria-label={`Open ${activeTabWidget.label} on desktop`}
-                                title="Open on the classic desktop"
-                                onClick={() => popOut(activeTabWidget.id, activeTabWidget.label, activeTabWidget.icon)}>
-                                <ExternalLink size={12} aria-hidden />
-                            </button>
+                            <>
+                                <button type="button" className="fos-tab__pop" aria-label={`Open ${activeTabWidget.label} on desktop`}
+                                    title="Open on the classic desktop"
+                                    onClick={() => popOut(activeTabWidget.id, activeTabWidget.label, activeTabWidget.icon)}>
+                                    <ExternalLink size={12} aria-hidden />
+                                </button>
+                                <button type="button" className="fos-tab__pop" aria-label={`Open ${activeTabWidget.label} in its own window`}
+                                    title="Open in its own browser window (drag it to any screen)"
+                                    onClick={() => popOutOwnWindow(activeTabWidget.id, activeTabWidget.label)}>
+                                    ⧉
+                                </button>
+                            </>
                         )}
                     </div>
                 )}

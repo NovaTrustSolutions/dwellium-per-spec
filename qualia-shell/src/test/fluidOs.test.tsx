@@ -199,6 +199,33 @@ describe('FluidOS cockpit', () => {
         expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     });
 
+    it('"Open in its own window" tears the active tab off into a browser popout and closes it', () => {
+        const openSpy = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+        renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        fireEvent.click(screen.getByLabelText('Open Alpha'));
+
+        const btn = screen.getByRole('button', { name: 'Open Alpha in its own window' });
+        fireEvent.click(btn);
+
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        expect(openSpy.mock.calls[0][0]).toBe('/?popup=alpha');
+        expect(screen.queryByRole('tab', { name: 'Alpha' })).not.toBeInTheDocument();
+        // The cockpit itself stays open — only the tab left.
+        expect(fluidOsStore.getSnapshot().open).toBe(true);
+        openSpy.mockRestore();
+    });
+
+    it('keeps the cockpit tab when the popup blocker refuses the popout', () => {
+        const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+        renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));
+        fireEvent.click(screen.getByLabelText('Open Alpha'));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Open Alpha in its own window' }));
+
+        expect(screen.getByRole('tab', { name: 'Alpha' })).toBeInTheDocument();
+        openSpy.mockRestore();
+    });
+
     it('"Open on desktop" is the explicit way out: openWindow + collapse', () => {
         openWindowMock.mockReturnValue('win-alpha');
         renderCockpitForUser(makeUser({ email: 'lisa@dwellium.com' }));

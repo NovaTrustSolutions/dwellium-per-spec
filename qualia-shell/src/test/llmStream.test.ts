@@ -177,7 +177,8 @@ describe('araPrefsStore', () => {
         expect(araPrefsStore.getSnapshot().introSeen).toBe(false);
         araPrefsStore.set('introSeen', true);
         expect(araPrefsStore.getSnapshot().introSeen).toBe(true);
-        expect(JSON.parse(localStorage.getItem('dwellium-ara-prefs')!).introSeen).toBe(true);
+        // Per-user since 2026-08-28: no identity set in this suite → the namespaced anonymous key.
+        expect(JSON.parse(localStorage.getItem('dwellium-ara-prefs:_anonymous')!).introSeen).toBe(true);
     });
 });
 

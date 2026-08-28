@@ -77,6 +77,9 @@ export const advisoryBoardUserIdHolder: UserIdHolder = makeHolder();
 /** Plan 054 phase 6 — per-user Cockpit prefs (column widths + work-row split; FluidOS cockpitPrefsStore). */
 export const cockpitPrefsUserIdHolder: UserIdHolder = makeHolder();
 
+/** ARA console preferences — streaming, intro-seen, hold-to-talk (araPrefsStore). */
+export const araPrefsUserIdHolder: UserIdHolder = makeHolder();
+
 /** Every per-user identity holder, in one array for the single writer. */
 const ALL_HOLDERS: readonly UserIdHolder[] = [
     agentContextUserIdHolder,
@@ -99,6 +102,7 @@ const ALL_HOLDERS: readonly UserIdHolder[] = [
     whiteboardUserIdHolder,
     remoteMachinesUserIdHolder,
     advisoryBoardUserIdHolder,
+    araPrefsUserIdHolder,
     cockpitPrefsUserIdHolder,
 ];
 

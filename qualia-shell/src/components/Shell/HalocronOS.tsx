@@ -43,6 +43,7 @@ import { useIntegrations } from '../../hooks/useIntegrations';
 import { useContext } from 'react';
 import { UserContext, type DwelliumUser } from '../../context/UserContext';
 import { usePerUserIdentity } from '../../lib/perUserIdentity';
+import { openWidgetPopout, notifyPopoutBlocked } from '../../lib/popoutWindow';
 import './HalocronOS.css';
 
 type NavId = 'home' | 'memory' | 'kg' | 'workspace' | 'apps' | 'skills' | 'dream' | 'insights' | 'settings';
@@ -214,6 +215,9 @@ export default function HalocronOS() {
     const [tabs, setTabs] = useState<HosTab[]>([]);
     const [activeKey, setActiveKey] = useState<string | null>(null);
     const [claudePlaybookOpen, setClaudePlaybookOpen] = useState(false);
+    // Tear-off: tab being HTML5-dragged; drop outside the strip = pop out.
+    const [tearingKey, setTearingKey] = useState<string | null>(null);
+    const tabStripRef = useRef<HTMLDivElement | null>(null);
     const tabTouchSeq = useRef(0);
     const touch = () => Date.now() * 1000 + (++tabTouchSeq.current);
     // Opening the shell lands on HOME unless it was minimized mid-work. resumeStageRef
@@ -386,23 +390,16 @@ export default function HalocronOS() {
     };
     const openCliToolExternal = (label: string, cmd: string) => {
         try {
-            const popupKey = `dwellium-popup-terminal`;
-            localStorage.setItem(popupKey, JSON.stringify({
-                title: label,
-                icon: 'terminal',
-            }));
             sessionStorage.setItem('dwellium-terminal-initial-tab', 'terminal');
             sessionStorage.setItem('dwellium-terminal-initial-cmd', cmd);
-        } catch (e) { /* ignore */ }
-        const popupW = Math.min(800, screen.availWidth * 0.5);
-        const popupH = Math.min(600, screen.availHeight * 0.7);
-        const left = Math.round((screen.availWidth - popupW) / 2);
-        const top = Math.round((screen.availHeight - popupH) / 4);
-        window.open(
-            `/?popup=terminal`,
-            `qualia-popup-terminal-${cmd}`,
-            `width=${popupW},height=${popupH},left=${left},top=${top},resizable=yes,scrollbars=no`
-        );
+        } catch { /* ignore */ }
+        if (!openWidgetPopout('terminal', { title: label, icon: 'terminal' })) notifyPopoutBlocked();
+    };
+    /** Tear a tab out of the strip into its own browser window (or the ⧉ path). */
+    const popOutTab = (t: HosTab) => {
+        if (t.kind !== 'widget' || !t.id) return;
+        if (openWidgetPopout(t.id, { title: t.label })) closeTab(t.key);
+        else notifyPopoutBlocked();
     };
     const closeTab = (key: string) => {
         // Browser behavior: closing the visible/active tab reveals the adjacent
@@ -454,11 +451,38 @@ export default function HalocronOS() {
             <main className="hos-main">
                 {/* ── Tab strip (classic-OS browser-tab logic) ── */}
                 {tabs.length > 0 && (
-                    <div className="hos-tabs">
+                    <div className={`hos-tabs ${tearingKey ? 'hos-tabs--tearing' : ''}`} ref={tabStripRef}>
                         {orderedTabs.map((t) => (
-                            <div key={t.key} className={`hos-tab ${activeKey === t.key ? 'on' : ''} ${t.pinned ? 'is-pinned' : ''} ${t.essential ? 'is-essential' : ''}`} onClick={() => markActive(t.key)}>
+                            <div key={t.key} className={`hos-tab ${activeKey === t.key ? 'on' : ''} ${t.pinned ? 'is-pinned' : ''} ${t.essential ? 'is-essential' : ''}`} onClick={() => markActive(t.key)}
+                                draggable={t.kind === 'widget'}
+                                data-testid={`hos-tab-${t.key}`}
+                                onDragStart={(e) => {
+                                    if (t.kind !== 'widget') return;
+                                    // jsdom fires dragstart without a dataTransfer — guard it.
+                                    e.dataTransfer?.setData('text/plain', t.key);
+                                    setTearingKey(t.key);
+                                }}
+                                onDragEnd={(e) => {
+                                    setTearingKey(null);
+                                    if (t.kind !== 'widget') return;
+                                    const rect = tabStripRef.current?.getBoundingClientRect();
+                                    if (!rect) return;
+                                    const outside = e.clientX < rect.left || e.clientX > rect.right
+                                        || e.clientY < rect.top || e.clientY > rect.bottom;
+                                    // Drop outside the strip = detach into its own window.
+                                    // Inside the strip = no-op (keeps native reorder semantics).
+                                    if (outside) popOutTab(t);
+                                }}>
                                 {t.kind === 'web' && <span className="hos-tab__dot" style={{ background: t.color }} />}
                                 <span className="hos-tab__label">{t.label}</span>
+                                {t.kind === 'widget' && (
+                                    <button
+                                        className="hos-tab__pop"
+                                        onClick={(e) => { e.stopPropagation(); popOutTab(t); }}
+                                        aria-label={`Open ${t.label} in its own window`}
+                                        title="Open in its own window (or drag the tab out of the strip)"
+                                    >⧉</button>
+                                )}
                                 <button
                                     className="hos-tab__mark"
                                     onClick={(e) => { e.stopPropagation(); toggleTabFlag(t.key, 'essential'); }}

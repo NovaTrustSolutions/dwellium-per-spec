@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { AppWindow, Hourglass } from 'lucide-react';
 import { WINDOW_COMPONENTS } from '../Shell/Desktop';
+import { WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { LayoutProvider } from '../../context/LayoutContext';
 import { HierarchyProvider } from '../../context/HierarchyContext';
 import { WindowProvider } from '../../context/WindowContext';
@@ -17,7 +18,9 @@ export interface DockBackMessage {
 
 export function PopupShell({ component }: { component: string }) {
     const Component = WINDOW_COMPONENTS[component] as React.FC | undefined;
-    const [meta, setMeta] = useState<{ title: string; icon: string }>({ title: component, icon: '' });
+    // Registry label is the honest default title (falls back to the raw id).
+    const registryLabel = WIDGET_REGISTRY[component]?.label ?? component;
+    const [meta, setMeta] = useState<{ title: string; icon: string }>({ title: registryLabel, icon: '' });
     const [docking, setDocking] = useState(false);
 
     // Restore theme + skin + load metadata
@@ -33,14 +36,17 @@ export function PopupShell({ component }: { component: string }) {
         document.documentElement.setAttribute('data-skin', 'default');
 
         const popupKey = `dwellium-popup-${component}`;
+        let title = registryLabel;
+        let icon = '';
         try {
             const stored = JSON.parse(localStorage.getItem(popupKey) || '{}');
-            const title = stored.title || component;
-            const icon = stored.icon || '';
-            setMeta({ title, icon });
-            document.title = `${icon} ${title} — Qualia`;
-        } catch { /* ignore */ }
-    }, [component]);
+            title = stored.title || registryLabel;
+            icon = stored.icon || '';
+        } catch { /* ignore — registry label stands */ }
+        setMeta({ title, icon });
+        // Document title even when localStorage is unreadable/absent.
+        document.title = `${icon ? `${icon} ` : ''}${title} — Qualia`;
+    }, [component, registryLabel]);
 
     // Dock back: send to main window and close popup
     const handleDockBack = () => {

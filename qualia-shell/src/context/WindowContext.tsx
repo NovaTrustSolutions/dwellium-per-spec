@@ -5,6 +5,7 @@ import { defaultDockItems } from '../data/hierarchy';
 import { createLocalStorageStore } from '../utils/createLocalStorageStore';
 import { withSync, withSyncStatic } from '../lib/oneSaveStore';
 import { logActivity } from '../lib/activityLogStore';
+import { openWidgetPopout } from '../lib/popoutWindow';
 
 const LAYOUT_STORAGE_KEY = 'dwellium-layout';
 const LEGACY_LAYOUT_STORAGE_KEY = 'qualia-layout';
@@ -461,26 +462,16 @@ export function WindowProvider({ children }: { children: ReactNode }) {
         const win = windowsRef.current.find(w => w.id === id);
         if (!win) return;
 
-        // Store window state for the popup to read
-        const popupKey = `dwellium-popup-${win.component}`;
-        localStorage.setItem(popupKey, JSON.stringify({
-            component: win.component,
+        // Shared pop-out helper (registry-validated, sized from registry mins,
+        // unique window name per call). Synchronous — safe inside the gesture.
+        const opened = openWidgetPopout(win.component, {
             title: win.title,
             icon: win.icon,
-        }));
+            width: win.width,
+            height: win.height,
+        });
 
-        // Open native popup window
-        const popupW = Math.min(win.width, screen.availWidth * 0.5);
-        const popupH = Math.min(win.height, screen.availHeight * 0.7);
-        const left = Math.round((screen.availWidth - popupW) / 2);
-        const top = Math.round((screen.availHeight - popupH) / 4);
-        const popup = window.open(
-            `/?popup=${win.component}`,
-            `qualia-popup-${win.component}`,
-            `width=${popupW},height=${popupH},left=${left},top=${top},resizable=yes,scrollbars=no`
-        );
-
-        if (popup) {
+        if (opened) {
             // Minimize the original window
             setWindows(prev => prev.map(w =>
                 w.id === id ? { ...w, minimized: true } : w

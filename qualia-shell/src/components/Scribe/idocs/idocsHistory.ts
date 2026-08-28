@@ -69,7 +69,7 @@ export function capHistoryBytes(map: HistoryMap, maxBytes = HISTORY_MAX_BYTES): 
     const size = (m: HistoryMap) => JSON.stringify(m).length;
     if (size(map) <= maxBytes) return map;
     const next: HistoryMap = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, { snapshots: v.snapshots.slice(), cursor: v.cursor }]));
-    // ponytail: O(n·docs) re-serialize per drop; fine at 30 snapshots × a handful of docs.
+    // ponytail: O(n·docs) re-serialize per drop; fine at 30 snapshots × a handful of docs; trigger: snapshot cap raised above 30 or docs per user exceeds ~20.
     for (let guard = 0; guard < 10_000 && size(next) > maxBytes; guard++) {
         let victim: string | null = null; let oldest = Infinity;
         for (const [id, h] of Object.entries(next)) {

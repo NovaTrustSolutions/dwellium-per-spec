@@ -27,7 +27,8 @@ import type { IntegrationsBundle } from '../../types/integrations';
 
 // ponytail: regex heuristic over the reply's opening. False positives cost one
 // Hermes run; false negatives leave a refusal on screen. Tuned toward recall on
-// the "I can't / I don't have access / not able to" family; excludes idioms.
+// the "I can't / I don't have access / not able to" family; excludes idioms;
+// trigger: >1 false-escalation per week observed, upgrade to an LLM judge on the user's key.
 const REFUSAL_PATTERNS: RegExp[] = [
     /\bI\s*(?:can(?:'|’)?t|cannot|can\s+not)\s+(?!wait|believe|stress|say|thank|recommend|emphasi[sz]e|overstate|tell you how)/i,
     /\bI(?:'|’)?m\s+(?:not\s+able|unable|not\s+equipped|not\s+set\s+up|not\s+in\s+a\s+position)\s+to\b/i,

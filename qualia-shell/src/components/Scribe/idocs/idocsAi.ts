@@ -219,7 +219,7 @@ export function normalizeCard(raw: unknown, index: number, depth = 0): Card {
         headerImage: r.headerImage ? str(r.headerImage) : undefined,
         blocks: arr(r.blocks, (b) => normalizeBlock(b)),
     };
-    // ponytail: one level of nesting is all the prompt asks for; depth guard stops runaway models.
+    // ponytail: one level of nesting is all the prompt asks for; depth guard stops runaway models; trigger: a real doc needs depth 2.
     const children = depth < 2 ? arr(r.children, (c) => c) : [];
     if (children.length) card.children = children.slice(0, 5).map((c, i) => normalizeCard(c, i, depth + 1));
     const background = normalizeBackground(r.background);

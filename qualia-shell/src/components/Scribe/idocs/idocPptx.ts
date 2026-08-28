@@ -118,7 +118,7 @@ export function pptxTheme(doc: IDoc): PptxTheme {
 const LAYOUTS: Record<PptxLayout, [number, number]> = { '16x9': [10, 5.625], '4x3': [10, 7.5], A4: [8.27, 11.69], LETTER: [8.5, 11] };
 export function layoutFor(pageSize: IDoc['pageSize']): PptxLayout {
     switch (pageSize) {
-        case '4:3': case '1:1': return '4x3'; // ponytail: no square slide layout — 4:3 is the closest
+        case '4:3': case '1:1': return '4x3'; // ponytail: no square slide layout — 4:3 is the closest; trigger: anyone exports a 1:1 deck for print.
         case 'a4': return 'A4';
         case 'letter': return 'LETTER';
         default: return '16x9';

@@ -1,6 +1,6 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createEvent, fireEvent, render, screen, within } from '@testing-library/react';
 import { halocronOsStore } from '../lib/halocronOsStore';
 import { UserContext, type DwelliumUser } from '../context/UserContext';
 
@@ -215,5 +215,83 @@ describe('Holocron OS smart tab shell', () => {
         expect(await screen.findByTestId('halocron-cloud-browser')).toHaveAttribute('data-initial-url', 'https://chatgpt.com');
         expect(screen.queryByText(/blocks in-browser embedding/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/desktop app embeds/i)).not.toBeInTheDocument();
+    });
+});
+
+describe('Holocron tear-off tabs (pop out into own browser window)', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('drag ending OUTSIDE the tab strip detaches the tab into a popout and closes it', () => {
+        const openSpy = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+        openHalocron();
+        openArchiveApp('Alpha');
+
+        const tab = screen.getByTestId('hos-tab-w:alpha');
+        expect(tab).toHaveAttribute('draggable', 'true');
+        fireEvent.dragStart(tab);
+        // jsdom rects are 0×0 → (500, 500) is outside the strip bounds.
+        // (jsdom has no DragEvent ctor, so clientX must be assigned manually.)
+        const end = createEvent.dragEnd(tab);
+        Object.assign(end, { clientX: 500, clientY: 500 });
+        fireEvent(tab, end);
+
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        expect(openSpy.mock.calls[0][0]).toBe('/?popup=alpha');
+        expect(screen.queryByTestId('hos-tab-w:alpha')).not.toBeInTheDocument();
+    });
+
+    it('drag ending INSIDE the strip does NOT pop out and keeps the tab', () => {
+        const openSpy = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+        openHalocron();
+        openArchiveApp('Alpha');
+
+        const tab = screen.getByTestId('hos-tab-w:alpha');
+        fireEvent.dragStart(tab);
+        // (0, 0) sits exactly on the 0×0 jsdom strip rect → inside.
+        const end = createEvent.dragEnd(tab);
+        Object.assign(end, { clientX: 0, clientY: 0 });
+        fireEvent(tab, end);
+
+        expect(openSpy).not.toHaveBeenCalled();
+        expect(screen.getByTestId('hos-tab-w:alpha')).toBeInTheDocument();
+    });
+
+    it('marks the strip with a tearing class while a tab drag is in flight', () => {
+        openHalocron();
+        openArchiveApp('Alpha');
+
+        const tab = screen.getByTestId('hos-tab-w:alpha');
+        const strip = tab.parentElement as HTMLElement;
+        fireEvent.dragStart(tab);
+        expect(strip).toHaveClass('hos-tabs--tearing');
+        const end = createEvent.dragEnd(tab);
+        Object.assign(end, { clientX: 0, clientY: 0 });
+        fireEvent(tab, end);
+        expect(strip).not.toHaveClass('hos-tabs--tearing');
+    });
+
+    it('offers a keyboard-reachable "Open in its own window" button per widget tab', () => {
+        const openSpy = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+        openHalocron();
+        openArchiveApp('Alpha');
+
+        const btn = screen.getByRole('button', { name: 'Open Alpha in its own window' });
+        fireEvent.click(btn);
+
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        expect(openSpy.mock.calls[0][0]).toBe('/?popup=alpha');
+        expect(screen.queryByTestId('hos-tab-w:alpha')).not.toBeInTheDocument();
+    });
+
+    it('keeps the tab when the popup blocker refuses the popout', () => {
+        vi.spyOn(window, 'open').mockReturnValue(null);
+        openHalocron();
+        openArchiveApp('Alpha');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Open Alpha in its own window' }));
+
+        expect(screen.getByTestId('hos-tab-w:alpha')).toBeInTheDocument();
     });
 });

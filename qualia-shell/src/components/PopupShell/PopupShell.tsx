@@ -5,16 +5,9 @@ import { WIDGET_REGISTRY } from '../../registry/widgetRegistry';
 import { LayoutProvider } from '../../context/LayoutContext';
 import { HierarchyProvider } from '../../context/HierarchyContext';
 import { WindowProvider } from '../../context/WindowContext';
+import { requestDockBack } from '../../lib/popoutDock';
 import '../../styles/global.css';
 import '../../styles/skins.css';
-
-// Dock-back message type the main shell listens for
-export interface DockBackMessage {
-    type: 'qualia-dock-back';
-    component: string;
-    title: string;
-    icon: string;
-}
 
 export function PopupShell({ component }: { component: string }) {
     const Component = WINDOW_COMPONENTS[component] as React.FC | undefined;
@@ -22,6 +15,7 @@ export function PopupShell({ component }: { component: string }) {
     const registryLabel = WIDGET_REGISTRY[component]?.label ?? component;
     const [meta, setMeta] = useState<{ title: string; icon: string }>({ title: registryLabel, icon: '' });
     const [docking, setDocking] = useState(false);
+    const [dockError, setDockError] = useState('');
 
     // Restore theme + skin + load metadata
     useEffect(() => {
@@ -48,23 +42,19 @@ export function PopupShell({ component }: { component: string }) {
         document.title = `${icon ? `${icon} ` : ''}${title} — Qualia`;
     }, [component, registryLabel]);
 
-    // Dock back: send to main window and close popup
-    const handleDockBack = () => {
-        if (!window.opener) {
-            alert('Cannot dock back — main window is closed. Open Qualia and try again.');
+    // Dock back: ask a main Dwellium window to adopt this widget (opener
+    // postMessage, else BroadcastChannel). The popup closes ONLY after a main
+    // window acks; on timeout it keeps the widget and says so honestly.
+    const handleDockBack = async () => {
+        setDocking(true);
+        setDockError('');
+        const acked = await requestDockBack({ component, title: meta.title, icon: meta.icon });
+        if (acked) {
+            window.close();
             return;
         }
-        setDocking(true);
-        const msg: DockBackMessage = {
-            type: 'qualia-dock-back',
-            component,
-            title: meta.title,
-            icon: meta.icon,
-        };
-        // postMessage to the parent/opener window
-        window.opener.postMessage(msg, window.opener.location?.origin ?? '*');
-        // Give it 300ms then close self
-        setTimeout(() => window.close(), 300);
+        setDocking(false);
+        setDockError("Couldn't dock — main window not found");
     };
 
     if (!Component) {
@@ -102,8 +92,8 @@ export function PopupShell({ component }: { component: string }) {
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #ffffff)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {meta.title}
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #555555)', marginRight: 4 }}>
-                    Standalone window
+                <span role={dockError ? 'alert' : undefined} style={{ fontSize: 11, color: dockError ? 'var(--accent, #D6FE51)' : 'var(--text-tertiary, #555555)', marginRight: 4 }}>
+                    {dockError || 'Standalone window'}
                 </span>
                 {/* Dock Back button */}
                 <button
